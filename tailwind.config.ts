@@ -1,16 +1,31 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  darkMode: "class", // Enable class-based dark mode
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}", // Match all files under `src` for tailwind
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        neutral: {
+          light: '#ffffff', // Matches light mode background
+          DEFAULT: '#e5e5e5',
+          dark: '#0a0a0a', // Matches dark mode background
+        },
+        foreground: {
+          light: '#171717', // Matches light mode text
+          dark: '#ededed', // Matches dark mode text
+        },
+      },
+      fontFamily: {
+        sans: ['Raleway', 'sans-serif'], // Your project font
+      },
+      transitionTimingFunction: {
+        smooth: 'ease-in-out', // Smooth transitions for animations
+      },
+      transitionDuration: {
+        DEFAULT: '300ms', // Default duration for transitions
       },
     },
   },
