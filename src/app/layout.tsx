@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "@fontsource/raleway"; // Importing Raleway
-
+import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
-
+import ClientProvider from "./components/ClientProvider";
 
 export const metadata: Metadata = {
   title: "JPS Realtor",
@@ -12,15 +12,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en" className="dark">
       <body>
-        <Navbar />
-        {children}
-        </body>
+        <ClientProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </ClientProvider>
+      </body>
     </html>
   );
 }

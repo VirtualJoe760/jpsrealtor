@@ -1,38 +1,46 @@
-import { Disclosure } from "@headlessui/react";
+"use client";
+
+import { DisclosureButton } from "@headlessui/react";
+import { usePathname } from "next/navigation";
 
 const navigation = [
-  { name: "About", href: "#about", current: true },
-  { name: "Buying", href: "#buying", current: false },
-  { name: "Selling", href: "#selling", current: false },
-  { name: "Coachella Valley", href: "#coachella-valley", current: false },
-  { name: "Login", href: "#login", current: false },
+  { name: "About", href: "/about" },
+  { name: "Buying", href: "/buying" },
+  { name: "Selling", href: "/selling" },
+  { name: "Coachella Valley", href: "/coachella-valley" },
+  { name: "Login", href: "/login" },
 ];
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function MobileMenu() {
+export default function MobileMenu({ open }: { open: boolean }) {
+  const pathname = usePathname(); // Get the current pathname
+
   return (
-    <Disclosure.Panel className="sm:hidden">
+    <div className={classNames(open ? "block" : "hidden", "sm:hidden")}>
       <div className="space-y-1 px-2 pb-3 pt-2">
-        {navigation.map((item) => (
-          <Disclosure.Button
-            key={item.name}
-            as="a"
-            href={item.href}
-            aria-current={item.current ? "page" : undefined}
-            className={classNames(
-              item.current
-                ? "bg-neutral-light text-neutral-dark"
-                : "text-neutral-light hover:bg-neutral-light/10 hover:text-neutral-dark",
-              "block rounded-md px-3 py-2 text-base font-medium"
-            )}
-          >
-            {item.name}
-          </Disclosure.Button>
-        ))}
+        {navigation.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <DisclosureButton
+              key={item.name}
+              as="a"
+              href={item.href}
+              aria-current={isActive ? "page" : undefined}
+              className={classNames(
+                isActive
+                  ? "bg-neutral-light text-gray-300"
+                  : "text-neutral-light hover:bg-neutral-light/10 hover:text-gray-300",
+                "block rounded-md px-3 py-2 text-base font-medium"
+              )}
+            >
+              {item.name}
+            </DisclosureButton>
+          );
+        })}
       </div>
-    </Disclosure.Panel>
+    </div>
   );
 }
