@@ -1,14 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-
-interface Post {
-  slugId: string;
-  title: string;
-  date: string;
-  image: string;
-  altText: string;
-  section: string;
-}
+import Pagination from "@/components/Pagination";
+import { Post } from "@/types/post";
 
 interface InsightsListProps {
   posts: Post[];
@@ -23,46 +16,54 @@ export default function InsightsList({
   currentPage,
   category,
 }: InsightsListProps) {
+  console.log("Posts passed to InsightsList:", posts); // Debug posts array
+
   return (
-    <section className="mx-auto max-w-6xl px-6 py-10">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => (
-          <div key={post.slugId} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-            <Link href={`/insights/${category}/${post.slugId}`}>
-              <Image
-                src={post.image}
-                alt={post.altText}
-                width={600}
-                height={400}
-                className="object-cover w-full h-48"
-              />
-              <div className="p-4">
-                <h2 className="text-xl font-semibold mb-2 text-white">{post.title}</h2>
-                <p className="text-sm text-gray-300">
-                  {new Date(post.date).toLocaleDateString()}
+    <section className="mx-auto max-w-4xl px-6 py-10">
+      <div className="space-y-12">
+        {posts.map((post) => {
+          const { slugId, title, image, altText, description, date } = post; // Explicit destructuring
+          console.log(`Post in map: slugId=${slugId}, title=${title}`); // Debug each post
+
+          return (
+            <div
+              key={slugId || title} // Ensure key is unique
+              className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8"
+            >
+              {/* Thumbnail */}
+              <Link href={`/insights/${category}/${slugId}`}>
+                <Image
+                  src={image || "/default-image.jpg"} // Default image fallback
+                  alt={altText || "Default alt text"}
+                  width={300}
+                  height={200}
+                  className="object-cover rounded-lg w-64 h-40 shadow-md"
+                />
+              </Link>
+
+              {/* Post Content */}
+              <div className="flex-1">
+                <h2 className="text-2xl font-semibold text-white mb-2">
+                  <Link href={`/insights/${category}/${slugId}`}>
+                    {title}
+                  </Link>
+                </h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  {new Date(date).toLocaleDateString()}
                 </p>
+                <p className="text-gray-300">{description}</p>
               </div>
-            </Link>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* Pagination */}
-      <div className="mt-10 flex justify-center">
-        {Array.from({ length: totalPages }, (_, index) => (
-          <Link
-            key={index + 1}
-            href={`/insights/${category}?page=${index + 1}`}
-            className={`mx-2 px-4 py-2 rounded ${
-              currentPage === index + 1
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-indigo-600"
-            }`}
-          >
-            {index + 1}
-          </Link>
-        ))}
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        category={category}
+      />
     </section>
   );
 }

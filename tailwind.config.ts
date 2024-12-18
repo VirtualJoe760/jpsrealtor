@@ -1,9 +1,10 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography"; // Use ESM import syntax
 
 export default {
   darkMode: "class", // Enable class-based dark mode
   content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}", // Match all files under `src` for tailwind
+    "./src/**/*.{js,ts,jsx,tsx,mdx}", // Match all files under `src` for Tailwind
   ],
   theme: {
     extend: {
@@ -29,5 +30,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [typography], // Use the imported plugin
 } satisfies Config;

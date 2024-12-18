@@ -3,6 +3,7 @@ import InsightsList from "@/components/InsightsList";
 import { insightsCategoriesContent } from "@/constants/staticContent";
 import { categoriesPageContent } from "@/constants/staticContent";
 import { Metadata } from "next";
+import VariableHero from "@/app/components/VariableHero";
 
 export async function generateMetadata({
   params,
@@ -13,7 +14,7 @@ export async function generateMetadata({
 
   // Capitalize the first letter of each word in the section title
   const formattedCategory = category
-    .replace('-', ' ')
+    .replace("-", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
   // Find matching category's SEO data
@@ -53,28 +54,40 @@ export default async function CategoryPage({
 
   // Capitalize the first letter of each word in the section title
   const formattedCategory = category
-    .replace('-', ' ')
+    .replace("-", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
   // Fetch posts with pagination
   const { posts, totalPages } = await getPostsBySection(category, page, 5);
 
+  // Debugging data passed to InsightsList
+  console.log("Category:", category); // Debug the category
+  console.log("Page:", page); // Debug the current page
+  console.log("Posts fetched for InsightsList:", posts); // Debug posts array
+  console.log("Total Pages:", totalPages); // Debug total pages
+
   return (
-    <div className="bg-black text-white">
-      <header className="text-center py-12 px-6 lg:px-12">
-        <h1 className="text-4xl font-bold">
-          {categoriesPageContent.title(formattedCategory)}
-        </h1>
-        <p className="text-lg mt-4 mb-8 max-w-3xl mx-auto">
-          {categoriesPageContent.description(formattedCategory)}
-        </p>
-      </header>
-      <InsightsList
-        posts={posts}
-        totalPages={totalPages}
-        currentPage={page}
-        category={category}
+    <>
+      <VariableHero
+        backgroundImage="/misc/house1.png"
+        heroContext={categoriesPageContent.title(formattedCategory)}
       />
-    </div>
+      <div className="bg-black text-white">
+        <header className="text-center py-12 px-6 lg:px-12">
+          <h1 className="text-4xl font-bold">
+            Read {categoriesPageContent.title(formattedCategory)}
+          </h1>
+          <p className="text-lg mt-4 mb-8 max-w-3xl mx-auto">
+            {categoriesPageContent.description(formattedCategory)}
+          </p>
+        </header>
+        <InsightsList
+          posts={posts}
+          totalPages={totalPages}
+          currentPage={page}
+          category={category}
+        />
+      </div>
+    </>
   );
 }

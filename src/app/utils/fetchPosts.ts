@@ -7,26 +7,28 @@ const postsDirectory = path.join(process.cwd(), "src/posts");
 
 // Fetch metadata and content for a single post by its `slugId`
 export async function getPostBySlug(slugId: string): Promise<Post> {
-  const fileExtensions = [".mdx", ".md"];
+  if (!slugId) {
+    throw new Error("Post not found: slug ID is missing");
+  }
 
+  const fileExtensions = [".mdx", ".md"];
   for (const extension of fileExtensions) {
     const fullPath = path.join(postsDirectory, `${slugId}${extension}`);
 
     if (fs.existsSync(fullPath)) {
       const fileContents = fs.readFileSync(fullPath, "utf8");
-
       const { data, content } = matter(fileContents);
 
       return {
-        title: data.title,
-        slug: slugId,
-        date: data.date,
-        section: data.section,
-        description: data.metaDescription,
-        image: data.image,
-        altText: data.altText,
-        keywords: data.keywords,
-        content: content,
+        title: data.title || "",
+        slugId, // Use slugId consistently
+        date: data.date || "",
+        section: data.section || "",
+        description: data.metaDescription || "",
+        image: data.image || "",
+        altText: data.altText || "",
+        keywords: data.keywords || [],
+        content: content || "",
       } as Post;
     }
   }
@@ -38,12 +40,21 @@ export async function getPostBySlug(slugId: string): Promise<Post> {
 export async function getAllPosts(): Promise<Post[]> {
   const fileNames = fs.readdirSync(postsDirectory);
 
-  return Promise.all(
+  const posts = await Promise.all(
     fileNames.map(async (fileName) => {
       const slugId = fileName.replace(/\.mdx?$/, "").replace(/\.md$/, "");
       return getPostBySlug(slugId);
     })
   );
+
+  // Sort all posts by date (newest first)
+  posts.sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateB - dateA;
+  });
+
+  return posts;
 }
 
 // Fetch posts by section with pagination support
@@ -54,16 +65,11 @@ export async function getPostsBySection(
 ): Promise<{ posts: Post[]; totalPages: number }> {
   const allPosts = await getAllPosts();
 
+  // Filter posts by section
   const sectionPosts = allPosts.filter((post) => post.section === section);
 
-  sectionPosts.sort((a, b) => {
-    const dateA = new Date(a.date);
-    const dateB = new Date(b.date);
-    return dateB.getTime() - dateA.getTime();
-  });
-
+  // Calculate pagination
   const totalPages = Math.ceil(sectionPosts.length / limit);
-
   const paginatedPosts = sectionPosts.slice((page - 1) * limit, page * limit);
 
   return {
