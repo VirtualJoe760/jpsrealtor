@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["res.cloudinary.com", "images.unsplash.com", "cdn.sanity.io"], // Add Cloudinary's domain
+    domains: ["res.cloudinary.com", "images.unsplash.com"], // Add Cloudinary's domain
   },
   webpack(config) {
     // Add support for SVG files as React components

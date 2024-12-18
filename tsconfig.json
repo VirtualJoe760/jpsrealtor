@@ -25,8 +25,7 @@
       "@/utils/*": ["./src/app/utils/*"],
       "@/models/*": ["./src/app/models/*"],
       "@/constants/*": ["./src/app/constants/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/sanity/*": ["./src/sanity/*"]
+      "@/types/*": ["./src/types/*"]
     },
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true

@@ -59,8 +59,8 @@ export const aboutSectionContent = {
       description: "See listings in the Coachella Valley.",
       body: `Ready to buy your dream home or explore the market? Discover expert insights on Joseph's blog to guide you through every step of the process. From tips on buying and selling to understanding the Coachella Valley market, you'll find everything you need to make confident real estate decisions.`,
       link: {
-        text: "Read Joseph’s Blog.",
-        href: "/blog",
+        text: "View Listings",
+        href: "/listings",
       },
     },
   ],

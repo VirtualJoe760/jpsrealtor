@@ -7,9 +7,11 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 // Generate metadata for the Cities page
-export const generateMetadata: Metadata = {
-  title: "Coachella Valley Real Estate",
-  description: "Explore real estate in the Coachella Valley. Discover listings in popular cities and find your dream home.",
+export const generateMetadata = (): Metadata => {
+  return {
+    title: "Coachella Valley Neighborhoods",
+    description: "Discover real estate opportunities in neighborhoods across the Coachella Valley.",
+  };
 };
 
 const Cities: React.FC = () => {
