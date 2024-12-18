@@ -5,23 +5,26 @@ const cards = [
   {
     name: "About Me",
     description:
-      "Learn more about my background, experience, and commitment to helping you achieve your real estate goals.",
+      "Get to know me—my journey, expertise, and unwavering dedication to helping you succeed in the real estate market.",
     icon: HomeIcon,
     href: "/about",
+    image: "/misc/about-cta-1.png",
   },
   {
     name: "Buying",
     description:
-      "Discover how I can guide you through the buying process, ensuring a smooth and stress-free experience.",
+      "Let me guide you through buying your dream home. Together, we’ll make the process seamless, exciting, and rewarding.",
     icon: KeyIcon,
     href: "/buying",
+    image: "/misc/about-cta-2.png",
   },
   {
     name: "Selling",
     description:
-      "Get insights on how I can help you list and sell your property efficiently for the best price.",
+      "Selling your property? I’ll help you navigate the market, maximize value, and achieve the best results, stress-free.",
     icon: ShoppingBagIcon,
     href: "/selling",
+    image: "/misc/about-cta-3.png",
   },
 ];
 
@@ -32,10 +35,10 @@ export default function AboutCta() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
           <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-5xl">
-            Joseph Sardella | eXp Realty | DRE# 02106916
+            Joseph Sardella | Coachella Valley Realtor | eXp Realty | DRE# 02106916
           </h2>
           <p className="mt-8 text-lg font-medium text-gray-200 sm:text-xl">
-            Whether you&apos;re buying, selling, or just learning about my services, I&apos;m here to provide expertise and
+            Whether you&apos;re buying, selling, or simply exploring your options, I&apos;m here to provide expert advice and 
             support every step of the way.
           </p>
         </div>
@@ -45,19 +48,30 @@ export default function AboutCta() {
           {cards.map((card) => (
             <div
               key={card.name}
-              className="flex flex-col gap-y-4 rounded-xl bg-white/5 p-6 ring-1 ring-inset ring-white/10 hover:bg-white/10 transition"
+              className="relative flex flex-col gap-y-4 rounded-xl p-6 ring-1 ring-inset ring-white/10 transition group"
+              style={{
+                backgroundImage: `url(${card.image})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
             >
-              <card.icon aria-hidden="true" className="h-8 w-8 text-indigo-400" />
-              <div>
-                <h3 className="text-xl font-semibold text-white">{card.name}</h3>
-                <p className="mt-2 text-gray-300">{card.description}</p>
+              {/* Overlay */}
+              <div className="absolute inset-0 bg-black/60 group-hover:bg-black/80 transition-opacity rounded-xl" />
+
+              {/* Card Content */}
+              <div className="relative z-10">
+                <card.icon aria-hidden="true" className="h-8 w-8 text-indigo-400" />
+                <div>
+                  <h3 className="text-2xl font-semibold text-white">{card.name}</h3>
+                  <p className="mt-2 text-xl text-gray-300">{card.description}</p>
+                </div>
+                <Link
+                  href={card.href}
+                  className="mt-auto inline-block text-indigo-400 font-medium hover:text-indigo-300"
+                >
+                  Learn More →
+                </Link>
               </div>
-              <Link
-                href={card.href}
-                className="mt-auto inline-block text-indigo-400 font-medium hover:text-indigo-300"
-              >
-                Learn More →
-              </Link>
             </div>
           ))}
         </div>
