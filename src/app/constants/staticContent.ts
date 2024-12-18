@@ -28,43 +28,46 @@ export const aboutSectionContent = {
     {
       heading: "Who is Joseph Sardella",
       description: "Your Coachella Valley Real Estate Expert",
-      body: `As a Coachella Valley native, I bring a deep-rooted passion for real estate and a lifetime of local knowledge to my clients. Growing up in Indian Wells Country Club, I’ve watched the desert blossom into the oasis it is today. Since becoming an agent in 2019, I’ve proudly continued my family’s real estate legacy, which dates back to the 1970s.
-      With a strong technical background in digital marketing and software, I provide modern, data-driven strategies for buyers, sellers, and investors alike. Outside of real estate, I enjoy hitting the gym, exploring the desert’s scenic hiking trails, playing golf, and enjoying dinner dates with my girlfriend, Kelly.
-      Let’s work together to make your Coachella Valley real estate dreams a reality.`,
+      body: `As a Coachella Valley native, I bring a deep-rooted passion for real estate and a lifetime of local knowledge to my clients.`,
       link: {
         text: "Joseph's Real Estate Insights",
         href: "/insights",
       },
+      imageUrl: "/misc/bento-1.jpg",
     },
     {
       heading: "A Legacy of Real Estate",
       description: "Decades of Experience in the Desert",
-      body: `Carrying on a family legacy of real estate that began in the 1970s, Joseph grew up in Indian Wells Country Club and has witnessed the desert blossom into the oasis it is today. Since 2019, Joseph has helped clients discover the best neighborhoods the Coachella Valley has to offer.`,
+      body: `Carrying on a family legacy of real estate that began in the 1970s, Joseph grew up in Indian Wells Country Club.`,
       link: {
         text: "Explore The Desert",
         href: "/neighborhoods",
       },
+      imageUrl: "/misc/bento-2.png",
     },
     {
       heading: "Technical Expertise",
       description: "Real Estate in the Digital Age",
-      body: `With a strong technical background in computers, software, and digital marketing, Joseph leverages cutting-edge tools to connect buyers and sellers effectively. From targeted listings to comprehensive market insights, Joseph brings technology and tradition together to deliver exceptional results.`,
+      body: `With a strong technical background in computers, software, and digital marketing, Joseph leverages tools to connect buyers and sellers effectively.`,
       link: {
-        text: "Contact Joseph Today.",
+        text: "Contact Joseph Today",
         href: "/contact",
       },
+      imageUrl: "/misc/bento-3.png",
     },
     {
       heading: "Ready to see some houses?",
       description: "See listings in the Coachella Valley.",
-      body: `Ready to buy your dream home or explore the market? Discover expert insights on Joseph's blog to guide you through every step of the process. From tips on buying and selling to understanding the Coachella Valley market, you'll find everything you need to make confident real estate decisions.`,
+      body: `Ready to buy your dream home? Discover expert insights on Joseph's blog to guide you through every step.`,
       link: {
         text: "View Listings",
         href: "/listings",
       },
+      imageUrl: "/misc/bento-4.jpg",
     },
   ],
 };
+
 
 // SERVICES HERO SECTION
 

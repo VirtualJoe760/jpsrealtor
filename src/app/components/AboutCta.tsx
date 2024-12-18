@@ -34,7 +34,7 @@ export default function AboutCta() {
           <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-5xl">
             Joseph Sardella | eXp Realty | DRE# 02106916
           </h2>
-          <p className="mt-8 text-lg font-medium text-gray-400 sm:text-xl">
+          <p className="mt-8 text-lg font-medium text-gray-200 sm:text-xl">
             Whether you&apos;re buying, selling, or just learning about my services, I&apos;m here to provide expertise and
             support every step of the way.
           </p>

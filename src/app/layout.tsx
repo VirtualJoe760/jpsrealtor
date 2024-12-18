@@ -5,9 +5,10 @@ import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 
 export const metadata: Metadata = {
-  title: "JPS Realtor",
-  description: "Professional real estate services by Joey Sardella",
+  title: "Joseph Sardella | Coachella Valley Realtor",
+  description: "Experience exceptional real estate services with Joseph Sardella, your trusted Coachella Valley Realtor specializing in buying, selling, and investing in the local market.",
 };
+
 
 export default function RootLayout({
   children,
