@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export default function ContactInfo() {
   return (
-    <div className="relative px-6 pb-20 pt-24 sm:pt-32 lg:static lg:px-8 lg:py-48">
+    <div className="relative px-6 pb-20 pt-12 lg:static">
       <div className="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
         <h2 className="text-pretty text-4xl font-semibold tracking-tight sm:text-5xl">
           Let&apos;s Connect
