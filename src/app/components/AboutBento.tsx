@@ -23,17 +23,17 @@ const AboutBento: React.FC = () => {
               <div className="absolute inset-px rounded-lg lg:rounded-[2rem]" />
               <div className="relative flex h-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.lg)+1px)]">
                 <div className="p-10 pt-4">
-                  <h3 className="text-sm/4 text-gray-400">{card.heading}</h3>
+                  <h3 className="text-sm/4 text-blue-300">{card.heading}</h3>
                   <p className="mt-2 text-2xl font-medium tracking-tight text-white">
                     {card.description}
                   </p>
-                  <p className="mt-2 max-w-lg text-md text-gray-300 my-2">
+                  <p className="mt-2 max-w-lg text-md text-gray-100 my-2">
                     {card.body}
                   </p>
                   
                   <Link
                       href={card.link.href}
-                      className="text-gray-400 hover:text-white underline"
+                      className="text-indigo-500 hover:text-white underline"
                       aria-label={`Navigate to ${card.link.text}`}
                     >
                       {card.link.text}

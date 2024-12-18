@@ -35,7 +35,7 @@ const VariableHero: React.FC<VariableHeroProps> = ({
       />
 
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black opacity-50 rounded-lg"></div>
+      <div className="absolute inset-0 bg-black opacity-10 rounded-lg"></div>
 
       {/* Content */}
       <div className={`relative z-10 px-4 flex flex-col justify-center ${alignmentClass} h-full`}>

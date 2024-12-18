@@ -139,6 +139,17 @@ export const insightsCategoriesContent = {
   ],
 };
 
+// CATEGORIES CONTENT
+
+// SECTION BLOG PAGE CONTENT
+
+export const categoriesPageContent = {
+  title: (section: string) => `${section.replace('-', ' ')}`,
+  description: (section: string) =>
+    `I'm dedicated to more than just helping you buy or sell properties. I strive to provide valuable insights and expert advice through our blog. Whether you're navigating the real estate market, staying informed on local trends, or seeking tips for property investment, our ${section.replace('-', ' ')} insights are tailored to empower you with the knowledge to make confident decisions for your real estate journey.`,
+};
+
+
 
 // CITIES CONTENT
 
