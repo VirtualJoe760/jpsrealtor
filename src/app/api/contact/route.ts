@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { handleCors } from "@/utils/handleCors";
 
-// Environment variables
-const EMAIL_USER = process.env.EMAIL_USER; // Joe's email: josephsardella@gmail.com
+const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse form data sent from the frontend
+    // Initialize CORS
+    const res = NextResponse.next();
+    await handleCors(req, res);
+
+    // Parse the request body
     const { firstName, lastName, email, phone, address, message, photos } = await req.json();
 
-    // Nodemailer transporter configuration
+    // Configure Nodemailer transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -19,10 +23,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 1. Email to Joe (Admin)
+    // Email to Admin (Joe)
     const adminMailOptions = {
-      from: EMAIL_USER, // Sender email
-      to: EMAIL_USER, // Joe's email
+      from: EMAIL_USER,
+      to: EMAIL_USER,
       subject: "New Contact Request from Your Website",
       html: `
         <h2>Hello Joe,</h2>
@@ -34,7 +38,6 @@ export async function POST(req: NextRequest) {
           <li><strong>Address:</strong> ${address}</li>
           <li><strong>Message:</strong> ${message}</li>
         </ul>
-
         ${
           photos?.length > 0
             ? `<h3>Uploaded Photos:</h3>
@@ -51,10 +54,10 @@ export async function POST(req: NextRequest) {
       `,
     };
 
-    // 2. Confirmation Email to the User
+    // Confirmation email to the User
     const userMailOptions = {
-      from: EMAIL_USER, // Sender email
-      to: email, // User's email
+      from: EMAIL_USER,
+      to: email,
       subject: "Thank You for Contacting Us!",
       html: `
         <div style="background-color: #000; color: #fff; font-family: 'Raleway', sans-serif; padding: 20px; text-align: center;">
@@ -77,10 +80,10 @@ export async function POST(req: NextRequest) {
             <li><strong>Message:</strong> ${message}</li>
           </ul>
           <div style="margin: 2rem 0;">
-            <a href="https://www.jpsrealtor.com/blog" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; margin-right: 10px; display: inline-block;">
-              Visit Our Blog
+            <a href="https://www.jpsrealtor.com/insights" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; margin-right: 10px; display: inline-block;">
+              Read Estate Insights
             </a>
-            <a href="https://www.obsidianregroup.com/team/joseph-sardella" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; display: inline-block;">
+            <a href="https://www.jpsrealtor.com/listings" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; display: inline-block;">
               Browse Properties
             </a>
           </div>
@@ -94,7 +97,6 @@ export async function POST(req: NextRequest) {
         </div>
       `,
     };
-    
 
     // Send emails
     await transporter.sendMail(adminMailOptions);
@@ -102,11 +104,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: "Emails sent successfully!" }, { status: 200 });
   } catch (error) {
-    const err = error as Error;
-    console.error("Error sending email:", err.message);
+    console.error("Error sending email:", (error as Error).message);
     return NextResponse.json(
-      { message: "Failed to send email.", error: err.message },
+      { message: "Failed to send email.", error: (error as Error).message },
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  const res = NextResponse.next();
+  await handleCors(req, res);
+  return res;
 }
