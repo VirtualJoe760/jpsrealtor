@@ -27,7 +27,7 @@ const cards = [
 
 export default function AboutCta() {
   return (
-    <div className="relative isolate overflow-hidden bg-black py-24 sm:py-32">
+    <div className="relative isolate overflow-hidden bg-black py-12 sm:py-12">
       {/* Main Content */}
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">

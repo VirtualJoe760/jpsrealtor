@@ -4,10 +4,10 @@ import { aboutSectionContent } from "@/constants/staticContent";
 
 const AboutBento: React.FC = () => {
   return (
-    <section className="bg-black py-24 sm:py-32 text-white">
+    <section className="bg-black py-12 sm:py-12 text-white">
       <div className="mx-auto max-w-2xl px-6 lg:max-w-7xl lg:px-8">
         {/* Title */}
-        <p className="mt-2 max-w-lg text-pretty text-xl font-medium tracking-tight text-gray-100 sm:text-5xl">
+        <p className="mt-2 max-w-lg text-pretty text-center text-xl font-medium tracking-tight text-gray-100 sm:text-5xl">
           {aboutSectionContent.title}
         </p>
 
