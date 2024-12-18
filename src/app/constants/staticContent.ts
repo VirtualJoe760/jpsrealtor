@@ -100,39 +100,45 @@ export const servicesHeroContent = {
   ],
 };
 
-// TIPS SECTION
-
-export const tipsCategoriesContent = {
-  heading: "Explore Real Estate Tips & Advice",
+// INSIGHTS SECTION
+export const insightsCategoriesContent = {
+  heading: "Explore Real Estate Insights & Advice",
   description:
-    "Navigate your real estate journey with confidence. Explore expert advice on buying, selling, and everything in between.",
+    "Stay informed and confident throughout your real estate journey. From market trends to practical tips, discover expert insights tailored to your needs.",
   categories: [
     {
       id: 1,
-      title: "Buying Guides",
-      href: "/tips/buying-guides",
+      title: "Articles",
+      href: "/insights/articles",
       imageUrl:
-        "https://images.unsplash.com/photo-1595814432314-90095f342694?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      altText: "A couple reviewing a real estate buying guide",
+        "/misc/back-yard_00001_.png",
+      altText: "An open book with charts representing knowledge and insights.",
+      description:
+        "Explore in-depth articles covering economics, market statistics, trends, and insights that go beyond the Coachella Valley.",
     },
     {
       id: 2,
-      title: "Selling Tips",
-      href: "/tips/selling-tips",
+      title: "Market Insights",
+      href: "/insights/market-insights",
       imageUrl:
-        "https://images.unsplash.com/photo-1607400201889-565b1ee75f8e?q=80&w=2669&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      altText: "A real estate agent staging a home for sale",
+        "/misc/front-yard_00001_.png",
+      altText: "Graphs and charts showcasing Coachella Valley market trends.",
+      description:
+        "Discover insights focused on the Coachella Valley market, including housing trends, neighborhood highlights, and local statistics.",
     },
     {
       id: 3,
-      title: "Market Insights",
-      href: "/tips/market-insights",
+      title: "Real Estate Tips",
+      href: "/insights/real-estate-tips",
       imageUrl:
-        "https://images.unsplash.com/photo-1561065091-4908548ee638?q=80&w=2448&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      altText: "Graphs and charts showcasing real estate market trends",
+        "/misc/bathroom_00001_.png",
+      altText: "A real estate agent reviewing a home buying guide.",
+      description:
+        "Practical tips and advice on navigating real estate transactions, from buying and selling to maximizing your investment.",
     },
   ],
 };
+
 
 // CITIES CONTENT
 
@@ -158,14 +164,5 @@ export const cityPageContent = {
   cityNotFound: {
     message: "City not found.",
     backToCities: "Go back to communities.",
-  },
-};
-
-// SERVICE ID CONTENT
-
-export const servicePageContent = {
-  serviceNotFound: {
-    message: "Service not found.",
-    backToServices: "Go back to services.",
   },
 };

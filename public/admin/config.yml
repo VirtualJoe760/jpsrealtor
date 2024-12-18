@@ -1,17 +1,35 @@
 backend:
   name: git-gateway
-  branch: main
+  branch: main # Branch where content is committed
+  repo: VirtualJoe760/jpsrealtor # Replace with your GitHub repo
+media_folder: "public/uploads" # Path where images are stored in your repo
+public_folder: "/uploads"      # Public URL for the folder
 
-media_folder: "public/uploads"
-public_folder: "/uploads"
+media_library:
+  name: cloudinary
+  config:
+    cloud_name: "duqgao9h8"
+    api_key: "647319725974664"
+    api_secret: "jAD_D300CJpNN1PyMmuEaWEtiGM"
+    default_transformations:
+      - quality: auto
+      - fetch_format: auto
 
 collections:
   - name: "posts"
-    label: "Posts"
+    label: "Blog Posts"
     folder: "src/posts"
     create: true
-    slug: "{{slug}}"
+    slug: "{{slugId}}" # Use slugId for file naming
     fields:
-      - { label: "Title", name: "title", widget: "string" }
-      - { label: "Body", name: "body", widget: "markdown" }
-      - { label: "Published Date", name: "date", widget: "datetime" }
+      - { label: "Title", name: "title", widget: "string", required: true, hint: "Enter the title of the blog post." }
+      - { label: "Slug ID", name: "slugId", widget: "string", required: true, hint: "SEO-friendly URL for the post." }
+      - { label: "Date", name: "date", widget: "string", required: true, hint: "Publication date in MM/DD/YYYY format." }
+      - { label: "Section", name: "section", widget: "select", options: ["how-to", "home-improvement", "seasonal-home-care"], required: true, hint: "Select the blog section this post belongs to." }
+      - { label: "Body", name: "body", widget: "markdown", required: true, hint: "Main content of the post in Markdown format." }
+      - { label: "Image", name: "image", widget: "image", required: true, hint: "Upload a featured image for the post." }
+      - { label: "Meta Title", name: "metaTitle", widget: "string", required: true, hint: "Title for search engine results." }
+      - { label: "Meta Description", name: "metaDescription", widget: "text", required: true, hint: "Brief description of the post." }
+      - { label: "OG Image", name: "ogImage", widget: "image", required: true, hint: "Upload an Open Graph image for social media sharing." }
+      - { label: "Image Alt Text", name: "altText", widget: "string", required: true, hint: "Describe the image for accessibility." }
+      - { label: "Keywords", name: "keywords", widget: "list", field: { label: "Keyword", name: "keyword", widget: "string" }, required: true, hint: "Main keywords for this post." }

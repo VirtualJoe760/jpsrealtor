@@ -12,6 +12,8 @@
     "@fontsource/raleway": "^5.1.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
+    "@mdx-js/react": "^3.1.0",
+    "@next/mdx": "^15.1.1",
     "@portabletext/react": "^3.2.0",
     "@svgr/webpack": "^8.1.0",
     "cloudinary": "^2.5.1",
@@ -22,6 +24,8 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-toastify": "^10.0.6",
+    "remark": "^15.0.1",
+    "remark-html": "^16.0.1",
     "styled-components": "^6.1.13",
     "validator": "^13.12.0"
   },
