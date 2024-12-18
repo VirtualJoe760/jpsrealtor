@@ -2,40 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { getAllPosts } from "@/utils/fetchPosts"; // Import fetch logic
-import { useEffect, useState } from "react";
+import { Post } from "@/types/post";
 
-interface Post {
-  slugId: string;
-  title: string;
-  section: string;
-  description: string;
-  date: string;
-  image: string;
-  category?: string; // Optional category
-  altText: string;
-}
-
-export default function BlogCta() {
-  const [posts, setPosts] = useState<Post[]>([]);
-
-  useEffect(() => {
-    async function fetchPosts() {
-      try {
-        const allPosts = await getAllPosts();
-        const recentPosts = allPosts.slice(0, 3).map((post) => ({
-          ...post,
-          category: post.section || "General", // Ensure category exists
-        }));
-        setPosts(recentPosts);
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-      }
-    }
-
-    fetchPosts();
-  }, []);
-
+export default function BlogCta({ posts }: { posts: Post[] }) {
   return (
     <div className="bg-black py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -77,7 +46,7 @@ export default function BlogCta() {
               {/* Post Content */}
               <div className="flex flex-col flex-grow">
                 <h3 className="text-lg font-semibold text-white leading-snug">
-                  <Link href={`/insights/${post.category}/${post.slugId}`}>
+                  <Link href={`/insights/${post.section}/${post.slugId}`}>
                     {post.title}
                   </Link>
                 </h3>
