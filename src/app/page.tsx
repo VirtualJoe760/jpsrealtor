@@ -1,17 +1,20 @@
+import AboutCta from "./components/AboutCta";
+import BlogCta from "./components/BlogCta";
+import Contact from "./components/contact/Contact";
 import VariableHero from "./components/VariableHero";
 
 export default function Home() {
   return (
     <>
       <VariableHero
-        backgroundImage={`/city-images/palm-desert.jpg`}
-        heroContext="Joseph Sardella"
-        description="You're Coachella Valley Local Real Estate Expert"
-        alignment="left"
+        backgroundImage={`/joey/home.png`}
+        heroContext=" "
+        description=""
+        alignment="right"
       />
-      <div className="min-h-screen flex items-center justify-center bg-neutral-light dark:bg-neutral-dark text-foreground-light dark:text-foreground-dark font-sans">
-        <h1 className="text-4xl">Hello World</h1>
-      </div>
+      <AboutCta />
+      <BlogCta />
+      <Contact />
     </>
   );
 }

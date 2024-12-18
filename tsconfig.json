@@ -1,44 +1,46 @@
 {
   "compilerOptions": {
-    "target": "ES2022", // Use modern JavaScript features for better performance
-    "lib": ["dom", "dom.iterable", "esnext"], // Include DOM and ESNext features
-    "allowJs": true, // Enable JavaScript files in the project
-    "skipLibCheck": true, // Skip type checks for declaration files for faster builds
-    "strict": true, // Enable strict type checking
-    "noEmit": true, // Prevent emitting compiled JavaScript files
-    "esModuleInterop": true, // Enable compatibility between CommonJS and ES Modules
-    "module": "esnext", // Use ESNext module syntax
-    "moduleResolution": "node", // Resolve modules like Node.js
-    "resolveJsonModule": true, // Allow importing JSON files
-    "isolatedModules": true, // Ensure each file can be transpiled independently
-    "jsx": "preserve", // Preserve JSX for Next.js
-    "incremental": true, // Enable faster incremental builds
-    "types": ["@types/node", "@types/react", "@types/react-dom"], // Include commonly used type definitions
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "types": ["@types/node", "@types/react", "@types/react-dom"],
     "plugins": [
       {
-        "name": "next" // Add Next.js-specific type support
+        "name": "next"
       }
     ],
     "paths": {
-      "@/*": ["./src/*"], // Alias for importing files from the `src` directory
-      "@/components/*": ["./src/app/components/*"], // Alias for components
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/app/components/*"],
       "@/utils/*": ["./src/app/utils/*"],
       "@/models/*": ["./src/app/models/*"],
-      "@/constants/*": ["./src/app/constants/*"]
+      "@/constants/*": ["./src/app/constants/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/sanity/*": ["./src/sanity/*"]
     },
-    "noUncheckedIndexedAccess": true, // Ensure stricter type checking for array and object indexing
-    "forceConsistentCasingInFileNames": true // Enforce consistent casing for file imports
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "next-env.d.ts", // Include Next.js environment types
-    "**/*.ts", // Include TypeScript files
-    "**/*.tsx", // Include TypeScript with JSX files
-    ".next/types/**/*.ts", // Include Next.js generated type definitions
-    "src/types/global.d.ts" // Include global type definitions
-  ],
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/types/**/*.d.ts" // Ensure all type declaration files in `src/types` are included
+, "next.config.mjs"  ],
   "exclude": [
-    "node_modules", // Exclude dependencies
-    "**/*.test.ts", // Exclude test files (optional)
-    "**/*.spec.ts" // Exclude spec files (optional)
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }

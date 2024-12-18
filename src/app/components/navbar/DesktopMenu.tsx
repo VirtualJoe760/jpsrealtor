@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "About", href: "/about" },
-  { name: "Buying", href: "/buying" },
-  { name: "Selling", href: "/selling" },
+  { name: 'Insights', href: '/insights' },
   { name: "Listings", href: "https://www.obsidianregroup.com/team/joseph-sardella" },
-  { name: "Coachella Valley", href: "/coachella-valley" },
-  { name: "Sign-in", href: "/auth/sign-in" },
+  { name: "Neighborhoods", href: "/neighborhoods" },
+  { name: "Contact", href: "/#contact" },
 ];
+
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");

@@ -19,7 +19,7 @@ const VariableHero: React.FC<VariableHeroProps> = ({
 
   return (
     <div
-      className="relative bg-cover bg-center h-[60vh] flex justify-center text-white mx-auto max-w-7xl"
+      className="relative bg-cover bg-center h-[60vh] flex justify-center text-white mx-auto w-full"
       style={{
         backgroundImage: `url(${backgroundImage}), url('/path-to-low-quality-placeholder.jpg')`,
       }}

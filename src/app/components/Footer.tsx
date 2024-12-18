@@ -3,12 +3,14 @@ import Link from 'next/link';
 
 const navigation = {
   main: [
-    { name: 'About', href: '#' },
-    { name: 'Blog', href: '#' },
-    { name: 'Jobs', href: '#' },
-    { name: 'Press', href: '#' },
-    { name: 'Accessibility', href: '#' },
-    { name: 'Partners', href: '#' },
+    { name: 'About', href: '/about' },
+    { name: 'Insights', href: '/insights' },
+    { name: 'Buying', href: '/buying' },
+    { name: 'Selling', href: '/selling' },
+    { name: 'Neighborhoods', href: '/neighborhoods' },
+    { name: 'Loans', href: 'https://myloan.intercaplending.com/homehub/signup/cache@intercaplending.com?from_mobile_share=true'},
+    { name: 'Contact', href: '/contact' },
+    { name: 'Admin', href: '/blog' },
   ],
   social: [
     {
@@ -32,7 +34,7 @@ const navigation = {
 export default function Example() {
   return (
     <footer>
-      <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8">
+      <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8 bg-black">
         <nav
           aria-label="Footer"
           className="-mb-6 flex flex-wrap justify-center gap-x-12 gap-y-3 text-sm/6"
@@ -66,7 +68,7 @@ export default function Example() {
           ))}
         </div>
         <p className="mt-10 text-center text-sm/6 text-gray-400">
-          &copy; 2024 Your Company, Inc. All rights reserved.
+          &copy; JPS Realtor, Joseph Sardella | eXp Realty | Obsidian Group
         </p>
       </div>
     </footer>

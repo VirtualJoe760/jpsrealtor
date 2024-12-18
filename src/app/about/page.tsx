@@ -1,15 +1,17 @@
 import React from 'react'
 import VariableHero from '../components/VariableHero'
+import AboutBento from '../components/AboutBento'
 
 const page = () => {
   return (
     <div>
         <VariableHero 
-        backgroundImage={`/city-images/coachella-valley.jpg`}
-        heroContext="Joseph Sardella"
-        description="The man"
+        backgroundImage={`/joey/about.png`}
+        heroContext=" "
+        description=""
         alignment='center'
         />
+        <AboutBento />
     </div>
   )
 }

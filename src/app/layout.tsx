@@ -3,7 +3,6 @@ import "./globals.css";
 import "@fontsource/raleway"; // Importing Raleway
 import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
-import ClientProvider from "./components/ClientProvider";
 
 export const metadata: Metadata = {
   title: "JPS Realtor",
@@ -18,11 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        <ClientProvider>
+        
           <Navbar />
           {children}
           <Footer />
-        </ClientProvider>
+        
       </body>
     </html>
   );
