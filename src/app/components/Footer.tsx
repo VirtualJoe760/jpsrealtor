@@ -68,7 +68,7 @@ export default function Example() {
           ))}
         </div>
         <p className="mt-10 text-center text-sm/6 text-gray-400">
-          &copy; JPS Realtor, Joseph Sardella | eXp Realty | Obsidian Group
+          &copy; Joseph Sardella | Coachella Valley Realtor | eXp Realty | Obsidian Group
         </p>
       </div>
     </footer>
