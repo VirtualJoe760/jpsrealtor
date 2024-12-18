@@ -1,17 +1,24 @@
+import mdx from '@next/mdx';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Include MDX and Markdown files in your app
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
+
+  // Configure custom image domains (optional)
   images: {
-    domains: ["res.cloudinary.com", "images.unsplash.com"], // Add Cloudinary's domain
+    domains: ['res.cloudinary.com', 'images.unsplash.com'], // Add your image domains
   },
+
+  // Add SVG React component support (optional)
   webpack(config) {
-    // Add support for SVG files as React components
     config.module.rules.push({
       test: /\.svg$/,
-      use: ["@svgr/webpack"],
+      use: ['@svgr/webpack'],
     });
-
     return config;
   },
 };
 
-export default nextConfig;
+// Add MDX support
+export default mdx()(nextConfig);

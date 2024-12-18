@@ -15,8 +15,8 @@ const cards = [
     description:
       "Let me guide you through buying your dream home. Together, we’ll make the process seamless, exciting, and rewarding.",
     icon: KeyIcon,
-    href: "/buying",
-    image: "/misc/about-cta-2.png",
+    href: "/insights/real-estate-tips/ultimate-buyers-guide-coachella-valley",
+    image: "/misc/buying.jpeg",
   },
   {
     name: "Selling",

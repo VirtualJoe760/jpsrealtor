@@ -1,16 +1,14 @@
+
 import { getPostBySlug } from "@/utils/fetchPosts";
 import { Post } from "@/types/post";
 import VariableHero from "@/components/VariableHero";
 import { remark } from "remark";
 import html from "remark-html";
+import { addAnchors } from "@/utils/addAnchors";
 
 // Dynamic metadata generation
-export async function generateMetadata({
-  params,
-}: {
-  params: { category: string; slugId: string };
-}) {
-  const { slugId } = params;
+export async function generateMetadata({ params }: { params: { category: string; slugId: string } }) {
+  const { slugId } = await params; // Await params
 
   if (!slugId) {
     console.error("Missing slugId for metadata.");
@@ -37,12 +35,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function PostPage({
-  params,
-}: {
-  params: { category: string; slugId: string };
-}) {
-  const { slugId } = params;
+export default async function PostPage({ params }: { params: { category: string; slugId: string } }) {
+  const { slugId } = await params; // Await params
 
   if (!slugId) {
     console.error("Missing slugId parameter in URL.");
@@ -72,7 +66,7 @@ export default async function PostPage({
     }
 
     // Process Markdown content into HTML
-    const processedContent = await remark().use(html).process(post.content);
+    const processedContent = await remark().use(html).use(addAnchors).process(post.content);
     const contentHtml = processedContent.toString();
 
     return (
@@ -94,9 +88,7 @@ export default async function PostPage({
 
         {/* Call-to-Action */}
         <div className="text-center py-10 px-5">
-          <h3 className="text-2xl font-semibold text-white mb-4">
-            Ready to Make Your Next Real Estate Move?
-          </h3>
+          <h3 className="text-2xl font-semibold text-white mb-4">Ready to Make Your Next Real Estate Move?</h3>
           <p className="text-gray-300 mb-6">
             Whether you&apos;re buying, selling, or investing, I&apos;m here to guide you every step of the way.
           </p>
