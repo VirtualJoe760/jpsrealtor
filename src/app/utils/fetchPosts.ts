@@ -1,3 +1,5 @@
+// src\app\utils\fetchPosts.ts
+
 "use server";
 
 import fs from "fs";
@@ -7,59 +9,51 @@ import { Post } from "@/types/post";
 
 const postsDirectory = path.join(process.cwd(), "src/posts");
 
-// Fetch metadata and content for a single post by its `slugId`
-export async function getPostBySlug(slugId: string): Promise<Post> {
-  if (!slugId) {
-    throw new Error("Post not found: slug ID is missing");
-  }
+// Utility to read a file and parse frontmatter
+const parsePostFile = (filePath: string): Post => {
+  const fileContents = fs.readFileSync(filePath, "utf8");
+  const { data, content } = matter(fileContents);
 
+  return {
+    title: data.title || "",
+    slugId: path.basename(filePath, path.extname(filePath)), // Extract slug from filename
+    date: data.date || "",
+    section: data.section || "",
+    description: data.metaDescription || "",
+    image: data.image || "",
+    altText: data.altText || "",
+    keywords: data.keywords || [],
+    content: content || "",
+  } as Post;
+};
+
+// Fetch metadata and content for a single post by its slugId
+export async function getPostBySlug(slugId: string): Promise<Post> {
   const fileExtensions = [".mdx", ".md"];
   for (const extension of fileExtensions) {
-    const fullPath = path.join(postsDirectory, `${slugId}${extension}`);
+    const filePath = path.join(postsDirectory, `${slugId}${extension}`);
 
-    if (fs.existsSync(fullPath)) {
-      const fileContents = fs.readFileSync(fullPath, "utf8");
-      const { data, content } = matter(fileContents);
-
-      return {
-        title: data.title || "",
-        slugId, // Use slugId consistently
-        date: data.date || "",
-        section: data.section || "",
-        description: data.metaDescription || "",
-        image: data.image || "",
-        altText: data.altText || "",
-        keywords: data.keywords || [],
-        content: content || "",
-      } as Post;
+    if (fs.existsSync(filePath)) {
+      return parsePostFile(filePath);
     }
   }
 
   throw new Error(`Post not found: ${slugId}`);
 }
 
-// Fetch all posts (useful for generating a list of all posts)
+// Fetch all posts and sort by date
 export async function getAllPosts(): Promise<Post[]> {
   const fileNames = fs.readdirSync(postsDirectory);
 
-  const posts = await Promise.all(
-    fileNames.map(async (fileName) => {
-      const slugId = fileName.replace(/\.mdx?$/, "").replace(/\.md$/, "");
-      return getPostBySlug(slugId);
-    })
-  );
+  const posts = fileNames
+    .filter((fileName) => /\.(md|mdx)$/.test(fileName)) // Ensure only .md or .mdx files
+    .map((fileName) => parsePostFile(path.join(postsDirectory, fileName)));
 
-  // Sort all posts by date (newest first)
-  posts.sort((a, b) => {
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    return dateB - dateA;
-  });
-
-  return posts;
+  // Sort by date (newest first)
+  return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-// Fetch posts by section with pagination support
+// Fetch posts by section with pagination
 export async function getPostsBySection(
   section: string,
   page: number = 1,
@@ -67,15 +61,9 @@ export async function getPostsBySection(
 ): Promise<{ posts: Post[]; totalPages: number }> {
   const allPosts = await getAllPosts();
 
-  // Filter posts by section
   const sectionPosts = allPosts.filter((post) => post.section === section);
-
-  // Calculate pagination
   const totalPages = Math.ceil(sectionPosts.length / limit);
   const paginatedPosts = sectionPosts.slice((page - 1) * limit, page * limit);
 
-  return {
-    posts: paginatedPosts,
-    totalPages,
-  };
+  return { posts: paginatedPosts, totalPages };
 }

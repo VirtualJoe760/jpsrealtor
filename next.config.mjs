@@ -1,13 +1,22 @@
-import mdx from '@next/mdx';
+import createMDX from '@next/mdx';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Include MDX and Markdown files in your app
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
+  // Enable MDX and Markdown files
+  pageExtensions: ['ts', 'tsx', 'mdx', 'md'],
 
-  // Configure custom image domains (optional)
+  // Update image configuration to use `remotePatterns`
   images: {
-    domains: ['res.cloudinary.com', 'images.unsplash.com'], // Add your image domains
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
 
   // Add SVG React component support (optional)
@@ -20,5 +29,7 @@ const nextConfig = {
   },
 };
 
-// Add MDX support
-export default mdx()(nextConfig);
+// Use the MDX plugin
+const withMDX = createMDX();
+
+export default withMDX(nextConfig);

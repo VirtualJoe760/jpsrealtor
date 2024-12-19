@@ -1,14 +1,16 @@
-
 import { getPostBySlug } from "@/utils/fetchPosts";
-import { Post } from "@/types/post";
 import VariableHero from "@/components/VariableHero";
-import { remark } from "remark";
-import html from "remark-html";
-import { addAnchors } from "@/utils/addAnchors";
+import ReactMarkdown from "react-markdown";
+import rehypeSlug from "rehype-slug";
+import { Post } from "@/types/post";
 
 // Dynamic metadata generation
-export async function generateMetadata({ params }: { params: { category: string; slugId: string } }) {
-  const { slugId } = await params; // Await params
+export async function generateMetadata({
+  params,
+}: {
+  params: { category: string; slugId: string };
+}) {
+  const { slugId } = params; // Destructure params directly
 
   if (!slugId) {
     console.error("Missing slugId for metadata.");
@@ -35,8 +37,12 @@ export async function generateMetadata({ params }: { params: { category: string;
   };
 }
 
-export default async function PostPage({ params }: { params: { category: string; slugId: string } }) {
-  const { slugId } = await params; // Await params
+export default async function PostPage({
+  params,
+}: {
+  params: { category: string; slugId: string };
+}) {
+  const { slugId } = params; // Destructure params directly
 
   if (!slugId) {
     console.error("Missing slugId parameter in URL.");
@@ -65,10 +71,6 @@ export default async function PostPage({ params }: { params: { category: string;
       );
     }
 
-    // Process Markdown content into HTML
-    const processedContent = await remark().use(html).use(addAnchors).process(post.content);
-    const contentHtml = processedContent.toString();
-
     return (
       <div className="bg-black text-white">
         {/* Hero Section */}
@@ -80,10 +82,10 @@ export default async function PostPage({ params }: { params: { category: string;
 
         {/* Blog Content */}
         <section className="mx-5 2xl:px-80 lg:px-40 my-10 py-10 px-2">
-          <article
-            className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200"
-            dangerouslySetInnerHTML={{ __html: contentHtml }}
-          />
+          <article className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200">
+            {/* Markdown Rendering */}
+            <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown>
+          </article>
         </section>
 
         {/* Call-to-Action */}

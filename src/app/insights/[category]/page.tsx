@@ -1,9 +1,10 @@
+// src\app\insights\[category]\page.tsx
+
 import { getPostsBySection } from "@/utils/fetchPosts";
 import InsightsList from "@/components/InsightsList";
-import { insightsCategoriesContent } from "@/constants/staticContent";
-import { categoriesPageContent } from "@/constants/staticContent";
+import { insightsCategoriesContent, categoriesPageContent } from "@/constants/staticContent";
+import VariableHero from "@/components/VariableHero";
 import { Metadata } from "next";
-import VariableHero from "@/app/components/VariableHero";
 
 export async function generateMetadata({
   params,
@@ -12,12 +13,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const category = params.category;
 
-  // Capitalize the first letter of each word in the section title
+  // Format the category name
   const formattedCategory = category
     .replace("-", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-  // Find matching category's SEO data
   const selectedCategory = insightsCategoriesContent.categories.find(
     (cat) => cat.href.split("/").pop() === category
   );
@@ -25,7 +25,7 @@ export async function generateMetadata({
   if (!selectedCategory) {
     return {
       title: "Insights | Coachella Valley Real Estate",
-      description: "Explore our insights into real estate, market trends, and local community tips.",
+      description: "Explore real estate insights, market trends, and local community tips.",
       keywords: ["real estate insights", "market trends", "Coachella Valley"],
     };
   }
@@ -52,19 +52,13 @@ export default async function CategoryPage({
   const { category } = params;
   const page = searchParams.page ? parseInt(searchParams.page, 10) : 1;
 
-  // Capitalize the first letter of each word in the section title
+  // Format category name
   const formattedCategory = category
     .replace("-", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
   // Fetch posts with pagination
   const { posts, totalPages } = await getPostsBySection(category, page, 5);
-
-  // Debugging data passed to InsightsList
-  console.log("Category:", category); // Debug the category
-  console.log("Page:", page); // Debug the current page
-  console.log("Posts fetched for InsightsList:", posts); // Debug posts array
-  console.log("Total Pages:", totalPages); // Debug total pages
 
   return (
     <>

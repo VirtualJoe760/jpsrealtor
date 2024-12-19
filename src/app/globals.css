@@ -14,3 +14,11 @@ body {
   font-family: 'Raleway', sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
 }
+
+h2 {
+  scroll-margin-top: 80px; /* Adjust this value based on your header height */
+}
+
+a {
+  text-decoration: none !important; /* Removes underline */
+}
