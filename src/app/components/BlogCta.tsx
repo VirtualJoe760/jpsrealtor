@@ -5,6 +5,21 @@ import Link from "next/link";
 import { Post } from "@/types/post";
 
 export default function BlogCta({ posts }: { posts: Post[] }) {
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="bg-black py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            Read Key Insights
+          </h2>
+          <p className="mt-4 text-lg text-gray-300">
+            No blog posts available at the moment. Check back soon for the latest updates!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-black py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -16,6 +31,7 @@ export default function BlogCta({ posts }: { posts: Post[] }) {
             Discover real estate trends, economic updates, and expert advice written by Joseph Sardella himself.
           </p>
         </div>
+
         <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-12 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {posts.map((post) => (
             <article
@@ -30,6 +46,7 @@ export default function BlogCta({ posts }: { posts: Post[] }) {
                   className="aspect-video w-full rounded-2xl bg-gray-800 object-cover"
                   width={720}
                   height={405}
+                  priority
                 />
               </div>
 

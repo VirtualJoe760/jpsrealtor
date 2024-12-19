@@ -35,9 +35,9 @@ export default function InsightsList({
                 <Image
                   src={image || "/default-image.jpg"} // Default image fallback
                   alt={altText || "Default alt text"}
-                  width={300}
-                  height={200}
-                  className="object-cover rounded-lg w-64 h-40 shadow-md"
+                  width={500}
+                  height={350}
+                  className="object-cover rounded-lg w-80 h-55 shadow-md"
                 />
               </Link>
 

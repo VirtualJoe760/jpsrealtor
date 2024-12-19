@@ -32,7 +32,7 @@ export default function MobileMenu({ open }: { open: boolean }) {
               className={classNames(
                 isActive
                   ? "bg-neutral-light text-gray-300"
-                  : "text-neutral-light hover:bg-neutral-light/10 hover:text-gray-300",
+                  : "text-neutral-light hover:bg-neutral-light/10 hover:text-black",
                 "block rounded-md px-3 py-2 text-base font-medium"
               )}
             >

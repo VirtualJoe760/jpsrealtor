@@ -1,5 +1,3 @@
-// src\app\utils\fetchPosts.ts
-
 "use server";
 
 import fs from "fs";
@@ -14,10 +12,13 @@ const parsePostFile = (filePath: string): Post => {
   const fileContents = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(fileContents);
 
+  // Normalize date to ISO format for consistency
+  const normalizedDate = new Date(data.date).toISOString();
+
   return {
     title: data.title || "",
     slugId: path.basename(filePath, path.extname(filePath)), // Extract slug from filename
-    date: data.date || "",
+    date: normalizedDate || "",
     section: data.section || "",
     description: data.metaDescription || "",
     image: data.image || "",
@@ -51,6 +52,12 @@ export async function getAllPosts(): Promise<Post[]> {
 
   // Sort by date (newest first)
   return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+// Fetch the latest posts (newest first, limit results)
+export async function getLatestPosts(limit: number = 3): Promise<Post[]> {
+  const allPosts = await getAllPosts(); // Fetch all posts
+  return allPosts.slice(0, limit); // Return the top `limit` posts
 }
 
 // Fetch posts by section with pagination

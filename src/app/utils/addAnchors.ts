@@ -1,3 +1,5 @@
+// src\app\utils\addAnchors.ts
+
 import { visit } from "unist-util-visit";
 import { Plugin } from "unified";
 import { Heading, Text } from "mdast";

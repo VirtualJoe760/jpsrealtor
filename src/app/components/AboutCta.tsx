@@ -34,9 +34,15 @@ export default function AboutCta() {
       {/* Main Content */}
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
-          <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-5xl">
-            Joseph Sardella | Coachella Valley Realtor | eXp Realty | DRE# 02106916
+          <h2 className="text-5xl mt-2 font-semibold tracking-tight text-white sm:text-5xl">
+            Joseph Sardella
           </h2>
+          <p className="text-2xl mt-2 tracking-tight text-white sm:text-5xl">
+            Coachella Valley Realtor
+          </p>
+          <p className="text-xl mt-2 tracking-tight text-white sm:text-5xl">
+            eXp Realty | DRE# 02106916
+          </p>
           <p className="mt-8 text-lg font-medium text-gray-200 sm:text-xl">
             Whether you&apos;re buying, selling, or simply exploring your options, I&apos;m here to provide expert advice and 
             support every step of the way.
