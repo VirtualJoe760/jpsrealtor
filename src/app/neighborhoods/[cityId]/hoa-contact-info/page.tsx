@@ -52,6 +52,15 @@ export default function HoaContactInfoPage({ params }: { params: { cityId: strin
     }
   };
 
+  // Filtered HOA based on search term
+  const filteredHoa = searchTerm
+    ? cityHoaData.filter((hoa: Hoa) =>
+        hoa["Subdivision/Countryclub"]
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      )
+    : [];
+
   return (
     <>
       {/* Hero Section */}
@@ -75,6 +84,48 @@ export default function HoaContactInfoPage({ params }: { params: { cityId: strin
             className="w-full px-4 py-3 border border-gray-500 rounded-md shadow-sm bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
           />
         </div>
+
+        {/* Show Filtered HOA Preview */}
+        {filteredHoa.length > 0 && (
+          <div className="mb-8 p-4 bg-gray-800 rounded-lg shadow-lg">
+            {filteredHoa.map((hoa: Hoa) => (
+              <details key={hoa.id} className="p-4 bg-gray-900 rounded-lg shadow-lg" open>
+                <summary className="text-xl font-bold text-white cursor-pointer">
+                  {hoa["Subdivision/Countryclub"] || "N/A"}
+                </summary>
+                <div className="mt-2">
+                  <p className="text-gray-300 mb-2">
+                    <strong>Management Company:</strong> {hoa["Management Company"] || "N/A"}
+                  </p>
+                  <p className="text-gray-300 mb-2">
+                    <strong>Address:</strong> {hoa["Address"] || "N/A"}
+                  </p>
+                  <p className="text-gray-300 mb-2">
+                    <strong>City, State, Zip:</strong> {hoa["City, State, Zip"] || "N/A"}
+                  </p>
+                  <p className="text-gray-300 mb-2">
+                    <strong>Phone:</strong> {hoa["Phone"] || "N/A"}
+                  </p>
+                  <p className="text-gray-300">
+                    <strong>Fax:</strong> {hoa["Fax"] || "N/A"}
+                  </p>
+                  <div className="mt-4 text-center">
+                    <p className="my-2">Do we have missing or incorrect data?</p>
+                    <button
+                      onClick={() => {
+                        setSelectedHoa(hoa);
+                        setIsModalOpen(true);
+                      }}
+                      className="px-6 py-2 bg-gray-700 text-white font-bold rounded-md hover:bg-gray-600"
+                    >
+                      Update Information
+                    </button>
+                  </div>
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
 
         {/* Full HOA List */}
         <div className="grid grid-cols-1 gap-4">
@@ -100,7 +151,7 @@ export default function HoaContactInfoPage({ params }: { params: { cityId: strin
                   <strong>Fax:</strong> {hoa["Fax"] || "N/A"}
                 </p>
                 <div className="mt-4 text-center">
-                    <p className="my-2">Do we have missing or incorrect data?</p>
+                  <p className="my-2">Do we have missing or incorrect data?</p>
                   <button
                     onClick={() => {
                       setSelectedHoa(hoa);

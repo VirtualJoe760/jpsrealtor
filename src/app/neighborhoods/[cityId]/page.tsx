@@ -39,37 +39,37 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
     {
       title: "Subdivisions",
       description: "Explore subdivisions in Coachella Valley.",
-      imageUrl: "/images/subdivisions.jpg",
+      imageUrl: "/infocards/subdivisions.png",
       link: { text: "View Subdivisions", href: `/neighborhoods/${cityId}/subdivisions` },
     },
     {
       title: "Find HOA",
       description: "Looking to get ahold of the HOA?",
-      imageUrl: "/images/hoa-banner.jpg",
-      link: { text: "HOA Contact Info", href: `/neighborhoods/${cityId}/hoa-contact-info}` },
+      imageUrl: "/infocards/hoa.png",
+      link: { text: "HOA Contact Info", href: `/neighborhoods/${cityId}/hoa-contact-info` },
     },
     {
       title: "Schools",
       description: "Find the best schools in the area.",
-      imageUrl: "/images/schools.jpg",
+      imageUrl: "/infocards/school.png",
       link: { text: "View Schools", href: `/neighborhoods/${cityId}/${generateSlug("Schools")}` },
     },
     {
       title: "Restaurants",
       description: "Discover popular dining spots.",
-      imageUrl: "/images/restaurants.jpg",
+      imageUrl: "/infocards/resturants.png",
       link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/${generateSlug("Restaurants")}` },
     },
     {
       title: "Events",
       description: "Check out local events happening around.",
-      imageUrl: "/images/events.jpg",
+      imageUrl: "/infocards/events.png",
       link: { text: "View Events", href: `/neighborhoods/${cityId}/${generateSlug("Events")}` },
     },
     {
       title: "Businesses",
       description: "Explore local businesses.",
-      imageUrl: "/images/businesses.jpg",
+      imageUrl: "/infocards/business.png",
       link: { text: "View Businesses", href: `/neighborhoods/${cityId}/${generateSlug("Businesses")}` },
     },
   ];
@@ -110,25 +110,21 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       {/* Subdivisions Section */}
       <section className="py-10 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {citySubdivisions.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {citySubdivisions.map((subdivision) => (
-                <div key={subdivision.name} className="p-4 bg-white rounded shadow">
-                  <Image
-                    src={subdivision.photo}
-                    alt={subdivision.name}
-                    width={300}
-                    height={200}
-                    className="mb-4 rounded"
-                  />
-                  <h2 className="text-xl font-semibold">{subdivision.name}</h2>
-                  <p>{subdivision.description}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No subdivisions available for this city.</p>
-          )}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {citySubdivisions.map((subdivision) => (
+              <div key={subdivision.name} className="p-4 bg-white rounded shadow">
+                <Image
+                  src={subdivision.photo}
+                  alt={subdivision.name}
+                  width={300}
+                  height={200}
+                  className="mb-4 rounded"
+                />
+                <h2 className="text-xl font-semibold">{subdivision.name}</h2>
+                <p>{subdivision.description}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </>
