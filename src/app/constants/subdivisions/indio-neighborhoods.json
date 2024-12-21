@@ -1,0 +1,706 @@
+[
+  {
+    "id": 1,
+    "name": "Terra Lago",
+    "description": "Terra Lago is a master-planned community featuring a scenic lake, golf course, and clubhouse. With beautiful homes, many offering lakefront views, this neighborhood provides a resort-like lifestyle in a serene desert setting.",
+    "photo": "https://example.com/terra-lago.jpg",
+    "features": [
+      "Lakefront homes",
+      "Golf course",
+      "Clubhouse and amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7508,
+      "longitude": -116.2104
+    },
+    "keywords": [
+      "Terra Lago homes for sale",
+      "Lakefront communities in Indio",
+      "Golf course living in Indio"
+    ],
+    "slug": "terra-lago"
+  },
+  {
+    "id": 2,
+    "name": "Shadow Hills",
+    "description": "Shadow Hills is a gated community offering a serene atmosphere, spacious homes, and lush landscaping. Known for its peaceful environment, this neighborhood is perfect for those seeking upscale living in Indio.",
+    "photo": "https://example.com/shadow-hills.jpg",
+    "features": [
+      "Gated community",
+      "Serene atmosphere",
+      "Spacious homes"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7693,
+      "longitude": -116.2239
+    },
+    "keywords": [
+      "Shadow Hills homes for sale",
+      "Gated communities in Indio",
+      "Luxury homes in Indio"
+    ],
+    "slug": "shadow-hills"
+  },
+  {
+    "id": 3,
+    "name": "Sun City Shadow Hills",
+    "description": "Sun City Shadow Hills is a 55+ active adult community offering resort-style living with amenities like golf courses, pools, tennis courts, and a fitness center. This vibrant neighborhood fosters an active and social lifestyle for its residents.",
+    "photo": "https://example.com/sun-city-shadow-hills.jpg",
+    "features": [
+      "55+ active adult community",
+      "Golf courses and pools",
+      "Social and fitness amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7674,
+      "longitude": -116.2121
+    },
+    "keywords": [
+      "Sun City homes for sale",
+      "55+ communities in Indio",
+      "Active adult living in Indio"
+    ],
+    "slug": "sun-city-shadow-hills"
+  },
+  {
+    "id": 4,
+    "name": "Indian Palms Country Club",
+    "description": "Indian Palms Country Club is a historic community offering condos and single-family homes. Known for its rich golfing heritage, the neighborhood features a clubhouse, pools, and tennis courts, creating a vibrant and comfortable lifestyle.",
+    "photo": "https://example.com/indian-palms-country-club.jpg",
+    "features": [
+      "Historic golf community",
+      "Clubhouse and pools",
+      "Condos and single-family homes"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7196,
+      "longitude": -116.2304
+    },
+    "keywords": [
+      "Indian Palms homes for sale",
+      "Golf course living in Indio",
+      "Resort-style communities in Indio"
+    ],
+    "slug": "indian-palms-country-club"
+  },
+  {
+    "id": 5,
+    "name": "Trilogy at The Polo Club",
+    "description": "Trilogy at The Polo Club is an upscale, gated community designed for active adults. Featuring modern homes and resort-style amenities such as a clubhouse, fitness center, and pools, this neighborhood offers luxury and comfort.",
+    "photo": "https://example.com/trilogy-polo-club.jpg",
+    "features": [
+      "Gated community",
+      "Resort-style amenities",
+      "Modern homes"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.6932,
+      "longitude": -116.2328
+    },
+    "keywords": [
+      "Trilogy homes for sale",
+      "Active adult communities in Indio",
+      "Luxury gated neighborhoods in Indio"
+    ],
+    "slug": "trilogy-at-the-polo-club"
+  },
+  {
+    "id": 6,
+    "name": "Montage at Santa Rosa",
+    "description": "Montage at Santa Rosa is a family-friendly neighborhood offering spacious single-family homes. Located near local attractions, it combines suburban comfort with a strong sense of community.",
+    "photo": "https://example.com/montage-santa-rosa.jpg",
+    "features": [
+      "Family-friendly",
+      "Spacious homes",
+      "Close to local attractions"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.6914,
+      "longitude": -116.2172
+    },
+    "keywords": [
+      "Montage homes for sale",
+      "Family neighborhoods in Indio",
+      "Spacious homes in Indio"
+    ],
+    "slug": "montage-at-santa-rosa"
+  },
+  {
+    "id": 7,
+    "name": "Desert Collection",
+    "description": "Desert Collection is a gated community offering modern single-family homes with access to community amenities. Known for its secure and comfortable environment, it’s a great choice for families and professionals.",
+    "photo": "https://example.com/desert-collection.jpg",
+    "features": [
+      "Gated community",
+      "Modern homes",
+      "Community amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7512,
+      "longitude": -116.2118
+    },
+    "keywords": [
+      "Desert Collection homes for sale",
+      "Gated neighborhoods in Indio",
+      "Modern homes in Indio"
+    ],
+    "slug": "desert-collection"
+  },
+  {
+    "id": 8,
+    "name": "Foxstone",
+    "description": "Foxstone is a residential neighborhood known for its well-maintained homes and family-friendly atmosphere. Offering a suburban lifestyle, it provides convenient access to schools, parks, and shopping centers.",
+    "photo": "https://example.com/foxstone.jpg",
+    "features": [
+      "Family-friendly",
+      "Well-maintained homes",
+      "Proximity to schools and parks"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7501,
+      "longitude": -116.2134
+    },
+    "keywords": [
+      "Foxstone homes for sale",
+      "Family neighborhoods in Indio",
+      "Suburban living in Indio"
+    ],
+    "slug": "foxstone"
+  },
+  {
+    "id": 9,
+    "name": "Talavera",
+    "description": "Talavera is a gated, family-oriented community featuring single-family homes with modern designs. The neighborhood is known for its parks, playgrounds, and a strong sense of community, making it ideal for families.",
+    "photo": "https://example.com/talavera.jpg",
+    "features": [
+      "Family-friendly",
+      "Gated community",
+      "Parks and playgrounds"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7505,
+      "longitude": -116.2007
+    },
+    "keywords": [
+      "Talavera homes for sale",
+      "Family neighborhoods in Indio",
+      "Gated communities in Indio"
+    ],
+    "slug": "talavera"
+  },
+  {
+    "id": 10,
+    "name": "Las Brisas",
+    "description": "Las Brisas is a quiet gated community offering a variety of home styles, from single-family residences to condos. It is known for its peaceful environment, lush landscaping, and proximity to schools and shopping centers.",
+    "photo": "https://example.com/las-brisas.jpg",
+    "features": [
+      "Gated community",
+      "Variety of home styles",
+      "Proximity to schools and shopping"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7154,
+      "longitude": -116.2233
+    },
+    "keywords": [
+      "Las Brisas homes for sale",
+      "Gated neighborhoods in Indio",
+      "Peaceful communities in Indio"
+    ],
+    "slug": "las-brisas"
+  },
+  {
+    "id": 11,
+    "name": "Bella Vida",
+    "description": "Bella Vida is a gated community featuring single-family homes with modern layouts and private yards. Located near parks and schools, this neighborhood offers a family-friendly environment with a suburban feel.",
+    "photo": "https://example.com/bella-vida.jpg",
+    "features": [
+      "Gated community",
+      "Modern single-family homes",
+      "Family-friendly"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7473,
+      "longitude": -116.2208
+    },
+    "keywords": [
+      "Bella Vida homes for sale",
+      "Family neighborhoods in Indio",
+      "Modern homes in Indio"
+    ],
+    "slug": "bella-vida"
+  },
+  {
+    "id": 12,
+    "name": "Heritage Palms",
+    "description": "Heritage Palms is a 55+ active adult community featuring a championship Arthur Hills-designed golf course. The neighborhood offers resort-style amenities, including a clubhouse, pools, tennis courts, and a fitness center, fostering an active and social lifestyle.",
+    "photo": "https://example.com/heritage-palms.jpg",
+    "features": [
+      "55+ active adult community",
+      "Golf course",
+      "Resort-style amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7516,
+      "longitude": -116.2302
+    },
+    "keywords": [
+      "Heritage Palms homes for sale",
+      "55+ communities in Indio",
+      "Active adult living in Indio"
+    ],
+    "slug": "heritage-palms"
+  },
+  {
+    "id": 13,
+    "name": "Indian Springs Country Club",
+    "description": "Indian Springs Country Club is a gated community featuring single-family homes and condos surrounding a beautifully maintained golf course. With resort-style amenities and a welcoming atmosphere, it’s perfect for both families and retirees.",
+    "photo": "https://example.com/indian-springs-cc.jpg",
+    "features": [
+      "Gated community",
+      "Golf course living",
+      "Resort-style amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7409,
+      "longitude": -116.2163
+    },
+    "keywords": [
+      "Indian Springs homes for sale",
+      "Golf course communities in Indio",
+      "Gated neighborhoods in Indio"
+    ],
+    "slug": "indian-springs-country-club"
+  },
+  {
+    "id": 14,
+    "name": "Sandhurst Cove",
+    "description": "Sandhurst Cove is a boutique, gated community offering spacious single-family homes with modern designs. Residents enjoy a tranquil environment with convenient access to shopping and dining options nearby.",
+    "photo": "https://example.com/sandhurst-cove.jpg",
+    "features": [
+      "Boutique gated community",
+      "Spacious homes",
+      "Modern designs"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7198,
+      "longitude": -116.2286
+    },
+    "keywords": [
+      "Sandhurst Cove homes for sale",
+      "Quiet neighborhoods in Indio",
+      "Boutique communities in Indio"
+    ],
+    "slug": "sandhurst-cove"
+  },
+  {
+    "id": 15,
+    "name": "Madison Estates",
+    "description": "Madison Estates is a luxury gated community offering custom-built homes on large lots. Known for its elegant designs and proximity to the Polo Grounds, it’s a top choice for buyers seeking space and sophistication.",
+    "photo": "https://example.com/madison-estates.jpg",
+    "features": [
+      "Custom-built homes",
+      "Large lots",
+      "Luxury gated community"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7012,
+      "longitude": -116.2157
+    },
+    "keywords": [
+      "Madison Estates homes for sale",
+      "Luxury neighborhoods in Indio",
+      "Custom homes in Indio"
+    ],
+    "slug": "madison-estates"
+  },
+  {
+    "id": 16,
+    "name": "Four Seasons at Terra Lago",
+    "description": "Four Seasons at Terra Lago is a 55+ active adult community offering modern single-family homes with resort-style amenities. Residents enjoy a clubhouse, fitness center, pools, and scenic views of the surrounding desert.",
+    "photo": "https://example.com/four-seasons.jpg",
+    "features": [
+      "55+ community",
+      "Modern homes",
+      "Resort-style amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7532,
+      "longitude": -116.2081
+    },
+    "keywords": [
+      "Four Seasons homes for sale",
+      "55+ communities in Indio",
+      "Active adult living in Indio"
+    ],
+    "slug": "four-seasons-at-terra-lago"
+  },
+  {
+    "id": 17,
+    "name": "Mountain Estates",
+    "description": "Mountain Estates is a gated community offering single-family homes with spacious interiors and modern designs. Nestled near the foothills, this neighborhood offers stunning views and a tranquil desert lifestyle.",
+    "photo": "https://example.com/mountain-estates.jpg",
+    "features": [
+      "Gated community",
+      "Modern homes",
+      "Scenic views"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7462,
+      "longitude": -116.2198
+    },
+    "keywords": [
+      "Mountain Estates homes for sale",
+      "Gated communities in Indio",
+      "Scenic neighborhoods in Indio"
+    ],
+    "slug": "mountain-estates"
+  },
+  {
+    "id": 18,
+    "name": "Palazzo",
+    "description": "Palazzo is a quiet residential neighborhood featuring modern single-family homes with spacious layouts. This family-friendly community offers easy access to local schools, parks, and shopping centers.",
+    "photo": "https://example.com/palazzo.jpg",
+    "features": [
+      "Modern single-family homes",
+      "Family-friendly",
+      "Proximity to amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7357,
+      "longitude": -116.2179
+    },
+    "keywords": [
+      "Palazzo homes for sale",
+      "Family neighborhoods in Indio",
+      "Modern homes in Indio"
+    ],
+    "slug": "palazzo"
+  },
+  {
+    "id": 19,
+    "name": "Tierra Del Sol",
+    "description": "Tierra Del Sol is a gated community featuring single-family homes with large lots and contemporary designs. Residents enjoy a peaceful atmosphere with convenient access to local attractions.",
+    "photo": "https://example.com/tierra-del-sol.jpg",
+    "features": [
+      "Gated community",
+      "Large lots",
+      "Contemporary designs"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7452,
+      "longitude": -116.2204
+    },
+    "keywords": [
+      "Tierra Del Sol homes for sale",
+      "Gated neighborhoods in Indio",
+      "Spacious homes in Indio"
+    ],
+    "slug": "tierra-del-sol"
+  },
+  {
+    "id": 20,
+    "name": "Sonora Wells",
+    "description": "Sonora Wells is a family-oriented, gated community offering single-family homes with modern designs. The neighborhood includes parks, playgrounds, and a community pool, creating a vibrant and active environment.",
+    "photo": "https://example.com/sonora-wells.jpg",
+    "features": [
+      "Family-friendly",
+      "Gated community",
+      "Community pool and parks"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7508,
+      "longitude": -116.2023
+    },
+    "keywords": [
+      "Sonora Wells homes for sale",
+      "Family neighborhoods in Indio",
+      "Gated communities in Indio"
+    ],
+    "slug": "sonora-wells"
+  },
+  {
+    "id": 21,
+    "name": "La Morada",
+    "description": "La Morada is a boutique community offering single-family homes with spacious interiors and private yards. Its central location provides easy access to schools, parks, and shopping, making it ideal for families.",
+    "photo": "https://example.com/la-morada.jpg",
+    "features": [
+      "Spacious homes",
+      "Family-friendly",
+      "Central location"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7391,
+      "longitude": -116.2182
+    },
+    "keywords": [
+      "La Morada homes for sale",
+      "Family-friendly neighborhoods in Indio",
+      "Modern homes in Indio"
+    ],
+    "slug": "la-morada"
+  },
+  {
+    "id": 22,
+    "name": "Shadow Ranch",
+    "description": "Shadow Ranch is a gated community featuring modern homes with spacious layouts and stylish finishes. The neighborhood offers a quiet environment and is conveniently located near schools and local amenities.",
+    "photo": "https://example.com/shadow-ranch.jpg",
+    "features": [
+      "Gated community",
+      "Modern homes",
+      "Convenient location"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7442,
+      "longitude": -116.2215
+    },
+    "keywords": [
+      "Shadow Ranch homes for sale",
+      "Gated neighborhoods in Indio",
+      "Stylish homes in Indio"
+    ],
+    "slug": "shadow-ranch"
+  },
+  {
+    "id": 23,
+    "name": "Vista Escondida",
+    "description": "Vista Escondida is a gated community offering single-family homes with contemporary designs and large lots. Known for its tranquil atmosphere, this neighborhood is perfect for those seeking privacy and comfort.",
+    "photo": "https://example.com/vista-escondida.jpg",
+    "features": [
+      "Gated community",
+      "Contemporary designs",
+      "Large lots"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7483,
+      "longitude": -116.2194
+    },
+    "keywords": [
+      "Vista Escondida homes for sale",
+      "Quiet neighborhoods in Indio",
+      "Contemporary homes in Indio"
+    ],
+    "slug": "vista-escondida"
+  },
+  {
+    "id": 24,
+    "name": "Haciendas at Indio",
+    "description": "Haciendas at Indio is a family-oriented neighborhood offering affordable single-family homes with spacious layouts. Located near schools and parks, it’s a great choice for first-time buyers and families.",
+    "photo": "https://example.com/haciendas-at-indio.jpg",
+    "features": [
+      "Affordable homes",
+      "Family-friendly",
+      "Proximity to schools and parks"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7378,
+      "longitude": -116.2202
+    },
+    "keywords": [
+      "Haciendas homes for sale",
+      "Affordable neighborhoods in Indio",
+      "Family homes in Indio"
+    ],
+    "slug": "haciendas-at-indio"
+  },
+  {
+    "id": 25,
+    "name": "Desert Sands",
+    "description": "Desert Sands is a gated 55+ manufactured home community offering affordable residences with access to amenities such as a clubhouse, pool, and recreational activities. Known for its welcoming atmosphere, this neighborhood is ideal for active adults.",
+    "photo": "https://example.com/desert-sands.jpg",
+    "features": [
+      "55+ community",
+      "Clubhouse and pool",
+      "Affordable homes"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7194,
+      "longitude": -116.2218
+    },
+    "keywords": [
+      "Desert Sands homes for sale",
+      "55+ communities in Indio",
+      "Affordable active adult living in Indio"
+    ],
+    "slug": "desert-sands"
+  },
+  {
+    "id": 26,
+    "name": "Parkside Estates",
+    "description": "Parkside Estates is a family-friendly community featuring spacious single-family homes with private yards. Its central location near parks, schools, and shopping centers makes it a convenient and desirable neighborhood.",
+    "photo": "https://example.com/parkside-estates.jpg",
+    "features": [
+      "Spacious homes",
+      "Family-friendly",
+      "Proximity to amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7405,
+      "longitude": -116.2187
+    },
+    "keywords": [
+      "Parkside Estates homes for sale",
+      "Family neighborhoods in Indio",
+      "Affordable homes in Indio"
+    ],
+    "slug": "parkside-estates"
+  },
+  {
+    "id": 27,
+    "name": "Indian Wells Village",
+    "description": "Indian Wells Village is a tranquil, non-HOA neighborhood offering single-family homes with large lots and open layouts. Residents enjoy a peaceful atmosphere and proximity to local shopping and dining.",
+    "photo": "https://example.com/indian-wells-village.jpg",
+    "features": [
+      "Non-HOA community",
+      "Large lots",
+      "Proximity to shopping and dining"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7453,
+      "longitude": -116.2225
+    },
+    "keywords": [
+      "Indian Wells Village homes for sale",
+      "Non-HOA neighborhoods in Indio",
+      "Quiet communities in Indio"
+    ],
+    "slug": "indian-wells-village"
+  },
+  {
+    "id": 28,
+    "name": "Villa Montego",
+    "description": "Villa Montego is a family-oriented community featuring affordable single-family homes with spacious backyards. Located near schools and parks, it’s a popular choice for families and first-time buyers.",
+    "photo": "https://example.com/villa-montego.jpg",
+    "features": [
+      "Affordable homes",
+      "Family-friendly",
+      "Proximity to schools and parks"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7396,
+      "longitude": -116.2201
+    },
+    "keywords": [
+      "Villa Montego homes for sale",
+      "Family neighborhoods in Indio",
+      "Affordable homes in Indio"
+    ],
+    "slug": "villa-montego"
+  },
+  {
+    "id": 29,
+    "name": "Indian Palms Villas",
+    "description": "Indian Palms Villas is a gated community offering a mix of condos and townhomes with access to pools, greenbelts, and a clubhouse. Its central location near Indian Palms Country Club adds to its charm and convenience.",
+    "photo": "https://example.com/indian-palms-villas.jpg",
+    "features": [
+      "Gated community",
+      "Condos and townhomes",
+      "Community pools and clubhouse"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7201,
+      "longitude": -116.2304
+    },
+    "keywords": [
+      "Indian Palms Villas homes for sale",
+      "Condos in Indio",
+      "Gated neighborhoods in Indio"
+    ],
+    "slug": "indian-palms-villas"
+  },
+  {
+    "id": 30,
+    "name": "Bella Tierra",
+    "description": "Bella Tierra is a gated community featuring spacious single-family homes with stylish interiors and private yards. Located near parks and schools, it offers a peaceful and convenient lifestyle.",
+    "photo": "https://example.com/bella-tierra.jpg",
+    "features": [
+      "Gated community",
+      "Stylish homes",
+      "Family-friendly"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7382,
+      "longitude": -116.2236
+    },
+    "keywords": [
+      "Bella Tierra homes for sale",
+      "Gated communities in Indio",
+      "Stylish neighborhoods in Indio"
+    ],
+    "slug": "bella-tierra"
+  },
+  {
+    "id": 31,
+    "name": "Desert Grove",
+    "description": "Desert Grove is a boutique gated community offering single-family homes with modern designs and spacious layouts. Residents enjoy a quiet environment with easy access to shopping and dining options.",
+    "photo": "https://example.com/desert-grove.jpg",
+    "features": [
+      "Gated community",
+      "Modern homes",
+      "Convenient location"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7471,
+      "longitude": -116.2194
+    },
+    "keywords": [
+      "Desert Grove homes for sale",
+      "Modern neighborhoods in Indio",
+      "Gated communities in Indio"
+    ],
+    "slug": "desert-grove"
+  },
+  {
+    "id": 32,
+    "name": "Villa Estates",
+    "description": "Villa Estates is a quiet, family-friendly neighborhood offering single-family homes with large yards and modern designs. Its close proximity to schools and local amenities makes it a desirable community for families.",
+    "photo": "https://example.com/villa-estates.jpg",
+    "features": [
+      "Family-friendly",
+      "Modern homes",
+      "Proximity to schools and amenities"
+    ],
+    "location": "Indio, CA",
+    "coordinates": {
+      "latitude": 33.7444,
+      "longitude": -116.221
+    },
+    "keywords": [
+      "Villa Estates homes for sale",
+      "Family neighborhoods in Indio",
+      "Modern homes in Indio"
+    ],
+    "slug": "villa-estates"
+  }
+]

@@ -1,0 +1,860 @@
+[
+  {
+    "id": 1,
+    "name": "PGA WEST",
+    "description": "PGA WEST is a world-renowned golf destination featuring six championship golf courses designed by legends like Jack Nicklaus, Arnold Palmer, and Pete Dye. This master-planned community offers a variety of housing options, from condos to luxury estates, with stunning views of the mountains and fairways. Residents enjoy access to exclusive amenities, including multiple clubhouses, fitness facilities, and dining options.",
+    "photo": "https://example.com/pga-west.jpg",
+    "features": [
+      "Six championship golf courses",
+      "Luxury estates",
+      "Multiple clubhouses"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6349,
+      "longitude": -116.2566
+    },
+    "keywords": [
+      "PGA WEST homes for sale",
+      "Living in PGA WEST La Quinta",
+      "Luxury golf communities in La Quinta"
+    ],
+    "slug": "pga-west"
+  },
+  {
+    "id": 2,
+    "name": "The Madison Club",
+    "description": "The Madison Club is an ultra-exclusive community offering the ultimate in luxury living. Featuring a Tom Fazio-designed golf course, the club boasts world-class amenities, including a private spa, fitness center, and fine dining. The community comprises custom homes, estate lots, and clubhouse suites, all designed to provide a private and serene lifestyle.",
+    "photo": "https://example.com/madison-club.jpg",
+    "features": [
+      "Tom Fazio-designed golf course",
+      "Private spa and fitness center",
+      "Custom homes and estate lots"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6347,
+      "longitude": -116.2459
+    },
+    "keywords": [
+      "The Madison Club homes for sale",
+      "Living in The Madison Club La Quinta",
+      "Exclusive communities in La Quinta"
+    ],
+    "slug": "the-madison-club"
+  },
+  {
+    "id": 3,
+    "name": "The Hideaway Golf Club",
+    "description": "The Hideaway Golf Club is a prestigious community offering two private 18-hole golf courses designed by Pete Dye and Clive Clark. Known for its lush landscaping and serene atmosphere, the club features custom homes, villas, and luxury estates. Amenities include a state-of-the-art clubhouse, spa, and fine dining options, creating a lifestyle of unparalleled elegance.",
+    "photo": "https://example.com/hideaway-golf-club.jpg",
+    "features": [
+      "Two private golf courses",
+      "Luxury estates",
+      "Elegant clubhouse"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6353,
+      "longitude": -116.2498
+    },
+    "keywords": [
+      "The Hideaway homes for sale",
+      "Living in The Hideaway La Quinta",
+      "Luxury communities in La Quinta"
+    ],
+    "slug": "the-hideaway-golf-club"
+  },
+  {
+    "id": 4,
+    "name": "Tradition Golf Club",
+    "description": "Tradition Golf Club is an exclusive community nestled at the base of the Santa Rosa Mountains. Featuring an 18-hole Arnold Palmer Signature Course, the club offers a timeless blend of charm and modern luxury. Residents enjoy custom homes, stunning estates, and access to a historic clubhouse and world-class amenities.",
+    "photo": "https://example.com/tradition-golf-club.jpg",
+    "features": [
+      "Arnold Palmer Signature Course",
+      "Custom homes",
+      "Historic clubhouse"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6742,
+      "longitude": -116.2839
+    },
+    "keywords": [
+      "Tradition Golf Club homes for sale",
+      "Living in Tradition La Quinta",
+      "Exclusive golf communities in La Quinta"
+    ],
+    "slug": "tradition-golf-club"
+  },
+  {
+    "id": 5,
+    "name": "La Quinta Country Club",
+    "description": "La Quinta Country Club is a historic community established in 1959, known for its beautifully maintained golf course, which has hosted numerous professional tournaments. The club offers custom homes and condos, combining classic charm with modern luxury. Residents enjoy a vibrant social atmosphere and a range of amenities, including dining and fitness facilities.",
+    "photo": "https://example.com/la-quinta-cc.jpg",
+    "features": [
+      "Historic golf course",
+      "Custom homes and condos",
+      "Vibrant social atmosphere"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6834,
+      "longitude": -116.3036
+    },
+    "keywords": [
+      "La Quinta Country Club homes for sale",
+      "Living in La Quinta Country Club",
+      "Historic communities in La Quinta"
+    ],
+    "slug": "la-quinta-country-club"
+  },
+  {
+    "id": 6,
+    "name": "Andalusia Country Club",
+    "description": "Andalusia Country Club is a luxury community offering a Rees Jones-designed golf course surrounded by breathtaking mountain views. Residents enjoy resort-style living with custom homes, world-class amenities, and a vibrant social scene. Amenities include a fitness center, spa, and fine dining options.",
+    "photo": "https://example.com/andalusia-country-club.jpg",
+    "features": [
+      "Rees Jones-designed golf course",
+      "Custom homes",
+      "Resort-style living"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6479,
+      "longitude": -116.2516
+    },
+    "keywords": [
+      "Andalusia homes for sale",
+      "Living in Andalusia La Quinta",
+      "Luxury golf communities in La Quinta"
+    ],
+    "slug": "andalusia-country-club"
+  },
+  {
+    "id": 7,
+    "name": "The Quarry at La Quinta",
+    "description": "The Quarry at La Quinta is a secluded, private golf club featuring a Tom Fazio-designed course that offers a challenging yet enjoyable experience. The community includes luxurious custom homes and villas set amidst dramatic desert landscapes, providing residents with privacy and world-class amenities.",
+    "photo": "https://example.com/quarry-la-quinta.jpg",
+    "features": [
+      "Tom Fazio-designed golf course",
+      "Custom homes and villas",
+      "Dramatic desert landscapes"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6265,
+      "longitude": -116.2701
+    },
+    "keywords": [
+      "The Quarry homes for sale",
+      "Living in The Quarry La Quinta",
+      "Exclusive golf clubs in La Quinta"
+    ],
+    "slug": "the-quarry-at-la-quinta"
+  },
+  {
+    "id": 8,
+    "name": "Mountain View Country Club",
+    "description": "Mountain View Country Club is a family-friendly community offering an 18-hole Arnold Palmer-designed golf course, luxurious homes, and a range of recreational facilities. Residents enjoy a clubhouse, fitness center, and a strong sense of community in a picturesque desert setting.",
+    "photo": "https://example.com/mountain-view-cc.jpg",
+    "features": [
+      "Arnold Palmer-designed golf course",
+      "Luxurious homes",
+      "Recreational facilities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6398,
+      "longitude": -116.2537
+    },
+    "keywords": [
+      "Mountain View Country Club homes for sale",
+      "Living in Mountain View La Quinta",
+      "Family-friendly communities in La Quinta"
+    ],
+    "slug": "mountain-view-country-club"
+  },
+  {
+    "id": 9,
+    "name": "Rancho La Quinta Country Club",
+    "description": "Rancho La Quinta Country Club offers two championship courses designed by Robert Trent Jones Jr. and Jerry Pate. This luxury community features elegant homes, a clubhouse, tennis courts, and fitness facilities, catering to an active and refined lifestyle.",
+    "photo": "https://example.com/rancho-la-quinta.jpg",
+    "features": [
+      "Two championship courses",
+      "Elegant homes",
+      "Clubhouse and tennis courts"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6782,
+      "longitude": -116.2855
+    },
+    "keywords": [
+      "Rancho La Quinta homes for sale",
+      "Luxury communities in La Quinta",
+      "Golf clubs in La Quinta"
+    ],
+    "slug": "rancho-la-quinta-country-club"
+  },
+  {
+    "id": 10,
+    "name": "The Palms Golf Club",
+    "description": "The Palms Golf Club is a boutique community offering an exclusive, pure golf experience. The single 18-hole golf course, designed by Fred Couples and Brian Curley, is renowned for its pristine conditions and challenging layout. The club features custom homes and villas that cater to golf enthusiasts seeking luxury and intimacy in a quiet desert setting.",
+    "photo": "https://example.com/palms-golf-club.jpg",
+    "features": [
+      "Fred Couples-designed course",
+      "Custom homes and villas",
+      "Intimate golf-focused community"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6289,
+      "longitude": -116.2182
+    },
+    "keywords": [
+      "The Palms homes for sale",
+      "Boutique golf communities in La Quinta",
+      "Fred Couples golf courses"
+    ],
+    "slug": "the-palms-golf-club"
+  },
+  {
+    "id": 11,
+    "name": "Griffin Ranch",
+    "description": "Griffin Ranch is a luxury gated community that blends timeless Tuscan architecture with modern amenities. Featuring an impressive clubhouse, resort-style pool, equestrian facilities, and private parks, Griffin Ranch caters to both active and serene lifestyles. Its spacious homes and stunning mountain views make it one of La Quinta’s most sought-after neighborhoods.",
+    "photo": "https://example.com/griffin-ranch.jpg",
+    "features": [
+      "Tuscan-style homes",
+      "Equestrian facilities",
+      "Resort-style amenities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6361,
+      "longitude": -116.2334
+    },
+    "keywords": [
+      "Griffin Ranch homes for sale",
+      "Luxury living in La Quinta",
+      "Equestrian communities in La Quinta"
+    ],
+    "slug": "griffin-ranch"
+  },
+  {
+    "id": 12,
+    "name": "The Citrus Club",
+    "description": "The Citrus Club is a prestigious country club community offering a private golf course designed by Pete Dye, surrounded by luxury homes, casitas, and custom estates. Members enjoy access to the exclusive La Quinta Resort amenities, including fine dining, a spa, and a world-class tennis program.",
+    "photo": "https://example.com/citrus-club.jpg",
+    "features": [
+      "Pete Dye-designed course",
+      "Luxury homes and casitas",
+      "Access to La Quinta Resort amenities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6829,
+      "longitude": -116.2783
+    },
+    "keywords": [
+      "The Citrus Club homes for sale",
+      "Luxury golf communities in La Quinta",
+      "La Quinta Resort access"
+    ],
+    "slug": "the-citrus-club"
+  },
+  {
+    "id": 13,
+    "name": "Coral Mountain Golf Club",
+    "description": "Coral Mountain Golf Club, formerly known as Trilogy Golf Club, offers a challenging 18-hole course designed by Gary Panks. The surrounding community includes single-family homes with contemporary designs and access to a clubhouse, fitness center, and resort-style pool.",
+    "photo": "https://example.com/coral-mountain-golf-club.jpg",
+    "features": [
+      "Gary Panks-designed course",
+      "Resort-style amenities",
+      "Modern single-family homes"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6334,
+      "longitude": -116.2188
+    },
+    "keywords": [
+      "Coral Mountain homes for sale",
+      "Golf communities in La Quinta",
+      "Resort-style living in La Quinta"
+    ],
+    "slug": "coral-mountain-golf-club"
+  },
+  {
+    "id": 14,
+    "name": "Heritage Palms Country Club",
+    "description": "Heritage Palms Country Club is an active adult community for residents aged 55 and over, offering a challenging Arthur Hills-designed golf course, clubhouse, fitness center, and a variety of social events. The community features single-family homes with scenic desert and fairway views.",
+    "photo": "https://example.com/heritage-palms.jpg",
+    "features": [
+      "Arthur Hills-designed golf course",
+      "55+ active adult community",
+      "Clubhouse and fitness center"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6767,
+      "longitude": -116.2834
+    },
+    "keywords": [
+      "Heritage Palms homes for sale",
+      "55+ communities in La Quinta",
+      "Golf clubs in La Quinta"
+    ],
+    "slug": "heritage-palms-country-club"
+  },
+  {
+    "id": 15,
+    "name": "Santa Rosa Cove",
+    "description": "Santa Rosa Cove is a charming gated community located adjacent to the La Quinta Resort & Club. Featuring Spanish-style homes and casitas, this neighborhood offers scenic views of the Santa Rosa Mountains, access to resort amenities, and a tranquil atmosphere.",
+    "photo": "https://example.com/santa-rosa-cove.jpg",
+    "features": [
+      "Spanish-style homes",
+      "Access to La Quinta Resort",
+      "Scenic mountain views"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6812,
+      "longitude": -116.2968
+    },
+    "keywords": [
+      "Santa Rosa Cove homes for sale",
+      "Resort living in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "santa-rosa-cove"
+  },
+  {
+    "id": 16,
+    "name": "The Cove at La Quinta",
+    "description": "The Cove is a beloved non-HOA community nestled against the base of the Santa Rosa Mountains. Known for its eclectic mix of homes ranging from mid-century designs to modern renovations, The Cove offers stunning mountain views, a relaxed atmosphere, and proximity to Old Town La Quinta and local hiking trails.",
+    "photo": "https://example.com/the-cove.jpg",
+    "features": [
+      "No HOA fees",
+      "Eclectic mix of homes",
+      "Proximity to Old Town La Quinta"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6595,
+      "longitude": -116.3082
+    },
+    "keywords": [
+      "The Cove homes for sale",
+      "Non-HOA neighborhoods in La Quinta",
+      "Mountain view homes in La Quinta"
+    ],
+    "slug": "the-cove-at-la-quinta"
+  },
+  {
+    "id": 17,
+    "name": "Capistrano at La Quinta",
+    "description": "Capistrano at La Quinta is a gated community featuring contemporary homes with spacious interiors and private yards. Known for its quiet streets and family-friendly vibe, it’s a great choice for those seeking modern living in a secure neighborhood.",
+    "photo": "https://example.com/capistrano.jpg",
+    "features": [
+      "Gated community",
+      "Contemporary homes",
+      "Family-friendly"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6684,
+      "longitude": -116.3035
+    },
+    "keywords": [
+      "Capistrano homes for sale",
+      "Family-friendly neighborhoods in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "capistrano-at-la-quinta"
+  },
+  {
+    "id": 18,
+    "name": "Lake La Quinta",
+    "description": "Lake La Quinta is a picturesque gated community centered around a private, 25-acre lake. Residents enjoy fishing, kayaking, and paddleboarding, along with access to a community pool, tennis courts, and a clubhouse. The neighborhood features a variety of luxury homes, many with waterfront views.",
+    "photo": "https://example.com/lake-la-quinta.jpg",
+    "features": [
+      "Private lake",
+      "Waterfront homes",
+      "Recreational activities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6873,
+      "longitude": -116.2971
+    },
+    "keywords": [
+      "Lake La Quinta homes for sale",
+      "Waterfront homes in La Quinta",
+      "Luxury neighborhoods in La Quinta"
+    ],
+    "slug": "lake-la-quinta"
+  },
+  {
+    "id": 19,
+    "name": "Desert Club Estates",
+    "description": "Desert Club Estates is a non-HOA neighborhood offering a variety of home styles, from ranch-style houses to custom-built estates. Located near Old Town La Quinta, it provides a relaxed and convenient lifestyle with large lots and easy access to local amenities.",
+    "photo": "https://example.com/desert-club-estates.jpg",
+    "features": [
+      "No HOA fees",
+      "Large lots",
+      "Close to Old Town La Quinta"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6781,
+      "longitude": -116.3033
+    },
+    "keywords": [
+      "Desert Club Estates homes for sale",
+      "Non-HOA neighborhoods in La Quinta",
+      "Spacious lots in La Quinta"
+    ],
+    "slug": "desert-club-estates"
+  },
+  {
+    "id": 20,
+    "name": "Montero Estates",
+    "description": "Montero Estates is a charming gated community offering single-family homes with private yards and access to community amenities, including a pool and tennis courts. This quiet neighborhood is located close to shopping, dining, and the La Quinta Resort.",
+    "photo": "https://example.com/montero-estates.jpg",
+    "features": [
+      "Gated community",
+      "Private yards",
+      "Community pool and tennis courts"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6764,
+      "longitude": -116.2957
+    },
+    "keywords": [
+      "Montero Estates homes for sale",
+      "Small gated communities in La Quinta",
+      "Affordable homes in La Quinta"
+    ],
+    "slug": "montero-estates"
+  },
+  {
+    "id": 21,
+    "name": "Carmela",
+    "description": "Carmela is an exclusive gated community offering luxury homes with Tuscan-inspired designs and spacious layouts. With proximity to the La Quinta Polo Grounds and stunning views of the Santa Rosa Mountains, Carmela offers both convenience and elegance.",
+    "photo": "https://example.com/carmela.jpg",
+    "features": [
+      "Gated community",
+      "Luxury homes",
+      "Proximity to Polo Grounds"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6399,
+      "longitude": -116.2422
+    },
+    "keywords": [
+      "Carmela homes for sale",
+      "Luxury gated communities in La Quinta",
+      "Polo Grounds adjacent neighborhoods"
+    ],
+    "slug": "carmela"
+  },
+  {
+    "id": 22,
+    "name": "Esplanade",
+    "description": "Esplanade is a gated community featuring modern single-family homes with spacious interiors and private yards. Located near top-rated schools and parks, it’s a favorite among families seeking an active and vibrant neighborhood.",
+    "photo": "https://example.com/esplanade.jpg",
+    "features": [
+      "Gated community",
+      "Family-friendly",
+      "Spacious single-family homes"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6732,
+      "longitude": -116.2568
+    },
+    "keywords": [
+      "Esplanade homes for sale",
+      "Family neighborhoods in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "esplanade"
+  },
+  {
+    "id": 23,
+    "name": "Puerta Azul",
+    "description": "Puerta Azul is a boutique, gated community offering Spanish-style villas with access to resort-style amenities, including pools, a fitness center, and tennis courts. Its quiet streets and scenic mountain views make it an ideal retreat.",
+    "photo": "https://example.com/puerta-azul.jpg",
+    "features": [
+      "Spanish-style villas",
+      "Resort-style amenities",
+      "Gated community"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6488,
+      "longitude": -116.2675
+    },
+    "keywords": [
+      "Puerta Azul homes for sale",
+      "Boutique communities in La Quinta",
+      "Spanish-style neighborhoods in La Quinta"
+    ],
+    "slug": "puerta-azul"
+  },
+  {
+    "id": 24,
+    "name": "Sonrisa",
+    "description": "Sonrisa is a charming community offering single-family homes with modern interiors and private yards. Its central location provides easy access to top-rated schools, local parks, and shopping centers, making it a favorite among families.",
+    "photo": "https://example.com/sonrisa.jpg",
+    "features": [
+      "Modern single-family homes",
+      "Family-friendly",
+      "Central location"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6684,
+      "longitude": -116.2635
+    },
+    "keywords": [
+      "Sonrisa homes for sale",
+      "Family neighborhoods in La Quinta",
+      "Affordable homes in La Quinta"
+    ],
+    "slug": "sonrisa"
+  },
+  {
+    "id": 25,
+    "name": "Aliso",
+    "description": "Aliso is a quiet, gated community featuring contemporary homes with spacious layouts and private outdoor spaces. Residents enjoy a peaceful atmosphere and convenient access to nearby schools and parks.",
+    "photo": "https://example.com/aliso.jpg",
+    "features": [
+      "Gated community",
+      "Contemporary homes",
+      "Proximity to schools and parks"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6712,
+      "longitude": -116.2565
+    },
+    "keywords": [
+      "Aliso homes for sale",
+      "Living in Aliso La Quinta",
+      "Quiet neighborhoods in La Quinta"
+    ],
+    "slug": "aliso"
+  },
+  {
+    "id": 26,
+    "name": "Vista Santa Rosa",
+    "description": "Vista Santa Rosa is a non-HOA community offering a mix of custom homes and ranch-style properties with large lots. Known for its open spaces and equestrian-friendly atmosphere, it’s a haven for those seeking tranquility and privacy.",
+    "photo": "https://example.com/vista-santa-rosa.jpg",
+    "features": [
+      "Large lots",
+      "Custom homes",
+      "Equestrian-friendly"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6354,
+      "longitude": -116.2431
+    },
+    "keywords": [
+      "Vista Santa Rosa homes for sale",
+      "Non-HOA neighborhoods in La Quinta",
+      "Equestrian properties in La Quinta"
+    ],
+    "slug": "vista-santa-rosa"
+  },
+  {
+    "id": 27,
+    "name": "Laguna De La Paz",
+    "description": "Laguna De La Paz is a gated community built around a picturesque 5-acre lake. With waterfront homes, walking paths, and community amenities like pools and tennis courts, this neighborhood offers a serene lifestyle with stunning mountain views.",
+    "photo": "https://example.com/laguna-de-la-paz.jpg",
+    "features": [
+      "Waterfront homes",
+      "Gated community",
+      "Community lake and amenities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6803,
+      "longitude": -116.2837
+    },
+    "keywords": [
+      "Laguna De La Paz homes for sale",
+      "Waterfront living in La Quinta",
+      "Gated neighborhoods in La Quinta"
+    ],
+    "slug": "laguna-de-la-paz"
+  },
+  {
+    "id": 28,
+    "name": "Piazza Serena",
+    "description": "Piazza Serena is an exclusive gated community featuring luxurious homes with Tuscan-inspired designs. With its spacious floor plans and breathtaking views of the Santa Rosa Mountains, it’s a top choice for luxury buyers.",
+    "photo": "https://example.com/piazza-serena.jpg",
+    "features": [
+      "Tuscan-inspired homes",
+      "Exclusive gated community",
+      "Mountain views"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6407,
+      "longitude": -116.2415
+    },
+    "keywords": [
+      "Piazza Serena homes for sale",
+      "Luxury homes in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "piazza-serena"
+  },
+  {
+    "id": 29,
+    "name": "Monticello",
+    "description": "Monticello is a family-friendly neighborhood offering single-story homes with spacious lots and modern interiors. Located near schools and parks, it’s a great choice for families seeking an active yet peaceful environment.",
+    "photo": "https://example.com/monticello.jpg",
+    "features": [
+      "Single-story homes",
+      "Spacious lots",
+      "Family-friendly"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6672,
+      "longitude": -116.2678
+    },
+    "keywords": [
+      "Monticello homes for sale",
+      "Family neighborhoods in La Quinta",
+      "Affordable homes in La Quinta"
+    ],
+    "slug": "monticello"
+  },
+  {
+    "id": 30,
+    "name": "Desert Pride",
+    "description": "Desert Pride is a non-HOA community offering affordable single-family homes with modern designs. Its proximity to local schools, parks, and shopping makes it a popular choice among first-time buyers and families.",
+    "photo": "https://example.com/desert-pride.jpg",
+    "features": [
+      "Non-HOA community",
+      "Modern single-family homes",
+      "Proximity to schools and shopping"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6767,
+      "longitude": -116.2654
+    },
+    "keywords": [
+      "Desert Pride homes for sale",
+      "Affordable neighborhoods in La Quinta",
+      "Non-HOA homes in La Quinta"
+    ],
+    "slug": "desert-pride"
+  },
+  {
+    "id": 31,
+    "name": "Rancho Santana",
+    "description": "Rancho Santana is an upscale, gated community offering luxury homes with spacious interiors and private yards. With its proximity to the La Quinta Polo Grounds and stunning desert landscapes, it’s perfect for those seeking elegance and convenience.",
+    "photo": "https://example.com/rancho-santana.jpg",
+    "features": [
+      "Luxury homes",
+      "Gated community",
+      "Proximity to Polo Grounds"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6393,
+      "longitude": -116.2387
+    },
+    "keywords": [
+      "Rancho Santana homes for sale",
+      "Luxury communities in La Quinta",
+      "Gated neighborhoods in La Quinta"
+    ],
+    "slug": "rancho-santana"
+  },
+  {
+    "id": 32,
+    "name": "Haciendas at La Quinta",
+    "description": "Haciendas at La Quinta is a charming gated community featuring Spanish-inspired homes with private pools and spacious layouts. Located near the La Quinta Resort, this neighborhood offers a serene environment with access to world-class amenities.",
+    "photo": "https://example.com/haciendas.jpg",
+    "features": [
+      "Spanish-inspired homes",
+      "Private pools",
+      "Gated community"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6785,
+      "longitude": -116.2942
+    },
+    "keywords": [
+      "Haciendas at La Quinta homes for sale",
+      "Luxury neighborhoods in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "haciendas-at-la-quinta"
+  },
+  {
+    "id": 33,
+    "name": "Duna La Quinta",
+    "description": "Duna La Quinta is a gated community located along the fairways of the La Quinta Resort golf courses. Featuring condos and single-family homes with stunning views of the mountains and greens, this neighborhood offers a resort-like lifestyle.",
+    "photo": "https://example.com/duna-la-quinta.jpg",
+    "features": [
+      "Fairway homes",
+      "Gated community",
+      "Golf course views"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6821,
+      "longitude": -116.2928
+    },
+    "keywords": [
+      "Duna La Quinta homes for sale",
+      "Golf course living in La Quinta",
+      "Luxury communities in La Quinta"
+    ],
+    "slug": "duna-la-quinta"
+  },
+  {
+    "id": 34,
+    "name": "Pintura",
+    "description": "Pintura is a boutique, gated community offering Tuscan-inspired homes with stylish interiors and lush courtyards. Its quiet streets and proximity to local amenities make it an ideal retreat for those seeking elegance and tranquility.",
+    "photo": "https://example.com/pintura.jpg",
+    "features": [
+      "Tuscan-inspired homes",
+      "Boutique gated community",
+      "Tranquil environment"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6845,
+      "longitude": -116.2733
+    },
+    "keywords": [
+      "Pintura homes for sale",
+      "Luxury homes in La Quinta",
+      "Boutique communities in La Quinta"
+    ],
+    "slug": "pintura"
+  },
+  {
+    "id": 35,
+    "name": "Cove Oasis",
+    "description": "Cove Oasis is a non-HOA neighborhood at the edge of The Cove in La Quinta, offering custom homes with large lots and stunning mountain views. This quiet and scenic neighborhood provides a peaceful desert lifestyle.",
+    "photo": "https://example.com/cove-oasis.jpg",
+    "features": [
+      "Non-HOA community",
+      "Custom homes",
+      "Scenic mountain views"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6612,
+      "longitude": -116.3099
+    },
+    "keywords": [
+      "Cove Oasis homes for sale",
+      "Non-HOA communities in La Quinta",
+      "Mountain view homes in La Quinta"
+    ],
+    "slug": "cove-oasis"
+  },
+  {
+    "id": 36,
+    "name": "Aliso II",
+    "description": "Aliso II is a gated community featuring modern single-family homes with spacious layouts and private yards. Located close to top-rated schools and parks, it’s a favorite for families seeking comfort and convenience.",
+    "photo": "https://example.com/aliso-ii.jpg",
+    "features": [
+      "Modern homes",
+      "Gated community",
+      "Proximity to schools"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6725,
+      "longitude": -116.2583
+    },
+    "keywords": [
+      "Aliso II homes for sale",
+      "Family neighborhoods in La Quinta",
+      "Gated communities in La Quinta"
+    ],
+    "slug": "aliso-ii"
+  },
+  {
+    "id": 37,
+    "name": "La Quinta Highlands",
+    "description": "La Quinta Highlands is a quiet, non-HOA community offering affordable single-family homes with spacious backyards. Its central location and proximity to local amenities make it a popular choice among first-time buyers.",
+    "photo": "https://example.com/la-quinta-highlands.jpg",
+    "features": [
+      "Non-HOA community",
+      "Affordable homes",
+      "Spacious backyards"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6794,
+      "longitude": -116.2667
+    },
+    "keywords": [
+      "La Quinta Highlands homes for sale",
+      "Affordable neighborhoods in La Quinta",
+      "Non-HOA homes in La Quinta"
+    ],
+    "slug": "la-quinta-highlands"
+  },
+  {
+    "id": 38,
+    "name": "Quinterra",
+    "description": "Quinterra is a family-friendly neighborhood featuring single-family homes with open floor plans and private yards. Residents enjoy a peaceful environment with easy access to schools, parks, and shopping.",
+    "photo": "https://example.com/quinterra.jpg",
+    "features": [
+      "Family-friendly",
+      "Private yards",
+      "Proximity to amenities"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6748,
+      "longitude": -116.2573
+    },
+    "keywords": [
+      "Quinterra homes for sale",
+      "Family neighborhoods in La Quinta",
+      "Quiet neighborhoods in La Quinta"
+    ],
+    "slug": "quinterra"
+  },
+  {
+    "id": 39,
+    "name": "Sunburst",
+    "description": "Sunburst is a charming, gated community offering single-family homes with modern designs and spacious layouts. Its close proximity to shopping centers and schools makes it an excellent choice for families and professionals.",
+    "photo": "https://example.com/sunburst.jpg",
+    "features": [
+      "Gated community",
+      "Modern single-family homes",
+      "Proximity to shopping and schools"
+    ],
+    "location": "La Quinta, CA",
+    "coordinates": {
+      "latitude": 33.6759,
+      "longitude": -116.2643
+    },
+    "keywords": [
+      "Sunburst homes for sale",
+      "Living in Sunburst La Quinta",
+      "Gated neighborhoods in La Quinta"
+    ],
+    "slug": "sunburst"
+  }
+]

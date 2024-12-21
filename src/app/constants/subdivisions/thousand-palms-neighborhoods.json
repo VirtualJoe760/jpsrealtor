@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "name": "Tri Palm Estates",
+    "description": "Tri Palm Estates is a peaceful and friendly 55+ community known for its cleanliness and dog-friendly environment. Residents appreciate the quiet atmosphere and easy freeway access.",
+    "photo": "https://example.com/tri-palm-estates.jpg",
+    "features": [
+      "55+ community",
+      "Dog-friendly",
+      "Easy freeway access"
+    ],
+    "location": "Thousand Palms, CA",
+    "coordinates": {
+      "latitude": 33.8203,
+      "longitude": -116.3938
+    },
+    "keywords": [
+      "Tri Palm Estates homes for sale",
+      "Living in Tri Palm Estates",
+      "Home prices in Tri Palm Estates"
+    ],
+    "slug": "tri-palm-estates"
+  },
+  {
+    "id": 2,
+    "name": "Shangri La Palms",
+    "description": "Shangri La Palms is a serene neighborhood offering a suburban-rural mix feel. Many families and retirees reside here, enjoying the welcoming community spirit and tranquil surroundings.",
+    "photo": "https://example.com/shangri-la-palms.jpg",
+    "features": [
+      "Suburban-rural mix",
+      "Family-friendly",
+      "Community spirit"
+    ],
+    "location": "Thousand Palms, CA",
+    "coordinates": {
+      "latitude": 33.82,
+      "longitude": -116.39
+    },
+    "keywords": [
+      "Shangri La Palms homes for sale",
+      "Living in Shangri La Palms",
+      "Home prices in Shangri La Palms"
+    ],
+    "slug": "shangri-la-palms"
+  },
+  {
+    "id": 3,
+    "name": "Willis Palms",
+    "description": "Willis Palms is a neighborhood known for its diverse housing options and proximity to natural attractions like the Thousand Palms Oasis Preserve.",
+    "photo": "https://example.com/willis-palms.jpg",
+    "features": [
+      "Diverse housing options",
+      "Proximity to nature",
+      "Quiet environment"
+    ],
+    "location": "Thousand Palms, CA",
+    "coordinates": {
+      "latitude": 33.83,
+      "longitude": -116.4
+    },
+    "keywords": [
+      "Willis Palms homes for sale",
+      "Living in Willis Palms",
+      "Home prices in Willis Palms"
+    ],
+    "slug": "willis-palms"
+  }
+]

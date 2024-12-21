@@ -1,0 +1,30 @@
+[
+  {
+    "Subdivision/Countryclub": "Sandpiper III",
+    "Management Company": "J & W Management",
+    "Address": "73320 El Paseo",
+    "City, State, Zip": "Palm desert, CA 92260",
+    "Phone": "760-568-0349",
+    "Fax": "760-346-4349",
+    "City": "Palm desert",
+    "State": "CA ",
+    "Zip": "92260",
+    "id": "00001",
+    "count": 1,
+    "slug": "sandpiper-iii"
+  },
+  {
+    "Subdivision/Countryclub": "Sunflower",
+    "Management Company": "J & W Management",
+    "Address": "73320 El Paseo",
+    "City, State, Zip": "Palm desert, CA 92260",
+    "Phone": "760-568-0349",
+    "Fax": "760-862-1210",
+    "City": "Palm desert",
+    "State": "CA ",
+    "Zip": "92260",
+    "id": "00002",
+    "count": 2,
+    "slug": "sunflower"
+  }
+]

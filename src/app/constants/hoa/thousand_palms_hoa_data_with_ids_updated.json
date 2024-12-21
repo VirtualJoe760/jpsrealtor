@@ -1,0 +1,30 @@
+[
+  {
+    "Subdivision/Countryclub": "Ivey Ranch",
+    "Management Company": "Ivey Ranch C.C. HOA",
+    "Address": "74-850 Varner Rd",
+    "City, State, Zip": "Thousand Palms, CA 92276",
+    "Phone": "760-343-0445",
+    "Fax": null,
+    "City": "Thousand Palms",
+    "State": "CA ",
+    "Zip": "92276",
+    "id": "00001",
+    "count": 1,
+    "slug": "ivey-ranch"
+  },
+  {
+    "Subdivision/Countryclub": "Ivey Ranch",
+    "Management Company": "Ivey Ranch C.C. HOA",
+    "Address": "74-850 Varner Rd",
+    "City, State, Zip": "Thousand Palms, CA 92276",
+    "Phone": "760-343-0445",
+    "Fax": null,
+    "City": "Thousand Palms",
+    "State": "CA ",
+    "Zip": "92276",
+    "id": "00002",
+    "count": 2,
+    "slug": "ivey-ranch"
+  }
+]

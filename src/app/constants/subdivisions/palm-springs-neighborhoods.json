@@ -1,0 +1,462 @@
+[
+  {
+    "id": 1,
+    "name": "Old Las Palmas",
+    "description": "Known for its luxury estates and rich history, Old Las Palmas has been home to numerous celebrities over the years.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.rxYZhMtH2P91koO91H6fhQHaFB&pid=Api",
+    "price_range": "$2,000,000 - $8,000,000",
+    "features": [
+      "Celebrity homes",
+      "Spanish Colonial Revival architecture",
+      "Lush landscaping"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8361,
+      "longitude": -116.5433
+    },
+    "keywords": [
+      "Old Las Palmas homes for sale",
+      "Home prices in Old Las Palmas Palm Springs",
+      "Moving to Old Las Palmas Palm Springs"
+    ],
+    "slug": "old-las-palmas"
+  },
+  {
+    "id": 2,
+    "name": "The Movie Colony",
+    "description": "This historic neighborhood earned its name due to the many Hollywood stars who resided here during the golden age of cinema.",
+    "photo": "https://tse4.mm.bing.net/th?id=OIP.KrV3z9Dy0-6mIKFqfAJ6WgHaEI&pid=Api",
+    "price_range": "$1,500,000 - $5,000,000",
+    "features": [
+      "Spanish Revival homes",
+      "Mid-century modern architecture",
+      "Proximity to downtown"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8295,
+      "longitude": -116.5455
+    },
+    "keywords": [
+      "The Movie Colony homes for sale",
+      "Home prices in The Movie Colony Palm Springs",
+      "Moving to The Movie Colony Palm Springs"
+    ],
+    "slug": "the-movie-colony"
+  },
+  {
+    "id": 3,
+    "name": "Vista Las Palmas",
+    "description": "Celebrated for its mid-century modern homes and scenic mountain views, Vista Las Palmas is highly sought after.",
+    "photo": "https://tse4.mm.bing.net/th?id=OIP.KDkHmfr_GyMxe7UCskjd-QHaEb&pid=Api",
+    "price_range": "$2,500,000 - $7,000,000",
+    "features": [
+      "Architectural significance",
+      "Alexander-built homes",
+      "Close to downtown"
+    ],
+    "location": "Northwest Palm Springs",
+    "coordinates": {
+      "latitude": 33.8428,
+      "longitude": -116.5524
+    },
+    "keywords": [
+      "Vista Las Palmas homes for sale",
+      "Home prices in Vista Las Palmas Palm Springs",
+      "Moving to Vista Las Palmas Palm Springs"
+    ],
+    "slug": "vista-las-palmas"
+  },
+  {
+    "id": 4,
+    "name": "Deepwell Estates",
+    "description": "Known for its spacious lots and mid-century modern homes, Deepwell Estates offers a tranquil residential setting.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.rt7yk8oCbwLxJkt2Ozy21AAAAA&pid=Api",
+    "price_range": "$1,000,000 - $3,500,000",
+    "features": [
+      "Tree-lined streets",
+      "Private pools",
+      "Large lots"
+    ],
+    "location": "South Palm Springs",
+    "coordinates": {
+      "latitude": 33.8106,
+      "longitude": -116.5437
+    },
+    "keywords": [
+      "Deepwell Estates homes for sale",
+      "Home prices in Deepwell Estates Palm Springs",
+      "Moving to Deepwell Estates Palm Springs"
+    ],
+    "slug": "deepwell-estates"
+  },
+  {
+    "id": 5,
+    "name": "Indian Canyons",
+    "description": "Renowned for its golf courses and upscale homes, Indian Canyons offers stunning mountain vistas.",
+    "photo": "https://tse1.mm.bing.net/th?id=OIP.a01soJAhR1Yo-1_MBUH8zgAAAA&pid=Api",
+    "price_range": "$1,500,000 - $4,000,000",
+    "features": [
+      "Golf courses",
+      "Mountain views",
+      "Upscale homes"
+    ],
+    "location": "South Palm Springs",
+    "coordinates": {
+      "latitude": 33.8008,
+      "longitude": -116.5323
+    },
+    "keywords": [
+      "Indian Canyons homes for sale",
+      "Home prices in Indian Canyons Palm Springs",
+      "Moving to Indian Canyons Palm Springs"
+    ],
+    "slug": "indian-canyons"
+  },
+  {
+    "id": 6,
+    "name": "Twin Palms",
+    "description": "As one of Palm Springs' first modernist neighborhoods, Twin Palms features iconic mid-century homes.",
+    "photo": "https://tse4.mm.bing.net/th?id=OIP.CIrJTdU5VsirmGn0clS1GgHaE8&pid=Api",
+    "price_range": "$1,000,000 - $3,000,000",
+    "features": [
+      "Butterfly rooflines",
+      "William Krisel designs",
+      "Proximity to amenities"
+    ],
+    "location": "South Palm Springs",
+    "coordinates": {
+      "latitude": 33.8069,
+      "longitude": -116.5439
+    },
+    "keywords": [
+      "Twin Palms homes for sale",
+      "Home prices in Twin Palms Palm Springs",
+      "Moving to Twin Palms Palm Springs"
+    ],
+    "slug": "twin-palms"
+  },
+  {
+    "id": 7,
+    "name": "The Mesa",
+    "description": "Nestled against the San Jacinto Mountains, The Mesa is an exclusive neighborhood with eclectic architectural styles.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.BWl-ADtct8VqhHi82wU-PgHaE7&pid=Api",
+    "price_range": "$1,500,000 - $5,000,000",
+    "features": [
+      "Spanish Revival homes",
+      "Panoramic views",
+      "Secluded feel"
+    ],
+    "location": "Southwest Palm Springs",
+    "coordinates": {
+      "latitude": 33.8066,
+      "longitude": -116.5484
+    },
+    "keywords": [
+      "The Mesa homes for sale",
+      "Home prices in The Mesa Palm Springs",
+      "Moving to The Mesa Palm Springs"
+    ],
+    "slug": "the-mesa"
+  },
+  {
+    "id": 8,
+    "name": "Sunrise Park",
+    "description": "A centrally located neighborhood with a mix of mid-century and ranch-style homes.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.AA0AjX3tn9-_ZOMuEK8I1AHaHa&pid=Api",
+    "price_range": "$900,000 - $2,500,000",
+    "features": [
+      "Spacious lots",
+      "Close to downtown",
+      "Family-friendly"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8235,
+      "longitude": -116.5302
+    },
+    "keywords": [
+      "Sunrise Park homes for sale",
+      "Home prices in Sunrise Park Palm Springs",
+      "Moving to Sunrise Park Palm Springs"
+    ],
+    "slug": "sunrise-park"
+  },
+  {
+    "id": 9,
+    "name": "Little Tuscany",
+    "description": "Nestled in the foothills of the San Jacinto Mountains, Little Tuscany offers luxury estates and unique hillside homes.",
+    "photo": "https://tse3.mm.bing.net/th?id=OIP.lmI3QmbeCBTLhDlKua5ekwHaEv&pid=Api",
+    "price_range": "$1,500,000 - $4,500,000",
+    "features": [
+      "Hillside homes",
+      "Luxury estates",
+      "Stunning mountain views"
+    ],
+    "location": "Northwest Palm Springs",
+    "coordinates": {
+      "latitude": 33.8424,
+      "longitude": -116.5544
+    },
+    "keywords": [
+      "Little Tuscany homes for sale",
+      "Home prices in Little Tuscany Palm Springs",
+      "Moving to Little Tuscany Palm Springs"
+    ],
+    "slug": "little-tuscany"
+  },
+  {
+    "id": 10,
+    "name": "Warm Sands",
+    "description": "A historic neighborhood known for its boutique hotels and Spanish-style homes, offering a vibrant and walkable environment.",
+    "photo": "https://tse3.mm.bing.net/th?id=OIP.XOXFGkpfmGwO0wTSDj00RgHaE8&pid=Api",
+    "price_range": "$800,000 - $2,000,000",
+    "features": [
+      "Boutique hotels",
+      "Spanish-style homes",
+      "Walkable"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8148,
+      "longitude": -116.5437
+    },
+    "keywords": [
+      "Warm Sands homes for sale",
+      "Home prices in Warm Sands Palm Springs",
+      "Moving to Warm Sands Palm Springs"
+    ],
+    "slug": "warm-sands"
+  },
+  {
+    "id": 11,
+    "name": "Baristo Neighborhood",
+    "description": "One of Palm Springs’ oldest neighborhoods, Baristo offers a blend of old-world charm and modern condos near downtown.",
+    "photo": "https://tse4.mm.bing.net/th?id=OIP.OmZbJ8TfnlK-LR1lVNG11wAAAA&pid=Api",
+    "price_range": "$850,000 - $2,200,000",
+    "features": [
+      "Historic homes",
+      "Modern condos",
+      "Proximity to downtown"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8194,
+      "longitude": -116.5468
+    },
+    "keywords": [
+      "Baristo Neighborhood homes for sale",
+      "Home prices in Baristo Palm Springs",
+      "Moving to Baristo Neighborhood Palm Springs"
+    ],
+    "slug": "baristo-neighborhood"
+  },
+  {
+    "id": 12,
+    "name": "Desert Park Estates",
+    "description": "Located in the northeastern part of Palm Springs, Desert Park Estates features a mix of mid-century and newer homes with larger lot sizes.",
+    "photo": "https://tse3.mm.bing.net/th?id=OIP.r2O6TJs4g4EXe6CgQzj2GgAAAA&pid=Api",
+    "price_range": "$750,000 - $1,800,000",
+    "features": [
+      "Spacious lots",
+      "Affordable housing",
+      "Family-friendly"
+    ],
+    "location": "Northeast Palm Springs",
+    "coordinates": {
+      "latitude": 33.8505,
+      "longitude": -116.5281
+    },
+    "keywords": [
+      "Desert Park Estates homes for sale",
+      "Home prices in Desert Park Estates Palm Springs",
+      "Moving to Desert Park Estates Palm Springs"
+    ],
+    "slug": "desert-park-estates"
+  },
+  {
+    "id": 13,
+    "name": "Chino Canyon",
+    "description": "Situated at the base of Mount San Jacinto, Chino Canyon offers dramatic mountain views and a mix of architectural styles.",
+    "photo": "https://tse1.mm.bing.net/th?id=OIP.CIVhXcfW47R1T3wc3YEewgHaFj&pid=Api",
+    "price_range": "$1,000,000 - $3,000,000",
+    "features": [
+      "Mountain views",
+      "Elevated terrain",
+      "Secluded atmosphere"
+    ],
+    "location": "North Palm Springs",
+    "coordinates": {
+      "latitude": 33.8453,
+      "longitude": -116.5471
+    },
+    "keywords": [
+      "Chino Canyon homes for sale",
+      "Home prices in Chino Canyon Palm Springs",
+      "Moving to Chino Canyon Palm Springs"
+    ],
+    "slug": "chino-canyon"
+  },
+  {
+    "id": 14,
+    "name": "Ruth Hardy Park / Movie Colony East",
+    "description": "This area offers more affordable options while maintaining historic charm and walkability to Ruth Hardy Park.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.CXn4731kQC5whhvGYzIP0QHaG8&pid=Api",
+    "price_range": "$750,000 - $2,000,000",
+    "features": [
+      "Proximity to parks",
+      "Historic homes",
+      "Affordable options"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8308,
+      "longitude": -116.5327
+    },
+    "keywords": [
+      "Ruth Hardy Park homes for sale",
+      "Home prices in Ruth Hardy Park Palm Springs",
+      "Moving to Ruth Hardy Park Palm Springs"
+    ],
+    "slug": "ruth-hardy-park-movie-colony-east"
+  },
+  {
+    "id": 15,
+    "name": "Andreas Hills",
+    "description": "Known as the 'Bel Air of Palm Springs,' Andreas Hills features upscale homes with large lots and panoramic mountain views.",
+    "photo": "https://tse3.mm.bing.net/th?id=OIP.b-KSLZRg0nnQnKflDFi3hAHaE7&pid=Api",
+    "price_range": "$2,000,000 - $6,000,000",
+    "features": [
+      "Luxury homes",
+      "Large lots",
+      "Mountain views"
+    ],
+    "location": "South Palm Springs",
+    "coordinates": {
+      "latitude": 33.7853,
+      "longitude": -116.5131
+    },
+    "keywords": [
+      "Andreas Hills homes for sale",
+      "Home prices in Andreas Hills Palm Springs",
+      "Moving to Andreas Hills Palm Springs"
+    ],
+    "slug": "andreas-hills"
+  },
+  {
+    "id": 16,
+    "name": "Melody Ranch",
+    "description": "A quaint neighborhood featuring a collection of mid-century homes, offering a suburban feel with close proximity to downtown amenities.",
+    "photo": "https://tse3.mm.bing.net/th?id=OIP.0dgpF45cGxXUBjZv58ibYgHaEq&pid=Api",
+    "price_range": "$850,000 - $1,800,000",
+    "features": [
+      "Mid-century homes",
+      "Suburban atmosphere",
+      "Close to downtown"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8246,
+      "longitude": -116.5322
+    },
+    "keywords": [
+      "Melody Ranch homes for sale",
+      "Home prices in Melody Ranch Palm Springs",
+      "Moving to Melody Ranch Palm Springs"
+    ],
+    "slug": "melody-ranch"
+  },
+  {
+    "id": 17,
+    "name": "Tahquitz River Estates",
+    "description": "A historic neighborhood known for its mid-century modern and Spanish Revival homes, offering a mix of vintage charm and modern updates.",
+    "photo": "https://ssl.cdn-redfin.com/photo/40/islphoto/343/genIslnoResize.24-469343_1_1.jpg",
+    "price_range": "$900,000 - $2,800,000",
+    "features": [
+      "Tree-lined streets",
+      "Historic homes",
+      "Large lots"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8123,
+      "longitude": -116.5367
+    },
+    "keywords": [
+      "Tahquitz River Estates homes for sale",
+      "Home prices in Tahquitz River Estates Palm Springs",
+      "Moving to Tahquitz River Estates Palm Springs"
+    ],
+    "slug": "tahquitz-river-estates"
+  },
+  {
+    "id": 18,
+    "name": "Racquet Club Estates",
+    "description": "One of Palm Springs' original mid-century modern neighborhoods, Racquet Club Estates features Alexander-built homes with iconic designs.",
+    "photo": "https://tse1.mm.bing.net/th?id=OIP.5EwjheTH_7Y9zzCu-AZzhgHaE7&pid=Api",
+    "price_range": "$800,000 - $2,000,000",
+    "features": [
+      "Mid-century modern homes",
+      "Post-and-beam construction",
+      "Historic significance"
+    ],
+    "location": "North Palm Springs",
+    "coordinates": {
+      "latitude": 33.8542,
+      "longitude": -116.5438
+    },
+    "keywords": [
+      "Racquet Club Estates homes for sale",
+      "Home prices in Racquet Club Estates Palm Springs",
+      "Moving to Racquet Club Estates Palm Springs"
+    ],
+    "slug": "racquet-club-estates"
+  },
+  {
+    "id": 19,
+    "name": "El Mirador",
+    "description": "A small but prestigious neighborhood near the historic El Mirador Hotel, offering custom homes with a mix of architectural styles.",
+    "photo": "https://tse2.mm.bing.net/th?id=OIP.oNPn2FOkyy-FMQMck5rGQAHaEr&pid=Api",
+    "price_range": "$1,200,000 - $3,500,000",
+    "features": [
+      "Custom homes",
+      "Historic charm",
+      "Close to downtown"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+      "latitude": 33.8321,
+      "longitude": -116.5432
+    },
+    "keywords": [
+      "El Mirador homes for sale",
+      "Home prices in El Mirador Palm Springs",
+      "Moving to El Mirador Palm Springs"
+    ],
+    "slug": "el-mirador"
+  },
+  {
+    "id": 20,
+    "name": "Araby Commons",
+    "description": "Located in the southern part of Palm Springs, Araby Commons offers easy access to hiking trails and outdoor recreational areas.",
+    "photo": "https://tse1.mm.bing.net/th?id=OIP.0r2_x5WWc1z9s74mtLtllgHaFx&pid=Api",
+    "price_range": "$950,000 - $2,500,000",
+    "features": [
+      "Hiking trails",
+      "Outdoor recreation",
+      "Scenic surroundings"
+    ],
+    "location": "South Palm Springs",
+    "coordinates": {
+      "latitude": 33.8045,
+      "longitude": -116.5296
+    },
+    "keywords": [
+      "Araby Commons homes for sale",
+      "Home prices in Araby Commons Palm Springs",
+      "Moving to Araby Commons Palm Springs"
+    ],
+    "slug": "araby-commons"
+  }
+]

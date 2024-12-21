@@ -1,0 +1,574 @@
+[
+  {
+    "id": 1,
+    "name": "Cathedral City Cove",
+    "description": "Nestled in the serene foothills of the San Jacinto Mountains, Cathedral City Cove blends mid-century modern charm with contemporary sophistication. This vibrant community is known for its artistic flair, breathtaking views, and proximity to downtown's lively attractions.",
+    "photo": "https://example.com/cathedral-city-cove.jpg",
+    "features": [
+      "Artistic community",
+      "Scenic mountain views",
+      "Proximity to downtown"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7797,
+      "longitude": -116.4653
+    },
+    "keywords": [
+      "Cathedral City Cove homes for sale",
+      "Living in Cathedral City Cove",
+      "Home prices in Cathedral City Cove"
+    ],
+    "slug": "cathedral-city-cove"
+  },
+  {
+    "id": 2,
+    "name": "Panorama",
+    "description": "Panorama offers a welcoming and family-friendly atmosphere, featuring spacious homes with large lots. Perfectly located near schools, parks, and shopping, it’s an ideal neighborhood for those seeking both convenience and community.",
+    "photo": "https://example.com/panorama.jpg",
+    "features": [
+      "Spacious homes",
+      "Family-friendly",
+      "Nearby amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8425,
+      "longitude": -116.4668
+    },
+    "keywords": [
+      "Panorama homes for sale",
+      "Living in Panorama Cathedral City",
+      "Home prices in Panorama"
+    ],
+    "slug": "panorama"
+  },
+  {
+    "id": 3,
+    "name": "Rio Vista",
+    "description": "Rio Vista is celebrated for its well-maintained homes and peaceful streets. This neighborhood offers a variety of housing options, from single-family homes to condos and townhouses, catering to diverse needs and budgets.",
+    "photo": "https://example.com/rio-vista.jpg",
+    "features": [
+      "Quiet streets",
+      "Diverse housing options",
+      "Proximity to parks"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8331,
+      "longitude": -116.4635
+    },
+    "keywords": [
+      "Rio Vista homes for sale",
+      "Living in Rio Vista Cathedral City",
+      "Home prices in Rio Vista"
+    ],
+    "slug": "rio-vista"
+  },
+  {
+    "id": 4,
+    "name": "Century Park",
+    "description": "Century Park is a charming and well-established neighborhood featuring tree-lined streets and beautifully maintained homes. With easy access to schools and community parks, it’s a favorite for families and professionals alike.",
+    "photo": "https://example.com/century-park.jpg",
+    "features": [
+      "Tree-lined streets",
+      "Community park",
+      "Close to schools"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8123,
+      "longitude": -116.4645
+    },
+    "keywords": [
+      "Century Park homes for sale",
+      "Living in Century Park Cathedral City",
+      "Home prices in Century Park"
+    ],
+    "slug": "century-park"
+  },
+  {
+    "id": 5,
+    "name": "Montage at Mission Hills",
+    "description": "Montage at Mission Hills is an upscale gated community offering luxurious homes with modern amenities. Surrounded by lush landscaping and close to premier golf courses, it’s a haven for those seeking an elegant desert lifestyle.",
+    "photo": "https://example.com/montage-mission-hills.jpg",
+    "features": [
+      "Gated community",
+      "Luxury homes",
+      "Proximity to golf courses"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7984,
+      "longitude": -116.4417
+    },
+    "keywords": [
+      "Montage at Mission Hills homes for sale",
+      "Living in Montage at Mission Hills",
+      "Home prices in Montage at Mission Hills"
+    ],
+    "slug": "montage-at-mission-hills"
+  },
+  {
+    "id": 6,
+    "name": "The Canyon",
+    "description": "The Canyon is a tranquil 55+ community designed for relaxation and social connections. With amenities like a clubhouse, pool, and fitness center, it’s the perfect retreat for active adults.",
+    "photo": "https://example.com/the-canyon.jpg",
+    "features": [
+      "55+ community",
+      "Clubhouse",
+      "Peaceful environment"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8006,
+      "longitude": -116.4564
+    },
+    "keywords": [
+      "The Canyon homes for sale",
+      "Living in The Canyon Cathedral City",
+      "Home prices in The Canyon"
+    ],
+    "slug": "the-canyon"
+  },
+  {
+    "id": 7,
+    "name": "Landau Manor Homes",
+    "description": "Landau Manor Homes is a serene residential area offering single-family homes with generous yards. Popular among families and retirees, it combines comfort and community charm.",
+    "photo": "https://example.com/landau-manor.jpg",
+    "features": [
+      "Single-family homes",
+      "Spacious yards",
+      "Quiet community"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8054,
+      "longitude": -116.4683
+    },
+    "keywords": [
+      "Landau Manor Homes homes for sale",
+      "Living in Landau Manor Cathedral City",
+      "Home prices in Landau Manor Homes"
+    ],
+    "slug": "landau-manor-homes"
+  },
+  {
+    "id": 8,
+    "name": "Cathedral Canyon Country Club",
+    "description": "Cathedral Canyon Country Club is a vibrant golf course community featuring condos and single-family homes. Residents enjoy an active lifestyle with access to world-class golfing and community amenities.",
+    "photo": "https://example.com/cathedral-canyon-country-club.jpg",
+    "features": [
+      "Golf course",
+      "Active lifestyle",
+      "Community amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7993,
+      "longitude": -116.4502
+    },
+    "keywords": [
+      "Cathedral Canyon Country Club homes for sale",
+      "Living in Cathedral Canyon Country Club",
+      "Home prices in Cathedral Canyon Country Club"
+    ],
+    "slug": "cathedral-canyon-country-club"
+  },
+  {
+    "id": 9,
+    "name": "Tapestry",
+    "description": "Tapestry is a modern development offering contemporary homes designed with style and convenience. Close to schools and parks, it’s a great choice for growing families.",
+    "photo": "https://example.com/tapestry.jpg",
+    "features": [
+      "Modern homes",
+      "Contemporary design",
+      "Proximity to schools"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8157,
+      "longitude": -116.4675
+    },
+    "keywords": [
+      "Tapestry homes for sale",
+      "Living in Tapestry Cathedral City",
+      "Home prices in Tapestry"
+    ],
+    "slug": "tapestry"
+  },
+  {
+    "id": 10,
+    "name": "Rio Del Sol",
+    "description": "Rio Del Sol is an exclusive gated community featuring beautifully landscaped grounds, single-family homes, and condos. Residents enjoy a peaceful atmosphere and top-notch community amenities.",
+    "photo": "https://example.com/rio-del-sol.jpg",
+    "features": [
+      "Gated community",
+      "Beautiful landscaping",
+      "Community pool"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7963,
+      "longitude": -116.4419
+    },
+    "keywords": [
+      "Rio Del Sol homes for sale",
+      "Living in Rio Del Sol Cathedral City",
+      "Home prices in Rio Del Sol"
+    ],
+    "slug": "rio-del-sol"
+  },
+  {
+    "id": 11,
+    "name": "Verano",
+    "description": "A master-planned community featuring modern homes, parks, and community amenities designed for families and active lifestyles.",
+    "photo": "https://example.com/verano.jpg",
+    "features": [
+      "Modern homes",
+      "Community parks",
+      "Family-oriented"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8224,
+      "longitude": -116.4739
+    },
+    "keywords": [
+      "Verano homes for sale",
+      "Living in Verano Cathedral City",
+      "Home prices in Verano"
+    ],
+    "slug": "verano"
+  },
+  {
+    "id": 12,
+    "name": "The District at the Edge",
+    "description": "A contemporary, gated community offering sleek modern homes with high-end finishes and private pools.",
+    "photo": "https://example.com/the-district.jpg",
+    "features": [
+      "Modern design",
+      "Private pools",
+      "Gated community"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7892,
+      "longitude": -116.4563
+    },
+    "keywords": [
+      "The District homes for sale",
+      "Living in The District Cathedral City",
+      "Home prices in The District"
+    ],
+    "slug": "the-district-at-the-edge"
+  },
+  {
+    "id": 13,
+    "name": "La Pasada",
+    "description": "A newer community offering spacious single-family homes with open floor plans, located close to parks and schools.",
+    "photo": "https://example.com/la-pasada.jpg",
+    "features": [
+      "Open floor plans",
+      "Spacious homes",
+      "Close to parks"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8371,
+      "longitude": -116.4605
+    },
+    "keywords": [
+      "La Pasada homes for sale",
+      "Living in La Pasada Cathedral City",
+      "Home prices in La Pasada"
+    ],
+    "slug": "la-pasada"
+  },
+  {
+    "id": 14,
+    "name": "Campanile",
+    "description": "A Tuscan-inspired gated community offering beautiful homes with unique architectural designs and great community amenities.",
+    "photo": "https://example.com/campanile.jpg",
+    "features": [
+      "Tuscan design",
+      "Gated community",
+      "Clubhouse and pool"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8121,
+      "longitude": -116.4712
+    },
+    "keywords": [
+      "Campanile homes for sale",
+      "Living in Campanile Cathedral City",
+      "Home prices in Campanile"
+    ],
+    "slug": "campanile"
+  },
+  {
+    "id": 15,
+    "name": "Rancho Village",
+    "description": "A gated community offering a mix of single-family homes and condos, known for its well-maintained landscaping and quiet atmosphere.",
+    "photo": "https://example.com/rancho-village.jpg",
+    "features": [
+      "Gated community",
+      "Quiet atmosphere",
+      "Beautiful landscaping"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7998,
+      "longitude": -116.4527
+    },
+    "keywords": [
+      "Rancho Village homes for sale",
+      "Living in Rancho Village Cathedral City",
+      "Home prices in Rancho Village"
+    ],
+    "slug": "rancho-village"
+  },
+  {
+    "id": 16,
+    "name": "Victoria Park",
+    "description": "A residential neighborhood featuring single-family homes with large yards, offering a peaceful and family-friendly environment.",
+    "photo": "https://example.com/victoria-park.jpg",
+    "features": [
+      "Family-friendly",
+      "Large yards",
+      "Quiet streets"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8356,
+      "longitude": -116.4691
+    },
+    "keywords": [
+      "Victoria Park homes for sale",
+      "Living in Victoria Park Cathedral City",
+      "Home prices in Victoria Park"
+    ],
+    "slug": "victoria-park"
+  },
+  {
+    "id": 17,
+    "name": "Shadow Crest",
+    "description": "A private gated community with stunning desert landscaping and well-appointed homes, offering a quiet retreat.",
+    "photo": "https://example.com/shadow-crest.jpg",
+    "features": [
+      "Gated community",
+      "Desert landscaping",
+      "Quiet retreat"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7953,
+      "longitude": -116.4534
+    },
+    "keywords": [
+      "Shadow Crest homes for sale",
+      "Living in Shadow Crest Cathedral City",
+      "Home prices in Shadow Crest"
+    ],
+    "slug": "shadow-crest"
+  },
+  {
+    "id": 18,
+    "name": "Rancho Mirage Cove",
+    "description": "Nestled near the border with Rancho Mirage, this area offers upscale living with access to nearby country clubs and luxury amenities.",
+    "photo": "https://example.com/rancho-mirage-cove.jpg",
+    "features": [
+      "Upscale living",
+      "Nearby country clubs",
+      "Luxury amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7769,
+      "longitude": -116.4203
+    },
+    "keywords": [
+      "Rancho Mirage Cove homes for sale",
+      "Living in Rancho Mirage Cove Cathedral City",
+      "Home prices in Rancho Mirage Cove"
+    ],
+    "slug": "rancho-mirage-cove"
+  },
+  {
+    "id": 19,
+    "name": "Alicante",
+    "description": "A serene neighborhood offering modern homes with open floor plans, close to parks and schools.",
+    "photo": "https://example.com/alicante.jpg",
+    "features": [
+      "Modern homes",
+      "Open floor plans",
+      "Proximity to parks"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8181,
+      "longitude": -116.4752
+    },
+    "keywords": [
+      "Alicante homes for sale",
+      "Living in Alicante Cathedral City",
+      "Home prices in Alicante"
+    ],
+    "slug": "alicante"
+  },
+  {
+    "id": 20,
+    "name": "Rio Vista Village",
+    "description": "A family-friendly community offering a mix of single-family homes and condos with easy access to local amenities.",
+    "photo": "https://example.com/rio-vista-village.jpg",
+    "features": [
+      "Family-friendly",
+      "Single-family homes",
+      "Nearby amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8338,
+      "longitude": -116.4615
+    },
+    "keywords": [
+      "Rio Vista Village homes for sale",
+      "Living in Rio Vista Village Cathedral City",
+      "Home prices in Rio Vista Village"
+    ],
+    "slug": "rio-vista-village"
+  },
+  {
+    "id": 21,
+    "name": "Desert Princess Country Club",
+    "description": "A gated golf course community featuring luxurious homes and condos with resort-style amenities.",
+    "photo": "https://example.com/desert-princess.jpg",
+    "features": [
+      "Golf course",
+      "Gated community",
+      "Resort-style amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8104,
+      "longitude": -116.4561
+    },
+    "keywords": [
+      "Desert Princess homes for sale",
+      "Living in Desert Princess Cathedral City",
+      "Home prices in Desert Princess"
+    ],
+    "slug": "desert-princess-country-club"
+  },
+  {
+    "id": 22,
+    "name": "The Cove at Cathedral City",
+    "description": "An exclusive community offering custom homes with modern designs and panoramic views of the Coachella Valley.",
+    "photo": "https://example.com/cove-cathedral-city.jpg",
+    "features": [
+      "Custom homes",
+      "Panoramic views",
+      "Modern designs"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.7792,
+      "longitude": -116.4684
+    },
+    "keywords": [
+      "The Cove homes for sale",
+      "Living in The Cove Cathedral City",
+      "Home prices in The Cove"
+    ],
+    "slug": "the-cove-at-cathedral-city"
+  },
+  {
+    "id": 23,
+    "name": "Whitewater Neighborhood",
+    "description": "A quiet residential area with mid-century homes, known for its affordability and charm.",
+    "photo": "https://example.com/whitewater.jpg",
+    "features": [
+      "Mid-century homes",
+      "Affordable living",
+      "Charming community"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8271,
+      "longitude": -116.4679
+    },
+    "keywords": [
+      "Whitewater homes for sale",
+      "Living in Whitewater Cathedral City",
+      "Home prices in Whitewater"
+    ],
+    "slug": "whitewater-neighborhood"
+  },
+  {
+    "id": 24,
+    "name": "Las Quintas",
+    "description": "A small, well-maintained community offering a mix of condos and single-family homes with access to local amenities.",
+    "photo": "https://example.com/las-quintas.jpg",
+    "features": [
+      "Well-maintained homes",
+      "Quiet community",
+      "Local amenities"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8179,
+      "longitude": -116.4692
+    },
+    "keywords": [
+      "Las Quintas homes for sale",
+      "Living in Las Quintas Cathedral City",
+      "Home prices in Las Quintas"
+    ],
+    "slug": "las-quintas"
+  },
+  {
+    "id": 25,
+    "name": "Shadow Mountain",
+    "description": "A scenic neighborhood nestled near the base of the mountains, offering stunning views and spacious homes.",
+    "photo": "https://example.com/shadow-mountain.jpg",
+    "features": [
+      "Mountain views",
+      "Spacious homes",
+      "Scenic surroundings"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8142,
+      "longitude": -116.4715
+    },
+    "keywords": [
+      "Shadow Mountain homes for sale",
+      "Living in Shadow Mountain Cathedral City",
+      "Home prices in Shadow Mountain"
+    ],
+    "slug": "shadow-mountain"
+  },
+  {
+    "id": 26,
+    "name": "Dream Homes",
+    "description": "An affordable and diverse community with a range of single-family homes, perfect for first-time buyers.",
+    "photo": "https://example.com/dream-homes.jpg",
+    "features": [
+      "Affordable homes",
+      "Diverse community",
+      "First-time buyer friendly"
+    ],
+    "location": "Cathedral City, CA",
+    "coordinates": {
+      "latitude": 33.8249,
+      "longitude": -116.4713
+    },
+    "keywords": [
+      "Dream Homes homes for sale",
+      "Living in Dream Homes Cathedral City",
+      "Home prices in Dream Homes"
+    ],
+    "slug": "dream-homes"
+  }
+]

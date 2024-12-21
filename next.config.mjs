@@ -2,19 +2,35 @@ import createMDX from '@next/mdx';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable MDX and Markdown files
-  pageExtensions: ['ts', 'tsx', 'mdx', 'md'],
-
-  // Update image configuration to use `remotePatterns`
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        protocol: "https",
+        hostname: "ssl.cdn-redfin.com", // Add this line
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "tse1.mm.bing.net",
+      },
+      {
+        protocol: "https",
+        hostname: "tse2.mm.bing.net",
+      },
+      {
+        protocol: "https",
+        hostname: "tse3.mm.bing.net",
+      },
+      {
+        protocol: "https",
+        hostname: "tse4.mm.bing.net",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
       },
     ],
   },

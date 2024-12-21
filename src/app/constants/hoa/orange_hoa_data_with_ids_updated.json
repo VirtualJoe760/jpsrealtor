@@ -1,0 +1,30 @@
+[
+  {
+    "Subdivision/Countryclub": "Antiqua",
+    "Management Company": "Antiqua HOA",
+    "Address": "701 S Parker St Ste 1600",
+    "City, State, Zip": "Orange, CA 92668",
+    "Phone": "714-285-2600",
+    "Fax": null,
+    "City": "Orange",
+    "State": "CA ",
+    "Zip": "92668",
+    "id": "00001",
+    "count": 1,
+    "slug": "antiqua"
+  },
+  {
+    "Subdivision/Countryclub": "Antiqua",
+    "Management Company": "Antiqua HOA",
+    "Address": "701 S Parker St Ste 1600",
+    "City, State, Zip": "Orange, CA 92668",
+    "Phone": "714-285-2600",
+    "Fax": null,
+    "City": "Orange",
+    "State": "CA ",
+    "Zip": "92668",
+    "id": "00002",
+    "count": 2,
+    "slug": "antiqua"
+  }
+]

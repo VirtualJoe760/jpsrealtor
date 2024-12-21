@@ -1,0 +1,1322 @@
+[
+  {
+    "id": 1,
+    "name": "Mirada Estates",
+    "description": "An exclusive gated community perched above the Coachella Valley, Mirada Estates offers luxury homes with breathtaking panoramic views. Residents enjoy proximity to the Ritz-Carlton resort, combining privacy with world-class amenities.",
+    "photo": "https://example.com/mirada-estates.jpg",
+    "features": [
+      "Gated community",
+      "Panoramic views",
+      "Proximity to Ritz-Carlton"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7597,
+      "longitude": -116.4078
+    },
+    "keywords": [
+      "Mirada Estates homes for sale",
+      "Living in Mirada Estates Rancho Mirage",
+      "Home prices in Mirada Estates"
+    ],
+    "slug": "mirada-estates"
+  },
+  {
+    "id": 2,
+    "name": "Mission Ranch",
+    "description": "Nestled along the prestigious Clancy Lane, Mission Ranch is a premier gated community known for its elegant homes and lushly landscaped surroundings. Residents enjoy access to golf courses, fine dining, and upscale shopping just minutes away.",
+    "photo": "https://example.com/mission-ranch.jpg",
+    "features": [
+      "Gated community",
+      "Elegant homes",
+      "Close to golf courses"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7591,
+      "longitude": -116.4312
+    },
+    "keywords": [
+      "Mission Ranch homes for sale",
+      "Living in Mission Ranch Rancho Mirage",
+      "Home prices in Mission Ranch"
+    ],
+    "slug": "mission-ranch"
+  },
+  {
+    "id": 3,
+    "name": "St. Augustine",
+    "description": "With its tranquil lakes, cascading fountains, and tennis courts, St. Augustine offers an idyllic desert retreat. This gated community features 187 single-family homes and a sprawling 7.5-acre greenbelt surrounded by stunning mountain views.",
+    "photo": "https://example.com/st-augustine.jpg",
+    "features": [
+      "Lakes and fountains",
+      "Tennis courts",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7608,
+      "longitude": -116.4284
+    },
+    "keywords": [
+      "St. Augustine homes for sale",
+      "Living in St. Augustine Rancho Mirage",
+      "Home prices in St. Augustine"
+    ],
+    "slug": "st-augustine"
+  },
+  {
+    "id": 4,
+    "name": "Thunderbird Heights Estates",
+    "description": "A prestigious community established in the 1950s, Thunderbird Heights Estates blends historic charm with modern luxury. Its unique tunnel connects residents directly to the Thunderbird Country Club, making it a favorite among golf enthusiasts.",
+    "photo": "https://example.com/thunderbird-heights.jpg",
+    "features": [
+      "Historic charm",
+      "Direct access to golf",
+      "Luxurious homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7594,
+      "longitude": -116.4389
+    },
+    "keywords": [
+      "Thunderbird Heights homes for sale",
+      "Living in Thunderbird Heights Rancho Mirage",
+      "Home prices in Thunderbird Heights"
+    ],
+    "slug": "thunderbird-heights-estates"
+  },
+  {
+    "id": 5,
+    "name": "The Springs Country Club",
+    "description": "A prestigious country club community offering luxury homes, championship golf, and a full suite of resort-style amenities. The Springs Country Club combines elegance and active living in the heart of Rancho Mirage.",
+    "photo": "https://example.com/springs-country-club.jpg",
+    "features": [
+      "Golf course",
+      "Resort-style amenities",
+      "Luxury homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7628,
+      "longitude": -116.4143
+    },
+    "keywords": [
+      "The Springs Country Club homes for sale",
+      "Living in The Springs Rancho Mirage",
+      "Home prices in The Springs"
+    ],
+    "slug": "the-springs-country-club"
+  },
+  {
+    "id": 6,
+    "name": "Mira Vista",
+    "description": "A gated community known for its contemporary homes and stunning views of the surrounding mountains. Mira Vista features spacious lots and offers residents access to a pool, tennis courts, and nearby golf courses.",
+    "photo": "https://example.com/mira-vista.jpg",
+    "features": [
+      "Gated community",
+      "Contemporary homes",
+      "Mountain views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7732,
+      "longitude": -116.4158
+    },
+    "keywords": [
+      "Mira Vista homes for sale",
+      "Living in Mira Vista Rancho Mirage",
+      "Home prices in Mira Vista"
+    ],
+    "slug": "mira-vista"
+  },
+  {
+    "id": 7,
+    "name": "Victoria Falls",
+    "description": "Victoria Falls is a gated community offering spacious homes with elegant designs. Residents enjoy a serene environment, tennis courts, and proximity to top-rated schools and amenities.",
+    "photo": "https://example.com/victoria-falls.jpg",
+    "features": [
+      "Gated community",
+      "Tennis courts",
+      "Elegant homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7635,
+      "longitude": -116.4382
+    },
+    "keywords": [
+      "Victoria Falls homes for sale",
+      "Living in Victoria Falls Rancho Mirage",
+      "Home prices in Victoria Falls"
+    ],
+    "slug": "victoria-falls"
+  },
+  {
+    "id": 8,
+    "name": "Tamarisk Country Club",
+    "description": "One of Rancho Mirage's most iconic communities, Tamarisk Country Club offers classic mid-century modern homes alongside luxury estates. With a rich history and a private golf course, this neighborhood exudes sophistication.",
+    "photo": "https://example.com/tamarisk-country-club.jpg",
+    "features": [
+      "Private golf course",
+      "Historic community",
+      "Luxury estates"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7681,
+      "longitude": -116.4217
+    },
+    "keywords": [
+      "Tamarisk Country Club homes for sale",
+      "Living in Tamarisk Country Club Rancho Mirage",
+      "Home prices in Tamarisk Country Club"
+    ],
+    "slug": "tamarisk-country-club"
+  },
+  {
+    "id": 9,
+    "name": "Clancy Lane",
+    "description": "Known for its sprawling estates and equestrian properties, Clancy Lane is one of the most prestigious addresses in Rancho Mirage. This neighborhood offers luxury living with privacy and charm.",
+    "photo": "https://example.com/clancy-lane.jpg",
+    "features": [
+      "Luxury estates",
+      "Equestrian properties",
+      "Prestigious address"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7602,
+      "longitude": -116.4289
+    },
+    "keywords": [
+      "Clancy Lane homes for sale",
+      "Living in Clancy Lane Rancho Mirage",
+      "Home prices in Clancy Lane"
+    ],
+    "slug": "clancy-lane"
+  },
+  {
+    "id": 10,
+    "name": "Mission Hills Country Club",
+    "description": "A renowned golf and tennis community, Mission Hills Country Club features luxurious homes surrounded by lush fairways and scenic lakes. Residents enjoy world-class amenities and an active lifestyle.",
+    "photo": "https://example.com/mission-hills-country-club.jpg",
+    "features": [
+      "Golf and tennis",
+      "Scenic lakes",
+      "Luxury homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7625,
+      "longitude": -116.4086
+    },
+    "keywords": [
+      "Mission Hills homes for sale",
+      "Living in Mission Hills Rancho Mirage",
+      "Home prices in Mission Hills"
+    ],
+    "slug": "mission-hills-country-club"
+  },
+  {
+    "id": 11,
+    "name": "Sterling Estates",
+    "description": "Sterling Estates offers a collection of custom-built homes with contemporary designs. This gated community provides a sophisticated and quiet lifestyle with mountain views and modern amenities.",
+    "photo": "https://example.com/sterling-estates.jpg",
+    "features": [
+      "Custom homes",
+      "Mountain views",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7695,
+      "longitude": -116.4198
+    },
+    "keywords": [
+      "Sterling Estates homes for sale",
+      "Living in Sterling Estates Rancho Mirage",
+      "Home prices in Sterling Estates"
+    ],
+    "slug": "sterling-estates"
+  },
+  {
+    "id": 12,
+    "name": "Waterford",
+    "description": "Waterford is an exclusive enclave featuring contemporary estates with lush landscaping and private pools. This gated community offers privacy and luxury living in the heart of Rancho Mirage.",
+    "photo": "https://example.com/waterford.jpg",
+    "features": [
+      "Contemporary estates",
+      "Private pools",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7623,
+      "longitude": -116.4225
+    },
+    "keywords": [
+      "Waterford homes for sale",
+      "Living in Waterford Rancho Mirage",
+      "Home prices in Waterford"
+    ],
+    "slug": "waterford"
+  },
+  {
+    "id": 13,
+    "name": "Thunderbird Cove",
+    "description": "Nestled in the foothills, Thunderbird Cove is an exclusive gated community offering luxurious homes with stunning mountain views. Known for its privacy and elegance, it’s a top choice for discerning buyers.",
+    "photo": "https://example.com/thunderbird-cove.jpg",
+    "features": [
+      "Gated community",
+      "Luxurious homes",
+      "Mountain views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7615,
+      "longitude": -116.4394
+    },
+    "keywords": [
+      "Thunderbird Cove homes for sale",
+      "Living in Thunderbird Cove Rancho Mirage",
+      "Home prices in Thunderbird Cove"
+    ],
+    "slug": "thunderbird-cove"
+  },
+  {
+    "id": 14,
+    "name": "Ivy League Estates",
+    "description": "Ivy League Estates is a charming gated community featuring spacious homes with classic designs. This neighborhood offers a peaceful environment with close access to top schools and local amenities.",
+    "photo": "https://example.com/ivy-league-estates.jpg",
+    "features": [
+      "Gated community",
+      "Classic designs",
+      "Proximity to schools"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7654,
+      "longitude": -116.4236
+    },
+    "keywords": [
+      "Ivy League Estates homes for sale",
+      "Living in Ivy League Estates Rancho Mirage",
+      "Home prices in Ivy League Estates"
+    ],
+    "slug": "ivy-league-estates"
+  },
+  {
+    "id": 15,
+    "name": "The Renaissance",
+    "description": "An exclusive community featuring custom-built luxury homes with modern architecture. The Renaissance is a gated neighborhood offering privacy and close access to world-class amenities.",
+    "photo": "https://example.com/the-renaissance.jpg",
+    "features": [
+      "Custom-built homes",
+      "Modern architecture",
+      "Gated neighborhood"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7629,
+      "longitude": -116.4213
+    },
+    "keywords": [
+      "The Renaissance homes for sale",
+      "Living in The Renaissance Rancho Mirage",
+      "Home prices in The Renaissance"
+    ],
+    "slug": "the-renaissance"
+  },
+  {
+    "id": 16,
+    "name": "Escala",
+    "description": "Escala is a gated community offering estate-style homes with stunning architectural designs. Known for its exclusivity and tranquility, Escala is ideal for those seeking a luxurious desert retreat.",
+    "photo": "https://example.com/escala.jpg",
+    "features": [
+      "Estate-style homes",
+      "Exclusive community",
+      "Stunning designs"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7598,
+      "longitude": -116.4302
+    },
+    "keywords": [
+      "Escala homes for sale",
+      "Living in Escala Rancho Mirage",
+      "Home prices in Escala"
+    ],
+    "slug": "escala"
+  },
+  {
+    "id": 17,
+    "name": "Cypress Pointe",
+    "description": "Cypress Pointe offers contemporary homes with modern amenities and beautiful desert landscaping. This quiet, gated community is perfect for those looking for a serene yet stylish lifestyle.",
+    "photo": "https://example.com/cypress-pointe.jpg",
+    "features": [
+      "Contemporary homes",
+      "Desert landscaping",
+      "Quiet community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7641,
+      "longitude": -116.4257
+    },
+    "keywords": [
+      "Cypress Pointe homes for sale",
+      "Living in Cypress Pointe Rancho Mirage",
+      "Home prices in Cypress Pointe"
+    ],
+    "slug": "cypress-pointe"
+  },
+  {
+    "id": 18,
+    "name": "The Villas of Mirada",
+    "description": "Adjacent to the Ritz-Carlton, The Villas of Mirada is a luxurious gated community offering modern homes with resort-style amenities and breathtaking Coachella Valley views.",
+    "photo": "https://example.com/villas-of-mirada.jpg",
+    "features": [
+      "Adjacent to Ritz-Carlton",
+      "Resort-style amenities",
+      "Breathtaking views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7589,
+      "longitude": -116.4101
+    },
+    "keywords": [
+      "The Villas of Mirada homes for sale",
+      "Living in The Villas of Mirada Rancho Mirage",
+      "Home prices in The Villas of Mirada"
+    ],
+    "slug": "the-villas-of-mirada"
+  },
+  {
+    "id": 19,
+    "name": "Rancho Estates",
+    "description": "Rancho Estates is a private enclave featuring mid-century modern homes and luxurious estates. Its unique architecture and lush surroundings make it a standout community in Rancho Mirage.",
+    "photo": "https://example.com/rancho-estates.jpg",
+    "features": [
+      "Mid-century modern homes",
+      "Lush surroundings",
+      "Private enclave"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7632,
+      "longitude": -116.4269
+    },
+    "keywords": [
+      "Rancho Estates homes for sale",
+      "Living in Rancho Estates Rancho Mirage",
+      "Home prices in Rancho Estates"
+    ],
+    "slug": "rancho-estates"
+  },
+  {
+    "id": 20,
+    "name": "Del Webb Rancho Mirage",
+    "description": "A 55+ active adult community offering resort-style living with beautifully designed homes, pools, fitness centers, and social activities. Del Webb Rancho Mirage is perfect for those seeking an active and vibrant lifestyle.",
+    "photo": "https://example.com/del-webb.jpg",
+    "features": [
+      "55+ active adult community",
+      "Resort-style living",
+      "Social activities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7661,
+      "longitude": -116.4318
+    },
+    "keywords": [
+      "Del Webb homes for sale",
+      "Living in Del Webb Rancho Mirage",
+      "Home prices in Del Webb"
+    ],
+    "slug": "del-webb-rancho-mirage"
+  },
+  {
+    "id": 21,
+    "name": "Santo Tomas",
+    "description": "Santo Tomas is a picturesque gated community featuring Mediterranean-inspired homes with lakefront views. Residents enjoy serene surroundings and access to walking paths and community amenities.",
+    "photo": "https://example.com/santo-tomas.jpg",
+    "features": [
+      "Mediterranean homes",
+      "Lakefront views",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7587,
+      "longitude": -116.4194
+    },
+    "keywords": [
+      "Santo Tomas homes for sale",
+      "Living in Santo Tomas Rancho Mirage",
+      "Home prices in Santo Tomas"
+    ],
+    "slug": "santo-tomas"
+  },
+  {
+    "id": 22,
+    "name": "Casas de Seville",
+    "description": "A charming gated community offering Spanish-style homes with beautiful courtyards and lush landscaping. Casas de Seville is perfect for those seeking an intimate and elegant neighborhood.",
+    "photo": "https://example.com/casas-de-seville.jpg",
+    "features": [
+      "Spanish-style homes",
+      "Beautiful courtyards",
+      "Lush landscaping"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7653,
+      "longitude": -116.4241
+    },
+    "keywords": [
+      "Casas de Seville homes for sale",
+      "Living in Casas de Seville Rancho Mirage",
+      "Home prices in Casas de Seville"
+    ],
+    "slug": "casas-de-seville"
+  },
+  {
+    "id": 23,
+    "name": "Lake Mirage",
+    "description": "Lake Mirage is a unique waterfront community featuring townhomes and condos with private docks and stunning lake views. Residents enjoy water activities and a tranquil lifestyle.",
+    "photo": "https://example.com/lake-mirage.jpg",
+    "features": [
+      "Waterfront homes",
+      "Private docks",
+      "Lake views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7649,
+      "longitude": -116.4205
+    },
+    "keywords": [
+      "Lake Mirage homes for sale",
+      "Living in Lake Mirage Rancho Mirage",
+      "Home prices in Lake Mirage"
+    ],
+    "slug": "lake-mirage"
+  },
+  {
+    "id": 24,
+    "name": "Morningside Country Club",
+    "description": "One of the most prestigious country clubs in Rancho Mirage, Morningside features custom luxury homes, championship golf, and world-class amenities in a secure, gated setting.",
+    "photo": "https://example.com/morningside.jpg",
+    "features": [
+      "Luxury homes",
+      "Championship golf",
+      "World-class amenities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7691,
+      "longitude": -116.4199
+    },
+    "keywords": [
+      "Morningside homes for sale",
+      "Living in Morningside Rancho Mirage",
+      "Home prices in Morningside"
+    ],
+    "slug": "morningside-country-club"
+  },
+  {
+    "id": 25,
+    "name": "Villaggio on Sinatra",
+    "description": "Villaggio on Sinatra is an exclusive gated community offering luxury estates with spacious layouts and modern designs. Known for its privacy and elegance, it’s a favorite among high-profile buyers.",
+    "photo": "https://example.com/villaggio.jpg",
+    "features": [
+      "Luxury estates",
+      "Modern designs",
+      "Exclusive community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7627,
+      "longitude": -116.4152
+    },
+    "keywords": [
+      "Villaggio on Sinatra homes for sale",
+      "Living in Villaggio Rancho Mirage",
+      "Home prices in Villaggio"
+    ],
+    "slug": "villaggio-on-sinatra"
+  },
+  {
+    "id": 26,
+    "name": "Bighorn Golf Club",
+    "description": "An iconic golf community offering unparalleled luxury. Bighorn Golf Club features custom-built estates, two championship golf courses, and access to exclusive amenities for the elite lifestyle.",
+    "photo": "https://example.com/bighorn-golf-club.jpg",
+    "features": [
+      "Championship golf courses",
+      "Custom-built estates",
+      "Exclusive amenities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7673,
+      "longitude": -116.4061
+    },
+    "keywords": [
+      "Bighorn Golf Club homes for sale",
+      "Living in Bighorn Rancho Mirage",
+      "Home prices in Bighorn"
+    ],
+    "slug": "bighorn-golf-club"
+  },
+  {
+    "id": 27,
+    "name": "Desert Island",
+    "description": "A one-of-a-kind community featuring condos surrounded by a private golf course and a serene lake. Desert Island offers an upscale lifestyle with breathtaking views and resort-style living.",
+    "photo": "https://example.com/desert-island.jpg",
+    "features": [
+      "Condos with lake views",
+      "Private golf course",
+      "Resort-style living"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7658,
+      "longitude": -116.4167
+    },
+    "keywords": [
+      "Desert Island homes for sale",
+      "Living in Desert Island Rancho Mirage",
+      "Home prices in Desert Island"
+    ],
+    "slug": "desert-island"
+  },
+  {
+    "id": 28,
+    "name": "The Club at Morningside",
+    "description": "The Club at Morningside is a prestigious enclave within Rancho Mirage, known for its championship golf, luxurious homes, and access to a vibrant social scene.",
+    "photo": "https://example.com/morningside-club.jpg",
+    "features": [
+      "Golf course",
+      "Luxurious homes",
+      "Active social scene"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7699,
+      "longitude": -116.4191
+    },
+    "keywords": [
+      "The Club at Morningside homes for sale",
+      "Living in The Club at Morningside Rancho Mirage",
+      "Home prices in The Club at Morningside"
+    ],
+    "slug": "the-club-at-morningside"
+  },
+  {
+    "id": 29,
+    "name": "Estilo at Rancho Mirage",
+    "description": "Estilo at Rancho Mirage is a stunning community featuring contemporary homes with sleek designs, large lots, and luxurious interiors. Perfect for those seeking a modern desert lifestyle.",
+    "photo": "https://example.com/estilo.jpg",
+    "features": [
+      "Contemporary homes",
+      "Large lots",
+      "Modern interiors"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7612,
+      "longitude": -116.4285
+    },
+    "keywords": [
+      "Estilo homes for sale",
+      "Living in Estilo Rancho Mirage",
+      "Home prices in Estilo"
+    ],
+    "slug": "estilo-at-rancho-mirage"
+  },
+  {
+    "id": 30,
+    "name": "Legacy at Mission Hills",
+    "description": "A private enclave within Mission Hills Country Club, Legacy offers custom-built homes with expansive floor plans and top-tier amenities. Residents enjoy proximity to golf and luxury facilities.",
+    "photo": "https://example.com/legacy-mission-hills.jpg",
+    "features": [
+      "Custom-built homes",
+      "Golf access",
+      "Top-tier amenities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7594,
+      "longitude": -116.4163
+    },
+    "keywords": [
+      "Legacy homes for sale",
+      "Living in Legacy Rancho Mirage",
+      "Home prices in Legacy Mission Hills"
+    ],
+    "slug": "legacy-at-mission-hills"
+  },
+  {
+    "id": 31,
+    "name": "The Estates at Rancho Mirage",
+    "description": "An upscale gated community featuring elegant homes with breathtaking mountain views and resort-style amenities. The Estates is known for its exclusivity and serene desert setting.",
+    "photo": "https://example.com/estates-rancho-mirage.jpg",
+    "features": [
+      "Elegant homes",
+      "Mountain views",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7671,
+      "longitude": -116.4214
+    },
+    "keywords": [
+      "The Estates homes for sale",
+      "Living in The Estates Rancho Mirage",
+      "Home prices in The Estates"
+    ],
+    "slug": "the-estates-at-rancho-mirage"
+  },
+  {
+    "id": 32,
+    "name": "Coronado Rancho Mirage",
+    "description": "A boutique gated community offering luxury homes with spacious designs and private pools. Coronado Rancho Mirage is ideal for those seeking exclusivity and a sophisticated lifestyle.",
+    "photo": "https://example.com/coronado.jpg",
+    "features": [
+      "Luxury homes",
+      "Private pools",
+      "Exclusive community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7659,
+      "longitude": -116.4252
+    },
+    "keywords": [
+      "Coronado homes for sale",
+      "Living in Coronado Rancho Mirage",
+      "Home prices in Coronado"
+    ],
+    "slug": "coronado-rancho-mirage"
+  },
+  {
+    "id": 33,
+    "name": "Rancho Paloma",
+    "description": "Rancho Paloma is a peaceful community offering charming homes with beautiful landscaping and a welcoming atmosphere. Its central location provides easy access to local amenities.",
+    "photo": "https://example.com/rancho-paloma.jpg",
+    "features": [
+      "Charming homes",
+      "Beautiful landscaping",
+      "Central location"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7685,
+      "longitude": -116.4173
+    },
+    "keywords": [
+      "Rancho Paloma homes for sale",
+      "Living in Rancho Paloma Rancho Mirage",
+      "Home prices in Rancho Paloma"
+    ],
+    "slug": "rancho-paloma"
+  },
+  {
+    "id": 34,
+    "name": "Versailles",
+    "description": "Versailles is a sought-after gated community featuring Mediterranean-style homes with elegant designs. Known for its tranquil streets and lush landscaping, it’s perfect for upscale living.",
+    "photo": "https://example.com/versailles.jpg",
+    "features": [
+      "Mediterranean-style homes",
+      "Elegant designs",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7667,
+      "longitude": -116.4267
+    },
+    "keywords": [
+      "Versailles homes for sale",
+      "Living in Versailles Rancho Mirage",
+      "Home prices in Versailles"
+    ],
+    "slug": "versailles"
+  },
+  {
+    "id": 35,
+    "name": "The Reserve",
+    "description": "The Reserve is an exclusive golf community offering luxurious homes surrounded by pristine fairways and natural desert beauty. Residents enjoy private club amenities and a serene lifestyle.",
+    "photo": "https://example.com/the-reserve.jpg",
+    "features": [
+      "Golf community",
+      "Luxurious homes",
+      "Private club amenities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7622,
+      "longitude": -116.4139
+    },
+    "keywords": [
+      "The Reserve homes for sale",
+      "Living in The Reserve Rancho Mirage",
+      "Home prices in The Reserve"
+    ],
+    "slug": "the-reserve"
+  },
+  {
+    "id": 36,
+    "name": "Rancho Mirage Country Club",
+    "description": "A prestigious gated community offering luxury condos and single-family homes with access to a private golf course and clubhouse amenities. Ideal for those seeking an active lifestyle.",
+    "photo": "https://example.com/rancho-mirage-cc.jpg",
+    "features": [
+      "Private golf course",
+      "Clubhouse amenities",
+      "Luxury condos"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.765,
+      "longitude": -116.4238
+    },
+    "keywords": [
+      "Rancho Mirage Country Club homes for sale",
+      "Living in Rancho Mirage Country Club",
+      "Home prices in Rancho Mirage Country Club"
+    ],
+    "slug": "rancho-mirage-country-club"
+  },
+  {
+    "id": 37,
+    "name": "The Renaissance at Clancy Lane",
+    "description": "A premier gated community on Clancy Lane featuring custom luxury homes with spacious layouts and upscale finishes. The Renaissance at Clancy Lane offers privacy and a tranquil desert setting.",
+    "photo": "https://example.com/renaissance-clancy-lane.jpg",
+    "features": [
+      "Custom luxury homes",
+      "Gated community",
+      "Tranquil setting"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7614,
+      "longitude": -116.4279
+    },
+    "keywords": [
+      "Renaissance at Clancy Lane homes for sale",
+      "Living in The Renaissance Rancho Mirage",
+      "Home prices in The Renaissance"
+    ],
+    "slug": "the-renaissance-at-clancy-lane"
+  },
+  {
+    "id": 38,
+    "name": "Alicante Rancho Mirage",
+    "description": "A boutique gated community offering contemporary homes with open floor plans and private outdoor spaces. Alicante Rancho Mirage is perfect for modern living with a touch of elegance.",
+    "photo": "https://example.com/alicante.jpg",
+    "features": [
+      "Contemporary homes",
+      "Private outdoor spaces",
+      "Boutique community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7638,
+      "longitude": -116.4182
+    },
+    "keywords": [
+      "Alicante Rancho Mirage homes for sale",
+      "Living in Alicante Rancho Mirage",
+      "Home prices in Alicante Rancho Mirage"
+    ],
+    "slug": "alicante-rancho-mirage"
+  },
+  {
+    "id": 39,
+    "name": "Ivy League Estates",
+    "description": "A charming gated community featuring spacious homes with classic designs and lush landscaping. Ivy League Estates offers a peaceful environment close to schools and amenities.",
+    "photo": "https://example.com/ivy-league.jpg",
+    "features": [
+      "Gated community",
+      "Classic designs",
+      "Lush landscaping"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7654,
+      "longitude": -116.4236
+    },
+    "keywords": [
+      "Ivy League Estates homes for sale",
+      "Living in Ivy League Estates Rancho Mirage",
+      "Home prices in Ivy League Estates"
+    ],
+    "slug": "ivy-league-estates"
+  },
+  {
+    "id": 40,
+    "name": "Los Cocos",
+    "description": "Los Cocos is a cozy gated community featuring stylish homes with private patios and lush surroundings. Residents enjoy a quiet lifestyle with access to community amenities like a pool and tennis courts.",
+    "photo": "https://example.com/los-cocos.jpg",
+    "features": [
+      "Private patios",
+      "Community pool",
+      "Tennis courts"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7631,
+      "longitude": -116.4247
+    },
+    "keywords": [
+      "Los Cocos homes for sale",
+      "Living in Los Cocos Rancho Mirage",
+      "Home prices in Los Cocos"
+    ],
+    "slug": "los-cocos"
+  },
+  {
+    "id": 41,
+    "name": "The Villas of Mirada",
+    "description": "Adjacent to the Ritz-Carlton, The Villas of Mirada is a luxurious gated community offering resort-style living and breathtaking views of the Coachella Valley.",
+    "photo": "https://example.com/villas-of-mirada.jpg",
+    "features": [
+      "Resort-style living",
+      "Luxurious homes",
+      "Proximity to Ritz-Carlton"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7589,
+      "longitude": -116.4101
+    },
+    "keywords": [
+      "The Villas of Mirada homes for sale",
+      "Living in Villas of Mirada Rancho Mirage",
+      "Home prices in Villas of Mirada"
+    ],
+    "slug": "the-villas-of-mirada"
+  },
+  {
+    "id": 42,
+    "name": "Villaggio on Sinatra",
+    "description": "Villaggio on Sinatra is an exclusive gated community offering luxury estates with spacious layouts and modern designs, perfect for upscale living.",
+    "photo": "https://example.com/villaggio.jpg",
+    "features": [
+      "Luxury estates",
+      "Spacious layouts",
+      "Modern designs"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7627,
+      "longitude": -116.4152
+    },
+    "keywords": [
+      "Villaggio on Sinatra homes for sale",
+      "Living in Villaggio Rancho Mirage",
+      "Home prices in Villaggio"
+    ],
+    "slug": "villaggio-on-sinatra"
+  },
+  {
+    "id": 43,
+    "name": "The Estates at Rancho Mirage",
+    "description": "A gated community featuring upscale homes with elegant designs and breathtaking views. The Estates at Rancho Mirage offers a blend of luxury and serene desert living.",
+    "photo": "https://example.com/estates-rancho-mirage.jpg",
+    "features": [
+      "Elegant designs",
+      "Gated community",
+      "Breathtaking views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7671,
+      "longitude": -116.4214
+    },
+    "keywords": [
+      "The Estates at Rancho Mirage homes for sale",
+      "Living in The Estates Rancho Mirage",
+      "Home prices in The Estates"
+    ],
+    "slug": "the-estates-at-rancho-mirage"
+  },
+  {
+    "id": 44,
+    "name": "Thunderbird Villas",
+    "description": "Thunderbird Villas is a historic neighborhood offering mid-century modern homes with stunning views and easy access to the Thunderbird Country Club.",
+    "photo": "https://example.com/thunderbird-villas.jpg",
+    "features": [
+      "Mid-century modern homes",
+      "Stunning views",
+      "Close to Thunderbird Country Club"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7601,
+      "longitude": -116.4352
+    },
+    "keywords": [
+      "Thunderbird Villas homes for sale",
+      "Living in Thunderbird Villas Rancho Mirage",
+      "Home prices in Thunderbird Villas"
+    ],
+    "slug": "thunderbird-villas"
+  },
+  {
+    "id": 45,
+    "name": "Versailles",
+    "description": "Versailles is a premier gated community offering Mediterranean-style homes with elegant designs and spacious layouts. Residents enjoy tranquil surroundings and proximity to local amenities.",
+    "photo": "https://example.com/versailles.jpg",
+    "features": [
+      "Mediterranean-style homes",
+      "Elegant designs",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7645,
+      "longitude": -116.4302
+    },
+    "keywords": [
+      "Versailles homes for sale",
+      "Living in Versailles Rancho Mirage",
+      "Home prices in Versailles"
+    ],
+    "slug": "versailles"
+  },
+  {
+    "id": 46,
+    "name": "The Springs Country Club",
+    "description": "The Springs Country Club is a luxurious golf course community featuring custom homes, world-class amenities, and a vibrant social scene. Perfect for those seeking an active and elegant lifestyle.",
+    "photo": "https://example.com/springs-country-club.jpg",
+    "features": [
+      "Golf course",
+      "World-class amenities",
+      "Vibrant social scene"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.763,
+      "longitude": -116.4175
+    },
+    "keywords": [
+      "The Springs Country Club homes for sale",
+      "Living in The Springs Rancho Mirage",
+      "Home prices in The Springs"
+    ],
+    "slug": "the-springs-country-club"
+  },
+  {
+    "id": 47,
+    "name": "Del Webb Rancho Mirage",
+    "description": "A 55+ active adult community, Del Webb Rancho Mirage offers resort-style living with beautifully designed homes, pools, fitness centers, and a variety of social activities.",
+    "photo": "https://example.com/del-webb.jpg",
+    "features": [
+      "55+ community",
+      "Resort-style amenities",
+      "Social activities"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7672,
+      "longitude": -116.4227
+    },
+    "keywords": [
+      "Del Webb homes for sale",
+      "Living in Del Webb Rancho Mirage",
+      "Home prices in Del Webb"
+    ],
+    "slug": "del-webb-rancho-mirage"
+  },
+  {
+    "id": 48,
+    "name": "Thunderbird Heights",
+    "description": "Thunderbird Heights is a historic and exclusive neighborhood featuring luxury homes with breathtaking views and direct access to Thunderbird Country Club.",
+    "photo": "https://example.com/thunderbird-heights.jpg",
+    "features": [
+      "Luxury homes",
+      "Breathtaking views",
+      "Historic neighborhood"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7583,
+      "longitude": -116.4296
+    },
+    "keywords": [
+      "Thunderbird Heights homes for sale",
+      "Living in Thunderbird Heights Rancho Mirage",
+      "Home prices in Thunderbird Heights"
+    ],
+    "slug": "thunderbird-heights"
+  },
+  {
+    "id": 49,
+    "name": "Mira Vista",
+    "description": "Mira Vista is a gated community known for its modern homes and scenic views. Residents enjoy access to tennis courts, a community pool, and nearby golf courses.",
+    "photo": "https://example.com/mira-vista.jpg",
+    "features": [
+      "Modern homes",
+      "Community amenities",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7658,
+      "longitude": -116.4185
+    },
+    "keywords": [
+      "Mira Vista homes for sale",
+      "Living in Mira Vista Rancho Mirage",
+      "Home prices in Mira Vista"
+    ],
+    "slug": "mira-vista"
+  },
+  {
+    "id": 50,
+    "name": "Lake Mirage Racquet Club",
+    "description": "A picturesque community offering condos and townhomes surrounded by tranquil lakes and lush landscapes. Lake Mirage Racquet Club is ideal for tennis enthusiasts and those seeking waterfront living.",
+    "photo": "https://example.com/lake-mirage.jpg",
+    "features": [
+      "Waterfront living",
+      "Tennis courts",
+      "Lush landscaping"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7639,
+      "longitude": -116.4261
+    },
+    "keywords": [
+      "Lake Mirage homes for sale",
+      "Living in Lake Mirage Rancho Mirage",
+      "Home prices in Lake Mirage"
+    ],
+    "slug": "lake-mirage-racquet-club"
+  },
+  {
+    "id": 51,
+    "name": "Mission Hills Country Club",
+    "description": "Mission Hills Country Club is a world-renowned community offering championship golf, tennis, and luxury homes. Residents enjoy a vibrant social scene and scenic surroundings.",
+    "photo": "https://example.com/mission-hills.jpg",
+    "features": [
+      "Championship golf",
+      "Tennis courts",
+      "Luxury homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7605,
+      "longitude": -116.4172
+    },
+    "keywords": [
+      "Mission Hills homes for sale",
+      "Living in Mission Hills Rancho Mirage",
+      "Home prices in Mission Hills"
+    ],
+    "slug": "mission-hills-country-club"
+  },
+  {
+    "id": 52,
+    "name": "Clancy Lane Estates",
+    "description": "Clancy Lane Estates is a prestigious community offering sprawling estates with equestrian facilities and modern luxury. Known for its privacy and elegance, it’s a premier address in Rancho Mirage.",
+    "photo": "https://example.com/clancy-lane.jpg",
+    "features": [
+      "Equestrian facilities",
+      "Luxury estates",
+      "Prestigious address"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7624,
+      "longitude": -116.4249
+    },
+    "keywords": [
+      "Clancy Lane Estates homes for sale",
+      "Living in Clancy Lane Rancho Mirage",
+      "Home prices in Clancy Lane Estates"
+    ],
+    "slug": "clancy-lane-estates"
+  },
+  {
+    "id": 53,
+    "name": "Tuscany",
+    "description": "Tuscany is a beautiful gated community featuring Tuscan-inspired homes with charming architecture and well-manicured landscapes. Residents enjoy a tranquil atmosphere and a community pool.",
+    "photo": "https://example.com/tuscany.jpg",
+    "features": [
+      "Tuscan-inspired homes",
+      "Community pool",
+      "Tranquil atmosphere"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.764,
+      "longitude": -116.4218
+    },
+    "keywords": [
+      "Tuscany homes for sale",
+      "Living in Tuscany Rancho Mirage",
+      "Home prices in Tuscany"
+    ],
+    "slug": "tuscany"
+  },
+  {
+    "id": 54,
+    "name": "Las Palmas Heights",
+    "description": "Las Palmas Heights is a prestigious gated community offering luxury homes with panoramic views of the valley and mountains. It’s a perfect blend of privacy and elegance.",
+    "photo": "https://example.com/las-palmas-heights.jpg",
+    "features": [
+      "Luxury homes",
+      "Panoramic views",
+      "Gated community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7627,
+      "longitude": -116.4259
+    },
+    "keywords": [
+      "Las Palmas Heights homes for sale",
+      "Living in Las Palmas Heights Rancho Mirage",
+      "Home prices in Las Palmas Heights"
+    ],
+    "slug": "las-palmas-heights"
+  },
+  {
+    "id": 55,
+    "name": "Ivy League Estates",
+    "description": "A charming gated neighborhood with spacious homes and lush greenery. Ivy League Estates is ideal for families and professionals seeking an upscale living experience.",
+    "photo": "https://example.com/ivy-league.jpg",
+    "features": [
+      "Gated community",
+      "Spacious homes",
+      "Lush greenery"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7653,
+      "longitude": -116.4232
+    },
+    "keywords": [
+      "Ivy League Estates homes for sale",
+      "Living in Ivy League Estates Rancho Mirage",
+      "Home prices in Ivy League Estates"
+    ],
+    "slug": "ivy-league-estates"
+  },
+  {
+    "id": 56,
+    "name": "Cielo",
+    "description": "Cielo is an exclusive community offering modern homes with expansive floor plans and stunning desert views. It’s a top choice for luxury and tranquility.",
+    "photo": "https://example.com/cielo.jpg",
+    "features": [
+      "Modern homes",
+      "Desert views",
+      "Exclusive community"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7604,
+      "longitude": -116.4247
+    },
+    "keywords": [
+      "Cielo homes for sale",
+      "Living in Cielo Rancho Mirage",
+      "Home prices in Cielo"
+    ],
+    "slug": "cielo"
+  },
+  {
+    "id": 57,
+    "name": "Sunrise Country Club",
+    "description": "A vibrant golf community offering condos and single-family homes surrounded by lush fairways and scenic landscapes. Sunrise Country Club is perfect for active lifestyles.",
+    "photo": "https://example.com/sunrise-country-club.jpg",
+    "features": [
+      "Golf community",
+      "Scenic landscapes",
+      "Active lifestyle"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7621,
+      "longitude": -116.4184
+    },
+    "keywords": [
+      "Sunrise Country Club homes for sale",
+      "Living in Sunrise Country Club Rancho Mirage",
+      "Home prices in Sunrise Country Club"
+    ],
+    "slug": "sunrise-country-club"
+  },
+  {
+    "id": 58,
+    "name": "Mission Shores",
+    "description": "Mission Shores is a lakeside community offering stylish homes with private docks and serene water views. Residents enjoy a quiet and luxurious lifestyle.",
+    "photo": "https://example.com/mission-shores.jpg",
+    "features": [
+      "Lakeside living",
+      "Private docks",
+      "Water views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7599,
+      "longitude": -116.426
+    },
+    "keywords": [
+      "Mission Shores homes for sale",
+      "Living in Mission Shores Rancho Mirage",
+      "Home prices in Mission Shores"
+    ],
+    "slug": "mission-shores"
+  },
+  {
+    "id": 59,
+    "name": "Monte Sereno",
+    "description": "Monte Sereno is a prestigious gated community featuring custom estates with unparalleled privacy and scenic mountain views. A haven for luxury living.",
+    "photo": "https://example.com/monte-sereno.jpg",
+    "features": [
+      "Custom estates",
+      "Privacy",
+      "Mountain views"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7586,
+      "longitude": -116.4223
+    },
+    "keywords": [
+      "Monte Sereno homes for sale",
+      "Living in Monte Sereno Rancho Mirage",
+      "Home prices in Monte Sereno"
+    ],
+    "slug": "monte-sereno"
+  },
+  {
+    "id": 60,
+    "name": "Victoria Falls",
+    "description": "Victoria Falls is a gated community offering a serene environment with spacious homes, tennis courts, and lush landscaping. It’s ideal for families and retirees alike.",
+    "photo": "https://example.com/victoria-falls.jpg",
+    "features": [
+      "Gated community",
+      "Tennis courts",
+      "Spacious homes"
+    ],
+    "location": "Rancho Mirage, CA",
+    "coordinates": {
+      "latitude": 33.7649,
+      "longitude": -116.4287
+    },
+    "keywords": [
+      "Victoria Falls homes for sale",
+      "Living in Victoria Falls Rancho Mirage",
+      "Home prices in Victoria Falls"
+    ],
+    "slug": "victoria-falls"
+  }
+]

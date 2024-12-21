@@ -1,0 +1,552 @@
+[
+  {
+    "id": 1,
+    "name": "Desert Edge",
+    "description": "A peaceful and quiet neighborhood known for its cleanliness and safety, with a strong sense of community.",
+    "photo": "https://example.com/desert-edge.jpg",
+    "features": [
+      "Quiet streets",
+      "Community-oriented",
+      "Clean environment"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9595,
+      "longitude": -116.5087
+    },
+    "keywords": [
+      "Desert Edge homes for sale",
+      "Moving to Desert Edge Desert Hot Springs",
+      "Home prices in Desert Edge"
+    ],
+    "slug": "desert-edge"
+  },
+  {
+    "id": 2,
+    "name": "Wardman Heights",
+    "description": "A family-friendly area appreciated for its beautiful hill views and tranquil atmosphere, ideal for walking and enjoying the surroundings.",
+    "photo": "https://example.com/wardman-heights.jpg",
+    "features": [
+      "Hill views",
+      "Family-friendly",
+      "Walkable neighborhood"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9458,
+      "longitude": -116.4975
+    },
+    "keywords": [
+      "Wardman Heights homes for sale",
+      "Moving to Wardman Heights Desert Hot Springs",
+      "Home prices in Wardman Heights"
+    ],
+    "slug": "wardman-heights"
+  },
+  {
+    "id": 3,
+    "name": "Mission Lakes Country Club",
+    "description": "A premier golf community offering an 18-hole championship course and resort-style amenities.",
+    "photo": "https://example.com/mission-lakes.jpg",
+    "features": [
+      "Golf course",
+      "Clubhouse",
+      "Resort amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9775,
+      "longitude": -116.538
+    },
+    "keywords": [
+      "Mission Lakes Country Club homes for sale",
+      "Living in Mission Lakes Country Club",
+      "Home prices in Mission Lakes Country Club"
+    ],
+    "slug": "mission-lakes-country-club"
+  },
+  {
+    "id": 4,
+    "name": "Sky Valley Resort",
+    "description": "A resort-style community known for its natural mineral hot springs, offering a relaxing spa-like atmosphere.",
+    "photo": "https://example.com/sky-valley-resort.jpg",
+    "features": [
+      "Natural hot springs",
+      "Resort-style living",
+      "Spa amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9228,
+      "longitude": -116.3763
+    },
+    "keywords": [
+      "Sky Valley Resort homes for sale",
+      "Moving to Sky Valley Resort",
+      "Home prices in Sky Valley Resort"
+    ],
+    "slug": "sky-valley-resort"
+  },
+  {
+    "id": 5,
+    "name": "Hidden Springs Country Club",
+    "description": "A 55+ community with a 9-hole golf course, offering quiet living and scenic desert views.",
+    "photo": "https://example.com/hidden-springs.jpg",
+    "features": [
+      "55+ community",
+      "9-hole golf course",
+      "Scenic desert views"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9414,
+      "longitude": -116.5252
+    },
+    "keywords": [
+      "Hidden Springs Country Club homes for sale",
+      "Moving to Hidden Springs Country Club",
+      "Home prices in Hidden Springs Country Club"
+    ],
+    "slug": "hidden-springs-country-club"
+  },
+  {
+    "id": 6,
+    "name": "Desert Springs Estates",
+    "description": "A quiet, friendly neighborhood favored for its dog-friendly parks and stunning views.",
+    "photo": "https://example.com/desert-springs-estates.jpg",
+    "features": [
+      "Dog-friendly parks",
+      "Stunning desert views",
+      "Quiet community"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9442,
+      "longitude": -116.5117
+    },
+    "keywords": [
+      "Desert Springs Estates homes for sale",
+      "Moving to Desert Springs Estates",
+      "Home prices in Desert Springs Estates"
+    ],
+    "slug": "desert-springs-estates"
+  },
+  {
+    "id": 7,
+    "name": "Agua Dulce",
+    "description": "A family-oriented neighborhood known for its affordability and proximity to local amenities.",
+    "photo": "https://example.com/agua-dulce.jpg",
+    "features": [
+      "Affordable housing",
+      "Family-friendly",
+      "Proximity to amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9378,
+      "longitude": -116.4939
+    },
+    "keywords": [
+      "Agua Dulce homes for sale",
+      "Living in Agua Dulce Desert Hot Springs",
+      "Home prices in Agua Dulce"
+    ],
+    "slug": "agua-dulce"
+  },
+  {
+    "id": 8,
+    "name": "Rancho Del Oro",
+    "description": "A peaceful neighborhood with spacious lots and panoramic desert and mountain views.",
+    "photo": "https://example.com/rancho-del-oro.jpg",
+    "features": [
+      "Spacious lots",
+      "Panoramic views",
+      "Quiet environment"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9315,
+      "longitude": -116.4823
+    },
+    "keywords": [
+      "Rancho Del Oro homes for sale",
+      "Living in Rancho Del Oro Desert Hot Springs",
+      "Home prices in Rancho Del Oro"
+    ],
+    "slug": "rancho-del-oro"
+  },
+  {
+    "id": 9,
+    "name": "The Highlands",
+    "description": "A hillside community offering stunning views, tranquility, and close access to hiking trails.",
+    "photo": "https://example.com/the-highlands.jpg",
+    "features": [
+      "Hillside living",
+      "Hiking trails",
+      "Stunning views"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9501,
+      "longitude": -116.5012
+    },
+    "keywords": [
+      "The Highlands homes for sale",
+      "Moving to The Highlands Desert Hot Springs",
+      "Home prices in The Highlands"
+    ],
+    "slug": "the-highlands"
+  },
+  {
+    "id": 10,
+    "name": "Paradise Springs",
+    "description": "A gated 55+ community known for its active lifestyle, clubhouse amenities, and welcoming atmosphere.",
+    "photo": "https://example.com/paradise-springs.jpg",
+    "features": [
+      "Gated 55+ community",
+      "Active lifestyle",
+      "Clubhouse amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9274,
+      "longitude": -116.5108
+    },
+    "keywords": [
+      "Paradise Springs homes for sale",
+      "Living in Paradise Springs Desert Hot Springs",
+      "Home prices in Paradise Springs"
+    ],
+    "slug": "paradise-springs"
+  },
+  {
+    "id": 6,
+    "name": "Desert Springs Estates",
+    "description": "A quiet, friendly neighborhood favored for its dog-friendly parks and stunning views.",
+    "photo": "https://example.com/desert-springs-estates.jpg",
+    "features": [
+      "Dog-friendly parks",
+      "Stunning desert views",
+      "Quiet community"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9442,
+      "longitude": -116.5117
+    },
+    "keywords": [
+      "Desert Springs Estates homes for sale",
+      "Moving to Desert Springs Estates",
+      "Home prices in Desert Springs Estates"
+    ],
+    "slug": "desert-springs-estates"
+  },
+  {
+    "id": 7,
+    "name": "Agua Dulce",
+    "description": "A family-oriented neighborhood known for its affordability and proximity to local amenities.",
+    "photo": "https://example.com/agua-dulce.jpg",
+    "features": [
+      "Affordable housing",
+      "Family-friendly",
+      "Proximity to amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9378,
+      "longitude": -116.4939
+    },
+    "keywords": [
+      "Agua Dulce homes for sale",
+      "Living in Agua Dulce Desert Hot Springs",
+      "Home prices in Agua Dulce"
+    ],
+    "slug": "agua-dulce"
+  },
+  {
+    "id": 8,
+    "name": "Rancho Del Oro",
+    "description": "A peaceful neighborhood with spacious lots and panoramic desert and mountain views.",
+    "photo": "https://example.com/rancho-del-oro.jpg",
+    "features": [
+      "Spacious lots",
+      "Panoramic views",
+      "Quiet environment"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9315,
+      "longitude": -116.4823
+    },
+    "keywords": [
+      "Rancho Del Oro homes for sale",
+      "Living in Rancho Del Oro Desert Hot Springs",
+      "Home prices in Rancho Del Oro"
+    ],
+    "slug": "rancho-del-oro"
+  },
+  {
+    "id": 9,
+    "name": "The Highlands",
+    "description": "A hillside community offering stunning views, tranquility, and close access to hiking trails.",
+    "photo": "https://example.com/the-highlands.jpg",
+    "features": [
+      "Hillside living",
+      "Hiking trails",
+      "Stunning views"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9501,
+      "longitude": -116.5012
+    },
+    "keywords": [
+      "The Highlands homes for sale",
+      "Moving to The Highlands Desert Hot Springs",
+      "Home prices in The Highlands"
+    ],
+    "slug": "the-highlands"
+  },
+  {
+    "id": 10,
+    "name": "Paradise Springs",
+    "description": "A gated 55+ community known for its active lifestyle, clubhouse amenities, and welcoming atmosphere.",
+    "photo": "https://example.com/paradise-springs.jpg",
+    "features": [
+      "Gated 55+ community",
+      "Active lifestyle",
+      "Clubhouse amenities"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9274,
+      "longitude": -116.5108
+    },
+    "keywords": [
+      "Paradise Springs homes for sale",
+      "Living in Paradise Springs Desert Hot Springs",
+      "Home prices in Paradise Springs"
+    ],
+    "slug": "paradise-springs"
+  },
+  {
+    "id": 11,
+    "name": "Dos Palmas",
+    "description": "A small, family-friendly neighborhood offering affordability and a close-knit community atmosphere.",
+    "photo": "https://example.com/dos-palmas.jpg",
+    "features": [
+      "Family-friendly",
+      "Affordable housing",
+      "Close-knit community"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9362,
+      "longitude": -116.4904
+    },
+    "keywords": [
+      "Dos Palmas homes for sale",
+      "Living in Dos Palmas Desert Hot Springs",
+      "Home prices in Dos Palmas"
+    ],
+    "slug": "dos-palmas"
+  },
+  {
+    "id": 12,
+    "name": "Hot Springs Oasis",
+    "description": "A peaceful neighborhood centered around the natural hot springs, offering a resort-like environment.",
+    "photo": "https://example.com/hot-springs-oasis.jpg",
+    "features": [
+      "Natural hot springs",
+      "Resort-like living",
+      "Peaceful environment"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9287,
+      "longitude": -116.5132
+    },
+    "keywords": [
+      "Hot Springs Oasis homes for sale",
+      "Living in Hot Springs Oasis Desert Hot Springs",
+      "Home prices in Hot Springs Oasis"
+    ],
+    "slug": "hot-springs-oasis"
+  },
+  {
+    "id": 13,
+    "name": "North Palm Springs",
+    "description": "A diverse community offering affordable homes and convenient access to Desert Hot Springs and Palm Springs amenities.",
+    "photo": "https://example.com/north-palm-springs.jpg",
+    "features": [
+      "Affordable homes",
+      "Diverse community",
+      "Convenient location"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9226,
+      "longitude": -116.5441
+    },
+    "keywords": [
+      "North Palm Springs homes for sale",
+      "Living in North Palm Springs",
+      "Home prices in North Palm Springs"
+    ],
+    "slug": "north-palm-springs"
+  },
+  {
+    "id": 14,
+    "name": "Sky Haven",
+    "description": "A serene neighborhood with expansive desert views, ideal for those seeking quiet living.",
+    "photo": "https://example.com/sky-haven.jpg",
+    "features": [
+      "Expansive views",
+      "Quiet living",
+      "Desert landscape"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9212,
+      "longitude": -116.5129
+    },
+    "keywords": [
+      "Sky Haven homes for sale",
+      "Living in Sky Haven Desert Hot Springs",
+      "Home prices in Sky Haven"
+    ],
+    "slug": "sky-haven"
+  },
+  {
+    "id": 15,
+    "name": "B-Bar-H Ranch",
+    "description": "A historic neighborhood offering a mix of modern and vintage homes with a rustic ranch charm.",
+    "photo": "https://example.com/b-bar-h-ranch.jpg",
+    "features": [
+      "Rustic charm",
+      "Historic homes",
+      "Modern updates"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9128,
+      "longitude": -116.4832
+    },
+    "keywords": [
+      "B-Bar-H Ranch homes for sale",
+      "Living in B-Bar-H Ranch Desert Hot Springs",
+      "Home prices in B-Bar-H Ranch"
+    ],
+    "slug": "b-bar-h-ranch"
+  },
+  {
+    "id": 16,
+    "name": "Hacienda Heights",
+    "description": "A tranquil community with spacious homes and stunning views of the surrounding mountains.",
+    "photo": "https://example.com/hacienda-heights.jpg",
+    "features": [
+      "Spacious homes",
+      "Mountain views",
+      "Tranquil environment"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9423,
+      "longitude": -116.5109
+    },
+    "keywords": [
+      "Hacienda Heights homes for sale",
+      "Living in Hacienda Heights Desert Hot Springs",
+      "Home prices in Hacienda Heights"
+    ],
+    "slug": "hacienda-heights"
+  },
+  {
+    "id": 17,
+    "name": "Desert View Estates",
+    "description": "A family-friendly neighborhood offering affordable homes and access to local schools and amenities.",
+    "photo": "https://example.com/desert-view-estates.jpg",
+    "features": [
+      "Family-friendly",
+      "Affordable homes",
+      "Close to schools"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9342,
+      "longitude": -116.4987
+    },
+    "keywords": [
+      "Desert View Estates homes for sale",
+      "Living in Desert View Estates Desert Hot Springs",
+      "Home prices in Desert View Estates"
+    ],
+    "slug": "desert-view-estates"
+  },
+  {
+    "id": 18,
+    "name": "Mountain View Country Estates",
+    "description": "A gated community featuring modern homes, private amenities, and scenic mountain views.",
+    "photo": "https://example.com/mountain-view-estates.jpg",
+    "features": [
+      "Gated community",
+      "Modern homes",
+      "Mountain views"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9218,
+      "longitude": -116.5031
+    },
+    "keywords": [
+      "Mountain View Country Estates homes for sale",
+      "Living in Mountain View Estates Desert Hot Springs",
+      "Home prices in Mountain View Estates"
+    ],
+    "slug": "mountain-view-country-estates"
+  },
+  {
+    "id": 19,
+    "name": "Hidden Valley",
+    "description": "A peaceful community with a blend of modern and traditional homes, offering a secluded yet accessible location.",
+    "photo": "https://example.com/hidden-valley.jpg",
+    "features": [
+      "Secluded location",
+      "Modern homes",
+      "Quiet living"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9304,
+      "longitude": -116.4956
+    },
+    "keywords": [
+      "Hidden Valley homes for sale",
+      "Living in Hidden Valley Desert Hot Springs",
+      "Home prices in Hidden Valley"
+    ],
+    "slug": "hidden-valley"
+  },
+  {
+    "id": 20,
+    "name": "Rancho Buena Vista",
+    "description": "A highly sought-after neighborhood known for its expansive lots and luxurious homes.",
+    "photo": "https://example.com/rancho-buena-vista.jpg",
+    "features": [
+      "Expansive lots",
+      "Luxury homes",
+      "Quiet surroundings"
+    ],
+    "location": "Desert Hot Springs, CA",
+    "coordinates": {
+      "latitude": 33.9401,
+      "longitude": -116.5124
+    },
+    "keywords": [
+      "Rancho Buena Vista homes for sale",
+      "Living in Rancho Buena Vista Desert Hot Springs",
+      "Home prices in Rancho Buena Vista"
+    ],
+    "slug": "rancho-buena-vista"
+  }
+]

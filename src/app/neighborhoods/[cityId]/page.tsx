@@ -1,19 +1,78 @@
 import React from "react";
-import VariableHero from "@/components/VariableHero"; // Adjusted component imports
+import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
+import LocalInfoCard from "@/components/LocalInfoCard";
+import { generateSlug } from "@/utils/slug";
+import subdivisions from "@/constants/subdivisions";
+import Image from "next/image";
+
+// Generate metadata for the city page
+export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
+  const city = coachellaValleyCities.find((c) => c.id === params.cityId);
+  if (!city) return {};
+
+  return {
+    title: `${city.name} Real Estate | Coachella Valley`,
+    description: `Explore homes and properties in ${city.name}, a beautiful community in the Coachella Valley.`,
+  };
+}
 
 export default async function CityPage({ params }: { params: Promise<{ cityId: string }> }) {
-  const resolvedParams = await params; // Await the params promise
+  const resolvedParams = await params;
   const { cityId } = resolvedParams;
 
-  // Step 2: Find the city data based on cityId
+  // Find the city data based on cityId
   const city = coachellaValleyCities.find((c) => c.id === cityId);
 
-  // Step 3: Handle city not found
+  // Handle city not found
   if (!city) {
     notFound(); // Returns a 404 page
   }
+
+  // Get subdivisions for the city
+  const citySubdivisions = subdivisions[`${cityId}-neighborhood` as keyof typeof subdivisions] || [];
+
+  // Generate slugs dynamically for the infoCards
+  const infoCards = [
+    {
+      title: "Subdivisions",
+      description: "Explore subdivisions in Coachella Valley.",
+      imageUrl: "/images/subdivisions.jpg",
+      link: { text: "View Subdivisions", href: `/neighborhoods/${cityId}/subdivisions` },
+    },
+    {
+      title: "Find HOA",
+      description: "Looking to get ahold of the HOA?",
+      imageUrl: "/images/hoa-banner.jpg",
+      link: { text: "HOA Contact Info", href: `/neighborhoods/${cityId}/hoa-contact-info}` },
+    },
+    {
+      title: "Schools",
+      description: "Find the best schools in the area.",
+      imageUrl: "/images/schools.jpg",
+      link: { text: "View Schools", href: `/neighborhoods/${cityId}/${generateSlug("Schools")}` },
+    },
+    {
+      title: "Restaurants",
+      description: "Discover popular dining spots.",
+      imageUrl: "/images/restaurants.jpg",
+      link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/${generateSlug("Restaurants")}` },
+    },
+    {
+      title: "Events",
+      description: "Check out local events happening around.",
+      imageUrl: "/images/events.jpg",
+      link: { text: "View Events", href: `/neighborhoods/${cityId}/${generateSlug("Events")}` },
+    },
+    {
+      title: "Businesses",
+      description: "Explore local businesses.",
+      imageUrl: "/images/businesses.jpg",
+      link: { text: "View Businesses", href: `/neighborhoods/${cityId}/${generateSlug("Businesses")}` },
+    },
+  ];
 
   return (
     <>
@@ -34,6 +93,42 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
           <p className="text-xl font-semibold">
             Population: {city.population.toLocaleString()}
           </p>
+        </div>
+      </section>
+
+      {/* Local Info Section */}
+      <section className="py-10 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {infoCards.map((card, index) => (
+              <LocalInfoCard key={index} {...card} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Subdivisions Section */}
+      <section className="py-10 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {citySubdivisions.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {citySubdivisions.map((subdivision) => (
+                <div key={subdivision.name} className="p-4 bg-white rounded shadow">
+                  <Image
+                    src={subdivision.photo}
+                    alt={subdivision.name}
+                    width={300}
+                    height={200}
+                    className="mb-4 rounded"
+                  />
+                  <h2 className="text-xl font-semibold">{subdivision.name}</h2>
+                  <p>{subdivision.description}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No subdivisions available for this city.</p>
+          )}
         </div>
       </section>
     </>
