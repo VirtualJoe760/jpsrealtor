@@ -1,0 +1,68 @@
+[
+    {
+        "id": 2,
+        "name": "Town Center",
+        "description": "The Town Center area of Thermal features a mix of mobile homes and single-family residences, reflecting the community's modest lifestyle. With its central location, residents enjoy convenient access to local services and schools.",
+        "photo": "https://www.desertsun.com/gcdn/presto/2019/10/09/PPAS/b5cfbcc8-bcee-4df9-a590-32464b18e500-Chicanita0819.JPG?width=1200&disable=upscale&format=pjpg&auto=webp",
+        "features": [
+            "Modest homes",
+            "Central location",
+            "Proximity to services"
+        ],
+        "location": "Thermal, CA",
+        "coordinates": {
+            "latitude": 33.6305,
+            "longitude": -116.1387
+        },
+        "keywords": [
+            "Town Center homes for sale",
+            "Affordable neighborhoods in Thermal",
+            "Modest living in Thermal"
+        ],
+        "slug": "town-center"
+    },
+    {
+        "id": 3,
+        "name": "The Thermal Club",
+        "description": "The Thermal Club is an ultra-exclusive motorsports country club offering a one-of-a-kind lifestyle for automotive enthusiasts. This luxury community features custom-built villas designed to blend sophistication with the thrill of motorsports. Residents enjoy access to private race tracks, a state-of-the-art clubhouse, and luxury amenities, including fine dining, a spa, and fitness facilities. Surrounded by the breathtaking desert landscape, The Thermal Club is the epitome of luxury living with an adrenaline-filled twist.",
+        "photo": "https://tse4.mm.bing.net/th?id=OIP.cP6_Sgq3y97VTQdsMV484QHaE8&pid=Api",
+        "features": [
+            "Private race tracks",
+            "Custom-built villas",
+            "Luxury clubhouse and amenities"
+        ],
+        "location": "Thermal, CA",
+        "coordinates": {
+            "latitude": 33.6397,
+            "longitude": -116.1408
+        },
+        "keywords": [
+            "The Thermal Club homes for sale",
+            "Luxury motorsports communities",
+            "Exclusive neighborhoods in Thermal"
+        ],
+        "slug": "the-thermal-club"
+    },
+    {
+        "id": 4,
+        "name": "Desert Ridge Estates",
+        "description": "Desert Ridge Estates is a quiet, family-friendly neighborhood offering single-family homes with spacious lots. Known for its rural charm and scenic surroundings, this community is perfect for those seeking a tranquil desert lifestyle.",
+        "photo": "https://tse2.mm.bing.net/th?id=OIP.ZvCDcg5lQSXoNHpCMfnV5wHaE8&pid=Api",
+        "features": [
+            "Family-friendly",
+            "Spacious lots",
+            "Scenic desert surroundings"
+        ],
+        "location": "Thermal, CA",
+        "coordinates": {
+            "latitude": 33.6284,
+            "longitude": -116.1572
+        },
+        "keywords": [
+            "Desert Ridge Estates homes for sale",
+            "Family neighborhoods in Thermal",
+            "Quiet communities in Thermal"
+        ],
+        "slug": "desert-ridge-estates"
+    }
+]

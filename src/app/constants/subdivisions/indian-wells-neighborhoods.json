@@ -1,310 +1,288 @@
 [
-  {
-    "id": 1,
-    "name": "Indian Wells Country Club",
-    "description": "Established in 1956, Indian Wells Country Club is a historic and iconic community offering a mix of elegant condos, charming villas, and luxurious custom estates. Known as the 'Fun Club of the Desert,' this community exudes warmth and camaraderie. Residents enjoy access to two championship golf courses, stunning mountain views, and a vibrant social scene that blends tradition with modern living.",
-    "photo": "https://example.com/indian-wells-country-club.jpg",
-    "features": [
-      "Two championship golf courses",
-      "Vibrant social scene",
-      "Historic charm"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7215,
-      "longitude": -116.3368
+    {
+        "id": 1,
+        "name": "Indian Wells Country Club",
+        "description": "Established in 1956, Indian Wells Country Club is a historic and iconic community offering a mix of elegant condos, charming villas, and luxurious custom estates. Known as the 'Fun Club of the Desert,' this community exudes warmth and camaraderie. Residents enjoy access to two championship golf courses, stunning mountain views, and a vibrant social scene that blends tradition with modern living.",
+        "photo": "https://tse1.mm.bing.net/th?id=OIP.OmY9rl-g6YOpfX7Y85mLzQHaFj&pid=Api",
+        "features": [
+            "Two championship golf courses",
+            "Vibrant social scene",
+            "Historic charm"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7215,
+            "longitude": -116.3368
+        },
+        "keywords": [
+            "Indian Wells Country Club homes for sale",
+            "Living in Indian Wells Country Club",
+            "Luxury golf communities in Indian Wells"
+        ],
+        "slug": "indian-wells-country-club"
     },
-    "keywords": [
-      "Indian Wells Country Club homes for sale",
-      "Living in Indian Wells Country Club",
-      "Luxury golf communities in Indian Wells"
-    ],
-    "slug": "indian-wells-country-club"
-  },
-  {
-    "id": 2,
-    "name": "The Vintage Club",
-    "description": "The Vintage Club is the pinnacle of exclusivity and elegance, offering ultra-luxury homes within a secure, gated community. Renowned for its two Tom Fazio-designed golf courses, The Vintage Club combines world-class amenities with unmatched privacy. Residents enjoy stunning estates, a state-of-the-art fitness center, fine dining, and a spa, all nestled amidst breathtaking desert and mountain landscapes.",
-    "photo": "https://example.com/vintage-club.jpg",
-    "features": [
-      "Two Tom Fazio-designed golf courses",
-      "World-class amenities",
-      "Ultra-luxury homes"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7202,
-      "longitude": -116.3471
+    {
+        "id": 2,
+        "name": "The Vintage Club",
+        "description": "The Vintage Club is the pinnacle of exclusivity and elegance, offering ultra-luxury homes within a secure, gated community. Renowned for its two Tom Fazio-designed golf courses, The Vintage Club combines world-class amenities with unmatched privacy. Residents enjoy stunning estates, a state-of-the-art fitness center, fine dining, and a spa, all nestled amidst breathtaking desert and mountain landscapes.",
+        "photo": "https://tse3.mm.bing.net/th?id=OIP.70WOKKScLgQ9BTYsSfsnUgHaE8&pid=Api",
+        "features": [
+            "Two Tom Fazio-designed golf courses",
+            "World-class amenities",
+            "Ultra-luxury homes"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7202,
+            "longitude": -116.3471
+        },
+        "keywords": [
+            "The Vintage Club homes for sale",
+            "Living in The Vintage Club Indian Wells",
+            "Exclusive golf communities in Indian Wells"
+        ],
+        "slug": "the-vintage-club"
     },
-    "keywords": [
-      "The Vintage Club homes for sale",
-      "Living in The Vintage Club Indian Wells",
-      "Exclusive golf communities in Indian Wells"
-    ],
-    "slug": "the-vintage-club"
-  },
-  {
-    "id": 3,
-    "name": "Toscana Country Club",
-    "description": "Toscana Country Club is a private, gated community that epitomizes luxury and sophistication. Featuring two Jack Nicklaus Signature golf courses, Toscana offers custom-built homes and villas with timeless architectural designs. With its vibrant club life, spa, and wellness center, Toscana is perfect for those seeking an active yet serene lifestyle in the heart of Indian Wells.",
-    "photo": "https://example.com/toscana-country-club.jpg",
-    "features": [
-      "Two Jack Nicklaus Signature golf courses",
-      "Custom-built homes and villas",
-      "Active club life"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7238,
-      "longitude": -116.3449
+    {
+        "id": 3,
+        "name": "Toscana Country Club",
+        "description": "Toscana Country Club is a private, gated community that epitomizes luxury and sophistication. Featuring two Jack Nicklaus Signature golf courses, Toscana offers custom-built homes and villas with timeless architectural designs. With its vibrant club life, spa, and wellness center, Toscana is perfect for those seeking an active yet serene lifestyle in the heart of Indian Wells.",
+        "photo": "https://tse1.mm.bing.net/th?id=OIP.mgdhXxcsUFpZ1mvcNqdAmgHaHa&pid=Api",
+        "features": [
+            "Two Jack Nicklaus Signature golf courses",
+            "Custom-built homes and villas",
+            "Active club life"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7238,
+            "longitude": -116.3449
+        },
+        "keywords": [
+            "Toscana Country Club homes for sale",
+            "Living in Toscana Country Club Indian Wells",
+            "Luxury communities in Indian Wells"
+        ],
+        "slug": "toscana-country-club"
     },
-    "keywords": [
-      "Toscana Country Club homes for sale",
-      "Living in Toscana Country Club Indian Wells",
-      "Luxury communities in Indian Wells"
-    ],
-    "slug": "toscana-country-club"
-  },
-  {
-    "id": 4,
-    "name": "Desert Horizons Country Club",
-    "description": "Desert Horizons Country Club is a serene and picturesque community offering elegant homes surrounded by a championship golf course. Residents enjoy access to tennis courts, a fitness center, and fine dining, all within a beautifully landscaped, gated environment. Its central location provides easy access to Indian Wells' finest amenities.",
-    "photo": "https://example.com/desert-horizons.jpg",
-    "features": [
-      "Championship golf course",
-      "Elegant homes",
-      "Gated community"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7185,
-      "longitude": -116.3462
+    {
+        "id": 4,
+        "name": "Desert Horizons Country Club",
+        "description": "Desert Horizons Country Club is a serene and picturesque community offering elegant homes surrounded by a championship golf course. Residents enjoy access to tennis courts, a fitness center, and fine dining, all within a beautifully landscaped, gated environment. Its central location provides easy access to Indian Wells' finest amenities.",
+        "photo": "https://tse4.mm.bing.net/th?id=OIP.18khcXZm6urgfjlMqB3u8wHaE8&pid=Api",
+        "features": [
+            "Championship golf course",
+            "Elegant homes",
+            "Gated community"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7185,
+            "longitude": -116.3462
+        },
+        "keywords": [
+            "Desert Horizons homes for sale",
+            "Living in Desert Horizons Indian Wells",
+            "Gated communities in Indian Wells"
+        ],
+        "slug": "desert-horizons-country-club"
     },
-    "keywords": [
-      "Desert Horizons homes for sale",
-      "Living in Desert Horizons Indian Wells",
-      "Gated communities in Indian Wells"
-    ],
-    "slug": "desert-horizons-country-club"
-  },
-  {
-    "id": 5,
-    "name": "Eldorado Country Club",
-    "description": "Eldorado Country Club, established in 1957, offers a timeless blend of tradition and luxury. This prestigious community features custom-built homes, a classic golf course, and a warm, welcoming atmosphere. Residents enjoy access to world-class amenities, including a spa, fitness center, and fine dining, all set against the stunning backdrop of the Santa Rosa Mountains.",
-    "photo": "https://example.com/eldorado-country-club.jpg",
-    "features": [
-      "Custom-built homes",
-      "Classic golf course",
-      "World-class amenities"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.718,
-      "longitude": -116.3437
+    {
+        "id": 5,
+        "name": "Eldorado Country Club",
+        "description": "Eldorado Country Club, established in 1957, offers a timeless blend of tradition and luxury. This prestigious community features custom-built homes, a classic golf course, and a warm, welcoming atmosphere. Residents enjoy access to world-class amenities, including a spa, fitness center, and fine dining, all set against the stunning backdrop of the Santa Rosa Mountains.",
+        "photo": "https://tse4.mm.bing.net/th?id=OIP.Hf4kDM0ENVP4yFwok3baqgHaDm&pid=Api",
+        "features": [
+            "Custom-built homes",
+            "Classic golf course",
+            "World-class amenities"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.718,
+            "longitude": -116.3437
+        },
+        "keywords": [
+            "Eldorado Country Club homes for sale",
+            "Living in Eldorado Indian Wells",
+            "Historic golf communities in Indian Wells"
+        ],
+        "slug": "eldorado-country-club"
     },
-    "keywords": [
-      "Eldorado Country Club homes for sale",
-      "Living in Eldorado Indian Wells",
-      "Historic golf communities in Indian Wells"
-    ],
-    "slug": "eldorado-country-club"
-  },
-  {
-    "id": 6,
-    "name": "Montelena",
-    "description": "Montelena is a boutique, gated community offering luxury single-family homes in a tranquil desert setting. With its proximity to the Indian Wells Tennis Garden and fine dining, Montelena perfectly balances exclusivity and convenience. Residents enjoy spacious floor plans, lush landscaping, and a serene atmosphere.",
-    "photo": "https://example.com/montelena.jpg",
-    "features": [
-      "Luxury single-family homes",
-      "Gated community",
-      "Proximity to Tennis Garden"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.722,
-      "longitude": -116.341
+    {
+        "id": 6,
+        "name": "Montelena",
+        "description": "Montelena is a boutique, gated community offering luxury single-family homes in a tranquil desert setting. With its proximity to the Indian Wells Tennis Garden and fine dining, Montelena perfectly balances exclusivity and convenience. Residents enjoy spacious floor plans, lush landscaping, and a serene atmosphere.",
+        "photo": "https://tse2.mm.bing.net/th?id=OIP._B5LSs4TTJucycQorhXU8QHaEO&pid=Api",
+        "features": [
+            "Luxury single-family homes",
+            "Gated community",
+            "Proximity to Tennis Garden"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.722,
+            "longitude": -116.341
+        },
+        "keywords": [
+            "Montelena homes for sale",
+            "Living in Montelena Indian Wells",
+            "Luxury homes in Indian Wells"
+        ],
+        "slug": "montelena"
     },
-    "keywords": [
-      "Montelena homes for sale",
-      "Living in Montelena Indian Wells",
-      "Luxury homes in Indian Wells"
-    ],
-    "slug": "montelena"
-  },
-  {
-    "id": 7,
-    "name": "Mountain Cove",
-    "description": "Nestled against the majestic foothills, Mountain Cove is a gated community offering condos and homes with scenic mountain views. This peaceful neighborhood provides a perfect retreat while still being close to Indian Wells’ finest amenities.",
-    "photo": "https://example.com/mountain-cove.jpg",
-    "features": [
-      "Scenic mountain views",
-      "Gated community",
-      "Peaceful retreat"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7154,
-      "longitude": -116.3402
+    {
+        "id": 7,
+        "name": "Mountain Cove",
+        "description": "Nestled against the majestic foothills, Mountain Cove is a gated community offering condos and homes with scenic mountain views. This peaceful neighborhood provides a perfect retreat while still being close to Indian Wells\u2019 finest amenities.",
+        "photo": "https://tse2.mm.bing.net/th?id=OIP.4X8WmVVvMgMsyTtZ8fqOpQHaE7&pid=Api",
+        "features": [
+            "Scenic mountain views",
+            "Gated community",
+            "Peaceful retreat"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7154,
+            "longitude": -116.3402
+        },
+        "keywords": [
+            "Mountain Cove homes for sale",
+            "Living in Mountain Cove Indian Wells",
+            "Scenic neighborhoods in Indian Wells"
+        ],
+        "slug": "mountain-cove"
     },
-    "keywords": [
-      "Mountain Cove homes for sale",
-      "Living in Mountain Cove Indian Wells",
-      "Scenic neighborhoods in Indian Wells"
-    ],
-    "slug": "mountain-cove"
-  },
-  {
-    "id": 8,
-    "name": "Colony Cove",
-    "description": "Colony Cove is a charming gated community featuring single-family homes with Mediterranean-inspired architecture. Known for its peaceful ambiance and lush landscaping, it’s an ideal neighborhood for those seeking tranquility and proximity to Indian Wells' amenities.",
-    "photo": "https://example.com/colony-cove.jpg",
-    "features": [
-      "Mediterranean-inspired homes",
-      "Gated community",
-      "Tranquil setting"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7201,
-      "longitude": -116.3443
+    {
+        "id": 8,
+        "name": "Colony Cove",
+        "description": "Colony Cove is a charming gated community featuring single-family homes with Mediterranean-inspired architecture. Known for its peaceful ambiance and lush landscaping, it\u2019s an ideal neighborhood for those seeking tranquility and proximity to Indian Wells' amenities.",
+        "photo": "https://tse3.mm.bing.net/th?id=OIP.s-YgxDMHS21Bne4_M1DFrwHaE8&pid=Api",
+        "features": [
+            "Mediterranean-inspired homes",
+            "Gated community",
+            "Tranquil setting"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7201,
+            "longitude": -116.3443
+        },
+        "keywords": [
+            "Colony Cove homes for sale",
+            "Living in Colony Cove Indian Wells",
+            "Mediterranean homes in Indian Wells"
+        ],
+        "slug": "colony-cove"
     },
-    "keywords": [
-      "Colony Cove homes for sale",
-      "Living in Colony Cove Indian Wells",
-      "Mediterranean homes in Indian Wells"
-    ],
-    "slug": "colony-cove"
-  },
-  {
-    "id": 9,
-    "name": "The Reserve Club",
-    "description": "The Reserve Club is an exclusive, gated community featuring custom luxury homes and villas surrounded by natural desert beauty. Residents enjoy championship golf, a fitness center, and fine dining, all within an intimate and private setting.",
-    "photo": "https://example.com/the-reserve-club.jpg",
-    "features": [
-      "Custom luxury homes",
-      "Championship golf",
-      "Intimate setting"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7182,
-      "longitude": -116.3398
+    {
+        "id": 9,
+        "name": "The Reserve Club",
+        "description": "The Reserve Club is an exclusive, gated community featuring custom luxury homes and villas surrounded by natural desert beauty. Residents enjoy championship golf, a fitness center, and fine dining, all within an intimate and private setting.",
+        "photo": "https://tse2.mm.bing.net/th?id=OIP.pBs_qkLArPlAyV6WhRqwAAHaEs&pid=Api",
+        "features": [
+            "Custom luxury homes",
+            "Championship golf",
+            "Intimate setting"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7182,
+            "longitude": -116.3398
+        },
+        "keywords": [
+            "The Reserve Club homes for sale",
+            "Living in The Reserve Club Indian Wells",
+            "Luxury communities in Indian Wells"
+        ],
+        "slug": "the-reserve-club"
     },
-    "keywords": [
-      "The Reserve Club homes for sale",
-      "Living in The Reserve Club Indian Wells",
-      "Luxury communities in Indian Wells"
-    ],
-    "slug": "the-reserve-club"
-  },
-  {
-    "id": 10,
-    "name": "Rancho Palmeras Estates",
-    "description": "Rancho Palmeras Estates offers a mix of custom homes and mid-century modern properties, set amidst wide streets and mature landscaping. Its central location makes it highly desirable for families and professionals.",
-    "photo": "https://example.com/rancho-palmeras.jpg",
-    "features": [
-      "Mid-century modern homes",
-      "Custom-built homes",
-      "Central location"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7199,
-      "longitude": -116.3415
+    {
+        "id": 10,
+        "name": "Rancho Palmeras Estates",
+        "description": "Rancho Palmeras Estates offers a mix of custom homes and mid-century modern properties, set amidst wide streets and mature landscaping. Its central location makes it highly desirable for families and professionals.",
+        "photo": "https://tse3.mm.bing.net/th?id=OIP.phhaw-Udsym8omZ40k3fPgHaE8&pid=Api",
+        "features": [
+            "Mid-century modern homes",
+            "Custom-built homes",
+            "Central location"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7199,
+            "longitude": -116.3415
+        },
+        "keywords": [
+            "Rancho Palmeras Estates homes for sale",
+            "Living in Rancho Palmeras Indian Wells",
+            "Mid-century homes in Indian Wells"
+        ],
+        "slug": "rancho-palmeras-estates"
     },
-    "keywords": [
-      "Rancho Palmeras Estates homes for sale",
-      "Living in Rancho Palmeras Indian Wells",
-      "Mid-century homes in Indian Wells"
-    ],
-    "slug": "rancho-palmeras-estates"
-  },
-  {
-    "id": 11,
-    "name": "La Rocca",
-    "description": "La Rocca is a unique, gated community featuring contemporary condos and townhomes surrounded by greenbelts, ponds, and a 9-hole executive golf course. Residents enjoy a serene and vibrant environment with access to community pools and tennis courts.",
-    "photo": "https://example.com/la-rocca.jpg",
-    "features": [
-      "Contemporary condos",
-      "Executive golf course",
-      "Community amenities"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7234,
-      "longitude": -116.3428
+    {
+        "id": 11,
+        "name": "La Rocca",
+        "description": "La Rocca is a unique, gated community featuring contemporary condos and townhomes surrounded by greenbelts, ponds, and a 9-hole executive golf course. Residents enjoy a serene and vibrant environment with access to community pools and tennis courts.",
+        "photo": "https://tse3.mm.bing.net/th?id=OIP.RTZcqMXahBHUvhn2nxBzFwHaF7&pid=Api",
+        "features": [
+            "Contemporary condos",
+            "Executive golf course",
+            "Community amenities"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7234,
+            "longitude": -116.3428
+        },
+        "keywords": [
+            "La Rocca homes for sale",
+            "Living in La Rocca Indian Wells",
+            "Gated communities in Indian Wells"
+        ],
+        "slug": "la-rocca"
     },
-    "keywords": [
-      "La Rocca homes for sale",
-      "Living in La Rocca Indian Wells",
-      "Gated communities in Indian Wells"
-    ],
-    "slug": "la-rocca"
-  },
-  {
-    "id": 12,
-    "name": "Villaggio at Indian Wells",
-    "description": "Villaggio at Indian Wells is a luxury gated community offering custom-built homes with Tuscan-inspired designs and spacious floor plans. Residents enjoy a private and serene atmosphere, with easy access to local amenities and the Indian Wells Tennis Garden.",
-    "photo": "https://example.com/villaggio.jpg",
-    "features": [
-      "Tuscan-inspired designs",
-      "Custom-built homes",
-      "Luxury gated community"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7253,
-      "longitude": -116.3447
+    {
+        "id": 12,
+        "name": "Villaggio at Indian Wells",
+        "description": "Villaggio at Indian Wells is a luxury gated community offering custom-built homes with Tuscan-inspired designs and spacious floor plans. Residents enjoy a private and serene atmosphere, with easy access to local amenities and the Indian Wells Tennis Garden.",
+        "photo": "https://tse3.mm.bing.net/th?id=OIP.VnHk2dgTdzsWi2m93ssAaAHaE7&pid=Api",
+        "features": [
+            "Tuscan-inspired designs",
+            "Custom-built homes",
+            "Luxury gated community"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7253,
+            "longitude": -116.3447
+        },
+        "keywords": [
+            "Villaggio homes for sale",
+            "Living in Villaggio Indian Wells",
+            "Luxury homes in Indian Wells"
+        ],
+        "slug": "villaggio-at-indian-wells"
     },
-    "keywords": [
-      "Villaggio homes for sale",
-      "Living in Villaggio Indian Wells",
-      "Luxury homes in Indian Wells"
-    ],
-    "slug": "villaggio-at-indian-wells"
-  },
-  {
-    "id": 13,
-    "name": "Mountain Gate",
-    "description": "Mountain Gate is a serene, gated community featuring a variety of home styles, including single-family homes and condos. Nestled near the foothills, it offers beautiful mountain views and a peaceful desert lifestyle.",
-    "photo": "https://example.com/mountain-gate.jpg",
-    "features": [
-      "Beautiful mountain views",
-      "Gated community",
-      "Variety of home styles"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7159,
-      "longitude": -116.3387
-    },
-    "keywords": [
-      "Mountain Gate homes for sale",
-      "Living in Mountain Gate Indian Wells",
-      "Scenic communities in Indian Wells"
-    ],
-    "slug": "mountain-gate"
-  },
-  {
-    "id": 14,
-    "name": "Casa Dorado",
-    "description": "Casa Dorado is a mid-century modern community featuring stylish homes surrounded by lush greenbelts, ponds, and scenic landscaping. Residents enjoy access to a 9-hole executive golf course, pools, and tennis courts.",
-    "photo": "https://example.com/casa-dorado.jpg",
-    "features": [
-      "Mid-century modern homes",
-      "Lush greenbelts",
-      "Community amenities"
-    ],
-    "location": "Indian Wells, CA",
-    "coordinates": {
-      "latitude": 33.7221,
-      "longitude": -116.3399
-    },
-    "keywords": [
-      "Casa Dorado homes for sale",
-      "Living in Casa Dorado Indian Wells",
-      "Mid-century communities in Indian Wells"
-    ],
-    "slug": "casa-dorado"
-  }
+    {
+        "id": 14,
+        "name": "Casa Dorado",
+        "description": "Casa Dorado is a mid-century modern community featuring stylish homes surrounded by lush greenbelts, ponds, and scenic landscaping. Residents enjoy access to a 9-hole executive golf course, pools, and tennis courts.",
+        "photo": "https://tse4.mm.bing.net/th?id=OIP.T8Fx1dMhz6bHai7IXexGTQHaFC&pid=Api",
+        "features": [
+            "Mid-century modern homes",
+            "Lush greenbelts",
+            "Community amenities"
+        ],
+        "location": "Indian Wells, CA",
+        "coordinates": {
+            "latitude": 33.7221,
+            "longitude": -116.3399
+        },
+        "keywords": [
+            "Casa Dorado homes for sale",
+            "Living in Casa Dorado Indian Wells",
+            "Mid-century communities in Indian Wells"
+        ],
+        "slug": "casa-dorado"
+    }
 ]

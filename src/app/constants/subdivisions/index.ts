@@ -8,7 +8,7 @@ import laQuinta from './la-quinta-neighborhoods.json';
 import palmDesert from './palm-desert-neighborhoods.json';
 import palmSprings from './palm-springs-neighborhoods.json';
 import ranchoMirage from './rancho-mirage-neighborhoods.json';
-import thermal from './thermal-neighborhoods.json';
+import thermal from './thermal_neighborhoods.json';
 import thousandPalms from './thousand-palms-neighborhoods.json';
 
 const subdivisions = {

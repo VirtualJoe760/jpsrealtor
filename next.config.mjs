@@ -6,7 +6,19 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "ssl.cdn-redfin.com", // Add this line
+        hostname: "www.desertsun.com", 
+      },
+      {
+        protocol: "https",
+        hostname: "maps.googleapis.com", 
+      },
+      {
+        protocol: "https",
+        hostname: "example.com", 
+      },
+      {
+        protocol: "https",
+        hostname: "ssl.cdn-redfin.com",
       },
       {
         protocol: "https",

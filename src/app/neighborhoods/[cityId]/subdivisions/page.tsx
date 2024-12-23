@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useState, useEffect, useMemo } from "react";
 import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";
 import subdivisions from "@/constants/subdivisions";
@@ -17,17 +18,45 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
     notFound();
   }
 
-  // Get subdivisions for the city
-  const citySubdivisions =
-    subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
+  // Memoize subdivisions for the city
+  const citySubdivisions = useMemo(() => {
+    return subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
+  }, [cityId]);
 
-  // Log city and subdivisions for debugging
-  console.log("City ID:", cityId);
-  console.log("City Data:", city);
-  console.log("Subdivisions Loaded:", citySubdivisions);
-
-  // State for search
+  // State for search and images
   const [searchTerm, setSearchTerm] = useState("");
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [error] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchImageUrls = async () => {
+      const urls: Record<string, string> = {};
+  
+      for (const subdivision of citySubdivisions) {
+        if (subdivision.photo.includes("example.com")) {
+          try {
+            const response = await fetch(`/api/places?name=${encodeURIComponent(subdivision.name)}`);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch photo for ${subdivision.name}: ${response.statusText}`);
+            }
+  
+            const data = await response.json();
+            urls[subdivision.name] = data.photoUrl || "/images/placeholder.jpg";
+          } catch (error) {
+            console.error(`Error fetching photo for ${subdivision.name}:`, error);
+            urls[subdivision.name] = "/images/placeholder.jpg";
+          }
+        } else {
+          urls[subdivision.name] = subdivision.photo;
+        }
+      }
+  
+      setImageUrls(urls);
+    };
+  
+    fetchImageUrls();
+  }, [citySubdivisions, cityId]);
+  
 
   // Filtered subdivisions based on search term
   const filteredSubdivisions = citySubdivisions.filter((subdivision) =>
@@ -42,11 +71,18 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
         heroContext={city.name}
         description={`Explore subdivisions in ${city.name}. Find the perfect neighborhood for your lifestyle.`}
       />
-  
+
       {/* Search and List Section */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-4xl font-bold mb-6 text-white">Subdivisions in {city.name}</h1>
-  
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500 text-white p-4 rounded mb-6">
+            {error}
+          </div>
+        )}
+
         {/* Search Bar */}
         <div className="relative mb-8">
           <input
@@ -74,7 +110,7 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
             </div>
           )}
         </div>
-  
+
         {/* Full Subdivision List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {citySubdivisions.map((subdivision) => (
@@ -84,7 +120,7 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
               className="flex flex-col rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
             >
               <Image
-                src={subdivision.photo}
+                src={imageUrls[subdivision.name] || "/images/placeholder.jpg"}
                 alt={subdivision.name}
                 width={600}
                 height={400}
@@ -110,5 +146,4 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
       </section>
     </>
   );
-  
 }
