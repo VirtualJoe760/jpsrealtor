@@ -3,7 +3,7 @@
     "id": 1,
     "name": "La Colonia",
     "description": "La Colonia is a historic neighborhood in Coachella known for its rich cultural heritage and close-knit community. Featuring a variety of homes, this area offers a glimpse into the city's vibrant history and a welcoming atmosphere.",
-    "photo": "https://example.com/la-colonia.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20230809034601602925000000-o.jpg",
     "features": [
       "Historic neighborhood",
       "Close-knit community",
@@ -25,7 +25,7 @@
     "id": 2,
     "name": "Rancho Las Flores",
     "description": "Rancho Las Flores is a family-friendly residential area featuring a mix of single-family homes and townhouses. Known for its affordability and peaceful streets, this community is ideal for those seeking a suburban lifestyle in Coachella.",
-    "photo": "https://example.com/rancho-las-flores.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20230513022011854826000000-o.jpg",
     "features": [
       "Family-friendly",
       "Affordable housing",
@@ -47,7 +47,7 @@
     "id": 3,
     "name": "Sierra Vista",
     "description": "Sierra Vista is a suburban neighborhood offering a variety of housing styles, from single-family homes to townhouses. Residents enjoy proximity to parks and schools, making it a great choice for families.",
-    "photo": "https://example.com/sierra-vista.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20231227215414578502000000-o.jpg",
     "features": [
       "Suburban neighborhood",
       "Proximity to parks and schools",
@@ -69,7 +69,7 @@
     "id": 4,
     "name": "Las Plumas",
     "description": "Las Plumas is a quiet residential neighborhood offering affordable single-family homes with spacious yards. This community is ideal for families seeking a tranquil and welcoming environment.",
-    "photo": "https://example.com/las-plumas.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20201106045208436877000000-o.jpg",
     "features": [
       "Affordable homes",
       "Quiet streets",
@@ -88,54 +88,10 @@
     "slug": "las-plumas"
   },
   {
-    "id": 5,
-    "name": "Coachella Estates",
-    "description": "Coachella Estates is a newer residential development offering modern homes with open floor plans. Located near shopping and dining, this community blends convenience with comfort.",
-    "photo": "https://example.com/coachella-estates.jpg",
-    "features": [
-      "Modern homes",
-      "Proximity to amenities",
-      "Comfortable living"
-    ],
-    "location": "Coachella, CA",
-    "coordinates": {
-      "latitude": 33.6735,
-      "longitude": -116.1728
-    },
-    "keywords": [
-      "Coachella Estates homes for sale",
-      "Modern homes in Coachella",
-      "Convenient neighborhoods in Coachella"
-    ],
-    "slug": "coachella-estates"
-  },
-  {
-    "id": 6,
-    "name": "Vista Montana",
-    "description": "Vista Montana is a gated 55+ community featuring manufactured homes with access to a clubhouse, pool, and social activities. This community offers affordable living in a vibrant and active setting.",
-    "photo": "https://example.com/vista-montana.jpg",
-    "features": [
-      "55+ community",
-      "Clubhouse and pool",
-      "Active lifestyle"
-    ],
-    "location": "Coachella, CA",
-    "coordinates": {
-      "latitude": 33.6724,
-      "longitude": -116.1765
-    },
-    "keywords": [
-      "Vista Montana homes for sale",
-      "55+ communities in Coachella",
-      "Affordable active adult living in Coachella"
-    ],
-    "slug": "vista-montana"
-  },
-  {
     "id": 7,
     "name": "Bella Canto",
     "description": "Bella Canto is a family-friendly neighborhood featuring single-family homes with modern designs and spacious layouts. Located near parks and schools, this community offers a vibrant and welcoming atmosphere.",
-    "photo": "https://example.com/bella-canto.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220305223036053677000000-o.jpg",
     "features": [
       "Family-friendly",
       "Modern homes",
@@ -154,32 +110,10 @@
     "slug": "bella-canto"
   },
   {
-    "id": 8,
-    "name": "Sunset Villas",
-    "description": "Sunset Villas is a peaceful neighborhood offering single-family homes with private yards and modern layouts. Known for its serene streets and friendly community, it’s an ideal place for families and professionals.",
-    "photo": "https://example.com/sunset-villas.jpg",
-    "features": [
-      "Peaceful neighborhood",
-      "Private yards",
-      "Friendly community"
-    ],
-    "location": "Coachella, CA",
-    "coordinates": {
-      "latitude": 33.6742,
-      "longitude": -116.1776
-    },
-    "keywords": [
-      "Sunset Villas homes for sale",
-      "Quiet neighborhoods in Coachella",
-      "Modern homes in Coachella"
-    ],
-    "slug": "sunset-villas"
-  },
-  {
     "id": 9,
     "name": "Somerset",
     "description": "Somerset is a charming neighborhood featuring single-family homes with spacious floor plans and private yards. This family-friendly community offers a relaxed atmosphere with close proximity to schools, parks, and shopping centers.",
-    "photo": "https://example.com/somerset.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20201218173132907162000000-o.jpg",
     "features": [
       "Family-friendly",
       "Spacious homes",

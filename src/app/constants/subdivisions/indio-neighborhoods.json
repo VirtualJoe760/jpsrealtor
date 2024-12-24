@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Terra Lago",
-    "description": "Terra Lago is a master-planned community featuring a scenic lake, golf course, and clubhouse. With beautiful homes, many offering lakefront views, this neighborhood provides a resort-like lifestyle in a serene desert setting.",
-    "photo": "https://example.com/terra-lago.jpg",
+    "description": "Terra Lago is a vibrant and picturesque community nestled in the heart of Indio, California, offering stunning views of the surrounding mountains, a serene 20-acre lake, and resort-style amenities, including a championship golf course, clubhouse, pool, fitness center, and scenic walking trails; perfect for families, retirees, or vacationers seeking a peaceful yet activity-filled lifestyle in a safe and well-maintained neighborhood.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221115000955797683000000-o.jpg",
     "features": [
       "Lakefront homes",
       "Golf course",
@@ -24,8 +24,8 @@
   {
     "id": 2,
     "name": "Shadow Hills",
-    "description": "Shadow Hills is a gated community offering a serene atmosphere, spacious homes, and lush landscaping. Known for its peaceful environment, this neighborhood is perfect for those seeking upscale living in Indio.",
-    "photo": "https://example.com/shadow-hills.jpg",
+    "description": "Shadow Hills is a serene residential community nestled in the foothills of Los Angeles, offering a blend of equestrian-friendly properties, spacious single-family homes, and a tranquil rural atmosphere with convenient access to city amenities, making it an ideal haven for those seeking a peaceful lifestyle amidst natural beauty and a strong sense of community.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221116232258088162000000-o.jpg",
     "features": [
       "Gated community",
       "Serene atmosphere",
@@ -46,8 +46,8 @@
   {
     "id": 3,
     "name": "Sun City Shadow Hills",
-    "description": "Sun City Shadow Hills is a 55+ active adult community offering resort-style living with amenities like golf courses, pools, tennis courts, and a fitness center. This vibrant neighborhood fosters an active and social lifestyle for its residents.",
-    "photo": "https://example.com/sun-city-shadow-hills.jpg",
+    "description": "Sun City Shadow Hills is an active adult community in Indio, California, offering a resort-style lifestyle with world-class amenities, including two championship golf courses, state-of-the-art fitness centers, pools, tennis courts, and vibrant social clubs; nestled in the Coachella Valley's picturesque desert landscape, it features beautifully designed homes with modern conveniences, perfect for retirees and active adults seeking luxurious, community-centered living.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221018202515597911000000-o.jpg",
     "features": [
       "55+ active adult community",
       "Golf courses and pools",
@@ -68,8 +68,8 @@
   {
     "id": 4,
     "name": "Indian Palms Country Club",
-    "description": "Indian Palms Country Club is a historic community offering condos and single-family homes. Known for its rich golfing heritage, the neighborhood features a clubhouse, pools, and tennis courts, creating a vibrant and comfortable lifestyle.",
-    "photo": "https://example.com/indian-palms-country-club.jpg",
+    "description": "Indian Palms Country Club in Indio, CA, is a vibrant, gated community offering a blend of resort-style living and serene desert charm, featuring a 27-hole championship golf course, diverse real estate options from modern homes to charming condos, and an array of amenities including pools, tennis courts, fitness facilities, and a clubhouse with dining, all set amidst picturesque mountain views and lush landscaping, making it a sought-after destination for active lifestyles and tranquil retreats alike.",
+    "photo": "https://boomtown-production-consumer-backup.s3.amazonaws.com/1238/files/2019/04/Indian-Palms-CC-7.jpg",
     "features": [
       "Historic golf community",
       "Clubhouse and pools",
@@ -90,8 +90,8 @@
   {
     "id": 5,
     "name": "Trilogy at The Polo Club",
-    "description": "Trilogy at The Polo Club is an upscale, gated community designed for active adults. Featuring modern homes and resort-style amenities such as a clubhouse, fitness center, and pools, this neighborhood offers luxury and comfort.",
-    "photo": "https://example.com/trilogy-polo-club.jpg",
+    "description": "Trilogy at The Polo Club in Indio, CA, is a premier 55+ active adult community offering a vibrant lifestyle with resort-style amenities, including a stunning clubhouse, pools, fitness center, gourmet dining, and a calendar filled with social events and activities. Nestled in the heart of Coachella Valley, this gated community boasts luxurious homes with modern designs, surrounded by scenic desert landscapes, championship golf courses, and convenient access to shopping, dining, and entertainment.",
+    "photo": "https://boomtown-production-consumer-backup.s3.amazonaws.com/1238/files/2019/03/trilogy-polo-club-indio-041.jpg",
     "features": [
       "Gated community",
       "Resort-style amenities",
@@ -112,8 +112,8 @@
   {
     "id": 6,
     "name": "Montage at Santa Rosa",
-    "description": "Montage at Santa Rosa is a family-friendly neighborhood offering spacious single-family homes. Located near local attractions, it combines suburban comfort with a strong sense of community.",
-    "photo": "https://example.com/montage-santa-rosa.jpg",
+    "description": "Montage at Santa Rosa in Indio, CA, is a premier gated community offering luxurious, spacious homes with stunning desert landscapes, exceptional privacy, and resort-style amenities, catering to a lifestyle of relaxation and entertainment; located near world-class golf courses, dining, shopping, and cultural attractions, this vibrant neighborhood blends modern living with the charm of the Coachella Valley, making it a perfect destination for families, retirees, and vacation homeowners.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220608200150513026000000-o.jpg",
     "features": [
       "Family-friendly",
       "Spacious homes",
@@ -134,8 +134,8 @@
   {
     "id": 7,
     "name": "Desert Collection",
-    "description": "Desert Collection is a gated community offering modern single-family homes with access to community amenities. Known for its secure and comfortable environment, it’s a great choice for families and professionals.",
-    "photo": "https://example.com/desert-collection.jpg",
+    "description": "Desert Collection in Indio, CA, is a vibrant and inviting real estate community offering a blend of modern homes and tranquil desert charm, conveniently located near premier golf courses, shopping centers, and outdoor recreational opportunities, making it ideal for families, retirees, and professionals seeking a relaxed lifestyle with a touch of sophistication in the heart of the Coachella Valley, complete with scenic views, friendly neighbors, and a strong sense of community.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20230228013347709417000000-o.jpg",
     "features": [
       "Gated community",
       "Modern homes",
@@ -156,8 +156,8 @@
   {
     "id": 8,
     "name": "Foxstone",
-    "description": "Foxstone is a residential neighborhood known for its well-maintained homes and family-friendly atmosphere. Offering a suburban lifestyle, it provides convenient access to schools, parks, and shopping centers.",
-    "photo": "https://example.com/foxstone.jpg",
+    "description": "Foxstone in Indio, CA, is a vibrant gated community offering a serene residential environment characterized by well-maintained landscapes, spacious single-family homes, and a welcoming neighborhood atmosphere, making it an ideal choice for families, professionals, and retirees seeking modern conveniences and a close-knit lifestyle; located near schools, shopping, dining, and recreational opportunities, this community blends tranquility with easy access to Indio's rich cultural and entertainment offerings.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20240327211123977431000000-o.jpg",
     "features": [
       "Family-friendly",
       "Well-maintained homes",
@@ -178,8 +178,8 @@
   {
     "id": 9,
     "name": "Talavera",
-    "description": "Talavera is a gated, family-oriented community featuring single-family homes with modern designs. The neighborhood is known for its parks, playgrounds, and a strong sense of community, making it ideal for families.",
-    "photo": "https://example.com/talavera.jpg",
+    "description": "Talavera, a gated community in Indio, CA, offers a blend of modern comfort and family-friendly living, featuring spacious homes with contemporary designs, lush landscaping, and scenic views of the surrounding desert and mountains; conveniently located near top-rated schools, shopping, dining, and outdoor recreational activities, Talavera provides a safe and welcoming environment for residents seeking tranquility, community spirit, and access to the vibrant lifestyle of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220719000941574445000000-o.jpg",
     "features": [
       "Family-friendly",
       "Gated community",
@@ -200,8 +200,8 @@
   {
     "id": 10,
     "name": "Las Brisas",
-    "description": "Las Brisas is a quiet gated community offering a variety of home styles, from single-family residences to condos. It is known for its peaceful environment, lush landscaping, and proximity to schools and shopping centers.",
-    "photo": "https://example.com/las-brisas.jpg",
+    "description": "Las Brisas in Indio, CA, is a vibrant and family-friendly community known for its tranquil suburban setting, offering a harmonious blend of modern convenience and natural beauty. Nestled within the Coachella Valley, this community features spacious homes, well-maintained landscapes, and close proximity to schools, parks, shopping centers, and recreational opportunities. Residents enjoy a peaceful atmosphere, a welcoming neighborhood spirit, and easy access to nearby cultural and entertainment venues, making it an ideal place to call home.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220701003342820140000000-o.jpg",
     "features": [
       "Gated community",
       "Variety of home styles",
@@ -222,8 +222,8 @@
   {
     "id": 11,
     "name": "Bella Vida",
-    "description": "Bella Vida is a gated community featuring single-family homes with modern layouts and private yards. Located near parks and schools, this neighborhood offers a family-friendly environment with a suburban feel.",
-    "photo": "https://example.com/bella-vida.jpg",
+    "description": "Bella Vida in Indio, CA, is a vibrant and family-friendly real estate community offering a perfect blend of modern living and serene surroundings, with beautifully designed homes, resort-style amenities, lush landscapes, and a welcoming atmosphere that fosters connection and relaxation. Ideally located near top-rated schools, shopping, dining, and outdoor recreation, Bella Vida provides residents with an exceptional lifestyle in the heart of the Coachella Valley, perfect for families and individuals alike.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220519015632719320000000-o.jpg",
     "features": [
       "Gated community",
       "Modern single-family homes",
@@ -244,8 +244,8 @@
   {
     "id": 12,
     "name": "Heritage Palms",
-    "description": "Heritage Palms is a 55+ active adult community featuring a championship Arthur Hills-designed golf course. The neighborhood offers resort-style amenities, including a clubhouse, pools, tennis courts, and a fitness center, fostering an active and social lifestyle.",
-    "photo": "https://example.com/heritage-palms.jpg",
+    "description": "Heritage Palms in Indio, CA, is a vibrant 55+ gated community that blends luxurious living with a strong sense of community, featuring an 18-hole championship golf course, a welcoming clubhouse with fitness and recreational facilities, swimming pools, tennis courts, and numerous social clubs and activities, all set amidst beautifully landscaped grounds and a serene desert backdrop, offering residents an exceptional lifestyle tailored to active adults seeking comfort, leisure, and camaraderie.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221025183256995537000000-o.jpg",
     "features": [
       "55+ active adult community",
       "Golf course",
@@ -266,8 +266,8 @@
   {
     "id": 13,
     "name": "Indian Springs Country Club",
-    "description": "Indian Springs Country Club is a gated community featuring single-family homes and condos surrounding a beautifully maintained golf course. With resort-style amenities and a welcoming atmosphere, it’s perfect for both families and retirees.",
-    "photo": "https://example.com/indian-springs-cc.jpg",
+    "description": "Indian Springs Country Club in Indio, CA, offers an exceptional real estate community defined by stunning golf course views, meticulously maintained landscapes, and luxurious amenities. Residents enjoy a lifestyle of comfort and recreation with access to a championship golf course, resort-style pools, fitness centers, and a vibrant social scene, all set within a gated, serene neighborhood. Ideal for families, retirees, and vacationers, this community blends elegance, convenience, and a true sense of home.",
+    "photo": "https://images.squarespace-cdn.com/content/v1/5fd00e261f2070683497a965/2840ef7c-64ae-45f8-971f-afb26d0f8235/Indian+Springs+Country+Club",
     "features": [
       "Gated community",
       "Golf course living",
@@ -288,8 +288,8 @@
   {
     "id": 14,
     "name": "Sandhurst Cove",
-    "description": "Sandhurst Cove is a boutique, gated community offering spacious single-family homes with modern designs. Residents enjoy a tranquil environment with convenient access to shopping and dining options nearby.",
-    "photo": "https://example.com/sandhurst-cove.jpg",
+    "description": "Sandhurst Cove in Indio, CA, is a serene and exclusive residential community offering spacious homes with modern amenities, scenic mountain views, and proximity to top-tier shopping, dining, and entertainment options, making it an ideal place for families and retirees alike to enjoy a peaceful, convenient lifestyle in the heart of the Coachella Valley, with easy access to outdoor recreational activities, golf courses, and cultural attractions, ensuring a perfect balance of comfort and leisure.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220831040609439461000000-o.jpg",
     "features": [
       "Boutique gated community",
       "Spacious homes",
@@ -310,8 +310,8 @@
   {
     "id": 15,
     "name": "Madison Estates",
-    "description": "Madison Estates is a luxury gated community offering custom-built homes on large lots. Known for its elegant designs and proximity to the Polo Grounds, it’s a top choice for buyers seeking space and sophistication.",
-    "photo": "https://example.com/madison-estates.jpg",
+    "description": "Madison Estates in Indio, CA offers an upscale, gated community with beautifully designed homes, spacious lots, and scenic views of the surrounding desert landscape, providing a peaceful and luxurious living experience. The neighborhood features modern amenities, including a community pool, fitness center, and walking trails, perfect for families and individuals seeking comfort and convenience. With easy access to shopping, dining, and entertainment, Madison Estates is the ideal place to call home in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220519015754372939000000-o.jpg",
     "features": [
       "Custom-built homes",
       "Large lots",
@@ -332,8 +332,8 @@
   {
     "id": 16,
     "name": "Four Seasons at Terra Lago",
-    "description": "Four Seasons at Terra Lago is a 55+ active adult community offering modern single-family homes with resort-style amenities. Residents enjoy a clubhouse, fitness center, pools, and scenic views of the surrounding desert.",
-    "photo": "https://example.com/four-seasons.jpg",
+    "description": "Four Seasons at Terra Lago in Indio, CA, is a vibrant 55+ active adult community offering resort-style living with stunning mountain views, an array of amenities including a clubhouse, fitness center, golf course, and tennis courts, and a variety of social activities that foster a sense of camaraderie and engagement. Residents enjoy an exceptional lifestyle with well-designed homes, lush landscapes, and proximity to shopping, dining, and entertainment in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221015165045542686000000-o.jpg",
     "features": [
       "55+ community",
       "Modern homes",
@@ -354,8 +354,8 @@
   {
     "id": 17,
     "name": "Mountain Estates",
-    "description": "Mountain Estates is a gated community offering single-family homes with spacious interiors and modern designs. Nestled near the foothills, this neighborhood offers stunning views and a tranquil desert lifestyle.",
-    "photo": "https://example.com/mountain-estates.jpg",
+    "description": "Mountain Estates at Terra Lago in Indio, CA, offers an exclusive, upscale community featuring luxurious homes with stunning mountain views, world-class amenities, and a serene environment, perfect for those seeking a peaceful, sophisticated lifestyle. Residents enjoy a private, gated community with access to a championship golf course, lakes, and walking trails, providing a perfect blend of outdoor recreation and modern living in a prime location, just minutes from shopping, dining, and entertainment.",
+    "photo": "https://www.thaler.tirol/wp-content/uploads/2023/07/thaler-bauprojekte_Neubau-themountainestate-jochberg_aussen2.jpg",
     "features": [
       "Gated community",
       "Modern homes",
@@ -376,8 +376,8 @@
   {
     "id": 18,
     "name": "Palazzo",
-    "description": "Palazzo is a quiet residential neighborhood featuring modern single-family homes with spacious layouts. This family-friendly community offers easy access to local schools, parks, and shopping centers.",
-    "photo": "https://example.com/palazzo.jpg",
+    "description": "Palazzo in Indio, CA, offers a vibrant and luxurious community with modern homes, scenic views, and a prime location, providing residents with access to world-class amenities, parks, and recreational facilities, while being just minutes away from shopping, dining, and entertainment options, making it an ideal place for those seeking a high-quality lifestyle in the heart of the Coachella Valley, blending comfort, convenience, and sophistication in a serene desert setting.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220701180947423379000000-o.jpg",
     "features": [
       "Modern single-family homes",
       "Family-friendly",
@@ -398,8 +398,8 @@
   {
     "id": 19,
     "name": "Tierra Del Sol",
-    "description": "Tierra Del Sol is a gated community featuring single-family homes with large lots and contemporary designs. Residents enjoy a peaceful atmosphere with convenient access to local attractions.",
-    "photo": "https://example.com/tierra-del-sol.jpg",
+    "description": "Tierra Del Sol is a tranquil, master-planned community located in Indio, CA, offering a blend of modern homes with scenic views of the desert landscape, convenient access to major highways, and close proximity to shopping, dining, and entertainment. This peaceful neighborhood is ideal for families, retirees, and those seeking a serene lifestyle, featuring spacious homes with private yards, a community pool, and well-maintained parks, making it a perfect blend of comfort, convenience, and natural beauty.",
+    "photo": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/369937233.jpg?k=460cae093ab9258691d7a12ee4b7df72f9d021f3cacc8cf0e7479a8133a90cb6&o=&hp=1",
     "features": [
       "Gated community",
       "Large lots",
@@ -420,8 +420,8 @@
   {
     "id": 20,
     "name": "Sonora Wells",
-    "description": "Sonora Wells is a family-oriented, gated community offering single-family homes with modern designs. The neighborhood includes parks, playgrounds, and a community pool, creating a vibrant and active environment.",
-    "photo": "https://example.com/sonora-wells.jpg",
+    "description": "Sonora Wells in Indio, CA, is a vibrant, family-friendly community offering spacious homes with modern amenities, picturesque desert landscapes, and a close-knit atmosphere, ideal for those seeking a peaceful lifestyle with easy access to local attractions, shopping, dining, and outdoor activities, including golf courses and hiking trails, making it a perfect place for residents to enjoy both relaxation and adventure in the heart of the Coachella Valley.",
+    "photo": "https://images.squarespace-cdn.com/content/v1/5fd00e261f2070683497a965/1666665606229-WM4F0QCDV2QXI3RFMEHE/Sonora-Wells-homes-for-sale-36.jpeg",
     "features": [
       "Family-friendly",
       "Gated community",
@@ -442,8 +442,8 @@
   {
     "id": 21,
     "name": "La Morada",
-    "description": "La Morada is a boutique community offering single-family homes with spacious interiors and private yards. Its central location provides easy access to schools, parks, and shopping, making it ideal for families.",
-    "photo": "https://example.com/la-morada.jpg",
+    "description": "La Morada in Indio, CA, is a vibrant and family-friendly gated community offering a mix of modern homes, lush green spaces, and convenient amenities, located near shopping, dining, and entertainment options, making it an ideal choice for those seeking a peaceful yet connected lifestyle in the heart of the Coachella Valley. With its close proximity to major highways and breathtaking mountain views, La Morada provides residents with a perfect balance of comfort, accessibility, and tranquility in a desirable location.",
+    "photo": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/562534879.jpg?k=d8d4040869669d88d750a560afaeebf33437f915400447f43e6e0b4a147ed04e&o=&hp=1",
     "features": [
       "Spacious homes",
       "Family-friendly",
@@ -464,8 +464,8 @@
   {
     "id": 22,
     "name": "Shadow Ranch",
-    "description": "Shadow Ranch is a gated community featuring modern homes with spacious layouts and stylish finishes. The neighborhood offers a quiet environment and is conveniently located near schools and local amenities.",
-    "photo": "https://example.com/shadow-ranch.jpg",
+    "description": "Shadow Ranch in Indio, CA is a vibrant and family-friendly community offering spacious homes with stunning desert views, providing residents with a tranquil suburban lifestyle while being conveniently close to shopping, dining, and recreational amenities. This well-established neighborhood boasts wide streets, beautiful landscaping, and a strong sense of community. Its prime location in the Coachella Valley allows easy access to local events, outdoor activities, and year-round sunshine, making it an ideal place to call home.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220723224814384848000000-o.jpg",
     "features": [
       "Gated community",
       "Modern homes",
@@ -486,8 +486,8 @@
   {
     "id": 23,
     "name": "Vista Escondida",
-    "description": "Vista Escondida is a gated community offering single-family homes with contemporary designs and large lots. Known for its tranquil atmosphere, this neighborhood is perfect for those seeking privacy and comfort.",
-    "photo": "https://example.com/vista-escondida.jpg",
+    "description": "Vista Escondida in Indio, CA, is a tranquil, family-friendly community offering stunning desert views, spacious homes, and a welcoming environment with easy access to local amenities, schools, parks, and shopping centers, making it an ideal place for those seeking comfort, convenience, and a peaceful lifestyle in the heart of the Coachella Valley, with modern residences, a sense of privacy, and a close-knit neighborhood that embraces the charm of California's desert living.",
+    "photo": "https://media-production.lp-cdn.com/cdn-cgi/image/format=auto,quality=85,fit=scale-down,width=1280/https://media-production.lp-cdn.com/media/frgkdrkanjxtzqxdxk8c",
     "features": [
       "Gated community",
       "Contemporary designs",
@@ -508,8 +508,8 @@
   {
     "id": 24,
     "name": "Haciendas at Indio",
-    "description": "Haciendas at Indio is a family-oriented neighborhood offering affordable single-family homes with spacious layouts. Located near schools and parks, it’s a great choice for first-time buyers and families.",
-    "photo": "https://example.com/haciendas-at-indio.jpg",
+    "description": "Haciendas at Indio is a vibrant, gated community in Indio, CA, offering spacious homes with modern amenities, lush landscaping, and a family-friendly environment, perfect for those seeking comfort and tranquility in the heart of the Coachella Valley. With convenient access to local shopping, dining, entertainment, and outdoor activities, residents enjoy a relaxed lifestyle while being just minutes away from the area's top attractions, making it an ideal choice for homebuyers and investors alike.",
+    "photo": "https://resource.rentcafe.com/image/upload/w_1920,h_1440,c_crop/q_auto,f_auto,c_limit,w_1200/s3/2/35048/d9d830d8-2dba-483f-9301-7ed6a66b7969_rw_1920%20(1).jpg",
     "features": [
       "Affordable homes",
       "Family-friendly",
@@ -528,32 +528,10 @@
     "slug": "haciendas-at-indio"
   },
   {
-    "id": 25,
-    "name": "Desert Sands",
-    "description": "Desert Sands is a gated 55+ manufactured home community offering affordable residences with access to amenities such as a clubhouse, pool, and recreational activities. Known for its welcoming atmosphere, this neighborhood is ideal for active adults.",
-    "photo": "https://example.com/desert-sands.jpg",
-    "features": [
-      "55+ community",
-      "Clubhouse and pool",
-      "Affordable homes"
-    ],
-    "location": "Indio, CA",
-    "coordinates": {
-      "latitude": 33.7194,
-      "longitude": -116.2218
-    },
-    "keywords": [
-      "Desert Sands homes for sale",
-      "55+ communities in Indio",
-      "Affordable active adult living in Indio"
-    ],
-    "slug": "desert-sands"
-  },
-  {
     "id": 26,
     "name": "Parkside Estates",
-    "description": "Parkside Estates is a family-friendly community featuring spacious single-family homes with private yards. Its central location near parks, schools, and shopping centers makes it a convenient and desirable neighborhood.",
-    "photo": "https://example.com/parkside-estates.jpg",
+    "description": "Parkside Estates in Indio, CA, is a serene, family-friendly community offering a perfect blend of modern homes, spacious lots, and abundant amenities. With its scenic views, well-maintained parks, and easy access to shopping, dining, and entertainment, Parkside Estates is ideal for those seeking a peaceful yet connected lifestyle. The neighborhood features a variety of home styles, creating a welcoming environment for first-time buyers, growing families, and retirees alike.",
+    "photo": "https://images1.apartments.com/i2/BPzDm1vFeFzKS52rw3Q8O6fs6pt0Jg-6UGJqM7r1gh0/111/parkside-estates-canonsburg-pa-building-photo.jpg",
     "features": [
       "Spacious homes",
       "Family-friendly",
@@ -574,8 +552,8 @@
   {
     "id": 27,
     "name": "Indian Wells Village",
-    "description": "Indian Wells Village is a tranquil, non-HOA neighborhood offering single-family homes with large lots and open layouts. Residents enjoy a peaceful atmosphere and proximity to local shopping and dining.",
-    "photo": "https://example.com/indian-wells-village.jpg",
+    "description": "Indian Wells Village in Indio, CA, is a charming, serene community offering a mix of residential properties surrounded by stunning desert landscapes, featuring spacious homes, well-maintained streets, and a welcoming atmosphere. Known for its proximity to world-class golf courses, upscale shopping, and fine dining, this neighborhood provides residents with a tranquil, family-friendly environment while still being conveniently close to the vibrant amenities of the Coachella Valley. A perfect blend of comfort and convenience.",
+    "photo": "https://images.squarespace-cdn.com/content/v1/5b343827e7494005a09267fb/1531107217990-0FMR442QP8UCMSJ0FOIO/PANO_20180629_123444.jpg",
     "features": [
       "Non-HOA community",
       "Large lots",
@@ -596,8 +574,8 @@
   {
     "id": 28,
     "name": "Villa Montego",
-    "description": "Villa Montego is a family-oriented community featuring affordable single-family homes with spacious backyards. Located near schools and parks, it’s a popular choice for families and first-time buyers.",
-    "photo": "https://example.com/villa-montego.jpg",
+    "description": "Villa Montego in Indio, CA is a serene and upscale residential community offering modern amenities, spacious homes, lush landscapes, and a relaxed desert lifestyle, perfect for those seeking tranquility and convenience in the heart of the Coachella Valley, with easy access to shopping, dining, entertainment, and outdoor recreational activities, making it an ideal location for families, retirees, and professionals looking for a vibrant yet peaceful living environment.",
+    "photo": "https://www.dreamexoticrentals.com/images/Caribbean/Jamaica/VillaSweetVilla/3.jpg",
     "features": [
       "Affordable homes",
       "Family-friendly",
@@ -618,8 +596,8 @@
   {
     "id": 29,
     "name": "Indian Palms Villas",
-    "description": "Indian Palms Villas is a gated community offering a mix of condos and townhomes with access to pools, greenbelts, and a clubhouse. Its central location near Indian Palms Country Club adds to its charm and convenience.",
-    "photo": "https://example.com/indian-palms-villas.jpg",
+    "description": "Indian Palms Villas in Indio, CA is a serene and exclusive residential community offering a variety of beautifully designed homes nestled amidst stunning desert landscapes, providing a perfect blend of comfort, luxury, and modern amenities. With access to top-tier golf courses, tennis courts, a resort-style pool, and a clubhouse, residents enjoy an active and social lifestyle while being conveniently located near shopping, dining, and entertainment, making it the ideal place to call home in the Coachella Valley.",
+    "photo": "https://underpar-files.imgix.net/Images/Courses/Raw/d9221bc42dcb4b4e873dcd38290cdb72.jpg?auto=format&fit=crop&fm=jpg&h=540&q=70&w=970&s=d90cc41b8eb1cf8650fee675b03af542",
     "features": [
       "Gated community",
       "Condos and townhomes",
@@ -640,8 +618,8 @@
   {
     "id": 30,
     "name": "Bella Tierra",
-    "description": "Bella Tierra is a gated community featuring spacious single-family homes with stylish interiors and private yards. Located near parks and schools, it offers a peaceful and convenient lifestyle.",
-    "photo": "https://example.com/bella-tierra.jpg",
+    "description": "Bella Tierra in Indio, CA, is a serene and vibrant residential community offering spacious homes, lush landscaping, and modern amenities, ideal for families and individuals seeking a tranquil yet connected living environment. With its prime location near major highways, shopping centers, and recreational areas, Bella Tierra provides residents with easy access to both relaxation and convenience. The neighborhood fosters a welcoming atmosphere with well-maintained streets, parks, and a variety of nearby services, making it a perfect place to call home.",
+    "photo": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/297582060.jpg?k=3e2624c1692c02b106a827c2a9b49010e9560385d626811d1c8486a388513c28&o=&hp=1",
     "features": [
       "Gated community",
       "Stylish homes",
@@ -662,8 +640,8 @@
   {
     "id": 31,
     "name": "Desert Grove",
-    "description": "Desert Grove is a boutique gated community offering single-family homes with modern designs and spacious layouts. Residents enjoy a quiet environment with easy access to shopping and dining options.",
-    "photo": "https://example.com/desert-grove.jpg",
+    "description": "Desert Grove in Indio, CA is a vibrant and peaceful residential community offering a blend of modern amenities and serene desert landscapes, featuring well-maintained homes, spacious lots, and a welcoming atmosphere, perfect for families, retirees, and those seeking a tranquil escape. Located in the heart of the Coachella Valley, residents enjoy close proximity to shopping, dining, outdoor recreational activities, and the natural beauty of the desert, making Desert Grove an ideal place to call home.",
+    "photo": "https://assets.simpleviewinc.com/simpleview/image/upload/crm/yumaaz/Desert-Grove-4_596BF20D-5056-A36F-23A3016CE18DCB72-596bedf45056a36_596bfaf1-5056-a36f-23015d91cc9fdb7c.png",
     "features": [
       "Gated community",
       "Modern homes",
@@ -680,27 +658,5 @@
       "Gated communities in Indio"
     ],
     "slug": "desert-grove"
-  },
-  {
-    "id": 32,
-    "name": "Villa Estates",
-    "description": "Villa Estates is a quiet, family-friendly neighborhood offering single-family homes with large yards and modern designs. Its close proximity to schools and local amenities makes it a desirable community for families.",
-    "photo": "https://example.com/villa-estates.jpg",
-    "features": [
-      "Family-friendly",
-      "Modern homes",
-      "Proximity to schools and amenities"
-    ],
-    "location": "Indio, CA",
-    "coordinates": {
-      "latitude": 33.7444,
-      "longitude": -116.221
-    },
-    "keywords": [
-      "Villa Estates homes for sale",
-      "Family neighborhoods in Indio",
-      "Modern homes in Indio"
-    ],
-    "slug": "villa-estates"
   }
 ]

@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Desert Edge",
-    "description": "A peaceful and quiet neighborhood known for its cleanliness and safety, with a strong sense of community.",
-    "photo": "https://example.com/desert-edge.jpg",
+    "description": "Desert Edge is a serene and picturesque neighborhood located in Desert Hot Springs, CA. Known for its tranquil ambiance and stunning desert landscapes, this community offers a mix of single-family homes, manufactured residences, and spacious lots. Residents of Desert Edge enjoy breathtaking views of the San Bernardino Mountains and the Coachella Valley, making it a haven for nature lovers and those seeking a peaceful retreat.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20210712212941021927000000-o.jpg",
     "features": [
       "Quiet streets",
       "Community-oriented",
@@ -24,8 +24,8 @@
   {
     "id": 2,
     "name": "Wardman Heights",
-    "description": "A family-friendly area appreciated for its beautiful hill views and tranquil atmosphere, ideal for walking and enjoying the surroundings.",
-    "photo": "https://example.com/wardman-heights.jpg",
+    "description": "Wardman Heights is a central neighborhood in Desert Hot Springs, CA, offering a mix of mid-century modern and contemporary homes. Known for its elevated location, the community provides stunning panoramic views of the Coachella Valley and surrounding mountains. Residents enjoy the atmosphere while being close to local amenities, including shopping, dining, and wellness spas. With its unique architectural appeal and tranquil setting, Wardman Heights is a sought-after destination for those seeking a serene desert lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220103194034220537000000-o.jpg",
     "features": [
       "Hill views",
       "Family-friendly",
@@ -46,8 +46,8 @@
   {
     "id": 3,
     "name": "Mission Lakes Country Club",
-    "description": "A premier golf community offering an 18-hole championship course and resort-style amenities.",
-    "photo": "https://example.com/mission-lakes.jpg",
+    "description": "Mission Lakes Country Club is a community in Desert Hot Springs, CA, known for its championship golf course and resort-style amenities. The neighborhood offers a mix of single-family homes and condos, many of which feature views of the San Jacinto Mountains and surrounding desert landscapes. Residents enjoy access to a clubhouse, restaurant, tennis courts, and a community pool, creating opportunities for recreation and social activities. Conveniently located near local shops and dining, Mission Lakes Country Club provides a balanced lifestyle in a scenic desert setting.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20201127190409061240000000-o.jpg",
     "features": [
       "Golf course",
       "Clubhouse",
@@ -68,8 +68,8 @@
   {
     "id": 4,
     "name": "Sky Valley Resort",
-    "description": "A resort-style community known for its natural mineral hot springs, offering a relaxing spa-like atmosphere.",
-    "photo": "https://example.com/sky-valley-resort.jpg",
+    "description": "Sky Valley Resort is a gated community in Desert Hot Springs, CA, renowned for its natural hot mineral springs and resort-style amenities. The neighborhood features manufactured homes and RV spaces, offering a unique desert living experience. Residents enjoy access to mineral pools, spas, fitness facilities, and recreational areas, fostering a vibrant and active atmosphere. With its scenic desert surroundings and proximity to hiking trails, Sky Valley Resort appeals to those seeking relaxation and outdoor adventure.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220216060522941382000000-o.jpg",
     "features": [
       "Natural hot springs",
       "Resort-style living",
@@ -90,8 +90,8 @@
   {
     "id": 5,
     "name": "Hidden Springs Country Club",
-    "description": "A 55+ community with a 9-hole golf course, offering quiet living and scenic desert views.",
-    "photo": "https://example.com/hidden-springs.jpg",
+    "description": "Hidden Springs Country Club is a gated community in Desert Hot Springs, CA, centered around a 9-hole executive golf course. The neighborhood offers manufactured homes with views of the San Jacinto Mountains and the surrounding desert. Residents enjoy amenities such as a clubhouse, community pool, fitness center, and tennis courts, fostering an active and social lifestyle. Its convenient location provides easy access to local shopping, dining, and recreational opportunities.",
+    "photo": "https://lh3.googleusercontent.com/p/AF1QipPyX4wba37PPJ1avGSz1kUlWnGZO73-ARVPdYYC=s680-w680-h510",
     "features": [
       "55+ community",
       "9-hole golf course",
@@ -110,32 +110,10 @@
     "slug": "hidden-springs-country-club"
   },
   {
-    "id": 6,
-    "name": "Desert Springs Estates",
-    "description": "A quiet, friendly neighborhood favored for its dog-friendly parks and stunning views.",
-    "photo": "https://example.com/desert-springs-estates.jpg",
-    "features": [
-      "Dog-friendly parks",
-      "Stunning desert views",
-      "Quiet community"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9442,
-      "longitude": -116.5117
-    },
-    "keywords": [
-      "Desert Springs Estates homes for sale",
-      "Moving to Desert Springs Estates",
-      "Home prices in Desert Springs Estates"
-    ],
-    "slug": "desert-springs-estates"
-  },
-  {
     "id": 7,
     "name": "Agua Dulce",
-    "description": "A family-oriented neighborhood known for its affordability and proximity to local amenities.",
-    "photo": "https://example.com/agua-dulce.jpg",
+    "description": "Agua Dulce is a new-home community in Desert Hot Springs, CA, featuring modern single-family residences managed by a homeowners' association. These newly constructed homes showcase contemporary designs and thoughtful layouts, catering to modern lifestyles. Residents benefit from HOA-managed amenities and the community's convenient location near schools, shopping, and recreational opportunities. Surrounded by stunning desert scenery, Agua Dulce offers a fresh and vibrant living experience.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20210801060036976683000000-o.jpg",
     "features": [
       "Affordable housing",
       "Family-friendly",
@@ -155,9 +133,9 @@
   },
   {
     "id": 8,
-    "name": "Rancho Del Oro",
-    "description": "A peaceful neighborhood with spacious lots and panoramic desert and mountain views.",
-    "photo": "https://example.com/rancho-del-oro.jpg",
+    "name": "Via El Rancho",
+    "description": "Via El Rancho is a neighborhood in Desert Hot Springs, CA, offering spacious lots and stunning views of the desert and surrounding mountains. The area features a mix of single-family homes and open landscapes, providing residents with room to enjoy the natural beauty of the region. Conveniently located near local amenities and recreational opportunities, Via El Rancho combines scenic living with accessibility.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20210702214814464041000000-o.jpg",
     "features": [
       "Spacious lots",
       "Panoramic views",
@@ -169,17 +147,17 @@
       "longitude": -116.4823
     },
     "keywords": [
-      "Rancho Del Oro homes for sale",
-      "Living in Rancho Del Oro Desert Hot Springs",
-      "Home prices in Rancho Del Oro"
+      "Via El Rancho homes for sale",
+      "Living in Via El Rancho Desert Hot Springs",
+      "Home prices in Via El Rancho"
     ],
-    "slug": "rancho-del-oro"
+    "slug": "via-el-rancho"
   },
   {
     "id": 9,
     "name": "The Highlands",
-    "description": "A hillside community offering stunning views, tranquility, and close access to hiking trails.",
-    "photo": "https://example.com/the-highlands.jpg",
+    "description": "The Highlands is a hillside community in Desert Hot Springs, CA, offering stunning views of the Coachella Valley and surrounding mountains. Known for its elevated location, this neighborhood features a mix of single-family homes and access to nearby hiking trails. Residents appreciate its proximity to local amenities, making The Highlands a desirable location for enjoying the desert lifestyle.",
+    "photo": "https://www.nps.gov/common/uploads/cropped_image/primary/F6C44D55-A002-54C4-DBC235FFDEFCA24B.jpg?width=1600&quality=90&mode=crop",
     "features": [
       "Hillside living",
       "Hiking trails",
@@ -199,9 +177,9 @@
   },
   {
     "id": 10,
-    "name": "Paradise Springs",
-    "description": "A gated 55+ community known for its active lifestyle, clubhouse amenities, and welcoming atmosphere.",
-    "photo": "https://example.com/paradise-springs.jpg",
+    "name": "Hacienda anbd Mountain View",
+    "description": "Hacienda and Mountain View is a community in Desert Hot Springs, CA, known for its modern homes and scenic mountain views. Featuring properties built in the last decade, the neighborhood offers upgraded interiors with features such as tile flooring, quartz or granite countertops, and stainless steel appliances. Many homes boast spacious backyards, covered patios, and western-facing views of the mountains, perfect for enjoying desert evenings. With no HOA dues, this area provides homeowners with flexibility and affordability, making it an ideal choice for families and first-time buyers seeking a contemporary desert lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20230131154148424464000000-o.jpg",
     "features": [
       "Gated 55+ community",
       "Active lifestyle",
@@ -213,171 +191,17 @@
       "longitude": -116.5108
     },
     "keywords": [
-      "Paradise Springs homes for sale",
-      "Living in Paradise Springs Desert Hot Springs",
-      "Home prices in Paradise Springs"
+      "Hacienda and mountain view homes for sale",
+      "Living in Hacienda and mountain view Desert Hot Springs",
+      "Home prices in Hacienda and mountain view"
     ],
     "slug": "paradise-springs"
-  },
-  {
-    "id": 6,
-    "name": "Desert Springs Estates",
-    "description": "A quiet, friendly neighborhood favored for its dog-friendly parks and stunning views.",
-    "photo": "https://example.com/desert-springs-estates.jpg",
-    "features": [
-      "Dog-friendly parks",
-      "Stunning desert views",
-      "Quiet community"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9442,
-      "longitude": -116.5117
-    },
-    "keywords": [
-      "Desert Springs Estates homes for sale",
-      "Moving to Desert Springs Estates",
-      "Home prices in Desert Springs Estates"
-    ],
-    "slug": "desert-springs-estates"
-  },
-  {
-    "id": 7,
-    "name": "Agua Dulce",
-    "description": "A family-oriented neighborhood known for its affordability and proximity to local amenities.",
-    "photo": "https://example.com/agua-dulce.jpg",
-    "features": [
-      "Affordable housing",
-      "Family-friendly",
-      "Proximity to amenities"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9378,
-      "longitude": -116.4939
-    },
-    "keywords": [
-      "Agua Dulce homes for sale",
-      "Living in Agua Dulce Desert Hot Springs",
-      "Home prices in Agua Dulce"
-    ],
-    "slug": "agua-dulce"
-  },
-  {
-    "id": 8,
-    "name": "Rancho Del Oro",
-    "description": "A peaceful neighborhood with spacious lots and panoramic desert and mountain views.",
-    "photo": "https://example.com/rancho-del-oro.jpg",
-    "features": [
-      "Spacious lots",
-      "Panoramic views",
-      "Quiet environment"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9315,
-      "longitude": -116.4823
-    },
-    "keywords": [
-      "Rancho Del Oro homes for sale",
-      "Living in Rancho Del Oro Desert Hot Springs",
-      "Home prices in Rancho Del Oro"
-    ],
-    "slug": "rancho-del-oro"
-  },
-  {
-    "id": 9,
-    "name": "The Highlands",
-    "description": "A hillside community offering stunning views, tranquility, and close access to hiking trails.",
-    "photo": "https://example.com/the-highlands.jpg",
-    "features": [
-      "Hillside living",
-      "Hiking trails",
-      "Stunning views"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9501,
-      "longitude": -116.5012
-    },
-    "keywords": [
-      "The Highlands homes for sale",
-      "Moving to The Highlands Desert Hot Springs",
-      "Home prices in The Highlands"
-    ],
-    "slug": "the-highlands"
-  },
-  {
-    "id": 10,
-    "name": "Paradise Springs",
-    "description": "A gated 55+ community known for its active lifestyle, clubhouse amenities, and welcoming atmosphere.",
-    "photo": "https://example.com/paradise-springs.jpg",
-    "features": [
-      "Gated 55+ community",
-      "Active lifestyle",
-      "Clubhouse amenities"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9274,
-      "longitude": -116.5108
-    },
-    "keywords": [
-      "Paradise Springs homes for sale",
-      "Living in Paradise Springs Desert Hot Springs",
-      "Home prices in Paradise Springs"
-    ],
-    "slug": "paradise-springs"
-  },
-  {
-    "id": 11,
-    "name": "Dos Palmas",
-    "description": "A small, family-friendly neighborhood offering affordability and a close-knit community atmosphere.",
-    "photo": "https://example.com/dos-palmas.jpg",
-    "features": [
-      "Family-friendly",
-      "Affordable housing",
-      "Close-knit community"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9362,
-      "longitude": -116.4904
-    },
-    "keywords": [
-      "Dos Palmas homes for sale",
-      "Living in Dos Palmas Desert Hot Springs",
-      "Home prices in Dos Palmas"
-    ],
-    "slug": "dos-palmas"
-  },
-  {
-    "id": 12,
-    "name": "Hot Springs Oasis",
-    "description": "A peaceful neighborhood centered around the natural hot springs, offering a resort-like environment.",
-    "photo": "https://example.com/hot-springs-oasis.jpg",
-    "features": [
-      "Natural hot springs",
-      "Resort-like living",
-      "Peaceful environment"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9287,
-      "longitude": -116.5132
-    },
-    "keywords": [
-      "Hot Springs Oasis homes for sale",
-      "Living in Hot Springs Oasis Desert Hot Springs",
-      "Home prices in Hot Springs Oasis"
-    ],
-    "slug": "hot-springs-oasis"
   },
   {
     "id": 13,
     "name": "North Palm Springs",
-    "description": "A diverse community offering affordable homes and convenient access to Desert Hot Springs and Palm Springs amenities.",
-    "photo": "https://example.com/north-palm-springs.jpg",
+    "description": "North Palm Springs is a rural area offering a variety of housing options, including single-family homes and manufactured residences. Known for its open landscapes and proximity to the desert’s natural beauty, this community provides opportunities for homeowners seeking larger lots and a quieter environment. Located near major transportation routes, North Palm Springs offers convenient access to surrounding cities and amenities while retaining its unique desert charm.",
+    "photo": "https://www.desertsun.com/gcdn/presto/2021/01/08/PPAS/74577b85-7c9c-4e3f-ac9d-30ab266236de-Skyborne_overview__DJI_0063_Raw.jpg?crop=2999,1687,x0,y450",
     "features": [
       "Affordable homes",
       "Diverse community",
@@ -398,8 +222,8 @@
   {
     "id": 14,
     "name": "Sky Haven",
-    "description": "A serene neighborhood with expansive desert views, ideal for those seeking quiet living.",
-    "photo": "https://example.com/sky-haven.jpg",
+    "description": "Sky Haven is a neighborhood in Desert Hot Springs, CA, offering a mix of single-family homes and manufactured residences. Known for its expansive desert views and accessible location, this community provides a balance of residential living and proximity to local amenities. Residents benefit from the scenic surroundings and the area’s connection to the broader Coachella Valley.",
+    "photo": "https://www.desertsun.com/gcdn/presto/2021/05/05/PPAS/019f2209-9f4a-44eb-9ccc-3e4dc3821fea-402dhscondos-2.jpg?width=1733&height=1156&fit=crop&format=pjpg&auto=webp",
     "features": [
       "Expansive views",
       "Quiet living",
@@ -420,8 +244,8 @@
   {
     "id": 15,
     "name": "B-Bar-H Ranch",
-    "description": "A historic neighborhood offering a mix of modern and vintage homes with a rustic ranch charm.",
-    "photo": "https://example.com/b-bar-h-ranch.jpg",
+    "description": "B-Bar-H Ranch is a historic neighborhood in Desert Hot Springs, CA, offering a blend of modern and vintage homes with a distinct ranch-style charm. Known for its spacious lots and open desert views, this community provides a unique living experience that reflects the area's rich history. Conveniently located near local amenities and major transportation routes, B-Bar-H Ranch combines rustic appeal with modern convenience.",
+    "photo": "https://www.desertsun.com/gcdn/-mm-/c5fa965c5adc2fe95ff63dff1fe5a26da6c062da/c=0-63-800-513/local/-/media/PalmSprings/2014/02/24/-peterlorreisontherightjaykaslernextinthewagonaremariekasler.jpg?width=1200&disable=upscale&format=pjpg&auto=webp",
     "features": [
       "Rustic charm",
       "Historic homes",
@@ -442,8 +266,8 @@
   {
     "id": 16,
     "name": "Hacienda Heights",
-    "description": "A tranquil community with spacious homes and stunning views of the surrounding mountains.",
-    "photo": "https://example.com/hacienda-heights.jpg",
+    "description": "Hacienda Heights is a community in Desert Hot Springs, CA, featuring spacious homes with modern designs and scenic mountain views. Known for its quiet streets and convenient location, the neighborhood provides easy access to local schools, shopping, and recreational activities. With its blend of comfort and accessibility, Hacienda Heights offers a welcoming environment for families and homeowners seeking a desert lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220324191805554334000000-o.jpg",
     "features": [
       "Spacious homes",
       "Mountain views",
@@ -460,93 +284,5 @@
       "Home prices in Hacienda Heights"
     ],
     "slug": "hacienda-heights"
-  },
-  {
-    "id": 17,
-    "name": "Desert View Estates",
-    "description": "A family-friendly neighborhood offering affordable homes and access to local schools and amenities.",
-    "photo": "https://example.com/desert-view-estates.jpg",
-    "features": [
-      "Family-friendly",
-      "Affordable homes",
-      "Close to schools"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9342,
-      "longitude": -116.4987
-    },
-    "keywords": [
-      "Desert View Estates homes for sale",
-      "Living in Desert View Estates Desert Hot Springs",
-      "Home prices in Desert View Estates"
-    ],
-    "slug": "desert-view-estates"
-  },
-  {
-    "id": 18,
-    "name": "Mountain View Country Estates",
-    "description": "A gated community featuring modern homes, private amenities, and scenic mountain views.",
-    "photo": "https://example.com/mountain-view-estates.jpg",
-    "features": [
-      "Gated community",
-      "Modern homes",
-      "Mountain views"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9218,
-      "longitude": -116.5031
-    },
-    "keywords": [
-      "Mountain View Country Estates homes for sale",
-      "Living in Mountain View Estates Desert Hot Springs",
-      "Home prices in Mountain View Estates"
-    ],
-    "slug": "mountain-view-country-estates"
-  },
-  {
-    "id": 19,
-    "name": "Hidden Valley",
-    "description": "A peaceful community with a blend of modern and traditional homes, offering a secluded yet accessible location.",
-    "photo": "https://example.com/hidden-valley.jpg",
-    "features": [
-      "Secluded location",
-      "Modern homes",
-      "Quiet living"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9304,
-      "longitude": -116.4956
-    },
-    "keywords": [
-      "Hidden Valley homes for sale",
-      "Living in Hidden Valley Desert Hot Springs",
-      "Home prices in Hidden Valley"
-    ],
-    "slug": "hidden-valley"
-  },
-  {
-    "id": 20,
-    "name": "Rancho Buena Vista",
-    "description": "A highly sought-after neighborhood known for its expansive lots and luxurious homes.",
-    "photo": "https://example.com/rancho-buena-vista.jpg",
-    "features": [
-      "Expansive lots",
-      "Luxury homes",
-      "Quiet surroundings"
-    ],
-    "location": "Desert Hot Springs, CA",
-    "coordinates": {
-      "latitude": 33.9401,
-      "longitude": -116.5124
-    },
-    "keywords": [
-      "Rancho Buena Vista homes for sale",
-      "Living in Rancho Buena Vista Desert Hot Springs",
-      "Home prices in Rancho Buena Vista"
-    ],
-    "slug": "rancho-buena-vista"
   }
 ]
