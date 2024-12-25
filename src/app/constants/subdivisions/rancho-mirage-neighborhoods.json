@@ -550,28 +550,6 @@
     "slug": "villaggio-on-sinatra"
   },
   {
-    "id": 26,
-    "name": "Bighorn Golf Club",
-    "description": "Bighorn Golf Club in Rancho Mirage, CA, offers an exclusive and luxurious desert lifestyle, featuring world-class golf courses, stunning custom homes, exceptional amenities including a private clubhouse, fitness center, and fine dining, all nestled in the scenic Coachella Valley with breathtaking mountain views, providing residents with a serene, upscale community that blends sophisticated living with unparalleled leisure opportunities for those seeking elegance and privacy in one of Southern California’s most sought-after locations.",
-    "photo": null,
-    "features": [
-      "Championship golf courses",
-      "Custom-built estates",
-      "Exclusive amenities"
-    ],
-    "location": "Rancho Mirage, CA",
-    "coordinates": {
-      "latitude": 33.7673,
-      "longitude": -116.4061
-    },
-    "keywords": [
-      "Bighorn Golf Club homes for sale",
-      "Living in Bighorn Rancho Mirage",
-      "Home prices in Bighorn"
-    ],
-    "slug": "bighorn-golf-club"
-  },
-  {
     "id": 27,
     "name": "Desert Island",
     "description": "Desert Island in Rancho Mirage, CA, is an exclusive, luxury real estate community offering serene desert landscapes, breathtaking mountain views, and upscale living with private golf courses, spacious estates, and world-class amenities, creating an oasis for those seeking tranquility, privacy, and exceptional quality of life in one of the most prestigious desert resort destinations in Southern California.",
