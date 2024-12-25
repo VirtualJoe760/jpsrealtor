@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Mirada Estates",
-    "description": "An exclusive gated community perched above the Coachella Valley, Mirada Estates offers luxury homes with breathtaking panoramic views. Residents enjoy proximity to the Ritz-Carlton resort, combining privacy with world-class amenities.",
-    "photo": "https://example.com/mirada-estates.jpg",
+    "description": "Mirada Estates in Rancho Mirage, CA, is an exclusive, luxury gated community offering breathtaking desert views, spacious custom homes, and a serene lifestyle, perfect for those seeking privacy, tranquility, and modern living with access to world-class amenities such as golf courses, spas, and dining, all nestled in the heart of the Coachella Valley, making it an ideal retreat for discerning homeowners who value both comfort and sophistication in a prestigious desert location.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240705213109702214000000-o.jpg",
     "features": [
       "Gated community",
       "Panoramic views",
@@ -24,8 +24,8 @@
   {
     "id": 2,
     "name": "Mission Ranch",
-    "description": "Nestled along the prestigious Clancy Lane, Mission Ranch is a premier gated community known for its elegant homes and lushly landscaped surroundings. Residents enjoy access to golf courses, fine dining, and upscale shopping just minutes away.",
-    "photo": "https://example.com/mission-ranch.jpg",
+    "description": "Mission Ranch in Rancho Mirage, CA, is an upscale, gated community offering luxury living with beautifully designed homes, stunning mountain views, serene landscaping, and a prime location near world-class golf courses, shopping, dining, and entertainment, providing residents with an exceptional lifestyle of comfort, privacy, and convenience in the heart of the Coachella Valley, making it the perfect destination for those seeking a sophisticated, peaceful, and vibrant desert oasis.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240124205612264820000000-o.jpg",
     "features": [
       "Gated community",
       "Elegant homes",
@@ -46,8 +46,8 @@
   {
     "id": 3,
     "name": "St. Augustine",
-    "description": "With its tranquil lakes, cascading fountains, and tennis courts, St. Augustine offers an idyllic desert retreat. This gated community features 187 single-family homes and a sprawling 7.5-acre greenbelt surrounded by stunning mountain views.",
-    "photo": "https://example.com/st-augustine.jpg",
+    "description": "St. Augustine in Rancho Mirage, CA, is an exclusive and serene gated community offering luxurious, spacious homes nestled amidst lush landscapes, with breathtaking mountain views, world-class amenities including a golf course, clubhouse, and resort-style pool, all within a prime location near fine dining, shopping, and entertainment, providing residents with an exceptional lifestyle that blends tranquility with convenience in one of the most sought-after neighborhoods in the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230626174053943250000000-o.jpg",
     "features": [
       "Lakes and fountains",
       "Tennis courts",
@@ -68,8 +68,8 @@
   {
     "id": 4,
     "name": "Thunderbird Heights Estates",
-    "description": "A prestigious community established in the 1950s, Thunderbird Heights Estates blends historic charm with modern luxury. Its unique tunnel connects residents directly to the Thunderbird Country Club, making it a favorite among golf enthusiasts.",
-    "photo": "https://example.com/thunderbird-heights.jpg",
+    "description": "descThunderbird Heights Estates in Rancho Mirage, CA, offers an exclusive, serene desert lifestyle with luxurious custom homes, panoramic mountain views, and proximity to world-class golf courses, dining, shopping, and cultural attractions, making it the perfect destination for those seeking privacy, elegance, and a sophisticated, gated community in the heart of the Coachella Valley.riptions",
+    "photo": null,
     "features": [
       "Historic charm",
       "Direct access to golf",
@@ -90,8 +90,8 @@
   {
     "id": 5,
     "name": "The Springs Country Club",
-    "description": "A prestigious country club community offering luxury homes, championship golf, and a full suite of resort-style amenities. The Springs Country Club combines elegance and active living in the heart of Rancho Mirage.",
-    "photo": "https://example.com/springs-country-club.jpg",
+    "description": "The Springs Country Club in Rancho Mirage, CA, offers a luxurious, gated community with world-class amenities, including a golf course, tennis courts, a fitness center, and a clubhouse, providing residents with a serene desert lifestyle. Nestled in the Coachella Valley, this exclusive community combines breathtaking mountain views with top-tier recreational facilities, catering to those seeking a high-end living experience. A perfect blend of privacy, elegance, and access to local attractions and entertainment.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240913161143854502000000-o.jpg",
     "features": [
       "Golf course",
       "Resort-style amenities",
@@ -112,8 +112,8 @@
   {
     "id": 6,
     "name": "Mira Vista",
-    "description": "A gated community known for its contemporary homes and stunning views of the surrounding mountains. Mira Vista features spacious lots and offers residents access to a pool, tennis courts, and nearby golf courses.",
-    "photo": "https://example.com/mira-vista.jpg",
+    "description": "Mira Vista in Rancho Mirage, CA, is a prestigious, gated community offering luxurious, contemporary homes with breathtaking mountain views, world-class amenities, and a prime location just minutes from the renowned Desert Willow Golf Resort, fine dining, shopping, and entertainment, making it an ideal destination for those seeking an exclusive and tranquil desert lifestyle with unparalleled comfort and convenience in one of the most desirable areas of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230125214714944797000000-o.jpg",
     "features": [
       "Gated community",
       "Contemporary homes",
@@ -134,8 +134,8 @@
   {
     "id": 7,
     "name": "Victoria Falls",
-    "description": "Victoria Falls is a gated community offering spacious homes with elegant designs. Residents enjoy a serene environment, tennis courts, and proximity to top-rated schools and amenities.",
-    "photo": "https://example.com/victoria-falls.jpg",
+    "description": "Victoria Falls in Rancho Mirage, CA, is an exclusive, luxurious community that boasts stunning desert landscapes, meticulously designed homes, and unparalleled amenities, including resort-style pools, scenic walking trails, and private golf courses, all set against the backdrop of majestic mountain views; a perfect retreat for those seeking a blend of sophistication, tranquility, and an active lifestyle, offering easy access to world-class shopping, dining, entertainment, and recreational activities in the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231211132722429412000000-o.jpg",
     "features": [
       "Gated community",
       "Tennis courts",
@@ -156,8 +156,8 @@
   {
     "id": 8,
     "name": "Tamarisk Country Club",
-    "description": "One of Rancho Mirage's most iconic communities, Tamarisk Country Club offers classic mid-century modern homes alongside luxury estates. With a rich history and a private golf course, this neighborhood exudes sophistication.",
-    "photo": "https://example.com/tamarisk-country-club.jpg",
+    "description": "Tamarisk Country Club in Rancho Mirage, CA, is an exclusive, renowned community offering an unparalleled living experience with luxurious homes nestled amidst lush fairways, private golf course views, and stunning desert landscapes, where residents enjoy a prestigious lifestyle with world-class amenities, including a historic golf course, tennis courts, and an active social scene, making it an ideal destination for those seeking sophistication, tranquility, and community in the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240621160500583605000000-o.jpg",
     "features": [
       "Private golf course",
       "Historic community",
@@ -178,8 +178,8 @@
   {
     "id": 9,
     "name": "Clancy Lane",
-    "description": "Known for its sprawling estates and equestrian properties, Clancy Lane is one of the most prestigious addresses in Rancho Mirage. This neighborhood offers luxury living with privacy and charm.",
-    "photo": "https://example.com/clancy-lane.jpg",
+    "description": "Clancy Lane in Rancho Mirage, CA offers an exclusive, serene community with luxurious homes nestled in a prestigious desert oasis, featuring spacious properties with panoramic mountain views, private pools, and beautiful landscaping, providing an ideal blend of tranquility, sophistication, and convenience for residents seeking a perfect balance of modern amenities and natural beauty, all within close proximity to renowned golf courses, upscale shopping, dining, and entertainment options in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240416234904504995000000-o.jpg",
     "features": [
       "Luxury estates",
       "Equestrian properties",
@@ -200,8 +200,8 @@
   {
     "id": 10,
     "name": "Mission Hills Country Club",
-    "description": "A renowned golf and tennis community, Mission Hills Country Club features luxurious homes surrounded by lush fairways and scenic lakes. Residents enjoy world-class amenities and an active lifestyle.",
-    "photo": "https://example.com/mission-hills-country-club.jpg",
+    "description": "Mission Hills Country Club in Rancho Mirage, CA, is an exclusive, gated community offering luxurious living with world-class amenities including championship golf courses, tennis courts, and a private clubhouse. Nestled in the scenic Coachella Valley, this prestigious community features stunning homes with breathtaking mountain views, elegant interiors, and a strong sense of community, perfect for those seeking a serene and upscale lifestyle in one of Southern California’s most sought-after locations.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20241010154334134067000000-o.jpg",
     "features": [
       "Golf and tennis",
       "Scenic lakes",
@@ -222,8 +222,8 @@
   {
     "id": 11,
     "name": "Sterling Estates",
-    "description": "Sterling Estates offers a collection of custom-built homes with contemporary designs. This gated community provides a sophisticated and quiet lifestyle with mountain views and modern amenities.",
-    "photo": "https://example.com/sterling-estates.jpg",
+    "description": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231121213900104061000000-o.jpg",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231121213900104061000000-o.jpg",
     "features": [
       "Custom homes",
       "Mountain views",
@@ -244,8 +244,8 @@
   {
     "id": 12,
     "name": "Waterford",
-    "description": "Waterford is an exclusive enclave featuring contemporary estates with lush landscaping and private pools. This gated community offers privacy and luxury living in the heart of Rancho Mirage.",
-    "photo": "https://example.com/waterford.jpg",
+    "description": "The real estate community in Waterford, Rancho Mirage, CA offers a luxurious and tranquil desert oasis with stunning mountain views, expansive properties, high-end amenities, and a prime location close to world-class golf courses, shopping, dining, and cultural attractions, providing a perfect blend of privacy, elegance, and convenience for those seeking an exceptional lifestyle in one of the most sought-after areas of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230131003435539294000000-o.jpg",
     "features": [
       "Contemporary estates",
       "Private pools",
@@ -266,8 +266,8 @@
   {
     "id": 13,
     "name": "Thunderbird Cove",
-    "description": "Nestled in the foothills, Thunderbird Cove is an exclusive gated community offering luxurious homes with stunning mountain views. Known for its privacy and elegance, it’s a top choice for discerning buyers.",
-    "photo": "https://example.com/thunderbird-cove.jpg",
+    "description": "Thunderbird Cove in Rancho Mirage, CA, is an exclusive, gated community offering luxurious, custom-designed homes nestled in the picturesque desert landscape, surrounded by stunning mountain views and lush greenery, providing a tranquil and private living experience with world-class amenities, including a private golf course, tennis courts, and easy access to upscale shopping, fine dining, and renowned resorts, making it an ideal destination for those seeking a blend of elegance, comfort, and serene desert living.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230119180309791734000000-o.jpg",
     "features": [
       "Gated community",
       "Luxurious homes",
@@ -288,8 +288,8 @@
   {
     "id": 14,
     "name": "Ivy League Estates",
-    "description": "Ivy League Estates is a charming gated community featuring spacious homes with classic designs. This neighborhood offers a peaceful environment with close access to top schools and local amenities.",
-    "photo": "https://example.com/ivy-league-estates.jpg",
+    "description": "Ivy League Estates in Rancho Mirage, CA, is an exclusive, upscale community offering luxurious, custom-built homes with stunning mountain and desert views, private amenities, and a serene atmosphere, making it an ideal location for those seeking sophisticated living, privacy, and tranquility in the heart of the Coachella Valley, while providing easy access to world-class golf courses, fine dining, shopping, and entertainment options, perfect for discerning homeowners looking for unparalleled comfort and prestige.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230908221327894965000000-o.jpg",
     "features": [
       "Gated community",
       "Classic designs",
@@ -310,8 +310,8 @@
   {
     "id": 15,
     "name": "The Renaissance",
-    "description": "An exclusive community featuring custom-built luxury homes with modern architecture. The Renaissance is a gated neighborhood offering privacy and close access to world-class amenities.",
-    "photo": "https://example.com/the-renaissance.jpg",
+    "description": "The Renaissance in Rancho Mirage, CA is a prestigious, gated community offering luxurious desert living with breathtaking mountain views, upscale amenities including a clubhouse, pool, and tennis courts, as well as spacious homes with contemporary designs, all set in a serene environment ideal for those seeking tranquility and sophistication. Residents enjoy proximity to world-class golf courses, dining, shopping, and entertainment options, making it a perfect blend of comfort, style, and convenience in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210311035159391961000000-o.jpg",
     "features": [
       "Custom-built homes",
       "Modern architecture",
@@ -332,8 +332,8 @@
   {
     "id": 16,
     "name": "Escala",
-    "description": "Escala is a gated community offering estate-style homes with stunning architectural designs. Known for its exclusivity and tranquility, Escala is ideal for those seeking a luxurious desert retreat.",
-    "photo": "https://example.com/escala.jpg",
+    "description": "Escala in Rancho Mirage, CA is an exclusive, gated luxury community offering a tranquil desert oasis with stunning contemporary homes, panoramic mountain views, and world-class amenities, including a resort-style pool, fitness center, and tennis courts, providing residents with a perfect blend of privacy, modern living, and natural beauty, while being centrally located near top golf courses, shopping centers, fine dining, and entertainment options, making it an ideal place to call home for those seeking elegance and comfort.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20211013164921789347000000-o.jpg",
     "features": [
       "Estate-style homes",
       "Exclusive community",
@@ -354,8 +354,8 @@
   {
     "id": 17,
     "name": "Cypress Pointe",
-    "description": "Cypress Pointe offers contemporary homes with modern amenities and beautiful desert landscaping. This quiet, gated community is perfect for those looking for a serene yet stylish lifestyle.",
-    "photo": "https://example.com/cypress-pointe.jpg",
+    "description": "Cypress Pointe in Rancho Mirage, CA, is an exclusive, upscale gated community offering luxurious homes, scenic golf course views, resort-style amenities, and a tranquil desert atmosphere, ideal for those seeking a sophisticated yet serene living experience with easy access to nearby shopping, dining, and entertainment options, making it the perfect place to call home for those who appreciate privacy, elegance, and a vibrant lifestyle in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20211223012251398974000000-o.jpg",
     "features": [
       "Contemporary homes",
       "Desert landscaping",
@@ -376,8 +376,8 @@
   {
     "id": 18,
     "name": "The Villas of Mirada",
-    "description": "Adjacent to the Ritz-Carlton, The Villas of Mirada is a luxurious gated community offering modern homes with resort-style amenities and breathtaking Coachella Valley views.",
-    "photo": "https://example.com/villas-of-mirada.jpg",
+    "description": "The Villas of Mirada in Rancho Mirage, CA, is an exclusive, luxurious gated community offering spacious modern homes with stunning desert views, private pools, and high-end amenities. Nestled in the heart of the Coachella Valley, it provides residents with a serene and upscale lifestyle, complete with world-class golf courses, proximity to top-tier shopping, dining, and entertainment, all while maintaining a peaceful, secure, and intimate atmosphere perfect for relaxation and modern living.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220510161124887775000000-o.jpg",
     "features": [
       "Adjacent to Ritz-Carlton",
       "Resort-style amenities",
@@ -398,8 +398,8 @@
   {
     "id": 19,
     "name": "Rancho Estates",
-    "description": "Rancho Estates is a private enclave featuring mid-century modern homes and luxurious estates. Its unique architecture and lush surroundings make it a standout community in Rancho Mirage.",
-    "photo": "https://example.com/rancho-estates.jpg",
+    "description": "Nestled in the heart of the Coachella Valley, Rancho Estates in Rancho Mirage offers a luxurious and serene living experience, featuring upscale homes with stunning mountain views, spacious lawns, and private pools. The community is known for its peaceful ambiance, elegant architecture, and proximity to world-class golf courses, shopping, dining, and entertainment. Residents enjoy a lifestyle of comfort and exclusivity, making Rancho Estates an ideal place to call home in one of California’s most sought-after locations.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210712230130403983000000-o.jpg",
     "features": [
       "Mid-century modern homes",
       "Lush surroundings",
@@ -420,8 +420,8 @@
   {
     "id": 20,
     "name": "Del Webb Rancho Mirage",
-    "description": "A 55+ active adult community offering resort-style living with beautifully designed homes, pools, fitness centers, and social activities. Del Webb Rancho Mirage is perfect for those seeking an active and vibrant lifestyle.",
-    "photo": "https://example.com/del-webb.jpg",
+    "description": "Del Webb Rancho Mirage is an active adult 55+ community located in the scenic Rancho Mirage, CA, offering resort-style living with a wide range of amenities including a clubhouse, fitness center, tennis courts, and walking trails, along with beautifully designed homes ideal for retirees seeking a vibrant lifestyle, close proximity to world-class shopping, dining, and entertainment, all within a peaceful and welcoming desert setting that fosters social engagement and an active, healthy lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240726190432030093000000-o.jpg",
     "features": [
       "55+ active adult community",
       "Resort-style living",
@@ -442,8 +442,8 @@
   {
     "id": 21,
     "name": "Santo Tomas",
-    "description": "Santo Tomas is a picturesque gated community featuring Mediterranean-inspired homes with lakefront views. Residents enjoy serene surroundings and access to walking paths and community amenities.",
-    "photo": "https://example.com/santo-tomas.jpg",
+    "description": "Santo Tomas in Rancho Mirage, CA, is a luxurious, gated real estate community offering breathtaking mountain views, spacious, modern homes, and a serene, upscale atmosphere with close proximity to world-class golf courses, fine dining, and shopping destinations, providing residents with a blend of tranquility and convenience in one of the most sought-after desert locales in Southern California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240212222840276115000000-o.jpg",
     "features": [
       "Mediterranean homes",
       "Lakefront views",
@@ -464,8 +464,8 @@
   {
     "id": 22,
     "name": "Casas de Seville",
-    "description": "A charming gated community offering Spanish-style homes with beautiful courtyards and lush landscaping. Casas de Seville is perfect for those seeking an intimate and elegant neighborhood.",
-    "photo": "https://example.com/casas-de-seville.jpg",
+    "description": "Casas de Seville in Rancho Mirage, CA, is an exclusive, serene, and picturesque gated community offering luxurious desert living with beautifully designed homes, lush landscapes, and stunning mountain views, all within close proximity to world-class golf courses, fine dining, shopping, and entertainment, providing residents a perfect blend of tranquility, convenience, and modern amenities for an exceptional lifestyle in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230820194028364975000000-o.jpg",
     "features": [
       "Spanish-style homes",
       "Beautiful courtyards",
@@ -486,8 +486,8 @@
   {
     "id": 23,
     "name": "Lake Mirage",
-    "description": "Lake Mirage is a unique waterfront community featuring townhomes and condos with private docks and stunning lake views. Residents enjoy water activities and a tranquil lifestyle.",
-    "photo": "https://example.com/lake-mirage.jpg",
+    "description": "Lake Mirage in Rancho Mirage, CA, is an exclusive, gated community offering luxurious lakeside living with stunning mountain views, spacious homes, and resort-style amenities including tennis courts, a clubhouse, a private lake, and a pool. Residents enjoy a serene, peaceful environment, close proximity to world-class shopping, dining, and golf courses, along with easy access to the vibrant city of Palm Springs, making it an ideal destination for those seeking both tranquility and convenience in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210830155915686243000000-o.jpg",
     "features": [
       "Waterfront homes",
       "Private docks",
@@ -508,8 +508,8 @@
   {
     "id": 24,
     "name": "Morningside Country Club",
-    "description": "One of the most prestigious country clubs in Rancho Mirage, Morningside features custom luxury homes, championship golf, and world-class amenities in a secure, gated setting.",
-    "photo": "https://example.com/morningside.jpg",
+    "description": "Morningside Country Club in Rancho Mirage, CA, is an exclusive, luxury gated community offering elegant homes with breathtaking views of the San Jacinto Mountains, world-class amenities including a golf course, tennis courts, fitness center, and fine dining, providing residents with a serene desert lifestyle and close proximity to upscale shopping, dining, and entertainment, making it an ideal location for those seeking a refined, tranquil living experience in one of the Coachella Valley's most prestigious neighborhoods.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240504235704664786000000-o.jpg",
     "features": [
       "Luxury homes",
       "Championship golf",
@@ -530,8 +530,8 @@
   {
     "id": 25,
     "name": "Villaggio on Sinatra",
-    "description": "Villaggio on Sinatra is an exclusive gated community offering luxury estates with spacious layouts and modern designs. Known for its privacy and elegance, it’s a favorite among high-profile buyers.",
-    "photo": "https://example.com/villaggio.jpg",
+    "description": "Villaggio on Sinatra in Rancho Mirage, CA, is an exclusive, gated residential community offering luxurious homes with breathtaking views of the San Jacinto Mountains, private pools, and modern amenities. Featuring Mediterranean-inspired architecture, this community is designed for those seeking tranquility, privacy, and an upscale lifestyle, with proximity to world-class golf courses, shopping, dining, and entertainment. Ideal for year-round living or seasonal retreats, Villaggio on Sinatra provides a perfect blend of comfort and elegance.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210530165402294222000000-o.jpg",
     "features": [
       "Luxury estates",
       "Modern designs",
@@ -552,8 +552,8 @@
   {
     "id": 26,
     "name": "Bighorn Golf Club",
-    "description": "An iconic golf community offering unparalleled luxury. Bighorn Golf Club features custom-built estates, two championship golf courses, and access to exclusive amenities for the elite lifestyle.",
-    "photo": "https://example.com/bighorn-golf-club.jpg",
+    "description": "Bighorn Golf Club in Rancho Mirage, CA, offers an exclusive and luxurious desert lifestyle, featuring world-class golf courses, stunning custom homes, exceptional amenities including a private clubhouse, fitness center, and fine dining, all nestled in the scenic Coachella Valley with breathtaking mountain views, providing residents with a serene, upscale community that blends sophisticated living with unparalleled leisure opportunities for those seeking elegance and privacy in one of Southern California’s most sought-after locations.",
+    "photo": null,
     "features": [
       "Championship golf courses",
       "Custom-built estates",
@@ -574,8 +574,8 @@
   {
     "id": 27,
     "name": "Desert Island",
-    "description": "A one-of-a-kind community featuring condos surrounded by a private golf course and a serene lake. Desert Island offers an upscale lifestyle with breathtaking views and resort-style living.",
-    "photo": "https://example.com/desert-island.jpg",
+    "description": "Desert Island in Rancho Mirage, CA, is an exclusive, luxury real estate community offering serene desert landscapes, breathtaking mountain views, and upscale living with private golf courses, spacious estates, and world-class amenities, creating an oasis for those seeking tranquility, privacy, and exceptional quality of life in one of the most prestigious desert resort destinations in Southern California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231110214316113717000000-o.jpg",
     "features": [
       "Condos with lake views",
       "Private golf course",
@@ -596,8 +596,8 @@
   {
     "id": 28,
     "name": "The Club at Morningside",
-    "description": "The Club at Morningside is a prestigious enclave within Rancho Mirage, known for its championship golf, luxurious homes, and access to a vibrant social scene.",
-    "photo": "https://example.com/morningside-club.jpg",
+    "description": "The Club at Morningside in Rancho Mirage, CA, is a prestigious, gated golf and country club community offering luxurious living with scenic mountain views, world-class amenities, including an 18-hole championship golf course, tennis courts, a clubhouse with dining options, and a state-of-the-art fitness center, all set within beautifully landscaped surroundings, providing an exclusive lifestyle for those seeking privacy, elegance, and an active, social environment in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220511152558233233000000-o.jpg",
     "features": [
       "Golf course",
       "Luxurious homes",
@@ -618,8 +618,8 @@
   {
     "id": 29,
     "name": "Estilo at Rancho Mirage",
-    "description": "Estilo at Rancho Mirage is a stunning community featuring contemporary homes with sleek designs, large lots, and luxurious interiors. Perfect for those seeking a modern desert lifestyle.",
-    "photo": "https://example.com/estilo.jpg",
+    "description": "Estilo at Rancho Mirage is an exclusive, luxurious gated community in Rancho Mirage, CA, offering elegant modern homes with breathtaking mountain views, spacious floor plans, and premium amenities, including a state-of-the-art fitness center, resort-style pool, and scenic walking trails, providing residents with a serene, upscale living experience in one of the Coachella Valley's most sought-after locations, blending tranquility, convenience, and sophistication for the ultimate desert lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220219202607159291000000-o.jpg",
     "features": [
       "Contemporary homes",
       "Large lots",
@@ -640,8 +640,8 @@
   {
     "id": 30,
     "name": "Legacy at Mission Hills",
-    "description": "A private enclave within Mission Hills Country Club, Legacy offers custom-built homes with expansive floor plans and top-tier amenities. Residents enjoy proximity to golf and luxury facilities.",
-    "photo": "https://example.com/legacy-mission-hills.jpg",
+    "description": "Legacy at Mission Hills in Rancho Mirage, CA is an exclusive, luxurious gated community offering spacious homes with stunning desert views, world-class amenities including a championship golf course, tennis courts, and a clubhouse, and an ideal location for those seeking privacy, comfort, and a resort-style living experience. Residents enjoy a peaceful, upscale atmosphere, with proximity to shopping, dining, entertainment, and the natural beauty of the Coachella Valley, making it an extraordinary place to live.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220418222034428853000000-o.jpg",
     "features": [
       "Custom-built homes",
       "Golf access",
@@ -662,8 +662,8 @@
   {
     "id": 31,
     "name": "The Estates at Rancho Mirage",
-    "description": "An upscale gated community featuring elegant homes with breathtaking mountain views and resort-style amenities. The Estates is known for its exclusivity and serene desert setting.",
-    "photo": "https://example.com/estates-rancho-mirage.jpg",
+    "description": "The Estates at Rancho Mirage in Rancho Mirage, CA, is an exclusive, gated community offering luxurious, contemporary homes with expansive floor plans, premium amenities, and breathtaking mountain views, designed for those seeking privacy, tranquility, and an exceptional living experience in the heart of the Coachella Valley, with easy access to world-class golf courses, fine dining, shopping, and entertainment, making it an ideal destination for discerning residents and seasonal homeowners alike.",
+    "photo": null,
     "features": [
       "Elegant homes",
       "Mountain views",
@@ -684,8 +684,8 @@
   {
     "id": 32,
     "name": "Coronado Rancho Mirage",
-    "description": "A boutique gated community offering luxury homes with spacious designs and private pools. Coronado Rancho Mirage is ideal for those seeking exclusivity and a sophisticated lifestyle.",
-    "photo": "https://example.com/coronado.jpg",
+    "description": "Coronado Rancho Mirage is an upscale, gated community in Rancho Mirage, CA, offering luxurious desert living with stunning mountain views, meticulously landscaped grounds, and high-end amenities. Residents enjoy a serene and private atmosphere, with spacious homes featuring modern designs and private pools. The community is ideally located near world-class golf courses, shopping, dining, and entertainment options, providing a perfect blend of relaxation and convenience in the heart of the Coachella Valley.",
+    "photo": null,
     "features": [
       "Luxury homes",
       "Private pools",
@@ -706,8 +706,8 @@
   {
     "id": 33,
     "name": "Rancho Paloma",
-    "description": "Rancho Paloma is a peaceful community offering charming homes with beautiful landscaping and a welcoming atmosphere. Its central location provides easy access to local amenities.",
-    "photo": "https://example.com/rancho-paloma.jpg",
+    "description": "Rancho Paloma in Rancho Mirage, CA is an exclusive, serene gated community offering luxurious homes with breathtaking mountain views, surrounded by lush landscapes and world-class amenities, perfect for those seeking a peaceful, upscale lifestyle with easy access to top-tier golf courses, dining, shopping, and entertainment, all within close proximity to major transportation routes and the vibrant desert city life, making it an ideal place for relaxation and sophisticated living.",
+    "photo": null,
     "features": [
       "Charming homes",
       "Beautiful landscaping",
@@ -728,8 +728,8 @@
   {
     "id": 34,
     "name": "Versailles",
-    "description": "Versailles is a sought-after gated community featuring Mediterranean-style homes with elegant designs. Known for its tranquil streets and lush landscaping, it’s perfect for upscale living.",
-    "photo": "https://example.com/versailles.jpg",
+    "description": "Versailles in Rancho Mirage, CA, is an exclusive, luxurious gated community offering stunning Mediterranean-inspired estates with expansive desert and mountain views, meticulously manicured landscapes, and world-class amenities, providing residents a serene, private, and sophisticated lifestyle ideal for those seeking elegance and tranquility in one of the most desirable locations in the Coachella Valley, just minutes away from golf courses, upscale dining, shopping, and entertainment options, creating a perfect desert retreat.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210411171428087987000000-o.jpg",
     "features": [
       "Mediterranean-style homes",
       "Elegant designs",
@@ -750,8 +750,8 @@
   {
     "id": 35,
     "name": "The Reserve",
-    "description": "The Reserve is an exclusive golf community offering luxurious homes surrounded by pristine fairways and natural desert beauty. Residents enjoy private club amenities and a serene lifestyle.",
-    "photo": "https://example.com/the-reserve.jpg",
+    "description": "The Reserve in Rancho Mirage, CA, is an exclusive, luxury gated community offering breathtaking desert views, world-class amenities, and custom-built estates, providing residents with the ultimate blend of privacy, comfort, and sophistication. With its pristine golf courses, tranquil surroundings, and exceptional service, The Reserve is a premier destination for those seeking a serene and opulent lifestyle in one of the most desirable locations in the Coachella Valley, close to shopping, dining, and entertainment options.",
+    "photo": null,
     "features": [
       "Golf community",
       "Luxurious homes",
@@ -772,8 +772,8 @@
   {
     "id": 36,
     "name": "Rancho Mirage Country Club",
-    "description": "A prestigious gated community offering luxury condos and single-family homes with access to a private golf course and clubhouse amenities. Ideal for those seeking an active lifestyle.",
-    "photo": "https://example.com/rancho-mirage-cc.jpg",
+    "description": "Rancho Mirage Country Club in Rancho Mirage, CA, offers a prestigious and serene community with lush landscapes, world-class amenities, and stunning golf course views, providing residents with an exclusive and luxurious living experience. Nestled in the heart of the Coachella Valley, the community features beautifully designed homes, top-notch facilities including tennis courts, a clubhouse, and swimming pools, and is conveniently located near shopping, dining, and entertainment, making it the perfect place for relaxation and recreation.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20241123001159027922000000-o.jpg",
     "features": [
       "Private golf course",
       "Clubhouse amenities",
@@ -794,8 +794,8 @@
   {
     "id": 37,
     "name": "The Renaissance at Clancy Lane",
-    "description": "A premier gated community on Clancy Lane featuring custom luxury homes with spacious layouts and upscale finishes. The Renaissance at Clancy Lane offers privacy and a tranquil desert setting.",
-    "photo": "https://example.com/renaissance-clancy-lane.jpg",
+    "description": "The Renaissance at Clancy Lane in Rancho Mirage, CA, is an exclusive, luxury community offering spacious, modern homes with stunning desert and mountain views, a peaceful atmosphere, and access to resort-style amenities, including a clubhouse, pool, spa, and fitness center, while being conveniently located near golf courses, shopping centers, and fine dining, making it an ideal retreat for those seeking a sophisticated desert lifestyle in one of the Coachella Valley's most prestigious neighborhoods.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230119232736663523000000-o.jpg",
     "features": [
       "Custom luxury homes",
       "Gated community",
@@ -816,8 +816,8 @@
   {
     "id": 38,
     "name": "Alicante Rancho Mirage",
-    "description": "A boutique gated community offering contemporary homes with open floor plans and private outdoor spaces. Alicante Rancho Mirage is perfect for modern living with a touch of elegance.",
-    "photo": "https://example.com/alicante.jpg",
+    "description": "Alicante Rancho Mirage offers an exclusive, luxury living experience in the heart of the Coachella Valley, where modern elegance meets desert tranquility. This gated community features stunning Spanish-style homes with expansive floor plans, private pools, and breathtaking mountain views. Residents enjoy world-class amenities including a clubhouse, fitness center, and tennis courts, all within close proximity to upscale shopping, dining, and golf courses, making it the ideal location for those seeking a serene yet vibrant lifestyle.",
+    "photo": null,
     "features": [
       "Contemporary homes",
       "Private outdoor spaces",
@@ -838,8 +838,8 @@
   {
     "id": 39,
     "name": "Ivy League Estates",
-    "description": "A charming gated community featuring spacious homes with classic designs and lush landscaping. Ivy League Estates offers a peaceful environment close to schools and amenities.",
-    "photo": "https://example.com/ivy-league.jpg",
+    "description": "Ivy League Estates in Rancho Mirage, CA, is an exclusive, luxury community offering expansive, beautifully designed homes nestled against stunning mountain views, providing residents with a private oasis of peace, security, and comfort, complemented by world-class amenities including a championship golf course, upscale shopping, fine dining, and proximity to renowned cultural attractions, making it the perfect destination for those seeking elegance, tranquility, and a refined lifestyle in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210403201156438617000000-o.jpg",
     "features": [
       "Gated community",
       "Classic designs",
@@ -860,8 +860,8 @@
   {
     "id": 40,
     "name": "Los Cocos",
-    "description": "Los Cocos is a cozy gated community featuring stylish homes with private patios and lush surroundings. Residents enjoy a quiet lifestyle with access to community amenities like a pool and tennis courts.",
-    "photo": "https://example.com/los-cocos.jpg",
+    "description": "Los Cocos in Rancho Mirage, CA, is an upscale, serene, and beautifully landscaped community offering luxurious living with stunning desert views, exclusive amenities including golf courses, pools, and fitness centers, and a close proximity to world-class dining, shopping, and entertainment in the Coachella Valley, making it an ideal destination for those seeking both relaxation and an active lifestyle in a prestigious location surrounded by natural beauty and tranquility.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230427173048695629000000-o.jpg",
     "features": [
       "Private patios",
       "Community pool",
@@ -882,8 +882,8 @@
   {
     "id": 41,
     "name": "The Villas of Mirada",
-    "description": "Adjacent to the Ritz-Carlton, The Villas of Mirada is a luxurious gated community offering resort-style living and breathtaking views of the Coachella Valley.",
-    "photo": "https://example.com/villas-of-mirada.jpg",
+    "description": "The Villas of Mirada in Rancho Mirage, CA, is an exclusive, luxury residential community offering stunning modern homes with breathtaking mountain views, world-class amenities, and a serene desert atmosphere, providing residents with ultimate privacy, upscale living, and an unparalleled lifestyle. This gated community features spacious homes, beautifully landscaped grounds, private pools, fitness centers, and easy access to top golf courses, fine dining, and entertainment, making it the perfect retreat for those seeking comfort and sophistication.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230103220022088661000000-o.jpg",
     "features": [
       "Resort-style living",
       "Luxurious homes",
@@ -904,8 +904,8 @@
   {
     "id": 42,
     "name": "Villaggio on Sinatra",
-    "description": "Villaggio on Sinatra is an exclusive gated community offering luxury estates with spacious layouts and modern designs, perfect for upscale living.",
-    "photo": "https://example.com/villaggio.jpg",
+    "description": "Villaggio on Sinatra in Rancho Mirage, CA is an exclusive gated community offering luxurious, modern homes with breathtaking mountain views, spacious layouts, private pools, and top-tier amenities, all within close proximity to world-class golf courses, shopping, dining, and entertainment, providing residents with a serene and sophisticated desert lifestyle in one of the most desirable areas of the Coachella Valley.",
+    "photo": null,
     "features": [
       "Luxury estates",
       "Spacious layouts",
@@ -926,8 +926,8 @@
   {
     "id": 43,
     "name": "The Estates at Rancho Mirage",
-    "description": "A gated community featuring upscale homes with elegant designs and breathtaking views. The Estates at Rancho Mirage offers a blend of luxury and serene desert living.",
-    "photo": "https://example.com/estates-rancho-mirage.jpg",
+    "description": "The Estates at Rancho Mirage in Rancho Mirage, CA, is an exclusive, upscale residential community offering luxurious homes with stunning desert views, expansive private estates, and world-class amenities, providing a serene and sophisticated lifestyle in the heart of the Coachella Valley, with close proximity to renowned golf courses, fine dining, high-end shopping, and vibrant cultural attractions, making it the ideal destination for those seeking privacy, comfort, and modern elegance in a desert oasis.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220325140915109122000000-o.jpg",
     "features": [
       "Elegant designs",
       "Gated community",
@@ -948,8 +948,8 @@
   {
     "id": 44,
     "name": "Thunderbird Villas",
-    "description": "Thunderbird Villas is a historic neighborhood offering mid-century modern homes with stunning views and easy access to the Thunderbird Country Club.",
-    "photo": "https://example.com/thunderbird-villas.jpg",
+    "description": "Thunderbird Villas in Rancho Mirage, CA, offers an exclusive, serene, and luxurious community of upscale homes surrounded by breathtaking desert landscapes, with world-class amenities such as golf courses, tennis courts, and private pools, all designed for the ultimate comfort and relaxation. This sought-after neighborhood provides a perfect blend of privacy, elegance, and convenience, making it ideal for those seeking a tranquil yet sophisticated lifestyle in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210930204316389091000000-o.jpg",
     "features": [
       "Mid-century modern homes",
       "Stunning views",
@@ -970,8 +970,8 @@
   {
     "id": 45,
     "name": "Versailles",
-    "description": "Versailles is a premier gated community offering Mediterranean-style homes with elegant designs and spacious layouts. Residents enjoy tranquil surroundings and proximity to local amenities.",
-    "photo": "https://example.com/versailles.jpg",
+    "description": "Versailles Mirage, CA, offers an exclusive and tranquil residential experience nestled amidst scenic views, with luxury homes featuring spacious interiors, modern amenities, and private outdoor spaces. The community is renowned for its serene atmosphere, providing residents with a perfect blend of comfort and sophistication. With convenient access to nearby shopping, dining, and entertainment options, Versailles Mirage is an ideal place to live for those seeking an upscale, peaceful lifestyle in the heart of California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210209083304788581000000-o.jpg",
     "features": [
       "Mediterranean-style homes",
       "Elegant designs",
@@ -992,8 +992,8 @@
   {
     "id": 46,
     "name": "The Springs Country Club",
-    "description": "The Springs Country Club is a luxurious golf course community featuring custom homes, world-class amenities, and a vibrant social scene. Perfect for those seeking an active and elegant lifestyle.",
-    "photo": "https://example.com/springs-country-club.jpg",
+    "description": "The Springs Country Club in Rancho Mirage, CA, offers an exclusive, gated community surrounded by scenic mountain views, boasting luxurious homes, world-class golf courses, tennis courts, a state-of-the-art fitness center, and a vibrant social atmosphere, making it an ideal haven for those seeking a sophisticated desert lifestyle with a rich blend of relaxation and recreation, all within close proximity to upscale dining, shopping, and entertainment venues in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210302035521748240000000-o.jpg",
     "features": [
       "Golf course",
       "World-class amenities",
@@ -1014,8 +1014,8 @@
   {
     "id": 47,
     "name": "Del Webb Rancho Mirage",
-    "description": "A 55+ active adult community, Del Webb Rancho Mirage offers resort-style living with beautifully designed homes, pools, fitness centers, and a variety of social activities.",
-    "photo": "https://example.com/del-webb.jpg",
+    "description": "Del Webb Rancho Mirage is an active adult 55+ community located in Rancho Mirage, CA, offering resort-style living with stunning mountain views, a variety of recreational amenities, and beautifully designed homes. Residents enjoy a vibrant social atmosphere with golf courses, walking trails, fitness centers, and pools, alongside a clubhouse for gatherings and activities. The community is perfect for those seeking an active lifestyle in a serene, gated environment surrounded by the beauty of the desert.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240726190401362345000000-o.jpg",
     "features": [
       "55+ community",
       "Resort-style amenities",
@@ -1036,8 +1036,8 @@
   {
     "id": 48,
     "name": "Thunderbird Heights",
-    "description": "Thunderbird Heights is a historic and exclusive neighborhood featuring luxury homes with breathtaking views and direct access to Thunderbird Country Club.",
-    "photo": "https://example.com/thunderbird-heights.jpg",
+    "description": "Nestled in the heart of the Coachella Valley, Rancho Mirage offers an exclusive community with breathtaking panoramic views of the majestic San Jacinto Mountains, sweeping desert landscapes, and lush fairways, providing an oasis of tranquility and luxury living. With world-class golf courses, elegant resorts, and upscale amenities, this prestigious location is perfect for those seeking an unparalleled lifestyle surrounded by nature's beauty and an abundance of year-round sunshine.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240703010536179782000000-o.jpg",
     "features": [
       "Luxury homes",
       "Breathtaking views",
@@ -1058,8 +1058,8 @@
   {
     "id": 49,
     "name": "Mira Vista",
-    "description": "Mira Vista is a gated community known for its modern homes and scenic views. Residents enjoy access to tennis courts, a community pool, and nearby golf courses.",
-    "photo": "https://example.com/mira-vista.jpg",
+    "description": "Mira Vista in Rancho Mirage, CA, is an exclusive, upscale community offering luxurious homes with stunning mountain and golf course views, exceptional amenities, and a tranquil atmosphere, perfect for those seeking privacy, elegance, and a resort-style living experience. Nestled in the heart of the Coachella Valley, Mira Vista combines timeless architectural beauty with modern comforts, providing residents with access to fine dining, shopping, and world-class recreational activities, making it the ideal destination for affluent buyers.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231208034128157558000000-o.jpg",
     "features": [
       "Modern homes",
       "Community amenities",
@@ -1080,8 +1080,8 @@
   {
     "id": 50,
     "name": "Lake Mirage Racquet Club",
-    "description": "A picturesque community offering condos and townhomes surrounded by tranquil lakes and lush landscapes. Lake Mirage Racquet Club is ideal for tennis enthusiasts and those seeking waterfront living.",
-    "photo": "https://example.com/lake-mirage.jpg",
+    "description": "Lake Mirage Racquet Club in Rancho Mirage, CA, is a prestigious gated community featuring 238 residences nestled around a scenic 24-acre lake, offering a tranquil lifestyle with resort-like amenities, including 11 tennis courts, 10 pools, and spas, a clubhouse with fitness facilities, a racquetball court, and a vibrant social calendar; it is an ideal destination for active living and serene luxury, with picturesque surroundings, easy access to local attractions, and a welcoming atmosphere for all residents.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230903015731822235000000-o.jpg",
     "features": [
       "Waterfront living",
       "Tennis courts",
@@ -1102,8 +1102,8 @@
   {
     "id": 51,
     "name": "Mission Hills Country Club",
-    "description": "Mission Hills Country Club is a world-renowned community offering championship golf, tennis, and luxury homes. Residents enjoy a vibrant social scene and scenic surroundings.",
-    "photo": "https://example.com/mission-hills.jpg",
+    "description": "Mission Hills Country Club in Rancho Mirage, CA, is a prestigious and vibrant community known for its luxurious homes, world-class amenities, and breathtaking views of the San Jacinto Mountains, offering an unparalleled lifestyle with championship golf courses, tennis courts, a state-of-the-art fitness center, fine dining, and an active social scene, making it an ideal destination for those seeking a blend of elegance, recreation, and relaxation in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230811232303855807000000-o.jpg",
     "features": [
       "Championship golf",
       "Tennis courts",
@@ -1124,8 +1124,8 @@
   {
     "id": 52,
     "name": "Clancy Lane Estates",
-    "description": "Clancy Lane Estates is a prestigious community offering sprawling estates with equestrian facilities and modern luxury. Known for its privacy and elegance, it’s a premier address in Rancho Mirage.",
-    "photo": "https://example.com/clancy-lane.jpg",
+    "description": "Clancy Lane Estates in Rancho Mirage, CA, is a prestigious and exclusive gated community renowned for its luxurious estates, expansive lots, and stunning mountain views. Nestled in the heart of the Coachella Valley, it offers residents an unparalleled blend of privacy, sophistication, and convenience, with close proximity to upscale shopping, fine dining, world-class golf courses, and cultural attractions. This serene enclave embodies desert elegance, attracting discerning buyers seeking a tranquil yet vibrant lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221028193019362033000000-o.jpg",
     "features": [
       "Equestrian facilities",
       "Luxury estates",
@@ -1146,8 +1146,8 @@
   {
     "id": 53,
     "name": "Tuscany",
-    "description": "Tuscany is a beautiful gated community featuring Tuscan-inspired homes with charming architecture and well-manicured landscapes. Residents enjoy a tranquil atmosphere and a community pool.",
-    "photo": "https://example.com/tuscany.jpg",
+    "description": "Nestled in the heart of Rancho Mirage, California, Tuscany is a premier gated community offering a blend of serene desert living and Mediterranean-inspired charm, featuring elegant single-family homes with modern amenities, lush landscapes, walking trails, and a private park, all set against the stunning backdrop of the Santa Rosa Mountains, providing residents with a tranquil yet sophisticated lifestyle, conveniently located near shopping, dining, golf courses, and world-class entertainment venues.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240228181329612230000000-o.jpg",
     "features": [
       "Tuscan-inspired homes",
       "Community pool",
@@ -1168,8 +1168,8 @@
   {
     "id": 54,
     "name": "Las Palmas Heights",
-    "description": "Las Palmas Heights is a prestigious gated community offering luxury homes with panoramic views of the valley and mountains. It’s a perfect blend of privacy and elegance.",
-    "photo": "https://example.com/las-palmas-heights.jpg",
+    "description": "Las Palmas Heights in Rancho Mirage, CA, is a prestigious real estate community renowned for its luxurious homes, breathtaking desert views, and proximity to world-class golf courses, fine dining, and high-end shopping, offering a sophisticated lifestyle amidst the natural beauty of the Coachella Valley. With meticulously designed properties, scenic mountain backdrops, and a tranquil ambiance, it provides an unparalleled living experience, blending exclusivity with accessibility to vibrant cultural and recreational amenities.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20201214200731224942000000-o.jpg",
     "features": [
       "Luxury homes",
       "Panoramic views",
@@ -1190,8 +1190,8 @@
   {
     "id": 55,
     "name": "Ivy League Estates",
-    "description": "A charming gated neighborhood with spacious homes and lush greenery. Ivy League Estates is ideal for families and professionals seeking an upscale living experience.",
-    "photo": "https://example.com/ivy-league.jpg",
+    "description": "Ivy League Estates in Rancho Mirage, CA, is an exclusive gated community offering luxurious residences with stunning architectural designs, nestled in the heart of the Coachella Valley; this upscale neighborhood provides a serene oasis with meticulously landscaped grounds, private pools, tennis courts, and close proximity to world-class golf courses, fine dining, premier shopping, and renowned cultural attractions, making it a perfect blend of elegance, privacy, and convenience for discerning homeowners.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240210181751025732000000-o.jpg",
     "features": [
       "Gated community",
       "Spacious homes",
@@ -1212,8 +1212,8 @@
   {
     "id": 56,
     "name": "Cielo",
-    "description": "Cielo is an exclusive community offering modern homes with expansive floor plans and stunning desert views. It’s a top choice for luxury and tranquility.",
-    "photo": "https://example.com/cielo.jpg",
+    "description": "Cielo in Rancho Mirage, CA, is a prestigious real estate community renowned for its luxurious desert lifestyle, featuring a stunning array of modern and Mediterranean-inspired homes, panoramic views of the Coachella Valley, and proximity to world-class amenities such as golf courses, shopping, fine dining, and cultural attractions, making it an ideal destination for those seeking sophistication, comfort, and exclusivity in the heart of the California desert.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230804154029455803000000-o.jpg",
     "features": [
       "Modern homes",
       "Desert views",
@@ -1234,8 +1234,8 @@
   {
     "id": 57,
     "name": "Sunrise Country Club",
-    "description": "A vibrant golf community offering condos and single-family homes surrounded by lush fairways and scenic landscapes. Sunrise Country Club is perfect for active lifestyles.",
-    "photo": "https://example.com/sunrise-country-club.jpg",
+    "description": "Sunrise Country Club in Rancho Mirage, CA, offers a premier real estate community nestled in the heart of Coachella Valley, boasting over 700 homes with lush landscaping, 21 pools and spas, an 18-hole executive golf course, 13 tennis courts, and pickleball facilities. Residents enjoy a vibrant lifestyle with a clubhouse, dining options, fitness center, and social events, all set against the backdrop of stunning mountain views, creating an ideal blend of luxury, leisure, and community living.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230523051310508573000000-o.jpg",
     "features": [
       "Golf community",
       "Scenic landscapes",
@@ -1256,8 +1256,8 @@
   {
     "id": 58,
     "name": "Mission Shores",
-    "description": "Mission Shores is a lakeside community offering stylish homes with private docks and serene water views. Residents enjoy a quiet and luxurious lifestyle.",
-    "photo": "https://example.com/mission-shores.jpg",
+    "description": "Mission Shores in Rancho Mirage, CA, is a vibrant, gated lakefront community offering a luxurious lifestyle with stunning mountain views, modern homes, and beautifully landscaped surroundings. This prestigious neighborhood features spacious residences with contemporary designs, premium amenities, and a serene environment perfect for families or individuals seeking tranquility. Residents enjoy private lakeside access, proximity to golf courses, shopping, dining, and the vibrant culture of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231116044513152081000000-o.jpg",
     "features": [
       "Lakeside living",
       "Private docks",
@@ -1278,8 +1278,8 @@
   {
     "id": 59,
     "name": "Monte Sereno",
-    "description": "Monte Sereno is a prestigious gated community featuring custom estates with unparalleled privacy and scenic mountain views. A haven for luxury living.",
-    "photo": "https://example.com/monte-sereno.jpg",
+    "description": "Monte Sereno in Rancho Mirage, CA, is an exclusive, gated luxury community known for its stunning desert landscapes, architecturally distinctive homes, and proximity to world-class golf courses, dining, and shopping. Nestled in the heart of the Coachella Valley, this prestigious enclave offers serene living with breathtaking mountain views, impeccably maintained grounds, and an array of amenities, making it a sought-after destination for discerning homeowners seeking privacy, elegance, and comfort.",
+    "photo": null,
     "features": [
       "Custom estates",
       "Privacy",
@@ -1300,8 +1300,8 @@
   {
     "id": 60,
     "name": "Victoria Falls",
-    "description": "Victoria Falls is a gated community offering a serene environment with spacious homes, tennis courts, and lush landscaping. It’s ideal for families and retirees alike.",
-    "photo": "https://example.com/victoria-falls.jpg",
+    "description": "Nestled in the heart of Rancho Mirage, CA, Victoria Falls is an exclusive, luxurious community offering stunning desert landscapes, spacious custom homes, and world-class amenities, including a golf course, clubhouses, and expansive private pools, all set against the breathtaking backdrop of the San Jacinto Mountains, providing residents with both tranquility and an unparalleled lifestyle, ideal for those seeking sophisticated living in a serene desert oasis.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210610190452109042000000-o.jpg",
     "features": [
       "Gated community",
       "Tennis courts",

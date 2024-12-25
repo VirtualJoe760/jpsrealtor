@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Bermuda Dunes Country Club",
-    "description": "Established in 1958, Bermuda Dunes Country Club is a prestigious gated community renowned for its classic golf course, which has hosted the Bob Hope Classic numerous times. The community offers a diverse range of residences, from custom estates to stylish condominiums, all set amidst lush fairways and mature landscaping. Residents enjoy amenities such as tennis courts, a clubhouse, and a vibrant social scene, embodying the quintessential desert lifestyle.",
-    "photo": "https://example.com/bermuda-dunes-country-club.jpg",
+    "description": "The Bermuda Dunes Country Club in Dunes, CA, is a prestigious and serene gated community offering luxurious living with scenic golf course views, upscale amenities, and a tranquil desert lifestyle, featuring beautifully landscaped properties, exclusive recreational facilities, and a welcoming atmosphere for residents to enjoy a high standard of living, including a championship golf course, tennis courts, swimming pools, and access to nature trails, all within a prime location for those seeking peace and luxury.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240713183426745497000000-o.jpg",
     "features": [
       "Historic golf course",
       "Diverse residences",
@@ -24,8 +24,8 @@
   {
     "id": 2,
     "name": "Bellissimo at Bermuda Dunes Country Club",
-    "description": "Bellissimo is an exclusive enclave within the Bermuda Dunes Country Club, featuring approximately 52 homes built between 2002 and 2004. These residences range from 1,744 to 2,607 square feet, offering 2 to 4 bedrooms. The community is known for its elegant architecture, well-maintained landscapes, and access to the country club's amenities, providing a luxurious and comfortable living experience.",
-    "photo": "https://example.com/bellissimo-bermuda-dunes.jpg",
+    "description": "Bellissimo, a private enclave within the guard-gated Bermuda Dunes Country Club in Bermuda Dunes, CA, offers luxury single-family homes built between 2002 and 2004, ranging from 1,744 to 2,607 square feet with 2 to 4 bedrooms, situated on average 8,590 square foot lots, featuring amenities such as a 27-hole golf course, community pools, and spas, with HOA fees of $593 per month, providing residents with a secure and upscale living experience in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240301032150274199000000-o.jpg",
     "features": [
       "Modern homes",
       "Access to country club amenities",
@@ -46,8 +46,8 @@
   {
     "id": 3,
     "name": "Montego West",
-    "description": "Montego West is a distinguished condominium community within Bermuda Dunes Country Club, offering spacious units with panoramic mountain and golf course views. Residents enjoy access to community pools, tennis courts, and the club's amenities, all within a serene and well-manicured environment.",
-    "photo": "https://example.com/montego-west.jpg",
+    "description": "Montego West in Bermuda Dunes, CA is a charming, family-friendly community offering a tranquil desert lifestyle with picturesque views, spacious homes, and easy access to local amenities. Nestled in the heart of the Coachella Valley, residents enjoy a serene atmosphere while being close to golf courses, parks, shopping, and dining options. This peaceful oasis combines modern comfort with natural beauty, making it the perfect place to call home for those seeking both relaxation and convenience in Southern California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210521012716067765000000-o.jpg",
     "features": [
       "Spacious condos",
       "Community pools and tennis courts",
@@ -68,8 +68,8 @@
   {
     "id": 4,
     "name": "Volaré",
-    "description": "Volaré is an exclusive gated community featuring 18 modern single-story homes ranging from 1,738 to 2,406 square feet, with 3 to 4 bedrooms and private pools and spas. Conveniently located near premier entertainment and sporting events, Volaré offers luxurious desert living with breathtaking views and expansive elevated lots that promise utmost privacy.",
-    "photo": "https://example.com/volare-bermuda-dunes.jpg",
+    "description": "Volaré in Bermuda Dunes, CA, offers a vibrant and upscale community with luxurious homes, scenic mountain views, and a serene desert atmosphere, providing residents with a blend of modern living and natural beauty, exceptional amenities including golf courses and swimming pools, and a welcoming environment for families, retirees, and professionals seeking tranquility and a high quality of life, all while being just minutes from Palm Springs and the renowned Coachella Valley.",
+    "photo": null,
     "features": [
       "Modern single-story homes",
       "Private pools and spas",
@@ -90,8 +90,8 @@
   {
     "id": 2,
     "name": "Yorkville",
-    "description": "Yorkville is a tranquil community within Bermuda Dunes offering single-family homes with spacious lots. Known for its peaceful streets and proximity to Bermuda Dunes Country Club, it’s an ideal choice for families and professionals alike.",
-    "photo": "https://example.com/yorkville.jpg",
+    "description": "Yorkville in Bermuda Dunes, CA, is a serene and upscale residential community offering a blend of luxury homes and tranquil surroundings, perfect for those seeking a peaceful desert lifestyle. Located near top-rated golf courses, shopping centers, and restaurants, Yorkville provides a prime location for enjoying year-round sunshine and beautiful mountain views. With spacious homes and meticulously maintained landscapes, it offers an ideal environment for families and retirees alike, combining comfort, convenience, and style.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220428233955569336000000-o.jpg",
     "features": [
       "Spacious lots",
       "Peaceful streets",
@@ -112,8 +112,8 @@
   {
     "id": 3,
     "name": "BDCC Villas",
-    "description": "BDCC Villas offers a collection of stylish townhomes and condos within Bermuda Dunes Country Club. Residents enjoy golf course views, community pools, and a vibrant social atmosphere.",
-    "photo": "https://example.com/bdcc-villas.jpg",
+    "description": "BDCC Villas in Bermuda Dunes, CA, offers a luxurious, tranquil living experience with spacious homes nestled within a beautiful desert landscape, providing modern amenities, stunning mountain views, and exclusive access to a world-class golf course, creating an ideal environment for relaxation and recreation. The community features meticulously designed villas, abundant green spaces, and a strong sense of privacy, making it the perfect destination for those seeking comfort, sophistication, and a vibrant lifestyle in a serene setting.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240904184613110353000000-o.jpg",
     "features": [
       "Golf course views",
       "Stylish townhomes",
@@ -134,8 +134,8 @@
   {
     "id": 4,
     "name": "Bellissimo",
-    "description": "Bellissimo is a boutique, gated community featuring custom-built homes with modern designs and private pools. Its intimate setting and scenic surroundings make it a highly desirable address.",
-    "photo": "https://example.com/bellissimo.jpg",
+    "description": "Bellissimo in Bermuda Dunes, CA is an exclusive, gated real estate community offering luxurious living in a serene desert oasis, featuring custom homes, spacious lots, and panoramic mountain views. With a central location providing easy access to world-class golf courses, fine dining, shopping, and entertainment, Bellissimo offers a perfect blend of privacy and convenience, ideal for those seeking a high-end, peaceful lifestyle in one of California's most sought-after desert destinations.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240904184613110353000000-o.jpg",
     "features": [
       "Custom-built homes",
       "Gated community",
@@ -156,8 +156,8 @@
   {
     "id": 5,
     "name": "Desert Homes",
-    "description": "Desert Homes is a family-friendly neighborhood offering affordable single-family homes with large yards. Residents appreciate its proximity to schools, parks, and shopping centers.",
-    "photo": "https://example.com/desert-homes.jpg",
+    "description": "Desert Homes in Bermuda Dunes, CA, offers a tranquil and luxurious living experience nestled in the heart of the Coachella Valley, featuring spacious, desert-inspired residences with breathtaking mountain views, modern amenities, and a welcoming community atmosphere. This serene neighborhood is ideal for those seeking a peaceful retreat while being close to world-class golf courses, shopping, dining, and outdoor activities, making it a perfect blend of comfort and convenience in the desert landscape.",
+    "photo": null,
     "features": [
       "Affordable homes",
       "Large yards",
@@ -166,7 +166,7 @@
     "location": "Bermuda Dunes, CA",
     "coordinates": {
       "latitude": 33.7523,
-      "longitude": -116.2734
+      "longitude": -116.27344
     },
     "keywords": [
       "Desert Homes for sale",
@@ -178,8 +178,8 @@
   {
     "id": 6,
     "name": "Country Club Estates",
-    "description": "Country Club Estates is an upscale enclave within Bermuda Dunes offering luxurious custom homes with spacious layouts and stunning golf course views.",
-    "photo": "https://example.com/country-club-estates.jpg",
+    "description": "Country Club Estates in Bermuda Dunes, CA, is an exclusive, gated community offering luxurious living with spacious homes, scenic views of the golf course, and a peaceful atmosphere, perfect for families and retirees alike. This upscale neighborhood features beautiful landscaping, private amenities, and a close-knit, friendly environment, providing residents with easy access to nearby shops, restaurants, and entertainment options, all while maintaining a serene and secure lifestyle in the heart of the Coachella Valley.",
+    "photo": null,
     "features": [
       "Luxurious custom homes",
       "Golf course views",
@@ -200,8 +200,8 @@
   {
     "id": 7,
     "name": "Stone Gate",
-    "description": "Stone Gate is a boutique, gated community offering elegant homes with modern finishes and private outdoor spaces. Residents enjoy a quiet atmosphere and convenient access to local amenities.",
-    "photo": "https://example.com/stone-gate.jpg",
+    "description": "Stone Gate in Bermuda Dunes, CA, is a tranquil and picturesque residential community offering a mix of luxurious homes, scenic mountain views, and convenient access to local amenities, including golf courses, parks, and shopping centers, all nestled within a peaceful, gated environment that ensures privacy and security while providing a welcoming atmosphere for families, retirees, and professionals alike who seek a serene and active lifestyle in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20240620171906038030000000-o.jpg",
     "features": [
       "Elegant homes",
       "Gated community",
@@ -222,8 +222,8 @@
   {
     "id": 8,
     "name": "The Greens",
-    "description": "The Greens is a serene neighborhood offering townhomes and condos surrounded by lush landscaping and greenbelts. Its community amenities include pools and walking paths.",
-    "photo": "https://example.com/the-greens.jpg",
+    "description": "The Greens in Bermuda Dunes, CA is a vibrant and welcoming community offering picturesque views, golf course living, and a serene environment, perfect for those seeking a peaceful retreat with easy access to local amenities, upscale living, and a variety of outdoor activities, making it an ideal destination for families, retirees, and professionals who enjoy a relaxed lifestyle, while being close to the attractions and conveniences of the Coachella Valley and surrounding desert regions.",
+    "photo": null,
     "features": [
       "Townhomes and condos",
       "Lush landscaping",
@@ -244,8 +244,8 @@
   {
     "id": 9,
     "name": "Vista Montana",
-    "description": "Vista Montana is a gated, 55+ community offering manufactured homes with access to a clubhouse, fitness center, and social activities. It’s perfect for active adults seeking affordability and convenience.",
-    "photo": "https://example.com/vista-montana.jpg",
+    "description": "Vista Montana in Bermuda Dunes, CA, is a distinguished 55+ gated community renowned for its breathtaking mountain vistas, meticulously maintained manufactured homes, and a comprehensive array of amenities including a clubhouse, fitness center, pools, spas, and tennis courts, all situated in close proximity to dining, shopping, and entertainment options, offering residents a vibrant and active lifestyle in the heart of the Coachella Valley.",
+    "photo": null,
     "features": [
       "55+ community",
       "Clubhouse and fitness center",

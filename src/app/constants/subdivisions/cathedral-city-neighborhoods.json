@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Cathedral City Cove",
-    "description": "Nestled in the serene foothills of the San Jacinto Mountains, Cathedral City Cove blends mid-century modern charm with contemporary sophistication. This vibrant community is known for its artistic flair, breathtaking views, and proximity to downtown's lively attractions.",
-    "photo": "https://example.com/cathedral-city-cove.jpg",
+    "description": "Cathedral City Cove in Cathedral City, CA is a tranquil, scenic community nestled in the foothills of the San Jacinto Mountains, offering residents a peaceful, desert retreat with easy access to outdoor recreation, modern amenities, and stunning views. With charming mid-century homes, a close-knit atmosphere, and proximity to downtown Cathedral City and Palm Springs, this neighborhood is perfect for those seeking a serene lifestyle while still being close to vibrant cultural events, shopping, dining, and entertainment options.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230629211126227553000000-o.jpg",
     "features": [
       "Artistic community",
       "Scenic mountain views",
@@ -24,8 +24,8 @@
   {
     "id": 2,
     "name": "Panorama",
-    "description": "Panorama offers a welcoming and family-friendly atmosphere, featuring spacious homes with large lots. Perfectly located near schools, parks, and shopping, it’s an ideal neighborhood for those seeking both convenience and community.",
-    "photo": "https://example.com/panorama.jpg",
+    "description": "Panorama in Cathedral City, CA offers a serene and picturesque community with stunning mountain views, spacious homes, and a peaceful atmosphere, making it an ideal location for families and professionals alike. Residents enjoy proximity to local amenities, shopping centers, top-rated schools, and recreational opportunities, with easy access to Palm Springs and the surrounding desert areas, all set in a welcoming environment perfect for those seeking a blend of relaxation and convenience in the heart of the Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231117000640861797000000-o.jpg",
     "features": [
       "Spacious homes",
       "Family-friendly",
@@ -46,8 +46,8 @@
   {
     "id": 3,
     "name": "Rio Vista",
-    "description": "Rio Vista is celebrated for its well-maintained homes and peaceful streets. This neighborhood offers a variety of housing options, from single-family homes to condos and townhouses, catering to diverse needs and budgets.",
-    "photo": "https://example.com/rio-vista.jpg",
+    "description": "Nestled in the scenic beauty of Cathedral City, CA, Rio Vista is a welcoming real estate community offering a perfect blend of modern living and natural charm, with spacious homes, serene surroundings, and close proximity to amenities, schools, and vibrant local culture. Whether you’re seeking a cozy retreat or a family-friendly neighborhood, Rio Vista promises a peaceful lifestyle in the heart of California's Coachella Valley, offering residents an ideal mix of comfort, convenience, and tranquility.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20231110170334115064000000-o.jpg",
     "features": [
       "Quiet streets",
       "Diverse housing options",
@@ -68,8 +68,8 @@
   {
     "id": 4,
     "name": "Century Park",
-    "description": "Century Park is a charming and well-established neighborhood featuring tree-lined streets and beautifully maintained homes. With easy access to schools and community parks, it’s a favorite for families and professionals alike.",
-    "photo": "https://example.com/century-park.jpg",
+    "description": "Century Park in Cathedral City, CA, is a vibrant and family-friendly real estate community offering a blend of modern and classic homes, well-maintained parks, and a welcoming atmosphere. Known for its prime location, it provides convenient access to schools, shopping, dining, and entertainment, making it ideal for families, professionals, and retirees alike. Residents enjoy a serene lifestyle with picturesque views of the surrounding mountains and a strong sense of community in this desirable neighborhood.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230610211150734191000000-o.jpg",
     "features": [
       "Tree-lined streets",
       "Community park",
@@ -90,8 +90,8 @@
   {
     "id": 5,
     "name": "Montage at Mission Hills",
-    "description": "Montage at Mission Hills is an upscale gated community offering luxurious homes with modern amenities. Surrounded by lush landscaping and close to premier golf courses, it’s a haven for those seeking an elegant desert lifestyle.",
-    "photo": "https://example.com/montage-mission-hills.jpg",
+    "description": "Montage at Mission Hills in Cathedral City, CA, is a premier gated real estate community offering luxurious single-family homes with sophisticated architectural designs, nestled alongside the prestigious Mission Hills Country Club. This serene neighborhood boasts beautifully landscaped surroundings, access to world-class golf courses, and close proximity to shopping, dining, and entertainment in the Coachella Valley, making it an ideal haven for those seeking an upscale desert lifestyle.",
+    "photo": null,
     "features": [
       "Gated community",
       "Luxury homes",
@@ -112,8 +112,8 @@
   {
     "id": 6,
     "name": "The Canyon",
-    "description": "The Canyon is a tranquil 55+ community designed for relaxation and social connections. With amenities like a clubhouse, pool, and fitness center, it’s the perfect retreat for active adults.",
-    "photo": "https://example.com/the-canyon.jpg",
+    "description": "The Canyon in Cathedral City, CA, is a vibrant 55+ gated community offering a blend of serene desert living and active lifestyle amenities, including a clubhouse, pool, fitness center, tennis courts, and social activities, all nestled within beautifully landscaped grounds with stunning mountain views, conveniently located near dining, shopping, and entertainment options, making it an ideal destination for retirees seeking a perfect balance of comfort, community, and convenience in Southern California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210828211850125996000000-o.jpg",
     "features": [
       "55+ community",
       "Clubhouse",
@@ -134,8 +134,8 @@
   {
     "id": 7,
     "name": "Landau Manor Homes",
-    "description": "Landau Manor Homes is a serene residential area offering single-family homes with generous yards. Popular among families and retirees, it combines comfort and community charm.",
-    "photo": "https://example.com/landau-manor.jpg",
+    "description": "Landau Manor Homes in Cathedral City, CA, offers a welcoming community nestled amidst scenic beauty and modern conveniences, featuring a range of beautifully designed residences perfect for families and professionals alike; residents enjoy a tranquil suburban environment with access to lush parks, top-rated schools, shopping, dining, and entertainment options, all while being strategically located near major roadways, ensuring a perfect balance of comfort, lifestyle, and accessibility in Southern California.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221107191326979769000000-o.jpg",
     "features": [
       "Single-family homes",
       "Spacious yards",
@@ -156,8 +156,8 @@
   {
     "id": 8,
     "name": "Cathedral Canyon Country Club",
-    "description": "Cathedral Canyon Country Club is a vibrant golf course community featuring condos and single-family homes. Residents enjoy an active lifestyle with access to world-class golfing and community amenities.",
-    "photo": "https://example.com/cathedral-canyon-country-club.jpg",
+    "description": "Cathedral Canyon Country Club in Cathedral City, CA, is a vibrant real estate community offering a mix of condominiums and single-family homes, surrounded by scenic mountain views and lush golf courses. This gated community boasts resort-style amenities, including pools, tennis courts, and an 18-hole championship golf course, providing a serene yet active lifestyle for residents. Conveniently located near Palm Springs, it offers easy access to dining, shopping, and entertainment in the Coachella Valley area.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20221001163824289859000000-o.jpg",
     "features": [
       "Golf course",
       "Active lifestyle",
@@ -178,8 +178,8 @@
   {
     "id": 9,
     "name": "Tapestry",
-    "description": "Tapestry is a modern development offering contemporary homes designed with style and convenience. Close to schools and parks, it’s a great choice for growing families.",
-    "photo": "https://example.com/tapestry.jpg",
+    "description": "Tapestry in Cathedral City, CA, is a vibrant residential community offering a mix of modern homes, breathtaking mountain views, and a welcoming atmosphere, perfectly suited for families and individuals seeking a serene desert lifestyle. Located conveniently near local amenities, parks, and shopping centers, Tapestry features thoughtfully designed properties with diverse architectural styles and a strong sense of community, making it a premier destination for comfortable and elegant living.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220201233531955503000000-o.jpg",
     "features": [
       "Modern homes",
       "Contemporary design",
@@ -200,8 +200,8 @@
   {
     "id": 10,
     "name": "Rio Del Sol",
-    "description": "Rio Del Sol is an exclusive gated community featuring beautifully landscaped grounds, single-family homes, and condos. Residents enjoy a peaceful atmosphere and top-notch community amenities.",
-    "photo": "https://example.com/rio-del-sol.jpg",
+    "description": "Rio Del Sol in Cathedral City, CA, is a vibrant and sought-after gated community offering a blend of modern and classic desert living, featuring stunning mountain views, well-maintained landscapes, and a variety of amenities, including pools, spas, and tennis courts, making it an ideal destination for families, retirees, and professionals seeking a tranquil yet active lifestyle in the heart of the Coachella Valley, with close proximity to shopping, dining, and cultural attractions.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20211009140621188681000000-o.jpg",
     "features": [
       "Gated community",
       "Beautiful landscaping",
@@ -222,8 +222,8 @@
   {
     "id": 11,
     "name": "Verano",
-    "description": "A master-planned community featuring modern homes, parks, and community amenities designed for families and active lifestyles.",
-    "photo": "https://example.com/verano.jpg",
+    "description": "Verano in Cathedral City, CA, is a vibrant and modern real estate community offering a mix of stylish homes, thoughtfully designed landscapes, and exceptional amenities, catering to a diverse range of residents seeking a harmonious blend of contemporary living and natural beauty; this neighborhood boasts convenient access to local attractions, outdoor recreational opportunities, dining, and shopping, making it an ideal destination for families, professionals, and retirees alike.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210908021509285966000000-o.jpg",
     "features": [
       "Modern homes",
       "Community parks",
@@ -244,8 +244,8 @@
   {
     "id": 12,
     "name": "The District at the Edge",
-    "description": "A contemporary, gated community offering sleek modern homes with high-end finishes and private pools.",
-    "photo": "https://example.com/the-district.jpg",
+    "description": "The District at the Edge in Cathedral City, CA, is a vibrant and modern real estate community offering a unique blend of contemporary architectural designs, energy-efficient homes, and a welcoming atmosphere; situated in the heart of the Coachella Valley, this community is surrounded by stunning desert landscapes, convenient access to shopping, dining, and entertainment options, and is known for its close-knit neighborhood feel, making it an ideal destination for families, professionals, and retirees alike.",
+    "photo": null,
     "features": [
       "Modern design",
       "Private pools",
@@ -266,8 +266,8 @@
   {
     "id": 13,
     "name": "La Pasada",
-    "description": "A newer community offering spacious single-family homes with open floor plans, located close to parks and schools.",
-    "photo": "https://example.com/la-pasada.jpg",
+    "description": "La Pasada in Cathedral City, CA, is a picturesque and welcoming real estate community characterized by its tranquil desert ambiance, modern and spacious single-family homes, lushly landscaped streets, and breathtaking mountain views, offering residents a harmonious blend of suburban comfort and natural beauty; conveniently located near local amenities, schools, golf courses, and outdoor recreational areas, La Pasada presents an ideal setting for families and professionals seeking a serene and vibrant lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230618194700968224000000-o.jpg",
     "features": [
       "Open floor plans",
       "Spacious homes",
@@ -288,8 +288,8 @@
   {
     "id": 14,
     "name": "Campanile",
-    "description": "A Tuscan-inspired gated community offering beautiful homes with unique architectural designs and great community amenities.",
-    "photo": "https://example.com/campanile.jpg",
+    "description": "Nestled in the heart of Cathedral City, CA, Campanile offers a vibrant, serene community with stunning desert mountain views, modern amenities, and spacious homes perfect for families and individuals alike; enjoy a relaxed lifestyle with nearby parks, shopping, and dining options, along with easy access to major highways and the picturesque Coachella Valley, making it an ideal place to call home for those seeking comfort, convenience, and natural beauty.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230603192159213473000000-o.jpg",
     "features": [
       "Tuscan design",
       "Gated community",
@@ -310,8 +310,8 @@
   {
     "id": 15,
     "name": "Rancho Village",
-    "description": "A gated community offering a mix of single-family homes and condos, known for its well-maintained landscaping and quiet atmosphere.",
-    "photo": "https://example.com/rancho-village.jpg",
+    "description": "Rancho Village in Cathedral City, CA, is a vibrant and welcoming community offering a blend of modern living and scenic desert landscapes, featuring spacious homes, well-maintained streets, and an abundance of amenities such as parks, recreational facilities, and nearby shopping, dining, and entertainment options, making it an ideal destination for families, retirees, and professionals alike who seek comfort, convenience, and a relaxed desert lifestyle with easy access to major highways and downtown Palm Springs.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20220301000324076530000000-o.jpg",
     "features": [
       "Gated community",
       "Quiet atmosphere",
@@ -332,8 +332,8 @@
   {
     "id": 16,
     "name": "Victoria Park",
-    "description": "A residential neighborhood featuring single-family homes with large yards, offering a peaceful and family-friendly environment.",
-    "photo": "https://example.com/victoria-park.jpg",
+    "description": "Victoria Park in Cathedral City, CA, offers a vibrant, family-friendly community with a mix of modern homes, beautiful landscaping, and a welcoming atmosphere. Known for its serene surroundings and convenient location, residents enjoy access to nearby shopping, dining, and entertainment options. With close proximity to major highways, excellent schools, and parks, Victoria Park is an ideal place for those seeking a peaceful yet connected lifestyle in the heart of the Coachella Valley.",
+    "photo": null,
     "features": [
       "Family-friendly",
       "Large yards",
@@ -354,8 +354,8 @@
   {
     "id": 17,
     "name": "Shadow Crest",
-    "description": "A private gated community with stunning desert landscaping and well-appointed homes, offering a quiet retreat.",
-    "photo": "https://example.com/shadow-crest.jpg",
+    "description": "Shadow Crest in Cathedral City, CA is a vibrant and desirable community offering scenic mountain views, modern homes, and a tranquil environment, ideal for families and professionals. With well-maintained parks, proximity to shopping, dining, and entertainment, as well as easy access to major highways, residents enjoy both convenience and privacy. The neighborhood fosters a strong sense of community, with a range of recreational activities and a commitment to maintaining its peaceful, welcoming atmosphere for all ages.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20210105211608889366000000-o.jpg",
     "features": [
       "Gated community",
       "Desert landscaping",
@@ -376,8 +376,8 @@
   {
     "id": 18,
     "name": "Rancho Mirage Cove",
-    "description": "Nestled near the border with Rancho Mirage, this area offers upscale living with access to nearby country clubs and luxury amenities.",
-    "photo": "https://example.com/rancho-mirage-cove.jpg",
+    "description": "Nestled in the scenic Rancho Mirage Cove of Cathedral City, CA, this vibrant community offers a blend of luxurious homes, peaceful desert surroundings, and modern amenities, all with stunning views of the San Jacinto Mountains. Perfect for those seeking a tranquil retreat with access to nearby golf courses, upscale shopping, dining, and entertainment, residents enjoy a lifestyle of comfort, convenience, and natural beauty in one of the Coachella Valley's most desirable locations.",
+    "photo": null,
     "features": [
       "Upscale living",
       "Nearby country clubs",
@@ -398,8 +398,8 @@
   {
     "id": 19,
     "name": "Alicante",
-    "description": "A serene neighborhood offering modern homes with open floor plans, close to parks and schools.",
-    "photo": "https://example.com/alicante.jpg",
+    "description": "Nestled in the heart of Cathedral City, CA, the real estate community offers a vibrant blend of modern living and desert charm, featuring stunning homes with breathtaking mountain views, lush landscapes, and a thriving local culture, making it an ideal location for families, retirees, and investors alike, with easy access to shopping, dining, outdoor activities, and a welcoming neighborhood atmosphere that promises a perfect balance of comfort, convenience, and relaxation in a year-round sunny climate.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230127000152535731000000-o.jpg",
     "features": [
       "Modern homes",
       "Open floor plans",
@@ -420,8 +420,8 @@
   {
     "id": 20,
     "name": "Rio Vista Village",
-    "description": "A family-friendly community offering a mix of single-family homes and condos with easy access to local amenities.",
-    "photo": "https://example.com/rio-vista-village.jpg",
+    "description": "Rio Vista Village in Cathedral City, CA is a vibrant, welcoming 55+ active adult community offering a peaceful, scenic environment with access to modern amenities, beautifully maintained homes, and an ideal location close to shopping, dining, and outdoor recreational activities. Residents enjoy a tight-knit neighborhood atmosphere with a range of social and recreational opportunities, making it the perfect place to relax, stay active, and engage with fellow residents in a serene desert setting.",
+    "photo": null,
     "features": [
       "Family-friendly",
       "Single-family homes",
@@ -442,8 +442,8 @@
   {
     "id": 21,
     "name": "Desert Princess Country Club",
-    "description": "A gated golf course community featuring luxurious homes and condos with resort-style amenities.",
-    "photo": "https://example.com/desert-princess.jpg",
+    "description": "Desert Princess Country Club in Cathedral City, CA offers a vibrant, gated community featuring beautiful desert landscapes, an 18-hole championship golf course, luxurious homes, resort-style amenities such as tennis courts, a fitness center, a clubhouse, and multiple pools, all surrounded by stunning mountain views. With a welcoming atmosphere, this exclusive community is perfect for those seeking an active lifestyle, a peaceful retreat, and a close-knit environment with access to nearby shopping, dining, and entertainment options.",
+    "photo": null,
     "features": [
       "Golf course",
       "Gated community",
@@ -464,8 +464,8 @@
   {
     "id": 22,
     "name": "The Cove at Cathedral City",
-    "description": "An exclusive community offering custom homes with modern designs and panoramic views of the Coachella Valley.",
-    "photo": "https://example.com/cove-cathedral-city.jpg",
+    "description": "The Cove at Cathedral City is a vibrant, gated community nestled in the heart of Cathedral City, CA, offering a serene desert oasis with stunning mountain views, spacious homes, and a variety of amenities including lush landscaping, a community pool, and recreational areas, all designed to provide a comfortable and modern lifestyle for residents seeking tranquility, privacy, and convenience while being close to shopping, dining, and entertainment options in the Coachella Valley.",
+    "photo": null,
     "features": [
       "Custom homes",
       "Panoramic views",
@@ -486,8 +486,8 @@
   {
     "id": 23,
     "name": "Whitewater Neighborhood",
-    "description": "A quiet residential area with mid-century homes, known for its affordability and charm.",
-    "photo": "https://example.com/whitewater.jpg",
+    "description": "The Whitewater Neighborhood in Cathedral City, CA, offers a vibrant and diverse community with a blend of residential options, from cozy single-family homes to modern townhouses, all nestled in a scenic desert landscape with stunning views of the San Jacinto Mountains, close to local parks, top-rated schools, shopping centers, and easy access to major highways, making it an ideal place for families, professionals, and retirees looking for both tranquility and convenience in the heart of the Coachella Valley.",
+    "photo": null,
     "features": [
       "Mid-century homes",
       "Affordable living",
@@ -508,8 +508,8 @@
   {
     "id": 24,
     "name": "Las Quintas",
-    "description": "A small, well-maintained community offering a mix of condos and single-family homes with access to local amenities.",
-    "photo": "https://example.com/las-quintas.jpg",
+    "description": "Las Quintas City in Cathedral City, CA offers a vibrant, family-friendly community with stunning desert views, spacious homes, and a welcoming atmosphere, perfect for those seeking a peaceful yet connected lifestyle, surrounded by beautiful landscapes, convenient access to shopping, dining, and recreational activities, while maintaining a close-knit, secure environment ideal for both relaxation and active living in one of California's most desirable desert cities.",
+    "photo": null,
     "features": [
       "Well-maintained homes",
       "Quiet community",
@@ -530,8 +530,8 @@
   {
     "id": 25,
     "name": "Shadow Mountain",
-    "description": "A scenic neighborhood nestled near the base of the mountains, offering stunning views and spacious homes.",
-    "photo": "https://example.com/shadow-mountain.jpg",
+    "description": "Shadow Mountain in Cathedral City, CA, is a serene and upscale community offering breathtaking views of the San Jacinto Mountains, luxurious homes, lush golf courses, and a variety of amenities including sparkling pools, tennis courts, and scenic walking trails, making it an ideal destination for those seeking a peaceful, active lifestyle in the heart of the Coachella Valley, with convenient access to shopping, dining, and entertainment options in nearby Palm Springs and surrounding areas.",
+    "photo": null,
     "features": [
       "Mountain views",
       "Spacious homes",
@@ -552,8 +552,8 @@
   {
     "id": 26,
     "name": "Dream Homes",
-    "description": "An affordable and diverse community with a range of single-family homes, perfect for first-time buyers.",
-    "photo": "https://example.com/dream-homes.jpg",
+    "description": "Dream Homes in Cathedral City, CA offers a vibrant community with luxurious residences, scenic views, and a welcoming atmosphere, combining modern amenities with a prime location for a relaxed, upscale lifestyle. Residents enjoy proximity to shopping, dining, and entertainment, as well as access to beautiful parks and recreational activities. The community features a variety of beautiful homes in a range of styles, making it an ideal place for those seeking both comfort and convenience in the heart of California's Coachella Valley.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1280x1024/true/20230213232925187457000000-o.jpg",
     "features": [
       "Affordable homes",
       "Diverse community",
