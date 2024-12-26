@@ -458,5 +458,32 @@
       "Moving to Araby Commons Palm Springs"
     ],
     "slug": "araby-commons"
-  }
+  },
+  {
+    "id": 21,
+    "name": "Little Beverly Hills",
+    "description": "Little Beverly Hills is a centrally located gem in Palm Springs, celebrated for its timeless mid-century modern homes and unmatched convenience. This neighborhood boasts a rich architectural heritage, with homes featuring iconic design elements such as clean lines, clerestory windows, and seamless indoor-outdoor living spaces, making it a sought-after destination for design enthusiasts and homeowners alike. Situated just minutes from the vibrant downtown area, residents enjoy effortless access to an array of shopping, dining, and cultural attractions. Little Beverly Hills is also adjacent to the lush fairways of the Mesquite Golf & Country Club, offering serene views and a tranquil setting. With its walkable streets, scenic mountain vistas, and proximity to everything Palm Springs has to offer, Little Beverly Hills perfectly blends architectural distinction with a prime location, embodying the quintessential desert lifestyle.",
+    "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20210222210209232642000000-o.jpg",
+    "price_range": "$800,000 - $1,500,000",
+    "features": [
+        "Iconic mid-century modern architecture",
+        "Proximity to downtown Palm Springs",
+        "Adjacent to Mesquite Golf & Country Club",
+        "Scenic mountain views",
+        "Walkable streets and central location"
+    ],
+    "location": "Central Palm Springs",
+    "coordinates": {
+        "latitude": 33.8116,
+        "longitude": -116.5241
+    },
+    "keywords": [
+        "Little Beverly Hills homes for sale",
+        "Home prices in Little Beverly Hills Palm Springs",
+        "Moving to Little Beverly Hills Palm Springs"
+    ],
+    "slug": "little-beverly-hills"
+}
+
+
 ]

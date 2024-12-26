@@ -23,7 +23,7 @@ const cards = [
     description:
       "Selling your property? I’ll help you navigate the market, maximize value, and achieve the best results, stress-free.",
     icon: ShoppingBagIcon,
-    href: "/selling",
+    href: "insights/real-estate-tips/ultimate-sellers-guide-coachella-valley",
     image: "/misc/about-cta-3.png",
   },
 ];

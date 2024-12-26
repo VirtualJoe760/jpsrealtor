@@ -36,11 +36,20 @@ export default function SubdivisionPage({ params }: { params: { cityId: string; 
 
       {/* Subdivision Details Section */}
       <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
+        {/* Subdivision Name and Description */}
         <h1 className="text-6xl font-bold mb-8 text-white">
           {selectedSubdivision.name}
         </h1>
-        <p className="text-2xl text-white leading-8">
+        <p className="text-2xl text-white leading-8 mb-12">
           {selectedSubdivision.description}
+        </p>
+
+        {/* City Name and Real Estate Context */}
+        <h2 className="text-5xl font-bold mb-6 text-white">
+          {city.name} Real Estate
+        </h2>
+        <p className="text-2xl text-white leading-8">
+          {city.about}
         </p>
       </section>
     </>

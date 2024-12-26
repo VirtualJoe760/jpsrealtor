@@ -309,8 +309,8 @@
   },
   {
     "id": 15,
-    "name": "Madison Estates",
-    "description": "Madison Estates in Indio, CA offers an upscale, gated community with beautifully designed homes, spacious lots, and scenic views of the surrounding desert landscape, providing a peaceful and luxurious living experience. The neighborhood features modern amenities, including a community pool, fitness center, and walking trails, perfect for families and individuals seeking comfort and convenience. With easy access to shopping, dining, and entertainment, Madison Estates is the ideal place to call home in the heart of the Coachella Valley.",
+    "name": "Madison Ranch",
+    "description": "Madison Ranch in Indio, CA offers an upscale, gated community with beautifully designed homes, spacious lots, and scenic views of the surrounding desert landscape, providing a peaceful and luxurious living experience. The neighborhood features modern amenities, including a community pool, fitness center, and walking trails, perfect for families and individuals seeking comfort and convenience. With easy access to shopping, dining, and entertainment, Madison Ranch is the ideal place to call home in the heart of the Coachella Valley.",
     "photo": "https://cdn.resize.sparkplatform.com/gps/1600x1200/true/20220519015754372939000000-o.jpg",
     "features": [
       "Custom-built homes",
@@ -323,11 +323,11 @@
       "longitude": -116.2157
     },
     "keywords": [
-      "Madison Estates homes for sale",
+      "Madison Ranch homes for sale",
       "Luxury neighborhoods in Indio",
       "Custom homes in Indio"
     ],
-    "slug": "madison-estates"
+    "slug": "madison-ranch"
   },
   {
     "id": 16,
@@ -350,28 +350,6 @@
       "Active adult living in Indio"
     ],
     "slug": "four-seasons-at-terra-lago"
-  },
-  {
-    "id": 17,
-    "name": "Mountain Estates",
-    "description": "Mountain Estates at Terra Lago in Indio, CA, offers an exclusive, upscale community featuring luxurious homes with stunning mountain views, world-class amenities, and a serene environment, perfect for those seeking a peaceful, sophisticated lifestyle. Residents enjoy a private, gated community with access to a championship golf course, lakes, and walking trails, providing a perfect blend of outdoor recreation and modern living in a prime location, just minutes from shopping, dining, and entertainment.",
-    "photo": "https://www.thaler.tirol/wp-content/uploads/2023/07/thaler-bauprojekte_Neubau-themountainestate-jochberg_aussen2.jpg",
-    "features": [
-      "Gated community",
-      "Modern homes",
-      "Scenic views"
-    ],
-    "location": "Indio, CA",
-    "coordinates": {
-      "latitude": 33.7462,
-      "longitude": -116.2198
-    },
-    "keywords": [
-      "Mountain Estates homes for sale",
-      "Gated communities in Indio",
-      "Scenic neighborhoods in Indio"
-    ],
-    "slug": "mountain-estates"
   },
   {
     "id": 18,
@@ -529,8 +507,8 @@
   },
   {
     "id": 26,
-    "name": "Parkside Estates",
-    "description": "Parkside Estates in Indio, CA, is a serene, family-friendly community offering a perfect blend of modern homes, spacious lots, and abundant amenities. With its scenic views, well-maintained parks, and easy access to shopping, dining, and entertainment, Parkside Estates is ideal for those seeking a peaceful yet connected lifestyle. The neighborhood features a variety of home styles, creating a welcoming environment for first-time buyers, growing families, and retirees alike.",
+    "name": "Parkside Ranch",
+    "description": "Parkside Ranch in Indio, CA, is a serene, family-friendly community offering a perfect blend of modern homes, spacious lots, and abundant amenities. With its scenic views, well-maintained parks, and easy access to shopping, dining, and entertainment, Parkside Ranch is ideal for those seeking a peaceful yet connected lifestyle. The neighborhood features a variety of home styles, creating a welcoming environment for first-time buyers, growing families, and retirees alike.",
     "photo": "https://images1.apartments.com/i2/BPzDm1vFeFzKS52rw3Q8O6fs6pt0Jg-6UGJqM7r1gh0/111/parkside-estates-canonsburg-pa-building-photo.jpg",
     "features": [
       "Spacious homes",
@@ -543,7 +521,7 @@
       "longitude": -116.2187
     },
     "keywords": [
-      "Parkside Estates homes for sale",
+      "Parkside Ranch homes for sale",
       "Family neighborhoods in Indio",
       "Affordable homes in Indio"
     ],
