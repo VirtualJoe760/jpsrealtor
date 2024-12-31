@@ -23,10 +23,10 @@ export const homeHeroContent = {
 // ABOUT SECTION
 
 export const aboutSectionContent = {
-  title: "Meet Joseph Sardella",
+  title: "Discover Coachella Valley",
   cards: [
     {
-      heading: "Who is Joseph Sardella",
+      heading: "Learn about The Coachella Valley",
       description: "Your Coachella Valley Real Estate Expert",
       body: `As a Coachella Valley native, I bring a deep-rooted passion for real estate and a lifetime of local knowledge to my clients.`,
       link: {

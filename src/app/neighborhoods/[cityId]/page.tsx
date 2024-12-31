@@ -52,7 +52,7 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       title: "Schools",
       description: "Find the best schools in the area.",
       imageUrl: "/infocards/school.png",
-      link: { text: "View Schools", href: `/neighborhoods/${cityId}/${generateSlug("Schools")}` },
+      link: { text: "View Schools", href: `/neighborhoods/${cityId}/schools` },
     },
     {
       title: "Restaurants",

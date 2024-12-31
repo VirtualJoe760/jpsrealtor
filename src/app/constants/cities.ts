@@ -1,5 +1,9 @@
 export interface City {
     name: string;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    };
     population: number;
     id: string;
     heading: string;
@@ -15,6 +19,7 @@ export interface City {
   export const coachellaValleyCities: City[] = [
     {
       name: "Coachella Valley",
+      coordinates: { latitude: 33.722244, longitude: -116.374455 },
       population: 235839,
       id: "coachella-valley",
       heading: "Explore Homes in the Heart of Coachella Valley",
@@ -27,6 +32,7 @@ export interface City {
     },
     {
       name: "Palm Springs",
+      coordinates: { latitude: 33.8303, longitude: -116.5453 },
       population: 48518,
       id: "palm-springs",
       heading: "Palm Springs Real Estate and Homes for Sale",
@@ -40,6 +46,7 @@ export interface City {
     },
     {
       name: "Palm Desert",
+      coordinates: { latitude: 33.7225, longitude: -116.3761 },
       population: 53369,
       id: "palm-desert",
       heading: "Homes for Sale in Palm Desert",
@@ -53,6 +60,7 @@ export interface City {
     },
     {
       name: "La Quinta",
+      coordinates: { latitude: 33.6634, longitude: -116.3100 },
       population: 41667,
       id: "la-quinta",
       heading: "La Quinta Real Estate and Property Listings",
@@ -66,6 +74,7 @@ export interface City {
     },
     {
       name: "Indio",
+      coordinates: { latitude: 33.7206, longitude: -116.2156 },
       population: 91761,
       id: "indio",
       heading: "Find Your Home in Indio",
@@ -79,6 +88,7 @@ export interface City {
     },
     {
       name: "Rancho Mirage",
+      coordinates: { latitude: 33.7397, longitude: -116.4125 },
       population: 18228,
       id: "rancho-mirage",
       heading: "Rancho Mirage Real Estate and Luxury Living",
@@ -92,6 +102,7 @@ export interface City {
     },
     {
       name: "Indian Wells",
+      coordinates: { latitude: 33.7153, longitude: -116.3419 },
       population: 5357,
       id: "indian-wells",
       heading: "Exclusive Real Estate in Indian Wells",
@@ -105,6 +116,7 @@ export interface City {
     },
     {
         name: "Cathedral City",
+        coordinates: { latitude: 33.7797, longitude: -116.4653 },
         population: 55011,
         id: "cathedral-city",
         heading: "Cathedral City Real Estate and Homes for Sale",
@@ -118,6 +130,7 @@ export interface City {
       },
       {
         name: "Desert Hot Springs",
+        coordinates: { latitude: 33.9611, longitude: -116.5017 },
         population: 29857,
         id: "desert-hot-springs",
         heading: "Desert Hot Springs Real Estate and Investment Opportunities",
@@ -131,6 +144,7 @@ export interface City {
       },
       {
         name: "Coachella",
+        coordinates: { latitude: 33.6803, longitude: -116.1739 },
         population: 46324,
         id: "coachella",
         heading: "Explore Real Estate in Coachella",
@@ -144,6 +158,7 @@ export interface City {
       },
       {
         name: "Thousand Palms",
+        coordinates: { latitude: 33.8175, longitude: -116.3903 },
         population: 7293,
         id: "thousand-palms",
         heading: "Thousand Palms Real Estate and Property Listings",
@@ -157,6 +172,7 @@ export interface City {
       },
       {
         name: "Bermuda Dunes",
+        coordinates: { latitude: 33.7489, longitude: -116.2766 },
         population: 7536,
         id: "bermuda-dunes",
         heading: "Luxury Homes and Real Estate in Bermuda Dunes",
@@ -170,6 +186,7 @@ export interface City {
       },
       {
         name: "Mecca",
+        coordinates: { latitude: 33.5706, longitude: -116.0775 },
         population: 8866,
         id: "mecca",
         heading: "Affordable Real Estate in Mecca",
@@ -183,6 +200,7 @@ export interface City {
       },
       {
         name: "Thermal",
+        coordinates: { latitude: 33.6406, longitude: -116.1392 },
         population: 2865,
         id: "thermal",
         heading: "Real Estate Opportunities in Thermal",
