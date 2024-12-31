@@ -96,7 +96,7 @@ export default async function PostPage({
           </p>
           <a
             href="/#contact"
-            className="inline-block bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-600"
+            className="ml-2 px-4 py-2 bg-black text-white border border-white font-bold rounded-md hover:bg-gray-800 disabled:bg-gray-500"
           >
             Contact Me
           </a>

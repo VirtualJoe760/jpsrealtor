@@ -1,3 +1,5 @@
+// src\app\neighborhoods\[cityId]\page.tsx
+
 import React from "react";
 import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";
@@ -55,22 +57,16 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       link: { text: "View Schools", href: `/neighborhoods/${cityId}/schools` },
     },
     {
-      title: "Restaurants",
-      description: "Discover popular dining spots.",
+      title: "Local Business",
+      description: "Discover popular dining spots, Explore local businesses.",
       imageUrl: "/infocards/resturants.png",
-      link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/${generateSlug("Restaurants")}` },
+      link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/local-business}` },
     },
     {
       title: "Events",
       description: "Check out local events happening around.",
       imageUrl: "/infocards/events.png",
       link: { text: "View Events", href: `/neighborhoods/${cityId}/${generateSlug("Events")}` },
-    },
-    {
-      title: "Businesses",
-      description: "Explore local businesses.",
-      imageUrl: "/infocards/business.png",
-      link: { text: "View Businesses", href: `/neighborhoods/${cityId}/${generateSlug("Businesses")}` },
     },
   ];
 
