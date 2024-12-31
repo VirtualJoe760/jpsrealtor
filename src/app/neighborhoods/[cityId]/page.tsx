@@ -60,7 +60,7 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       title: "Local Business",
       description: "Discover popular dining spots, Explore local businesses.",
       imageUrl: "/infocards/resturants.png",
-      link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/local-business}` },
+      link: { text: "View Restaurants", href: `/neighborhoods/${cityId}/local-business` },
     },
     {
       title: "Events",

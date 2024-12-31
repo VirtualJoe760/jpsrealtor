@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export default function LocalBusinessChat({ cityId }: { cityId: string }) {
   const [query, setQuery] = useState("");
@@ -12,12 +12,6 @@ export default function LocalBusinessChat({ cityId }: { cityId: string }) {
   const signoffs = ["that you might consider for your needs.", "that could match what you're looking for.", "that you might find interesting."];
 
   const getRandomElement = (array: string[]) => array[Math.floor(Math.random() * array.length)];
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    }
-  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!query.trim()) return;
@@ -41,12 +35,14 @@ export default function LocalBusinessChat({ cityId }: { cityId: string }) {
         // Generate the preamble dynamically
         const intro = `<p class='text-xl font-semibold mb-2'>${getRandomElement(introPhrases)} <strong>${query}</strong> ${getRandomElement(adjectives)} ${getRandomElement(signoffs)}</p>`;
         const highlights = businesses.slice(0, 3).map((business: any) => {
-          const description = business.categories.map((c: any) => c.title).join(", ");
-          return `<p class='mb-2'><strong>${business.name}</strong>: ${description}. Located at ${business.location.address1}, ${business.location.city}, ${business.location.state} ${business.location.zip_code}.</p>`;
+          const description = business.categories
+            .map((c: any) => c.title)
+            .join(", ");
+          return `<p class='mb-2'><strong>${business.name}</strong>: ${description}. Located at ${business.location.address1}.</p>`;
         }).join("");
 
         const preamble = businesses.length
-          ? `<div class='mb-4 leading-7'>${intro}<div class='mt-2'>${highlights}</div></div>`
+          ? `<div class='mb-4 leading-7'>${intro}<div class='mt-2'>${highlights}</div><a href="#bottom" class="text-blue-400 hover:underline">Scroll to the bottom, Search again ⬇️</a></div>`
           : "<p>No results found for your query.</p>";
 
         const listings = businesses.map(
@@ -61,7 +57,7 @@ export default function LocalBusinessChat({ cityId }: { cityId: string }) {
                     <p class="text-gray-300">${business.categories.map((c: any) => c.title).join(", ")}</p>
                   </div>
                 </div>
-                <p class="text-gray-300">${business.location.address1}, ${business.location.city}, ${business.location.state} ${business.location.zip_code}</p>
+                <p class="text-gray-300">${business.location.address1}</p>
                 ${business.snippet_text ? `<p class="text-gray-300 italic mt-2">"${business.snippet_text}"</p>` : ""}
                 ${business.photos?.slice(0, 3).map((photo: string) => `<img src="${photo}" alt="Photo of ${business.name}" class="w-full h-20 object-cover rounded-md mt-2" />`).join("") || ""}
               </a>`;
@@ -106,10 +102,10 @@ export default function LocalBusinessChat({ cityId }: { cityId: string }) {
         {loading && <div className="text-gray-300">Searching...</div>}
       </div>
 
-      <div className="flex items-center mt-4">
+      <div className="flex items-center mt-4" id="bottom">
         <input
           type="text"
-          placeholder="e.g., dentists in coachella valley"
+          placeholder="e.g., dentists in palm desert"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyPress={handleKeyPress}
