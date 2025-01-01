@@ -1,4 +1,4 @@
-type School = {
+export type School = {
   id: string;
   slug: string;
   name: string;
@@ -13,7 +13,7 @@ type School = {
   websiteUrl: string;
 };
 
-type SchoolDistrict = {
+export type SchoolDistrict = {
   name: string;
   schools: {
     Elementary: School[];

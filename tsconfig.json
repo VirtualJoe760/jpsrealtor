@@ -13,7 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "types": ["@types/node", "@types/react", "@types/react-dom"],
+    "types": ["@types/node", "@types/react", "@types/react-dom", "recharts", "lucide-react"],
     "plugins": [
       {
         "name": "next"
@@ -35,8 +35,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/types/**/*.d.ts" // Ensure all type declaration files in `src/types` are included
-, "next.config.mjs"  ],
+    "src/types/**/*.d.ts",
+    "next.config.mjs"
+  ],
   "exclude": [
     "node_modules",
     "**/*.test.ts",

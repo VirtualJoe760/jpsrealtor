@@ -54,7 +54,7 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       title: "Schools",
       description: "Find the best schools in the area.",
       imageUrl: "/infocards/school.png",
-      link: { text: "View Schools", href: `/neighborhoods/${cityId}/schools` },
+      link: { text: "View Schools", href: `/neighborhoods/coachella-valley/school-district` },
     },
     {
       title: "Local Business",
@@ -66,7 +66,13 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       title: "Events",
       description: "Check out local events happening around.",
       imageUrl: "/infocards/events.png",
-      link: { text: "View Events", href: `/neighborhoods/${cityId}/${generateSlug("Events")}` },
+      link: { text: "View Events", href: `/neighborhoods/${cityId}/events` },
+    },
+    {
+      title: "Property Statistics",
+      description: "Look at closed and expired listings statistics of the city's real estate track record.",
+      imageUrl: "/infocards/business.png",
+      link: { text: "Property Stats", href: `/neighborhoods/${cityId}/property-stats/` },
     },
   ];
 

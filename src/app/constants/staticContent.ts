@@ -28,7 +28,7 @@ export const aboutSectionContent = {
     {
       heading: "Learn about The Coachella Valley",
       description: "Your Coachella Valley Real Estate Expert",
-      body: `As a Coachella Valley native, I bring a deep-rooted passion for real estate and a lifetime of local knowledge to my clients.`,
+      body: `As a Coachella Valley native, I bring a deep-rooted passion for real estate and a lifetime of local knowledge to my clients. Written by me personally, you will find detailed guides, articles, and statistics about the community you want to join, or have lived in and loved.`,
       link: {
         text: "Joseph's Real Estate Insights",
         href: "/insights",
@@ -38,7 +38,7 @@ export const aboutSectionContent = {
     {
       heading: "A Legacy of Real Estate",
       description: "Decades of Experience in the Desert",
-      body: `Carrying on a family legacy of real estate that began in the 1970s, Joseph grew up in Indian Wells Country Club.`,
+      body: `Carrying on a family legacy of real estate that began in the 1970s, Joseph grew up in Indian Wells Country Club and has called it home for 30+ years. As a local with this amount of experience I give the unique opportunity to my clients to understand the valley from eagle eye experience and local expertise. Click the link below to explore the neighborhoods of the Coachella Valley from my favorite Subdivisions & HOA information to local business, events & schools in the community.`,
       link: {
         text: "Explore The Desert",
         href: "/neighborhoods",
