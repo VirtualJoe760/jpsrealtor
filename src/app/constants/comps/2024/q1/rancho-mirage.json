@@ -1,0 +1,68 @@
+{
+    "area": "Rancho Mirage",
+    "quarter": "Q1 2024",
+    "slug": "rancho-mirage-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 1287371.33,
+        "median": 1253004.40,
+        "min": 205000,
+        "max": 5750000
+      },
+      "sale_price": {
+        "average": 1200419.47,
+        "median": 933000,
+        "min": 204900,
+        "max": 5500000
+      },
+      "days_on_market": {
+        "average": 63,
+        "median": 61,
+        "min": 16,
+        "max": 250
+      },
+      "list_price_per_sqft": {
+        "average": 439.16,
+        "median": 404.82,
+        "min": 205.21,
+        "max": 1244.79
+      },
+      "sale_price_per_sqft": {
+        "average": 422.56,
+        "median": 393.45,
+        "min": 202.87,
+        "max": 1244.79
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 1292088.27,
+        "median": 982000,
+        "min": 369000,
+        "max": 4900000
+      },
+      "days_on_market": {
+        "average": 107.32,
+        "median": 99,
+        "min": 16,
+        "max": 250
+      },
+      "list_price_per_sqft": {
+        "average": 450.47,
+        "median": 449.74,
+        "min": 247.88,
+        "max": 823
+      }
+    },
+    "price_ranges": {
+      "under_500k": 10,
+      "500k_to_1m": 65,
+      "1m_to_2m": 90,
+      "over_2m": 19
+    },
+    "total_sales": 184,
+    "expired_listings": 44,
+    "highest_sale_price": 5500000,
+    "lowest_sale_price": 204900
+  }
+  

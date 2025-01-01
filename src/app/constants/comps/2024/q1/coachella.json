@@ -1,0 +1,92 @@
+{
+    "area": "Coachella",
+    "quarter": "Q1 2024",
+    "slug": "coachella-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 462433.91,
+        "median": 480000,
+        "min": 290000,
+        "max": 559000
+      },
+      "sale_price": {
+        "average": 454749.03,
+        "median": 445000,
+        "min": 280000,
+        "max": 605964
+      },
+      "days_on_market": {
+        "average": 42.21,
+        "median": 30,
+        "min": 0,
+        "max": 144
+      },
+      "list_price_per_sqft": {
+        "average": 271.81,
+        "median": 255.23,
+        "min": 174.07,
+        "max": 398.44
+      },
+      "sale_price_per_sqft": {
+        "average": 266.89,
+        "median": 254.82,
+        "min": 168.07,
+        "max": 370.88
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 514833.33,
+        "median": 466000,
+        "min": 279000,
+        "max": 875000
+      },
+      "days_on_market": {
+        "average": 53.58,
+        "median": 28.5,
+        "min": 0,
+        "max": 182
+      },
+      "list_price_per_sqft": {
+        "average": 281.35,
+        "median": 273.21,
+        "min": 237.09,
+        "max": 402.04
+      },
+      "square_footage": {
+        "average": 1850.17,
+        "median": 1725,
+        "min": 954,
+        "max": 2976
+      },
+      "lot_size": {
+        "average": 7005.92,
+        "median": 6752,
+        "min": 5227,
+        "max": 10890
+      },
+      "bedrooms": {
+        "average": 4.33,
+        "median": 5,
+        "min": 2,
+        "max": 6
+      },
+      "bathrooms": {
+        "average": 2.75,
+        "median": 3,
+        "min": 1,
+        "max": 4
+      }
+    },
+    "price_ranges": {
+      "under_500k": 12,
+      "500k_to_1m": 18,
+      "1m_to_2m": 3,
+      "over_2m": 0
+    },
+    "total_sales": 33,
+    "expired_listings": 12,
+    "highest_sale_price": 605964,
+    "lowest_sale_price": 280000
+  }
+  

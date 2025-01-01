@@ -1,0 +1,92 @@
+{
+    "area": "Bermuda Dunes",
+    "quarter": "Q1 2024",
+    "slug": "bermuda-dunes-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 756276.67,
+        "median": 744000,
+        "min": 209000,
+        "max": 1600000
+      },
+      "sale_price": {
+        "average": 714983.33,
+        "median": 710000,
+        "min": 200000,
+        "max": 1365000
+      },
+      "days_on_market": {
+        "average": 56.53,
+        "median": 52,
+        "min": 0,
+        "max": 145
+      },
+      "list_price_per_sqft": {
+        "average": 337.72,
+        "median": 306.62,
+        "min": 183.67,
+        "max": 892.36
+      },
+      "sale_price_per_sqft": {
+        "average": 322.55,
+        "median": 294.3,
+        "min": 178.3,
+        "max": 761.29
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 747391.50,
+        "median": 782499.50,
+        "min": 285000,
+        "max": 958000
+      },
+      "days_on_market": {
+        "average": 90.92,
+        "median": 91,
+        "min": 32,
+        "max": 182
+      },
+      "list_price_per_sqft": {
+        "average": 369.4,
+        "median": 352.59,
+        "min": 269.53,
+        "max": 456.4
+      },
+      "square_footage": {
+        "average": 2016.42,
+        "median": 2055.5,
+        "min": 960,
+        "max": 2714
+      },
+      "lot_size": {
+        "average": 8900.83,
+        "median": 9147.5,
+        "min": 960,
+        "max": 11761
+      },
+      "bedrooms": {
+        "average": 3.42,
+        "median": 3,
+        "min": 2,
+        "max": 5
+      },
+      "bathrooms": {
+        "average": 2.67,
+        "median": 2,
+        "min": 2,
+        "max": 5
+      }
+    },
+    "price_ranges": {
+      "under_500k": 12,
+      "500k_to_1m": 15,
+      "1m_to_2m": 3,
+      "over_2m": 0
+    },
+    "total_sales": 30,
+    "expired_listings": 12,
+    "highest_sale_price": 1365000,
+    "lowest_sale_price": 200000
+  }
+  

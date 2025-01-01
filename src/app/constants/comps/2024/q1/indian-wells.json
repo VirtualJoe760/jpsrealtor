@@ -1,0 +1,92 @@
+{
+    "area": "Indian Wells",
+    "quarter": "Q1 2024",
+    "slug": "indian-wells-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 1938724.56,
+        "median": 1650000,
+        "min": 264000,
+        "max": 7800000
+      },
+      "sale_price": {
+        "average": 1809441.34,
+        "median": 1528000,
+        "min": 254000,
+        "max": 6000000
+      },
+      "days_on_market": {
+        "average": 59.87,
+        "median": 42,
+        "min": 0,
+        "max": 200
+      },
+      "list_price_per_sqft": {
+        "average": 550.93,
+        "median": 538.71,
+        "min": 247.07,
+        "max": 1404.2
+      },
+      "sale_price_per_sqft": {
+        "average": 533.72,
+        "median": 518.59,
+        "min": 239.96,
+        "max": 1356.96
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 2706266.56,
+        "median": 1362400,
+        "min": 415000,
+        "max": 13995000
+      },
+      "days_on_market": {
+        "average": 126.33,
+        "median": 117,
+        "min": 7,
+        "max": 369
+      },
+      "list_price_per_sqft": {
+        "average": 572.26,
+        "median": 581.4,
+        "min": 96.47,
+        "max": 1417.65
+      },
+      "square_footage": {
+        "average": 3580.44,
+        "median": 2674,
+        "min": 1152,
+        "max": 9872
+      },
+      "lot_size": {
+        "average": 11470.89,
+        "median": 9148,
+        "min": 436,
+        "max": 31363
+      },
+      "bedrooms": {
+        "average": 3.44,
+        "median": 3,
+        "min": 2,
+        "max": 5
+      },
+      "bathrooms": {
+        "average": 3.78,
+        "median": 3,
+        "min": 2,
+        "max": 7
+      }
+    },
+    "price_ranges": {
+      "under_500k": 5,
+      "500k_to_1m": 40,
+      "1m_to_2m": 20,
+      "over_2m": 28
+    },
+    "total_sales": 93,
+    "expired_listings": 9,
+    "highest_sale_price": 6000000,
+    "lowest_sale_price": 254000
+  }
+  

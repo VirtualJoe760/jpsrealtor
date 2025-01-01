@@ -1,0 +1,91 @@
+{
+    "area": "Palm Springs North End",
+    "quarter": "Q1 2024",
+    "slug": "palm-springs-north-end-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 816577.15,
+            "median": 803771.41,
+            "min": 149900,
+            "max": 3395000
+        },
+        "sale_price": {
+            "average": 786156.03,
+            "median": 694000,
+            "min": 155000,
+            "max": 3395000
+        },
+        "days_on_market": {
+            "average": 61.46,
+            "median": 40.5,
+            "min": 0,
+            "max": 495
+        },
+        "list_price_per_sqft": {
+            "average": 465.26,
+            "median": 423.52,
+            "min": 220.16,
+            "max": 1259.74
+        },
+        "sale_price_per_sqft": {
+            "average": 423.91,
+            "median": 423.52,
+            "min": 201.24,
+            "max": 1259.74
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 971327.27,
+            "median": 879500,
+            "min": 184999,
+            "max": 3100000
+        },
+        "days_on_market": {
+            "average": 96.96,
+            "median": 91,
+            "min": 2,
+            "max": 238
+        },
+        "list_price_per_sqft": {
+            "average": 575.48,
+            "median": 583.96,
+            "min": 253.57,
+            "max": 1020.41
+        },
+        "square_footage": {
+            "average": 1602.31,
+            "median": 1452,
+            "min": 589,
+            "max": 3558
+        },
+        "lot_size": {
+            "average": 9446.22,
+            "median": 9147,
+            "min": 0,
+            "max": 32234
+        },
+        "bedrooms": {
+            "average": 2.94,
+            "median": 3,
+            "min": 1,
+            "max": 9
+        },
+        "bathrooms": {
+            "average": 2.39,
+            "median": 2,
+            "min": 1,
+            "max": 5
+        }
+    },
+    "price_ranges": {
+        "under_500k": 20,
+        "500k_to_1m": 40,
+        "1m_to_2m": 30,
+        "over_2m": 8
+    },
+    "total_sales": 98,
+    "expired_listings": 49,
+    "highest_sale_price": 3395000,
+    "lowest_sale_price": 155000
+}

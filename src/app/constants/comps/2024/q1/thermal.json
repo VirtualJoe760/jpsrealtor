@@ -1,0 +1,92 @@
+{
+    "area": "Thermal",
+    "quarter": "Q1 2024",
+    "slug": "thermal-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 622455.31,
+        "median": 523490,
+        "min": 135000,
+        "max": 4000000
+      },
+      "sale_price": {
+        "average": 612412.25,
+        "median": 525990,
+        "min": 135000,
+        "max": 3750000
+      },
+      "days_on_market": {
+        "average": 23.5,
+        "median": 16.5,
+        "min": 2,
+        "max": 66
+      },
+      "list_price_per_sqft": {
+        "average": 235.21,
+        "median": 236.15,
+        "min": 84.38,
+        "max": 496.89
+      },
+      "sale_price_per_sqft": {
+        "average": 237.88,
+        "median": 242.77,
+        "min": 84.38,
+        "max": 465.84
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 966249.75,
+        "median": 937500,
+        "min": 314999,
+        "max": 1675000
+      },
+      "days_on_market": {
+        "average": 83.25,
+        "median": 54,
+        "min": 50,
+        "max": 175
+      },
+      "list_price_per_sqft": {
+        "average": 537.22,
+        "median": 519.76,
+        "min": 216.03,
+        "max": 893.33
+      },
+      "square_footage": {
+        "average": 1688.5,
+        "median": 1722,
+        "min": 1435,
+        "max": 1875
+      },
+      "lot_size": {
+        "average": 142843.25,
+        "median": 144150,
+        "min": 9516,
+        "max": 273557
+      },
+      "bedrooms": {
+        "average": 3.25,
+        "median": 3,
+        "min": 3,
+        "max": 4
+      },
+      "bathrooms": {
+        "average": 2,
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "price_ranges": {
+      "under_500k": 12,
+      "500k_to_1m": 3,
+      "1m_to_2m": 0,
+      "over_2m": 1
+    },
+    "total_sales": 16,
+    "expired_listings": 4,
+    "highest_sale_price": 3750000,
+    "lowest_sale_price": 135000
+  }
+  
