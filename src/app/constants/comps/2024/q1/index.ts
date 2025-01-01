@@ -1,6 +1,7 @@
 import southPalmSpringsEnd from "./palm-springs-south-end.json";
 import southCathedralCity from "./south-cathedral-city.json"; // Import the new file
-import northCathedralCity from "./cathedral-city-north.json"
+import northCathedralCity from "./cathedral-city-north.json";
+import centralPalmSprings from "./palm-springs-central.json";
 
 interface AreaData {
   area: string;
@@ -63,4 +64,5 @@ export const q1Data: Record<string, AreaData> = {
   "palm-springs-south-end": southPalmSpringsEnd,
   "south-cathedral-city": southCathedralCity, // Add the new area
   "north-cathedral-city": northCathedralCity,
+  "palm-springs-central": centralPalmSprings
 };

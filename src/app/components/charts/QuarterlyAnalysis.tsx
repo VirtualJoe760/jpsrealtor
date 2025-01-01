@@ -16,7 +16,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
   return (
     <div>
       {/* First Grid: Expired vs Closed and Closed by Price Range */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.entries(areaData).map(([area, data]) => {
           const salesVsExpiredData = [
             { category: "Closed", value: data.total_sales ?? 0, fill: "hsl(var(--chart-1))" },
@@ -54,7 +54,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
       </div>
 
       {/* Second Grid: Sale vs List Metrics */}
-      <div className="grid grid-cols-2 gap-6 mt-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
         {Object.entries(areaData).map(([area, data]) => {
           const domMetrics = data.closed_data_metrics?.days_on_market || {
             average: 0,
@@ -83,7 +83,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
       </div>
 
       {/* Third Grid: Additional Charts */}
-      <div className="grid grid-cols-2 gap-6 mt-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
         {Object.entries(areaData).map(([area, data]) => {
           const saleListPriceData = [
             {
