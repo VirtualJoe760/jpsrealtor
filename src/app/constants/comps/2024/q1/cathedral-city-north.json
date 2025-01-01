@@ -1,0 +1,92 @@
+{
+    "area": "North Cathedral City",
+    "quarter": "Q1 2024",
+    "slug": "north-cathedral-city-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 502615.89,
+        "median": 507000,
+        "min": 234900,
+        "max": 790000
+      },
+      "sale_price": {
+        "average": 489553.22,
+        "median": 490000,
+        "min": 218000,
+        "max": 780000
+      },
+      "days_on_market": {
+        "average": 62.67,
+        "median": 48.5,
+        "min": 0,
+        "max": 349
+      },
+      "list_price_per_sqft": {
+        "average": 304.41,
+        "median": 288.76,
+        "min": 214.16,
+        "max": 456.57
+      },
+      "sale_price_per_sqft": {
+        "average": 296.23,
+        "median": 280.99,
+        "min": 203.2,
+        "max": 458.58
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 556496.49,
+        "median": 538110,
+        "min": 250000,
+        "max": 829000
+      },
+      "days_on_market": {
+        "average": 148.37,
+        "median": 110,
+        "min": 0,
+        "max": 878
+      },
+      "list_price_per_sqft": {
+        "average": 315.74,
+        "median": 306.79,
+        "min": 220.89,
+        "max": 498.13
+      },
+      "square_footage": {
+        "average": 1784.86,
+        "median": 1886,
+        "min": 802,
+        "max": 2950
+      },
+      "lot_size": {
+        "average": 6008.79,
+        "median": 6534,
+        "min": 871,
+        "max": 12632
+      },
+      "bedrooms": {
+        "average": 3.2,
+        "median": 3,
+        "min": 1,
+        "max": 7
+      },
+      "bathrooms": {
+        "average": 2.57,
+        "median": 3,
+        "min": 2,
+        "max": 4
+      }
+    },
+    "price_ranges": {
+      "under_500k": 15,
+      "500k_to_1m": 10,
+      "1m_to_2m": 5,
+      "over_2m": 0
+    },
+    "total_sales": 90,
+    "expired_listings": 35,
+    "highest_sale_price": 780000,
+    "lowest_sale_price": 218000
+  }
+  

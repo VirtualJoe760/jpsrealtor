@@ -14,6 +14,7 @@ export interface City {
       main: string[];
       secondary: string[];
     };
+    areas?: string[];
   }
   
   export const coachellaValleyCities: City[] = [
@@ -42,7 +43,8 @@ export interface City {
       keywords: {
         main: ["Palm Springs real estate", "homes for sale Palm Springs", "Palm Springs property"],
         secondary: ["luxury homes Palm Springs", "buy house Palm Springs", "Palm Springs real estate listings"]
-      }
+      },
+      areas: ["palm-springs-north-end", "palm-springs-central", "palm-springs-south-end"],
     },
     {
       name: "Palm Desert",
@@ -56,7 +58,8 @@ export interface City {
       keywords: {
         main: ["Palm Desert homes", "Palm Desert real estate", "homes for sale Palm Desert"],
         secondary: ["luxury property Palm Desert", "buy home Palm Desert", "Palm Desert real estate listings"]
-      }
+      },
+      areas: ["palm-desert-ne", "palm-desert-north", "palm-desert-south", "palm-desert-east"],
     },
     {
       name: "La Quinta",
@@ -70,7 +73,8 @@ export interface City {
       keywords: {
         main: ["La Quinta real estate", "homes for sale La Quinta", "La Quinta property"],
         secondary: ["buy home La Quinta", "La Quinta property listings", "real estate La Quinta"]
-      }
+      },
+      areas: ["la-quinta-no-of-hwy-111", "la-quinta-south-of-hwy-111"],
     },
     {
       name: "Indio",
@@ -84,7 +88,8 @@ export interface City {
       keywords: {
         main: ["Indio homes", "Indio real estate", "homes for sale Indio"],
         secondary: ["Indio property", "buy home Indio", "Indio real estate listings"]
-      }
+      },
+      areas: ["indio-north-of-i-10", "indio-central", "indio-south-of-hwy-111", "indio-hills"],
     },
     {
       name: "Rancho Mirage",
@@ -98,7 +103,8 @@ export interface City {
       keywords: {
         main: ["Rancho Mirage real estate", "luxury homes Rancho Mirage", "Rancho Mirage property"],
         secondary: ["buy home Rancho Mirage", "real estate listings Rancho Mirage", "Rancho Mirage luxury properties"]
-      }
+      },
+      areas: ["rancho-mirage"],
     },
     {
       name: "Indian Wells",
@@ -112,7 +118,8 @@ export interface City {
       keywords: {
         main: ["Indian Wells real estate", "homes for sale Indian Wells", "Indian Wells luxury homes"],
         secondary: ["buy home Indian Wells", "Indian Wells property listings", "real estate Indian Wells"]
-      }
+      },
+      areas: ["indian-wells"]
     },
     {
         name: "Cathedral City",
@@ -126,7 +133,8 @@ export interface City {
         keywords: {
           main: ["Cathedral City homes", "Cathedral City real estate", "homes for sale Cathedral City"],
           secondary: ["property listings Cathedral City", "buy home Cathedral City", "real estate Cathedral City"]
-        }
+        },
+        areas: ["north-cathedral-city", "south-cathedral-city"],
       },
       {
         name: "Desert Hot Springs",
@@ -140,7 +148,8 @@ export interface City {
         keywords: {
           main: ["Desert Hot Springs homes", "Desert Hot Springs real estate", "homes for sale Desert Hot Springs"],
           secondary: ["buy property Desert Hot Springs", "investment property Desert Hot Springs", "real estate listings Desert Hot Springs"]
-        }
+        },
+        areas: ["desert-hot-springs"],
       },
       {
         name: "Coachella",
@@ -154,7 +163,8 @@ export interface City {
         keywords: {
           main: ["Coachella homes", "real estate Coachella", "homes for sale Coachella"],
           secondary: ["buy home Coachella", "property listings Coachella", "real estate Coachella Valley"]
-        }
+        },
+        areas: ["coachella"]
       },
       {
         name: "Thousand Palms",
@@ -168,7 +178,8 @@ export interface City {
         keywords: {
           main: ["Thousand Palms homes", "Thousand Palms real estate", "homes for sale Thousand Palms"],
           secondary: ["property listings Thousand Palms", "buy home Thousand Palms", "real estate Thousand Palms"]
-        }
+        },
+        areas: ["thousand-palms"],
       },
       {
         name: "Bermuda Dunes",
@@ -182,21 +193,8 @@ export interface City {
         keywords: {
           main: ["Bermuda Dunes homes", "Bermuda Dunes real estate", "luxury homes Bermuda Dunes"],
           secondary: ["buy home Bermuda Dunes", "country club homes Bermuda Dunes", "real estate Bermuda Dunes"]
-        }
-      },
-      {
-        name: "Mecca",
-        coordinates: { latitude: 33.5706, longitude: -116.0775 },
-        population: 8866,
-        id: "mecca",
-        heading: "Affordable Real Estate in Mecca",
-        description: "Discover affordable housing options in Mecca, a community with a unique desert charm.",
-        body: "Mecca offers affordable housing and a quiet lifestyle, appealing to those seeking a peaceful desert community.",
-        about: "Mecca, located in the southeastern part of the Coachella Valley, is a vibrant community known for its agricultural roots and serene desert landscapes. The area offers a unique blend of rural charm and affordability, making it an appealing choice for buyers, sellers, and investors seeking value and potential in the region. For buyers, Mecca provides a variety of affordable housing options, including single-family homes and properties with larger lots ideal for those seeking space and privacy. The community’s proximity to the Salton Sea and the Santa Rosa and San Jacinto Mountains National Monument enhances its appeal for nature enthusiasts and those looking for a quiet, scenic lifestyle. Sellers in Mecca can benefit from the area’s affordability and growing interest from buyers seeking an escape from the more urbanized parts of the Coachella Valley. Investors are drawn to Mecca for its potential in agricultural properties and residential developments. The area’s rich history in farming and its expansive open spaces make it a unique opportunity for those interested in rural investments. Mecca’s proximity to key highways ensures connectivity while maintaining its peaceful, small-town feel. Key considerations for buyers and sellers include property taxes and energy costs, primarily serviced by the Imperial Irrigation District (IID), which offers competitive electricity rates. With its affordability, agricultural opportunities, and tranquil desert setting, Mecca offers a distinct real estate market in the Coachella Valley.",
-        keywords: {
-          main: ["Mecca homes", "Mecca real estate", "homes for sale Mecca"],
-          secondary: ["affordable housing Mecca", "buy home Mecca", "real estate listings Mecca"]
-        }
+        },
+        areas: ["bermuda-dunes"],
       },
       {
         name: "Thermal",
@@ -210,7 +208,8 @@ export interface City {
         keywords: {
           main: ["Thermal homes", "real estate Thermal", "land for sale Thermal"],
           secondary: ["agricultural properties Thermal", "buy land Thermal", "real estate listings Thermal"]
-        }
+        },
+        areas: ["thermal"],
       }      
   ];
   

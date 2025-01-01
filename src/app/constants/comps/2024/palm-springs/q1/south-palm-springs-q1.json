@@ -1,0 +1,92 @@
+{
+    "area": "South End Palm Springs",
+    "quarter": "Q1 2024",
+    "slug": "sps-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 930781.67,
+        "median": 903749.36,
+        "min": 450,
+        "max": 4250000
+      },
+      "sale_price": {
+        "average": 877158.34,
+        "median": 849000,
+        "min": 205000,
+        "max": 3400000
+      },
+      "days_on_market": {
+        "average": 54,
+        "median": 41,
+        "min": 0,
+        "max": 255
+      },
+      "list_price_per_sqft": {
+        "average": 485.04,
+        "median": 471.61,
+        "min": 207.2,
+        "max": 1643.84
+      },
+      "sale_price_per_sqft": {
+        "average": 471.61,
+        "median": 457.39,
+        "min": 209.67,
+        "max": 1575.34
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 1193134.11,
+        "median": 1154155.91,
+        "min": 285000,
+        "max": 3595000
+      },
+      "days_on_market": {
+        "average": 117.13,
+        "median": 105,
+        "min": 5,
+        "max": 618
+      },
+      "list_price_per_sqft": {
+        "average": 523.86,
+        "median": 421.28,
+        "min": 137.46,
+        "max": 1295.76
+      },
+      "square_footage": {
+        "average": 2044.09,
+        "median": 1868,
+        "min": 525,
+        "max": 5198
+      },
+      "lot_size": {
+        "average": 7850.07,
+        "median": 6534,
+        "min": 5.74,
+        "max": 41382
+      },
+      "bedrooms": {
+        "average": 2.95,
+        "median": 3,
+        "min": 1,
+        "max": 5
+      },
+      "bathrooms": {
+        "average": 3.02,
+        "median": 3,
+        "min": 1,
+        "max": 7
+      }
+    },
+    "price_ranges": {
+      "under_500k": 20,
+      "500k_to_1m": 60,
+      "1m_to_2m": 30,
+      "over_2m": 4
+    },
+    "total_sales": 181,
+    "expired_listings": 55,
+    "highest_sale_price": 3400000,
+    "lowest_sale_price": 205000
+  }
+  
