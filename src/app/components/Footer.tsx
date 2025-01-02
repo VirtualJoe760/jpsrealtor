@@ -14,17 +14,17 @@ const navigation = {
   social: [
     {
       name: 'Facebook',
-      href: '#',
+      href: 'https://www.facebook.com/JPSardellaRealEstate',
       iconSrc: '/svg/facebook.svg',
     },
     {
       name: 'LinkedIn',
-      href: '#',
+      href: 'https://www.linkedin.com/in/josephsardella/',
       iconSrc: '/svg/linkedin.svg',
     },
     {
       name: 'YouTube',
-      href: '#',
+      href: 'https://www.youtube.com/@jpsrealtor',
       iconSrc: '/svg/youtube.svg',
     },
   ],
