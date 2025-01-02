@@ -15,22 +15,26 @@ const VariableHero: React.FC<VariableHeroProps> = ({
   alignment = 'center',
 }) => {
   // Determine alignment classes
-  const alignmentClass = alignment === 'left' ? 'text-left items-start' : alignment === 'right' ? 'text-right items-end' : 'text-center items-center';
+  const alignmentClass =
+    alignment === 'left'
+      ? 'text-left items-start'
+      : alignment === 'right'
+      ? 'text-right items-end'
+      : 'text-center items-center';
 
   return (
     <div
       className="relative bg-cover bg-center h-[60vh] flex justify-center text-white mx-auto w-full"
-      style={{
-        backgroundImage: `url(${backgroundImage}), url('/path-to-low-quality-placeholder.jpg')`,
-      }}
       aria-label={`Background hero image for ${heroContext || 'hero section'}`}
     >
-      {/* Fallback Image for optimization */}
+      {/* Optimized Background Image */}
       <Image
         src={backgroundImage}
         alt={`Hero image for ${heroContext || 'hero section'}`}
         fill
         priority
+        placeholder="blur"
+        blurDataURL="/low-quality-placeholder.jpg" // Replace with your placeholder image path
         className="absolute inset-0 object-cover rounded-lg"
       />
 
@@ -38,7 +42,9 @@ const VariableHero: React.FC<VariableHeroProps> = ({
       <div className="absolute inset-0 bg-black opacity-20 rounded-lg"></div>
 
       {/* Content */}
-      <div className={`relative z-10 px-4 flex flex-col justify-center ${alignmentClass} h-full`}>
+      <div
+        className={`relative z-10 px-4 flex flex-col justify-center ${alignmentClass} h-full`}
+      >
         <h1 className="text-5xl font-bold sm:text-6xl lg:text-7xl">
           {heroContext || 'Hero Section'}
         </h1>

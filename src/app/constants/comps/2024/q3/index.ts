@@ -11,8 +11,8 @@ import thermal from "./thermal.json";
 import palmDesertNE from "./palm-desert-ne.json";
 import palmDesertNorth from "./palm-desert-north.json";
 import palmDesertSouth from "./palm-desert-south.json";
-import laQuintaNorth from "./la-quinta-north.json";
-import laQuintaSouth from "./la-quinta-south.json";
+import laQuintaNorth from "./la-quinta-no-of-hwy-111.json";
+import laQuintaSouth from "./la-quinta-south-of-hwy-111.json";
 import indioNorthOfI10 from "./indio-north-of-i10.json";
 import indioCentral from "./indio-central.json";
 import indioSouthOfHwy111 from "./indio-south-of-hwy-111.json";
@@ -121,8 +121,8 @@ export const q3Data: Record<string, AreaData> = {
     "palm-desert-ne": palmDesertNE,
     "palm-desert-north": palmDesertNorth,
     "palm-desert-south": palmDesertSouth,
-    "la-quinta-north": laQuintaNorth,
-    "la-quinta-south": laQuintaSouth,
+    "la-quinta-no-of-hwy-111": laQuintaNorth,
+    "la-quinta-south-of-hwy-111": laQuintaSouth,
     "indio-north-of-i-10": indioNorthOfI10,
     "indio-central": indioCentral,
     "indio-south-of-hwy-111": indioSouthOfHwy111,

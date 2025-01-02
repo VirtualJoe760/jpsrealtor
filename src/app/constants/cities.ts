@@ -89,7 +89,7 @@ export interface City {
         main: ["Indio homes", "Indio real estate", "homes for sale Indio"],
         secondary: ["Indio property", "buy home Indio", "Indio real estate listings"]
       },
-      areas: ["indio-north-of-i-10", "indio-central", "indio-south-of-hwy-111", "indio-hills"],
+      areas: ["indio-north-of-i-10", "indio-central", "indio-south-of-hwy-111"],
     },
     {
       name: "Rancho Mirage",
