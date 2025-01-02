@@ -7,7 +7,7 @@ const InsightsCategories = () => {
   return (
     <div className="py-24 sm:py-32" aria-labelledby="tips-categories-heading">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-2xl">
           {/* Dynamic heading and description */}
           <h2 id="tips-categories-heading" className="text-3xl font-bold tracking-tight pb-3 text-white sm:text-4xl">
             {insightsCategoriesContent.heading}

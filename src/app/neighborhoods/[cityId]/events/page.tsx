@@ -1,9 +1,66 @@
-"use client";
-
 import React from "react";
 import VariableHero from "@/components/VariableHero";
-import { majorEvents } from "@/constants/eventsDataset";
+import EventsSection from "@/components/EventsSection";
 import { coachellaValleyCities } from "@/constants/cities";
+import { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
+  const { cityId } = params;
+
+  // Find city data
+  const city = coachellaValleyCities.find((c) => c.id === cityId);
+  if (!city) {
+    return {
+      title: "City Not Found | JPS Realtor",
+      description: "Explore events and happenings in your area.",
+    };
+  }
+
+  return {
+    title: `Events in ${city.name} | JPS Realtor`,
+    description: `Discover the most exciting events happening in and around ${city.name}, including major festivals, community gatherings, and more.`,
+    metadataBase: new URL("https://jpsrealtor.com"),
+    openGraph: {
+      title: `Events in ${city.name} | JPS Realtor`,
+      description: `Explore top events in ${city.name} and the Coachella Valley, from iconic festivals to unique community experiences.`,
+      url: `https://jpsrealtor.com/neighborhoods/${cityId}/events`,
+      images: [
+        {
+          url: `/city-images/${cityId}.jpg`,
+          alt: `Events in ${city.name}`,
+        },
+      ],
+    },
+    keywords: [
+      `${city.name} events`,
+      `${city.name} festivals`,
+      `${city.name} concerts`,
+      `${city.name} live music`,
+      `${city.name} community gatherings`,
+      `${city.name} art exhibitions`,
+      `${city.name} outdoor events`,
+      "Coachella Valley events",
+      "Coachella music festival",
+      "Stagecoach festival",
+      `${city.name} farmers markets`,
+      `${city.name} family-friendly events`,
+      `${city.name} seasonal festivals`,
+      `${city.name} holiday events`,
+      `${city.name} cultural celebrations`,
+      `${city.name} wellness retreats`,
+      `${city.name} local celebrations`,
+      `${city.name} nightlife events`,
+      `${city.name} outdoor movie nights`,
+      "Palm Springs International Film Festival",
+      "La Quinta arts festival",
+      "Indio tamale festival",
+      `${city.name} hiking meetups`,
+      `${city.name} charity runs`,
+      "Desert art installations",
+      `${city.name} food truck events`,
+    ],
+  };
+}
 
 export default function EventsPage({ params }: { params: { cityId: string } }) {
   const { cityId } = params;
@@ -12,14 +69,8 @@ export default function EventsPage({ params }: { params: { cityId: string } }) {
   const city = coachellaValleyCities.find((c) => c.id === cityId);
 
   if (!city) {
-    return <p>City not found</p>; // Handle the case where the city is not found
+    return <p className="text-gray-300">City not found</p>;
   }
-
-  // Prioritize events in the city's location
-  const prioritizedEvents = [
-    ...majorEvents.filter((event) => event.location.includes(city.name)),
-    ...majorEvents.filter((event) => !event.location.includes(city.name)),
-  ];
 
   return (
     <>
@@ -33,34 +84,7 @@ export default function EventsPage({ params }: { params: { cityId: string } }) {
       {/* Events Section */}
       <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
         <h1 className="text-4xl font-bold mb-6 text-white">Major Events in the Coachella Valley</h1>
-
-        {prioritizedEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {prioritizedEvents.map((event) => (
-              <div key={event.slug} className="p-6 rounded-lg shadow-md">
-                <img
-                  src={event.image}
-                  alt={event.name}
-                  className="w-full h-48 object-cover rounded-md mb-4"
-                />
-                <h2 className="text-xl font-bold text-white">{event.name}</h2>
-                <p className="text-gray-300 mt-2">{event.date}</p>
-                <p className="text-gray-300 mt-2">{event.location}</p>
-                <p className="text-gray-400 mt-4">
-                  {event.description.slice(0, 50)}...
-                  <a
-                    href={`/neighborhoods/${city.id}/events/${event.slug}`}
-                    className="text-blue-400 hover:underline ml-1"
-                  >
-                    Read More
-                  </a>
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-300">No major events found in the Coachella Valley.</p>
-        )}
+        <EventsSection cityName={city.name} />
       </section>
     </>
   );

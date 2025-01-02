@@ -1,9 +1,62 @@
-"use client";
-
 import React from "react";
-import { useRouter } from "next/router";
 import VariableHero from "@/components/VariableHero";
 import { majorEvents } from "@/constants/eventsDataset";
+import { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const { slug } = params;
+
+  // Find the event based on the slug
+  const event = majorEvents.find((e) => e.slug === slug);
+
+  if (!event) {
+    return {
+      title: "Event Not Found - Joseph Sardella",
+      description: "The requested event could not be found. Discover other exciting events in the Coachella Valley.",
+      alternates: {
+        canonical: `/events`,
+      },
+    };
+  }
+
+  return {
+    title: `${event.name} | Coachella Valley | JPS Realtor`,
+    description: `Plan your visit to ${event.name}, happening on ${event.date} at ${event.location}. Don't miss this exciting event!`,
+    alternates: {
+      canonical: `/events/${slug}`,
+    },
+    openGraph: {
+      title: event.name,
+      description: `Join us for ${event.name}, happening in ${event.date}. Learn more and plan your visit.`,
+      url: `/events/${slug}`,
+      images: [
+        {
+          url: event.image,
+          alt: `${event.name}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: event.name,
+      description: `Discover ${event.name} in ${event.location}. Happening on ${event.date}. Plan your visit today!`,
+      images: [event.image],
+    },
+    keywords: [
+      event.name,
+      `${event.location} events`,
+      `events on ${event.date}`,
+      "Coachella Valley events",
+      "local festivals",
+      "community events",
+      "things to do in the Coachella Valley",
+    ],
+  };
+}
 
 export default function EventDetailPage({ params }: { params: { slug: string } }) {
   const { slug } = params;

@@ -7720,6 +7720,16 @@ react-smooth@^4.0.0:
     prop-types "^15.8.1"
     react-transition-group "^4.4.5"
 
+react-spinner@^0.2.7:
+  version "0.2.7"
+  resolved "https://registry.npmjs.org/react-spinner/-/react-spinner-0.2.7.tgz"
+  integrity sha512-9bIDWGIumXpM7xcas/qpikRZp7AGP1uehgxwTTj/5DL6SwWHMTLfuioYgX7bdeMgOiVEMvOgLyXU3fYKQc16IA==
+
+react-spinners@^0.15.0:
+  version "0.15.0"
+  resolved "https://registry.npmjs.org/react-spinners/-/react-spinners-0.15.0.tgz"
+  integrity sha512-ZO3/fNB9Qc+kgpG3SfdlMnvTX6LtLmTnOogb3W6sXIaU/kZ1ydEViPfZ06kSOaEsor58C/tzXw2wROGQu3X2pA==
+
 react-split-pane@^0.1.85:
   version "0.1.92"
   resolved "https://registry.npmjs.org/react-split-pane/-/react-split-pane-0.1.92.tgz"
@@ -7810,7 +7820,7 @@ react-window@^1.8.5:
     "@babel/runtime" "^7.0.0"
     memoize-one ">=3.1.1 <6"
 
-react@*, "react@^0.14.0 || ^15.0.0 || ^16 || ^17 || ^18 || ^19", "react@^0.14.0 || ^15.0.0-0 || ^15.4.0-0 || ^16.0.0-0", "react@^15.0.0 || ^16.0.0", "react@^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^15.3.0 || ^16.0.0 || ^17.0.0 || ^18.0.0", "react@^15.3.0 || ^16.0.0-alpha || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", react@^16.0.0-0, "react@^16.3.0 || ^17.0.0", "react@^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1", "react@^16.8.3 || ^17 || ^18", "react@^16.9.0 || ^17.0.0 || ^18", "react@^17 || ^18 || >=19.0.0-0", "react@^18 || ^19 || ^19.0.0-rc", react@^18.2.0, react@^18.3.1, "react@>= 16 || ^19.0.0-rc", "react@>= 16.14", "react@>= 16.3", "react@>= 16.8.0", "react@>= 16.8.0 || 17.x.x || ^18.0.0-0", react@>=15, "react@>=15.5 <=17.x", react@>=16, react@>=16.6.0, react@>=16.8.0, react@>=18, "react@0.14.x || 15.x || 16.x || 17.x":
+react@*, "react@^0.14.0 || ^15.0.0 || ^16 || ^17 || ^18 || ^19", "react@^0.14.0 || ^15.0.0-0 || ^15.4.0-0 || ^16.0.0-0", "react@^15.0.0 || ^16.0.0", "react@^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^15.3.0 || ^16.0.0 || ^17.0.0 || ^18.0.0", "react@^15.3.0 || ^16.0.0-alpha || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", react@^16.0.0-0, "react@^16.3.0 || ^17.0.0", "react@^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1", "react@^16.8.3 || ^17 || ^18", "react@^16.9.0 || ^17.0.0 || ^18", "react@^17 || ^18 || >=19.0.0-0", "react@^18 || ^19 || ^19.0.0-rc", react@^18.2.0, react@^18.3.1, "react@>= 16 || ^19.0.0-rc", "react@>= 16.14", "react@>= 16.3", "react@>= 16.8.0", "react@>= 16.8.0 || 17.x.x || ^18.0.0-0", react@>=0.12.1, react@>=15, "react@>=15.5 <=17.x", react@>=16, react@>=16.6.0, react@>=16.8.0, react@>=18, "react@0.14.x || 15.x || 16.x || 17.x":
   version "18.3.1"
   resolved "https://registry.npmjs.org/react/-/react-18.3.1.tgz"
   integrity sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==

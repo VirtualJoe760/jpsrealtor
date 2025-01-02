@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface LocalInfoCardProps {
   title: string;
   description: string;
   imageUrl: string;
   link: { text: string; href: string };
-  
 }
 
 const LocalInfoCard: React.FC<LocalInfoCardProps> = ({
@@ -21,6 +21,7 @@ const LocalInfoCard: React.FC<LocalInfoCardProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const { clientX, clientY, currentTarget } = e;
@@ -35,13 +36,23 @@ const LocalInfoCard: React.FC<LocalInfoCardProps> = ({
 
   return (
     <div
-      className="relative group overflow-hidden rounded-2xl bg-cover bg-center shadow-lg"
-      style={{
-        backgroundImage: `url(${imageUrl})`,
-      }}
+      className="relative group overflow-hidden rounded-2xl shadow-lg"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Optimized Background Image with Blur Effect */}
+      <Image
+        src={imageUrl}
+        alt={title}
+        fill
+        className={`rounded-2xl object-cover transition-opacity duration-700 ${
+          isImageLoaded ? "opacity-100" : "opacity-50 blur-md"
+        }`}
+        onLoadingComplete={() => setIsImageLoaded(true)}
+        placeholder="blur"
+        blurDataURL="/low-quality-placeholder.jpg" // Replace with your placeholder image path
+      />
+
       {/* Spotlight Effect */}
       <div
         className="absolute inset-0 transition-all duration-300"

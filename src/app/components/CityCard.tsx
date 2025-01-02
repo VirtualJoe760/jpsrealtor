@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+import React, { useState } from "react";
 import { City } from "@/constants/cities";
 import Image from "next/image";
 
@@ -7,6 +8,8 @@ interface CityCardProps {
 }
 
 const CityCard: React.FC<CityCardProps> = ({ city }) => {
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+
   return (
     <div className="relative flex items-center" aria-label={`Learn more about ${city.name}`}>
       <div className="relative aspect-[16/9] sm:aspect-[2/1] lg:w-80 lg:h-52">
@@ -14,7 +17,12 @@ const CityCard: React.FC<CityCardProps> = ({ city }) => {
           src={`https://res.cloudinary.com/duqgao9h8/image/upload/v1733905168/${city.id}.jpg`}
           alt={`Image of ${city.name}`}
           fill
-          className="rounded-2xl object-cover"
+          className={`rounded-2xl object-cover transition-opacity duration-700 ${
+            isImageLoaded ? "opacity-100" : "opacity-50 blur-md"
+          }`}
+          onLoadingComplete={() => setIsImageLoaded(true)}
+          placeholder="blur"
+          blurDataURL="/low-quality-placeholder.jpg" // Replace with your placeholder image path
         />
         <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-gray-900/10" />
       </div>

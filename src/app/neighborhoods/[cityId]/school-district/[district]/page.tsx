@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import VariableHero from "@/components/VariableHero";
 import {
@@ -9,6 +7,7 @@ import {
   SchoolDistrict,
   School,
 } from "@/constants/schoolDataset";
+import { Metadata } from "next";
 
 const districts: { [key: string]: SchoolDistrict } = {
   psusd: palmSpringsUnifiedSchoolDistrict,
@@ -16,6 +15,46 @@ const districts: { [key: string]: SchoolDistrict } = {
   cvusd: coachellaValleyUnifiedSchoolDistrict,
 };
 
+// Metadata function
+export async function generateMetadata({ params }: { params: { cityId: string; district: string } }): Promise<Metadata> {
+  const { cityId, district } = params;
+
+  const selectedDistrict = districts[district];
+  if (!selectedDistrict) {
+    return {
+      title: "District Not Found | JPS Realtor",
+      description: "School district data not found for this area.",
+    };
+  }
+
+  const keywords = [
+    `${selectedDistrict.name} schools`,
+    `${selectedDistrict.name} elementary schools`,
+    `${selectedDistrict.name} middle schools`,
+    `${selectedDistrict.name} high schools`,
+    `${cityId} school district`,
+  ].join(", ");
+
+  return {
+    title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
+    description: `Discover schools in the ${selectedDistrict.name}, including elementary, middle, and high schools. Learn more about education options in the area.`,
+    keywords,
+    metadataBase: new URL("https://jpsrealtor.com"),
+    openGraph: {
+      title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
+      description: `Explore ${selectedDistrict.name} schools and find the best educational opportunities in the area, including elementary, middle, and high schools.`,
+      url: `https://jpsrealtor.com/neighborhoods/${cityId}/school-district/${district}`,
+      images: [
+        {
+          url: `/city-images/${cityId}.jpg`,
+          alt: `Schools in ${selectedDistrict.name}`,
+        },
+      ],
+    },
+  };
+}
+
+// District Schools Page
 export default function DistrictSchoolsPage({ params }: { params: { cityId: string; district: string } }) {
   const { cityId, district } = params;
 

@@ -40,31 +40,31 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
   const infoCards = [
     {
       title: "Subdivisions",
-      description: "Explore subdivisions in Coachella Valley.",
+      description: "Explore subdivision neighborhoods in Coachella Valley.",
       imageUrl: "/infocards/subdivisions.png",
       link: { text: "View Subdivisions", href: `/neighborhoods/${cityId}/subdivisions` },
     },
     {
       title: "Find HOA",
-      description: "Looking to get ahold of the HOA?",
+      description: "Looking to get ahold of the HOA? I've got you covered.",
       imageUrl: "/infocards/hoa.png",
       link: { text: "HOA Contact Info", href: `/neighborhoods/${cityId}/hoa-contact-info` },
     },
     {
       title: "Schools",
-      description: "Find the best schools in the area.",
+      description: "Learn about our School Districts. Find the best schools in the area.",
       imageUrl: "/infocards/school.png",
       link: { text: "View Schools", href: `/neighborhoods/coachella-valley/school-district` },
     },
     {
       title: "Local Business",
-      description: "Discover popular dining spots, Explore local businesses.",
+      description: "Discover popular dining spots, Search and explore local business gems.",
       imageUrl: "/infocards/resturants.png",
       link: { text: "Search Local Business", href: `/neighborhoods/${cityId}/local-business` },
     },
     {
       title: "Events",
-      description: "Check out local events happening around.",
+      description: "From Coachella Music Festival, to the BNP Paribas, Check out local events happening.",
       imageUrl: "/infocards/events.png",
       link: { text: "View Events", href: `/neighborhoods/${cityId}/events` },
     },

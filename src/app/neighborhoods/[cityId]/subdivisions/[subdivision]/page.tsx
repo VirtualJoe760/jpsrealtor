@@ -4,8 +4,57 @@ import { coachellaValleyCities } from "@/constants/cities";
 import subdivisions from "@/constants/subdivisions";
 import { fetchCityAreaData } from "@/utils/fetchCityAreaData";
 import { QuarterlyAnalysis } from "@/app/components/charts/QuarterlyAnalysis";
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+// Generate Metadata
+export async function generateMetadata({
+  params,
+}: {
+  params: { cityId: string; subdivision: string };
+}): Promise<Metadata> {
+  const { cityId, subdivision } = params;
+
+  // Find city data
+  const city = coachellaValleyCities.find((c) => c.id === cityId);
+  if (!city) {
+    notFound();
+  }
+
+  // Get subdivisions for the city
+  const citySubdivisions =
+    subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
+
+  // Find the specific subdivision by slug
+  const selectedSubdivision = citySubdivisions.find((s) => s.slug === subdivision);
+  if (!selectedSubdivision) {
+    notFound();
+  }
+
+  // Extract keywords and description
+  const keywords = selectedSubdivision.keywords.join(", ");
+  const description = selectedSubdivision.description.slice(0, 160);
+
+  return {
+    title: `${selectedSubdivision.name} - Neighborhood in ${city.name} | JPS Realtor`,
+    description,
+    keywords: `${keywords}, ${city.name} real estate, subdivisions in ${city.name}, homes in ${selectedSubdivision.name}, buying in ${selectedSubdivision.name}, selling my house in ${selectedSubdivision.name}, selling my property in ${selectedSubdivision.name}, buying a property in ${selectedSubdivision.name}, ${selectedSubdivision.name} hoa, where is ${selectedSubdivision.name}`, 
+    metadataBase: new URL("https://jpsrealtor.com"),
+    openGraph: {
+      title: `${selectedSubdivision.name} - Real Estate in ${city.name}`,
+      description: selectedSubdivision.description,
+      url: `https://jpsrealtor.com/neighborhoods/${cityId}/subdivisions/${subdivision}`,
+      images: [
+        {
+          url: selectedSubdivision.photo,
+          alt: `${selectedSubdivision.name} - ${city.name}`,
+        },
+      ],
+    },
+  };
+}
+
+// SubdivisionPage Component
 export default async function SubdivisionPage({
   params,
 }: {
@@ -15,17 +64,16 @@ export default async function SubdivisionPage({
 
   // Find city data
   const city = coachellaValleyCities.find((c) => c.id === cityId);
-
   if (!city) {
     notFound();
   }
 
   // Get subdivisions for the city
-  const citySubdivisions = subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
+  const citySubdivisions =
+    subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
 
   // Find the specific subdivision by slug
   const selectedSubdivision = citySubdivisions.find((s) => s.slug === subdivision);
-
   if (!selectedSubdivision) {
     notFound();
   }
@@ -40,49 +88,37 @@ export default async function SubdivisionPage({
 
   return (
     <>
-      {/* Hero Section */}
       <VariableHero
         backgroundImage={selectedSubdivision.photo}
         heroContext={selectedSubdivision.name}
       />
 
-      {/* Subdivision Details Section */}
       <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
-        {/* Subdivision Name and Description */}
-        <h1 className="text-6xl font-bold mb-8 text-white">
-          {selectedSubdivision.name}
-        </h1>
+        <h1 className="text-6xl font-bold mb-8 text-white">{selectedSubdivision.name}</h1>
         <p className="text-2xl text-white leading-8 mb-12">
           {selectedSubdivision.description}
         </p>
 
-        {/* City Name and Real Estate Context */}
-        <h2 className="text-5xl font-bold mb-6 text-white">
-          {city.name} Real Estate
-        </h2>
-        <p className="text-2xl text-white leading-8">
-          {city.about}
-        </p>
+        <h2 className="text-5xl font-bold mb-6 text-white">{city.name} Real Estate</h2>
+        <p className="text-2xl text-white leading-8">{city.about}</p>
       </section>
 
-      {/* Q4 Quarterly Analysis Section */}
       {hasQ4Data && (
         <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
           <h2 className="text-5xl font-bold mb-8 text-white">
             Q4 2024 Quarterly Analysis for {city.name}
           </h2>
-
           <QuarterlyAnalysis areaData={q4Data} quarter="Q4 2024" />
         </section>
       )}
-      
-      {/* Call-to-Action */}
+
       <div className="text-center py-10 px-5">
         <h3 className="text-2xl font-semibold text-white mb-4">
           Need a CMA or new listings in {selectedSubdivision.name}?
         </h3>
         <p className="text-gray-300 mb-6">
-          I can have a CMA or new listings for {selectedSubdivision.name} in no time. <br /> Click the button below to get started.
+          I can have a CMA or new listings for {selectedSubdivision.name} in no time. <br />
+          Click the button below to get started.
         </p>
         <a
           href="/#contact"

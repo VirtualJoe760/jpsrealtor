@@ -67,8 +67,8 @@ export default async function CategoryPage({
         heroContext={categoriesPageContent.title(formattedCategory)}
       />
       <div className="bg-black text-white">
-        <header className="text-center py-12 px-6 lg:px-12">
-          <h1 className="text-4xl font-bold">
+        <header className="text-start py-12 px-6 lg:px-12">
+          <h1 className="text-4xl mt-4 mb-8 max-w-3xl mx-auto font-bold">
             Read {categoriesPageContent.title(formattedCategory)}
           </h1>
           <p className="text-lg mt-4 mb-8 max-w-3xl mx-auto">
