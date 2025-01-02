@@ -70,8 +70,8 @@ export function SalesVsExpired({ chartTitle, chartDescription, data }: SalesVsEx
         </ChartContainer>
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
-        <div className="flex items-center gap-2 font-medium leading-none">
-          Updated for Q1 2024 <TrendingUp className="h-4 w-4" />
+        <div className="flex items-center mx-auto gap-2 font-medium leading-none">
+          Closed Vs. Expired Listings <TrendingUp className="h-4 w-4" />
         </div>
       </CardFooter>
     </Card>

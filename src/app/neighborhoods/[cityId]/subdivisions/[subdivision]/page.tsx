@@ -75,19 +75,22 @@ export default async function SubdivisionPage({
           <QuarterlyAnalysis areaData={q4Data} quarter="Q4 2024" />
         </section>
       )}
+      
       {/* Call-to-Action */}
       <div className="text-center py-10 px-5">
-          <h3 className="text-2xl font-semibold text-white mb-4">Ready to Make Your Next Real Estate Move?</h3>
-          <p className="text-gray-300 mb-6">
-            Whether you&apos;re buying, selling, or investing, I&apos;m here to guide you every step of the way.
-          </p>
-          <a
-            href="/#contact"
-            className="ml-2 px-4 py-2 bg-black text-white border border-white font-bold rounded-md hover:bg-gray-800 disabled:bg-gray-500"
-          >
-            Contact Me
-          </a>
-        </div>
+        <h3 className="text-2xl font-semibold text-white mb-4">
+          Need a CMA or new listings in {selectedSubdivision.name}?
+        </h3>
+        <p className="text-gray-300 mb-6">
+          I can have a CMA or new listings for {selectedSubdivision.name} in no time. <br /> Click the button below to get started.
+        </p>
+        <a
+          href="/#contact"
+          className="ml-2 px-4 py-2 bg-black text-white border border-white font-bold rounded-md hover:bg-gray-800 disabled:bg-gray-500"
+        >
+          Contact Me
+        </a>
+      </div>
     </>
   );
 }
