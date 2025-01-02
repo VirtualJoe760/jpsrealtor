@@ -8,7 +8,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default function SubdivisionsPage({ params }: { params: { cityId: string } }) {
+export default function SubdivisionsPage({
+  params,
+}: {
+  params: { cityId: string };
+}) {
   const { cityId } = params;
 
   // Find city data
@@ -20,14 +24,22 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
 
   // Memoize subdivisions for the city
   const citySubdivisions = useMemo(() => {
-    return subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || [];
+    return (
+      subdivisions[`${cityId}-neighborhoods` as keyof typeof subdivisions] || []
+    );
   }, [cityId]);
 
-  // State for search
-  const [searchTerm, setSearchTerm] = useState("");
+  // State for filtered subdivisions
+  const [validSubdivisions, setValidSubdivisions] = useState<typeof citySubdivisions>([]);
 
-  // Filtered subdivisions based on search term
-  const filteredSubdivisions = citySubdivisions.filter((subdivision) =>
+  useEffect(() => {
+    const valid = citySubdivisions.filter((subdivision) => subdivision.photo);
+    setValidSubdivisions(valid);
+  }, [citySubdivisions]);
+
+  // Filter subdivisions by search term
+  const [searchTerm, setSearchTerm] = useState("");
+  const filteredSubdivisions = validSubdivisions.filter((subdivision) =>
     subdivision.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -42,7 +54,9 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
 
       {/* Search and List Section */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-4xl font-bold mb-6 text-white">Subdivisions in {city.name}</h1>
+        <h1 className="text-4xl font-bold mb-6 text-white">
+          Subdivisions in {city.name}
+        </h1>
 
         {/* Search Bar */}
         <div className="relative mb-8">
@@ -53,47 +67,42 @@ export default function SubdivisionsPage({ params }: { params: { cityId: string 
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-3 border border-gray-500 rounded-md shadow-sm bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
           />
-          {/* Autocomplete Dropdown */}
-          {searchTerm && (
-            <div className="absolute z-10 mt-1 w-full bg-black border border-gray-500 rounded-md shadow-lg">
-              {filteredSubdivisions.map((subdivision) => (
-                <Link
-                  key={subdivision.name}
-                  href={`/${cityId}/subdivisions/${subdivision.name}`}
-                  className="block px-4 py-2 text-white hover:bg-gray-700"
-                >
-                  {subdivision.name}
-                </Link>
-              ))}
-              {filteredSubdivisions.length === 0 && (
-                <p className="px-4 py-2 text-gray-400">No subdivisions found.</p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Full Subdivision List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {citySubdivisions.map((subdivision) => (
+          {filteredSubdivisions.map((subdivision) => (
             <div
               key={subdivision.name}
               id={`subdivision-${subdivision.name}`}
               className="flex flex-col rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
             >
               <Image
-                src={subdivision.photo || "/images/placeholder.jpg"}
+                src={subdivision.photo}
                 alt={subdivision.name}
                 width={600}
                 height={400}
                 className="w-full h-64 object-cover"
+                onError={() => {
+                  // Dynamically remove invalid images
+                  setValidSubdivisions((current) =>
+                    current.filter((s) => s.name !== subdivision.name)
+                  );
+                }}
               />
               <div className="p-6">
-                <Link href={`/neighborhoods/${cityId}/subdivisions/${subdivision.slug}`}>
+                <Link
+                  href={`/neighborhoods/${cityId}/subdivisions/${subdivision.slug}`}
+                >
                   <h2 className="text-2xl font-bold text-white mb-4 hover:underline">
                     {subdivision.name}
                   </h2>
                 </Link>
-                <p className="text-lg text-gray-300 mb-4">{subdivision.description}</p>
+                <p className="text-lg text-gray-300 mb-4">
+                  {subdivision.description.length > 100
+                    ? `${subdivision.description.slice(0, 100)}...`
+                    : subdivision.description}
+                </p>
                 <Link
                   href={`/neighborhoods/${cityId}/subdivisions/${subdivision.slug}`}
                   className="text-sm font-medium text-blue-500 hover:underline"

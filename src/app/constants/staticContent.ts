@@ -46,9 +46,9 @@ export const aboutSectionContent = {
       imageUrl: "/misc/bento-2.png",
     },
     {
-      heading: "Technical Expertise",
-      description: "Real Estate in the Digital Age",
-      body: `With a strong technical background in computers, software, and digital marketing, Joseph leverages tools to connect buyers and sellers effectively.`,
+      heading: "Don't be shy.",
+      description: "Want to talk Real Estate?",
+      body: `I'm ready to dive head first towards finding your next dream property. From Palm Springs to Coachella I can give you the insights you need to make decisions best for you. Feel free to use my livechat feature here on the website which goes directly to my cell, or fill out this contact form especially if you have any photos of property for me to check out.`,
       link: {
         text: "Contact Joseph Today",
         href: "/contact",
@@ -58,7 +58,7 @@ export const aboutSectionContent = {
     {
       heading: "Ready to see some houses?",
       description: "See listings in the Coachella Valley.",
-      body: `Ready to buy your dream home? Discover expert insights on Joseph's blog to guide you through every step.`,
+      body: `Ready to buy your dream home? Discover expert insights on Joseph's blog to guide you through every step. Let me know if you see anything you like and feel free to text me about it while you're browsing using our livechat feature, and I'm happy to hand pick a few listings for you.`,
       link: {
         text: "View Listings",
         href: "/listings",
