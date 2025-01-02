@@ -1,0 +1,67 @@
+{
+  "area": "Cathedral City North",
+  "quarter": "Q3 2024",
+  "slug": "cathedral-city-north-q3",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 514387.9,
+          "median": 539900,
+          "min": 244900,
+          "max": 799999
+      },
+      "sale_price": {
+          "average": 501245.51,
+          "median": 528500,
+          "min": 240000,
+          "max": 766000
+      },
+      "days_on_market": {
+          "average": 51.01,
+          "median": 40,
+          "min": 0,
+          "max": 176
+      },
+      "list_price_per_sqft": {
+          "average": 295.65,
+          "median": 288.46,
+          "min": 215.2,
+          "max": 417.71
+      },
+      "sale_price_per_sqft": {
+          "average": 293.33,
+          "median": 284.66,
+          "min": 206.06,
+          "max": 417.71
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 545483.53,
+          "median": 587000,
+          "min": 48000,
+          "max": 889000
+      },
+      "days_on_market": {
+          "average": 151.91,
+          "median": 156,
+          "min": 33,
+          "max": 558
+      },
+      "list_price_per_sqft": {
+          "average": 336.42,
+          "median": 330.55,
+          "min": 120.18,
+          "max": 490.98
+      }
+  },
+  "price_ranges": {
+      "under_500k": 25,
+      "500k_to_1m": 45,
+      "1m_to_2m": 5,
+      "over_2m": 0
+  },
+  "total_sales": 79,
+  "expired_listings": 34,
+  "highest_sale_price": 766000,
+  "lowest_sale_price": 240000
+}

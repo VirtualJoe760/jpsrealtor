@@ -1,0 +1,67 @@
+{
+  "area": "Coachella",
+  "quarter": "Q2 2024",
+  "slug": "coachella-q2",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 480986.8,
+          "median": 437500,
+          "min": 230000,
+          "max": 849000
+      },
+      "sale_price": {
+          "average": 476445,
+          "median": 445000,
+          "min": 218000,
+          "max": 849000
+      },
+      "days_on_market": {
+          "average": 50.3,
+          "median": 31,
+          "min": 6,
+          "max": 260
+      },
+      "list_price_per_sqft": {
+          "average": 293.96,
+          "median": 305.43,
+          "min": 221.02,
+          "max": 352.81
+      },
+      "sale_price_per_sqft": {
+          "average": 292.68,
+          "median": 290.65,
+          "min": 217.69,
+          "max": 360.57
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 636101.1,
+          "median": 588450,
+          "min": 320000,
+          "max": 1395000
+      },
+      "days_on_market": {
+          "average": 102.6,
+          "median": 85,
+          "min": 5,
+          "max": 243
+      },
+      "list_price_per_sqft": {
+          "average": 364.3,
+          "median": 305.72,
+          "min": 192.45,
+          "max": 968.75
+      }
+  },
+  "price_ranges": {
+      "under_500k": 15,
+      "500k_to_1m": 30,
+      "1m_to_2m": 5,
+      "over_2m": 0
+  },
+  "total_sales": 20,
+  "expired_listings": 10,
+  "highest_sale_price": 849000,
+  "lowest_sale_price": 218000
+}

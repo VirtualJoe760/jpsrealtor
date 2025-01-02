@@ -1,0 +1,67 @@
+{
+    "area": "Indio Central",
+    "quarter": "Q3 2024",
+    "slug": "indio-central-q3",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 541851.28,
+            "median": 560950,
+            "min": 185000,
+            "max": 980000
+        },
+        "sale_price": {
+            "average": 520843.33,
+            "median": 539450,
+            "min": 132000,
+            "max": 960000
+        },
+        "days_on_market": {
+            "average": 51.34,
+            "median": 38.5,
+            "min": 0,
+            "max": 191
+        },
+        "list_price_per_sqft": {
+            "average": 311.35,
+            "median": 309.4,
+            "min": 128.47,
+            "max": 408.62
+        },
+        "sale_price_per_sqft": {
+            "average": 305.42,
+            "median": 305.88,
+            "min": 97.22,
+            "max": 408.62
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 530334.26,
+            "median": 537950,
+            "min": 167500,
+            "max": 980000
+        },
+        "days_on_market": {
+            "average": 51.34,
+            "median": 38.5,
+            "min": 0,
+            "max": 191
+        },
+        "list_price_per_sqft": {
+            "average": 311.35,
+            "median": 309.4,
+            "min": 128.47,
+            "max": 408.62
+        }
+    },
+    "price_ranges": {
+        "under_500k": 25,
+        "500k_to_1m": 40,
+        "1m_to_2m": 0,
+        "over_2m": 0
+    },
+    "total_sales": 58,
+    "expired_listings": 19,
+    "highest_sale_price": 960000,
+    "lowest_sale_price": 132000
+}

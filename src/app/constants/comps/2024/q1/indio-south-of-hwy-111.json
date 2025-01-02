@@ -1,0 +1,91 @@
+{
+    "area": "Indio South of Hwy 111",
+    "quarter": "Q1 2024",
+    "slug": "indio-south-of-hwy-111-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 670961.83,
+            "median": 595000,
+            "min": 219000,
+            "max": 2500000
+        },
+        "sale_price": {
+            "average": 637855.46,
+            "median": 547500,
+            "min": 216000,
+            "max": 2500000
+        },
+        "days_on_market": {
+            "average": 62.44,
+            "median": 45.5,
+            "min": 3,
+            "max": 249
+        },
+        "list_price_per_sqft": {
+            "average": 371.64,
+            "median": 331.87,
+            "min": 188.95,
+            "max": 897.11
+        },
+        "sale_price_per_sqft": {
+            "average": 359.81,
+            "median": 321.99,
+            "min": 188.95,
+            "max": 868.17
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 752180.65,
+            "median": 689900,
+            "min": 225000,
+            "max": 1535000
+        },
+        "days_on_market": {
+            "average": 102.61,
+            "median": 92,
+            "min": 0,
+            "max": 231
+        },
+        "list_price_per_sqft": {
+            "average": 396.58,
+            "median": 376.76,
+            "min": 207.67,
+            "max": 837.35
+        },
+        "square_footage": {
+            "average": 1943.71,
+            "median": 1995,
+            "min": 616,
+            "max": 3932
+        },
+        "lot_size": {
+            "average": 7966.32,
+            "median": 6534,
+            "min": 871,
+            "max": 33106
+        },
+        "bedrooms": {
+            "average": 3.31,
+            "median": 3,
+            "min": 1,
+            "max": 6
+        },
+        "bathrooms": {
+            "average": 2.68,
+            "median": 3,
+            "min": 1,
+            "max": 6
+        }
+    },
+    "price_ranges": {
+        "under_500k": 40,
+        "500k_to_1m": 25,
+        "1m_to_2m": 5,
+        "over_2m": 2
+    },
+    "total_sales": 70,
+    "expired_listings": 31,
+    "highest_sale_price": 2500000,
+    "lowest_sale_price": 216000
+}

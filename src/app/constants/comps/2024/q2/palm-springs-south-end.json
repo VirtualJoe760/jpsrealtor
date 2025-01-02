@@ -1,0 +1,67 @@
+{
+  "area": "Palm Springs South End",
+  "quarter": "Q2 2024",
+  "slug": "palm-springs-south-end-q2",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 989567.23,
+          "median": 879500,
+          "min": 225000,
+          "max": 4690000
+      },
+      "sale_price": {
+          "average": 944123.87,
+          "median": 850000,
+          "min": 220000,
+          "max": 4500000
+      },
+      "days_on_market": {
+          "average": 71.45,
+          "median": 60,
+          "min": 3,
+          "max": 250
+      },
+      "list_price_per_sqft": {
+          "average": 520.13,
+          "median": 498.22,
+          "min": 112.33,
+          "max": 1250.67
+      },
+      "sale_price_per_sqft": {
+          "average": 510.87,
+          "median": 485.44,
+          "min": 110.45,
+          "max": 1200.56
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 1150456.76,
+          "median": 1050000,
+          "min": 325000,
+          "max": 5000000
+      },
+      "days_on_market": {
+          "average": 105.78,
+          "median": 95,
+          "min": 12,
+          "max": 270
+      },
+      "list_price_per_sqft": {
+          "average": 590.34,
+          "median": 565.33,
+          "min": 125.78,
+          "max": 1320.45
+      }
+  },
+  "price_ranges": {
+      "under_500k": 15,
+      "500k_to_1m": 40,
+      "1m_to_2m": 30,
+      "over_2m": 20
+  },
+  "total_sales": 150,
+  "expired_listings": 55,
+  "highest_sale_price": 4500000,
+  "lowest_sale_price": 220000
+}

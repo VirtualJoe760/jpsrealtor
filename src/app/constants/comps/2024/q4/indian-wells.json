@@ -1,0 +1,67 @@
+{
+  "area": "Indian Wells",
+  "quarter": "Q4 2024",
+  "slug": "indian-wells-q4",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 1823666.58,
+          "median": 1299500,
+          "min": 299000,
+          "max": 11500000
+      },
+      "sale_price": {
+          "average": 1761828.58,
+          "median": 1270000,
+          "min": 278500,
+          "max": 11000000
+      },
+      "days_on_market": {
+          "average": 55.92,
+          "median": 56,
+          "min": 1,
+          "max": 120
+      },
+      "list_price_per_sqft": {
+          "average": 574.02,
+          "median": 487.25,
+          "min": 268.19,
+          "max": 1747.68
+      },
+      "sale_price_per_sqft": {
+          "average": 556.78,
+          "median": 482.56,
+          "min": 259.64,
+          "max": 1747.68
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 1573453.7,
+          "median": 1279900,
+          "min": 323000,
+          "max": 5399000
+      },
+      "days_on_market": {
+          "average": 157.52,
+          "median": 162,
+          "min": 29,
+          "max": 329
+      },
+      "list_price_per_sqft": {
+          "average": 558.9,
+          "median": 538.19,
+          "min": 241.38,
+          "max": 1490.61
+      }
+  },
+  "price_ranges": {
+      "under_500k": 8,
+      "500k_to_1m": 20,
+      "1m_to_2m": 45,
+      "over_2m": 10
+  },
+  "total_sales": 38,
+  "expired_listings": 27,
+  "highest_sale_price": 11000000,
+  "lowest_sale_price": 278500
+}

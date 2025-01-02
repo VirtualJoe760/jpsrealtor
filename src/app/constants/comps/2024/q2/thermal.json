@@ -1,0 +1,67 @@
+{
+  "area": "Thermal",
+  "quarter": "Q2 2024",
+  "slug": "thermal-q2",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 1694818.67,
+          "median": 439900,
+          "min": 70000,
+          "max": 5500000
+      },
+      "sale_price": {
+          "average": 1233703.4,
+          "median": 430000,
+          "min": 60000,
+          "max": 4600000
+      },
+      "days_on_market": {
+          "average": 87.79,
+          "median": 36,
+          "min": 3,
+          "max": 350
+      },
+      "list_price_per_sqft": {
+          "average": 298.12,
+          "median": 244.75,
+          "min": 48.75,
+          "max": 714.81
+      },
+      "sale_price_per_sqft": {
+          "average": 287.89,
+          "median": 245.79,
+          "min": 41.78,
+          "max": 619.99
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 468750,
+          "median": 425000,
+          "min": 275000,
+          "max": 750000
+      },
+      "days_on_market": {
+          "average": 52,
+          "median": 41.5,
+          "min": 29,
+          "max": 96
+      },
+      "list_price_per_sqft": {
+          "average": 298.62,
+          "median": 301.21,
+          "min": 165.91,
+          "max": 426.14
+      }
+  },
+  "price_ranges": {
+      "under_500k": 8,
+      "500k_to_1m": 3,
+      "1m_to_2m": 2,
+      "over_2m": 2
+  },
+  "total_sales": 15,
+  "expired_listings": 4,
+  "highest_sale_price": 4600000,
+  "lowest_sale_price": 60000
+}

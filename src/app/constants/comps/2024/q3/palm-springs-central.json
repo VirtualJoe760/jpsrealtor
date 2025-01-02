@@ -1,0 +1,67 @@
+{
+  "area": "Palm Springs Central",
+  "quarter": "Q3 2024",
+  "slug": "palm-springs-central-q3",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 678123.45,
+          "median": 620000,
+          "min": 175000,
+          "max": 3500000
+      },
+      "sale_price": {
+          "average": 650567.89,
+          "median": 599000,
+          "min": 170000,
+          "max": 3400000
+      },
+      "days_on_market": {
+          "average": 54.45,
+          "median": 47,
+          "min": 0,
+          "max": 230
+      },
+      "list_price_per_sqft": {
+          "average": 385.78,
+          "median": 360.34,
+          "min": 200.45,
+          "max": 1000.67
+      },
+      "sale_price_per_sqft": {
+          "average": 375.89,
+          "median": 355.22,
+          "min": 195.56,
+          "max": 980.33
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 780123.45,
+          "median": 750000,
+          "min": 300000,
+          "max": 5500000
+      },
+      "days_on_market": {
+          "average": 95.34,
+          "median": 90,
+          "min": 15,
+          "max": 290
+      },
+      "list_price_per_sqft": {
+          "average": 430.56,
+          "median": 415.78,
+          "min": 220.45,
+          "max": 1100.22
+      }
+  },
+  "price_ranges": {
+      "under_500k": 25,
+      "500k_to_1m": 60,
+      "1m_to_2m": 15,
+      "over_2m": 5
+  },
+  "total_sales": 130,
+  "expired_listings": 50,
+  "highest_sale_price": 3400000,
+  "lowest_sale_price": 170000
+}

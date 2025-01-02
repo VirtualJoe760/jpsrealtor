@@ -1,0 +1,91 @@
+{
+    "area": "Indio North of I-10",
+    "quarter": "Q1 2024",
+    "slug": "indio-north-of-i10-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 577031.39,
+            "median": 558916,
+            "min": 175000,
+            "max": 1210000
+        },
+        "sale_price": {
+            "average": 551373,
+            "median": 540000,
+            "min": 165000,
+            "max": 1185000
+        },
+        "days_on_market": {
+            "average": 62.73,
+            "median": 48,
+            "min": 0,
+            "max": 252
+        },
+        "list_price_per_sqft": {
+            "average": 276.68,
+            "median": 272.77,
+            "min": 104.17,
+            "max": 628.25
+        },
+        "sale_price_per_sqft": {
+            "average": 273.50,
+            "median": 263.16,
+            "min": 104.17,
+            "max": 615.26
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 671873.71,
+            "median": 589000,
+            "min": 99500,
+            "max": 1399000
+        },
+        "days_on_market": {
+            "average": 132.21,
+            "median": 94,
+            "min": 0,
+            "max": 619
+        },
+        "list_price_per_sqft": {
+            "average": 317.73,
+            "median": 283.66,
+            "min": 206.74,
+            "max": 475.02
+        },
+        "square_footage": {
+            "average": 2071.43,
+            "median": 2166,
+            "min": 400,
+            "max": 2803
+        },
+        "lot_size": {
+            "average": 7003.5,
+            "median": 7405,
+            "min": 1742,
+            "max": 10018
+        },
+        "bedrooms": {
+            "average": 3,
+            "median": 3,
+            "min": 1,
+            "max": 5
+        },
+        "bathrooms": {
+            "average": 2.64,
+            "median": 3,
+            "min": 1,
+            "max": 5
+        }
+    },
+    "price_ranges": {
+        "under_500k": 35,
+        "500k_to_1m": 50,
+        "1m_to_2m": 15,
+        "over_2m": 3
+    },
+    "total_sales": 103,
+    "expired_listings": 28,
+    "highest_sale_price": 1185000,
+    "lowest_sale_price": 165000
+}

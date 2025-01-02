@@ -1,0 +1,92 @@
+{
+    "area": "Palm Desert North",
+    "quarter": "Q1 2024",
+    "slug": "palm-desert-north-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 803799.56,
+        "median": 617757.5,
+        "min": 259000,
+        "max": 14999900
+      },
+      "sale_price": {
+        "average": 632523.41,
+        "median": 576500,
+        "min": 242000,
+        "max": 1509900
+      },
+      "days_on_market": {
+        "average": 59,
+        "median": 47,
+        "min": 0,
+        "max": 227
+      },
+      "list_price_per_sqft": {
+        "average": 340.22,
+        "median": 329.87,
+        "min": 133.51,
+        "max": 628.16
+      },
+      "sale_price_per_sqft": {
+        "average": 332.41,
+        "median": 319.21,
+        "min": 124.74,
+        "max": 577.65
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 693083.6,
+        "median": 656139.5,
+        "min": 364900,
+        "max": 1350000
+      },
+      "days_on_market": {
+        "average": 102.93,
+        "median": 82.5,
+        "min": 13,
+        "max": 299
+      },
+      "list_price_per_sqft": {
+        "average": 322.39,
+        "median": 312.77,
+        "min": 221.69,
+        "max": 468.64
+      },
+      "square_footage": {
+        "average": 2071.7,
+        "median": 2080,
+        "min": 1353,
+        "max": 2859
+      },
+      "lot_size": {
+        "average": 4796.4,
+        "median": 3723.5,
+        "min": 913,
+        "max": 11326
+      },
+      "bedrooms": {
+        "average": 2.87,
+        "median": 3,
+        "min": 2,
+        "max": 4
+      },
+      "bathrooms": {
+        "average": 2.7,
+        "median": 3,
+        "min": 2,
+        "max": 4
+      }
+    },
+    "price_ranges": {
+      "under_500k": 30,
+      "500k_to_1m": 49,
+      "1m_to_2m": 15,
+      "over_2m": 0
+    },
+    "total_sales": 94,
+    "expired_listings": 30,
+    "highest_sale_price": 1509900,
+    "lowest_sale_price": 242000
+  }
+  

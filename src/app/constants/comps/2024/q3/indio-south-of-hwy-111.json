@@ -1,0 +1,67 @@
+{
+    "area": "Indio South of Hwy 111",
+    "quarter": "Q3 2024",
+    "slug": "indio-south-of-hwy-111-q3",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 712457.89,
+            "median": 599000,
+            "min": 210000,
+            "max": 3590000
+        },
+        "sale_price": {
+            "average": 675234.67,
+            "median": 580000,
+            "min": 200000,
+            "max": 3000000
+        },
+        "days_on_market": {
+            "average": 61.34,
+            "median": 50,
+            "min": 0,
+            "max": 275
+        },
+        "list_price_per_sqft": {
+            "average": 350.23,
+            "median": 325.67,
+            "min": 215.56,
+            "max": 765.45
+        },
+        "sale_price_per_sqft": {
+            "average": 340.12,
+            "median": 315.34,
+            "min": 210.33,
+            "max": 735.22
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 890345.78,
+            "median": 750000,
+            "min": 250000,
+            "max": 3250000
+        },
+        "days_on_market": {
+            "average": 110.34,
+            "median": 105,
+            "min": 5,
+            "max": 300
+        },
+        "list_price_per_sqft": {
+            "average": 425.78,
+            "median": 400.45,
+            "min": 220.45,
+            "max": 985.33
+        }
+    },
+    "price_ranges": {
+        "under_500k": 22,
+        "500k_to_1m": 42,
+        "1m_to_2m": 18,
+        "over_2m": 10
+    },
+    "total_sales": 88,
+    "expired_listings": 40,
+    "highest_sale_price": 3000000,
+    "lowest_sale_price": 200000
+}

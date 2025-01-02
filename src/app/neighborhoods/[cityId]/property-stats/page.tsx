@@ -25,11 +25,10 @@ export default async function PropertyStatsPage({ params }: { params: { cityId: 
     return <p>No data available for {city.name}.</p>;
   }
 
-  // Define available quarters dynamically
-  const quarters = ["Q1 2024", "Q2 2024", "Q3 2024", "Q4 2024"];
+  // Define available quarters dynamically in reverse order
+  const quarters = ["Q4 2024", "Q3 2024", "Q2 2024", "Q1 2024"];
   const availableQuarters = quarters.filter((quarter) => {
     // Check if any areaData includes data for the given quarter
-    // This assumes fetchCityAreaData includes quarter information
     return Object.values(areaData).some(
       (data: any) => data.quarter === quarter
     );

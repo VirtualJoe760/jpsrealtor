@@ -1,0 +1,67 @@
+{
+  "area": "Palm Desert NE",
+  "quarter": "Q2 2024",
+  "slug": "palm-desert-ne-q2",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 590839.79,
+          "median": 539500,
+          "min": 325000,
+          "max": 1225000
+      },
+      "sale_price": {
+          "average": 568930.8,
+          "median": 525000,
+          "min": 320000,
+          "max": 1175000
+      },
+      "days_on_market": {
+          "average": 55.38,
+          "median": 47,
+          "min": 0,
+          "max": 203
+      },
+      "list_price_per_sqft": {
+          "average": 322.89,
+          "median": 315.13,
+          "min": 215.87,
+          "max": 500
+      },
+      "sale_price_per_sqft": {
+          "average": 318.29,
+          "median": 312.5,
+          "min": 193.26,
+          "max": 479.59
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 610714.29,
+          "median": 565000,
+          "min": 459000,
+          "max": 879000
+      },
+      "days_on_market": {
+          "average": 138,
+          "median": 163,
+          "min": 29,
+          "max": 271
+      },
+      "list_price_per_sqft": {
+          "average": 299.15,
+          "median": 293.65,
+          "min": 272.16,
+          "max": 339.42
+      }
+  },
+  "price_ranges": {
+      "under_500k": 25,
+      "500k_to_1m": 50,
+      "1m_to_2m": 10,
+      "over_2m": 0
+  },
+  "total_sales": 111,
+  "expired_listings": 7,
+  "highest_sale_price": 1175000,
+  "lowest_sale_price": 320000
+}

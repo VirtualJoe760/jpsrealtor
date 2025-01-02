@@ -1,0 +1,91 @@
+{
+  "area": "Rancho Mirage",
+  "quarter": "Q2 2024",
+  "slug": "rancho-mirage-q2",
+  "closed_data_metrics": {
+    "list_price": {
+      "average": 1322323.33,
+      "median": 975000,
+      "min": 1995,
+      "max": 12750000
+    },
+    "sale_price": {
+      "average": 1185552.46,
+      "median": 899000,
+      "min": 177000,
+      "max": 12750000
+    },
+    "days_on_market": {
+      "average": 61.58,
+      "median": 62,
+      "min": 0,
+      "max": 387
+    },
+    "list_price_per_sqft": {
+      "average": 440.17,
+      "median": 410.93,
+      "min": 149.81,
+      "max": 1072.5
+    },
+    "sale_price_per_sqft": {
+      "average": 427.03,
+      "median": 399.42,
+      "min": 144.19,
+      "max": 1054.7
+    }
+  },
+  "expired_data_metrics": {
+    "list_price": {
+      "average": 1909791.64,
+      "median": 1075000,
+      "min": 205000,
+      "max": 12750000
+    },
+    "days_on_market": {
+      "average": 110.19,
+      "median": 93,
+      "min": 0,
+      "max": 387
+    },
+    "list_price_per_sqft": {
+      "average": 484.5,
+      "median": 440.13,
+      "min": 174.48,
+      "max": 1363.64
+    },
+    "square_footage": {
+      "average": 3319.17,
+      "median": 2795.5,
+      "min": 999,
+      "max": 10019
+    },
+    "lot_size": {
+      "average": 14714.6,
+      "median": 7418,
+      "min": 0,
+      "max": 87120
+    },
+    "bedrooms": {
+      "average": 3.46,
+      "median": 3,
+      "min": 1,
+      "max": 10
+    },
+    "bathrooms": {
+      "average": 3.82,
+      "median": 3,
+      "min": 2,
+      "max": 11
+    }
+  },
+  "price_ranges": {
+    "under_500k": 15,
+    "500k_to_1m": 45,
+    "1m_to_2m": 30,
+    "over_2m": 10
+  },
+  "total_sales": 216,
+  "expired_listings": 84,
+  "highest_sale_price": 12750000,
+  "lowest_sale_price": 177000
+}

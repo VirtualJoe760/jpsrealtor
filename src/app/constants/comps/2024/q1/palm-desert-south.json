@@ -1,0 +1,91 @@
+{
+    "area": "Palm Desert South",
+    "quarter": "Q1 2024",
+    "slug": "palm-desert-south-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 1589712.03,
+            "median": 899000,
+            "min": 229999,
+            "max": 12500000
+        },
+        "sale_price": {
+            "average": 1500664.95,
+            "median": 835000,
+            "min": 185000,
+            "max": 12500000
+        },
+        "days_on_market": {
+            "average": 56.37,
+            "median": 49,
+            "min": 0,
+            "max": 382
+        },
+        "list_price_per_sqft": {
+            "average": 523.11,
+            "median": 457.42,
+            "min": 105.6,
+            "max": 1528.12
+        },
+        "sale_price_per_sqft": {
+            "average": 504.13,
+            "median": 443.22,
+            "min": 104.74,
+            "max": 1528.12
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 1537345.59,
+            "median": 754000,
+            "min": 225000,
+            "max": 12900000
+        },
+        "days_on_market": {
+            "average": 126.24,
+            "median": 124,
+            "min": 2,
+            "max": 364
+        },
+        "list_price_per_sqft": {
+            "average": 506.18,
+            "median": 425.58,
+            "min": 109.57,
+            "max": 1368.51
+        },
+        "square_footage": {
+            "average": 2501.56,
+            "median": 1836.5,
+            "min": 440,
+            "max": 9712
+        },
+        "lot_size": {
+            "average": 8628.41,
+            "median": 5009.5,
+            "min": 436,
+            "max": 32670
+        },
+        "bedrooms": {
+            "average": 2.79,
+            "median": 2.5,
+            "min": 1,
+            "max": 5
+        },
+        "bathrooms": {
+            "average": 3.18,
+            "median": 3,
+            "min": 1,
+            "max": 7
+        }
+    },
+    "price_ranges": {
+        "under_500k": 20,
+        "500k_to_1m": 55,
+        "1m_to_2m": 30,
+        "over_2m": 15
+    },
+    "total_sales": 125,
+    "expired_listings": 34,
+    "highest_sale_price": 12500000,
+    "lowest_sale_price": 185000
+}

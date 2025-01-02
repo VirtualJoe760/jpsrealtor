@@ -1,0 +1,91 @@
+{
+    "area": "Indio Central",
+    "quarter": "Q1 2024",
+    "slug": "indio-central-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 512982.71,
+            "median": 522000,
+            "min": 245000,
+            "max": 778500
+        },
+        "sale_price": {
+            "average": 501454.43,
+            "median": 502500,
+            "min": 210000,
+            "max": 775000
+        },
+        "days_on_market": {
+            "average": 58.5,
+            "median": 50.5,
+            "min": 2,
+            "max": 272
+        },
+        "list_price_per_sqft": {
+            "average": 314.57,
+            "median": 322.12,
+            "min": 162.15,
+            "max": 470.64
+        },
+        "sale_price_per_sqft": {
+            "average": 307.03,
+            "median": 313.79,
+            "min": 151.26,
+            "max": 437.92
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 577766.56,
+            "median": 575000,
+            "min": 379900,
+            "max": 829999
+        },
+        "days_on_market": {
+            "average": 105.33,
+            "median": 95,
+            "min": 41,
+            "max": 199
+        },
+        "list_price_per_sqft": {
+            "average": 305.78,
+            "median": 295.17,
+            "min": 246.36,
+            "max": 393.7
+        },
+        "square_footage": {
+            "average": 1838.78,
+            "median": 1919,
+            "min": 1344,
+            "max": 2490
+        },
+        "lot_size": {
+            "average": 8082.78,
+            "median": 8276,
+            "min": 4356,
+            "max": 11761
+        },
+        "bedrooms": {
+            "average": 3.33,
+            "median": 4,
+            "min": 2,
+            "max": 4
+        },
+        "bathrooms": {
+            "average": 2.33,
+            "median": 2,
+            "min": 2,
+            "max": 3
+        }
+    },
+    "price_ranges": {
+        "under_500k": 20,
+        "500k_to_1m": 25,
+        "1m_to_2m": 5,
+        "over_2m": 2
+    },
+    "total_sales": 42,
+    "expired_listings": 9,
+    "highest_sale_price": 775000,
+    "lowest_sale_price": 210000
+}

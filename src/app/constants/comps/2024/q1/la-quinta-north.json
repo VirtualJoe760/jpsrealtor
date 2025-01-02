@@ -1,0 +1,92 @@
+{
+    "area": "La Quinta North",
+    "quarter": "Q1 2024",
+    "slug": "la-quinta-north-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 670862.69,
+        "median": 679900,
+        "min": 385000,
+        "max": 950000
+      },
+      "sale_price": {
+        "average": 653508.43,
+        "median": 659000,
+        "min": 379000,
+        "max": 930000
+      },
+      "days_on_market": {
+        "average": 66.37,
+        "median": 57,
+        "min": 0,
+        "max": 244
+      },
+      "list_price_per_sqft": {
+        "average": 323.4,
+        "median": 323.66,
+        "min": 199.34,
+        "max": 433
+      },
+      "sale_price_per_sqft": {
+        "average": 318.4,
+        "median": 315.25,
+        "min": 205.37,
+        "max": 433.02
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 556312.5,
+        "median": 607000,
+        "min": 7500,
+        "max": 995000
+      },
+      "days_on_market": {
+        "average": 73.44,
+        "median": 67.5,
+        "min": 0,
+        "max": 243
+      },
+      "list_price_per_sqft": {
+        "average": 314.39,
+        "median": 357.54,
+        "min": 3.52,
+        "max": 438.49
+      },
+      "square_footage": {
+        "average": 1859.69,
+        "median": 2005,
+        "min": 763,
+        "max": 3121
+      },
+      "lot_size": {
+        "average": 7323.5,
+        "median": 7623,
+        "min": 3049,
+        "max": 16117
+      },
+      "bedrooms": {
+        "average": 3.31,
+        "median": 4,
+        "min": 1,
+        "max": 5
+      },
+      "bathrooms": {
+        "average": 2.69,
+        "median": 3,
+        "min": 1,
+        "max": 5
+      }
+    },
+    "price_ranges": {
+      "under_500k": 15,
+      "500k_to_1m": 49,
+      "1m_to_2m": 6,
+      "over_2m": 0
+    },
+    "total_sales": 35,
+    "expired_listings": 16,
+    "highest_sale_price": 930000,
+    "lowest_sale_price": 379000
+  }
+  

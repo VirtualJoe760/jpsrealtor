@@ -1,0 +1,92 @@
+{
+    "area": "Palm Desert NE",
+    "quarter": "Q1 2024",
+    "slug": "palm-desert-ne-q1",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 593686.21,
+        "median": 539000,
+        "min": 395000,
+        "max": 1195000
+      },
+      "sale_price": {
+        "average": 564830.82,
+        "median": 525000,
+        "min": 326500,
+        "max": 1135000
+      },
+      "days_on_market": {
+        "average": 65.73,
+        "median": 52,
+        "min": 0,
+        "max": 244
+      },
+      "list_price_per_sqft": {
+        "average": 311.3,
+        "median": 299.71,
+        "min": 242.22,
+        "max": 422.29
+      },
+      "sale_price_per_sqft": {
+        "average": 305.08,
+        "median": 297.31,
+        "min": 223.79,
+        "max": 402.77
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 639066.67,
+        "median": 575700,
+        "min": 435000,
+        "max": 1050000
+      },
+      "days_on_market": {
+        "average": 101,
+        "median": 99,
+        "min": 14,
+        "max": 183
+      },
+      "list_price_per_sqft": {
+        "average": 309.01,
+        "median": 298.9,
+        "min": 272.01,
+        "max": 369.15
+      },
+      "square_footage": {
+        "average": 2078.33,
+        "median": 1943.5,
+        "min": 1283,
+        "max": 3412
+      },
+      "lot_size": {
+        "average": 7187.5,
+        "median": 6534,
+        "min": 5227,
+        "max": 12197
+      },
+      "bedrooms": {
+        "average": 2.67,
+        "median": 2.5,
+        "min": 2,
+        "max": 4
+      },
+      "bathrooms": {
+        "average": 2.83,
+        "median": 2.5,
+        "min": 2,
+        "max": 5
+      }
+    },
+    "price_ranges": {
+      "under_500k": 18,
+      "500k_to_1m": 49,
+      "1m_to_2m": 6,
+      "over_2m": 0
+    },
+    "total_sales": 73,
+    "expired_listings": 6,
+    "highest_sale_price": 1135000,
+    "lowest_sale_price": 326500
+  }
+  

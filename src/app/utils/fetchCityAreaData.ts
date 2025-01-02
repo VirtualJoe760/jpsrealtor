@@ -1,4 +1,7 @@
 import { q1Data } from "@/app/constants/comps/2024/q1";
+import { q2Data } from "@/app/constants/comps/2024/q2";
+import { q3Data } from "@/app/constants/comps/2024/q3";
+import { q4Data } from "@/app/constants/comps/2024/q4";
 import { City } from "@/constants/cities";
 
 interface AreaData {
@@ -57,9 +60,19 @@ interface AreaData {
   highest_sale_price: number;
   lowest_sale_price: number;
 }
-  
 
-export async function fetchCityAreaData(city: City, quarter: string = "q1", year: string = "2024") {
+const quarterlyData: Record<"q1" | "q2" | "q3" | "q4", Record<string, AreaData>> = {
+  q1: q1Data,
+  q2: q2Data,
+  q3: q3Data,
+  q4: q4Data,
+};
+
+export async function fetchCityAreaData(
+  city: City,
+  quarter: "q1" | "q2" | "q3" | "q4" = "q1",
+  year: string = "2024"
+) {
   const results: Record<string, AreaData> = {};
 
   if (!city.areas || city.areas.length === 0) {
@@ -67,12 +80,14 @@ export async function fetchCityAreaData(city: City, quarter: string = "q1", year
     return results;
   }
 
+  const dataForQuarter = quarterlyData[quarter];
+
   for (const area of city.areas) {
-    if (q1Data[area]) {
-      results[area] = q1Data[area];
-      console.log(`Successfully loaded data for: ${area}`);
+    if (dataForQuarter[area]) {
+      results[area] = dataForQuarter[area];
+      console.log(`Successfully loaded data for ${area} in ${quarter} ${year}.`);
     } else {
-      console.warn(`Skipped missing area: ${area}`);
+      console.warn(`No data found for ${area} in ${quarter} ${year}.`);
     }
   }
 

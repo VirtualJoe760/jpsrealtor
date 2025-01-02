@@ -1,0 +1,92 @@
+{
+    "area": "Desert Hot Springs",
+    "quarter": "Q3 2024",
+    "slug": "desert-hot-springs-q3",
+    "closed_data_metrics": {
+      "list_price": {
+        "average": 418554.6,
+        "median": 399000,
+        "min": 95000,
+        "max": 995000
+      },
+      "sale_price": {
+        "average": 404041,
+        "median": 388000,
+        "min": 75000,
+        "max": 695000
+      },
+      "days_on_market": {
+        "average": 47.74,
+        "median": 34.5,
+        "min": 0,
+        "max": 385
+      },
+      "list_price_per_sqft": {
+        "average": 276.5,
+        "median": 264.97,
+        "min": 104.97,
+        "max": 567.31
+      },
+      "sale_price_per_sqft": {
+        "average": 273.29,
+        "median": 264.59,
+        "min": 82.87,
+        "max": 546.33
+      }
+    },
+    "expired_data_metrics": {
+      "list_price": {
+        "average": 494324.96,
+        "median": 512000,
+        "min": 275000,
+        "max": 795000
+      },
+      "days_on_market": {
+        "average": 106.96,
+        "median": 82,
+        "min": 0,
+        "max": 670
+      },
+      "list_price_per_sqft": {
+        "average": 297.42,
+        "median": 288.41,
+        "min": 165.02,
+        "max": 445.26
+      },
+      "square_footage": {
+        "average": 1708.54,
+        "median": 1716,
+        "min": 685,
+        "max": 2600
+      },
+      "lot_size": {
+        "average": 12211.29,
+        "median": 8494,
+        "min": 1981,
+        "max": 111514
+      },
+      "bedrooms": {
+        "average": 3.32,
+        "median": 3,
+        "min": 2,
+        "max": 5
+      },
+      "bathrooms": {
+        "average": 2.21,
+        "median": 2,
+        "min": 1,
+        "max": 4
+      }
+    },
+    "price_ranges": {
+      "under_500k": 85,
+      "500k_to_1m": 19,
+      "1m_to_2m": 0,
+      "over_2m": 0
+    },
+    "total_sales": 104,
+    "expired_listings": 28,
+    "highest_sale_price": 695000,
+    "lowest_sale_price": 75000
+  }
+  

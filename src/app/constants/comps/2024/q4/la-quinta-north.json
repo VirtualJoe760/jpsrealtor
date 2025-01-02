@@ -1,0 +1,67 @@
+{
+  "area": "La Quinta North",
+  "quarter": "Q4 2024",
+  "slug": "la-quinta-north-q4",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 584439.97,
+          "median": 642500,
+          "min": 129500,
+          "max": 965000
+      },
+      "sale_price": {
+          "average": 571346.67,
+          "median": 626800,
+          "min": 115000,
+          "max": 932500
+      },
+      "days_on_market": {
+          "average": 59.87,
+          "median": 48.5,
+          "min": 8,
+          "max": 204
+      },
+      "list_price_per_sqft": {
+          "average": 330.82,
+          "median": 325.86,
+          "min": 64.68,
+          "max": 465.63
+      },
+      "sale_price_per_sqft": {
+          "average": 330.82,
+          "median": 325.86,
+          "min": 64.68,
+          "max": 465.63
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 611363.64,
+          "median": 650000,
+          "min": 335000,
+          "max": 879000
+      },
+      "days_on_market": {
+          "average": 119.55,
+          "median": 109,
+          "min": 62,
+          "max": 213
+      },
+      "list_price_per_sqft": {
+          "average": 383.75,
+          "median": 361.06,
+          "min": 270.42,
+          "max": 553.28
+      }
+  },
+  "price_ranges": {
+      "under_500k": 12,
+      "500k_to_1m": 18,
+      "1m_to_2m": 0,
+      "over_2m": 0
+  },
+  "total_sales": 30,
+  "expired_listings": 11,
+  "highest_sale_price": 932500,
+  "lowest_sale_price": 115000
+}

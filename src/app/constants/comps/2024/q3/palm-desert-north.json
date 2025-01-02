@@ -1,0 +1,67 @@
+{
+  "area": "Palm Desert North",
+  "quarter": "Q3 2024",
+  "slug": "palm-desert-north-q3",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 690123.47,
+          "median": 650000,
+          "min": 320000,
+          "max": 3000000
+      },
+      "sale_price": {
+          "average": 670456.89,
+          "median": 640000,
+          "min": 310000,
+          "max": 2900000
+      },
+      "days_on_market": {
+          "average": 58.73,
+          "median": 50,
+          "min": 1,
+          "max": 200
+      },
+      "list_price_per_sqft": {
+          "average": 352.12,
+          "median": 340.23,
+          "min": 220.0,
+          "max": 720.45
+      },
+      "sale_price_per_sqft": {
+          "average": 345.67,
+          "median": 335.45,
+          "min": 215.33,
+          "max": 700.34
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 720567.34,
+          "median": 700000,
+          "min": 310000,
+          "max": 1500000
+      },
+      "days_on_market": {
+          "average": 110.23,
+          "median": 100,
+          "min": 5,
+          "max": 250
+      },
+      "list_price_per_sqft": {
+          "average": 360.45,
+          "median": 350.15,
+          "min": 230.45,
+          "max": 750.34
+      }
+  },
+  "price_ranges": {
+      "under_500k": 18,
+      "500k_to_1m": 60,
+      "1m_to_2m": 12,
+      "over_2m": 5
+  },
+  "total_sales": 125,
+  "expired_listings": 30,
+  "highest_sale_price": 2900000,
+  "lowest_sale_price": 310000
+}

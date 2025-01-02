@@ -1,0 +1,67 @@
+{
+    "area": "Thousand Palms",
+    "quarter": "Q2 2024",
+    "slug": "thousand-palms-q2",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 407612.5,
+            "median": 392000,
+            "min": 289900,
+            "max": 539000
+        },
+        "sale_price": {
+            "average": 382375,
+            "median": 374500,
+            "min": 295000,
+            "max": 540000
+        },
+        "days_on_market": {
+            "average": 76.88,
+            "median": 49,
+            "min": 17,
+            "max": 224
+        },
+        "list_price_per_sqft": {
+            "average": 277.17,
+            "median": 271.15,
+            "min": 217.47,
+            "max": 340.71
+        },
+        "sale_price_per_sqft": {
+            "average": 271.22,
+            "median": 253.16,
+            "min": 210.94,
+            "max": 341.34
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 830179.8,
+            "median": 499999,
+            "min": 321000,
+            "max": 1985000
+        },
+        "days_on_market": {
+            "average": 81,
+            "median": 81,
+            "min": 0,
+            "max": 181
+        },
+        "list_price_per_sqft": {
+            "average": 328.7,
+            "median": 322.16,
+            "min": 233.12,
+            "max": 421.21
+        }
+    },
+    "price_ranges": {
+        "under_500k": 5,
+        "500k_to_1m": 2,
+        "1m_to_2m": 1,
+        "over_2m": 0
+    },
+    "total_sales": 8,
+    "expired_listings": 5,
+    "highest_sale_price": 540000,
+    "lowest_sale_price": 295000
+}

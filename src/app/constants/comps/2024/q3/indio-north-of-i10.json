@@ -1,0 +1,67 @@
+{
+    "area": "Indio North of I-10",
+    "quarter": "Q3 2024",
+    "slug": "indio-north-of-i10-q3",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 604564.39,
+            "median": 575000,
+            "min": 400000,
+            "max": 1600000
+        },
+        "sale_price": {
+            "average": 593246.3,
+            "median": 568990,
+            "min": 395000,
+            "max": 1400000
+        },
+        "days_on_market": {
+            "average": 52.93,
+            "median": 39,
+            "min": 0,
+            "max": 170
+        },
+        "list_price_per_sqft": {
+            "average": 271.6,
+            "median": 267.9,
+            "min": 161.24,
+            "max": 570.82
+        },
+        "sale_price_per_sqft": {
+            "average": 268.41,
+            "median": 265.39,
+            "min": 165.98,
+            "max": 499.46
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 768425.83,
+            "median": 669000,
+            "min": 438000,
+            "max": 1495000
+        },
+        "days_on_market": {
+            "average": 109.09,
+            "median": 100,
+            "min": 5,
+            "max": 217
+        },
+        "list_price_per_sqft": {
+            "average": 337.65,
+            "median": 292.32,
+            "min": 229.27,
+            "max": 564.24
+        }
+    },
+    "price_ranges": {
+        "under_500k": 20,
+        "500k_to_1m": 50,
+        "1m_to_2m": 10,
+        "over_2m": 5
+    },
+    "total_sales": 115,
+    "expired_listings": 23,
+    "highest_sale_price": 1400000,
+    "lowest_sale_price": 395000
+}

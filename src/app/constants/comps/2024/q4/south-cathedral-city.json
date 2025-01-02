@@ -1,0 +1,67 @@
+{
+  "area": "Cathedral City South",
+  "quarter": "Q4 2024",
+  "slug": "south-cathedral-city-q4",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 641077.43,
+          "median": 637450,
+          "min": 199000,
+          "max": 1099000
+      },
+      "sale_price": {
+          "average": 628039.98,
+          "median": 629950,
+          "min": 199000,
+          "max": 1010000
+      },
+      "days_on_market": {
+          "average": 50.9,
+          "median": 30.5,
+          "min": 0,
+          "max": 280
+      },
+      "list_price_per_sqft": {
+          "average": 352.92,
+          "median": 331.67,
+          "min": 178.57,
+          "max": 629.56
+      },
+      "sale_price_per_sqft": {
+          "average": 346.24,
+          "median": 331.67,
+          "min": 178.57,
+          "max": 625.93
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 570114.35,
+          "median": 498000,
+          "min": 319900,
+          "max": 1125000
+      },
+      "days_on_market": {
+          "average": 111.88,
+          "median": 113,
+          "min": 13,
+          "max": 245
+      },
+      "list_price_per_sqft": {
+          "average": 354.03,
+          "median": 336.55,
+          "min": 239.02,
+          "max": 497.49
+      }
+  },
+  "price_ranges": {
+      "under_500k": 10,
+      "500k_to_1m": 25,
+      "1m_to_2m": 5,
+      "over_2m": 0
+  },
+  "total_sales": 40,
+  "expired_listings": 17,
+  "highest_sale_price": 1010000,
+  "lowest_sale_price": 199000
+}

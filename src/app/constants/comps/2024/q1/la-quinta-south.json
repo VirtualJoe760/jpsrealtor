@@ -1,0 +1,67 @@
+{
+    "area": "La Quinta South",
+    "quarter": "Q1 2024",
+    "slug": "la-quinta-south-q1",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 1400000,
+            "median": 1350000,
+            "min": 250000,
+            "max": 5000000
+        },
+        "sale_price": {
+            "average": 1350000,
+            "median": 1300000,
+            "min": 240000,
+            "max": 4800000
+        },
+        "days_on_market": {
+            "average": 70,
+            "median": 60,
+            "min": 10,
+            "max": 350
+        },
+        "list_price_per_sqft": {
+            "average": 550,
+            "median": 530,
+            "min": 120,
+            "max": 2200
+        },
+        "sale_price_per_sqft": {
+            "average": 530,
+            "median": 510,
+            "min": 115,
+            "max": 2100
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 1000000,
+            "median": 950000,
+            "min": 180000,
+            "max": 3000000
+        },
+        "days_on_market": {
+            "average": 160,
+            "median": 140,
+            "min": 40,
+            "max": 420
+        },
+        "list_price_per_sqft": {
+            "average": 470,
+            "median": 450,
+            "min": 90,
+            "max": 1900
+        }
+    },
+    "price_ranges": {
+        "under_500k": 15,
+        "500k_to_1m": 40,
+        "1m_to_2m": 30,
+        "over_2m": 15
+    },
+    "total_sales": 120,
+    "expired_listings": 25,
+    "highest_sale_price": 4800000,
+    "lowest_sale_price": 240000
+}

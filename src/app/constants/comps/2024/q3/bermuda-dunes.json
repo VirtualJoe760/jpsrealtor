@@ -1,0 +1,67 @@
+{
+  "area": "Bermuda Dunes",
+  "quarter": "Q3 2024",
+  "slug": "bermuda-dunes-q3",
+  "closed_data_metrics": {
+      "list_price": {
+          "average": 742370.31,
+          "median": 650000,
+          "min": 215000,
+          "max": 3999000
+      },
+      "sale_price": {
+          "average": 698689.62,
+          "median": 612500,
+          "min": 215000,
+          "max": 3750000
+      },
+      "days_on_market": {
+          "average": 63.79,
+          "median": 62,
+          "min": 0,
+          "max": 137
+      },
+      "list_price_per_sqft": {
+          "average": 319.85,
+          "median": 312.39,
+          "min": 212.99,
+          "max": 481.4
+      },
+      "sale_price_per_sqft": {
+          "average": 311.48,
+          "median": 312.5,
+          "min": 206.27,
+          "max": 451.43
+      }
+  },
+  "expired_data_metrics": {
+      "list_price": {
+          "average": 833649.9,
+          "median": 739500,
+          "min": 468000,
+          "max": 1975000
+      },
+      "days_on_market": {
+          "average": 96.45,
+          "median": 105,
+          "min": 0,
+          "max": 169
+      },
+      "list_price_per_sqft": {
+          "average": 344.92,
+          "median": 344.32,
+          "min": 254.39,
+          "max": 474.18
+      }
+  },
+  "price_ranges": {
+      "under_500k": 12,
+      "500k_to_1m": 10,
+      "1m_to_2m": 6,
+      "over_2m": 1
+  },
+  "total_sales": 29,
+  "expired_listings": 20,
+  "highest_sale_price": 3750000,
+  "lowest_sale_price": 215000
+}

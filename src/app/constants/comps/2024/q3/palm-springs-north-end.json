@@ -1,0 +1,67 @@
+{
+    "area": "Palm Springs North End",
+    "quarter": "Q3 2024",
+    "slug": "palm-springs-north-end-q3",
+    "closed_data_metrics": {
+        "list_price": {
+            "average": 737933.3,
+            "median": 679000,
+            "min": 125000,
+            "max": 2795000
+        },
+        "sale_price": {
+            "average": 686717.01,
+            "median": 635000,
+            "min": 115000,
+            "max": 2675000
+        },
+        "days_on_market": {
+            "average": 63.59,
+            "median": 53,
+            "min": 0,
+            "max": 247
+        },
+        "list_price_per_sqft": {
+            "average": 435.63,
+            "median": 408.19,
+            "min": 212.22,
+            "max": 829.17
+        },
+        "sale_price_per_sqft": {
+            "average": 425.16,
+            "median": 400.24,
+            "min": 195.25,
+            "max": 783.33
+        }
+    },
+    "expired_data_metrics": {
+        "list_price": {
+            "average": 1100572.25,
+            "median": 974250,
+            "min": 214500,
+            "max": 6600000
+        },
+        "days_on_market": {
+            "average": 120.92,
+            "median": 119.5,
+            "min": 2,
+            "max": 360
+        },
+        "list_price_per_sqft": {
+            "average": 600.95,
+            "median": 550.41,
+            "min": 223.06,
+            "max": 1646.3
+        }
+    },
+    "price_ranges": {
+        "under_500k": 20,
+        "500k_to_1m": 50,
+        "1m_to_2m": 25,
+        "over_2m": 10
+    },
+    "total_sales": 69,
+    "expired_listings": 48,
+    "highest_sale_price": 2675000,
+    "lowest_sale_price": 115000
+}

@@ -107,7 +107,7 @@ interface AreaData {
   lowest_sale_price: number;
 }
 
-export const q1Data: Record<string, AreaData> = {
+export const q4Data: Record<string, AreaData> = {
     "palm-springs-south-end": southPalmSpringsEnd,
     "south-cathedral-city": southCathedralCity,
     "north-cathedral-city": northCathedralCity,
