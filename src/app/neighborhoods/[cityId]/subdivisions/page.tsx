@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";
 import subdivisions from "@/constants/subdivisions";
@@ -30,12 +30,29 @@ export default function SubdivisionsPage({
   }, [cityId]);
 
   // State for filtered subdivisions
-  const [validSubdivisions, setValidSubdivisions] = useState<typeof citySubdivisions>([]);
+  const [validSubdivisions, setValidSubdivisions] = useState<
+    typeof citySubdivisions
+  >([]);
+
+  // Ref to track whether updates should affect scroll
+  const updateRef = useRef(false);
 
   useEffect(() => {
     const valid = citySubdivisions.filter((subdivision) => subdivision.photo);
     setValidSubdivisions(valid);
   }, [citySubdivisions]);
+
+  // Track and restore scroll position
+  const handleScroll = () => {
+    updateRef.current = false; // Prevent scroll focus
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   // Filter subdivisions by search term
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,10 +101,12 @@ export default function SubdivisionsPage({
                 height={400}
                 className="w-full h-64 object-cover"
                 onError={() => {
-                  // Dynamically remove invalid images
-                  setValidSubdivisions((current) =>
-                    current.filter((s) => s.name !== subdivision.name)
-                  );
+                  // Only remove invalid subdivisions after ensuring no scroll disruptions
+                  if (!updateRef.current) {
+                    setValidSubdivisions((current) =>
+                      current.filter((s) => s.name !== subdivision.name)
+                    );
+                  }
                 }}
               />
               <div className="p-6">
