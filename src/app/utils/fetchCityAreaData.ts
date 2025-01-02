@@ -40,20 +40,6 @@ interface AreaData {
       max: number;
     };
   };
-  expired_data_metrics?: {
-    list_price?: {
-      average: number;
-      median: number;
-      min: number;
-      max: number;
-    };
-    sale_price?: {
-      average: number;
-      median: number;
-      min: number;
-      max: number;
-    };
-  };
   price_ranges: Record<string, number>;
   total_sales: number;
   expired_listings: number;
@@ -61,35 +47,30 @@ interface AreaData {
   lowest_sale_price: number;
 }
 
-const quarterlyData: Record<"q1" | "q2" | "q3" | "q4", Record<string, AreaData>> = {
-  q1: q1Data,
-  q2: q2Data,
-  q3: q3Data,
-  q4: q4Data,
-};
+export async function fetchCityAreaData(city: City) {
+  const results: Record<string, Record<string, AreaData>> = {};
 
-export async function fetchCityAreaData(
-  city: City,
-  quarter: "q1" | "q2" | "q3" | "q4" = "q1",
-  year: string = "2024"
-) {
-  const results: Record<string, AreaData> = {};
-
+  // Ensure city.areas is defined and not empty
   if (!city.areas || city.areas.length === 0) {
     console.error(`No areas defined for city: ${city.name}`);
-    return results;
+    return results; // Return empty results to handle gracefully
   }
 
-  const dataForQuarter = quarterlyData[quarter];
+  const allQuarterlyData = { q1: q1Data, q2: q2Data, q3: q3Data, q4: q4Data };
 
   for (const area of city.areas) {
-    if (dataForQuarter[area]) {
-      results[area] = dataForQuarter[area];
-      console.log(`Successfully loaded data for ${area} in ${quarter} ${year}.`);
-    } else {
-      console.warn(`No data found for ${area} in ${quarter} ${year}.`);
+    results[area] = {}; // Initialize area data for all quarters
+
+    for (const [quarter, data] of Object.entries(allQuarterlyData)) {
+      if (data[area]) {
+        results[area][quarter] = data[area];
+        console.log(`Data loaded for ${area} in ${quarter}`);
+      } else {
+        console.warn(`No data found for ${area} in ${quarter}`);
+      }
     }
   }
 
+  console.log("Final Results:", results);
   return results;
 }

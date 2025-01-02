@@ -3,8 +3,6 @@ import { SalesVsExpired } from "@/app/components/charts/SalesVsExpired";
 import { PriceRangeChart } from "@/app/components/charts/PriceRangeChart";
 import { DaysOnMarket } from "@/app/components/charts/DaysOnMarket";
 import { SaleListPriceMetrics } from "@/app/components/charts/SaleListPriceMetrics";
-import { ListPriceVsExpired } from "@/app/components/charts/ListPriceVsExpired";
-import { PricePerSqftChart } from "@/app/components/charts/PricePerSqftChart";
 import { HighVsLowSalePriceChart } from "@/app/components/charts/HighVsLowSalePriceChart";
 
 interface QuarterlyAnalysisProps {
@@ -13,11 +11,20 @@ interface QuarterlyAnalysisProps {
 }
 
 export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, quarter }) => {
+  if (!areaData || Object.keys(areaData).length === 0) {
+    return <p>No data available for {quarter}.</p>;
+  }
+
   return (
     <div>
       {/* First Grid: Expired vs Closed and Closed by Price Range */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.entries(areaData).map(([area, data]) => {
+          if (!data) {
+            console.warn(`No data found for ${area} in ${quarter}`);
+            return null;
+          }
+
           const salesVsExpiredData = [
             { category: "Closed", value: data.total_sales ?? 0, fill: "hsl(var(--chart-1))" },
             { category: "Expired", value: data.expired_listings ?? 0, fill: "hsl(var(--chart-2))" },
@@ -25,7 +32,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
 
           return (
             <SalesVsExpired
-              key={area}
+              key={`${area}-sales-expired`}
               chartTitle={`Expired vs. Closed Listings - ${data.area}`}
               chartDescription={`Comparison of closed and expired listings for ${data.area}`}
               data={salesVsExpiredData}
@@ -34,6 +41,8 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
         })}
 
         {Object.entries(areaData).map(([area, data]) => {
+          if (!data) return null;
+
           const priceRangeData = [
             { range: "Under $500k", closed: data.price_ranges?.under_500k ?? 0 },
             { range: "$500k-$1M", closed: data.price_ranges?.["500k_to_1m"] ?? 0 },
@@ -43,7 +52,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
 
           return (
             <PriceRangeChart
-              key={area}
+              key={`${area}-price-range`}
               chartTitle={`Closed Sales by Price Range - ${data.area}`}
               chartDescription={`${data.area} - ${quarter}`}
               chartFooter="Shows the distribution of closed sales by price range."
@@ -53,9 +62,11 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
         })}
       </div>
 
-      {/* Second Grid: Sale vs List Metrics */}
+      {/* Second Grid: Days on Market */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
         {Object.entries(areaData).map(([area, data]) => {
+          if (!data) return null;
+
           const domMetrics = data.closed_data_metrics?.days_on_market || {
             average: 0,
             median: 0,
@@ -72,7 +83,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
 
           return (
             <DaysOnMarket
-              key={area}
+              key={`${area}-days-on-market`}
               chartTitle={`Days on Market - ${data.area}`}
               chartDescription="Visualizing average, median, and range of days on market."
               data={chartData}
@@ -82,9 +93,11 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
         })}
       </div>
 
-      {/* Third Grid: Additional Charts */}
+      {/* Third Grid: Sale vs. List Price and High vs. Low Sale Price */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
         {Object.entries(areaData).map(([area, data]) => {
+          if (!data) return null;
+
           const saleListPriceData = [
             {
               category: "Average",
@@ -110,7 +123,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
 
           return (
             <SaleListPriceMetrics
-              key={area}
+              key={`${area}-sale-list-price`}
               chartTitle={`Sale vs. List Price Metrics - ${data.area}`}
               chartDescription="Comparing average, median, min, and max values for sale and list prices."
               data={saleListPriceData}
@@ -119,6 +132,8 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
         })}
 
         {Object.entries(areaData).map(([area, data]) => {
+          if (!data) return null;
+
           const highLowSalePriceData = [
             { category: "High Sale Price", value: data.highest_sale_price ?? 0 },
             { category: "Low Sale Price", value: data.lowest_sale_price ?? 0 },
@@ -126,7 +141,7 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
 
           return (
             <HighVsLowSalePriceChart
-              key={area}
+              key={`${area}-high-low-sale-price`}
               chartTitle={`High vs. Low Sale Price - ${data.area}`}
               chartDescription="Visualizing the highest and lowest sale prices."
               data={highLowSalePriceData}
