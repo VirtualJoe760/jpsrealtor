@@ -43,14 +43,14 @@ export default function SchoolDistrictPage({ params }: { params: { cityId: strin
 
       {/* Districts Section */}
       <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
-        <h1 className="text-4xl font-bold mb-6 text-white">School Districts in {city.name}</h1>
+        <h1 className="text-5xl font-bold mb-6 text-white">School Districts in {city.name}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {districts.map((district) => (
             <div
               key={district.id}
-              className="bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              className="border-white border p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
             >
-              <h2 className="text-xl font-bold text-white mb-2">{district.name}</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">{district.name}</h2>
               <p className="text-gray-300 mb-4">{district.description}</p>
               <a
                 href={`/neighborhoods/${cityId}/school-district/${district.id}`}

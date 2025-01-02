@@ -40,7 +40,7 @@ export default function DistrictSchoolsPage({ params }: { params: { cityId: stri
         <h2 className="text-2xl font-semibold text-white mb-4">Elementary Schools</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {selectedDistrict.schools.Elementary.map((school: School) => (
-            <div key={school.id} className="bg-gray-800 p-6 rounded-lg shadow-md">
+            <div key={school.id} className="border-white border p-6 rounded-lg shadow-md">
               <img
                 src={`/images/SchoolDataset/Images/${school.slug}.jpg`}
                 alt={school.name}
@@ -63,7 +63,7 @@ export default function DistrictSchoolsPage({ params }: { params: { cityId: stri
         <h2 className="text-2xl font-semibold text-white mb-4 mt-8">Middle Schools</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {selectedDistrict.schools.Middle.map((school: School) => (
-            <div key={school.id} className="bg-gray-800 p-6 rounded-lg shadow-md">
+            <div key={school.id} className="border-white border p-6 rounded-lg shadow-md">
               <img
                 src={`/images/SchoolDataset/Images/${school.slug}.jpg`}
                 alt={school.name}
@@ -86,7 +86,7 @@ export default function DistrictSchoolsPage({ params }: { params: { cityId: stri
         <h2 className="text-2xl font-semibold text-white mb-4 mt-8">High Schools</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {selectedDistrict.schools.HighSchool.map((school: School) => (
-            <div key={school.id} className="bg-gray-800 p-6 rounded-lg shadow-md">
+            <div key={school.id} className="border-white border p-6 rounded-lg shadow-md">
               <img
                 src={`/images/SchoolDataset/Images/${school.slug}.jpg`}
                 alt={school.name}

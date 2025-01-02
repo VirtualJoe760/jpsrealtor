@@ -56,9 +56,32 @@ export default function SubdivisionsPage({
 
   // Filter subdivisions by search term
   const [searchTerm, setSearchTerm] = useState("");
-  const filteredSubdivisions = validSubdivisions.filter((subdivision) =>
-    subdivision.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSubdivisions = useMemo(() => {
+    if (!searchTerm) return validSubdivisions; // Return the original array when the search term is empty
+  
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+  
+    return [...validSubdivisions].sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+  
+      // Exact matches come first
+      if (aName === lowerCaseSearchTerm && bName !== lowerCaseSearchTerm) return -1;
+      if (bName === lowerCaseSearchTerm && aName !== lowerCaseSearchTerm) return 1;
+  
+      // Starts with the search term come next
+      if (aName.startsWith(lowerCaseSearchTerm) && !bName.startsWith(lowerCaseSearchTerm)) return -1;
+      if (bName.startsWith(lowerCaseSearchTerm) && !aName.startsWith(lowerCaseSearchTerm)) return 1;
+  
+      // Subdivisions that include the term come last
+      if (aName.includes(lowerCaseSearchTerm) && !bName.includes(lowerCaseSearchTerm)) return -1;
+      if (bName.includes(lowerCaseSearchTerm) && !aName.includes(lowerCaseSearchTerm)) return 1;
+  
+      // Maintain original order if equally ranked
+      return 0;
+    });
+  }, [validSubdivisions, searchTerm]);
+  
 
   return (
     <>
@@ -71,20 +94,9 @@ export default function SubdivisionsPage({
 
       {/* Search and List Section */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-4xl font-bold mb-6 text-white">
+        <h1 className="text-4xl font-bold mb-10 text-white">
           Subdivisions in {city.name}
         </h1>
-
-        {/* Search Bar */}
-        <div className="relative mb-8">
-          <input
-            type="text"
-            placeholder="Search subdivisions..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-500 rounded-md shadow-sm bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-          />
-        </div>
 
         {/* Full Subdivision List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
