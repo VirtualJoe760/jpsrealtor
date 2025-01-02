@@ -47,16 +47,14 @@ export default async function PropertyStatsPage({
         <h1 className="text-4xl font-bold mb-6 text-white">
           Property Statistics for {city.name}
         </h1>
-        
 
-        <Accordion type="single" collapsible>
+        <Accordion type="single" defaultValue="q4" collapsible>
           {quarters.map((quarter) => {
-            // Safely construct quarterKey
             const quarterKey = (() => {
-              const match = quarter.match(/^Q(\d)/); // Match "Q1", "Q2", etc.
+              const match = quarter.match(/^Q(\d)/);
               return match ? `q${match[1]}` : undefined;
             })();
-            
+
             if (!quarterKey) {
               console.error(`Invalid quarter format: ${quarter}`);
               return null;
@@ -79,7 +77,6 @@ export default async function PropertyStatsPage({
               })
             );
 
-            // Skip this quarter if no data exists
             const hasData = Object.values(quarterData).some(
               (data) => Object.keys(data).length > 0
             );
@@ -88,8 +85,6 @@ export default async function PropertyStatsPage({
               console.warn(`No data available for ${quarter}`);
               return null;
             }
-
-            console.log(`Mapped data for ${quarter}:`, quarterData);
 
             return (
               <AccordionItem key={quarter} value={quarterKey}>
