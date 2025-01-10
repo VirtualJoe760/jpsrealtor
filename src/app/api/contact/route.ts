@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { handleCors } from "@/utils/handleCors";
+import { getListId } from "@/utils/getListId";
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
+const SENDFOX_API_TOKEN = process.env.JPSREALTOR_SENDFOX_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
     await handleCors(req, res);
 
     // Parse the request body
-    const { firstName, lastName, email, phone, address, message, photos } = await req.json();
+    const { firstName, lastName, email, phone, address, message, photos, optIn } = await req.json();
 
     // Configure Nodemailer transporter
     const transporter = nodemailer.createTransport({
@@ -68,32 +70,6 @@ export async function POST(req: NextRequest) {
             We’re excited to help you achieve your real estate goals here in the beautiful Coachella Valley. 
             Whether you’re buying, selling, or exploring options, we’re here to make your experience seamless and successful.
           </p>
-          <hr style="border: 0; height: 1px; background-color: #fff; margin: 1.5rem auto; width: 60%;" />
-          <h2 style="font-size: 1.5rem; font-weight: 500; margin-bottom: 1rem;">
-            Here's the Information You Submitted:
-          </h2>
-          <ul style="list-style: none; padding: 0; font-size: 1rem; line-height: 1.8; margin: 0 auto; max-width: 600px; text-align: left;">
-            <li><strong>Name:</strong> ${firstName} ${lastName}</li>
-            <li><strong>Phone:</strong> ${phone}</li>
-            <li><strong>Email:</strong> ${email}</li>
-            <li><strong>Address:</strong> ${address}</li>
-            <li><strong>Message:</strong> ${message}</li>
-          </ul>
-          <div style="margin: 2rem 0;">
-            <a href="https://www.jpsrealtor.com/insights" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; margin-right: 10px; display: inline-block;">
-              Read Estate Insights
-            </a>
-            <a href="https://www.jpsrealtor.com/listings" style="text-decoration: none; color: #000; background-color: #fff; padding: 10px 20px; border-radius: 5px; font-size: 1rem; font-weight: 600; display: inline-block;">
-              Browse Properties
-            </a>
-          </div>
-          <p style="font-size: 1rem; margin-top: 1.5rem; line-height: 1.6;">
-            We look forward to connecting with you and assisting in your real estate journey.  
-            Feel free to reach out anytime!
-          </p>
-          <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.7;">
-            Joseph Sardella | JPS Realtor | eXp Realty | Obsidian Group
-          </p>
         </div>
       `,
     };
@@ -102,11 +78,40 @@ export async function POST(req: NextRequest) {
     await transporter.sendMail(adminMailOptions);
     await transporter.sendMail(userMailOptions);
 
+    // Handle SendFox Subscription
+    if (optIn && SENDFOX_API_TOKEN) {
+      const listId = await getListId(SENDFOX_API_TOKEN, "jpsrealtor");
+      if (!listId) {
+        console.error("Failed to fetch the SendFox list ID for 'jpsrealtor'.");
+        throw new Error("Unable to subscribe user to mailing list.");
+      }
+
+      const subscriptionResponse = await fetch("https://api.sendfox.com/contacts", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SENDFOX_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          lists: [listId],
+        }),
+      });
+
+      if (!subscriptionResponse.ok) {
+        const errorText = await subscriptionResponse.text();
+        console.error("Failed to add contact to SendFox:", errorText);
+        throw new Error("Failed to add contact to SendFox.");
+      }
+    }
+
     return NextResponse.json({ message: "Emails sent successfully!" }, { status: 200 });
   } catch (error) {
-    console.error("Error sending email:", (error as Error).message);
+    console.error("Error submitting form:", (error as Error).message);
     return NextResponse.json(
-      { message: "Failed to send email.", error: (error as Error).message },
+      { message: "Failed to send email or subscribe contact.", error: (error as Error).message },
       { status: 500 }
     );
   }

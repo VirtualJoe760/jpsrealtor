@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Import useRouter for navigation
 import ContactInfo from "./ContactInfo";
 import NameInput from "./NameInput";
 import EmailInput from "./EmailInput";
@@ -13,16 +14,20 @@ import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
 import { getListId } from "@/utils/getListId";
 
 export default function Contact() {
+  const router = useRouter(); // Initialize the router
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [optIn, setOptIn] = useState(false);
   const [listId, setListId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch the list ID for the "jpsrealtor" list on component mount
     const fetchListId = async () => {
-      const id = await getListId(process.env.JPSREALTOR_SENDFOX_API_TOKEN || "", "jpsrealtor");
-      setListId(id);
+      if (process.env.JPSREALTOR_SENDFOX_API_TOKEN) {
+        const id = await getListId(process.env.JPSREALTOR_SENDFOX_API_TOKEN, "jpsrealtor");
+        setListId(id);
+      } else {
+        console.error("SendFox API token is missing");
+      }
     };
 
     fetchListId();
@@ -35,11 +40,9 @@ export default function Contact() {
     try {
       const form = e.currentTarget;
 
-      // Helper to get field values
       const getFieldValue = (name: string): string =>
         (form.elements.namedItem(name) as HTMLInputElement)?.value || "";
 
-      // Extract form values
       const firstName = getFieldValue("first-name");
       const lastName = getFieldValue("last-name");
       const email = getFieldValue("email");
@@ -55,11 +58,9 @@ export default function Contact() {
       const address = `${street}, ${city}, ${state} ${zip}, ${country}`.trim();
       const message = getFieldValue("message");
 
-      // Handle photo uploads
       const folderName = `${firstName}_${lastName}`.replace(/\s+/g, "_").toLowerCase();
       const uploadedPhotoUrls = await uploadToCloudinary(photos || [], folderName);
 
-      // Add user to SendFox list if opted in
       if (optIn && listId) {
         const contactResponse = await fetch("https://api.sendfox.com/contacts", {
           method: "POST",
@@ -80,7 +81,6 @@ export default function Contact() {
         }
       }
 
-      // Prepare form data
       const formData = {
         firstName,
         lastName,
@@ -102,7 +102,8 @@ export default function Contact() {
 
       if (!res.ok) throw new Error("Failed to send message");
 
-      alert("Message sent successfully!");
+      // Redirect to the success page
+      router.push("/success");
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Failed to send message. Please try again.");
@@ -128,7 +129,7 @@ export default function Contact() {
             </div>
             <div className="mt-4">
               <EmailSubscribe
-                label="I would like to receive updates and newsletters via email."
+                label="I consent to communicate via email and recieve newsletter or updates."
                 isChecked={optIn}
                 onChange={setOptIn}
               />
