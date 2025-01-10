@@ -117,7 +117,7 @@ export default function Contact() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
         <ContactInfo />
 
-        <form onSubmit={handleSubmit} className="px-6 pb-24 pt-20 sm:pb-32 lg:px-8 lg:py-48">
+        <form onSubmit={handleSubmit} className="px-9 pb-24 pt-20 sm:pb-32 lg:px-8">
           <div className="mx-auto max-w-xl lg:mr-0 lg:max-w-lg">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <NameInput />
