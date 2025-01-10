@@ -81,7 +81,7 @@ export default async function PostPage({
         />
 
         {/* Blog Content */}
-        <section className="mx-5 2xl:px-80 lg:px-40 my-10 py-10 px-2">
+        <section className="mx-5 2xl:px-[30%] lg:px-40 my-10 py-10 px-2">
           <article className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200">
             {/* Markdown Rendering */}
             <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown>
