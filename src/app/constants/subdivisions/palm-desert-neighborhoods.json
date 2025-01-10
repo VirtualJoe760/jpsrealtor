@@ -551,50 +551,6 @@
     "slug": "hovley-estates"
   },
   {
-    "id": 38,
-    "name": "Desert Princess",
-    "description": "Desert Princess is a vibrant community featuring condos and single-family homes surrounded by a 27-hole championship golf course and stunning desert landscaping.",
-    "photo": "https://example.com/desert-princess.jpg",
-    "features": [
-      "Championship golf course",
-      "Desert landscaping",
-      "Vibrant community"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7498,
-      "longitude": -116.3539
-    },
-    "keywords": [
-      "Desert Princess homes for sale",
-      "Living in Desert Princess Palm Desert",
-      "Golf communities in Palm Desert"
-    ],
-    "slug": "desert-princess"
-  },
-  {
-    "id": 39,
-    "name": "Spanish Walk",
-    "description": "Spanish Walk is a picturesque community offering Spanish-inspired homes with stylish designs and community amenities such as a pool, clubhouse, and fitness center.",
-    "photo": "https://example.com/spanish-walk.jpg",
-    "features": [
-      "Spanish-inspired homes",
-      "Community amenities",
-      "Stylish designs"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7553,
-      "longitude": -116.3587
-    },
-    "keywords": [
-      "Spanish Walk homes for sale",
-      "Living in Spanish Walk Palm Desert",
-      "Stylish communities in Palm Desert"
-    ],
-    "slug": "spanish-walk"
-  },
-  {
     "id": 40,
     "name": "The Enclave",
     "description": "The Enclave is an exclusive gated community featuring custom luxury homes with expansive layouts and high-end finishes. Residents enjoy privacy and proximity to local amenities.",

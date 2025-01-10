@@ -9,7 +9,7 @@ const navigation = {
     { name: 'Selling', href: '/insights/real-estate-tips/ultimate-sellers-guide-coachella-valley' },
     { name: 'Neighborhoods', href: '/neighborhoods' },
     { name: 'Loans', href: 'https://myloan.intercaplending.com/homehub/signup/cache@intercaplending.com?from_mobile_share=true'},
-    { name: 'Contact', href: '/contact' }
+    { name: 'Contact', href: '/#contact' }
   ],
   social: [
     {

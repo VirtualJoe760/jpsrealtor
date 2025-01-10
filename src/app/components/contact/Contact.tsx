@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ContactInfo from "./ContactInfo";
 import NameInput from "./NameInput";
 import EmailInput from "./EmailInput";
@@ -8,11 +8,25 @@ import AddressInput from "./AddressInput";
 import PhotoUpload from "./PhotoUpload";
 import MessageInput from "./MessageInput";
 import PhoneNumberInput from "./PhoneNumberInput";
+import EmailSubscribe from "./EmailSubscribe";
 import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
+import { getListId } from "@/utils/getListId";
 
 export default function Contact() {
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [optIn, setOptIn] = useState(false);
+  const [listId, setListId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch the list ID for the "jpsrealtor" list on component mount
+    const fetchListId = async () => {
+      const id = await getListId(process.env.JPSREALTOR_SENDFOX_API_TOKEN || "", "jpsrealtor");
+      setListId(id);
+    };
+
+    fetchListId();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,6 +59,27 @@ export default function Contact() {
       const folderName = `${firstName}_${lastName}`.replace(/\s+/g, "_").toLowerCase();
       const uploadedPhotoUrls = await uploadToCloudinary(photos || [], folderName);
 
+      // Add user to SendFox list if opted in
+      if (optIn && listId) {
+        const contactResponse = await fetch("https://api.sendfox.com/contacts", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.JPSREALTOR_SENDFOX_API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            lists: [listId],
+          }),
+        });
+
+        if (!contactResponse.ok) {
+          throw new Error("Failed to add contact to SendFox list");
+        }
+      }
+
       // Prepare form data
       const formData = {
         firstName,
@@ -54,6 +89,7 @@ export default function Contact() {
         address,
         message,
         photos: uploadedPhotoUrls,
+        optIn,
       };
 
       console.log("Form Data Sent:", formData);
@@ -89,6 +125,13 @@ export default function Contact() {
               <AddressInput />
               <PhotoUpload onPhotosSelected={(files) => setPhotos(files)} />
               <MessageInput />
+            </div>
+            <div className="mt-4">
+              <EmailSubscribe
+                label="I would like to receive updates and newsletters via email."
+                isChecked={optIn}
+                onChange={setOptIn}
+              />
             </div>
             <div className="mt-8 flex justify-end">
               <button
