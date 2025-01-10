@@ -9,7 +9,7 @@ export default function ContactInfo() {
           Let&apos;s Connect
         </h2>
         <p className="mt-6 text-lg/8 text-gray-200">
-          Reach out to us today to discuss your property needs. Whether you&apos;re looking to buy, sell, or simply get advice, we&apos;re here to help. You can also share photos of your property with us!
+          Reach out to us today to discuss your property needs. Whether you&apos;re looking to buy, sell, or simply get advice, we&apos;re here to help. You can also share photos of your property with us! I also offer a live chat that goes directly to my cell on the website you can access by clicking the message button on the right hand side of your screen.
         </p>
         <dl className="mt-10 space-y-4 text-base/7 text-gray-200">
           <div className="flex gap-x-4">
