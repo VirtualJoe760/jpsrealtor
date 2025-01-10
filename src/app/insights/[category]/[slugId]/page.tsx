@@ -3,6 +3,7 @@ import VariableHero from "@/components/VariableHero";
 import ReactMarkdown from "react-markdown";
 import rehypeSlug from "rehype-slug";
 import { Post } from "@/types/post";
+import Contact from "@/app/components/contact/Contact";
 
 // Dynamic metadata generation
 export async function generateMetadata({
@@ -85,22 +86,12 @@ export default async function PostPage({
           <article className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200">
             {/* Markdown Rendering */}
             <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown>
+            <hr />
           </article>
         </section>
 
         {/* Call-to-Action */}
-        <div className="text-center py-10 px-5">
-          <h3 className="text-2xl font-semibold text-white mb-4">Ready to Make Your Next Real Estate Move?</h3>
-          <p className="text-gray-300 mb-6">
-            Whether you&apos;re buying, selling, or investing, I&apos;m here to guide you every step of the way.
-          </p>
-          <a
-            href="/#contact"
-            className="ml-2 px-4 py-2 bg-black text-white border border-white font-bold rounded-md hover:bg-gray-800 disabled:bg-gray-500"
-          >
-            Contact Me
-          </a>
-        </div>
+        <Contact />
       </div>
     );
   } catch (error) {
