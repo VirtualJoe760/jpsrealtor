@@ -18,7 +18,7 @@ export default function ContactInfo() {
               <NewspaperIcon className="h-8 w-7 text-gray-500" aria-hidden="true" />
             </dt>
             <dd className="text-lg font-medium text-gray-200">
-              Subscribe to Newsletter
+              Subscribe to Newsletter ➡️
             </dd>
           </div>
 
