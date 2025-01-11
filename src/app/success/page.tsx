@@ -28,7 +28,7 @@ export default function SuccessPage() {
           </h2>
           <p className="text-lg leading-relaxed">
             I’m excited to connect with you soon and assist you in finding your dream home here in
-            the stunning Coachella Valley. Together, we’ll make your real estate journey smooth,
+            the stunning Coachella Valley. <strong>In a moment you will recieve a confirmation email for your subscription to the newsletter. Make sure you click the confirmation button.</strong> Together, we’ll make your real estate journey smooth,
             successful, and truly enjoyable.
           </p>
           <div className="mt-8">
