@@ -56,10 +56,11 @@ export async function POST(req: NextRequest) {
       `,
     };
 
+    // Confirmation Email to the User
     const userMailOptions = {
       from: EMAIL_USER,
       to: email,
-      subject: "Lets keep in touch, I'm here anytime.",
+      subject: "Let's keep in touch, I'm here anytime.",
       html: `
         <div>
           <h1>Thank You, ${firstName} ${lastName}!</h1>
@@ -92,13 +93,12 @@ export async function POST(req: NextRequest) {
             Thank you for reaching out, and I look forward to assisting you with your real estate journey.
           </p>
     
-          <p>Best regards,<br>Joseph Sardella<br>Your Trusted Coachella Valley Realtor</p>
+          <p>Best regards,<br>Joseph Sardella | eXp Realty of Southern California<br>Your Trusted Coachella Valley Realtor<br>DRE# 02106916</p>
         </div>
       `,
     };
-    
 
-    // Send emails
+    // Send Emails
     await transporter.sendMail(adminMailOptions);
     await transporter.sendMail(userMailOptions);
 
@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           email,
+          phone_number: phone, // Map `phone` to `phone_number`
           first_name: firstName,
           last_name: lastName,
           lists: [listId],
