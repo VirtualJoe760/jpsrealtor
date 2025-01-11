@@ -56,23 +56,47 @@ export async function POST(req: NextRequest) {
       `,
     };
 
-    // Confirmation email to the User
     const userMailOptions = {
       from: EMAIL_USER,
       to: email,
-      subject: "Thank You for Contacting Us!",
+      subject: "Lets keep in touch, I'm here anytime.",
       html: `
-        <div style="background-color: #000; color: #fff; font-family: 'Raleway', sans-serif; padding: 20px; text-align: center;">
-          <h1 style="font-size: 2rem; font-weight: 600; margin-bottom: 1rem;">
-            Thank You, ${firstName} ${lastName}!
-          </h1>
-          <p style="font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.6;">
+        <div>
+          <h1>Thank You, ${firstName} ${lastName}!</h1>
+          <p>
             We’re excited to help you achieve your real estate goals here in the beautiful Coachella Valley. 
-            Whether you’re buying, selling, or exploring options, we’re here to make your experience seamless and successful.
+            Whether you’re buying, selling, or just exploring your options, we’re here to make your experience as seamless as possible.
           </p>
+          <p>
+            You should also receive a confirmation email shortly for subscribing to my newsletter. 
+            Be sure to check your inbox for the latest updates and insights into the Coachella Valley real estate market.
+          </p>
+    
+          <h2>Explore More on Our Website</h2>
+          <ul>
+            <li><a href="https://www.jpsrealtor.com/insights">Read Real Estate Insights</a></li>
+            <li><a href="https://www.jpsrealtor.com/neighborhoods">Explore Neighborhoods</a></li>
+            <li><a href="https://www.jpsrealtor.com/listings">View Available Listings</a></li>
+            <li><a href="https://www.jpsrealtor.com/contact">Contact Us</a></li>
+          </ul>
+    
+          <p>
+            If you have any questions or need immediate assistance, feel free to reach out to me directly at:
+          </p>
+          <p>
+            Phone: <a href="tel:7608336334">760-833-6334</a><br>
+            Email: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a>
+          </p>
+    
+          <p>
+            Thank you for reaching out, and I look forward to assisting you with your real estate journey.
+          </p>
+    
+          <p>Best regards,<br>Joseph Sardella<br>Your Trusted Coachella Valley Realtor</p>
         </div>
       `,
     };
+    
 
     // Send emails
     await transporter.sendMail(adminMailOptions);
