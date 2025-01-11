@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           email,
+          address,
           phone_number: phone, // Map `phone` to `phone_number`
           first_name: firstName,
           last_name: lastName,
