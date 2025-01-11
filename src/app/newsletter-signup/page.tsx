@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 
 export async function generateMetadata() {
   return {
-    title: "Newsletter Signup - Stay Updated with Real Estate Trends",
+    title: "Newsletter Signup | Joseph Sardella | JPSREALTOR",
     description:
       "Sign up for our newsletter and get the latest Coachella Valley real estate updates, national trends, local events, and market insights delivered straight to your inbox.",
     openGraph: {
-      title: "Newsletter Signup - Stay Updated with Real Estate Trends",
+      title: "Newsletter Signup | Joseph Sardella | JPSREALTOR",
       description:
         "Subscribe now to receive weekly Coachella Valley updates, national real estate trends, and tips for buyers, sellers, and investors. No spam—just valuable insights.",
       url: "https://jpsrealtor.com/newsletter-signup",
@@ -21,7 +21,7 @@ export async function generateMetadata() {
     },
     twitter: {
       card: "summary_large_image",
-      title: "Newsletter Signup - Real Estate Insights You Need",
+      title: "Newsletter Signup | Joseph Sardella | JPSREALTOR",
       description:
         "Subscribe to stay informed about the latest real estate trends and updates in Coachella Valley. Weekly updates with valuable content, no spam.",
       images: ["/joey/about.png"], // Replace with the full URL if hosted externally
