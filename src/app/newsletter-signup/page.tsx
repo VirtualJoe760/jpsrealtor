@@ -1,7 +1,37 @@
-"use client"; // Add this at the top to make this a Client Component
-
 import VariableHero from "@/components/VariableHero";
 import Contact from "@/components/contact/Contact";
+import type { Metadata } from "next";
+
+export async function generateMetadata() {
+  return {
+    title: "Newsletter Signup - Stay Updated with Real Estate Trends",
+    description:
+      "Sign up for our newsletter and get the latest Coachella Valley real estate updates, national trends, local events, and market insights delivered straight to your inbox.",
+    openGraph: {
+      title: "Newsletter Signup - Stay Updated with Real Estate Trends",
+      description:
+        "Subscribe now to receive weekly Coachella Valley updates, national real estate trends, and tips for buyers, sellers, and investors. No spam—just valuable insights.",
+      url: "https://jpsrealtor.com/newsletter-signup",
+      images: [
+        {
+          url: "/joey/about.png", // Replace with the full URL if hosted externally
+          alt: "Picture of Joseph Sardella",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Newsletter Signup - Real Estate Insights You Need",
+      description:
+        "Subscribe to stay informed about the latest real estate trends and updates in Coachella Valley. Weekly updates with valuable content, no spam.",
+      images: ["/joey/about.png"], // Replace with the full URL if hosted externally
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default function NewsletterSignupPage() {
   const navigateToHome = () => {
