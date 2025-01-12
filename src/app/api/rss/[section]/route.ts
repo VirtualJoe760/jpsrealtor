@@ -14,42 +14,40 @@ const baseUrl =
     : "http://localhost:3000";
 
     function getPostsBySection(section?: string) {
-        // Log the directory path
-        console.log("Posts directory path:", postsDirectory);
-      
-        // Read all files in the directory
-        const files = fs.readdirSync(postsDirectory);
-        console.log("Files in posts directory:", files);
-      
-        const posts = files
-          .map((file) => {
-            const filePath = path.join(postsDirectory, file);
-            console.log("Reading file:", filePath);
-      
-            const fileContents = fs.readFileSync(filePath, "utf8");
-            const { data } = matter(fileContents);
-            console.log(`Parsed frontmatter for ${file}:`, data);
-      
-            return {
-              title: data.title || "Untitled",
-              section: data.section || "general",
-              description: data.metaDescription || "",
-              pubDate: new Date(data.date).toUTCString(),
-              link: `${baseUrl}/blog/${file.replace(/\.mdx?$/, "")}`, // Dynamic base URL
-            };
-          })
-          .filter((post) => {
-            console.log(`Filtering post: ${post.title}, section: ${post.section}`);
-            return !section || section === "all" || post.section === section;
-          });
-      
-        console.log("Filtered posts:", posts);
-      
-        return posts.sort(
-          (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-        );
-      }
-      
+      console.log("Posts directory path:", postsDirectory);
+    
+      const files = fs.readdirSync(postsDirectory);
+      console.log("Files in posts directory:", files);
+    
+      const posts = files
+        .map((file) => {
+          const filePath = path.join(postsDirectory, file);
+          console.log("Reading file:", filePath);
+    
+          const fileContents = fs.readFileSync(filePath, "utf8");
+          const { data } = matter(fileContents);
+          console.log(`Parsed frontmatter for ${file}:`, data);
+    
+          return {
+            title: data.title || "Untitled",
+            section: data.section || "general",
+            description: data.metaDescription || "",
+            pubDate: new Date(data.date).toUTCString(),
+            link: `${baseUrl}/insights/${data.section}/${file.replace(/\.mdx?$/, "")}`, // Updated link to include section
+          };
+        })
+        .filter((post) => {
+          console.log(`Filtering post: ${post.title}, section: ${post.section}`);
+          return !section || section === "all" || post.section === section;
+        });
+    
+      console.log("Filtered posts:", posts);
+    
+      return posts.sort(
+        (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+      );
+    }
+    
 
 export async function GET(request: Request, { params }: { params: { section: string } }) {
   const { section } = params;
