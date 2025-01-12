@@ -30,7 +30,7 @@ export default function SuccessPage() {
             I’m excited to connect with you soon and assist you in finding your dream home here in
             the stunning Coachella Valley. 
             </p>
-            <p className="text-xl mt-2 leading-relaxed"><strong>In a moment you will recieve a confirmation email for your subscription to the newsletter. Make sure you click the confirmation button.</strong>
+            <p className="text-xl mt-2 text-yellow-200 leading-relaxed"><strong>In a moment you will recieve a confirmation email for your subscription to the newsletter. Make sure you click the confirmation button.</strong>
             </p>
             <p className="text-lg mt-2 leading-relaxed">Together, we’ll make your real estate journey smooth,
             successful, and truly enjoyable.

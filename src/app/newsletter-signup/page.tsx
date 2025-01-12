@@ -56,8 +56,8 @@ export default function NewsletterSignupPage() {
           <p className="text-lg leading-relaxed">
             When you subscribe to my Newsletter you will get all the latest information about the Coachella Valley straight from my website into your email. I'm not one to spam and send a bunch of annoying emails. When you signup you will get a few emails from me right away mainly just confirming you are signed up.
           </p>
-          <p className="text-xl mt-3 leading-relaxed">
-          <strong>Make sure you open the confirmation email and confirm your subscription after filling out this form.</strong>
+          <p className="text-xl text-yellow-200 mt-3 leading-relaxed">
+          <strong>Make sure you open the confirmation email and click the button to confirm your subscription after filling out this form.</strong>
           </p>
           <p className="text-lg mt-3 leading-relaxed">
           I will send you a couple more emails in the next few days telling you cool features about my website and how to take advantage of them. Once a week I send a Coachella Valley update email which will contain links to my recent blog posts(I'm not emailing you after everytime I post, I'm not into spam).
