@@ -94,13 +94,13 @@ export default async function SubdivisionPage({
       />
 
       <section className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-36 py-12">
-        <h1 className="text-6xl font-bold mb-8 text-white">{selectedSubdivision.name}</h1>
-        <p className="text-2xl text-white leading-9 mb-12">
+        <h1 className="text-4xl font-bold mb-8 text-white">{selectedSubdivision.name}</h1>
+        <p className="text-lg text-white leading-9 mb-12">
           {selectedSubdivision.description}
         </p>
 
-        <h2 className="text-5xl font-bold mb-6 text-white">{city.name} Real Estate</h2>
-        <p className="text-2xl text-white leading-8">{city.about}</p>
+        <h2 className="text-3xl font-bold mb-6 text-white">{city.name} Real Estate</h2>
+        <p className="text-lg text-white leading-8">{city.about}</p>
       </section>
 
       {hasQ4Data && (
