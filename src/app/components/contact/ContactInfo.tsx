@@ -8,7 +8,7 @@ export default function ContactInfo() {
         <h2 className="text-pretty text-4xl font-semibold tracking-tight sm:text-5xl">
           Let&apos;s Connect
         </h2>
-        <p className="mt-6 text-lg/8 text-gray-200">
+        <p className="mt-6 md:text-lg sm:text-base text-gray-200">
           Reach out today to discuss your property needs. Whether you&apos;re looking to buy, sell, or simply get advice, I&apos;m here to help. You can also share photos of your property with me! I also offer a live chat that goes directly to my cell on the website you can access by clicking the message button on the right-hand side of your screen.
         </p>
         <dl className="mt-10 space-y-4 text-base/7 text-gray-200">
