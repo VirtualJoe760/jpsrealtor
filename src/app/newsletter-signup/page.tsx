@@ -50,7 +50,7 @@ export default function NewsletterSignupPage() {
       {/* Content Section */}
       <div className="flex flex-col items-center justify-center flex-grow px-6 py-20">
         <div className="max-w-3xl mb-10">
-          <h2 className="text-4xl font-bold leading-snug mb-6">
+          <h2 className="md:text-3xl lg:text-5xl text-2xl font-bold leading-snug mb-6">
             Local & National Real Estate News & Trends you need to know about!
           </h2>
           <p className="md:text-lg sm:text-base leading-relaxed">
