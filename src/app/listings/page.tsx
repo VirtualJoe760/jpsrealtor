@@ -1,5 +1,5 @@
 
-import IframeSearch from '../components/IframeSearch'
+import IframeSearch from '@/components/IframeSearch'
 
 const Listings = () => {
   return (
