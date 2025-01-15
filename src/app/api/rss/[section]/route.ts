@@ -11,20 +11,20 @@ const baseUrl =
     ? "https://www.jpsrealtor.com"
     : "http://localhost:3000";
 
-function getPostsBySection(section?: string) {
-  console.log("Posts directory path:", postsDirectory);
+function ensureAbsoluteUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url; // It's already an absolute URL
+  }
+  return `${baseUrl}${url}`; // Prepend baseUrl for relative URLs
+}
 
+function getPostsBySection(section?: string) {
   const files = fs.readdirSync(postsDirectory);
-  console.log("Files in posts directory:", files);
 
   const posts = files
     .map((file) => {
-      const filePath = path.join(postsDirectory, file);
-      console.log("Reading file:", filePath);
-
-      const fileContents = fs.readFileSync(filePath, "utf8");
+      const fileContents = fs.readFileSync(path.join(postsDirectory, file), "utf8");
       const { data } = matter(fileContents);
-      console.log(`Parsed frontmatter for ${file}:`, data);
 
       return {
         title: data.title || "Untitled",
@@ -33,21 +33,15 @@ function getPostsBySection(section?: string) {
         description: data.metaDescription || "",
         pubDate: new Date(data.date).toUTCString(),
         link: `${baseUrl}/insights/${data.section}/${data.slugId || file.replace(/\.mdx?$/, "")}`,
-        image: data.image ? `${data.image}` : "",
-        ogImage: data.ogImage ? `${data.ogImage}` : "",
+        image: data.image ? ensureAbsoluteUrl(data.image) : "",
+        ogImage: data.ogImage ? ensureAbsoluteUrl(data.ogImage) : "",
         altText: data.altText || "",
       };
     })
-    .filter((post) => {
-      console.log(`Filtering post: ${post.title}, section: ${post.section}`);
-      return !section || section === "all" || post.section === section;
-    });
+    .filter((post) => !section || section === "all" || post.section === section)
+    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
 
-  console.log("Filtered posts:", posts);
-
-  return posts.sort(
-    (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-  );
+  return posts;
 }
 
 export async function GET(
@@ -55,13 +49,11 @@ export async function GET(
   { params }: { params: { section: string } }
 ) {
   const { section } = params;
-
-  console.log("Requested section:", section);
+  const feedUrl = `${baseUrl}/api/rss/${section}`;
 
   const posts = getPostsBySection(section);
 
   if (posts.length === 0) {
-    console.error("No posts found for the given section:", section);
     return new NextResponse("No posts found for the given section", { status: 404 });
   }
 
@@ -71,13 +63,15 @@ export async function GET(
       { link: post.link },
       { description: post.description },
       { pubDate: post.pubDate },
+      { guid: post.link },
       ...(post.image
         ? [
             {
               enclosure: {
                 _attr: {
                   url: post.image,
-                  type: "image/png", // Adjust type if images are not PNG
+                  type: post.image.endsWith(".png") ? "image/png" : "image/jpeg",
+                  length: "12345", // Replace with actual size if available
                 },
               },
             },
@@ -90,16 +84,29 @@ export async function GET(
     ],
   }));
 
-  console.log("RSS items:", items);
-
   const feed = [
     {
       rss: [
-        { _attr: { version: "2.0", "xmlns:media": "http://search.yahoo.com/mrss/" } },
+        {
+          _attr: {
+            version: "2.0",
+            "xmlns:media": "http://search.yahoo.com/mrss/",
+            "xmlns:atom": "http://www.w3.org/2005/Atom",
+          },
+        },
         {
           channel: [
             { title: `Blog - ${section || "All Sections"}` },
             { link: baseUrl },
+            {
+              "atom:link": {
+                _attr: {
+                  href: feedUrl,
+                  rel: "self",
+                  type: "application/rss+xml",
+                },
+              },
+            },
             { description: "Latest blog posts" },
             ...items,
           ],
@@ -107,8 +114,6 @@ export async function GET(
       ],
     },
   ];
-
-  console.log("Generated RSS feed:", feed);
 
   return new NextResponse(xml(feed, { declaration: true }), {
     headers: {
