@@ -1,49 +1,24 @@
 import { getPostBySlug } from "@/utils/fetchPosts";
 import VariableHero from "@/components/VariableHero";
-import ReactMarkdown from "react-markdown";
-import rehypeSlug from "rehype-slug";
-import { Post } from "@/types/post";
 import Contact from "@/app/components/contact/Contact";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import { serialize } from "next-mdx-remote/serialize";
+import rehypeSlug from "rehype-slug";
+import YouTube from "@/components/mdx/YouTube";
+import { Post } from "@/types/post";
 
-// Dynamic metadata generation
-export async function generateMetadata({
-  params,
-}: {
-  params: { category: string; slugId: string };
-}) {
-  const { slugId } = params; // Destructure params directly
+import ReactMarkdown from "react-markdown";
 
-  if (!slugId) {
-    console.error("Missing slugId for metadata.");
-    return { title: "Post Not Found", description: "Content not found." };
-  }
-
-  const post = await getPostBySlug(slugId).catch(() => null);
-
-  if (!post) {
-    return {
-      title: "Post Not Found",
-      description: "The requested blog post does not exist.",
-    };
-  }
-
-  return {
-    title: post.title || "Untitled Blog Post",
-    description: post.metaDescription || post.description || "Explore real estate insights.",
-    openGraph: {
-      title: post.title || "Untitled Blog Post",
-      description: post.metaDescription || post.description || "Explore real estate insights.",
-      images: [{ url: post.image || "/default-og-image.jpg", alt: post.altText || "Hero Image" }],
-    },
-  };
-}
+const components = {
+  YouTube, // Register the YouTube component for MDX rendering
+};
 
 export default async function PostPage({
   params,
 }: {
   params: { category: string; slugId: string };
 }) {
-  const { slugId } = params; // Destructure params directly
+  const { slugId } = params;
 
   if (!slugId) {
     console.error("Missing slugId parameter in URL.");
@@ -72,6 +47,22 @@ export default async function PostPage({
       );
     }
 
+    const mdxSource = await serialize(post.content, {
+      mdxOptions: {
+        rehypePlugins: [rehypeSlug],
+      },
+    });
+
+    // Debug logging
+    // console.log("Serialized MDX Source Keys:", Object.keys(mdxSource));
+    // console.log("Compiled Source Length:", mdxSource.compiledSource.length);
+    // console.log("Compiled Source Preview:", mdxSource.compiledSource.slice(0, 200));
+    // if (mdxSource.compiledSource.includes("YouTube")) {
+    //   console.log("YouTube component is recognized in MDX.");
+    // } else {
+    //   console.log("YouTube component is missing in MDX.");
+    // }
+
     return (
       <div className="bg-black text-white">
         {/* Hero Section */}
@@ -84,8 +75,8 @@ export default async function PostPage({
         {/* Blog Content */}
         <section className="mx-5 2xl:px-[30%] lg:px-40 my-10 py-10 px-2">
           <article className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200">
-            {/* Markdown Rendering */}
-            <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown>
+          {/* <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown> */}
+          <MDXRemote source={post.content} components={{YouTube}}/>
             <hr />
           </article>
         </section>

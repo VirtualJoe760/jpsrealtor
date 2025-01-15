@@ -1,5 +1,6 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
+import YouTube from "@/components/mdx/YouTube";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -11,5 +12,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       }
       return <a href={href} {...props} target="_blank" rel="noopener noreferrer" />;
     },
+    YouTube,
   };
 }
