@@ -7,7 +7,38 @@ import rehypeSlug from "rehype-slug";
 import YouTube from "@/components/mdx/YouTube";
 import { Post } from "@/types/post";
 
-import ReactMarkdown from "react-markdown";
+// Dynamic metadata generation
+export async function generateMetadata({
+  params,
+}: {
+  params: { category: string; slugId: string };
+}) {
+  const { slugId } = params; // Destructure params directly
+
+  if (!slugId) {
+    console.error("Missing slugId for metadata.");
+    return { title: "Post Not Found", description: "Content not found." };
+  }
+
+  const post = await getPostBySlug(slugId).catch(() => null);
+
+  if (!post) {
+    return {
+      title: "Post Not Found",
+      description: "The requested blog post does not exist.",
+    };
+  }
+
+  return {
+    title: post.title || "Untitled Blog Post",
+    description: post.metaDescription || post.description || "Explore real estate insights.",
+    openGraph: {
+      title: post.title || "Untitled Blog Post",
+      description: post.metaDescription || post.description || "Explore real estate insights.",
+      images: [{ url: post.image || "/default-og-image.jpg", alt: post.altText || "Hero Image" }],
+    },
+  };
+}
 
 const components = {
   YouTube, // Register the YouTube component for MDX rendering
