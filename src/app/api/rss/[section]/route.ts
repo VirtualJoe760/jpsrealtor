@@ -33,8 +33,8 @@ function getPostsBySection(section?: string) {
         description: data.metaDescription || "",
         pubDate: new Date(data.date).toUTCString(),
         link: `${baseUrl}/insights/${data.section}/${data.slugId || file.replace(/\.mdx?$/, "")}`,
-        image: data.image ? `${baseUrl}${data.image}` : "",
-        ogImage: data.ogImage ? `${baseUrl}${data.ogImage}` : "",
+        image: data.image ? `${data.image}` : "",
+        ogImage: data.ogImage ? `${data.ogImage}` : "",
         altText: data.altText || "",
       };
     })
