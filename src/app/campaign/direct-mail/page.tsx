@@ -69,7 +69,7 @@ export default function DirectMailPage() {
           <p className="text-lg leading-relaxed mb-8">
             Fill out the form below to get your free copy and start your journey to selling your
             home with confidence. Once you’ve submitted the form, be sure to confirm your
-            subscription via email to access the guide.
+            subscription via email to access the guide. Then book your appointment to meet for coffee on me.
           </p>
           <hr />
           <p className="text-lg leading-relaxed mt-8 italic">
