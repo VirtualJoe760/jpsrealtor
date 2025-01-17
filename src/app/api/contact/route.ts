@@ -72,7 +72,6 @@ export async function POST(req: NextRequest) {
             You should also receive a confirmation email shortly for subscribing to my newsletter. 
             Be sure to check your inbox for the latest updates and insights into the Coachella Valley real estate market.
           </p>
-    
           <h2>Explore More on Our Website</h2>
           <ul>
             <li><a href="https://www.jpsrealtor.com/insights">Read Real Estate Insights</a></li>
@@ -80,7 +79,6 @@ export async function POST(req: NextRequest) {
             <li><a href="https://www.jpsrealtor.com/listings">View Available Listings</a></li>
             <li><a href="https://www.jpsrealtor.com/contact">Contact Us</a></li>
           </ul>
-    
           <p>
             If you have any questions or need immediate assistance, feel free to reach out to me directly at:
           </p>
@@ -88,11 +86,7 @@ export async function POST(req: NextRequest) {
             Phone: <a href="tel:7608336334">760-833-6334</a><br>
             Email: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a>
           </p>
-    
-          <p>
-            Thank you for reaching out, and I look forward to assisting you with your real estate journey.
-          </p>
-    
+          <p>Thank you for reaching out, and I look forward to assisting you with your real estate journey.</p>
           <p>Best regards,<br>Joseph Sardella | eXp Realty of Southern California<br>Your Trusted Coachella Valley Realtor<br>DRE# 02106916</p>
         </div>
       `,
@@ -104,9 +98,11 @@ export async function POST(req: NextRequest) {
 
     // Handle SendFox Subscription
     if (optIn && SENDFOX_API_TOKEN) {
-      const listId = await getListId(SENDFOX_API_TOKEN, "jpsrealtor");
+      const urlPath = req.nextUrl.pathname; // Get the URL path
+      const listId = await getListId(SENDFOX_API_TOKEN, urlPath);
+
       if (!listId) {
-        console.error("Failed to fetch the SendFox list ID for 'jpsrealtor'.");
+        console.error("Failed to fetch the SendFox list ID.");
         throw new Error("Unable to subscribe user to mailing list.");
       }
 
@@ -119,7 +115,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           email,
           address,
-          phone_number: phone, // Map `phone` to `phone_number`
+          phone_number: phone,
           first_name: firstName,
           last_name: lastName,
           lists: [listId],

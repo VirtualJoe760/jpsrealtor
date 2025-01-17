@@ -1,6 +1,7 @@
 // src/app/success/page.tsx
 import VariableHero from "@/components/VariableHero";
 import BackButton from "@/components/BackButton";
+import BookAppointmentButton from "../components/BookAppointmentButton";
 
 export default function SuccessPage() {
     const handleBack = () => {

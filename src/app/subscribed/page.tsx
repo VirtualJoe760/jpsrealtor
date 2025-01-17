@@ -1,6 +1,7 @@
 "use client"; // Add this at the top to make this a Client Component
 
 import VariableHero from "@/components/VariableHero";
+import BookAppointmentButton from "../components/BookAppointmentButton";
 
 export default function SubscribedPage() {
   const navigateToHome = () => {
@@ -18,20 +19,21 @@ export default function SubscribedPage() {
 
       {/* Content Section */}
       <div className="flex flex-col items-center justify-center flex-grow px-6 py-20">
-        <div className="text-center max-w-3xl">
+        <div className="max-w-3xl">
           <h2 className="text-4xl font-bold leading-snug mb-6">
             Did we just become best friends?
           </h2>
           <p className="text-lg leading-relaxed">
             Thank you for subscribing to the newsletter! I look forward to helping you explore the stunning Coachella Valley and guiding you toward finding your dream home. Together, we’ll make your real estate journey seamless, rewarding, and enjoyable.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 mx-auto flex justify-between">
             <button
               onClick={navigateToHome}
               className="px-6 py-3 bg-gray-700 text-white font-semibold rounded-md hover:bg-gray-600 transition-all duration-300"
             >
               Go to Home Page
             </button>
+            <BookAppointmentButton />
           </div>
         </div>
       </div>
