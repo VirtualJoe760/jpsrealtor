@@ -22,8 +22,8 @@ export const metadata = {
       "Unlock expert advice and strategies to sell your home with confidence. Get your free Ultimate Home Seller's Guide now.",
     images: [
       {
-        url: "/joey/about.png",
-        alt: "Joseph Sardella - Ultimate Home Seller's Guide",
+        url: "/misc/real-estate/kitchen/kitchen_00027_.png",
+        alt: "JPSREALTOR - Ultimate Home Seller's Guide",
       },
     ],
   },
