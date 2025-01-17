@@ -7,11 +7,13 @@ interface YouTubeEmbedProps {
 }
 
 const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ videoId, title, autoplay = false }) => {
-  const autoplayParam = autoplay ? "&autoplay=1" : "";
+  const autoplayParam = autoplay ? "?autoplay=1" : "?autoplay=0";
+  const fullUrl = `https://www.youtube.com/embed/${videoId}${autoplayParam}&rel=0&playsinline=1`;
+
   return (
     <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
       <iframe
-        src={`https://www.youtube.com/embed/${videoId}?rel=0${autoplayParam}`}
+        src={fullUrl}
         title={title || "YouTube video"}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
