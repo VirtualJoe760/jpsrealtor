@@ -12,16 +12,6 @@ export default function ContactInfo() {
           Reach out today to discuss your property needs. Whether you&apos;re looking to buy, sell, or simply get advice, I&apos;m here to help. You can also share photos of your property with me! I also offer a live chat that goes directly to my cell on the website you can access by clicking the message button on the right-hand side of your screen.
         </p>
         <dl className="mt-10 space-y-4 text-base/7 text-gray-200">
-          {/* Subscribe to Newsletter */}
-          <div className="flex gap-x-4 items-center">
-            <dt>
-              <NewspaperIcon className="h-8 w-7 text-gray-500" aria-hidden="true" />
-            </dt>
-            <dd className="text-lg font-medium text-gray-200">
-              Subscribe to Newsletter ➡️
-            </dd>
-          </div>
-
           {/* Address */}
           <div className="flex gap-x-4">
             <dt>
