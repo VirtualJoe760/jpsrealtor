@@ -5,7 +5,7 @@ import { getListId } from "@/utils/getListId";
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
-const SENDFOX_API_TOKEN = process.env.JPSREALTOR_SENDFOX_API_TOKEN;
+const JPSREALTOR_SENDFOX_API_TOKEN = process.env.JPSREALTOR_SENDFOX_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
     await transporter.sendMail(userMailOptions);
 
     // Handle SendFox Subscription
-    if (optIn && SENDFOX_API_TOKEN) {
+    if (optIn && JPSREALTOR_SENDFOX_API_TOKEN) {
       const urlPath = req.nextUrl.pathname; // Get the URL path
-      const listId = await getListId(SENDFOX_API_TOKEN, urlPath);
+      const listId = await getListId(JPSREALTOR_SENDFOX_API_TOKEN, urlPath);
 
       if (!listId) {
         console.error("Failed to fetch the SendFox list ID.");
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       const subscriptionResponse = await fetch("https://api.sendfox.com/contacts", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${SENDFOX_API_TOKEN}`,
+          Authorization: `Bearer ${JPSREALTOR_SENDFOX_API_TOKEN}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
