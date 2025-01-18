@@ -1,3 +1,5 @@
+// src\app\components\mdx\YouTube.tsx
+
 "use client";
 export default function YouTube({ id }: { id: string }) {
     return (

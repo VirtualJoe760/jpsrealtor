@@ -37,7 +37,7 @@
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
     "next.config.mjs"
-  ],
+, "src/app/utils/fetchSendFoxLists.mjs"  ],
   "exclude": [
     "node_modules",
     "**/*.test.ts",

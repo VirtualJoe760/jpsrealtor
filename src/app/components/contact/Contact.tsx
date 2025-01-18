@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // Import useRouter for navigation
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import ContactInfo from "./ContactInfo";
 import NameInput from "./NameInput";
 import EmailInput from "./EmailInput";
@@ -11,27 +11,16 @@ import MessageInput from "./MessageInput";
 import PhoneNumberInput from "./PhoneNumberInput";
 import EmailSubscribe from "./EmailSubscribe";
 import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
-import { getListId } from "@/utils/getListId";
 
-export default function Contact() {
-  const router = useRouter(); // Initialize the router
+interface ContactProps {
+  campaign?: string; // Optional campaign name
+}
+
+export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
+  const router = useRouter();
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [optIn, setOptIn] = useState(false);
-  const [listId, setListId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchListId = async () => {
-      if (process.env.JPSREALTOR_SENDFOX_API_TOKEN) {
-        const id = await getListId(process.env.JPSREALTOR_SENDFOX_API_TOKEN, "jpsrealtor");
-        setListId(id);
-      } else {
-        console.error("SendFox API token is missing");
-      }
-    };
-
-    fetchListId();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,26 +50,6 @@ export default function Contact() {
       const folderName = `${firstName}_${lastName}`.replace(/\s+/g, "_").toLowerCase();
       const uploadedPhotoUrls = await uploadToCloudinary(photos || [], folderName);
 
-      if (optIn && listId) {
-        const contactResponse = await fetch("https://api.sendfox.com/contacts", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.JPSREALTOR_SENDFOX_API_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            first_name: firstName,
-            last_name: lastName,
-            lists: [listId],
-          }),
-        });
-
-        if (!contactResponse.ok) {
-          throw new Error("Failed to add contact to SendFox list");
-        }
-      }
-
       const formData = {
         firstName,
         lastName,
@@ -90,6 +59,7 @@ export default function Contact() {
         message,
         photos: uploadedPhotoUrls,
         optIn,
+        campaign, // Include campaign name
       };
 
       console.log("Form Data Sent:", formData);
@@ -129,7 +99,7 @@ export default function Contact() {
             </div>
             <div className="mt-4">
               <EmailSubscribe
-                label="I consent to communicate via email and recieve newsletter or updates."
+                label="I consent to communicate via email and receive newsletter or updates."
                 isChecked={optIn}
                 onChange={setOptIn}
               />

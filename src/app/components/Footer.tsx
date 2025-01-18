@@ -3,9 +3,8 @@ import Link from 'next/link';
 
 const navigation = {
   main: [
-    { name: 'Book Consultation', href: '/book-appointment' },
-    { name: 'Buyers Guide', href: '/insights/real-estate-tips/ultimate-buyers-guide-coachella-valley' },
-    { name: 'Sellers Guide', href: '/insights/real-estate-tips/ultimate-sellers-guide-coachella-valley' },
+    { name: 'Book a Consultation', href: '/book-appointment' },
+    { name: 'Insights', href: '/insights/' },
     { name: 'Loans', href: 'https://myloan.intercaplending.com/homehub/signup/cache@intercaplending.com?from_mobile_share=true'},
     { name: 'Newsletter Signup', href: '/newsletter-signup' },
     { name: 'Contact', href: '/#contact' }

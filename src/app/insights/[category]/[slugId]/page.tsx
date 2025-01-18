@@ -6,6 +6,7 @@ import { serialize } from "next-mdx-remote/serialize";
 import rehypeSlug from "rehype-slug";
 import YouTube from "@/components/mdx/YouTube";
 import { Post } from "@/types/post";
+import MDXLink from "@/app/components/mdx/Link";
 
 // Dynamic metadata generation
 export async function generateMetadata({
@@ -84,16 +85,6 @@ export default async function PostPage({
       },
     });
 
-    // Debug logging
-    // console.log("Serialized MDX Source Keys:", Object.keys(mdxSource));
-    // console.log("Compiled Source Length:", mdxSource.compiledSource.length);
-    // console.log("Compiled Source Preview:", mdxSource.compiledSource.slice(0, 200));
-    // if (mdxSource.compiledSource.includes("YouTube")) {
-    //   console.log("YouTube component is recognized in MDX.");
-    // } else {
-    //   console.log("YouTube component is missing in MDX.");
-    // }
-
     return (
       <div className="bg-black text-white">
         {/* Hero Section */}
@@ -107,7 +98,7 @@ export default async function PostPage({
         <section className="mx-5 2xl:px-[30%] lg:px-40 my-10 py-10 px-2">
           <article className="prose prose-invert max-w-none prose-h1:text-white prose-h2:text-white prose-p:text-gray-200 prose-a:text-indigo-400 hover:prose-a:text-indigo-600 prose-strong:text-gray-200">
           {/* <ReactMarkdown rehypePlugins={[rehypeSlug]}>{post.content}</ReactMarkdown> */}
-          <MDXRemote source={post.content} components={{YouTube}}/>
+          <MDXRemote source={post.content} components={{YouTube, MDXLink}}/>
             <hr />
           </article>
         </section>
