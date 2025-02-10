@@ -7,11 +7,63 @@ import Navbar from "./components/navbar/Navbar";
 
 
 export const metadata: Metadata = {
-  title: "Joseph Sardella | Coachella Valley Realtor",
-  description:
-    "Experience exceptional real estate services with Joseph Sardella, your trusted Coachella Valley Realtor specializing in buying, selling, and investing in the local market.",
+  title: "Joseph Sardella | Coachella Valley Realtor for Luxury Homes & Investments",
+  description: "Buy, sell, or invest in Coachella Valley real estate with Joseph Sardella, a local expert and trusted Realtor. Specializing in luxury homes, vacation properties, and investment opportunities.",
   metadataBase: new URL("https://jpsrealtor.com"),
+  keywords: [
+    "Coachella Valley Realtor",
+    "Palm Springs homes for sale",
+    "Luxury real estate Coachella Valley",
+    "Investment properties Coachella Valley",
+    "Joseph Sardella Realtor",
+    "Coachella Valley real estate agent",
+    "Desert luxury homes",
+    "Homes near Palm Springs golf courses",
+    "Real estate investments Coachella Valley",
+    "Vacation homes in Coachella Valley",
+    "Coachella Valley real estate",
+    "Palm Desert real estate",
+    "La Quinta homes for sale",
+    "Rancho Mirage properties",
+    "Indian Wells luxury homes",
+    "Indio real estate listings",
+    "Cathedral City houses for sale",
+    "Coachella Valley luxury real estate",
+    "Golf course homes in Coachella Valley",
+    "Mid-century modern homes in Palm Springs",
+    "Gated communities in Rancho Mirage",
+    "Waterfront properties in La Quinta",
+    "jpsrealtor",
+    "jps realtor",
+    "Joseph Sardella real estate agent",
+    "Joseph Sardella Realtor",
+    "Joseph Sardella Palm Springs",
+    "Joseph Sardella Coachella Valley",
+    "Joseph Sardella real estate expert",
+    "Joseph Sardella homes for sale",
+    "Coachella Valley homes by Joseph Sardella",
+    "Joseph Sardella listings in Palm Springs",
+    "jpsrealtor.com",
+    "Indian Wells real estate",
+    "Palm Desert luxury homes",
+    "Indio houses for sale",
+    "Homes for sale in La Quinta",
+    "Cathedral City real estate",
+    "Rancho Mirage luxury homes",
+    "Indian Wells real estate agent",
+    "Homes near Indio golf courses",
+    "Palm Desert properties for sale",
+    "La Quinta gated communities",
+    "Mid-century modern homes Coachella Valley",
+    "Palm Desert mid-century modern homes",
+    "La Quinta mid-century modern homes",
+    "Rancho Mirage mid-century modern real estate",
+    "Indian Wells mid-century modern properties",
+    "Coachella Valley mid-century architecture"
+  ]
 };
+
+
 
 export default function RootLayout({
   children,
