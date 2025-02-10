@@ -43,6 +43,7 @@ export const metadata: Metadata = {
     "Joseph Sardella homes for sale",
     "Coachella Valley homes by Joseph Sardella",
     "Joseph Sardella listings in Palm Springs",
+    "jpsrealtor",
     "jpsrealtor.com",
     "Indian Wells real estate",
     "Palm Desert luxury homes",
