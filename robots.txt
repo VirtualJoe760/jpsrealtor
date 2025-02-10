@@ -12,6 +12,3 @@ Disallow: /listings/
 
 # Allow specific areas
 Allow: /
-
-# Sitemap
-Sitemap: https://jpsrealtor.com/sitemap.xml
