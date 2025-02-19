@@ -8,11 +8,21 @@ import matter from 'gray-matter';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://jpsrealtor.com';
 
+  // ✅ Add the homepage (Highest priority)
+  const homeUrl: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 1.0,
+    },
+  ];
+
   // Generate neighborhood pages
   const neighborhoodUrls: MetadataRoute.Sitemap = cities.map(city => ({
     url: `${baseUrl}/neighborhoods/${city.id}`,
     lastModified: new Date(),
-    changeFrequency: 'weekly' as const, // ✅ FIXED: Explicitly set as const
+    changeFrequency: 'weekly' as const,
     priority: 0.8,
   }));
 
@@ -24,12 +34,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return subdivisionList.map(sub => ({
       url: `${baseUrl}/neighborhoods/${matchedCity.id}/subdivisions/${sub.slug}`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const, // ✅ FIXED: Explicitly set as const
+      changeFrequency: 'weekly' as const,
       priority: 0.7,
     }));
   });
 
-  // Generate blog post pages
+  // Generate blog post pages (Now with priority 0.9!)
   const postsDir = path.join(process.cwd(), 'src/posts');
   const blogUrls: MetadataRoute.Sitemap = [];
 
@@ -45,13 +55,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
         blogUrls.push({
           url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
           lastModified: new Date(),
-          changeFrequency: 'weekly' as const, // ✅ FIXED: Explicitly set as const
-          priority: 0.6,
+          changeFrequency: 'weekly' as const,
+          priority: 0.9, // ✅ Boosted blog priority for frequent indexing
         });
       }
     });
   }
 
-  // Combine all URLs
-  return [...neighborhoodUrls, ...subdivisionUrls, ...blogUrls];
+  // Combine all URLs (Homepage first)
+  return [...homeUrl, ...neighborhoodUrls, ...subdivisionUrls, ...blogUrls];
 }
