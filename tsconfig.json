@@ -37,7 +37,7 @@
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
     "next.config.mjs"
-, "src/app/utils/fetchSendFoxLists.mjs"  ],
+, "src/app/utils/fetchSendFoxLists.mjs", "next-sitemap.config.mjs", "next-sitemap.config.js"  ],
   "exclude": [
     "node_modules",
     "**/*.test.ts",
