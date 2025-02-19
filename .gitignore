@@ -16,6 +16,9 @@
 # Creative files
 /photoshop
 
+# photos to upload to cloudinary
+/post-photos
+
 # next.js
 /.next/
 /out/
