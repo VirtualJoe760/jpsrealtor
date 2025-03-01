@@ -1,3 +1,4 @@
+ // src\app\neighborhoods\[cityId]\subdivisions\[subdivision]\page.tsx
 import React from "react";
 import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";

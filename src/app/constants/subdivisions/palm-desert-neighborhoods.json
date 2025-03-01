@@ -485,94 +485,6 @@
     "slug": "belmonte-estates"
   },
   {
-    "id": 35,
-    "name": "Avondale Country Club",
-    "description": "Avondale Country Club is a prestigious gated community featuring custom-built homes and an 18-hole golf course. Residents enjoy world-class amenities and a vibrant social atmosphere.",
-    "photo": "https://example.com/avondale-country-club.jpg",
-    "features": [
-      "Custom-built homes",
-      "18-hole golf course",
-      "World-class amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7379,
-      "longitude": -116.3534
-    },
-    "keywords": [
-      "Avondale Country Club homes for sale",
-      "Living in Avondale Palm Desert",
-      "Golf communities in Palm Desert"
-    ],
-    "slug": "avondale-country-club"
-  },
-  {
-    "id": 36,
-    "name": "Montecito Homes",
-    "description": "Montecito Homes is a boutique gated community offering contemporary homes with stylish interiors and large private yards. It’s perfect for families and professionals seeking modern living.",
-    "photo": "https://example.com/montecito-homes.jpg",
-    "features": [
-      "Contemporary homes",
-      "Private yards",
-      "Boutique community"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7462,
-      "longitude": -116.3598
-    },
-    "keywords": [
-      "Montecito Homes for sale",
-      "Living in Montecito Homes Palm Desert",
-      "Modern homes in Palm Desert"
-    ],
-    "slug": "montecito-homes"
-  },
-  {
-    "id": 37,
-    "name": "Hovley Estates",
-    "description": "Hovley Estates is a well-established neighborhood offering single-family homes with spacious layouts and easy access to schools, parks, and shopping centers.",
-    "photo": "https://example.com/hovley-estates.jpg",
-    "features": [
-      "Single-family homes",
-      "Proximity to parks",
-      "Well-established neighborhood"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7372,
-      "longitude": -116.3724
-    },
-    "keywords": [
-      "Hovley Estates homes for sale",
-      "Living in Hovley Estates Palm Desert",
-      "Family neighborhoods in Palm Desert"
-    ],
-    "slug": "hovley-estates"
-  },
-  {
-    "id": 40,
-    "name": "The Enclave",
-    "description": "The Enclave is an exclusive gated community featuring custom luxury homes with expansive layouts and high-end finishes. Residents enjoy privacy and proximity to local amenities.",
-    "photo": "https://example.com/the-enclave.jpg",
-    "features": [
-      "Custom luxury homes",
-      "Exclusive community",
-      "Proximity to amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7438,
-      "longitude": -116.3675
-    },
-    "keywords": [
-      "The Enclave homes for sale",
-      "Living in The Enclave Palm Desert",
-      "Luxury homes in Palm Desert"
-    ],
-    "slug": "the-enclave"
-  },
-  {
     "id": 41,
     "name": "Villa Montego",
     "description": "Villa Montego is a tranquil community offering single-family homes with spacious layouts and private yards. Its peaceful streets and close proximity to local schools make it a great choice for families.",
@@ -593,94 +505,6 @@
       "Family neighborhoods in Palm Desert"
     ],
     "slug": "villa-montego"
-  },
-  {
-    "id": 42,
-    "name": "Corsican Villas",
-    "description": "Corsican Villas is a gated community offering charming condos with access to pools, tennis courts, and beautifully maintained green spaces. Ideal for those seeking a quiet, low-maintenance lifestyle.",
-    "photo": "https://example.com/corsican-villas.jpg",
-    "features": [
-      "Charming condos",
-      "Community pools",
-      "Low-maintenance living"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7276,
-      "longitude": -116.3674
-    },
-    "keywords": [
-      "Corsican Villas homes for sale",
-      "Living in Corsican Villas Palm Desert",
-      "Gated communities in Palm Desert"
-    ],
-    "slug": "corsican-villas"
-  },
-  {
-    "id": 43,
-    "name": "Park Palms",
-    "description": "Park Palms is a lush community featuring townhomes and condos surrounded by picturesque lakes and greenbelts. Residents enjoy a clubhouse, pool, and active social events.",
-    "photo": "https://example.com/park-palms.jpg",
-    "features": [
-      "Townhomes and condos",
-      "Picturesque lakes",
-      "Active social events"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7473,
-      "longitude": -116.3685
-    },
-    "keywords": [
-      "Park Palms homes for sale",
-      "Living in Park Palms Palm Desert",
-      "Condos in Palm Desert"
-    ],
-    "slug": "park-palms"
-  },
-  {
-    "id": 44,
-    "name": "Crestview Estates",
-    "description": "Crestview Estates is a hillside community offering custom-built homes with panoramic mountain and valley views. It’s a favorite for those seeking luxury and privacy.",
-    "photo": "https://example.com/crestview-estates.jpg",
-    "features": [
-      "Custom-built homes",
-      "Panoramic views",
-      "Hillside living"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7012,
-      "longitude": -116.3893
-    },
-    "keywords": [
-      "Crestview Estates homes for sale",
-      "Living in Crestview Estates Palm Desert",
-      "Luxury neighborhoods in Palm Desert"
-    ],
-    "slug": "crestview-estates"
-  },
-  {
-    "id": 45,
-    "name": "Sunrise Palms",
-    "description": "Sunrise Palms is a gated community offering townhomes with private patios and community amenities such as pools, spas, and tennis courts. It’s ideal for those seeking affordability and convenience.",
-    "photo": "https://example.com/sunrise-palms.jpg",
-    "features": [
-      "Townhomes",
-      "Private patios",
-      "Community amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7354,
-      "longitude": -116.3661
-    },
-    "keywords": [
-      "Sunrise Palms homes for sale",
-      "Living in Sunrise Palms Palm Desert",
-      "Affordable neighborhoods in Palm Desert"
-    ],
-    "slug": "sunrise-palms"
   },
   {
     "id": 46,
@@ -705,50 +529,6 @@
     "slug": "hacienda-del-sol"
   },
   {
-    "id": 47,
-    "name": "Sandpiper Palm Desert",
-    "description": "Sandpiper is a mid-century modern condo community designed by architect William Krisel, offering stylish homes surrounded by greenbelts and pools. It’s a landmark of modernist design.",
-    "photo": "https://example.com/sandpiper.jpg",
-    "features": [
-      "Mid-century modern condos",
-      "Greenbelts",
-      "Historic architecture"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7189,
-      "longitude": -116.3725
-    },
-    "keywords": [
-      "Sandpiper homes for sale",
-      "Living in Sandpiper Palm Desert",
-      "Mid-century modern neighborhoods in Palm Desert"
-    ],
-    "slug": "sandpiper-palm-desert"
-  },
-  {
-    "id": 48,
-    "name": "Indian Ridge Villas",
-    "description": "Indian Ridge Villas is a luxurious community offering elegant homes with golf course views, private pools, and access to world-class club amenities.",
-    "photo": "https://example.com/indian-ridge-villas.jpg",
-    "features": [
-      "Elegant homes",
-      "Golf course views",
-      "Private pools"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7482,
-      "longitude": -116.3347
-    },
-    "keywords": [
-      "Indian Ridge Villas homes for sale",
-      "Living in Indian Ridge Villas Palm Desert",
-      "Luxury golf communities in Palm Desert"
-    ],
-    "slug": "indian-ridge-villas"
-  },
-  {
     "id": 49,
     "name": "Cahuilla Hills",
     "description": "Cahuilla Hills offers spacious lots and custom homes in a rural setting, perfect for buyers seeking privacy and stunning mountain views. It’s an ideal retreat close to nature.",
@@ -771,50 +551,6 @@
     "slug": "cahuilla-hills"
   },
   {
-    "id": 50,
-    "name": "Toscana Country Club",
-    "description": "Toscana Country Club is an exclusive, gated community offering custom-built luxury homes, championship golf courses, and a full suite of resort-style amenities.",
-    "photo": "https://example.com/toscana-country-club.jpg",
-    "features": [
-      "Luxury homes",
-      "Championship golf",
-      "Resort-style amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7457,
-      "longitude": -116.359
-    },
-    "keywords": [
-      "Toscana Country Club homes for sale",
-      "Living in Toscana Palm Desert",
-      "Luxury golf communities in Palm Desert"
-    ],
-    "slug": "toscana-country-club"
-  },
-  {
-    "id": 51,
-    "name": "Palisades Estates",
-    "description": "Palisades Estates is a serene neighborhood featuring single-family homes with spacious lots and private pools. Residents enjoy easy access to local schools and shopping centers.",
-    "photo": "https://example.com/palisades-estates.jpg",
-    "features": [
-      "Single-family homes",
-      "Private pools",
-      "Spacious lots"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7349,
-      "longitude": -116.3768
-    },
-    "keywords": [
-      "Palisades Estates homes for sale",
-      "Living in Palisades Estates Palm Desert",
-      "Family neighborhoods in Palm Desert"
-    ],
-    "slug": "palisades-estates"
-  },
-  {
     "id": 52,
     "name": "Hidden Palms",
     "description": "Hidden Palms is a gated community featuring condos with access to pools, tennis courts, and walking paths. Its central location is perfect for those seeking convenience and a peaceful lifestyle.",
@@ -835,72 +571,6 @@
       "Condos in Palm Desert"
     ],
     "slug": "hidden-palms"
-  },
-  {
-    "id": 53,
-    "name": "Palm Desert Estates",
-    "description": "Palm Desert Estates offers custom-built homes with large lots, ideal for families and professionals seeking privacy and a tranquil environment near the heart of Palm Desert.",
-    "photo": "https://example.com/palm-desert-estates.jpg",
-    "features": [
-      "Custom-built homes",
-      "Large lots",
-      "Tranquil environment"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7355,
-      "longitude": -116.3625
-    },
-    "keywords": [
-      "Palm Desert Estates homes for sale",
-      "Living in Palm Desert Estates",
-      "Custom homes in Palm Desert"
-    ],
-    "slug": "palm-desert-estates"
-  },
-  {
-    "id": 54,
-    "name": "Royal Palms",
-    "description": "Royal Palms is a 55+ community offering affordable manufactured homes with access to a community pool, clubhouse, and recreational activities for active adults.",
-    "photo": "https://example.com/royal-palms.jpg",
-    "features": [
-      "55+ community",
-      "Affordable homes",
-      "Community amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7535,
-      "longitude": -116.3687
-    },
-    "keywords": [
-      "Royal Palms homes for sale",
-      "Living in Royal Palms Palm Desert",
-      "55+ communities in Palm Desert"
-    ],
-    "slug": "royal-palms"
-  },
-  {
-    "id": 55,
-    "name": "Woodhaven Country Club",
-    "description": "Woodhaven Country Club is a gated golf course community offering condos and single-family homes surrounded by lush fairways and scenic landscapes.",
-    "photo": "https://example.com/woodhaven-country-club.jpg",
-    "features": [
-      "Golf course community",
-      "Condos and homes",
-      "Scenic fairways"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7492,
-      "longitude": -116.3605
-    },
-    "keywords": [
-      "Woodhaven Country Club homes for sale",
-      "Living in Woodhaven Palm Desert",
-      "Golf communities in Palm Desert"
-    ],
-    "slug": "woodhaven-country-club"
   },
   {
     "id": 56,
@@ -947,116 +617,6 @@
     "slug": "lantana"
   },
   {
-    "id": 58,
-    "name": "Palm Gate",
-    "description": "Palm Gate is a gated community featuring spacious single-family homes with large yards. Its convenient location near schools and parks makes it a popular choice for families.",
-    "photo": "https://example.com/palm-gate.jpg",
-    "features": [
-      "Gated community",
-      "Large yards",
-      "Family-friendly"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7382,
-      "longitude": -116.3684
-    },
-    "keywords": [
-      "Palm Gate homes for sale",
-      "Living in Palm Gate Palm Desert",
-      "Gated communities in Palm Desert"
-    ],
-    "slug": "palm-gate"
-  },
-  {
-    "id": 59,
-    "name": "Waring Place",
-    "description": "Waring Place is a charming gated neighborhood offering single-family homes with spacious layouts and community amenities like parks and walking trails.",
-    "photo": "https://example.com/waring-place.jpg",
-    "features": [
-      "Gated community",
-      "Spacious homes",
-      "Community parks"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7401,
-      "longitude": -116.3747
-    },
-    "keywords": [
-      "Waring Place homes for sale",
-      "Living in Waring Place Palm Desert",
-      "Family-friendly neighborhoods in Palm Desert"
-    ],
-    "slug": "waring-place"
-  },
-  {
-    "id": 60,
-    "name": "El Paseo Village",
-    "description": "Located near the heart of Palm Desert’s shopping district, El Paseo Village offers luxury condos and modern homes with easy access to dining, boutiques, and art galleries.",
-    "photo": "https://example.com/el-paseo-village.jpg",
-    "features": [
-      "Luxury condos",
-      "Proximity to shopping",
-      "Modern homes"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7199,
-      "longitude": -116.3744
-    },
-    "keywords": [
-      "El Paseo Village homes for sale",
-      "Living in El Paseo Village Palm Desert",
-      "Luxury condos in Palm Desert"
-    ],
-    "slug": "el-paseo-village"
-  },
-  {
-    "id": 61,
-    "name": "Vista Paseo",
-    "description": "Vista Paseo is an upscale neighborhood nestled near the foothills, offering custom-built homes with spacious layouts and stunning views of the valley.",
-    "photo": "https://example.com/vista-paseo.jpg",
-    "features": [
-      "Custom-built homes",
-      "Spacious layouts",
-      "Scenic views"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7004,
-      "longitude": -116.4015
-    },
-    "keywords": [
-      "Vista Paseo homes for sale",
-      "Living in Vista Paseo Palm Desert",
-      "Luxury neighborhoods in Palm Desert"
-    ],
-    "slug": "vista-paseo"
-  },
-  {
-    "id": 62,
-    "name": "Brava",
-    "description": "Brava is a gated community offering Mediterranean-style townhomes with stylish interiors and lush courtyards. Residents enjoy a pool, spa, and a central location.",
-    "photo": "https://example.com/brava.jpg",
-    "features": [
-      "Mediterranean-style townhomes",
-      "Community pool and spa",
-      "Lush courtyards"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7412,
-      "longitude": -116.3598
-    },
-    "keywords": [
-      "Brava homes for sale",
-      "Living in Brava Palm Desert",
-      "Mediterranean-style homes in Palm Desert"
-    ],
-    "slug": "brava"
-  },
-  {
     "id": 63,
     "name": "Sunterrace",
     "description": "Sunterrace is a boutique gated community featuring custom homes with modern designs and private pools. Its quiet streets and lush landscaping make it a sought-after address.",
@@ -1101,72 +661,6 @@
     "slug": "the-grove"
   },
   {
-    "id": 65,
-    "name": "Monte Sereno Estates",
-    "description": "Monte Sereno Estates is an exclusive gated community offering custom-built luxury homes with expansive layouts and breathtaking views of the surrounding desert and mountains.",
-    "photo": "https://example.com/monte-sereno-estates.jpg",
-    "features": [
-      "Custom-built luxury homes",
-      "Expansive layouts",
-      "Breathtaking views"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.6978,
-      "longitude": -116.4045
-    },
-    "keywords": [
-      "Monte Sereno Estates homes for sale",
-      "Living in Monte Sereno Estates Palm Desert",
-      "Luxury neighborhoods in Palm Desert"
-    ],
-    "slug": "monte-sereno-estates"
-  },
-  {
-    "id": 66,
-    "name": "Palm Desert Resort Country Club",
-    "description": "Palm Desert Resort Country Club is a vibrant golf course community featuring affordable condos and townhomes, with access to pools, tennis courts, and a championship golf course.",
-    "photo": "https://example.com/palm-desert-resort.jpg",
-    "features": [
-      "Golf course community",
-      "Affordable condos",
-      "Community amenities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7515,
-      "longitude": -116.3534
-    },
-    "keywords": [
-      "Palm Desert Resort homes for sale",
-      "Living in Palm Desert Resort Palm Desert",
-      "Golf course condos in Palm Desert"
-    ],
-    "slug": "palm-desert-resort-country-club"
-  },
-  {
-    "id": 67,
-    "name": "Hidden Valley Estates",
-    "description": "Hidden Valley Estates is a serene community offering custom homes with spacious lots and lush desert landscaping, providing residents with privacy and a tranquil living experience.",
-    "photo": "https://example.com/hidden-valley-estates.jpg",
-    "features": [
-      "Custom homes",
-      "Spacious lots",
-      "Lush desert landscaping"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7128,
-      "longitude": -116.3746
-    },
-    "keywords": [
-      "Hidden Valley Estates homes for sale",
-      "Living in Hidden Valley Estates Palm Desert",
-      "Tranquil neighborhoods in Palm Desert"
-    ],
-    "slug": "hidden-valley-estates"
-  },
-  {
     "id": 68,
     "name": "Oasis Country Club",
     "description": "Oasis Country Club is a gated golf community featuring condos and single-family homes with access to an executive golf course, pools, and a clubhouse for social events.",
@@ -1187,28 +681,6 @@
       "Golf communities in Palm Desert"
     ],
     "slug": "oasis-country-club"
-  },
-  {
-    "id": 69,
-    "name": "Venezia",
-    "description": "Venezia is a boutique gated community offering Mediterranean-style homes with elegant designs and private pools. The community’s quiet streets and lush landscaping make it highly desirable.",
-    "photo": "https://example.com/venezia.jpg",
-    "features": [
-      "Mediterranean-style homes",
-      "Private pools",
-      "Boutique community"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7421,
-      "longitude": -116.3574
-    },
-    "keywords": [
-      "Venezia homes for sale",
-      "Living in Venezia Palm Desert",
-      "Mediterranean homes in Palm Desert"
-    ],
-    "slug": "venezia"
   },
   {
     "id": 70,
@@ -1255,50 +727,6 @@
     "slug": "palm-desert-country-club"
   },
   {
-    "id": 72,
-    "name": "The Estates at Palm Desert",
-    "description": "The Estates at Palm Desert is a prestigious community featuring luxury homes with expansive floor plans, private pools, and stunning views of the desert and mountains.",
-    "photo": "https://example.com/estates-at-palm-desert.jpg",
-    "features": [
-      "Luxury homes",
-      "Private pools",
-      "Stunning views"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7402,
-      "longitude": -116.3689
-    },
-    "keywords": [
-      "The Estates at Palm Desert homes for sale",
-      "Living in The Estates Palm Desert",
-      "Luxury communities in Palm Desert"
-    ],
-    "slug": "the-estates-at-palm-desert"
-  },
-  {
-    "id": 73,
-    "name": "Hovley Court",
-    "description": "Hovley Court is a small, gated community offering elegant homes with spacious interiors and private yards. Its central location provides easy access to shopping, dining, and schools.",
-    "photo": "https://example.com/hovley-court.jpg",
-    "features": [
-      "Gated community",
-      "Elegant homes",
-      "Central location"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7389,
-      "longitude": -116.3645
-    },
-    "keywords": [
-      "Hovley Court homes for sale",
-      "Living in Hovley Court Palm Desert",
-      "Gated neighborhoods in Palm Desert"
-    ],
-    "slug": "hovley-court"
-  },
-  {
     "id": 74,
     "name": "Desert Horizons Country Club",
     "description": "Desert Horizons Country Club is a prestigious community featuring luxury homes and condos surrounding a championship golf course. Residents enjoy scenic fairways and world-class amenities.",
@@ -1319,28 +747,6 @@
       "Golf communities in Palm Desert"
     ],
     "slug": "desert-horizons-country-club"
-  },
-  {
-    "id": 75,
-    "name": "Montego Dunes",
-    "description": "Montego Dunes is a peaceful neighborhood offering modern homes with stylish interiors and private pools. Its proximity to parks and schools makes it ideal for families.",
-    "photo": "https://example.com/montego-dunes.jpg",
-    "features": [
-      "Modern homes",
-      "Private pools",
-      "Family-friendly"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7392,
-      "longitude": -116.3704
-    },
-    "keywords": [
-      "Montego Dunes homes for sale",
-      "Living in Montego Dunes Palm Desert",
-      "Modern neighborhoods in Palm Desert"
-    ],
-    "slug": "montego-dunes"
   },
   {
     "id": 76,
@@ -1365,28 +771,6 @@
     "slug": "the-summit"
   },
   {
-    "id": 77,
-    "name": "Rancho Vista",
-    "description": "Rancho Vista is a quiet neighborhood offering single-family homes with spacious yards. It’s a great choice for those seeking affordability and a strong sense of community.",
-    "photo": "https://example.com/rancho-vista.jpg",
-    "features": [
-      "Affordable homes",
-      "Spacious yards",
-      "Community-oriented"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7504,
-      "longitude": -116.3618
-    },
-    "keywords": [
-      "Rancho Vista homes for sale",
-      "Living in Rancho Vista Palm Desert",
-      "Affordable homes in Palm Desert"
-    ],
-    "slug": "rancho-vista"
-  },
-  {
     "id": 78,
     "name": "Portola Country Club",
     "description": "Portola Country Club is a 55+ active adult community featuring manufactured homes, a private golf course, and a range of social activities for residents.",
@@ -1407,50 +791,6 @@
       "55+ communities in Palm Desert"
     ],
     "slug": "portola-country-club"
-  },
-  {
-    "id": 79,
-    "name": "Belmont at Mission Hills",
-    "description": "Belmont at Mission Hills is a luxurious gated community offering modern homes with elegant designs and access to world-class golf courses and amenities.",
-    "photo": "https://example.com/belmont-mission-hills.jpg",
-    "features": [
-      "Modern homes",
-      "Gated community",
-      "Golf course access"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7345,
-      "longitude": -116.3687
-    },
-    "keywords": [
-      "Belmont at Mission Hills homes for sale",
-      "Living in Belmont Mission Hills Palm Desert",
-      "Luxury communities in Palm Desert"
-    ],
-    "slug": "belmont-at-mission-hills"
-  },
-  {
-    "id": 80,
-    "name": "Palm Lakes",
-    "description": "Palm Lakes is a gated condominium community offering stylish residences with access to pools, a clubhouse, and fitness facilities. Its central location is perfect for convenience and comfort.",
-    "photo": "https://example.com/palm-lakes.jpg",
-    "features": [
-      "Gated community",
-      "Stylish condos",
-      "Fitness facilities"
-    ],
-    "location": "Palm Desert, CA",
-    "coordinates": {
-      "latitude": 33.7482,
-      "longitude": -116.3641
-    },
-    "keywords": [
-      "Palm Lakes condos for sale",
-      "Living in Palm Lakes Palm Desert",
-      "Condos in Palm Desert"
-    ],
-    "slug": "palm-lakes"
   },
   {
     "id": 81,
