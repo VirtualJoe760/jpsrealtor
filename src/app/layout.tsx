@@ -7,10 +7,18 @@ import Navbar from "./components/navbar/Navbar";
 
 
 export const metadata: Metadata = {
-  title: "Joseph Sardella | Top Realtor Palm Springs Midcentury Modern | JPS Realtor",
+  title: "Joseph Sardella | Coachella Valley Realtor | JPS Realtor",
   description: "Buy, sell, or invest in the Greater Palm Springs real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley Area. If you are looking for Palm Springs Luxury Real Estate, Midcentury Modern, or Investment properties like Coachella Valley Multifamily properties, Joseph Sardella is the Real Estate Agent for you. Whether you are a First time Home buyer, Short Term Rental Investor, or looking for a vacation home in Palm Springs Joseph Sardella can help you accomplish your goals and save money. Fill out the contact form and find your next property today.",
   metadataBase: new URL("https://jpsrealtor.com"),
   keywords: [
+    "Palm Springs Realtor",
+    "Top Agent Palm Springs",
+    "Top Realtor Palm Springs",
+    "Top Realtors Palm Springs",
+    "Joseph Sardella",
+    "Joey Sardella",
+    "Joe Sardella",
+    "Palm Springs Midcentury Modern",
     "Coachella Valley Realtor",
     "Palm Springs homes for sale",
     "Luxury real estate Coachella Valley",
