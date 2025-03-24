@@ -5,10 +5,10 @@ import "@fontsource/raleway"; // Importing Raleway
 import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 
-
 export const metadata: Metadata = {
   title: "Joseph Sardella | Palm Desert Realtor | JPS Realtor",
-  description: "Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley Area. If you are looking for Palm Springs Luxury Real Estate, Midcentury Modern, or Investment properties like Coachella Valley Multifamily properties, Joseph Sardella is the Real Estate Agent for you. Whether you are a First time Home buyer, Short Term Rental Investor, or looking for a vacation home in Palm Springs Joseph Sardella can help you accomplish your goals and save money. Fill out the contact form and find your next property today.",
+  description:
+    "Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley Area. If you are looking for Palm Springs Luxury Real Estate, Midcentury Modern, or Investment properties like Coachella Valley Multifamily properties, Joseph Sardella is the Real Estate Agent for you. Whether you are a First time Home buyer, Short Term Rental Investor, or looking for a vacation home in Palm Springs Joseph Sardella can help you accomplish your goals and save money. Fill out the contact form and find your next property today.",
   metadataBase: new URL("https://jpsrealtor.com"),
   keywords: [
     "Palm Springs Realtor",
@@ -70,8 +70,8 @@ export const metadata: Metadata = {
     "La Quinta mid-century modern homes",
     "Rancho Mirage mid-century modern real estate",
     "Indian Wells mid-century modern properties",
-    "Coachella Valley mid-century architecture"
-  ]
+    "Coachella Valley mid-century architecture",
+  ],
 };
 
 export default function RootLayout({
@@ -84,13 +84,11 @@ export default function RootLayout({
       <head>
         {/* Google Analytics */}
         <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=G-613BBEB2FS`}
-        strategy="afterInteractive"
+          src={`https://www.googletagmanager.com/gtag/js?id=G-613BBEB2FS`}
+          strategy="afterInteractive"
         />
-        <Script
-        id="google-analytics"
-        strategy="afterInteractive">
-        {`
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
@@ -98,11 +96,28 @@ export default function RootLayout({
           gtag('config', 'G-613BBEB2FS');
           `}
         </Script>
+        
+        {/* Google Ads Global Site Tag*/}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-16865609876"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'AW-16865609876');
+          `}
+        </Script>
+
         {/* Tidio Chat Widget */}
         <Script
           src="//code.tidio.co/yfsps2esbezj0qmtplraoxxjdbvmb2td.js"
           strategy="lazyOnload" // Load after the page has loaded
         />
+        
       </head>
       <body>
         <Navbar />
