@@ -63,5 +63,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   // Combine all URLs (Homepage first)
-  return [...homeUrl, ...neighborhoodUrls, ...subdivisionUrls, ...blogUrls];
+  const allUrls = [...homeUrl, ...neighborhoodUrls, ...subdivisionUrls, ...blogUrls];
+
+  // Generate XML content for the sitemap
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+  <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    ${allUrls
+      .map(url => {
+        // Ensure that lastModified is always a Date and handle undefined cases
+        const lastModifiedDate = url.lastModified instanceof Date ? url.lastModified : new Date();
+
+        return `
+        <url>
+          <loc>${url.url}</loc>
+          <lastmod>${lastModifiedDate.toISOString()}</lastmod>
+          <changefreq>${url.changeFrequency}</changefreq>
+          <priority>${url.priority}</priority>
+        </url>`;
+      })
+      .join('')}
+  </urlset>`;
+
+  // Write the generated sitemap to the public directory as sitemap.xml
+  const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+  fs.writeFileSync(sitemapPath, sitemapXml);
+
+  // Return the URLs for use in the Sitemap generation for other purposes (not needed in this case if we're writing to a file)
+  return allUrls;
 }

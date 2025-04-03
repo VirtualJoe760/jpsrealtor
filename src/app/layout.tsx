@@ -117,6 +117,9 @@ export default function RootLayout({
           src="//code.tidio.co/yfsps2esbezj0qmtplraoxxjdbvmb2td.js"
           strategy="lazyOnload" // Load after the page has loaded
         />
+        {/* Sitemap Reference */}
+        
+        <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         
       </head>
       <body>
