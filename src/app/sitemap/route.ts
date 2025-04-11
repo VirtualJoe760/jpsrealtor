@@ -16,7 +16,7 @@ export async function GET() {
   urls.push({
     url: `${baseUrl}/`,
     lastModified: now,
-    changeFrequency: 'weekly',
+    changeFrequency: 'daily',
     priority: 1.0,
   });
 
@@ -25,8 +25,8 @@ export async function GET() {
     urls.push({
       url: `${baseUrl}/neighborhoods/${city.id}`,
       lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
+      changeFrequency: 'daily',
+      priority: 1.0,
     });
   });
 
@@ -39,8 +39,8 @@ export async function GET() {
       urls.push({
         url: `${baseUrl}/neighborhoods/${city.id}/subdivisions/${sub.slug}`,
         lastModified: now,
-        changeFrequency: 'weekly',
-        priority: 0.7,
+        changeFrequency: 'daily',
+        priority: 1.0,
       });
     });
   });
@@ -58,8 +58,8 @@ export async function GET() {
         urls.push({
           url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
           lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.9,
+          changeFrequency: 'daily',
+          priority: 1.0,
         });
       }
     });
@@ -74,7 +74,7 @@ ${urls
   <loc>${url.url}</loc>
   <lastmod>${url.lastModified}</lastmod>
   <changefreq>${url.changeFrequency}</changefreq>
-  <priority>${(url.priority ?? 0.5).toFixed(1)}</priority>
+  <priority>${(url.priority ?? 1.0).toFixed(1)}</priority>
 </url>`
   )
   .join('\n')}
