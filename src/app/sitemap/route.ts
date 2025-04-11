@@ -15,8 +15,8 @@ export async function GET() {
   // Homepage
   urls.push({
     url: `${baseUrl}/`,
-    lastModified: now,
-    changeFrequency: 'weekly',
+    lastModified: today,
+    changeFrequency: 'daily',
     priority: 1.0,
   });
 
@@ -24,9 +24,9 @@ export async function GET() {
   cities.forEach(city => {
     urls.push({
       url: `${baseUrl}/neighborhoods/${city.id}`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
+      lastModified: today,
+      changeFrequency: 'daily',
+      priority: 1.0,
     });
   });
 
@@ -38,9 +38,9 @@ export async function GET() {
     subdivisionList.forEach(sub => {
       urls.push({
         url: `${baseUrl}/neighborhoods/${city.id}/subdivisions/${sub.slug}`,
-        lastModified: now,
-        changeFrequency: 'weekly',
-        priority: 0.7,
+        lastModified: today,
+        changeFrequency: 'daily',
+        priority: 1.0,
       });
     });
   });
@@ -57,9 +57,9 @@ export async function GET() {
       if (data.slugId && data.section) {
         urls.push({
           url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
-          lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.9,
+          lastModified: today,
+          changeFrequency: 'daily',
+          priority: 1.0,
         });
       }
     });
