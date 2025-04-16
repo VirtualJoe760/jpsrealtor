@@ -22,7 +22,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ✅ NEW contact sheet
-const xlsxPath = path.join(__dirname, 'data', 'skiptrace', 'non-owner-occupied-emmcrhp-st.xlsx');
+const xlsxPath = path.join(__dirname, 'data', 'skiptrace', 'palo-alto-hills-farm-st.xlsx');
 const sentLogPath = path.join(__dirname, 'data', 'miraleste_sent_log.csv');
 
 const sentEmails = new Set<string>();
