@@ -1,0 +1,25 @@
+{
+  "Id": "20250511001803017852000000",
+  "ResourceUri": "/v1/listings/20250511001803017852000000",
+  "StandardFields": {
+    "ListAgentName": "Gregg Fletcher",
+    "MlsId": "20190211172710340762000000",
+    "ModificationTimestamp": "2025-05-15T18:47:44Z",
+    "StandardStatus": "Active",
+    "UnparsedAddress": "1480 S Sagebrush Road, Palm Springs, CA 92264",
+    "ListOfficeName": "Compass",
+    "ListingUpdateTimestamp": "2025-05-15T18:47:44Z"
+  },
+  "LastCachedTimestamp": null,
+  "DisplayCompliance": {
+    "View": "Summary",
+    "IDXLogo": {
+      "Type": "Text",
+      "LogoUri": "Compass"
+    },
+    "IDXLogoSmall": {
+      "Type": "Text",
+      "LogoUri": "IDX"
+    }
+  }
+}
