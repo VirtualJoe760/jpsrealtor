@@ -48,6 +48,35 @@ def get_db_conn():
         port=db_url.port,
         sslmode="require"
     )
+    
+def replicate_all_listings():
+    print("🚀 Starting full MLS replication (initial sync)...")
+    listings = []
+    next_token = None
+
+    while True:
+        url = f"{BASE_URL}?_limit=1000&_select={select_query}"
+        if next_token:
+            url += f"&_skiptoken={next_token}"
+
+        response = requests.get(url, headers=HEADERS)
+        data = response.json()
+
+        if response.status_code != 200 or not data.get("D", {}).get("Success"):
+            print("❌ Failed during full replication:", data)
+            break
+
+        batch = data["D"]["Results"]
+        listings.extend(batch)
+        print(f"📦 Retrieved {len(batch)} listings (Total: {len(listings)})")
+
+        next_token = data["D"].get("Next")
+        if not next_token:
+            break
+        time.sleep(0.1)
+
+    return listings
+
 
 # ✅ Load and save the last replication timestamp
 def get_last_timestamp():
@@ -175,30 +204,17 @@ def purge_old_listings(conn, valid_keys):
 # ✅ Main replication runner
 def replicate():
     conn = get_db_conn()
-    now = datetime.utcnow()
-    end_ts = now.isoformat() + "Z"
 
-    last_ts = get_last_timestamp()
-    if not last_ts:
-        print("⚠️ No previous timestamp found. Defaulting to 24 hours ago.")
-        last_ts = (now - timedelta(days=1)).isoformat() + "Z"
-
-    print(f"⏱️ Fetching updates from {last_ts} to {end_ts}")
-    listings = get_updated_listings(last_ts, end_ts)
+    # TEMPORARY: Run full sync (first time only)
+    listings = replicate_all_listings()
 
     if listings:
         upsert_listings(listings, conn)
-        save_last_timestamp(end_ts)
     else:
-        print("✅ No new listings found.")
-
-    # Purge once per day at midnight UTC
-    if now.hour == 0:
-        print("🧹 Running daily purge...")
-        active_keys = get_active_listing_keys()
-        purge_old_listings(conn, active_keys)
+        print("✅ No listings retrieved.")
 
     conn.close()
+
 
 # ✅ Run script
 if __name__ == "__main__":
