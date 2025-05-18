@@ -6,14 +6,20 @@ import psycopg2
 import psycopg2.extras
 import urllib.parse as urlparse
 from dotenv import load_dotenv
+from pathlib import Path
 from datetime import datetime, timedelta
 
-# Load env vars
-load_dotenv(".env.local")
+# ✅ Load environment from .env.local in project root
+env_path = Path(__file__).resolve().parents[3] / ".env.local"
+print(f"🔍 Loading .env from: {env_path}")
+load_dotenv(dotenv_path=env_path)
+
+# ✅ Read from environment
 ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
+print("🔑 DATABASE_URL:", DATABASE_URL)  # Optional: remove later
 
-# Spark API setup
+# ✅ Spark API setup
 BASE_URL = "https://replication.sparkapi.com/v1/listings"
 HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -29,7 +35,7 @@ SELECT_FIELDS = [
 ]
 select_query = ",".join(SELECT_FIELDS)
 
-# PostgreSQL connection from DATABASE_URL
+# ✅ Parse DATABASE_URL and return psycopg2 connection
 def get_db_conn():
     urlparse.uses_netloc.append("postgres")
     db_url = urlparse.urlparse(DATABASE_URL)
@@ -43,7 +49,7 @@ def get_db_conn():
         sslmode="require"
     )
 
-# Save and load replication timestamp
+# ✅ Load and save the last replication timestamp
 def get_last_timestamp():
     if os.path.exists(LAST_TIMESTAMP_FILE):
         with open(LAST_TIMESTAMP_FILE, "r") as f:
@@ -54,7 +60,7 @@ def save_last_timestamp(timestamp):
     with open(LAST_TIMESTAMP_FILE, "w") as f:
         f.write(timestamp)
 
-# Pull updated listings using bt (between) timestamp filter
+# ✅ Fetch all updated listings between timestamps
 def get_updated_listings(start_ts, end_ts):
     listings = []
     next_token = None
@@ -73,17 +79,16 @@ def get_updated_listings(start_ts, end_ts):
 
         results = data["D"]["Results"]
         listings.extend(results)
-        print(f"🔁 Fetched {len(results)} listings (Total so far: {len(listings)})")
+        print(f"🔁 Fetched {len(results)} listings (Total: {len(listings)})")
 
         next_token = data["D"].get("Next")
         if not next_token:
             break
-
         time.sleep(0.1)
 
     return listings
 
-# Insert or update listings in database
+# ✅ Upsert listings into the database
 def upsert_listings(listings, conn):
     with conn.cursor() as cur:
         for l in listings:
@@ -114,9 +119,9 @@ def upsert_listings(listings, conn):
                 l.get("ModificationTimestamp"),
             ))
     conn.commit()
-    print(f"📥 Upserted {len(listings)} listings into the database.")
+    print(f"📥 Upserted {len(listings)} listings.")
 
-# Get all current active ListingKeys
+# ✅ Fetch all current listing keys from Spark
 def get_active_listing_keys():
     keys = set()
     next_token = None
@@ -129,29 +134,28 @@ def get_active_listing_keys():
         data = response.json()
 
         if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print("❌ Failed to fetch active listing keys.")
+            print("❌ Failed to fetch active keys")
             break
 
         batch = data["D"]["Results"]
-        keys.update([entry["ListingKey"] for entry in batch])
+        keys.update([x["ListingKey"] for x in batch])
 
         next_token = data["D"].get("Next")
         if not next_token:
             break
-
         time.sleep(0.1)
 
-    print(f"✅ Retrieved {len(keys)} active ListingKeys.")
+    print(f"✅ Found {len(keys)} active listing keys.")
     return keys
 
-# Remove any listings no longer in the active list
+# ✅ Remove listings no longer present in Spark
 def purge_old_listings(conn, valid_keys):
     with conn.cursor() as cur:
         cur.execute("DELETE FROM listings WHERE listing_key NOT IN %s;", (tuple(valid_keys),))
     conn.commit()
-    print("🧹 Purged stale listings from database.")
+    print("🧹 Purged stale listings.")
 
-# Main replication runner
+# ✅ Main replication runner
 def replicate():
     conn = get_db_conn()
     now = datetime.utcnow()
@@ -162,22 +166,23 @@ def replicate():
         print("⚠️ No previous timestamp found. Defaulting to 24 hours ago.")
         last_ts = (now - timedelta(days=1)).isoformat() + "Z"
 
-    print(f"⏱️ Fetching updates from {last_ts} to {end_ts}...")
+    print(f"⏱️ Fetching updates from {last_ts} to {end_ts}")
     listings = get_updated_listings(last_ts, end_ts)
 
     if listings:
         upsert_listings(listings, conn)
         save_last_timestamp(end_ts)
     else:
-        print("✅ No new updates found.")
+        print("✅ No new listings found.")
 
-    # Daily cleanup at midnight UTC
+    # Purge once per day at midnight UTC
     if now.hour == 0:
-        print("🧹 Performing daily purge...")
+        print("🧹 Running daily purge...")
         active_keys = get_active_listing_keys()
         purge_old_listings(conn, active_keys)
 
     conn.close()
 
+# ✅ Run script
 if __name__ == "__main__":
     replicate()
