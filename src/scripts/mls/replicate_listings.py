@@ -99,7 +99,10 @@ def upsert_listings(listings, conn):
     with open(log_path, "a") as log_file:
         with conn.cursor() as cur:
             for l in listings:
-                if not l.get("ListingId"):
+                fields = l.get("StandardFields", {})
+                listing_id = fields.get("ListingId")
+
+                if not listing_id:
                     skipped += 1
                     log_file.write(json.dumps(l) + "\n")
                     continue
@@ -116,19 +119,19 @@ def upsert_listings(listings, conn):
                         list_price = EXCLUDED.list_price,
                         modification_timestamp = EXCLUDED.modification_timestamp;
                 """, (
-                    l.get("ListingId"),
-                    l.get("ListingKey"),
-                    l.get("StandardStatus"),
-                    l.get("ListPrice"),
-                    l.get("PropertyType"),
-                    l.get("City"),
-                    l.get("StateOrProvince"),
-                    l.get("PostalCode"),
-                    l.get("BedroomsTotal"),
-                    l.get("BathroomsTotalInteger"),
-                    l.get("LivingArea"),
-                    l.get("ListingContractDate"),
-                    l.get("ModificationTimestamp"),
+                    fields.get("ListingId"),
+                    fields.get("ListingKey"),
+                    fields.get("StandardStatus"),
+                    fields.get("ListPrice"),
+                    fields.get("PropertyType"),
+                    fields.get("City"),
+                    fields.get("StateOrProvince"),
+                    fields.get("PostalCode"),
+                    fields.get("BedroomsTotal"),
+                    fields.get("BathroomsTotalInteger"),
+                    fields.get("LivingArea"),
+                    fields.get("ListingContractDate"),
+                    fields.get("ModificationTimestamp"),
                 ))
                 valid += 1
 
