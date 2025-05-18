@@ -52,13 +52,11 @@ def get_db_conn():
 def replicate_all_listings():
     print("🚀 Starting full MLS replication (initial sync)...")
     listings = []
-    next_token = None
+    skip = 0
+    limit = 1000
 
     while True:
-        url = f"{BASE_URL}?_limit=1000&_select={select_query}"
-        if next_token:
-            url += f"&_skiptoken={next_token}"
-
+        url = f"{BASE_URL}?_limit={limit}&_skip={skip}&_select={select_query}"
         response = requests.get(url, headers=HEADERS)
         data = response.json()
 
@@ -70,9 +68,11 @@ def replicate_all_listings():
         listings.extend(batch)
         print(f"📦 Retrieved {len(batch)} listings (Total: {len(listings)})")
 
-        next_token = data["D"].get("Next")
-        if not next_token:
+        if len(batch) < limit:
+            print("🔚 No more pages — pagination ended.")
             break
+
+        skip += limit
         time.sleep(0.1)
 
     return listings
