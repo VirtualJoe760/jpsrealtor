@@ -1,68 +1,183 @@
 import os
-import requests
 import time
 import json
+import requests
+import psycopg2
+import psycopg2.extras
+import urllib.parse as urlparse
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
-# Load access token from .env.local
-load_dotenv(dotenv_path=".env.local")
+# Load env vars
+load_dotenv(".env.local")
 ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Replication endpoint
+# Spark API setup
 BASE_URL = "https://replication.sparkapi.com/v1/listings"
-
-# Headers
-headers = {
+HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
     "Accept": "application/json"
 }
+LAST_TIMESTAMP_FILE = "last_replication.txt"
 
-# Fields to keep (customize as needed)
 SELECT_FIELDS = [
     "ListingId", "ListingKey", "StandardStatus", "ListPrice",
     "PropertyType", "City", "StateOrProvince", "PostalCode",
-    "BedroomsTotal", "BathroomsTotalInteger", "LivingArea", "ListingContractDate"
+    "BedroomsTotal", "BathroomsTotalInteger", "LivingArea",
+    "ListingContractDate", "ModificationTimestamp"
 ]
 select_query = ",".join(SELECT_FIELDS)
 
-# Start the pagination
-def replicate_all_listings():
-    print("📦 Starting initial replication from Spark API...")
-    all_listings = []
-    next_token = ""
+# PostgreSQL connection from DATABASE_URL
+def get_db_conn():
+    urlparse.uses_netloc.append("postgres")
+    db_url = urlparse.urlparse(DATABASE_URL)
+
+    return psycopg2.connect(
+        dbname=db_url.path[1:],
+        user=db_url.username,
+        password=db_url.password,
+        host=db_url.hostname,
+        port=db_url.port,
+        sslmode="require"
+    )
+
+# Save and load replication timestamp
+def get_last_timestamp():
+    if os.path.exists(LAST_TIMESTAMP_FILE):
+        with open(LAST_TIMESTAMP_FILE, "r") as f:
+            return f.read().strip()
+    return None
+
+def save_last_timestamp(timestamp):
+    with open(LAST_TIMESTAMP_FILE, "w") as f:
+        f.write(timestamp)
+
+# Pull updated listings using bt (between) timestamp filter
+def get_updated_listings(start_ts, end_ts):
+    listings = []
+    next_token = None
 
     while True:
-        url = f"{BASE_URL}?_limit=1000&_select={select_query}"
+        url = f"{BASE_URL}?_limit=1000&_select={select_query}&_filter=ModificationTimestamp bt {start_ts},{end_ts}"
         if next_token:
             url += f"&_skiptoken={next_token}"
 
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=HEADERS)
         data = response.json()
 
         if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print("❌ Failed request:", data)
+            print("❌ Failed to fetch updated listings:", data)
             break
 
-        listings = data["D"]["Results"]
-        all_listings.extend(listings)
-        print(f"✅ Fetched {len(listings)} listings (Total: {len(all_listings)})")
+        results = data["D"]["Results"]
+        listings.extend(results)
+        print(f"🔁 Fetched {len(results)} listings (Total so far: {len(listings)})")
 
         next_token = data["D"].get("Next")
         if not next_token:
             break
 
-        # Optional delay to avoid rate limits
-        time.sleep(0.2)
+        time.sleep(0.1)
 
-    print(f"🎉 Replication complete. {len(all_listings)} total listings downloaded.")
-    return all_listings
+    return listings
 
-# Save to JSON (or switch to CSV/DB later)
-def save_to_json(listings, filename="replicated_listings.json"):
-    with open(filename, "w") as f:
-        json.dump(listings, f, indent=2)
-    print(f"💾 Listings saved to {filename}")
+# Insert or update listings in database
+def upsert_listings(listings, conn):
+    with conn.cursor() as cur:
+        for l in listings:
+            cur.execute("""
+                INSERT INTO listings (
+                    listing_id, listing_key, standard_status, list_price,
+                    property_type, city, state, postal_code,
+                    bedrooms_total, bathrooms_total, living_area,
+                    listing_contract_date, modification_timestamp
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (listing_id) DO UPDATE SET
+                    standard_status = EXCLUDED.standard_status,
+                    list_price = EXCLUDED.list_price,
+                    modification_timestamp = EXCLUDED.modification_timestamp;
+            """, (
+                l.get("ListingId"),
+                l.get("ListingKey"),
+                l.get("StandardStatus"),
+                l.get("ListPrice"),
+                l.get("PropertyType"),
+                l.get("City"),
+                l.get("StateOrProvince"),
+                l.get("PostalCode"),
+                l.get("BedroomsTotal"),
+                l.get("BathroomsTotalInteger"),
+                l.get("LivingArea"),
+                l.get("ListingContractDate"),
+                l.get("ModificationTimestamp"),
+            ))
+    conn.commit()
+    print(f"📥 Upserted {len(listings)} listings into the database.")
+
+# Get all current active ListingKeys
+def get_active_listing_keys():
+    keys = set()
+    next_token = None
+    while True:
+        url = f"{BASE_URL}?_limit=1000&_select=ListingKey"
+        if next_token:
+            url += f"&_skiptoken={next_token}"
+
+        response = requests.get(url, headers=HEADERS)
+        data = response.json()
+
+        if response.status_code != 200 or not data.get("D", {}).get("Success"):
+            print("❌ Failed to fetch active listing keys.")
+            break
+
+        batch = data["D"]["Results"]
+        keys.update([entry["ListingKey"] for entry in batch])
+
+        next_token = data["D"].get("Next")
+        if not next_token:
+            break
+
+        time.sleep(0.1)
+
+    print(f"✅ Retrieved {len(keys)} active ListingKeys.")
+    return keys
+
+# Remove any listings no longer in the active list
+def purge_old_listings(conn, valid_keys):
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM listings WHERE listing_key NOT IN %s;", (tuple(valid_keys),))
+    conn.commit()
+    print("🧹 Purged stale listings from database.")
+
+# Main replication runner
+def replicate():
+    conn = get_db_conn()
+    now = datetime.utcnow()
+    end_ts = now.isoformat() + "Z"
+
+    last_ts = get_last_timestamp()
+    if not last_ts:
+        print("⚠️ No previous timestamp found. Defaulting to 24 hours ago.")
+        last_ts = (now - timedelta(days=1)).isoformat() + "Z"
+
+    print(f"⏱️ Fetching updates from {last_ts} to {end_ts}...")
+    listings = get_updated_listings(last_ts, end_ts)
+
+    if listings:
+        upsert_listings(listings, conn)
+        save_last_timestamp(end_ts)
+    else:
+        print("✅ No new updates found.")
+
+    # Daily cleanup at midnight UTC
+    if now.hour == 0:
+        print("🧹 Performing daily purge...")
+        active_keys = get_active_listing_keys()
+        purge_old_listings(conn, active_keys)
+
+    conn.close()
 
 if __name__ == "__main__":
-    data = replicate_all_listings()
-    save_to_json(data)
+    replicate()
