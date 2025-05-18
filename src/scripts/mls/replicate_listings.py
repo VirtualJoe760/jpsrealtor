@@ -90,36 +90,50 @@ def get_updated_listings(start_ts, end_ts):
 
 # ✅ Upsert listings into the database
 def upsert_listings(listings, conn):
-    with conn.cursor() as cur:
-        for l in listings:
-            cur.execute("""
-                INSERT INTO listings (
-                    listing_id, listing_key, standard_status, list_price,
-                    property_type, city, state, postal_code,
-                    bedrooms_total, bathrooms_total, living_area,
-                    listing_contract_date, modification_timestamp
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (listing_id) DO UPDATE SET
-                    standard_status = EXCLUDED.standard_status,
-                    list_price = EXCLUDED.list_price,
-                    modification_timestamp = EXCLUDED.modification_timestamp;
-            """, (
-                l.get("ListingId"),
-                l.get("ListingKey"),
-                l.get("StandardStatus"),
-                l.get("ListPrice"),
-                l.get("PropertyType"),
-                l.get("City"),
-                l.get("StateOrProvince"),
-                l.get("PostalCode"),
-                l.get("BedroomsTotal"),
-                l.get("BathroomsTotalInteger"),
-                l.get("LivingArea"),
-                l.get("ListingContractDate"),
-                l.get("ModificationTimestamp"),
-            ))
+    from pathlib import Path
+
+    log_path = Path(__file__).resolve().parents[2] / "skipped_listings.jsonl"
+    skipped = 0
+    valid = 0
+
+    with open(log_path, "a") as log_file:
+        with conn.cursor() as cur:
+            for l in listings:
+                if not l.get("ListingId"):
+                    skipped += 1
+                    log_file.write(json.dumps(l) + "\n")
+                    continue
+
+                cur.execute("""
+                    INSERT INTO listings (
+                        listing_id, listing_key, standard_status, list_price,
+                        property_type, city, state, postal_code,
+                        bedrooms_total, bathrooms_total, living_area,
+                        listing_contract_date, modification_timestamp
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (listing_id) DO UPDATE SET
+                        standard_status = EXCLUDED.standard_status,
+                        list_price = EXCLUDED.list_price,
+                        modification_timestamp = EXCLUDED.modification_timestamp;
+                """, (
+                    l.get("ListingId"),
+                    l.get("ListingKey"),
+                    l.get("StandardStatus"),
+                    l.get("ListPrice"),
+                    l.get("PropertyType"),
+                    l.get("City"),
+                    l.get("StateOrProvince"),
+                    l.get("PostalCode"),
+                    l.get("BedroomsTotal"),
+                    l.get("BathroomsTotalInteger"),
+                    l.get("LivingArea"),
+                    l.get("ListingContractDate"),
+                    l.get("ModificationTimestamp"),
+                ))
+                valid += 1
+
     conn.commit()
-    print(f"📥 Upserted {len(listings)} listings.")
+    print(f"📥 Upserted {valid} listings. 🧾 Skipped {skipped} listings (see {log_path.name}).")
 
 # ✅ Fetch all current listing keys from Spark
 def get_active_listing_keys():
