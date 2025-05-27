@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Ignore MLS scripts
 src/scripts/mls/
+
+# Ingore Spark Utils files (Temporary)
+src/app/utils/spark
