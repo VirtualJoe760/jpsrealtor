@@ -1,31 +1,26 @@
 import os
-import time
 import json
+import time
 import requests
 import psycopg2
-import psycopg2.extras
 import urllib.parse as urlparse
-from dotenv import load_dotenv
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
+from dotenv import load_dotenv
 
-# ✅ Load environment from .env.local in project root
+# Load env vars
 env_path = Path(__file__).resolve().parents[3] / ".env.local"
-print(f"🔍 Loading .env from: {env_path}")
+print(f"Loading .env from: {env_path}")
 load_dotenv(dotenv_path=env_path)
 
-# ✅ Read from environment
 ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
-print("🔑 DATABASE_URL:", DATABASE_URL)  # Optional: remove later
 
-# ✅ Spark API setup
 BASE_URL = "https://replication.sparkapi.com/v1/listings"
 HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
     "Accept": "application/json"
 }
-LAST_TIMESTAMP_FILE = "last_replication.txt"
 
 SELECT_FIELDS = [
     "ListingId", "ListingKey", "StandardStatus", "ListPrice",
@@ -35,11 +30,15 @@ SELECT_FIELDS = [
 ]
 select_query = ",".join(SELECT_FIELDS)
 
-# ✅ Parse DATABASE_URL and return psycopg2 connection
+def safe_float(val):
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
 def get_db_conn():
     urlparse.uses_netloc.append("postgres")
     db_url = urlparse.urlparse(DATABASE_URL)
-
     return psycopg2.connect(
         dbname=db_url.path[1:],
         user=db_url.username,
@@ -48,89 +47,50 @@ def get_db_conn():
         port=db_url.port,
         sslmode="require"
     )
-    
+
 def replicate_all_listings():
-    print("🚀 Starting full MLS replication (initial sync)...")
+    print("Starting full MLS replication using _skiptoken...")
     listings = []
-    skip = 0
-    limit = 1000
+    skiptoken = None
+    page = 1
 
     while True:
-        url = f"{BASE_URL}?_limit={limit}&_skip={skip}&_select={select_query}"
+        url = f"{BASE_URL}?_limit=1000"
+        if skiptoken:
+            url += f"&_skiptoken={skiptoken}"
+
         response = requests.get(url, headers=HEADERS)
         data = response.json()
 
         if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print("❌ Failed during full replication:", data)
+            print(f"Failed on page {page}: {data}")
             break
 
         batch = data["D"]["Results"]
         listings.extend(batch)
-        print(f"📦 Retrieved {len(batch)} listings (Total: {len(listings)})")
+        print(f"Page {page}: Retrieved {len(batch)} listings (Total: {len(listings)})")
 
-        if len(batch) < limit:
-            print("🔚 No more pages — pagination ended.")
+        skiptoken = data["D"].get("Next")
+        if not skiptoken:
+            print("No more pages. Replication complete.")
             break
 
-        skip += limit
+        page += 1
         time.sleep(0.1)
 
     return listings
 
 
-# ✅ Load and save the last replication timestamp
-def get_last_timestamp():
-    if os.path.exists(LAST_TIMESTAMP_FILE):
-        with open(LAST_TIMESTAMP_FILE, "r") as f:
-            return f.read().strip()
-    return None
-
-def save_last_timestamp(timestamp):
-    with open(LAST_TIMESTAMP_FILE, "w") as f:
-        f.write(timestamp)
-
-# ✅ Fetch all updated listings between timestamps
-def get_updated_listings(start_ts, end_ts):
-    listings = []
-    next_token = None
-
-    while True:
-        url = f"{BASE_URL}?_limit=1000&_select={select_query}&_filter=ModificationTimestamp bt {start_ts},{end_ts}"
-        if next_token:
-            url += f"&_skiptoken={next_token}"
-
-        response = requests.get(url, headers=HEADERS)
-        data = response.json()
-
-        if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print("❌ Failed to fetch updated listings:", data)
-            break
-
-        results = data["D"]["Results"]
-        listings.extend(results)
-        print(f"🔁 Fetched {len(results)} listings (Total: {len(listings)})")
-
-        next_token = data["D"].get("Next")
-        if not next_token:
-            break
-        time.sleep(0.1)
-
-    return listings
-
-# ✅ Upsert listings into the database
 def upsert_listings(listings, conn):
-    from pathlib import Path
-
-    log_path = Path(__file__).resolve().parents[2] / "skipped_listings.jsonl"
     skipped = 0
-    valid = 0
+    inserted = 0
+    log_path = Path(__file__).resolve().parents[2] / "skipped_listings.jsonl"
 
-    with open(log_path, "a") as log_file:
-        with conn.cursor() as cur:
-            for l in listings:
-                fields = l.get("StandardFields", {})
+    with open(log_path, "a") as log_file, conn.cursor() as cur:
+        for l in listings:
+            try:
+                fields = l["StandardFields"]
                 listing_id = fields.get("ListingId")
-
                 if not listing_id:
                     skipped += 1
                     log_file.write(json.dumps(l) + "\n")
@@ -148,74 +108,37 @@ def upsert_listings(listings, conn):
                         list_price = EXCLUDED.list_price,
                         modification_timestamp = EXCLUDED.modification_timestamp;
                 """, (
-                    fields.get("ListingId"),
+                    listing_id,
                     fields.get("ListingKey"),
                     fields.get("StandardStatus"),
-                    fields.get("ListPrice"),
+                    safe_float(fields.get("ListPrice")),
                     fields.get("PropertyType"),
                     fields.get("City"),
                     fields.get("StateOrProvince"),
                     fields.get("PostalCode"),
-                    fields.get("BedroomsTotal"),
-                    fields.get("BathroomsTotalInteger"),
-                    fields.get("LivingArea"),
+                    safe_float(fields.get("BedroomsTotal")),
+                    safe_float(fields.get("BathroomsTotalInteger")),
+                    safe_float(fields.get("LivingArea")),
                     fields.get("ListingContractDate"),
                     fields.get("ModificationTimestamp"),
                 ))
-                valid += 1
+                inserted += 1
+            except Exception as e:
+                skipped += 1
+                log_file.write(json.dumps(l) + "\n")
+                print(f"Failed to insert listing {fields.get('ListingId')}: {e}")
 
     conn.commit()
-    print(f"📥 Upserted {valid} listings. 🧾 Skipped {skipped} listings (see {log_path.name}).")
+    print(f"Upsert complete: {inserted} inserted/updated, {skipped} skipped.")
 
-# ✅ Fetch all current listing keys from Spark
-def get_active_listing_keys():
-    keys = set()
-    next_token = None
-    while True:
-        url = f"{BASE_URL}?_limit=1000&_select=ListingKey"
-        if next_token:
-            url += f"&_skiptoken={next_token}"
-
-        response = requests.get(url, headers=HEADERS)
-        data = response.json()
-
-        if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print("❌ Failed to fetch active keys")
-            break
-
-        batch = data["D"]["Results"]
-        keys.update([x["ListingKey"] for x in batch])
-
-        next_token = data["D"].get("Next")
-        if not next_token:
-            break
-        time.sleep(0.1)
-
-    print(f"✅ Found {len(keys)} active listing keys.")
-    return keys
-
-# ✅ Remove listings no longer present in Spark
-def purge_old_listings(conn, valid_keys):
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM listings WHERE listing_key NOT IN %s;", (tuple(valid_keys),))
-    conn.commit()
-    print("🧹 Purged stale listings.")
-
-# ✅ Main replication runner
 def replicate():
     conn = get_db_conn()
-
-    # TEMPORARY: Run full sync (first time only)
     listings = replicate_all_listings()
-
     if listings:
         upsert_listings(listings, conn)
     else:
-        print("✅ No listings retrieved.")
-
+        print("No listings retrieved.")
     conn.close()
 
-
-# ✅ Run script
 if __name__ == "__main__":
     replicate()

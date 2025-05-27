@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Script from "next/script"; // Import Next.js Script component
+import Script from "next/script";
 import "./globals.css";
-import "@fontsource/raleway"; // Importing Raleway
+import "@fontsource/raleway";
 import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 
@@ -89,15 +89,14 @@ export default function RootLayout({
         />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', 'G-613BBEB2FS');
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-613BBEB2FS');
           `}
         </Script>
-        
-        {/* Google Ads Global Site Tag*/}
+
+        {/* Google Ads Global Site Tag */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=AW-16865609876"
           strategy="afterInteractive"
@@ -107,20 +106,42 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-
             gtag('config', 'AW-16865609876');
           `}
         </Script>
 
+        {/* Meta Pixel (Facebook Pixel) */}
+        <Script id="facebook-pixel" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '1378421466770456');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=1378421466770456&ev=PageView&noscript=1"
+          />
+        </noscript>
+
         {/* Tidio Chat Widget */}
         <Script
           src="//code.tidio.co/yfsps2esbezj0qmtplraoxxjdbvmb2td.js"
-          strategy="lazyOnload" // Load after the page has loaded
+          strategy="lazyOnload"
         />
+
         {/* Sitemap Reference */}
-        
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-        
       </head>
       <body>
         <Navbar />
