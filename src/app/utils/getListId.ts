@@ -1,17 +1,13 @@
-import { getCampaignListId } from "./campaign";
-
 /**
- * Retrieves the list ID for the given URL path or defaults to "jpsrealtor".
+ * Retrieves the list ID for "jpsrealtor" from SendFox.
  * @param apiToken The API token for SendFox.
- * @param path The pathname to determine the campaign.
  * @returns The list ID or null if not found.
  */
-export async function getListId(apiToken: string, path: string): Promise<string | null> {
-  // Determine the list name based on the URL path
-  const listName = getCampaignListId(path);
+export async function getListId(apiToken: string): Promise<string | null> {
+  const targetListName = "jpsrealtor";
+  console.log("🔍 Looking for SendFox list:", targetListName);
 
   try {
-    // Fetch available lists from SendFox
     const response = await fetch("https://api.sendfox.com/lists", {
       headers: {
         Authorization: `Bearer ${apiToken}`,
@@ -19,25 +15,28 @@ export async function getListId(apiToken: string, path: string): Promise<string 
       },
     });
 
-    // Handle errors if the response is not OK
     if (!response.ok) {
-      console.error(`Failed to fetch lists from SendFox. Status: ${response.status}`);
+      console.error(`❌ Failed to fetch lists. Status: ${response.status}`);
+      const errorText = await response.text();
+      console.error("📨 Response body:", errorText);
       return null;
     }
 
     const data: { data: { id: string; name: string }[] } = await response.json();
 
-    // Find the list matching the resolved name
-    const list = data.data.find((item) => item.name === listName);
+    console.log("📋 Lists fetched:", data.data.map((list) => list.name));
+
+    const list = data.data.find((l) => l.name.toLowerCase() === targetListName.toLowerCase());
 
     if (!list) {
-      console.warn(`List with name "${listName}" not found in SendFox.`);
+      console.warn(`⚠️ List "${targetListName}" not found in SendFox.`);
       return null;
     }
 
+    console.log(`✅ Found list "${targetListName}" with ID: ${list.id}`);
     return list.id;
   } catch (error) {
-    console.error("Error fetching list ID from SendFox:", error);
+    console.error("💥 Error contacting SendFox:", error);
     return null;
   }
 }
