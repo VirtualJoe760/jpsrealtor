@@ -1,144 +1,164 @@
 import os
-import json
-import time
 import requests
 import psycopg2
-import urllib.parse as urlparse
+from psycopg2.extras import execute_values
+from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
+import re
 
-# Load env vars
+# Load environment variables
 env_path = Path(__file__).resolve().parents[3] / ".env.local"
-print(f"Loading .env from: {env_path}")
+print(f"🔍 Loading .env from: {env_path}")
 load_dotenv(dotenv_path=env_path)
 
 ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 BASE_URL = "https://replication.sparkapi.com/v1/listings"
 HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
     "Accept": "application/json"
 }
 
-SELECT_FIELDS = [
-    "ListingId", "ListingKey", "StandardStatus", "ListPrice",
-    "PropertyType", "City", "StateOrProvince", "PostalCode",
-    "BedroomsTotal", "BathroomsTotalInteger", "LivingArea",
-    "ListingContractDate", "ModificationTimestamp"
-]
-select_query = ",".join(SELECT_FIELDS)
+LIMIT = 1000
 
-def safe_float(val):
+def safe_float(value):
     try:
-        return float(val)
-    except (ValueError, TypeError):
+        if value is None or value == "********":
+            return None
+        return float(value)
+    except:
         return None
 
-def get_db_conn():
-    urlparse.uses_netloc.append("postgres")
-    db_url = urlparse.urlparse(DATABASE_URL)
-    return psycopg2.connect(
-        dbname=db_url.path[1:],
-        user=db_url.username,
-        password=db_url.password,
-        host=db_url.hostname,
-        port=db_url.port,
-        sslmode="require"
-    )
+def safe_int(value):
+    try:
+        if value is None or value == "********":
+            return None
+        return int(float(value))
+    except:
+        return None
 
-def replicate_all_listings():
-    print("Starting full MLS replication using _skiptoken...")
-    listings = []
-    skiptoken = None
-    page = 1
+def parse_datetime(value):
+    try:
+        if not value or value == "********":
+            return None
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except:
+        return None
+
+def slugify(text):
+    if not text:
+        return ""
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9]+', '-', text)
+    return text.strip('-')
+
+def get_listing_count():
+    print("📊 Counting ALL listings in the MLS feed...")
+    url = f"{BASE_URL}?_pagination=count"
+    response = requests.get(url, headers=HEADERS)
+    data = response.json()
+    try:
+        total = data["D"]["Pagination"]["TotalRows"]
+        print(f"✅ Total listings in MLS feed: {total}")
+        return total
+    except Exception as e:
+        print(f"❌ Failed to retrieve count: {e}")
+        print("Full response:", data)
+        return 0
+
+def listing_batches():
+    """Generator that yields listing batches from the API, paginated via SkipToken."""
+    skip_token = None
 
     while True:
-        url = f"{BASE_URL}?_limit=1000"
-        if skiptoken:
-            url += f"&_skiptoken={skiptoken}"
+        if skip_token:
+            url = f"{BASE_URL}?_limit={LIMIT}&_skiptoken={skip_token}"
+        else:
+            url = f"{BASE_URL}?_limit={LIMIT}"
 
-        response = requests.get(url, headers=HEADERS)
-        data = response.json()
+        res = requests.get(url, headers=HEADERS)
+        data = res.json()
 
-        if response.status_code != 200 or not data.get("D", {}).get("Success"):
-            print(f"Failed on page {page}: {data}")
+        results = data.get("D", {}).get("Results", [])
+        new_skip_token = data.get("D", {}).get("SkipToken")
+
+        if not results or new_skip_token == skip_token:
+            print("🏁 No more listings to process.")
             break
 
-        batch = data["D"]["Results"]
-        listings.extend(batch)
-        print(f"Page {page}: Retrieved {len(batch)} listings (Total: {len(listings)})")
+        skip_token = new_skip_token
+        yield results
 
-        skiptoken = data["D"].get("Next")
-        if not skiptoken:
-            print("No more pages. Replication complete.")
-            break
+def upsert_listings(records, show_example=False):
+    if not records:
+        return
 
-        page += 1
-        time.sleep(0.1)
+    if show_example:
+        print("🔍 Example record being inserted:")
+        from pprint import pprint
+        pprint(records[0])
 
-    return listings
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
-
-def upsert_listings(listings, conn):
-    skipped = 0
-    inserted = 0
-    log_path = Path(__file__).resolve().parents[2] / "skipped_listings.jsonl"
-
-    with open(log_path, "a") as log_file, conn.cursor() as cur:
-        for l in listings:
-            try:
-                fields = l["StandardFields"]
-                listing_id = fields.get("ListingId")
-                if not listing_id:
-                    skipped += 1
-                    log_file.write(json.dumps(l) + "\n")
-                    continue
-
-                cur.execute("""
-                    INSERT INTO listings (
-                        listing_id, listing_key, standard_status, list_price,
-                        property_type, city, state, postal_code,
-                        bedrooms_total, bathrooms_total, living_area,
-                        listing_contract_date, modification_timestamp
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (listing_id) DO UPDATE SET
-                        standard_status = EXCLUDED.standard_status,
-                        list_price = EXCLUDED.list_price,
-                        modification_timestamp = EXCLUDED.modification_timestamp;
-                """, (
-                    listing_id,
-                    fields.get("ListingKey"),
-                    fields.get("StandardStatus"),
-                    safe_float(fields.get("ListPrice")),
-                    fields.get("PropertyType"),
-                    fields.get("City"),
-                    fields.get("StateOrProvince"),
-                    fields.get("PostalCode"),
-                    safe_float(fields.get("BedroomsTotal")),
-                    safe_float(fields.get("BathroomsTotalInteger")),
-                    safe_float(fields.get("LivingArea")),
-                    fields.get("ListingContractDate"),
-                    fields.get("ModificationTimestamp"),
-                ))
-                inserted += 1
-            except Exception as e:
-                skipped += 1
-                log_file.write(json.dumps(l) + "\n")
-                print(f"Failed to insert listing {fields.get('ListingId')}: {e}")
-
+    query = """
+    INSERT INTO listings_index (
+        listing_id, slug, status, list_price, bedrooms_total, bathrooms_full,
+        living_area, address, latitude, longitude, modification_timestamp
+    )
+    VALUES %s
+    ON CONFLICT (listing_id) DO UPDATE SET
+        slug = EXCLUDED.slug,
+        status = EXCLUDED.status,
+        list_price = EXCLUDED.list_price,
+        bedrooms_total = EXCLUDED.bedrooms_total,
+        bathrooms_full = EXCLUDED.bathrooms_full,
+        living_area = EXCLUDED.living_area,
+        address = EXCLUDED.address,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        modification_timestamp = EXCLUDED.modification_timestamp
+    ;
+    """
+    execute_values(cur, query, records)
     conn.commit()
-    print(f"Upsert complete: {inserted} inserted/updated, {skipped} skipped.")
-
-def replicate():
-    conn = get_db_conn()
-    listings = replicate_all_listings()
-    if listings:
-        upsert_listings(listings, conn)
-    else:
-        print("No listings retrieved.")
+    cur.close()
     conn.close()
 
+def fetch_and_upsert_all_listings():
+    print("🚀 Starting full replication with batch upserts...")
+    total_inserted = 0
+
+    for batch in listing_batches():
+        records = []
+        for listing in batch:
+            listing_id = listing.get("Id")
+            standard = listing.get("StandardFields", {})
+
+            if not listing_id:
+                continue
+
+            records.append((
+                listing_id,
+                slugify(listing_id),
+                standard.get("StandardStatus"),
+                safe_int(standard.get("ListPrice")),
+                safe_int(standard.get("BedsTotal")),
+                safe_int(standard.get("BathsFull")),
+                safe_float(standard.get("LivingArea")),
+                standard.get("UnparsedAddress"),
+                safe_float(standard.get("Latitude")),
+                safe_float(standard.get("Longitude")),
+                parse_datetime(standard.get("ModificationTimestamp")),
+            ))
+
+        show_example = total_inserted == 0
+        upsert_listings(records, show_example=show_example)
+        total_inserted += len(records)
+        print(f"✅ Upserted {len(records)} listings (Total so far: {total_inserted})")
+
 if __name__ == "__main__":
-    replicate()
+    total = get_listing_count()
+    if total > 0:
+        fetch_and_upsert_all_listings()

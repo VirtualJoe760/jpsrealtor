@@ -1,0 +1,169 @@
+"use client";
+
+import React, { useRef, useState } from "react";
+import Image from "next/image";
+import {
+  XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
+
+export type MediaItem = {
+  type: "photo" | "video";
+  src: string;
+  alt?: string;
+};
+
+interface CollageHeroProps {
+  media: MediaItem[];
+}
+
+const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [modalIndex, setModalIndex] = useState<number | null>(null);
+  const thumbScrollRef = useRef<HTMLDivElement>(null);
+
+  const current = media[currentIndex];
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % media.length);
+  };
+
+  const openModal = (index: number) => setModalIndex(index);
+  const closeModal = () => setModalIndex(null);
+  const modalPrev = () =>
+    setModalIndex((prev) => (prev! - 1 + media.length) % media.length);
+  const modalNext = () =>
+    setModalIndex((prev) => (prev! + 1) % media.length);
+
+  const scrollThumbnails = (direction: "left" | "right") => {
+    const el = thumbScrollRef.current;
+    if (el) {
+      el.scrollBy({
+        left: direction === "left" ? -200 : 200,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  return (
+    <>
+      <section className="w-full flex flex-col items-center">
+        <div className="relative w-full xl:max-w-6xl h-[600px] rounded-xl overflow-hidden">
+          {current && (
+            <>
+              <Image
+                src={current.src}
+                alt={current.alt || "Main media"}
+                fill
+                className="object-cover cursor-pointer"
+                onClick={() => openModal(currentIndex)}
+              />
+
+              <button
+                onClick={handlePrev}
+                className="absolute top-1/2 left-4 -translate-y-1/2 text-white z-10 bg-black/30 hover:bg-black/50 p-2 rounded"
+                aria-label="Previous"
+              >
+                <ChevronLeftIcon className="h-8 w-8" />
+              </button>
+              <button
+                onClick={handleNext}
+                className="absolute top-1/2 right-4 -translate-y-1/2 text-white z-10 bg-black/30 hover:bg-black/50 p-2 rounded"
+                aria-label="Next"
+              >
+                <ChevronRightIcon className="h-8 w-8" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Thumbnail carousel */}
+        <div className="relative mt-2 w-full xl:max-w-6xl overflow-hidden">
+          <button
+            onClick={() => scrollThumbnails("left")}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/30 hover:bg-black/50 p-1 rounded"
+            aria-label="Scroll Left"
+          >
+            <ChevronLeftIcon className="h-6 w-6 text-white" />
+          </button>
+
+          <div
+            ref={thumbScrollRef}
+            className="flex overflow-x-auto no-scrollbar gap-2 py-2 px-6 scroll-smooth"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {media.map((item, i) => (
+              <div
+                key={i}
+                className={`relative w-32 h-24 flex-shrink-0 cursor-pointer rounded overflow-hidden border-2 ${
+                  i === currentIndex ? "border-blue-500" : "border-transparent"
+                }`}
+                onClick={() => setCurrentIndex(i)}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.alt || `Thumb ${i}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => scrollThumbnails("right")}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/30 hover:bg-black/50 p-1 rounded"
+            aria-label="Scroll Right"
+          >
+            <ChevronRightIcon className="h-6 w-6 text-white" />
+          </button>
+        </div>
+      </section>
+
+      {/* Modal */}
+      {modalIndex !== null && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+          onClick={closeModal}
+        >
+          <div
+            className="relative w-[90vw] h-[90vh] max-w-6xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={media[modalIndex]?.src || ""}
+              alt={media[modalIndex]?.alt || "Full image"}
+              fill
+              className="object-contain"
+            />
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-white z-10"
+            >
+              <XMarkIcon className="h-8 w-8" />
+            </button>
+            <button
+              onClick={modalPrev}
+              className="absolute top-1/2 left-4 -translate-y-1/2 text-white z-10"
+            >
+              <ChevronLeftIcon className="h-10 w-10" />
+            </button>
+            <button
+              onClick={modalNext}
+              className="absolute top-1/2 right-4 -translate-y-1/2 text-white z-10"
+            >
+              <ChevronRightIcon className="h-10 w-10" />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default CollageHero;

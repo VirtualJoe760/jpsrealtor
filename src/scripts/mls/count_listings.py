@@ -15,18 +15,19 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-def count_bighorn_listings():
-    print("⛳ Counting ACTIVE listings in Bighorn Golf Club...")
-    url = f"{BASE_URL}?_pagination=count&_filter=StandardStatus eq 'Active' and SubdivisionName eq 'Bighorn Golf Club'"
+def count_all_listings():
+    print("📦 Counting ALL listings in the MLS feed via API...")
+    url = f"{BASE_URL}?_pagination=count"
+
     response = requests.get(url, headers=HEADERS)
     data = response.json()
 
     try:
         total = data["D"]["Pagination"]["TotalRows"]
-        print(f"✅ Total ACTIVE listings in Bighorn Golf Club: {total}")
+        print(f"✅ Total listings in MLS feed: {total}")
     except Exception as e:
         print(f"❌ Failed to retrieve count: {e}")
         print("Full response:", data)
 
 if __name__ == "__main__":
-    count_bighorn_listings()
+    count_all_listings()

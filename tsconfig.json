@@ -23,9 +23,10 @@
       "@/*": ["./src/*"],
       "@/components/*": ["./src/app/components/*"],
       "@/utils/*": ["./src/app/utils/*"],
-      "@/models/*": ["./src/app/models/*"],
+      "@/models/*": ["./src/models/*"],
       "@/constants/*": ["./src/app/constants/*"],
-      "@/types/*": ["./src/types/*"]
+      "@/types/*": ["./src/types/*"],
+      "@/lib/*": ["./src/lib/*"],
     },
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true
@@ -37,7 +38,7 @@
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
     "next.config.mjs"
-, "src/app/utils/fetchSendFoxLists.mjs", "next-sitemap.config.mjs", "next-sitemap.config.js", "src/scripts/mls/test.mjs"  ],
+, "src/app/utils/fetchSendFoxLists.mjs", "next-sitemap.config.mjs", "next-sitemap.config.js", "src/scripts/mls/test.mjs", "src/app/api/mls-listings/[slugAddress]/documents/route.ts"  ],
   "exclude": [
     "node_modules",
     "**/*.test.ts",

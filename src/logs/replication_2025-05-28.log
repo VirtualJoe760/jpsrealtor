@@ -1,0 +1,14 @@
+2025-05-28 08:35:11,325 [INFO] Starting full replication using _skiptoken pagination...
+2025-05-28 08:35:11,325 [INFO] Requesting page 1: https://replication.sparkapi.com/v1/listings?_limit=1000&_select=ListingId,ListingKey,StandardStatus,ListPrice,PropertyType,City,StateOrProvince,PostalCode,BedroomsTotal,BathroomsTotalInteger,LivingArea,ListingContractDate,ModificationTimestamp
+2025-05-28 08:35:13,700 [INFO] Page 1 - Retrieved 1000 listings (Total so far: 1000)
+2025-05-28 08:35:13,700 [INFO] No more pages to retrieve. Replication complete.
+2025-05-28 08:35:13,701 [INFO] Final total listings fetched: 1000
+2025-05-28 08:36:12,221 [INFO] Starting full replication using _skiptoken pagination...
+2025-05-28 08:36:12,221 [INFO] Requesting page 1: https://replication.sparkapi.com/v1/listings?_limit=1000&_select=ListingId,ListingKey,StandardStatus,ListPrice,PropertyType,City,StateOrProvince,PostalCode,BedroomsTotal,BathroomsTotalInteger,LivingArea,ListingContractDate,ModificationTimestamp
+2025-05-28 08:36:15,648 [INFO] Page 1 - Retrieved 1000 listings
+2025-05-28 08:36:15,649 [INFO] Upserting 1000 listings to the database...
+2025-05-28 08:36:59,596 [INFO] Starting full replication using _skiptoken pagination...
+2025-05-28 08:36:59,596 [INFO] Requesting page 1: https://replication.sparkapi.com/v1/listings?_limit=1000&_select=ListingId,ListingKey,StandardStatus,ListPrice,PropertyType,City,StateOrProvince,PostalCode,BedroomsTotal,BathroomsTotalInteger,LivingArea,ListingContractDate,ModificationTimestamp
+2025-05-28 08:37:01,780 [INFO] Page 1 - Retrieved 1000 listings (Total so far: 1000)
+2025-05-28 08:37:01,780 [INFO] No more pages to retrieve. Replication complete.
+2025-05-28 08:37:01,780 [INFO] Final total listings fetched: 1000
