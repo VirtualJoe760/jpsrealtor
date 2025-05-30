@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Listing from "@/models/listings";
 import Photo from "@/models/photos";
-import { fetchListingPhotos } from "@/utils/spark/photos";
+import { fetchListingPhotos } from "@/app/utils/spark/photos";
 
 export async function GET(
   req: Request,
