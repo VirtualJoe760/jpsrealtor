@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Listing from '@/models/listings';
-import { fetchFullListingDetails } from '@/app/utils/spark/fetchFullListingDetails';
-import { parseListing } from '@/app/utils/spark/parseListing';
+import { fetchFullListingDetails } from '@/utils/spark/fetchFullListingDetails';
+import { parseListing } from '@/utils/spark/parseListing';
 
 export async function GET(
   req: Request,

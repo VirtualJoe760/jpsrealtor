@@ -1,6 +1,6 @@
 import MapPageClient from "@/app/components/mls/map/MapPageClient";
 import { getListingsWithCoords } from "@/lib/api";
-import { fetchListingPhotos } from "@/app/utils/spark/photos";
+import { fetchListingPhotos } from "@/utils/spark/photos";
 import type { IListing } from "@/models/listings";
 import type { MapListing } from "@/types/types";
 import pLimit from "p-limit";
