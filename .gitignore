@@ -50,9 +50,6 @@ next-env.d.ts
 # Ignore MLS scripts
 src/scripts/mls/
 
-# Ingore Spark Utils files (Temporary)
-src/app/utils/spark
-
 # Ingore Local Logs Folder
 /local-logs
 /src/generated/prisma
