@@ -1,13 +1,31 @@
+// src/app/mls-listings/[slugAddress]/page.tsx
+
 import { notFound } from "next/navigation";
 import CollageHero from "@/app/components/mls/CollageHero";
 import FactsGrid from "@/app/components/mls/FactsGrid";
 import FeatureList from "@/app/components/mls/FeatureList";
 import ListingDescription from "@/app/components/mls/ListingDescription";
+import PropertyDetailsGrid from "@/app/components/mls/PropertyDetailsGrid";
+import SchoolInfo from "@/app/components/mls/SchoolInfo";
+import FinancialSummary from "@/app/components/mls/FinancialSummary";
 import type { Photo } from "@/types/listing";
 import type { IListing } from "@/models/listings";
 
 interface ListingPageProps {
   params: { slugAddress: string };
+}
+
+function formatListedDate(input?: string | Date): string {
+  if (!input) return "Listed date unknown";
+
+  const date = typeof input === "string" ? new Date(input) : input;
+  if (isNaN(date.getTime())) return "Listed date unknown";
+
+  return `Listed on ${date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })}`;
 }
 
 export default async function ListingPage({ params }: ListingPageProps) {
@@ -60,34 +78,58 @@ export default async function ListingPage({ params }: ListingPageProps) {
       <CollageHero media={mediaForCollage} />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="my-6">
-          <p className="text-2xl sm:text-3xl font-semibold">{listing.address}</p>
-          <p className="text-sm text-gray-300 mt-1">MLS#: {listing.listingId}</p>
+        <div className="my-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div>
+            <p className="text-2xl sm:text-3xl font-semibold">{listing.address}</p>
+            <p className="text-sm text-gray-300 mt-1">
+              MLS#: {listing.listingId} · {listing.propertyType || "Unknown Type"} · {listing.propertySubType || "Unknown Subtype"}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-4xl font-bold text-white">
+              ${listing.listPrice?.toLocaleString()}
+              {listing.propertyType?.toLowerCase().includes("lease") ? "/mo" : ""}
+            </p>
+            <p className="text-sm mt-2 text-gray-300">
+              <span
+                className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                  listing.status === "Active" ? "bg-green-600 text-white" : "bg-gray-600 text-white"
+                }`}
+              >
+                {listing.status}
+              </span>{" "}
+              · {formatListedDate(listing.onMarketDate)}
+            </p>
+          </div>
         </div>
 
         <FactsGrid
           beds={listing.bedroomsTotal}
           baths={listing.bathroomsFull}
-          halfBaths={0}
+          halfBaths={listing.bathroomsHalf ?? 0}
           sqft={listing.livingArea}
-          yearBuilt={undefined}
+          yearBuilt={listing.yearBuilt}
         />
 
         <FeatureList
-          architecture=""
+          architecture={listing.subdivisionName || ""}
           fireplaces={0}
-          heating=""
-          cooling=""
-          pool={false}
-          spa=""
-          view=""
-          furnished=""
-          hoaFee={undefined}
-          hoaFreq=""
+          heating={listing.heating || ""}
+          cooling={listing.cooling || ""}
+          pool={listing.pool}
+          spa={listing.spa ? "Yes" : "No"}
+          view={listing.view || ""}
+          furnished={listing.furnished || ""}
+          hoaFee={listing.hoaFee}
+          hoaFreq={listing.hoaFeeFrequency || ""}
         />
 
-          <ListingDescription remarks={listing.publicRemarks ?? "No description available."} />
+        <ListingDescription remarks={listing.publicRemarks ?? "No description available."} />
 
+        <PropertyDetailsGrid listing={listing} />
+        <FinancialSummary listing={listing} />
+        <SchoolInfo listing={listing} />
 
         {virtualToursData.virtualTours.length > 0 && (
           <section className="mt-10">

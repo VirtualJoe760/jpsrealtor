@@ -12,8 +12,19 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
+    // ✅ Expected total count for verification
+    const expectedCount = await Listing.countDocuments({
+      status: "Active",
+      propertyType: "A",
+      latitude: { $type: "number" },
+      longitude: { $type: "number" },
+    });
+    console.log(`✅ DB says we should have ${expectedCount} listings`);
+
+    // ✅ Fetch listings with explicit field selection
     const listings = await Listing.find({
       status: "Active",
+      propertyType: "A",
       latitude: { $type: "number" },
       longitude: { $type: "number" },
       listPrice: { $ne: null },
@@ -34,11 +45,43 @@ export async function GET(req: NextRequest) {
         "slugAddress",
         "slug",
         "publicRemarks",
+        "propertyType",
+        "status",
+        "modificationTimestamp",
       ].join(" "))
-      .limit(100)
       .lean();
 
-    console.log("📍 Found listings with coordinates:", listings.length);
+    console.log(`📍 Loaded ${listings.length} listings from MongoDB`);
+
+    // ✅ Compare slugs to detect missing
+    const allSlugs = await Listing.find({
+      status: "Active",
+      propertyType: "A",
+      latitude: { $type: "number" },
+      longitude: { $type: "number" },
+    }).select("slug").lean();
+
+    const returnedSlugs = new Set(listings.map((l) => l.slug));
+    const missing = allSlugs.filter((l) => !returnedSlugs.has(l.slug));
+    if (missing.length > 0) {
+      console.warn(`🚫 ${missing.length} listings missing from API response`);
+      console.warn("🕳️ Missing slugs:", missing.slice(0, 5).map((m) => m.slug));
+    }
+
+    // ✅ Check for specific listing
+    const targetSlug = "20250206061055758248000000";
+    const target = listings.find((l) => l.slug === targetSlug);
+
+    if (target) {
+      console.log("🎯 Target listing is in the response:", {
+        slug: target.slug,
+        address: target.address,
+        lat: target.latitude,
+        lng: target.longitude,
+      });
+    } else {
+      console.warn("⚠️ Target listing NOT found in API response");
+    }
 
     return NextResponse.json({ listings });
   } catch (error) {

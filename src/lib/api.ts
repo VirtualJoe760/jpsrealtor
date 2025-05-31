@@ -15,7 +15,20 @@ export async function getListingsWithCoords(): Promise<IListing[]> {
     }
 
     const data = await res.json();
-    return data.listings || [];
+
+    const listings: IListing[] = data.listings || [];
+
+    // ✅ Filter for valid coordinates and propertyType "A"
+    const filtered = listings.filter(
+      (l) =>
+        l.propertyType === "A" &&
+        typeof l.latitude === "number" &&
+        typeof l.longitude === "number"
+    );
+
+    console.log(`📦 Loaded ${filtered.length} residential listings with coordinates`);
+
+    return filtered;
   } catch (error) {
     console.error("❌ Failed to fetch listings from API:", error);
     return [];

@@ -50,8 +50,28 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   const [clusters, setClusters] = useState<MixedClusterFeature[]>([]);
   const mapRef = useRef<any>(null);
 
+  // ✅ Log total listings from API
+  useEffect(() => {
+    console.log(`📦 Received ${listings.length} listings from API`);
+  }, [listings]);
+
+  // ✅ Prepare geoJSON points with coordinate filtering + logging
   const geoJsonPoints: PointFeature<CustomProperties>[] = useMemo(() => {
-    return listings.map((listing) => ({
+    const valid = listings.filter(
+      (l) => typeof l.latitude === 'number' && typeof l.longitude === 'number'
+    );
+
+    const filteredOut = listings.length - valid.length;
+
+    if (filteredOut > 0) {
+      console.warn(`⚠️ Skipped ${filteredOut} listings due to missing coordinates`);
+      const skipped = listings
+        .filter((l) => typeof l.latitude !== 'number' || typeof l.longitude !== 'number')
+        .slice(0, 5);
+      console.table(skipped);
+    }
+
+    return valid.map((listing) => ({
       type: 'Feature',
       properties: {
         ...listing,
@@ -59,7 +79,7 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
       },
       geometry: {
         type: 'Point',
-        coordinates: [listing.longitude, listing.latitude],
+        coordinates: [listing.longitude!, listing.latitude!],
       },
     }));
   }, [listings]);
@@ -87,7 +107,10 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
     const bounds = map?.getBounds();
     const zoom = map?.getZoom();
 
-    if (!bounds || zoom === undefined) return;
+    if (!bounds || zoom === undefined) {
+      console.warn("❌ Map bounds or zoom not available");
+      return;
+    }
 
     const bbox: [number, number, number, number] = [
       bounds.getWest(),
@@ -101,8 +124,9 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
 
     const visible: MapListing[] = newClusters
       .filter((c) => !c.properties.cluster)
-      .map((c) => c.properties as unknown as MapListing)
-      .slice(0, 10);
+      .map((c) => c.properties as unknown as MapListing);
+
+    console.log(`🗺️ Zoom: ${zoom.toFixed(2)} | Visible listings in bounds: ${visible.length} | Total clusters: ${newClusters.length}`);
 
     setVisibleListings(visible);
   };
@@ -123,7 +147,7 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
       mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
       initialViewState={initialViewState}
       onMoveEnd={handleMoveEnd}
-      
+      onLoad={updateClusters}
     >
       {clusters.map((cluster) => {
         const [lng, lat] = cluster.geometry.coordinates as [number, number];
@@ -149,38 +173,34 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
           );
         }
 
-        if (!cluster.properties.cluster) {
-          const listing = cluster.properties;
-          const isHovered = hoveredId === listing._id;
+        const listing = cluster.properties;
+        const isHovered = hoveredId === listing._id;
 
-          return (
-            <Marker
-              key={listing._id}
-              longitude={lng}
-              latitude={lat}
-              anchor="bottom"
-              onClick={() => setSelectedId(listing._id!)}
+        return (
+          <Marker
+            key={listing._id}
+            longitude={lng}
+            latitude={lat}
+            anchor="bottom"
+            onClick={() => setSelectedId(listing._id!)}
+          >
+            <div
+              onMouseEnter={() => setHoveredId(listing._id!)}
+              onMouseLeave={() => setHoveredId(null)}
+              className={`rounded-md shadow-md px-2 py-1 text-xs whitespace-nowrap transition-colors duration-200 font-[Raleway] font-semibold ${
+                isHovered ? 'bg-emerald-400 text-black' : 'bg-emerald-600 text-white'
+              }`}
             >
-              <div
-                onMouseEnter={() => setHoveredId(listing._id!)}
-                onMouseLeave={() => setHoveredId(null)}
-                className={`rounded-md shadow-md px-2 py-1 text-xs whitespace-nowrap transition-colors duration-200 font-[Raleway] font-semibold ${
-                  isHovered ? 'bg-emerald-400 text-black' : 'bg-emerald-600 text-white'
-                }`}
-              >
-                {formatPrice(listing.listPrice)}
-                {isHovered && (
-                  <span className="ml-1">
-                    {listing.bedroomsTotal ? `🛏 ${listing.bedroomsTotal}` : ''}
-                    {listing.bathroomsFull ? ` • 🛁 ${listing.bathroomsFull}` : ''}
-                  </span>
-                )}
-              </div>
-            </Marker>
-          );
-        }
-
-        return null;
+              {formatPrice(listing.listPrice)}
+              {isHovered && (
+                <span className="ml-1">
+                  {listing.bedroomsTotal ? `🛏 ${listing.bedroomsTotal}` : ''}
+                  {listing.bathroomsFull ? ` • 🛁 ${listing.bathroomsFull}` : ''}
+                </span>
+              )}
+            </div>
+          </Marker>
+        );
       })}
 
       {selectedId && (() => {
