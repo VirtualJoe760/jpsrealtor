@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from 'react';
-import Map, { Marker, Popup, ViewState } from '@vis.gl/react-maplibre';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapListing } from '@/types/types';
-import Supercluster, { ClusterFeature, PointFeature } from 'supercluster';
+import { useEffect, useState, useRef, useMemo } from "react";
+import Map, { Marker, ViewState } from "@vis.gl/react-maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { MapListing } from "@/types/types";
+import Supercluster, { ClusterFeature, PointFeature } from "supercluster";
+import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 
 interface CustomProperties {
+  _id: string;
+  listingId: string;
   cluster: boolean;
   cluster_id?: number;
   point_count?: number;
   point_count_abbreviated?: string | number;
-  _id?: string;
   latitude?: number;
   longitude?: number;
   listPrice?: number;
@@ -29,6 +31,7 @@ interface CustomProperties {
   [key: string]: any;
 }
 
+
 type CustomClusterFeature = ClusterFeature<CustomProperties>;
 type MixedClusterFeature = CustomClusterFeature | PointFeature<CustomProperties>;
 
@@ -38,47 +41,41 @@ interface MapViewProps {
 }
 
 function formatPrice(price?: number): string {
-  if (!price) return '—';
+  if (!price) return "—";
   if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(1)}m`;
   if (price >= 1_000) return `$${(price / 1_000).toFixed(0)}k`;
   return `$${price}`;
 }
 
 export default function MapView({ listings, setVisibleListings }: MapViewProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clusters, setClusters] = useState<MixedClusterFeature[]>([]);
   const mapRef = useRef<any>(null);
 
-  // ✅ Log total listings from API
   useEffect(() => {
     console.log(`📦 Received ${listings.length} listings from API`);
   }, [listings]);
 
-  // ✅ Prepare geoJSON points with coordinate filtering + logging
   const geoJsonPoints: PointFeature<CustomProperties>[] = useMemo(() => {
     const valid = listings.filter(
-      (l) => typeof l.latitude === 'number' && typeof l.longitude === 'number'
+      (l) => typeof l.latitude === "number" && typeof l.longitude === "number"
     );
 
     const filteredOut = listings.length - valid.length;
-
     if (filteredOut > 0) {
       console.warn(`⚠️ Skipped ${filteredOut} listings due to missing coordinates`);
-      const skipped = listings
-        .filter((l) => typeof l.latitude !== 'number' || typeof l.longitude !== 'number')
-        .slice(0, 5);
-      console.table(skipped);
+      console.table(valid.slice(0, 5));
     }
 
     return valid.map((listing) => ({
-      type: 'Feature',
+      type: "Feature",
       properties: {
         ...listing,
         cluster: false,
       },
       geometry: {
-        type: 'Point',
+        type: "Point",
         coordinates: [listing.longitude!, listing.latitude!],
       },
     }));
@@ -124,9 +121,11 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
 
     const visible: MapListing[] = newClusters
       .filter((c) => !c.properties.cluster)
-      .map((c) => c.properties as unknown as MapListing);
+      .map((c) => c.properties as MapListing);
 
-    console.log(`🗺️ Zoom: ${zoom.toFixed(2)} | Visible listings in bounds: ${visible.length} | Total clusters: ${newClusters.length}`);
+    console.log(
+      `🗺️ Zoom: ${zoom.toFixed(2)} | Visible listings in bounds: ${visible.length} | Total clusters: ${newClusters.length}`
+    );
 
     setVisibleListings(visible);
   };
@@ -142,109 +141,76 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   };
 
   return (
-    <Map
-      ref={mapRef}
-      mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      initialViewState={initialViewState}
-      onMoveEnd={handleMoveEnd}
-      onLoad={updateClusters}
-    >
-      {clusters.map((cluster) => {
-        const [lng, lat] = cluster.geometry.coordinates as [number, number];
+    <>
+      <Map
+        ref={mapRef}
+        mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        initialViewState={initialViewState}
+        onMoveEnd={handleMoveEnd}
+        onLoad={updateClusters}
+      >
+        {clusters.map((cluster) => {
+          const [lng, lat] = cluster.geometry.coordinates as [number, number];
 
-        if (cluster.properties.cluster) {
+          if (cluster.properties.cluster) {
+            return (
+              <Marker
+                key={`cluster-${cluster.properties.cluster_id}`}
+                longitude={lng}
+                latitude={lat}
+                onClick={() => {
+                  const expansionZoom = Math.min(
+                    supercluster.getClusterExpansionZoom(cluster.properties.cluster_id!),
+                    20
+                  );
+                  mapRef.current?.flyTo({ center: [lng, lat], zoom: expansionZoom });
+                }}
+              >
+                <div className="bg-yellow-500 text-black text-xs font-bold rounded-full px-2 py-1">
+                  {cluster.properties.point_count}
+                </div>
+              </Marker>
+            );
+          }
+
+          const listing = cluster.properties;
+          const isHovered = hoveredId === listing._id;
+
           return (
             <Marker
-              key={`cluster-${cluster.properties.cluster_id}`}
+              key={listing._id}
               longitude={lng}
               latitude={lat}
-              onClick={() => {
-                const expansionZoom = Math.min(
-                  supercluster.getClusterExpansionZoom(cluster.properties.cluster_id!),
-                  20
-                );
-                mapRef.current?.flyTo({ center: [lng, lat], zoom: expansionZoom });
-              }}
+              anchor="bottom"
+              onClick={() => setSelectedListing(listing as MapListing)}
             >
-              <div className="bg-yellow-500 text-black text-xs font-bold rounded-full px-2 py-1">
-                {cluster.properties.point_count}
+              <div
+                onMouseEnter={() => setHoveredId(listing._id!)}
+                onMouseLeave={() => setHoveredId(null)}
+                className={`rounded-md shadow-md px-2 py-1 text-xs whitespace-nowrap transition-colors duration-200 font-[Raleway] font-semibold ${
+                  isHovered ? "bg-emerald-400 text-black" : "bg-emerald-600 text-white"
+                }`}
+              >
+                {formatPrice(listing.listPrice)}
+                {isHovered && (
+                  <span className="ml-1">
+                    {listing.bedroomsTotal ? `🛏 ${listing.bedroomsTotal}` : ""}
+                    {listing.bathroomsFull ? ` • 🛁 ${listing.bathroomsFull}` : ""}
+                  </span>
+                )}
               </div>
             </Marker>
           );
-        }
+        })}
+      </Map>
 
-        const listing = cluster.properties;
-        const isHovered = hoveredId === listing._id;
-
-        return (
-          <Marker
-            key={listing._id}
-            longitude={lng}
-            latitude={lat}
-            anchor="bottom"
-            onClick={() => setSelectedId(listing._id!)}
-          >
-            <div
-              onMouseEnter={() => setHoveredId(listing._id!)}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`rounded-md shadow-md px-2 py-1 text-xs whitespace-nowrap transition-colors duration-200 font-[Raleway] font-semibold ${
-                isHovered ? 'bg-emerald-400 text-black' : 'bg-emerald-600 text-white'
-              }`}
-            >
-              {formatPrice(listing.listPrice)}
-              {isHovered && (
-                <span className="ml-1">
-                  {listing.bedroomsTotal ? `🛏 ${listing.bedroomsTotal}` : ''}
-                  {listing.bathroomsFull ? ` • 🛁 ${listing.bathroomsFull}` : ''}
-                </span>
-              )}
-            </div>
-          </Marker>
-        );
-      })}
-
-      {selectedId && (() => {
-        const selected = listings.find((l) => l._id === selectedId);
-        if (!selected) return null;
-
-        return (
-          <Popup
-            longitude={selected.longitude}
-            latitude={selected.latitude}
-            onClose={() => setSelectedId(null)}
-            closeOnClick={false}
-            className="!bg-black !text-black !border !border-zinc-700 rounded-md shadow-lg p-2 text-sm max-w-[240px]"
-          >
-            <div className="space-y-2">
-              <img
-                src={selected.primaryPhotoUrl || "/placeholder.jpg"}
-                alt="Listing"
-                className="rounded-md w-full h-32 object-cover"
-              />
-              <div className="space-y-1">
-                <div className="text-lg font-semibold">
-                  ${selected.listPrice.toLocaleString()}
-                </div>
-                <div className="text-xs text-black">
-                  {selected.bedroomsTotal ? `🛏 ${selected.bedroomsTotal}` : ''}
-                  {selected.bathroomsFull ? ` • 🛁 ${selected.bathroomsFull}` : ''}
-                  {selected.livingArea ? ` • 📐 ${selected.livingArea.toLocaleString()} SqFt` : ''}
-                </div>
-                {selected.lotSizeSqft && (
-                  <div className="text-xs text-black">
-                    🌴 Lot: {(selected.lotSizeSqft / 43560).toFixed(2)} acres
-                  </div>
-                )}
-                {(selected.pool || selected.spa) && (
-                  <div className="text-xs text-emerald-400">
-                    {selected.pool && '🏊 Pool'}{selected.pool && selected.spa && ' + '}{selected.spa && '🛁 Spa'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Popup>
-        );
-      })()}
-    </Map>
+      {/* Custom Bottom Panel for Listing */}
+      {selectedListing && (
+        <ListingBottomPanel
+          listing={selectedListing}
+          onClose={() => setSelectedListing(null)}
+        />
+      )}
+    </>
   );
 }
