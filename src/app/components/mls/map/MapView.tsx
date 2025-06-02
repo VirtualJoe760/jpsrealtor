@@ -31,7 +31,6 @@ interface CustomProperties {
   [key: string]: any;
 }
 
-
 type CustomClusterFeature = ClusterFeature<CustomProperties>;
 type MixedClusterFeature = CustomClusterFeature | PointFeature<CustomProperties>;
 
@@ -58,15 +57,25 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   }, [listings]);
 
   const geoJsonPoints: PointFeature<CustomProperties>[] = useMemo(() => {
-    const valid = listings.filter(
-      (l) => typeof l.latitude === "number" && typeof l.longitude === "number"
-    );
+    const valid: MapListing[] = [];
+    const invalid: MapListing[] = [];
 
-    const filteredOut = listings.length - valid.length;
-    if (filteredOut > 0) {
-      console.warn(`⚠️ Skipped ${filteredOut} listings due to missing coordinates`);
-      console.table(valid.slice(0, 5));
+    for (const l of listings) {
+      const lat = Number(l.latitude);
+      const lng = Number(l.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        valid.push(l);
+      } else {
+        invalid.push(l);
+      }
     }
+
+    const miraleste = listings.find((l) =>
+      l.address?.toLowerCase().includes("miraleste")
+    );
+    console.log("🧵 Miraleste in valid?", valid.some((l) => l._id === miraleste?._id));
+    console.log("🧵 Miraleste in invalid?", invalid.some((l) => l._id === miraleste?._id));
 
     return valid.map((listing) => ({
       type: "Feature",
@@ -76,7 +85,7 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
       },
       geometry: {
         type: "Point",
-        coordinates: [listing.longitude!, listing.latitude!],
+        coordinates: [Number(listing.longitude), Number(listing.latitude)],
       },
     }));
   }, [listings]);

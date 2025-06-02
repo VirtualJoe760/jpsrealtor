@@ -9,16 +9,21 @@ import pLimit from "p-limit";
 export default async function SearchMapPage() {
   const rawListings: IListing[] = await getListingsWithCoords();
 
-  const limitedListings = rawListings
-    .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
-    .slice(0, 100);
+  // Only filter out listings that don't have required lat/lng and slug
+  const validListings = rawListings.filter(
+    (l) =>
+      typeof l.latitude === "number" &&
+      typeof l.longitude === "number" &&
+      l.slug
+  );
 
   const limit = pLimit(5);
 
   const listings: MapListing[] = await Promise.all(
-    limitedListings.map((l) =>
+    validListings.map((l) =>
       limit(async () => {
         let photoUrl = "/images/no-photo.png";
+
         try {
           const photos = await fetchListingPhotos(l.slug);
           const firstPhoto = photos?.[0];
@@ -29,14 +34,15 @@ export default async function SearchMapPage() {
             firstPhoto?.UriThumb ||
             "/images/no-photo.png";
         } catch (err) {
-          console.warn("Error fetching photo for listing:", l.slug);
+          console.warn("📛 Spark photo fetch failed for:", l.slugAddress || l.listingId);
+          // Proceed anyway with fallback image
         }
 
         return {
           _id: String(l._id),
           latitude: l.latitude!,
           longitude: l.longitude!,
-          listPrice: l.listPrice!,
+          listPrice: l.listPrice ?? 0,
           address: l.address ?? "Unknown address",
           unparsedFirstLineAddress: l.address ?? "Unknown address",
           primaryPhotoUrl: photoUrl,
@@ -53,6 +59,12 @@ export default async function SearchMapPage() {
       })
     )
   );
+
+  console.log(`✅ Loaded ${listings.length} listings`);
+  const miraleste = listings.find((l) =>
+    l.address?.toLowerCase().includes("miraleste")
+  );
+  console.log("📍 Found Miraleste?", !!miraleste);
 
   return <MapPageClient listings={listings} />;
 }

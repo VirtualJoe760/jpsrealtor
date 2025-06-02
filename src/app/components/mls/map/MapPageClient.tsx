@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { MapListing } from "@/types/types";
@@ -37,11 +37,23 @@ export default function MapPageClient({ listings }: Props) {
     touchStartX.current = null;
   };
 
+  // Prevent body scrolling when sidebar is open
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isSidebarOpen]);
+
   return (
     <>
       <MapToolbar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
-      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0">
+      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0 overflow-hidden">
         {/* Map */}
         <div className="w-full lg:w-[75%] 2xl:w-[85%]">
           <MapView listings={listings} setVisibleListings={setVisibleListings} />
