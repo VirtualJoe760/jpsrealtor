@@ -1,10 +1,9 @@
-// src/app/api/mls-listings/route.ts
-
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Listing from "@/models/listings";
+import Photo from "@/models/photos"; // ✅ Photo model
 
 export async function GET(req: NextRequest) {
   console.log("🔌 Connecting to MongoDB...");
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest) {
     });
     console.log(`✅ DB says we should have ${expectedCount} listings`);
 
-    // ✅ Fetch listings with explicit field selection
+    // ✅ Fetch active listings with relevant fields
     const listings = await Listing.find({
       status: "Active",
       propertyType: "A",
@@ -53,7 +52,23 @@ export async function GET(req: NextRequest) {
 
     console.log(`📍 Loaded ${listings.length} listings from MongoDB`);
 
-    // ✅ Compare slugs to detect missing
+    // ✅ Enrich listings with up to 3 photos each
+    const enrichedListings = await Promise.all(
+      listings.map(async (listing) => {
+        const photos = await Photo.find({ listingId: listing.listingId })
+          .sort({ primary: -1, Order: 1 }) // prioritize primary, then order
+          .limit(3)
+          .lean();
+
+        return {
+          ...listing,
+          primaryPhotoUrl: photos?.[0]?.uri800 || "/images/no-photo.png",
+          photos, // contains 1–3 photos for collage
+        };
+      })
+    );
+
+    // ✅ Optional: compare returned slugs
     const allSlugs = await Listing.find({
       status: "Active",
       propertyType: "A",
@@ -61,17 +76,16 @@ export async function GET(req: NextRequest) {
       longitude: { $type: "number" },
     }).select("slug").lean();
 
-    const returnedSlugs = new Set(listings.map((l) => l.slug));
+    const returnedSlugs = new Set(enrichedListings.map((l) => l.slug));
     const missing = allSlugs.filter((l) => !returnedSlugs.has(l.slug));
     if (missing.length > 0) {
       console.warn(`🚫 ${missing.length} listings missing from API response`);
       console.warn("🕳️ Missing slugs:", missing.slice(0, 5).map((m) => m.slug));
     }
 
-    // ✅ Check for specific listing
+    // ✅ Optional debug check
     const targetSlug = "20250206061055758248000000";
-    const target = listings.find((l) => l.slug === targetSlug);
-
+    const target = enrichedListings.find((l) => l.slug === targetSlug);
     if (target) {
       console.log("🎯 Target listing is in the response:", {
         slug: target.slug,
@@ -83,7 +97,7 @@ export async function GET(req: NextRequest) {
       console.warn("⚠️ Target listing NOT found in API response");
     }
 
-    return NextResponse.json({ listings });
+    return NextResponse.json({ listings: enrichedListings });
   } catch (error) {
     console.error("❌ Failed to fetch listings:", error);
     return NextResponse.json({ error: "Database error" }, { status: 500 });

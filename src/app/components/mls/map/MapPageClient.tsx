@@ -17,7 +17,6 @@ export default function MapPageClient({ listings }: Props) {
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
-  // ✅ Touch swipe-to-dismiss logic with type safety
   const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -40,12 +39,11 @@ export default function MapPageClient({ listings }: Props) {
 
   return (
     <>
-      {/* Mobile toolbar under navbar */}
       <MapToolbar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0">
-        {/* Map section */}
-        <div className="w-full lg:w-[75%]">
+        {/* Map */}
+        <div className="w-full lg:w-[75%] 2xl:w-[85%]">
           <MapView listings={listings} setVisibleListings={setVisibleListings} />
         </div>
 
@@ -62,10 +60,9 @@ export default function MapPageClient({ listings }: Props) {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className={`fixed top-0 right-0 h-full w-[90%] sm:w-[70%] md:w-[60%] bg-zinc-950 text-white transform transition-transform duration-300 z-40
-    ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} 
-    lg:static lg:translate-x-0 lg:w-[25%] lg:block lg:border-l border-zinc-800 overflow-y-auto px-4 py-6 pt-16 lg:pt-6`}
+            ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} 
+            lg:static lg:translate-x-0 lg:w-[25%] 2xl:w-[15%] lg:block lg:border-l border-zinc-800 overflow-y-auto px-4 py-6 pt-16 lg:pt-6`}
         >
-          {/* Mobile Close Icon */}
           <div className="flex justify-end mb-2 lg:hidden">
             <button onClick={toggleSidebar} aria-label="Close Sidebar">
               <X className="w-6 h-6 text-white" />
@@ -86,8 +83,9 @@ export default function MapPageClient({ listings }: Props) {
                   <img
                     src={listing.primaryPhotoUrl}
                     alt={listing.address}
-                    className="w-full max-h-40 object-cover group-hover:opacity-90 transition duration-200"
+                    className="w-full h-40 object-cover group-hover:opacity-90 transition duration-200"
                   />
+
                   <div className="p-4 space-y-2">
                     <p className="text-lg font-semibold text-white group-hover:text-emerald-400 transition">
                       ${listing.listPrice.toLocaleString()}
@@ -122,7 +120,6 @@ export default function MapPageClient({ listings }: Props) {
             ))}
           </ul>
         </aside>
-
       </div>
     </>
   );

@@ -8,6 +8,7 @@ import ListingDescription from "@/app/components/mls/ListingDescription";
 import PropertyDetailsGrid from "@/app/components/mls/PropertyDetailsGrid";
 import SchoolInfo from "@/app/components/mls/SchoolInfo";
 import FinancialSummary from "@/app/components/mls/FinancialSummary";
+import { getPublicRemarks } from "@/app/utils/spark/getPublicRemarks";
 import type { Photo } from "@/types/listing";
 import type { IListing } from "@/models/listings";
 
@@ -58,6 +59,9 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
   if (!listing) return notFound();
 
+  // ✅ Use ListingKey (aka slug) to get public remarks from Spark
+  const publicRemarks = await getPublicRemarks(listing.slug);
+
   const mediaForCollage = [
     ...(videos.length > 0
       ? [{
@@ -81,7 +85,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
         <div className="my-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <div>
             <p className="text-2xl sm:text-3xl font-semibold">{listing.address}</p>
-            <p className="text-sm text-gray-300 mt-1">
+            <p className="text-sm text-white mt-1">
               MLS#: {listing.listingId} · {listing.propertyType || "Unknown Type"} · {listing.propertySubType || "Unknown Subtype"}
             </p>
           </div>
@@ -91,7 +95,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
               ${listing.listPrice?.toLocaleString()}
               {listing.propertyType?.toLowerCase().includes("lease") ? "/mo" : ""}
             </p>
-            <p className="text-sm mt-2 text-gray-300">
+            <p className="text-sm mt-2 text-white">
               <span
                 className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                   listing.status === "Active" ? "bg-green-600 text-white" : "bg-gray-600 text-white"
@@ -125,7 +129,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
           hoaFreq={listing.hoaFeeFrequency || ""}
         />
 
-        <ListingDescription remarks={listing.publicRemarks ?? "No description available."} />
+        <ListingDescription remarks={publicRemarks ?? "No description available."} />
 
         <PropertyDetailsGrid listing={listing} />
         <FinancialSummary listing={listing} />

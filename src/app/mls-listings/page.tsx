@@ -1,6 +1,7 @@
+// app/mls-listings/page.tsx
 import MapPageClient from "@/app/components/mls/map/MapPageClient";
 import { getListingsWithCoords } from "@/lib/api";
-import { fetchListingPhotos } from "@/utils/spark/photos";
+import { fetchListingPhotos } from "@/app/utils/spark/photos";
 import type { IListing } from "@/models/listings";
 import type { MapListing } from "@/types/types";
 import pLimit from "p-limit";
@@ -27,8 +28,8 @@ export default async function SearchMapPage() {
             firstPhoto?.Uri640 ||
             firstPhoto?.UriThumb ||
             "/images/no-photo.png";
-        } catch {
-          console.warn("Failed to fetch photo for:", l.slug);
+        } catch (err) {
+          console.warn("Error fetching photo for listing:", l.slug);
         }
 
         return {

@@ -1,4 +1,8 @@
-// src/types/types.ts
+export interface Photo {
+  photoId: string;
+  uri800: string;
+  caption?: string;
+}
 
 export interface MapListing {
   _id: string;
@@ -7,7 +11,7 @@ export interface MapListing {
   listPrice: number;
   address: string;
   unparsedFirstLineAddress: string;
-  primaryPhotoUrl: string; // ✅ ensure this is NOT optional
+  primaryPhotoUrl: string; // ✅ required
   bedroomsTotal?: number;
   bathroomsFull?: number;
   livingArea?: number;
@@ -17,4 +21,5 @@ export interface MapListing {
   listingId: string;
   slugAddress?: string;
   publicRemarks?: string;
+  photos?: Photo[]; // ✅ now available for gallery display
 }

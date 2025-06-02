@@ -40,7 +40,7 @@ type FeatureListProps = {
     return (
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Features & Amenities</h2>
-        <ul className="list-disc list-inside text-gray-700 space-y-1">
+        <ul className="list-disc list-inside text-gray-300 space-y-1">
           {features.map((item, i) => (
             <li key={i}>{item}</li>
           ))}
