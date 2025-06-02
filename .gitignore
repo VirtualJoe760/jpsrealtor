@@ -47,8 +47,6 @@ next-env.d.ts
 
 .codegpt
 
-# Ignore MLS scripts
-src/scripts/mls/
 
 # Ingore Local Logs Folder
 /local-logs
