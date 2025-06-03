@@ -20,6 +20,7 @@ export interface MapListing {
   spa?: boolean;
   listingId: string;
   slugAddress?: string;
+  slug?: string;
   publicRemarks?: string;
   photos?: Photo[]; // ✅ now available for gallery display
 }

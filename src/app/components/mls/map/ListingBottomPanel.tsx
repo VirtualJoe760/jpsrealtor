@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import Link from "next/link";
 import type { MapListing } from "@/types/types";
+import { fetchPrimaryPhotoUrl } from "@/app/utils/spark/fetchPrimaryPhoto";
 
 type Props = {
   listing: MapListing;
@@ -10,13 +12,40 @@ type Props = {
 };
 
 export default function ListingBottomPanel({ listing, onClose }: Props) {
+  const [photoUrl, setPhotoUrl] = useState<string>(listing.primaryPhotoUrl || "/images/no-photo.png");
+
+  useEffect(() => {
+    const needsFetching =
+      !listing.primaryPhotoUrl || listing.primaryPhotoUrl === "/images/no-photo.png";
+  
+    if (!needsFetching) return;
+  
+    let cancelled = false;
+  
+    const loadPhoto = async () => {
+      try {
+        const url = await fetchPrimaryPhotoUrl(String(listing.slug));
+        if (!cancelled) setPhotoUrl(url);
+      } catch (err) {
+        console.warn("Photo fetch failed:", err);
+      }
+    };
+  
+    loadPhoto();
+  
+    return () => {
+      cancelled = true;
+    };
+  }, [listing.slug, listing.primaryPhotoUrl]);
+  
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up">
+    <div className="fixed bottom-0 left-0 right-0 lg:right-[25%] 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up">
       <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
         {/* Photo */}
         <div className="relative">
           <img
-            src={listing.primaryPhotoUrl}
+            src={photoUrl}
             alt={listing.address}
             className="h-48 w-full sm:h-56 lg:h-64 2xl:h-72 object-cover"
           />
@@ -76,7 +105,7 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
           )}
 
           <Link
-            href={`/mls-listings/${listing.slugAddress}`}
+            href={`/mls-listings/${listing.slugAddress ?? listing.slug}`}
             className="block text-center mt-4 bg-emerald-500 text-black font-semibold py-2 rounded-md hover:bg-emerald-400 transition"
           >
             View Full Listing

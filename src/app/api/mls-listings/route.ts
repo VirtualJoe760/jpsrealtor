@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Listing from "@/models/listings";
-import Photo from "@/models/photos"; // ✅ Photo model
+import Photo from "@/models/photos";
 
 export async function GET(req: NextRequest) {
   console.log("🔌 Connecting to MongoDB...");
@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    // ✅ Expected total count for verification
     const expectedCount = await Listing.countDocuments({
       status: "Active",
       propertyType: "A",
@@ -20,7 +19,6 @@ export async function GET(req: NextRequest) {
     });
     console.log(`✅ DB says we should have ${expectedCount} listings`);
 
-    // ✅ Fetch active listings with relevant fields
     const listings = await Listing.find({
       status: "Active",
       propertyType: "A",
@@ -52,23 +50,19 @@ export async function GET(req: NextRequest) {
 
     console.log(`📍 Loaded ${listings.length} listings from MongoDB`);
 
-    // ✅ Enrich listings with up to 3 photos each
     const enrichedListings = await Promise.all(
       listings.map(async (listing) => {
-        const photos = await Photo.find({ listingId: listing.listingId })
-          .sort({ primary: -1, Order: 1 }) // prioritize primary, then order
-          .limit(3)
+        const photo = await Photo.findOne({ listingId: listing.listingId })
+          .sort({ primary: -1, Order: 1 })
           .lean();
 
         return {
           ...listing,
-          primaryPhotoUrl: photos?.[0]?.uri800 || "/images/no-photo.png",
-          photos, // contains 1–3 photos for collage
+          primaryPhotoUrl: photo?.uri800 || "/images/no-photo.png",
         };
       })
     );
 
-    // ✅ Optional: compare returned slugs
     const allSlugs = await Listing.find({
       status: "Active",
       propertyType: "A",
@@ -83,7 +77,6 @@ export async function GET(req: NextRequest) {
       console.warn("🕳️ Missing slugs:", missing.slice(0, 5).map((m) => m.slug));
     }
 
-    // ✅ Optional debug check
     const targetSlug = "20250206061055758248000000";
     const target = enrichedListings.find((l) => l.slug === targetSlug);
     if (target) {

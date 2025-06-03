@@ -1,12 +1,16 @@
-// src/lib/api/
+// src/lib/api.ts
 
 import { IListing } from "@/models/listings";
 
-export async function getListingsWithCoords(): Promise<IListing[]> {
+export interface MapListing extends IListing {
+  primaryPhotoUrl: string;
+}
+
+export async function getListingsWithCoords(): Promise<MapListing[]> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings`, {
       method: "GET",
-      cache: "no-store", // Ensure fresh data
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -15,11 +19,9 @@ export async function getListingsWithCoords(): Promise<IListing[]> {
     }
 
     const data = await res.json();
+    const rawListings: any[] = data.listings || [];
 
-    const listings: IListing[] = data.listings || [];
-
-    // ✅ Filter for valid coordinates and propertyType "A"
-    const filtered = listings.filter(
+    const filtered = rawListings.filter(
       (l) =>
         l.propertyType === "A" &&
         typeof l.latitude === "number" &&
@@ -28,7 +30,12 @@ export async function getListingsWithCoords(): Promise<IListing[]> {
 
     console.log(`📦 Loaded ${filtered.length} residential listings with coordinates`);
 
-    return filtered;
+    const listingsWithPhotos: MapListing[] = filtered.map((l) => ({
+      ...l,
+      primaryPhotoUrl: l.primaryPhotoUrl ?? "/images/no-photo.png",
+    }));
+
+    return listingsWithPhotos;
   } catch (error) {
     console.error("❌ Failed to fetch listings from API:", error);
     return [];

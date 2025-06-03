@@ -75,6 +75,7 @@ export interface IListing extends Document {
   livingArea?: number;
   yearBuilt?: number;
   lotSizeSqft?: number;
+  primaryPhotoUrl:string;
 
   // Location
   address?: string;

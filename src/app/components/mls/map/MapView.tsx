@@ -6,30 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapListing } from "@/types/types";
 import Supercluster, { ClusterFeature, PointFeature } from "supercluster";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
-
-interface CustomProperties {
-  _id: string;
-  listingId: string;
-  cluster: boolean;
-  cluster_id?: number;
-  point_count?: number;
-  point_count_abbreviated?: string | number;
-  latitude?: number;
-  longitude?: number;
-  listPrice?: number;
-  address?: string;
-  unparsedFirstLineAddress?: string;
-  primaryPhotoUrl?: string;
-  bedroomsTotal?: number;
-  bathroomsFull?: number;
-  livingArea?: number;
-  lotSizeSqft?: number;
-  pool?: boolean;
-  spa?: boolean;
-  slugAddress?: string;
-  publicRemarks?: string;
-  [key: string]: any;
-}
+import { CustomProperties } from "@/types/cluster";
 
 type CustomClusterFeature = ClusterFeature<CustomProperties>;
 type MixedClusterFeature = CustomClusterFeature | PointFeature<CustomProperties>;
@@ -212,14 +189,14 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
           );
         })}
       </Map>
-
-      {/* Custom Bottom Panel for Listing */}
+        
       {selectedListing && (
         <ListingBottomPanel
           listing={selectedListing}
           onClose={() => setSelectedListing(null)}
         />
       )}
+      
     </>
   );
 }

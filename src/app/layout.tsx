@@ -5,6 +5,7 @@ import "@fontsource/raleway";
 import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 
+
 export const metadata: Metadata = {
   title: "Joseph Sardella | Palm Desert Real Estate Agent | JPS Realtor",
   description:
