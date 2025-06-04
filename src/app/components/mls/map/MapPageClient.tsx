@@ -7,37 +7,31 @@ import type { MapListing } from "@/types/types";
 import MapView from "@/app/components/mls/map/MapView";
 import MapToolbar from "./MapToolBar";
 
-type Props = {
-  listings: MapListing[];
-};
+const MAX_BATCHES = 6;
 
-export default function MapPageClient({ listings }: Props) {
+export default function MapPageClient() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [visibleListings, setVisibleListings] = useState<MapListing[]>(listings);
+  const [allListings, setAllListings] = useState<MapListing[]>([]);
+  const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
-
   const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches?.[0];
-    if (touch) {
-      touchStartX.current = touch.clientX;
-    }
+    if (touch) touchStartX.current = touch.clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     const touch = e.changedTouches?.[0];
     if (touchStartX.current !== null && touch) {
       const deltaX = touch.clientX - touchStartX.current;
-      if (deltaX > 75) {
-        setSidebarOpen(false);
-      }
+      if (deltaX > 75) setSidebarOpen(false);
     }
     touchStartX.current = null;
   };
 
-  // Prevent body scrolling when sidebar is open
   useEffect(() => {
     if (isSidebarOpen) {
       document.body.style.overflow = "hidden";
@@ -49,6 +43,77 @@ export default function MapPageClient({ listings }: Props) {
     };
   }, [isSidebarOpen]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadListings() {
+      const combined: MapListing[] = [];
+
+      try {
+        for (let i = 0; i < MAX_BATCHES; i++) {
+          const res = await fetch(`/api/mls-listings?batch=${i}`, { cache: "no-store" });
+          if (!res.ok) {
+            console.warn(`⚠️ Batch ${i} failed with status ${res.status}`);
+            break;
+          }
+
+          const data = await res.json();
+          const batch = (data.listings || []) as any[];
+
+          const mapped = batch
+            .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
+            .map((l) => ({
+              _id: String(l._id),
+              latitude: l.latitude,
+              longitude: l.longitude,
+              listPrice: l.listPrice,
+              address: l.address ?? "Unknown address",
+              unparsedFirstLineAddress: l.address ?? "Unknown address",
+              primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
+              bedroomsTotal: l.bedroomsTotal ?? undefined,
+              bathroomsFull: l.bathroomsFull ?? undefined,
+              livingArea: l.livingArea ?? undefined,
+              lotSizeSqft: l.lotSizeSqft ?? undefined,
+              pool: l.pool ?? false,
+              spa: l.spa ?? false,
+              listingId: l.listingId,
+              slugAddress: l.slugAddress ?? undefined,
+              slug: l.slug,
+              publicRemarks: l.publicRemarks ?? undefined,
+            }));
+
+          combined.push(...mapped);
+          if (batch.length < 500) break;
+        }
+
+        if (isMounted) {
+          setAllListings(combined);
+          setVisibleListings(combined);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("❌ Error loading listings:", err);
+        setLoading(false);
+      }
+    }
+
+    loadListings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-black">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-zinc-400 text-sm">Loading map and listings...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <MapToolbar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
@@ -56,7 +121,7 @@ export default function MapPageClient({ listings }: Props) {
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0 overflow-hidden">
         {/* Map */}
         <div className="w-full lg:w-[75%] 2xl:w-[85%]">
-          <MapView listings={listings} setVisibleListings={setVisibleListings} />
+          <MapView listings={allListings} setVisibleListings={setVisibleListings} />
         </div>
 
         {/* Mobile backdrop */}
@@ -97,7 +162,6 @@ export default function MapPageClient({ listings }: Props) {
                     alt={listing.address}
                     className="w-full h-40 object-cover group-hover:opacity-90 transition duration-200"
                   />
-
                   <div className="p-4 space-y-2">
                     <p className="text-lg font-semibold text-white group-hover:text-emerald-400 transition">
                       ${listing.listPrice.toLocaleString()}
