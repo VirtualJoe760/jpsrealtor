@@ -1,8 +1,6 @@
 // src/app/mls-listings/page.tsx
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import { getListingsWithCoords } from "@/lib/api";
-import type { IListing } from "@/models/listings";
 import type { MapListing } from "@/types/types";
 
 // Dynamically import the client-only map component
@@ -22,34 +20,54 @@ function LoadingFallback() {
 }
 
 export default async function SearchMapPage() {
-  try {
-    const rawListings: IListing[] = await getListingsWithCoords();
+  const MAX_BATCHES = 6; // assuming ~3000 listings, 500 per batch
+  const allListings: MapListing[] = [];
 
-    const listings: MapListing[] = rawListings
-      .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
-      .map((l) => ({
-        _id: String(l._id),
-        latitude: l.latitude!,
-        longitude: l.longitude!,
-        listPrice: l.listPrice!,
-        address: l.address ?? "Unknown address",
-        unparsedFirstLineAddress: l.address ?? "Unknown address",
-        primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
-        bedroomsTotal: l.bedroomsTotal ?? undefined,
-        bathroomsFull: l.bathroomsFull ?? undefined,
-        livingArea: l.livingArea ?? undefined,
-        lotSizeSqft: l.lotSizeSqft ?? undefined,
-        pool: l.pool ?? false,
-        spa: l.spa ?? false,
-        listingId: l.listingId,
-        slugAddress: l.slugAddress ?? undefined,
-        slug: l.slug,
-        publicRemarks: l.publicRemarks ?? undefined,
-      }));
+  try {
+    for (let i = 0; i < MAX_BATCHES; i++) {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings?batch=${i}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.warn(`⚠️ Batch ${i} failed with status ${res.status}`);
+        break;
+      }
+
+      const data = await res.json();
+      const listings = (data.listings || []) as any[];
+
+      const mapped: MapListing[] = listings
+        .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
+        .map((l) => ({
+          _id: String(l._id),
+          latitude: l.latitude,
+          longitude: l.longitude,
+          listPrice: l.listPrice,
+          address: l.address ?? "Unknown address",
+          unparsedFirstLineAddress: l.address ?? "Unknown address",
+          primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
+          bedroomsTotal: l.bedroomsTotal ?? undefined,
+          bathroomsFull: l.bathroomsFull ?? undefined,
+          livingArea: l.livingArea ?? undefined,
+          lotSizeSqft: l.lotSizeSqft ?? undefined,
+          pool: l.pool ?? false,
+          spa: l.spa ?? false,
+          listingId: l.listingId,
+          slugAddress: l.slugAddress ?? undefined,
+          slug: l.slug,
+          publicRemarks: l.publicRemarks ?? undefined,
+        }));
+
+      allListings.push(...mapped);
+
+      // Stop early if we got less than 500
+      if (listings.length < 500) break;
+    }
 
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <MapPageClient listings={listings} />
+        <MapPageClient listings={allListings} />
       </Suspense>
     );
   } catch (error) {

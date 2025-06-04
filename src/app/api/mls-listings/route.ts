@@ -1,3 +1,4 @@
+// src/app/api/mls-listings/route.ts
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -5,11 +6,14 @@ import dbConnect from "@/lib/mongoose";
 import Listing from "@/models/listings";
 import Photo from "@/models/photos";
 
+const BATCH_SIZE = 500;
+
 export async function GET(req: NextRequest) {
   console.log("🔌 Connecting to MongoDB...");
+  await dbConnect();
 
   try {
-    await dbConnect();
+    const batch = parseInt(req.nextUrl.searchParams.get("batch") || "0", 10);
 
     const expectedCount = await Listing.countDocuments({
       status: "Active",
@@ -46,9 +50,11 @@ export async function GET(req: NextRequest) {
         "status",
         "modificationTimestamp",
       ].join(" "))
+      .skip(batch * BATCH_SIZE)
+      .limit(BATCH_SIZE)
       .lean();
 
-    console.log(`📍 Loaded ${listings.length} listings from MongoDB`);
+    console.log(`📍 Loaded ${listings.length} listings from MongoDB (batch ${batch})`);
 
     const enrichedListings = await Promise.all(
       listings.map(async (listing) => {
