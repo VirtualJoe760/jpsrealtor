@@ -1,10 +1,8 @@
-// src\app\api\mls-listings\[slugAddress]\photos\route.ts
-
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Listing from "@/models/listings";
 import Photo from "@/models/photos";
-import { fetchListingPhotos } from "@/utils/spark/photos";
+import { fetchListingPhotos } from "@/app/utils/spark/photos";
 
 export async function GET(
   req: Request,
@@ -15,21 +13,21 @@ export async function GET(
   const { slugAddress } = params;
 
   try {
+    // ✅ Find listing by slugAddress
     const listing = await Listing.findOne({ slugAddress }).lean();
+
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    // ✅ Check if photos are already cached
-    const existingPhotos = await Photo.find({ listingId: listing.listingId }).lean();
-    if (existingPhotos.length > 0) {
-      return NextResponse.json({ photos: existingPhotos });
-    }
+    // ✅ Optional: clean up old photos in case of mismatch
+    await Photo.deleteMany({ listingId: listing.listingId });
 
-    // ✅ If no photos, fetch from Spark
-    const freshPhotos = await fetchListingPhotos(listing.slug);
+    // ✅ Fetch fresh photos from Spark API using your shared utility
+    const photos = await fetchListingPhotos(listing.slug);
 
-    for (const photo of freshPhotos) {
+    // ✅ Save photos to DB
+    for (const photo of photos) {
       await Photo.findOneAndUpdate(
         { photoId: photo.Id },
         {
@@ -51,7 +49,9 @@ export async function GET(
       );
     }
 
+    // ✅ Return updated photos from DB
     const cachedPhotos = await Photo.find({ listingId: listing.listingId }).lean();
+
     return NextResponse.json({ photos: cachedPhotos });
   } catch (error) {
     console.error("Error fetching photos:", error);
