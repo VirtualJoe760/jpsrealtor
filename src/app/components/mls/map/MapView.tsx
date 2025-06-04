@@ -7,6 +7,7 @@ import { MapListing } from "@/types/types";
 import Supercluster, { ClusterFeature, PointFeature } from "supercluster";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import { CustomProperties } from "@/types/cluster";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type CustomClusterFeature = ClusterFeature<CustomProperties>;
 type MixedClusterFeature = CustomClusterFeature | PointFeature<CustomProperties>;
@@ -28,6 +29,9 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clusters, setClusters] = useState<MixedClusterFeature[]>([]);
   const mapRef = useRef<any>(null);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     console.log(`📦 Received ${listings.length} listings from API`);
@@ -126,6 +130,23 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
     updateClusters();
   };
 
+  // ✅ Restore map state from URL
+  useEffect(() => {
+    const lat = parseFloat(searchParams.get("lat") || "");
+    const lng = parseFloat(searchParams.get("lng") || "");
+    const zoom = parseFloat(searchParams.get("zoom") || "");
+    const selected = searchParams.get("selected");
+
+    if (!isNaN(lat) && !isNaN(lng) && !isNaN(zoom)) {
+      mapRef.current?.flyTo({ center: [lng, lat], zoom });
+    }
+
+    if (selected) {
+      const listing = listings.find((l) => l.slug === selected);
+      if (listing) setSelectedListing(listing);
+    }
+  }, [searchParams, listings]);
+
   return (
     <>
       <Map
@@ -168,7 +189,23 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
               longitude={lng}
               latitude={lat}
               anchor="bottom"
-              onClick={() => setSelectedListing(listing as MapListing)}
+              onClick={() => {
+                setSelectedListing(listing as MapListing);
+
+                const map = mapRef.current?.getMap();
+                const center = map?.getCenter();
+                const zoom = map?.getZoom();
+
+                if (center && zoom !== undefined) {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set("lat", center.lat.toFixed(6));
+                  params.set("lng", center.lng.toFixed(6));
+                  params.set("zoom", zoom.toFixed(2));
+                  params.set("selected", listing.slug);
+
+                  router.push(`?${params.toString()}`, { scroll: false });
+                }
+              }}
             >
               <div
                 onMouseEnter={() => setHoveredId(listing._id!)}
@@ -189,14 +226,19 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
           );
         })}
       </Map>
-        
+
       {selectedListing && (
         <ListingBottomPanel
           listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
+          onClose={() => {
+            setSelectedListing(null);
+
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("selected");
+            router.push(`?${params.toString()}`, { scroll: false });
+          }}
         />
       )}
-      
     </>
   );
 }

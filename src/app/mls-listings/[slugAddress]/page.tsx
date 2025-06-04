@@ -32,6 +32,7 @@ function formatListedDate(input?: string | Date): string {
 export default async function ListingPage({ params }: ListingPageProps) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
+
   const [
     listingRes,
     photosRes,

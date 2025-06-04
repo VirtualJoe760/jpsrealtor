@@ -12,16 +12,23 @@ type Props = {
 };
 
 export default function ListingBottomPanel({ listing, onClose }: Props) {
-  const [photoUrl, setPhotoUrl] = useState<string>(listing.primaryPhotoUrl || "/images/no-photo.png");
+  const defaultPhoto = listing.primaryPhotoUrl || "/images/no-photo.png";
+  const [photoUrl, setPhotoUrl] = useState<string>(defaultPhoto);
 
+  // ✅ Reset photoUrl when listing changes
+  useEffect(() => {
+    setPhotoUrl(listing.primaryPhotoUrl || "/images/no-photo.png");
+  }, [listing]);
+
+  // ✅ Fetch if necessary
   useEffect(() => {
     const needsFetching =
       !listing.primaryPhotoUrl || listing.primaryPhotoUrl === "/images/no-photo.png";
-  
+
     if (!needsFetching) return;
-  
+
     let cancelled = false;
-  
+
     const loadPhoto = async () => {
       try {
         const url = await fetchPrimaryPhotoUrl(String(listing.slug));
@@ -30,14 +37,13 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
         console.warn("Photo fetch failed:", err);
       }
     };
-  
+
     loadPhoto();
-  
+
     return () => {
       cancelled = true;
     };
   }, [listing.slug, listing.primaryPhotoUrl]);
-  
 
   return (
     <div className="fixed bottom-0 left-0 right-0 lg:right-[25%] 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up">
