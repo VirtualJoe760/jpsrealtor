@@ -28,14 +28,25 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clusters, setClusters] = useState<MixedClusterFeature[]>([]);
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef<any>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    console.log(`📦 Received ${listings.length} listings from API`);
-  }, [listings]);
+  // ✅ Hydrate map view from URL before initial render
+  const lat = parseFloat(searchParams.get("lat") || "");
+  const lng = parseFloat(searchParams.get("lng") || "");
+  const zoom = parseFloat(searchParams.get("zoom") || "");
+
+  const hydratedInitialViewState: ViewState = {
+    latitude: !isNaN(lat) ? lat : 33.72,
+    longitude: !isNaN(lng) ? lng : -116.37,
+    zoom: !isNaN(zoom) ? zoom : 11,
+    bearing: 0,
+    pitch: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
+  };
 
   const geoJsonPoints: PointFeature<CustomProperties>[] = useMemo(() => {
     const valid: MapListing[] = [];
@@ -80,15 +91,6 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
     return cluster;
   }, [geoJsonPoints]);
 
-  const initialViewState: ViewState = {
-    latitude: 33.72,
-    longitude: -116.37,
-    zoom: 11,
-    bearing: 0,
-    pitch: 0,
-    padding: { top: 0, bottom: 0, left: 0, right: 0 },
-  };
-
   const updateClusters = () => {
     const map = mapRef.current?.getMap();
     const bounds = map?.getBounds();
@@ -118,6 +120,7 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
     );
 
     setVisibleListings(visible);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -130,17 +133,9 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
     updateClusters();
   };
 
-  // ✅ Restore map state from URL
+  // ✅ Restore selected listing from URL (map position is now already hydrated)
   useEffect(() => {
-    const lat = parseFloat(searchParams.get("lat") || "");
-    const lng = parseFloat(searchParams.get("lng") || "");
-    const zoom = parseFloat(searchParams.get("zoom") || "");
     const selected = searchParams.get("selected");
-
-    if (!isNaN(lat) && !isNaN(lng) && !isNaN(zoom)) {
-      mapRef.current?.flyTo({ center: [lng, lat], zoom });
-    }
-
     if (selected) {
       const listing = listings.find((l) => l.slug === selected);
       if (listing) setSelectedListing(listing);
@@ -148,11 +143,17 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
   }, [searchParams, listings]);
 
   return (
-    <>
+    <div className="relative w-full h-full">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/60">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-500" />
+        </div>
+      )}
+
       <Map
         ref={mapRef}
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-        initialViewState={initialViewState}
+        initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onLoad={updateClusters}
       >
@@ -239,6 +240,6 @@ export default function MapView({ listings, setVisibleListings }: MapViewProps) 
           }}
         />
       )}
-    </>
+    </div>
   );
 }
