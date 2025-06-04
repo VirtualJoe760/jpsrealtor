@@ -1,7 +1,25 @@
-import MapPageClient from "@/app/components/mls/map/MapPageClient";
+// src/app/mls-listings/page.tsx
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { getListingsWithCoords } from "@/lib/api";
 import type { IListing } from "@/models/listings";
 import type { MapListing } from "@/types/types";
+
+// Dynamically import the client-only map component
+const MapPageClient = dynamic(() => import("@/app/components/mls/map/MapPageClient"), {
+  ssr: false,
+});
+
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-black">
+      <div className="text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-zinc-400 text-sm">Loading map and listings...</p>
+      </div>
+    </div>
+  );
+}
 
 export default async function SearchMapPage() {
   try {
@@ -16,7 +34,7 @@ export default async function SearchMapPage() {
         listPrice: l.listPrice!,
         address: l.address ?? "Unknown address",
         unparsedFirstLineAddress: l.address ?? "Unknown address",
-        primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png", // ✅ use only cached photos
+        primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
         bedroomsTotal: l.bedroomsTotal ?? undefined,
         bathroomsFull: l.bathroomsFull ?? undefined,
         livingArea: l.livingArea ?? undefined,
@@ -29,7 +47,11 @@ export default async function SearchMapPage() {
         publicRemarks: l.publicRemarks ?? undefined,
       }));
 
-    return <MapPageClient listings={listings} />;
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <MapPageClient listings={listings} />
+      </Suspense>
+    );
   } catch (error) {
     console.error("❌ Failed to load map listings:", error);
     return (
