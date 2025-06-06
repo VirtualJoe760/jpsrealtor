@@ -1,3 +1,5 @@
+// src/app/mls-listings/[slugAddress]/page.tsx
+
 import { notFound } from "next/navigation";
 import CollageHero from "@/app/components/mls/CollageHero";
 import FactsGrid from "@/app/components/mls/FactsGrid";
@@ -7,6 +9,7 @@ import dbConnect from "@/lib/mongoose";
 import { Listing, IListing } from "@/models/listings";
 import { getPublicRemarks } from "@/app/utils/spark/getPublicRemarks";
 import { fetchListingPhotos } from "@/app/utils/spark/photos";
+import type { SparkPhoto } from "@/types/photo";
 
 interface ListingPageProps {
   params: { slugAddress: string };
@@ -35,7 +38,18 @@ export default async function ListingPage({ params }: ListingPageProps) {
   if (!listing) return notFound();
 
   const rawPhotos = await fetchListingPhotos(listing.slug);
-  const photos = (rawPhotos || []).map((p: any) => ({
+  const photos: {
+    uri2048?: string;
+    uri1600?: string;
+    uri1280?: string;
+    uri1024?: string;
+    uri800?: string;
+    uri640?: string;
+    uri300?: string;
+    uriThumb?: string;
+    uriLarge?: string;
+    caption: string;
+  }[] = (rawPhotos || []).map((p: SparkPhoto) => ({
     uri2048: p.Uri2048,
     uri1600: p.Uri1600,
     uri1280: p.Uri1280,
@@ -50,21 +64,19 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
   const publicRemarks = await getPublicRemarks(listing.slug);
 
-  const mediaForCollage = [
-    ...photos.map((p) => ({
-      type: "photo" as const,
-      src:
-        p.uri2048 ??
-        p.uri1600 ??
-        p.uri1280 ??
-        p.uri1024 ??
-        p.uri800 ??
-        p.uriThumb ??
-        p.uriLarge ??
-        "/images/no-photo.png",
-      alt: p.caption || "Listing photo",
-    })),
-  ];
+  const mediaForCollage = photos.map((p) => ({
+    type: "photo" as const,
+    src:
+      p.uri2048 ??
+      p.uri1600 ??
+      p.uri1280 ??
+      p.uri1024 ??
+      p.uri800 ??
+      p.uriThumb ??
+      p.uriLarge ??
+      "/images/no-photo.png",
+    alt: p.caption || "Listing photo",
+  }));
 
   return (
     <main className="w-full text-white">
@@ -92,9 +104,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
             <p className="text-sm mt-2 text-white">
               <span
                 className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                  listing.status === "Active"
-                    ? "bg-green-600"
-                    : "bg-gray-600"
+                  listing.status === "Active" ? "bg-green-600" : "bg-gray-600"
                 }`}
               >
                 {listing.status}
@@ -112,7 +122,6 @@ export default async function ListingPage({ params }: ListingPageProps) {
           yearBuilt={listing.yearBuilt}
         />
 
-        {/* Inline Features (Simplified) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm text-white">
           {listing.yearBuilt && (
             <div>

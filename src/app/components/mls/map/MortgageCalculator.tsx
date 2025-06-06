@@ -38,7 +38,7 @@ export default function MortgageCalculator({
 
   return (
     <div className="p-4 bg-zinc-900 rounded-lg shadow-md text-white mt-6">
-      <h2 className="text-lg font-semibold mb-4">Mortgage Calculator</h2>
+      <h2 className="text-lg font-semibold mb-4 pb-10">Mortgage Calculator</h2>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <label className="flex flex-col">

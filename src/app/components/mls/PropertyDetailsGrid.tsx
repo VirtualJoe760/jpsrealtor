@@ -17,7 +17,6 @@ export default function PropertyDetailsGrid({ listing, className = '' }: Props) 
         {listing.subdivisionName && <li><strong>Subdivision:</strong> {listing.subdivisionName}</li>}
         {listing.countyOrParish && <li><strong>County:</strong> {listing.countyOrParish}</li>}
         {listing.landType && <li><strong>Land Type:</strong> {listing.landType}</li>}
-        {listing.rvAccess !== undefined && <li><strong>RV Access:</strong> {listing.rvAccess ? 'Yes' : 'No'}</li>}
         {listing.gatedCommunity !== undefined && <li><strong>Gated Community:</strong> {listing.gatedCommunity ? 'Yes' : 'No'}</li>}
         {listing.view && <li><strong>View:</strong> {listing.view}</li>}
         {listing.stories && <li><strong>Stories:</strong> {listing.stories}</li>}

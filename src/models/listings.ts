@@ -106,6 +106,8 @@ export interface IListing extends Document {
   laundryFeatures?: string;
   interiorFeatures?: string;
   exteriorFeatures?: string;
+  hoaFee?: number;
+  hoaFeeFrequency?: string;
 
   // Location
   address?: string;
@@ -142,6 +144,8 @@ export interface IListing extends Document {
 
   // Features (flattened)
   poolYn?: boolean;
+  pool?: boolean;
+  spa?: boolean;
   spaYn?: boolean;
   viewYn?: boolean;
   view?: string;
@@ -159,6 +163,7 @@ export interface IListing extends Document {
   levels?: string;
   seniorCommunityYn?: boolean;
   gatedCommunity?: boolean;
+  rvAccess?: boolean;
 
   // Land & HOA
   landType?: string;
@@ -197,6 +202,7 @@ export interface IListing extends Document {
   listOfficeViewName?: string;
   listOfficeAor?: string;
   listOfficeOriginatingSystemMlsId?: string;
+  terms?: string[];
 
   // Schools
   schoolDistrict?: string;
@@ -249,6 +255,7 @@ const ListingSchema = new Schema<IListing>({
   laundryFeatures: String,
   interiorFeatures: String,
   exteriorFeatures: String,
+  
 
   // Location
   address: String,
