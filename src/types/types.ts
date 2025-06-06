@@ -1,3 +1,5 @@
+// src/types/types.ts
+
 export interface Photo {
   photoId: string;
   uri800: string;
@@ -10,17 +12,32 @@ export interface MapListing {
   longitude: number;
   listPrice: number;
   address: string;
-  unparsedFirstLineAddress: string;
-  primaryPhotoUrl: string; // ✅ required
+  unparsedFirstLineAddress?: string;
+  unparsedAddress?: string; // ✅ Add this
+  primaryPhotoUrl: string;
+
+  // Optional property details
   bedroomsTotal?: number;
   bathroomsFull?: number;
   livingArea?: number;
   lotSizeSqft?: number;
-  pool?: boolean;
-  spa?: boolean;
-  listingId: string;
-  slugAddress?: string;
-  slug?: string;
+
+  // Booleans for amenities
+  poolYn?: boolean;
+  spaYn?: boolean;
+  pool?: boolean; // ✅ Add this
+  spa?: boolean;  // ✅ Add this
+
+  // Remarks and identifiers
   publicRemarks?: string;
-  photos?: Photo[]; // ✅ now available for gallery display
+  listingId: string;
+  slug?: string;
+  slugAddress?: string;
+  status?: string;
+  standardStatus?: string;
+  propertyType?: string;
+  modificationTimestamp?: string;
+
+  // Media
+  photos?: Photo[];
 }

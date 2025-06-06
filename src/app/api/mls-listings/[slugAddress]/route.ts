@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongoose';
-import Listing from '@/models/listings';
-import { fetchFullListingDetails } from '@/utils/spark/fetchFullListingDetails';
-import { parseListing } from '@/utils/spark/parseListing';
+// src/app/api/mls-listings/[slugAddress]/route.ts
+import { NextResponse } from "next/server";
+import dbConnect from "@/lib/mongoose";
+import { Listing, IListing } from "@/models/listings";
+import Photo from "@/models/photos";
+import OpenHouse from "@/models/openHouses";
 
 export async function GET(
   req: Request,
@@ -11,34 +12,31 @@ export async function GET(
   await dbConnect();
 
   const { slugAddress } = params;
-  const { searchParams } = new URL(req.url);
-  const refresh = searchParams.get("refresh") === "true";
 
   try {
-    let listing = await Listing.findOne({ slugAddress }).lean();
+    const listing: IListing | null = await Listing.findOne({ slugAddress }).lean();
 
-    if (!listing || refresh) {
-      console.log(`📦 Fetching fresh data for: ${slugAddress}`);
-      const raw = await fetchFullListingDetails(slugAddress);
-      if (!raw) {
-        return NextResponse.json({ error: 'Listing not found on Spark' }, { status: 404 });
-      }
-
-      const parsed = parseListing(raw);
-      if (!parsed.listingId) {
-        return NextResponse.json({ error: 'Invalid data from Spark' }, { status: 400 });
-      }
-
-      listing = await Listing.findOneAndUpdate(
-        { listingId: parsed.listingId },
-        { $set: parsed },
-        { upsert: true, new: true }
-      ).lean();
+    if (!listing) {
+      return NextResponse.json({ error: "Listing not found in database" }, { status: 404 });
     }
 
-    return NextResponse.json({ listing });
+    // 📸 Fetch primary photo
+    const photo = await Photo.findOne({ listingId: listing.listingId })
+      .sort({ primary: -1, Order: 1 })
+      .lean();
+
+    // 🏡 Fetch open houses
+    const openHouses = await OpenHouse.find({ listingId: listing.listingId }).lean();
+
+    const enrichedListing = {
+      ...listing,
+      primaryPhotoUrl: photo?.uri800 || "/images/no-photo.png",
+      openHouses,
+    };
+
+    return NextResponse.json({ listing: enrichedListing });
   } catch (error) {
-    console.error('❌ Error in listing GET:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("❌ Error fetching listing from DB:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

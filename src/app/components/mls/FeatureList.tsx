@@ -1,51 +1,73 @@
-// src/app/components/mls/FeatureList.tsx
+import React from "react";
+import type { IListing } from "@/models/listings";
 
-type FeatureListProps = {
-    architecture?: string
-    fireplaces?: number
-    heating?: string
-    cooling?: string
-    pool?: boolean
-    spa?: string
-    view?: string
-    furnished?: string
-    hoaFee?: number
-    hoaFreq?: string
-  }
-  
-  export default function FeatureList({
-    architecture,
-    fireplaces,
+type Props = Pick<
+  IListing,
+  | "furnished"
+  | "associationFee"
+  | "associationFeeFrequency"
+  | "fireplacesTotal"
+  | "heating"
+  | "cooling"
+  | "poolYn"
+  | "spaYn"
+  | "viewYn"
+  | "roof"
+  | "flooring"
+  | "laundryFeatures"
+  | "interiorFeatures"
+  | "exteriorFeatures"
+>;
+
+export default function FeatureList(props: Props) {
+  console.log("🧾 FeatureList Props:", props);
+
+  const {
+    furnished,
+    associationFee,
+    associationFeeFrequency,
+    fireplacesTotal,
     heating,
     cooling,
-    pool,
-    spa,
-    view,
-    furnished,
-    hoaFee,
-    hoaFreq,
-  }: FeatureListProps) {
-    const features = [
-      architecture && `Style: ${architecture}`,
-      fireplaces ? `Fireplaces: ${fireplaces}` : null,
-      heating && `Heating: ${heating}`,
-      cooling && `Cooling: ${cooling}`,
-      pool && `Private Pool`,
-      spa && `Spa: ${spa}`,
-      view && `View: ${view}`,
-      furnished && `Furnished: ${furnished}`,
-      hoaFee && hoaFreq && `HOA: $${hoaFee.toLocaleString()} / ${hoaFreq}`,
-    ].filter(Boolean)
-  
-    return (
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Features & Amenities</h2>
-        <ul className="list-disc list-inside text-gray-300 space-y-1">
-          {features.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
-      </div>
-    )
-  }
-  
+    poolYn,
+    spaYn,
+    viewYn,
+    roof,
+    flooring,
+    laundryFeatures,
+    interiorFeatures,
+    exteriorFeatures,
+  } = props;
+
+  return (
+    <section className="mt-6 space-y-4">
+      <h2 className="text-xl font-semibold">Features</h2>
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+        {furnished && <li>🛋️ Furnished: {furnished}</li>}
+
+        {(associationFee || associationFeeFrequency) && (
+          <li>
+            💰 HOA: {associationFee ? `$${associationFee.toLocaleString()}` : "–"}
+            {associationFeeFrequency ? ` / ${associationFeeFrequency}` : ""}
+          </li>
+        )}
+
+        {(fireplacesTotal ?? 0) > 0 && (
+          <li>🔥 Fireplaces: {fireplacesTotal}</li>
+        )}
+
+        <li>♨️ Heating: {heating || "None"}</li>
+        <li>❄️ Cooling: {cooling || "None"}</li>
+        <li>🏊 Pool: {poolYn ? "Yes" : "No"}</li>
+        <li>🧖 Spa: {spaYn ? "Yes" : "No"}</li>
+        <li>🌄 View: {viewYn ? "Yes" : "No"}</li>
+
+        {roof && <li>🏠 Roof: {roof}</li>}
+        {flooring && <li>🪵 Flooring: {flooring}</li>}
+        {laundryFeatures && <li>🧺 Laundry: {laundryFeatures}</li>}
+        {interiorFeatures && <li>🛠️ Interior: {interiorFeatures}</li>}
+        {exteriorFeatures && <li>🌿 Exterior: {exteriorFeatures}</li>}
+      </ul>
+    </section>
+  );
+}

@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function PropertyDetailsGrid({ listing, className = '' }: Props) {
-  console.log("🔍 PropertyDetailsGrid listing:", listing);
+
 
   return (
     <section className={`mt-10 ${className}`}>

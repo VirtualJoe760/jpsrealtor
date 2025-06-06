@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function SchoolInfo({ listing, className = '' }: Props) {
-  console.log("🔍 SchoolInfo listing:", listing);
+  
 
   const hasSchools = listing.elementarySchool || listing.middleSchool || listing.highSchool || listing.schoolDistrict;
 

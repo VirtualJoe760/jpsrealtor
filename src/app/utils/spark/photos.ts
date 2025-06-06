@@ -1,3 +1,5 @@
+//src\app\utils\spark\photos.ts
+
 const SPARK_API_BASE = "https://replication.sparkapi.com/v1/listings";
 
 async function fetchWithBackoff(url: string, token: string, retries = 5): Promise<Response> {
@@ -20,11 +22,12 @@ async function fetchWithBackoff(url: string, token: string, retries = 5): Promis
   throw new Error(`Exceeded retry limit for ${url}`);
 }
 
-export async function fetchListingPhotos(listingId: string) {
+export async function fetchListingPhotos(slug: string) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) throw new Error("Missing SPARK_ACCESS_TOKEN");
+  console.log("Spark API Listing Photos Slug:",slug);
 
-  const url = `${SPARK_API_BASE}/${listingId}/photos`;
+  const url = `${SPARK_API_BASE}/${slug}/photos`;
 
   try {
     const res = await fetchWithBackoff(url, token);
@@ -35,7 +38,7 @@ export async function fetchListingPhotos(listingId: string) {
       console.error(`URL: ${url}`);
       console.error(`Status: ${res.status}`);
       console.error(`Response: ${text}`);
-      throw new Error(`Failed to fetch photos for listing ${listingId}`);
+      throw new Error(`Failed to fetch photos for listing ${slug}`);
     }
 
     const data = JSON.parse(text);

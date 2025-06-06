@@ -25,6 +25,8 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
 
   const current = media[currentIndex];
 
+  console.log("📦 CollageHero media:", media);
+
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
   };
@@ -97,22 +99,27 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             className="flex overflow-x-auto no-scrollbar gap-2 py-2 px-6 scroll-smooth"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
-            {media.map((item, i) => (
-              <div
-                key={i}
-                className={`relative w-32 h-24 flex-shrink-0 cursor-pointer rounded overflow-hidden border-2 ${
-                  i === currentIndex ? "border-blue-500" : "border-transparent"
-                }`}
-                onClick={() => setCurrentIndex(i)}
-              >
-                <Image
-                  src={item.src}
-                  alt={item.alt || `Thumb ${i}`}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ))}
+            {media.map((item, i) => {
+              const src = item.src;
+              console.log(`🖼️ Thumbnail ${i + 1} src:`, src);
+
+              return (
+                <div
+                  key={i}
+                  className={`relative w-32 h-24 flex-shrink-0 cursor-pointer rounded overflow-hidden border-2 ${
+                    i === currentIndex ? "border-blue-500" : "border-transparent"
+                  }`}
+                  onClick={() => setCurrentIndex(i)}
+                >
+                  <Image
+                    src={src}
+                    alt={item.alt || `Thumb ${i}`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <button
@@ -136,7 +143,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <Image
-              src={media[modalIndex]?.src || ""}
+              src={media[modalIndex]?.src || "/images/no-photo.png"}
               alt={media[modalIndex]?.alt || "Full image"}
               fill
               className="object-contain"

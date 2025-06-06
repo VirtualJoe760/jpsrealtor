@@ -1,0 +1,222 @@
+{
+  "Id": "20250508004736087567000000",
+  "ResourceUri": "/v1/listings/20250508004736087567000000",
+  "StandardFields": {
+    "ApprovalStatus": true,
+    "AssociationFee": 0.0,
+    "AssociationYN": false,
+    "AttachedGarageYN": true,
+    "BackOnMarketTimestamp": "2025-06-05T15:58:47Z",
+    "BathroomsOneQuarter": 0,
+    "BathroomsTotalDecimal": 2.25,
+    "BathroomsTotalInteger": 3,
+    "BathroomsTotalNotational": 3.0,
+    "BathsFull": 0,
+    "BathsHalf": 0,
+    "BathsThreeQuarter": 3,
+    "BathsTotal": 3.0,
+    "BedsTotal": 4,
+    "BuildingAreaSource": "Assessor",
+    "BuildingAreaTotal": 1847.0,
+    "CarportSpaces": 0.0,
+    "City": "Desert Hot Springs",
+    "CoListAgentAOR": "California Desert Association of Realtors",
+    "CoListAgentFirstName": "Amber",
+    "CoListAgentId": "20190605022755138234000000",
+    "CoListAgentLastName": "Placentia",
+    "CoListAgentMlsId": "D81198",
+    "CoListAgentName": "Amber Placentia",
+    "ComingSoonTimestamp": "2025-05-08T01:19:06Z",
+    "Cooling": {
+      "Central Air": true
+    },
+    "CoolingYN": true,
+    "Country": "US",
+    "CountyOrParish": "Riverside",
+    "CrossStreet": "Hacienda Ave",
+    "CurrentPrice": 588000.0,
+    "CurrentPricePublic": 588000.0,
+    "DocumentsChangeTimestamp": "2025-06-05T19:30:25Z",
+    "DocumentsCount": 1,
+    "Fencing": {
+      "Block": true,
+      "Privacy": true
+    },
+    "FireplaceFeatures": {
+      "Electric": true
+    },
+    "FireplaceYN": true,
+    "FireplacesTotal": 1,
+    "Flooring": {
+      "Tile": true
+    },
+    "Furnished": "Unfurnished",
+    "GarageSpaces": 2.0,
+    "Heating": {
+      "Central": true
+    },
+    "HeatingYN": true,
+    "HoldTimestamp": "2025-05-21T21:48:50Z",
+    "IDXParticipant": true,
+    "Latitude": 33.953638,
+    "Levels": {
+      "Ground": true
+    },
+    "ListAOR": "California Desert Association of Realtors",
+    "ListAgentAOR": "California Desert Association of Realtors",
+    "ListAgentAssociation": {
+      "California Desert Association of Realtors": true
+    },
+    "ListAgentId": "20220830184808954982000000",
+    "ListAgentKey": "20220830184808954982000000",
+    "ListAgentMlsId": "d84747",
+    "ListAgentName": "Amber Placentia & Associates",
+    "ListOfficeAOR": "California Desert Association of Realtors",
+    "ListOfficeId": "20190605012233870203000000",
+    "ListOfficeMlsId": "oD22725",
+    "ListPrice": 588000.0,
+    "ListPriceLow": 0.0,
+    "ListingContractDate": "2025-05-07",
+    "ListingId": "219129735",
+    "ListingKey": "20250508004736087567000000",
+    "ListingNumber": 219129735,
+    "ListingTerms": {
+      "1031 Exchange": true,
+      "Cash": true,
+      "Conventional": true,
+      "FHA": true,
+      "Submit": true,
+      "VA Loan": true
+    },
+    "LivingArea": 1847.0,
+    "Longitude": -116.48032,
+    "LotSizeAcres": 0.0,
+    "LotSizeArea": 6970.0,
+    "LotSizeSource": "Assessor",
+    "LotSizeSquareFeet": 0.0,
+    "MLSAreaMajor": "340 - Desert Hot Springs",
+    "MajorChangeTimestamp": "2025-06-05T15:58:49Z",
+    "MajorChangeType": "Back on Market",
+    "MlsId": "20190211172710340762000000",
+    "MlsStatus": "Active",
+    "ModificationTimestamp": "2025-06-05T19:30:54Z",
+    "NewConstructionYN": true,
+    "OnMarketContractDate": "2025-05-21",
+    "OnMarketDate": "2025-06-05T15:58:47Z",
+    "OriginalListPrice": 548000.0,
+    "OriginalOnMarketTimestamp": "2025-05-21T21:48:38Z",
+    "OriginatingSystemID": "M00000072",
+    "OriginatingSystemKey": "20250508004736087567000000",
+    "OriginatingSystemName": "Greater Palm Springs Multiple Listing Service",
+    "OtherEquipment": {
+      "Drip System": true
+    },
+    "ParcelNumber": "642184016",
+    "ParkingFeatures": {
+      "Driveway": true,
+      "Garage Door Opener": true,
+      "Total Uncovered/Assigned Spaces": true
+    },
+    "ParkingTotal": 4.0,
+    "PermitInternetYN": true,
+    "PhotosChangeTimestamp": "2025-06-05T15:58:15Z",
+    "PhotosCount": 51,
+    "PoolYN": false,
+    "Possession": {
+      "Close Of Escrow": true
+    },
+    "PostalCode": "92240",
+    "PostalCodePlus4": "6211",
+    "PriceChangeTimestamp": "2025-05-08T20:14:46Z",
+    "PropertyClass": "Residential",
+    "PropertyCondition": {
+      "New Construction": true
+    },
+    "PropertySubType": "Single Family Residence",
+    "PropertyType": "A",
+    "PropertyTypeLabel": "Residential",
+    "PublicRemarks": "Modern Elegance Meets Desert Charm\r\n\r\nStep into contemporary luxury with this stunning custom-built home featuring 4 spacious bedrooms and 3 sleek bathrooms. Designed for modern living, the open-concept floor plan seamlessly connects the living, dining, and kitchen areas\u2014perfect for both everyday comfort and entertaining guests. Stylish plank tile flooring runs throughout the home, adding a touch of sophistication and durability.\r\n\r\nEnjoy the beauty of low-maintenance desert landscaping in both the front and back yards, complemented by a thoughtfully designed paver patio, covered patio is ideal for outdoor relaxation.",
+    "SeniorCommunityYN": false,
+    "Sewer": {
+      "Septic Tank": true
+    },
+    "SourceSystemID": "M00000072",
+    "SourceSystemKey": "20250508004736087567000000",
+    "SourceSystemName": "Greater Palm Springs Multiple Listing Service",
+    "SpaYN": false,
+    "SpecialListingConditions": {
+      "Standard": true
+    },
+    "StandardStatus": "Active",
+    "StateOrProvince": "CA",
+    "StatusChangeDate": "2025-06-05",
+    "StatusChangeTimestamp": "2025-06-05T15:58:47Z",
+    "StoriesTotal": 1,
+    "StreetName": "Cuando",
+    "StreetNumber": "13121",
+    "StreetNumberInteger": 13121,
+    "StreetSuffix": "Way",
+    "SubdivisionName": "Not Applicable",
+    "TotalBathroomsSource": "Computed",
+    "UnparsedAddress": "13121 Cuando Way, Desert Hot Springs, CA 92240",
+    "UnparsedFirstLineAddress": "13121 Cuando Way",
+    "VOWAddressDisplayYN": true,
+    "VOWAutomatedValuationDisplayYN": true,
+    "VOWConsumerCommentYN": true,
+    "VOWEntireListingDisplayYN": true,
+    "VideosChangeTimestamp": "1970-01-01T00:00:00Z",
+    "VideosCount": 1,
+    "ViewYN": false,
+    "VirtualTourURLUnbranded": "https://www.zillow.com/view-imx/5a97dd3c-b0dc-4f95-8e5b-e6618d6d6b16?wl=true&setAttribution=mls&initialViewType=pano",
+    "WalkScore": 0,
+    "YearBuilt": 2025,
+    "YearBuiltSource": "Assessor",
+    "OriginatingSystemListingId": "219129735",
+    "FloorPlansCount": 0,
+    "ListAgentOriginatingSystemMlsId": "d84747",
+    "ListOfficeOriginatingSystemMlsId": "oD22725",
+    "CoListAgentOriginatingSystemMlsId": "D81198",
+    "VirtualToursCount": 1,
+    "OpenHousesCount": 0,
+    "SparkModificationTimestamp": "2025-06-05T19:30:54Z",
+    "VirtualTours": [
+      {
+        "GroupId": "20250605155442199533000000",
+        "CurrentPrivacy": "Public",
+        "Privacy": "Public",
+        "ResourceUri": "/v1/listings/20250508004736087567000000/virtualtours/20250605155442199533000000",
+        "Id": "20250605155442199533000000",
+        "Name": "3D Tour",
+        "Uri": "https://www.zillow.com/view-imx/5a97dd3c-b0dc-4f95-8e5b-e6618d6d6b16?wl=true&setAttribution=mls&initialViewType=pano",
+        "Type": "unbranded",
+        "ModificationTimestamp": "1970-01-01T00:00:00Z"
+      }
+    ],
+    "ListAgentFirstName": "Amber",
+    "ListAgentLastName": "Placentia & Associates",
+    "ListAgentMarketingName": "Amber Placentia & Associates",
+    "ListAgentMemberType": "Teams/Partners",
+    "ListAgentViewName": "Amber Placentia & Associates",
+    "ListAgentPreferredPhone": "760-835-3764",
+    "CoListAgentMarketingName": "Amber Placentia",
+    "CoListAgentMemberType": "Realtor",
+    "CoListAgentViewName": "Amber Placentia",
+    "CoListAgentTeamKey": "20220830184808954982000000",
+    "CoListAgentUserType": "Member",
+    "ListOfficeName": "HomeSmart",
+    "ListOfficeViewName": "HomeSmart",
+    "ListOfficePhone": "760-844-7500",
+    "ListingUpdateTimestamp": "2025-06-05T19:30:54Z"
+  },
+  "DisplayCompliance": {
+    "View": "Detail",
+    "IDXLogo": {
+      "Type": "Text",
+      "LogoUri": "HomeSmart"
+    },
+    "IDXLogoSmall": {
+      "Type": "Text",
+      "LogoUri": "IDX"
+    }
+  }
+}
