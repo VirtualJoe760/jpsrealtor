@@ -4,6 +4,7 @@ import Link from 'next/link';
 const navigation = {
   main: [
     { name: 'Book a Consultation', href: '/book-appointment' },
+    { name: 'Listings', href: '/mls-listings' }, 
     { name: 'Insights', href: '/insights/' },
     { name: 'Loans', href: 'https://myloan.intercaplending.com/homehub/signup/cache@intercaplending.com?from_mobile_share=true'},
     { name: 'Newsletter Signup', href: '/newsletter-signup' },

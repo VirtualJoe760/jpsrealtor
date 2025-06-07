@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const navigation = [
   { name: "About", href: "/about" },
   { name: 'Insights', href: '/insights' },
-  { name: "Listings", href: "/listings" },
+  { name: "Listings", href: "/mls-listings" },
   { name: "Coachella Valley", href: "/neighborhoods" },
   { name: "Contact", href: "/#contact" },
 ];
