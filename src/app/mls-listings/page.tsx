@@ -11,10 +11,12 @@ const MapPageClient = dynamic(() => import("@/app/components/mls/map/MapPageClie
 // 🧠 SEO Metadata
 export const metadata: Metadata = {
   title: "Search MLS Listings | Coachella Valley Real Estate",
-  description: "Browse active listings across the Coachella Valley. Use our interactive map to explore homes by location, price, and features.",
+  description:
+    "Browse active listings across the Coachella Valley. Use our interactive map to explore homes by location, price, and features.",
   openGraph: {
     title: "Search MLS Listings | Coachella Valley Real Estate",
-    description: "Find your next home in Cathedral City, Palm Springs, La Quinta, and more. Real-time map search powered by MLS data.",
+    description:
+      "Find your next home in Cathedral City, Palm Springs, La Quinta, and more. Real-time map search powered by MLS data.",
     type: "website",
     url: "https://www.jpsrealtor.com/mls-listings",
     images: [
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
 
 function LoadingFallback() {
   return (
-    <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-black">
+    <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-black overflow-hidden">
       <div className="text-center space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-zinc-400 text-sm">Loading map and listings...</p>
@@ -47,8 +49,10 @@ function LoadingFallback() {
 
 export default function SearchMapPage() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <MapPageClient />
-    </Suspense>
+    <div className="h-[calc(100vh-64px)] overflow-hidden">
+      <Suspense fallback={<LoadingFallback />}>
+        <MapPageClient />
+      </Suspense>
+    </div>
   );
 }

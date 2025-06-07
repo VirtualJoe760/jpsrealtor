@@ -14,9 +14,11 @@ export default function MapPageClient() {
   const [allListings, setAllListings] = useState<MapListing[]>([]);
   const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const touchStartX = useRef<number | null>(null);
+
+
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
-  const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches?.[0];
@@ -32,76 +34,71 @@ export default function MapPageClient() {
     touchStartX.current = null;
   };
 
-  useEffect(() => {
-    if (isSidebarOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isSidebarOpen]);
+useEffect(() => {
+  let isMounted = true;
 
-  useEffect(() => {
-    let isMounted = true;
+  async function loadListings() {
+    try {
+      for (let i = 0; i < MAX_BATCHES; i++) {
+        const res = await fetch(`/api/mls-listings?batch=${i}`, {
+          cache: "no-store",
+        });
 
-    async function loadListings() {
-      const combined: MapListing[] = [];
-
-      try {
-        for (let i = 0; i < MAX_BATCHES; i++) {
-          const res = await fetch(`/api/mls-listings?batch=${i}`, { cache: "no-store" });
-          if (!res.ok) {
-            console.warn(`⚠️ Batch ${i} failed with status ${res.status}`);
-            break;
-          }
-
-          const data = await res.json();
-          const batch = (data.listings || []) as any[];
-
-          const mapped = batch
-            .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
-            .map((l) => ({
-              _id: String(l._id),
-              latitude: l.latitude,
-              longitude: l.longitude,
-              listPrice: l.listPrice,
-              address: l.address ?? "Unknown address",
-              unparsedFirstLineAddress: l.address ?? "Unknown address",
-              primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
-              bedroomsTotal: l.bedroomsTotal ?? undefined,
-              bathroomsFull: l.bathroomsFull ?? undefined,
-              livingArea: l.livingArea ?? undefined,
-              lotSizeSqft: l.lotSizeSqft ?? undefined,
-              pool: l.pool ?? false,
-              spa: l.spa ?? false,
-              listingId: l.listingId,
-              slugAddress: l.slugAddress ?? undefined,
-              slug: l.slug,
-              publicRemarks: l.publicRemarks ?? undefined,
-            }));
-
-          combined.push(...mapped);
-          if (batch.length < 500) break;
+        if (!res.ok) {
+          console.warn(`⚠️ Batch ${i} failed with status ${res.status}`);
+          break;
         }
 
-        if (isMounted) {
-          setAllListings(combined);
-          setVisibleListings(combined);
-          setLoading(false);
+        const data = await res.json();
+        const batch = (data.listings || []) as any[];
+
+        const mapped = batch
+          .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
+          .map((l) => ({
+            _id: String(l._id),
+            latitude: l.latitude,
+            longitude: l.longitude,
+            listPrice: l.listPrice,
+            address:
+              l.address ?? l.unparsedAddress ?? l.unparsedFirstLineAddress ?? "Unknown address",
+            unparsedFirstLineAddress: l.unparsedFirstLineAddress ?? l.address ?? "Unknown address",
+            primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
+            bedroomsTotal: l.bedroomsTotal ?? l.bedsTotal ?? undefined,
+            bathroomsFull: l.bathroomsFull ?? undefined,
+            livingArea: l.livingArea ?? l.buildingAreaTotal ?? undefined,
+            lotSizeSqft: l.lotSizeSqft ?? l.lotSizeArea ?? undefined,
+            pool: l.poolYn ?? false,
+            spa: l.spaYn ?? false,
+            listingId: l.listingId,
+            slugAddress: l.slugAddress ?? undefined,
+            slug: l.slug,
+            publicRemarks: l.publicRemarks ?? undefined,
+          }));
+
+        // ✅ Stream listings into state
+        if (isMounted && mapped.length > 0) {
+          setAllListings((prev) => [...prev, ...mapped]);
         }
-      } catch (err) {
-        console.error("❌ Error loading listings:", err);
-        setLoading(false);
+
+        // Optionally break if batch was small (optional)
+        if (batch.length < 500) break;
       }
-    }
 
-    loadListings();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      if (isMounted) {
+        setLoading(false); // you can remove this if using MapView’s own loading logic
+      }
+    } catch (err) {
+      console.error("❌ Error loading listings:", err);
+      setLoading(false);
+    }
+  }
+
+  loadListings();
+  return () => {
+    isMounted = false;
+  };
+}, []);
+
 
   if (loading) {
     return (
@@ -118,27 +115,21 @@ export default function MapPageClient() {
     <>
       <MapToolbar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
-      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0 overflow-hidden">
-        {/* Map */}
+      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0 overflow-hidden overscroll-none">
         <div className="w-full lg:w-[75%] 2xl:w-[85%]">
           <MapView listings={allListings} setVisibleListings={setVisibleListings} />
         </div>
 
-        {/* Mobile backdrop */}
         {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-            onClick={toggleSidebar}
-          />
+          <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={toggleSidebar} />
         )}
 
-        {/* Sidebar */}
         <aside
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className={`fixed top-0 right-0 h-full w-[90%] sm:w-[70%] md:w-[60%] bg-zinc-950 text-white transform transition-transform duration-300 z-40
             ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} 
-            lg:static lg:translate-x-0 lg:w-[25%] 2xl:w-[15%] lg:block lg:border-l border-zinc-800 overflow-y-auto px-4 py-6 pt-16 lg:pt-6`}
+            lg:static lg:translate-x-0 lg:w-[25%] 2xl:w-[15%] lg:block lg:border-l border-zinc-800 overflow-y-auto px-4 py-6 pt-16 lg:pt-6 overscroll-contain`}
         >
           <div className="flex justify-end mb-2 lg:hidden">
             <button onClick={toggleSidebar} aria-label="Close Sidebar">
@@ -154,7 +145,7 @@ export default function MapPageClient() {
             {visibleListings.map((listing) => (
               <li key={listing._id}>
                 <Link
-                  href={`/mls-listings/${listing.slugAddress}`}
+                  href={`/mls-listings/${listing.slugAddress || listing.slug}`}
                   className="group flex flex-col bg-zinc-900 rounded-xl overflow-hidden shadow-sm border border-zinc-800 hover:border-emerald-500 transition-all duration-200"
                 >
                   <img
@@ -168,27 +159,17 @@ export default function MapPageClient() {
                     </p>
                     <p className="text-sm text-zinc-300">{listing.address}</p>
                     <div className="text-xs text-zinc-400 flex flex-wrap gap-2">
-                      {listing.bedroomsTotal !== undefined && (
-                        <span>{listing.bedroomsTotal} Bed</span>
-                      )}
-                      {listing.bathroomsFull !== undefined && (
-                        <span>{listing.bathroomsFull} Bath</span>
-                      )}
-                      {listing.livingArea !== undefined && (
-                        <span>{listing.livingArea.toLocaleString()} SqFt</span>
-                      )}
+                      {listing.bedroomsTotal !== undefined && <span>{listing.bedroomsTotal} Bed</span>}
+                      {listing.bathroomsFull !== undefined && <span>{listing.bathroomsFull} Bath</span>}
+                      {listing.livingArea !== undefined && <span>{listing.livingArea.toLocaleString()} SqFt</span>}
                       {listing.lotSizeSqft !== undefined && (
-                        <span>
-                          {Math.round(listing.lotSizeSqft).toLocaleString()} Lot
-                        </span>
+                        <span>{Math.round(listing.lotSizeSqft).toLocaleString()} Lot</span>
                       )}
                       {listing.pool && <span>🏊 Pool</span>}
                       {listing.spa && <span>🧖 Spa</span>}
                     </div>
                     {listing.publicRemarks && (
-                      <p className="text-xs text-zinc-400 mt-2 line-clamp-3">
-                        {listing.publicRemarks}
-                      </p>
+                      <p className="text-xs text-zinc-400 mt-2 line-clamp-3">{listing.publicRemarks}</p>
                     )}
                   </div>
                 </Link>

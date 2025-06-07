@@ -1,107 +1,95 @@
 // src/app/mls-listings/[slugAddress]/page.tsx
-
 import { notFound } from "next/navigation";
 import CollageHero from "@/app/components/mls/CollageHero";
-import FactsGrid from "@/app/components/mls/FactsGrid";
-import ListingDescription from "@/app/components/mls/ListingDescription";
-import dbConnect from "@/lib/mongoose";
+import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
+import Link from "next/link";
 
-import { Listing, IListing } from "@/models/listings";
-import { getPublicRemarks } from "@/app/utils/spark/getPublicRemarks";
+import type { IListing } from "@/models/listings";
 import { fetchListingPhotos } from "@/app/utils/spark/photos";
-import type { SparkPhoto } from "@/types/photo";
+import { SparkPhoto } from "@/types/photo";
 
-interface ListingPageProps {
+async function getEnrichedListing(slugAddress: string): Promise<IListing | null> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings/${slugAddress}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.listing ?? null;
+  } catch (err) {
+    console.error("Failed to fetch enriched listing:", err);
+    return null;
+  }
+}
+
+function calculateDaysOnMarket(dateString?: string | Date) {
+  if (!dateString) return null;
+  const listedDate = new Date(dateString);
+  const today = new Date();
+  const diffTime = today.getTime() - listedDate.getTime();
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+export default async function ListingPage({
+  params,
+}: {
   params: { slugAddress: string };
-}
-
-function formatListedDate(input?: string | Date): string {
-  if (!input) return "Listed date unknown";
-  const date = typeof input === "string" ? new Date(input) : input;
-  if (isNaN(date.getTime())) return "Listed date unknown";
-  return `Listed on ${date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })}`;
-}
-
-export default async function ListingPage({ params }: ListingPageProps) {
-  await dbConnect();
-
-  const listing: IListing | null = await Listing.findOne({
-    slugAddress: params.slugAddress,
-  })
-    .lean()
-    .exec();
-
+}) {
+  const listing = await getEnrichedListing(params.slugAddress);
   if (!listing) return notFound();
 
+  const address =
+    listing.unparsedAddress ||
+    listing.unparsedFirstLineAddress ||
+    listing.address ||
+    "Unknown address";
+
   const rawPhotos = await fetchListingPhotos(listing.slug);
-  const photos: {
-    uri2048?: string;
-    uri1600?: string;
-    uri1280?: string;
-    uri1024?: string;
-    uri800?: string;
-    uri640?: string;
-    uri300?: string;
-    uriThumb?: string;
-    uriLarge?: string;
-    caption: string;
-  }[] = (rawPhotos || []).map((p: SparkPhoto) => ({
-    uri2048: p.Uri2048,
-    uri1600: p.Uri1600,
-    uri1280: p.Uri1280,
-    uri1024: p.Uri1024,
-    uri800: p.Uri800,
-    uri640: p.Uri640,
-    uri300: p.Uri300,
-    uriThumb: p.UriThumb,
-    uriLarge: p.UriLarge,
-    caption: p.Caption || "",
-  }));
+  const photos: SparkPhoto[] = rawPhotos ?? [];
 
-  const publicRemarks = await getPublicRemarks(listing.slug);
+  const media = photos.length
+    ? photos.map((p) => ({
+        type: "photo" as const,
+        src:
+          p.Uri2048 ||
+          p.Uri1600 ||
+          p.Uri1280 ||
+          p.Uri1024 ||
+          p.Uri800 ||
+          p.UriThumb ||
+          p.UriLarge ||
+          "/images/no-photo.png",
+        alt: p.Caption || "Listing photo",
+      }))
+    : [
+        {
+          type: "photo" as const,
+          src: listing.primaryPhotoUrl || "/images/no-photo.png",
+          alt: "Listing cover photo",
+        },
+      ];
 
-  const mediaForCollage = photos.map((p) => ({
-    type: "photo" as const,
-    src:
-      p.uri2048 ??
-      p.uri1600 ??
-      p.uri1280 ??
-      p.uri1024 ??
-      p.uri800 ??
-      p.uriThumb ??
-      p.uriLarge ??
-      "/images/no-photo.png",
-    alt: p.caption || "Listing photo",
-  }));
+  const daysOnMarket = calculateDaysOnMarket(listing.listingContractDate);
 
   return (
-    <main className="w-full text-white">
-      <CollageHero media={mediaForCollage} />
+    <main className="w-full bg-black text-white">
+      <CollageHero media={media} />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="my-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
-            <p className="text-2xl sm:text-3xl font-semibold">
-              {listing.unparsedAddress}
-            </p>
-            <p className="text-sm text-white mt-1">
+            <p className="text-3xl font-semibold leading-tight">{address}</p>
+            <p className="text-sm text-zinc-400 mt-1">
               MLS#: {listing.listingId} · {listing.propertyTypeLabel} ·{" "}
               {listing.propertySubType || "Unknown Subtype"}
             </p>
           </div>
-
-          <div className="text-right">
-            <p className="text-4xl font-bold text-white">
+          <div className="text-right space-y-2">
+            <p className="text-4xl font-bold text-emerald-400">
               ${listing.listPrice?.toLocaleString()}
-              {listing.propertyType?.toLowerCase().includes("lease")
-                ? "/mo"
-                : ""}
+              {listing.propertyType?.toLowerCase().includes("lease") ? "/mo" : ""}
             </p>
-            <p className="text-sm mt-2 text-white">
+            <p className="text-sm">
               <span
                 className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                   listing.status === "Active" ? "bg-green-600" : "bg-gray-600"
@@ -109,60 +97,86 @@ export default async function ListingPage({ params }: ListingPageProps) {
               >
                 {listing.status}
               </span>{" "}
-              · {formatListedDate(listing.onMarketDate)}
+              · {daysOnMarket !== null ? `${daysOnMarket} days on market` : "Listed date unknown"}
             </p>
           </div>
         </div>
 
-        <FactsGrid
-          beds={listing.bedroomsTotal}
-          baths={listing.bathroomsFull}
-          halfBaths={listing.bathroomsHalf ?? 0}
-          sqft={listing.livingArea}
-          yearBuilt={listing.yearBuilt}
-        />
+        <div className="flex flex-wrap gap-2 text-sm mb-6">
+          {listing.bedsTotal !== undefined && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.bedsTotal} Bed</span>
+          )}
+          {listing.bathroomsTotalInteger !== undefined && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.bathroomsTotalInteger} Bath</span>
+          )}
+          {listing.livingArea !== undefined && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.livingArea.toLocaleString()} SqFt</span>
+          )}
+          {listing.lotSizeArea !== undefined && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">
+              {Math.round(listing.lotSizeArea).toLocaleString()} Lot
+            </span>
+          )}
+          {listing.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
+          {listing.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm text-white">
-          {listing.yearBuilt && (
-            <div>
-              <strong>Year Built:</strong> {listing.yearBuilt}
-            </div>
-          )}
+        {listing.publicRemarks && (
+          <p className="text-sm text-white mb-6 whitespace-pre-line">{listing.publicRemarks}</p>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-sm mb-8">
           {listing.subdivisionName && (
-            <div>
+            <p>
               <strong>Subdivision:</strong> {listing.subdivisionName}
-            </div>
+            </p>
           )}
-          {listing.heating && (
-            <div>
-              <strong>Heating:</strong> {listing.heating}
-            </div>
-          )}
-          {listing.cooling && (
-            <div>
-              <strong>Cooling:</strong> {listing.cooling}
-            </div>
-          )}
-          {listing.view && (
-            <div>
-              <strong>View:</strong> {listing.view}
-            </div>
+          {listing.yearBuilt && (
+            <p>
+              <strong>Year Built:</strong> {listing.yearBuilt}
+            </p>
           )}
           {listing.parkingTotal !== undefined && (
-            <div>
+            <p>
               <strong>Parking:</strong> {listing.parkingTotal}
-            </div>
+            </p>
+          )}
+          {listing.heating && (
+            <p>
+              <strong>Heating:</strong> {listing.heating}
+            </p>
+          )}
+          {listing.cooling && (
+            <p>
+              <strong>Cooling:</strong> {listing.cooling}
+            </p>
+          )}
+          {listing.view && (
+            <p>
+              <strong>View:</strong> {listing.view}
+            </p>
+          )}
+          {listing.flooring && (
+            <p>
+              <strong>Flooring:</strong> {listing.flooring}
+            </p>
           )}
         </div>
 
-        <ListingDescription
-          remarks={publicRemarks ?? "No description available."}
-        />
+        {listing.listOfficeName && listing.listAgentName && (
+          <p className="text-sm text-zinc-600 mb-4">
+            Listing presented by {listing.listOfficeName}, {listing.listAgentName}
+          </p>
+        )}
 
-        <div className="mt-12">
-          <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        <div className="space-y-6">
+          <MortgageCalculator />
+          <Link
+            href="/book-appointment"
+            className="block w-full sm:w-fit text-center bg-emerald-500 text-black font-semibold py-3 px-6 rounded-md hover:bg-emerald-400 transition"
+          >
             Schedule a Showing
-          </button>
+          </Link>
         </div>
       </div>
     </main>

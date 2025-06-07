@@ -1,11 +1,11 @@
-// src/app/api/mls-listings/route.ts
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { Listing, IListing } from "@/models/listings";
 import Photo from "@/models/photos";
-import OpenHouse from "@/models/openHouses"; // ✅ import the model
+import OpenHouse from "@/models/openHouses";
+import { fetchListingPhotos } from "@/app/utils/spark/photos";
 
 const BATCH_SIZE = 500;
 
@@ -13,9 +13,19 @@ export async function GET(req: NextRequest) {
   console.log("🔌 Connecting to MongoDB...");
   await dbConnect();
 
-  try {
-    const batch = parseInt(req.nextUrl.searchParams.get("batch") || "0", 10);
+  const url = req.nextUrl;
+  const batch = parseInt(url.searchParams.get("batch") || "0", 10);
+  const selectedKey = url.searchParams.get("selected");
 
+  try {
+    // ✅ Handle single listing photo fetch from Spark if selected is present
+    if (selectedKey) {
+      console.log(`📸 Fetching photos for selected listing: ${selectedKey}`);
+      const photos = await fetchListingPhotos(selectedKey);
+      return NextResponse.json({ photos });
+    }
+
+    // ✅ Otherwise, load batch of active listings from DB
     const expectedCount = await Listing.countDocuments({
       standardStatus: "Active",
       propertyType: "A",
@@ -33,12 +43,9 @@ export async function GET(req: NextRequest) {
         listPrice: { $ne: null },
       },
       {
-        // IDs and slugs
         listingId: 1,
         slug: 1,
         slugAddress: 1,
-
-        // Core
         status: 1,
         listPrice: 1,
         currentPrice: 1,
@@ -60,11 +67,7 @@ export async function GET(req: NextRequest) {
         laundryFeatures: 1,
         interiorFeatures: 1,
         exteriorFeatures: 1,
-
-        // Dates
         listingContractDate: 1,
-
-        // Location
         address: 1,
         unparsedAddress: 1,
         unparsedFirstLineAddress: 1,
@@ -80,8 +83,6 @@ export async function GET(req: NextRequest) {
         postalCode: 1,
         countyOrParish: 1,
         country: 1,
-
-        // Features
         poolYn: 1,
         spaYn: 1,
         viewYn: 1,
@@ -100,8 +101,6 @@ export async function GET(req: NextRequest) {
         levels: 1,
         seniorCommunityYn: 1,
         gatedCommunity: 1,
-
-        // Agent & Brokerage
         listingAgentName: 1,
         listingAgentPhone: 1,
         listingOfficeName: 1,
@@ -116,23 +115,20 @@ export async function GET(req: NextRequest) {
 
     const listingsWithExtras = await Promise.all(
       listings.map(async (listing) => {
-        // 📸 Fetch photo
         const photo = await Photo.findOne({ listingId: listing.listingId })
           .sort({ primary: -1, Order: 1 })
           .lean();
 
-        // 🏡 Fetch open houses
         const openHouses = await OpenHouse.find({ listingId: listing.listingId }).lean();
 
         return {
           ...listing,
           primaryPhotoUrl: photo?.uri800 || "/images/no-photo.png",
-          openHouses, // ✅ attach open house data
+          openHouses,
         };
       })
     );
 
-    // 📝 Write to logs
     if (process.env.NODE_ENV !== "production") {
       const fs = await import("fs/promises");
       const path = await import("path");

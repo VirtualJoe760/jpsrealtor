@@ -32,60 +32,57 @@ export default function MortgageCalculator({
 
   const monthlyPayment =
     loanAmount > 0
-      ? (loanAmount * monthlyRate) /
-        (1 - Math.pow(1 + monthlyRate, -numberOfPayments))
+      ? (loanAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -numberOfPayments))
       : 0;
 
   return (
-    <div className="p-4 bg-zinc-900 rounded-lg shadow-md text-white mt-6">
-      <h2 className="text-lg font-semibold mb-4 pb-10">Mortgage Calculator</h2>
+    <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 mt-6">
+      <h3 className="text-lg font-semibold mb-4">Mortgage Calculator</h3>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <label className="flex flex-col">
-          Price
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <label className="flex flex-col gap-1">
+          <span>Price</span>
           <input
             type="number"
             value={priceState}
             onChange={(e) => setPriceState(parseFloat(e.target.value))}
-            className="mt-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white"
+            className="px-3 py-2 rounded bg-zinc-800 border border-zinc-700 text-white"
           />
         </label>
 
-        <label className="flex flex-col">
-          Down Payment
+        <label className="flex flex-col gap-1">
+          <span>Down Payment</span>
           <input
             type="number"
             value={downPaymentState}
             onChange={(e) => setDownPaymentState(parseFloat(e.target.value))}
-            className="mt-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white"
+            className="px-3 py-2 rounded bg-zinc-800 border border-zinc-700 text-white"
           />
         </label>
 
-        <label className="flex flex-col">
-          Interest Rate (%)
+        <label className="flex flex-col gap-1">
+          <span>Interest Rate (%)</span>
           <input
             type="number"
             step="0.01"
             value={interestRateState}
-            onChange={(e) =>
-              setInterestRateState(parseFloat(e.target.value))
-            }
-            className="mt-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white"
+            onChange={(e) => setInterestRateState(parseFloat(e.target.value))}
+            className="px-3 py-2 rounded bg-zinc-800 border border-zinc-700 text-white"
           />
         </label>
 
-        <label className="flex flex-col">
-          Loan Term (years)
+        <label className="flex flex-col gap-1">
+          <span>Loan Term (years)</span>
           <input
             type="number"
             value={loanTermState}
             onChange={(e) => setLoanTermState(parseInt(e.target.value))}
-            className="mt-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white"
+            className="px-3 py-2 rounded bg-zinc-800 border border-zinc-700 text-white"
           />
         </label>
       </div>
 
-      <div className="mt-4 text-emerald-400 font-bold">
+      <div className="mt-5 text-emerald-400 font-semibold text-sm">
         Estimated Monthly Payment: ${monthlyPayment.toFixed(2)}
       </div>
     </div>
