@@ -16,7 +16,24 @@ export default function MapPageClient() {
   const [loading, setLoading] = useState(true);
   const touchStartX = useRef<number | null>(null);
 
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyHeight = document.body.style.height;
+    const originalHtmlHeight = document.documentElement.style.height;
 
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+    document.documentElement.style.height = "100vh";
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.height = originalBodyHeight;
+      document.documentElement.style.height = originalHtmlHeight;
+    };
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
@@ -100,16 +117,7 @@ useEffect(() => {
 }, []);
 
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-64px)] w-full bg-black">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-zinc-400 text-sm">Loading map and listings...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <>

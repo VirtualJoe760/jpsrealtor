@@ -1,6 +1,7 @@
+// src/app/components/mls/CollageHero.tsx
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import {
   XMarkIcon,
@@ -22,10 +23,24 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const thumbScrollRef = useRef<HTMLDivElement>(null);
+  const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const current = media[currentIndex];
+  const current = media?.[currentIndex] ?? {
+    type: "photo",
+    src: "/images/no-photo.png",
+    alt: "Main image not available",
+  };
 
-  console.log("📦 CollageHero media:", media);
+  useEffect(() => {
+    const el = thumbRefs.current[currentIndex];
+    if (el) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [currentIndex]);
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
@@ -39,8 +54,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   const closeModal = () => setModalIndex(null);
   const modalPrev = () =>
     setModalIndex((prev) => (prev! - 1 + media.length) % media.length);
-  const modalNext = () =>
-    setModalIndex((prev) => (prev! + 1) % media.length);
+  const modalNext = () => setModalIndex((prev) => (prev! + 1) % media.length);
 
   const scrollThumbnails = (direction: "left" | "right") => {
     const el = thumbScrollRef.current;
@@ -55,33 +69,31 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   return (
     <>
       <section className="w-full flex flex-col items-center">
-        <div className="relative w-full xl:max-w-6xl h-[600px] rounded-xl overflow-hidden">
-          {current && (
-            <>
-              <Image
-                src={current.src}
-                alt={current.alt || "Main media"}
-                fill
-                className="object-cover cursor-pointer"
-                onClick={() => openModal(currentIndex)}
-              />
+        <div className="relative w-full xl:max-w-6xl aspect-[4/3] md:aspect-[5/3] lg:aspect-[3/2] max-h-[700px] rounded-xl overflow-hidden">
+          <Image
+            src={current.src}
+            alt={current.alt || "Main media"}
+            placeholder="blur"
+            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J2EnPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzUnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWxsPSdibGFjazsnIGZpbHRlcj0ndXJsKCNhKScvPjwvc3ZnPg=="
+            fill
+            className="object-cover cursor-pointer z-0"
+            onClick={() => openModal(currentIndex)}
+          />
 
-              <button
-                onClick={handlePrev}
-                className="absolute top-1/2 left-4 -translate-y-1/2 text-white z-10 bg-black/30 hover:bg-black/50 p-2 rounded"
-                aria-label="Previous"
-              >
-                <ChevronLeftIcon className="h-8 w-8" />
-              </button>
-              <button
-                onClick={handleNext}
-                className="absolute top-1/2 right-4 -translate-y-1/2 text-white z-10 bg-black/30 hover:bg-black/50 p-2 rounded"
-                aria-label="Next"
-              >
-                <ChevronRightIcon className="h-8 w-8" />
-              </button>
-            </>
-          )}
+          <button
+            onClick={handlePrev}
+            className="absolute top-1/2 left-4 -translate-y-1/2 text-white z-20 bg-black/30 hover:bg-black/50 p-2 rounded"
+            aria-label="Previous"
+          >
+            <ChevronLeftIcon className="h-8 w-8" />
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute top-1/2 right-4 -translate-y-1/2 text-white z-20 bg-black/30 hover:bg-black/50 p-2 rounded"
+            aria-label="Next"
+          >
+            <ChevronRightIcon className="h-8 w-8" />
+          </button>
         </div>
 
         {/* Thumbnail carousel */}
@@ -99,27 +111,27 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             className="flex overflow-x-auto no-scrollbar gap-2 py-2 px-6 scroll-smooth"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
-            {media.map((item, i) => {
-              const src = item.src;
-              console.log(`🖼️ Thumbnail ${i + 1} src:`, src);
-
-              return (
-                <div
-                  key={i}
-                  className={`relative w-32 h-24 flex-shrink-0 cursor-pointer rounded overflow-hidden border-2 ${
-                    i === currentIndex ? "border-blue-500" : "border-transparent"
-                  }`}
-                  onClick={() => setCurrentIndex(i)}
-                >
-                  <Image
-                    src={src}
-                    alt={item.alt || `Thumb ${i}`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              );
-            })}
+            {media.map((item, i) => (
+              <div
+                key={i}
+                ref={(el) => {
+                  thumbRefs.current[i] = el;
+                }}
+                className={`relative w-32 h-24 flex-shrink-0 cursor-pointer rounded overflow-hidden border-2 ${
+                  i === currentIndex ? "border-blue-500" : "border-transparent"
+                }`}
+                onClick={() => setCurrentIndex(i)}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.alt || `Thumb ${i}`}
+                  placeholder="blur"
+                  blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J2EnPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzUnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWxsPSdibGFjazsnIGZpbHRlcj0ndXJsKCNhKScvPjwvc3ZnPg=="
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
           </div>
 
           <button
@@ -145,6 +157,8 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             <Image
               src={media[modalIndex]?.src || "/images/no-photo.png"}
               alt={media[modalIndex]?.alt || "Full image"}
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J2EnPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzUnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWxsPSdibGFjazsnIGZpbHRlcj0ndXJsKCNhKScvPjwvc3ZnPg=="
               fill
               className="object-contain"
             />

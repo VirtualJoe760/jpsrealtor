@@ -34,6 +34,7 @@ const nextConfig = {
       { protocol: "https", hostname: "assets.simpleviewinc.com" },
       { protocol: "https", hostname: "villaestatesmo.com" },
       { protocol: "https", hostname: "www.thaler.tirol" },
+      { protocol: "https", hostname: "cdn.photos.sparkplatform.com" },
     ],
   },
   webpack(config) {

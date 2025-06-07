@@ -15,6 +15,7 @@ type Props = {
 
 export default function ListingBottomPanel({ listing, onClose }: Props) {
   const [fullListing, setFullListing] = useState<IListing | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const listingId = listing.slug ?? listing.slugAddress;
   const photoUrl = listing.primaryPhotoUrl || "/images/no-photo.png";
@@ -40,6 +41,8 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
         setFullListing(json?.listing ?? null);
       } catch (err) {
         console.error("❌ Error fetching full listing:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -71,122 +74,124 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
           </button>
         </div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between p-5 pt-4">
-          <div>
-            <p className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 leading-tight">
-              {address}
-            </p>
-            <p className="text-2xl font-bold text-emerald-400 leading-tight">
-              ${(fullListing?.listPrice ?? listing.listPrice).toLocaleString()}
-            </p>
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
-          <div className="flex gap-2">
-            <button
-              className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-              aria-label="Share this listing"
-              onClick={() =>
-                navigator.share?.({
-                  title: address,
-                  url: window.location.href,
-                })
-              }
-            >
-              <Share2 className="w-4 h-4 text-white" />
-            </button>
+        ) : (
+          <div className="px-5 pb-5 space-y-3 text-white">
+            <div className="flex items-start justify-between pt-4">
+              <div>
+                <p className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 leading-tight">
+                  {address}
+                </p>
+                <p className="text-2xl font-bold text-emerald-400 leading-tight">
+                  ${(fullListing?.listPrice ?? listing.listPrice).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
+                  aria-label="Share this listing"
+                  onClick={() =>
+                    navigator.share?.({
+                      title: address,
+                      url: window.location.href,
+                    })
+                  }
+                >
+                  <Share2 className="w-4 h-4 text-white" />
+                </button>
+                <Link
+                  href="/book-appointment"
+                  className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
+                  aria-label="Book an appointment"
+                >
+                  <Calendar className="w-4 h-4 text-white" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-sm">
+              {fullListing?.bedsTotal !== undefined && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
+              )}
+              {fullListing?.bathroomsTotalInteger !== undefined && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bathroomsTotalInteger} Bath</span>
+              )}
+              {fullListing?.livingArea !== undefined && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.livingArea.toLocaleString()} SqFt</span>
+              )}
+              {fullListing?.lotSizeArea !== undefined && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
+                </span>
+              )}
+              {fullListing?.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
+              {fullListing?.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
+            </div>
+
+            {fullListing?.publicRemarks && (
+              <p className="text-sm text-white mt-2 line-clamp-5">{fullListing.publicRemarks}</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {fullListing?.subdivisionName && (
+                <p>
+                  <strong>Subdivision:</strong> {fullListing.subdivisionName}
+                </p>
+              )}
+              {fullListing?.yearBuilt && (
+                <p>
+                  <strong>Year Built:</strong> {fullListing.yearBuilt}
+                </p>
+              )}
+              {daysOnMarket !== null && (
+                <p>
+                  <strong>Days on Market:</strong> {daysOnMarket}
+                </p>
+              )}
+              {fullListing?.parkingTotal !== undefined && (
+                <p>
+                  <strong>Parking:</strong> {fullListing.parkingTotal}
+                </p>
+              )}
+              {fullListing?.heating && (
+                <p>
+                  <strong>Heating:</strong> {fullListing.heating}
+                </p>
+              )}
+              {fullListing?.cooling && (
+                <p>
+                  <strong>Cooling:</strong> {fullListing.cooling}
+                </p>
+              )}
+              {fullListing?.view && (
+                <p>
+                  <strong>View:</strong> {fullListing.view}
+                </p>
+              )}
+              {fullListing?.flooring && (
+                <p>
+                  <strong>Flooring:</strong> {fullListing.flooring}
+                </p>
+              )}
+            </div>
+
+            {fullListing?.listOfficeName && fullListing?.listAgentName && (
+              <p className="text-sm text-zinc-600 mt-4">
+                Listing presented by {fullListing.listOfficeName}, {fullListing.listAgentName}
+              </p>
+            )}
+
             <Link
-              href="/book-appointment"
-              className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-              aria-label="Book an appointment"
+              href={`/mls-listings/${listing.slugAddress ?? listing.slug}`}
+              className="block text-center mt-2 bg-emerald-500 text-black font-semibold py-2 rounded-md hover:bg-emerald-400 transition"
             >
-              <Calendar className="w-4 h-4 text-white" />
+              View Full Listing
             </Link>
           </div>
-        </div>
-
-        {/* Details */}
-        <div className="px-5 pb-5 space-y-3 text-white">
-          <div className="flex flex-wrap gap-2 text-sm">
-            {fullListing?.bedsTotal !== undefined && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
-            )}
-            {fullListing?.bathroomsTotalInteger !== undefined && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bathroomsTotalInteger} Bath</span>
-            )}
-            {fullListing?.livingArea !== undefined && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.livingArea.toLocaleString()} SqFt</span>
-            )}
-            {fullListing?.lotSizeArea !== undefined && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">
-                {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
-              </span>
-            )}
-            {fullListing?.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
-            {fullListing?.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
-          </div>
-
-          {fullListing?.publicRemarks && (
-            <p className="text-sm text-white mt-2 line-clamp-5">{fullListing.publicRemarks}</p>
-          )}
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {fullListing?.subdivisionName && (
-              <p>
-                <strong>Subdivision:</strong> {fullListing.subdivisionName}
-              </p>
-            )}
-            {fullListing?.yearBuilt && (
-              <p>
-                <strong>Year Built:</strong> {fullListing.yearBuilt}
-              </p>
-            )}
-            {daysOnMarket !== null && (
-              <p>
-                <strong>Days on Market:</strong> {daysOnMarket}
-              </p>
-            )}
-            {fullListing?.parkingTotal !== undefined && (
-              <p>
-                <strong>Parking:</strong> {fullListing.parkingTotal}
-              </p>
-            )}
-            {fullListing?.heating && (
-              <p>
-                <strong>Heating:</strong> {fullListing.heating}
-              </p>
-            )}
-            {fullListing?.cooling && (
-              <p>
-                <strong>Cooling:</strong> {fullListing.cooling}
-              </p>
-            )}
-            {fullListing?.view && (
-              <p>
-                <strong>View:</strong> {fullListing.view}
-              </p>
-            )}
-            {fullListing?.flooring && (
-              <p>
-                <strong>Flooring:</strong> {fullListing.flooring}
-              </p>
-            )}
-          </div>
-
-          {fullListing?.listOfficeName && fullListing?.listAgentName && (
-            <p className="text-sm text-zinc-600 mt-4">
-              Listing presented by {fullListing.listOfficeName}, {fullListing.listAgentName}
-            </p>
-          )}
-
-          <MortgageCalculator />
-
-          <Link
-            href={`/mls-listings/${listing.slugAddress ?? listing.slug}`}
-            className="block text-center mt-2 bg-emerald-500 text-black font-semibold py-2 rounded-md hover:bg-emerald-400 transition"
-          >
-            View Full Listing
-          </Link>
-        </div>
+        )}
       </div>
     </div>
   );
