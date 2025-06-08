@@ -7,8 +7,6 @@ import type { MapListing } from "@/types/types";
 import MapView from "@/app/components/mls/map/MapView";
 import MapToolbar from "./MapToolBar";
 
-const MAX_BATCHES = 6;
-
 export default function MapPageClient() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [allListings, setAllListings] = useState<MapListing[]>([]);
@@ -51,80 +49,86 @@ export default function MapPageClient() {
     touchStartX.current = null;
   };
 
-useEffect(() => {
-  let isMounted = true;
+  useEffect(() => {
+    let isMounted = true;
 
-  async function loadListings() {
-    try {
-      for (let i = 0; i < MAX_BATCHES; i++) {
-        const res = await fetch(`/api/mls-listings?batch=${i}`, {
-          cache: "no-store",
-        });
+    async function loadListings() {
+      try {
+        let batch = 0;
+        while (true) {
+          const res = await fetch(`/api/mls-listings?batch=${batch}`, {
+            cache: "no-store",
+          });
 
-        if (!res.ok) {
-          console.warn(`⚠️ Batch ${i} failed with status ${res.status}`);
-          break;
+          if (!res.ok) {
+            console.warn(`⚠️ Batch ${batch} failed with status ${res.status}`);
+            break;
+          }
+
+          const data = await res.json();
+          const batchData = (data.listings || []) as any[];
+
+          const mapped = batchData
+            .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
+            .map((l) => ({
+              _id: String(l._id),
+              latitude: l.latitude,
+              longitude: l.longitude,
+              listPrice: l.listPrice,
+              address:
+                l.address ?? l.unparsedAddress ?? l.unparsedFirstLineAddress ?? "Unknown address",
+              unparsedFirstLineAddress: l.unparsedFirstLineAddress ?? l.address ?? "Unknown address",
+              primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
+              bedroomsTotal: l.bedroomsTotal ?? l.bedsTotal ?? undefined,
+              bathroomsFull: l.bathroomsFull ?? undefined,
+              livingArea: l.livingArea ?? l.buildingAreaTotal ?? undefined,
+              lotSizeSqft: l.lotSizeSqft ?? l.lotSizeArea ?? undefined,
+              pool: l.poolYn ?? false,
+              spa: l.spaYn ?? false,
+              listingId: l.listingId,
+              slugAddress: l.slugAddress ?? undefined,
+              slug: l.slug,
+              publicRemarks: l.publicRemarks ?? undefined,
+            }));
+
+          if (isMounted && mapped.length > 0) {
+            setAllListings((prev) => {
+              const existingIds = new Set(prev.map((l) => l.listingId));
+              const newListings = mapped.filter((l) => !existingIds.has(l.listingId));
+              return [...prev, ...newListings];
+            });
+
+            if (loading) {
+              setLoading(false);
+            }
+          }
+
+          if (batchData.length < 500) break;
+          batch++;
         }
-
-        const data = await res.json();
-        const batch = (data.listings || []) as any[];
-
-        const mapped = batch
-          .filter((l) => l.latitude && l.longitude && l.listPrice && l.slug)
-          .map((l) => ({
-            _id: String(l._id),
-            latitude: l.latitude,
-            longitude: l.longitude,
-            listPrice: l.listPrice,
-            address:
-              l.address ?? l.unparsedAddress ?? l.unparsedFirstLineAddress ?? "Unknown address",
-            unparsedFirstLineAddress: l.unparsedFirstLineAddress ?? l.address ?? "Unknown address",
-            primaryPhotoUrl: l.primaryPhotoUrl || "/images/no-photo.png",
-            bedroomsTotal: l.bedroomsTotal ?? l.bedsTotal ?? undefined,
-            bathroomsFull: l.bathroomsFull ?? undefined,
-            livingArea: l.livingArea ?? l.buildingAreaTotal ?? undefined,
-            lotSizeSqft: l.lotSizeSqft ?? l.lotSizeArea ?? undefined,
-            pool: l.poolYn ?? false,
-            spa: l.spaYn ?? false,
-            listingId: l.listingId,
-            slugAddress: l.slugAddress ?? undefined,
-            slug: l.slug,
-            publicRemarks: l.publicRemarks ?? undefined,
-          }));
-
-        // ✅ Stream listings into state
-        if (isMounted && mapped.length > 0) {
-          setAllListings((prev) => [...prev, ...mapped]);
-        }
-
-        // Optionally break if batch was small (optional)
-        if (batch.length < 500) break;
+      } catch (err) {
+        console.error("❌ Error loading listings:", err);
+        setLoading(false);
       }
-
-      if (isMounted) {
-        setLoading(false); // you can remove this if using MapView’s own loading logic
-      }
-    } catch (err) {
-      console.error("❌ Error loading listings:", err);
-      setLoading(false);
     }
-  }
 
-  loadListings();
-  return () => {
-    isMounted = false;
-  };
-}, []);
-
-
-
+    loadListings();
+    return () => {
+      isMounted = false;
+    };
+  }, [loading]);
 
   return (
     <>
       <MapToolbar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] pt-[48px] lg:pt-0 overflow-hidden overscroll-none">
-        <div className="w-full lg:w-[75%] 2xl:w-[85%]">
+        <div className="w-full lg:w-[75%] 2xl:w-[85%] relative">
+          {/* 🧮 Total Listings Badge */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/70 backdrop-blur-sm text-white text-sm font-semibold px-4 py-1.5 rounded-full shadow-md border border-zinc-700">
+            Total Listings in Coachella Valley: {allListings.length.toLocaleString()}
+          </div>
+
           <MapView listings={allListings} setVisibleListings={setVisibleListings} />
         </div>
 
