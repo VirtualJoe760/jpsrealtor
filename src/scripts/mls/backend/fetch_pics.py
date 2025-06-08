@@ -1,14 +1,14 @@
 import os
 import json
-import requests
 import time
 import random
+import requests
 from pathlib import Path
 from dotenv import load_dotenv
-from pymongo import MongoClient
+from pymongo import MongoClient, ReplaceOne
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Load .env
+# Load environment
 env_path = Path(__file__).resolve().parents[4] / ".env.local"
 load_dotenv(dotenv_path=env_path)
 
@@ -19,69 +19,118 @@ BASE_URL = "https://replication.sparkapi.com/v1/listings"
 if not MONGODB_URI or not SPARK_ACCESS_TOKEN:
     raise Exception("❌ Missing MONGODB_URI or SPARK_ACCESS_TOKEN")
 
-LOCAL_LOGS_DIR = Path(__file__).resolve().parents[4] / "local-logs"
-LOCAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_FILE = LOCAL_LOGS_DIR / "listing_photos.json"
-
 client = MongoClient(MONGODB_URI)
 db = client.get_database()
 listings_collection = db.listings
+photos_collection = db.photos
 
 HEADERS = {
     "Authorization": f"Bearer {SPARK_ACCESS_TOKEN}",
     "Accept": "application/json"
 }
 
-# Fetch a single listing’s photos with retry/backoff
-def fetch_photos(slug: str, retries=3):
-    url = f"{BASE_URL}/{slug}/photos"
+# Config
+MAX_WORKERS = 5
+RETRY_LIMIT = 3
+BATCH_SIZE = 100
+DELAY_BETWEEN_BATCHES = 10  # seconds
 
-    for attempt in range(retries):
+# Paths
+LOCAL_LOGS_DIR = Path(__file__).resolve().parents[4] / "local-logs"
+LOCAL_LOGS_DIR.mkdir(exist_ok=True)
+LOG_PATH = LOCAL_LOGS_DIR / "listing_photos.json"
+
+def load_log():
+    if LOG_PATH.exists():
+        with open(LOG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {entry["listingId"]: len(entry.get("photos", [])) for entry in data}
+    return {}
+
+def save_log(log_entries):
+    log_list = [{"listingId": lid, "photos": count} for lid, count in log_entries.items()]
+    with open(LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(log_list, f, indent=2)
+
+def fetch_photos(listing_id: str):
+    url = f"{BASE_URL}/{listing_id}/photos"
+
+    for attempt in range(RETRY_LIMIT):
         try:
-            res = requests.get(url, headers=HEADERS, timeout=10)
+            res = requests.get(url, headers=HEADERS, timeout=8)
             if res.status_code == 200:
-                data = res.json().get("D", {}).get("Results", [])
-                return { "listingId": slug, "photos": data }
-
+                return res.json().get("D", {}).get("Results", [])
             elif res.status_code == 429:
                 wait = [1, 3, 7][attempt]
-                print(f"⏳ {slug}: 429 Too Many Requests – retrying in {wait}s")
                 time.sleep(wait + random.uniform(0, 1))
-
+            elif res.status_code == 403:
+                return []
             else:
-                print(f"❌ {slug}: {res.status_code}")
-                return { "listingId": slug, "photos": [] }
+                return []
+        except:
+            time.sleep(1)
+    return []
 
-        except Exception as e:
-            print(f"⚠️ {slug} error: {e}")
-            return { "listingId": slug, "photos": [] }
+def save_photos_to_db(listing_id, photos):
+    if not photos:
+        return
+    photos_collection.delete_many({"listingId": listing_id})
+    ops = [
+        ReplaceOne(
+            {"listingId": listing_id, "photoId": photo["Id"]},
+            {**photo, "listingId": listing_id},
+            upsert=True
+        )
+        for photo in photos
+    ]
+    if ops:
+        photos_collection.bulk_write(ops, ordered=False)
 
-    print(f"❌ {slug}: exhausted retries")
-    return { "listingId": slug, "photos": [] }
+def chunked(iterable, size):
+    for i in range(0, len(iterable), size):
+        yield iterable[i:i + size]
 
 def main():
-    listings = list(listings_collection.find({}, {"slug": 1}))
-    print(f"📦 Found {len(listings)} listings in local DB")
+    all_listings = list(listings_collection.find({"slug": {"$exists": True}}, {"slug": 1}))
+    print(f"📦 Found {len(all_listings)} listings in local DB")
 
-    all_photos = []
-    max_workers = 5  # ✅ Limit concurrency to avoid Spark rate limiting
+    existing_log = load_log()
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(fetch_photos, listing["slug"]): listing["slug"]
-            for listing in listings if "slug" in listing
-        }
+    slugs_to_fetch = []
+    for listing in all_listings:
+        slug = listing.get("slug")
+        if not slug:
+            continue
+        photo_count = photos_collection.count_documents({"listingId": slug})
+        if slug not in existing_log or photo_count != existing_log[slug]:
+            slugs_to_fetch.append(slug)
 
-        for i, future in enumerate(as_completed(futures), start=1):
-            slug = futures[future]
-            result = future.result()
-            all_photos.append(result)
-            print(f"📸 [{i}/{len(futures)}] {slug}: {len(result['photos'])} photos")
+    print(f"🚀 Fetching {len(slugs_to_fetch)} listings missing or outdated in log")
 
-    with OUTPUT_FILE.open("w", encoding="utf-8") as f:
-        json.dump(all_photos, f, indent=2)
+    updated_log = dict(existing_log)
+    batches = list(chunked(slugs_to_fetch, BATCH_SIZE))
 
-    print(f"✅ Saved photos for {len(all_photos)} listings to {OUTPUT_FILE}")
+    for batch_num, batch in enumerate(batches, start=1):
+        print(f"📦 Batch {batch_num}/{len(batches)} ({len(batch)} listings)")
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(fetch_photos, slug): slug for slug in batch}
+
+            for future in as_completed(futures):
+                slug = futures[future]
+                photos = future.result()
+                if photos:
+                    save_photos_to_db(slug, photos)
+                    updated_log[slug] = len(photos)
+                else:
+                    updated_log[slug] = 0  # Still log it
+
+        print(f"✅ Batch {batch_num} complete — waiting {DELAY_BETWEEN_BATCHES}s...")
+        time.sleep(DELAY_BETWEEN_BATCHES)
+
+    save_log(updated_log)
+    print(f"📝 Wrote updated photo counts to {LOG_PATH}")
+    print("🏁 Done!")
 
 if __name__ == "__main__":
     main()
