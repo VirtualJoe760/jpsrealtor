@@ -1,5 +1,6 @@
 // src/app/mls-listings/[slugAddress]/page.tsx
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import CollageHero from "@/app/components/mls/CollageHero";
 import { fetchListingPhotos } from "@/app/utils/spark/photos";
 import type { IListing } from "@/models/listings";
@@ -16,7 +17,7 @@ async function getEnrichedListing(slugAddress: string): Promise<IListing | null>
     const data = await res.json();
     return data?.listing ?? null;
   } catch (err) {
-    console.error("Failed to fetch enriched listing:", err);
+    console.error("❌ Failed to fetch enriched listing:", err);
     return null;
   }
 }
@@ -45,7 +46,57 @@ function formatPhotos(photos: SparkPhoto[], fallbackUrl: string) {
       ];
 }
 
-export default async function ListingPage({ params }: { params: { slugAddress: string } }) {
+// ✅ Dynamic SEO metadata
+export async function generateMetadata({
+  params,
+}: {
+  params: { slugAddress: string };
+}): Promise<Metadata> {
+  const listing = await getEnrichedListing(params.slugAddress);
+
+  if (!listing) return { title: "Listing Not Found" };
+
+  const address =
+    listing.unparsedAddress ||
+    listing.unparsedFirstLineAddress ||
+    listing.address ||
+    "Unknown address";
+
+  const title = `${address} - $${listing.listPrice?.toLocaleString() || "Price Unavailable"}`;
+  const description =
+    listing.publicRemarks?.substring(0, 150) || "View property details, photos, and more.";
+
+  const image = listing.primaryPhotoUrl || "/images/no-photo.png";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: address,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function ListingPage({
+  params,
+}: {
+  params: { slugAddress: string };
+}) {
   const listing = await getEnrichedListing(params.slugAddress);
   if (!listing) return notFound();
 
@@ -55,12 +106,18 @@ export default async function ListingPage({ params }: { params: { slugAddress: s
     listing.address ||
     "Unknown address";
 
-  const rawPhotos = await fetchListingPhotos(listing.slug);
-  const media = formatPhotos(rawPhotos ?? [], listing.primaryPhotoUrl || "/images/no-photo.png");
+  let rawPhotos: SparkPhoto[] = [];
+  try {
+    rawPhotos = await fetchListingPhotos(listing.slug);
+  } catch (err) {
+    console.warn(`📛 Could not load photos for listing ${listing.slug}:`, err);
+    rawPhotos = [];
+  }
+
+  const media = formatPhotos(rawPhotos, listing.primaryPhotoUrl || "/images/no-photo.png");
 
   return (
     <main className="w-full bg-black text-white">
-      
       <ListingClient listing={listing} media={media} address={address} />
     </main>
   );

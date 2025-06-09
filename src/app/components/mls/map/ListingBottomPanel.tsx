@@ -18,7 +18,11 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
   const [loading, setLoading] = useState(true);
 
   const listingId = listing.slug ?? listing.slugAddress;
-  const photoUrl = listing.primaryPhotoUrl || "/images/no-photo.png";
+  const photoUrl =
+    listing.primaryPhotoUrl?.startsWith("http") ||
+    listing.primaryPhotoUrl?.startsWith("/")
+      ? listing.primaryPhotoUrl
+      : "/images/no-photo.png";
 
   const address =
     fullListing?.unparsedAddress ||
@@ -64,7 +68,11 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
       <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
         {/* Carousel */}
         <div className="relative">
-          <ListingCarousel listingId={listingId!} initialPhoto={photoUrl} alt={address} />
+          <ListingCarousel
+            listingId={listingId!}
+            initialPhoto={photoUrl}
+            alt={address}
+          />
           <button
             onClick={onClose}
             aria-label="Close"
@@ -86,7 +94,10 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
                   {address}
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 leading-tight">
-                  ${(fullListing?.listPrice ?? listing.listPrice).toLocaleString()}
+                  $
+                  {(
+                    fullListing?.listPrice ?? listing.listPrice
+                  ).toLocaleString()}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -114,25 +125,41 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
 
             <div className="flex flex-wrap gap-2 text-sm">
               {fullListing?.bedsTotal !== undefined && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  {fullListing.bedsTotal} Bed
+                </span>
               )}
               {fullListing?.bathroomsTotalInteger !== undefined && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.bathroomsTotalInteger} Bath</span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  {fullListing.bathroomsTotalInteger} Bath
+                </span>
               )}
               {fullListing?.livingArea !== undefined && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">{fullListing.livingArea.toLocaleString()} SqFt</span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  {fullListing.livingArea.toLocaleString()} SqFt
+                </span>
               )}
               {fullListing?.lotSizeArea !== undefined && (
                 <span className="bg-zinc-800 px-3 py-1 rounded-full">
                   {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
                 </span>
               )}
-              {fullListing?.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
-              {fullListing?.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
+              {fullListing?.poolYn && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  🏊 Pool
+                </span>
+              )}
+              {fullListing?.spaYn && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  🧖 Spa
+                </span>
+              )}
             </div>
 
             {fullListing?.publicRemarks && (
-              <p className="text-sm text-white mt-2 line-clamp-5">{fullListing.publicRemarks}</p>
+              <p className="text-sm text-white mt-2 line-clamp-5">
+                {fullListing.publicRemarks}
+              </p>
             )}
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -180,7 +207,8 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
 
             {fullListing?.listOfficeName && fullListing?.listAgentName && (
               <p className="text-sm text-zinc-600 mt-4">
-                Listing presented by {fullListing.listOfficeName}, {fullListing.listAgentName}
+                Listing presented by {fullListing.listOfficeName},{" "}
+                {fullListing.listAgentName}
               </p>
             )}
 
