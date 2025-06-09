@@ -53,6 +53,17 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
     fetchListingDetails();
   }, [listing]);
 
+  useEffect(() => {
+    // Prevent body scroll when panel is open
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, []);
+
   const calculateDaysOnMarket = (dateString?: string | Date) => {
     if (!dateString) return null;
     const listedDate = new Date(dateString);
@@ -94,8 +105,7 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
                   {address}
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 leading-tight">
-                  $
-                  {(
+                  ${(
                     fullListing?.listPrice ?? listing.listPrice
                   ).toLocaleString()}
                 </p>
@@ -145,14 +155,10 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
                 </span>
               )}
               {fullListing?.poolYn && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">
-                  🏊 Pool
-                </span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
               )}
               {fullListing?.spaYn && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">
-                  🧖 Spa
-                </span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
               )}
             </div>
 
