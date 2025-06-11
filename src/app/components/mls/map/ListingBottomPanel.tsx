@@ -2,22 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { X, Share2, Calendar } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { MapListing } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import MortgageCalculator from "./MortgageCalculator";
-import ListingCarousel from "@/app/components/mls/ListingCarousel";
 
 type Props = {
   listing: MapListing;
   onClose: () => void;
+  isSidebarOpen: boolean;
+  isFiltersOpen: boolean;
 };
 
-export default function ListingBottomPanel({ listing, onClose }: Props) {
+export default function ListingBottomPanel({
+  listing,
+  onClose,
+  isSidebarOpen,
+  isFiltersOpen,
+}: Props) {
   const [fullListing, setFullListing] = useState<IListing | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const listingId = listing.slug ?? listing.slugAddress;
   const photoUrl =
     listing.primaryPhotoUrl?.startsWith("http") ||
     listing.primaryPhotoUrl?.startsWith("/")
@@ -54,10 +60,8 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
   }, [listing]);
 
   useEffect(() => {
-    // Prevent body scroll when panel is open
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
-
     return () => {
       document.body.style.overflow = "";
       document.body.style.touchAction = "";
@@ -74,15 +78,25 @@ export default function ListingBottomPanel({ listing, onClose }: Props) {
 
   const daysOnMarket = calculateDaysOnMarket(fullListing?.listingContractDate);
 
+  let lgLayoutClasses = "lg:left-[15%] lg:right-[15%]";
+  if (isFiltersOpen) {
+    lgLayoutClasses = "lg:left-[25%] lg:right-[15%]";
+  } else if (isSidebarOpen) {
+    lgLayoutClasses = "lg:left-[15%] lg:right-[25%]";
+  }
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 lg:right-[25%] 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up">
+    <div
+      className={`fixed bottom-0 left-0 right-0 ${lgLayoutClasses} 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up`}
+    >
       <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
-        {/* Carousel */}
-        <div className="relative">
-          <ListingCarousel
-            listingId={listingId!}
-            initialPhoto={photoUrl}
+        <div className="relative w-full h-52 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
+          <Image
+            src={photoUrl}
             alt={address}
+            fill
+            className="object-cover"
+            priority
           />
           <button
             onClick={onClose}

@@ -32,7 +32,7 @@ const PhotoSchema: Schema<IPhoto> = new Schema({
   primary: Boolean,
 });
 
-// Avoid model recompilation errors on hot reload in dev
+// ✅ Avoid model recompilation in development
 const Photo: Model<IPhoto> = mongoose.models.Photo || mongoose.model<IPhoto>('Photo', PhotoSchema);
 
 export default Photo;

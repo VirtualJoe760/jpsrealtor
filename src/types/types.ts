@@ -13,20 +13,24 @@ export interface MapListing {
   listPrice: number;
   address: string;
   unparsedFirstLineAddress?: string;
-  unparsedAddress?: string; // ✅ Add this
+  unparsedAddress?: string;
   primaryPhotoUrl: string;
+  bedsTotal?: number;
+  bathroomsTotalInteger?: number;
 
   // Optional property details
   bedroomsTotal?: number;
   bathroomsFull?: number;
   livingArea?: number;
   lotSizeSqft?: number;
+  associationFee?: number;
 
-  // Booleans for amenities
+  // Booleans for amenities (raw and normalized)
   poolYn?: boolean;
   spaYn?: boolean;
-  pool?: boolean; // ✅ Add this
-  spa?: boolean;  // ✅ Add this
+  associationYN?: boolean;
+  pool?: boolean; // normalized for UI
+  spa?: boolean;  // normalized for UI
 
   // Remarks and identifiers
   publicRemarks?: string;
@@ -41,3 +45,15 @@ export interface MapListing {
   // Media
   photos?: Photo[];
 }
+
+export type Filters = {
+  minPrice: string;
+  maxPrice: string;
+  beds: string;
+  baths: string;
+  propertyType: string;
+  hoa: string;
+  poolYn?: boolean;
+  spaYn?: boolean;
+  associationYN?: boolean; // replaces hasHOA
+};

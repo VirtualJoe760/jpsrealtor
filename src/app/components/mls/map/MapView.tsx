@@ -1,22 +1,42 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import Map, { Marker, ViewState } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapListing } from "@/types/types";
 import Supercluster, { ClusterFeature, PointFeature } from "supercluster";
-import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import { CustomProperties } from "@/types/cluster";
-import { useRouter, useSearchParams } from "next/navigation";
 
 type CustomClusterFeature = ClusterFeature<CustomProperties>;
 type MixedClusterFeature =
   | CustomClusterFeature
   | PointFeature<CustomProperties>;
 
+export interface MapViewHandles {
+  flyToCity: (lat: number, lng: number, zoom?: number) => void;
+}
+
 interface MapViewProps {
   listings: MapListing[];
   setVisibleListings: (listings: MapListing[]) => void;
+  centerLat?: number;
+  centerLng?: number;
+  zoom?: number;
+  onSelectListing: (listing: MapListing) => void;
+  selectedListing?: MapListing | null;
+  onBoundsChange?: (bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  }) => void;
 }
 
 function formatPrice(price?: number): string {
@@ -26,29 +46,29 @@ function formatPrice(price?: number): string {
   return `$${price}`;
 }
 
-export default function MapView({
-  listings,
-  setVisibleListings,
-}: MapViewProps) {
-  const [selectedListing, setSelectedListing] = useState<MapListing | null>(
-    null
-  );
+const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
+  {
+    listings,
+    setVisibleListings,
+    centerLat,
+    centerLng,
+    zoom,
+    onSelectListing,
+    selectedListing,
+    onBoundsChange,
+  },
+  ref
+) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clusters, setClusters] = useState<MixedClusterFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<any>(null);
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const lat = parseFloat(searchParams.get("lat") || "");
-  const lng = parseFloat(searchParams.get("lng") || "");
-  const zoom = parseFloat(searchParams.get("zoom") || "");
+  const manualFlyRef = useRef(false);
 
   const hydratedInitialViewState: ViewState = {
-    latitude: !isNaN(lat) ? lat : 33.72,
-    longitude: !isNaN(lng) ? lng : -116.37,
-    zoom: !isNaN(zoom) ? zoom : 11,
+    latitude: centerLat ?? 33.72,
+    longitude: centerLng ?? -116.37,
+    zoom: zoom ?? 11,
     bearing: 0,
     pitch: 0,
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -73,7 +93,7 @@ export default function MapView({
   const supercluster = useMemo(() => {
     const cluster = new Supercluster<CustomProperties, CustomProperties>({
       radius: 60,
-      maxZoom: 16,
+      maxZoom: 13,
     });
     cluster.load(geoJsonPoints);
     return cluster;
@@ -102,52 +122,57 @@ export default function MapView({
 
     setVisibleListings(visible);
     setLoading(false);
+
+    // 🔁 Trigger server-side filtered listing load
+    if (onBoundsChange) {
+      onBoundsChange({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    }
   };
 
   useEffect(() => {
-    if (mapRef.current) updateClusters();
-  }, [supercluster]);
+    if (mapRef.current && geoJsonPoints.length > 0) {
+      updateClusters();
+    }
+  }, [geoJsonPoints.length]);
 
   const handleMoveEnd = () => {
     updateClusters();
   };
 
-  useEffect(() => {
-    const selected = searchParams.get("selected");
-    if (selected) {
-      const listing = listings.find((l) => l.slug === selected);
-      if (listing) setSelectedListing(listing);
-    }
-  }, [searchParams, listings]);
-
   const handleMarkerClick = (listing: MapListing) => {
-    setSelectedListing(listing);
-
+    onSelectListing(listing);
     const map = mapRef.current?.getMap();
     if (!map) return;
 
-    const markerLngLat = [listing.longitude, listing.latitude] as [
-      number,
-      number
-    ];
+    manualFlyRef.current = false;
 
-    // ✅ Always center the map directly on the marker
     map.easeTo({
-      center: markerLngLat,
-      duration: 500,
+      center: [listing.longitude, listing.latitude],
+      zoom: 15,
+      duration: 600,
+      offset: [0, -250],
     });
-
-    const center = map.getCenter();
-    const zoom = map.getZoom();
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("lat", center.lat.toFixed(6));
-    params.set("lng", center.lng.toFixed(6));
-    params.set("zoom", zoom.toFixed(2));
-    params.set("selected", listing.slug!);
-
-    router.push(`?${params.toString()}`, { scroll: false });
   };
+
+  useImperativeHandle(ref, () => ({
+    flyToCity(lat: number, lng: number, zoomLevel = 12) {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+
+      manualFlyRef.current = true;
+      map.easeTo({
+        center: [lng, lat],
+        zoom: zoomLevel,
+        duration: 1000,
+        offset: [0, -250],
+      });
+    },
+  }));
 
   return (
     <div className="relative w-full h-full">
@@ -195,6 +220,7 @@ export default function MapView({
 
           const listing = cluster.properties;
           const isHovered = hoveredId === listing._id;
+          const isSelected = selectedListing?._id === listing._id;
 
           return (
             <Marker
@@ -207,10 +233,13 @@ export default function MapView({
               <div
                 onMouseEnter={() => setHoveredId(listing._id!)}
                 onMouseLeave={() => setHoveredId(null)}
-                className={`rounded-md shadow-md px-2 py-1 text-xs whitespace-nowrap transition-colors duration-200 font-[Raleway] font-semibold ${
-                  isHovered
-                    ? "bg-emerald-400 text-black"
-                    : "bg-emerald-600 text-white"
+                className={`rounded-md px-2 py-1 text-xs whitespace-nowrap font-[Raleway] font-semibold transition-all duration-200
+                ${
+                  isSelected
+                    ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[60] ring-2 ring-white"
+                    : isHovered
+                    ? "bg-emerald-400 text-black scale-105 z-40"
+                    : "bg-emerald-600 text-white scale-100 z-30"
                 }`}
               >
                 {formatPrice(listing.listPrice)}
@@ -227,18 +256,8 @@ export default function MapView({
           );
         })}
       </Map>
-
-      {selectedListing && (
-        <ListingBottomPanel
-          listing={selectedListing}
-          onClose={() => {
-            setSelectedListing(null);
-            const params = new URLSearchParams(searchParams.toString());
-            params.delete("selected");
-            router.push(`?${params.toString()}`, { scroll: false });
-          }}
-        />
-      )}
     </div>
   );
-}
+});
+
+export default MapView;

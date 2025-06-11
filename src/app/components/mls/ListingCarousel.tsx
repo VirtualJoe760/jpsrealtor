@@ -29,6 +29,7 @@ const ListingCarousel: React.FC<ListingCarouselProps> = ({ listingId, initialPho
 
         if (!cancelled && unique.length > 0) {
           setPhotos(unique);
+          setCurrentIndex(0); // Reset index when new photos are loaded
         }
       } catch (err) {
         console.warn("📛 Could not load all photos:", err);
@@ -55,6 +56,7 @@ const ListingCarousel: React.FC<ListingCarouselProps> = ({ listingId, initialPho
   return (
     <div className="relative w-full h-52 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
       <Image
+        key={displayPhoto} // Force re-render when image changes
         src={displayPhoto}
         alt={alt || "Listing photo"}
         fill

@@ -8,7 +8,7 @@ from pymongo import MongoClient
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load .env.local
-env_path = Path(__file__).resolve().parents[3] / ".env.local"
+env_path = Path(__file__).resolve().parents[4] / ".env.local"
 load_dotenv(dotenv_path=env_path)
 
 ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
