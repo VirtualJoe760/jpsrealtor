@@ -1,16 +1,20 @@
+// src/app/components/mls/map/ListingBottomPanel.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Share2, Calendar } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import type { MapListing } from "@/types/types";
 import type { IListing } from "@/models/listings";
-import MortgageCalculator from "./MortgageCalculator";
+import clsx from "clsx";
 
 type Props = {
   listing: MapListing;
   onClose: () => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
   isSidebarOpen: boolean;
   isFiltersOpen: boolean;
 };
@@ -18,11 +22,15 @@ type Props = {
 export default function ListingBottomPanel({
   listing,
   onClose,
+  onSwipeLeft,
+  onSwipeRight,
   isSidebarOpen,
   isFiltersOpen,
 }: Props) {
   const [fullListing, setFullListing] = useState<IListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exitSwipe, setExitSwipe] = useState<"left" | "right" | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const photoUrl =
     listing.primaryPhotoUrl?.startsWith("http") ||
@@ -42,12 +50,10 @@ export default function ListingBottomPanel({
   useEffect(() => {
     const fetchListingDetails = async () => {
       const slug = listing.slugAddress ?? listing.slug;
-      console.log("📦 Fetching full listing for slug:", slug);
       try {
         const res = await fetch(`/api/mls-listings/${slug}`);
         if (!res.ok) throw new Error("Failed to fetch full listing");
         const json = await res.json();
-        console.log("✅ Fetched full listing:", json?.listing);
         setFullListing(json?.listing ?? null);
       } catch (err) {
         console.error("❌ Error fetching full listing:", err);
@@ -55,41 +61,72 @@ export default function ListingBottomPanel({
         setLoading(false);
       }
     };
-
     fetchListingDetails();
   }, [listing]);
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    };
-  }, []);
-
-  const calculateDaysOnMarket = (dateString?: string | Date) => {
-    if (!dateString) return null;
-    const listedDate = new Date(dateString);
-    const today = new Date();
-    const diffTime = today.getTime() - listedDate.getTime();
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const handleSwipe = (dir: "left" | "right") => {
+    console.log("👉 Swipe initiated:", dir);
+    setExitSwipe(dir);
+    setTimeout(() => {
+      if (dir === "left") {
+        console.log("✅ Swipe left completed, attempting to advance");
+        onSwipeLeft?.();
+      } else {
+        console.log("✅ Swipe right completed, attempting to go back");
+        onSwipeRight?.();
+      }
+      setExitSwipe(null);
+    }, 400);
   };
 
-  const daysOnMarket = calculateDaysOnMarket(fullListing?.listingContractDate);
+  const getExitAnimation = () => {
+    if (exitSwipe === "left")
+      return { x: -400, y: -120, rotate: -10, opacity: 0 };
+    if (exitSwipe === "right")
+      return { x: 400, y: -120, rotate: 10, opacity: 0 };
+    return { opacity: 0 };
+  };
 
-  let lgLayoutClasses = "lg:left-[15%] lg:right-[15%]";
-  if (isFiltersOpen) {
-    lgLayoutClasses = "lg:left-[25%] lg:right-[15%]";
-  } else if (isSidebarOpen) {
-    lgLayoutClasses = "lg:left-[15%] lg:right-[25%]";
-  }
+  const lgLayoutClasses = clsx({
+    "lg:left-[25%] lg:right-[15%]": isFiltersOpen,
+    "lg:left-[15%] lg:right-[25%]": isSidebarOpen && !isFiltersOpen,
+    "lg:left-[15%] lg:right-[15%]": !isSidebarOpen && !isFiltersOpen,
+  });
 
   return (
-    <div
-      className={`fixed bottom-0 left-0 right-0 ${lgLayoutClasses} 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden  max-h-[85vh] animate-slide-up`}
-    >
-      <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={listing.slugAddress ?? listing.slug}
+        ref={panelRef}
+        initial={{ y: 200, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{
+          ...getExitAnimation(),
+          transition: { duration: 0.45, ease: [0.42, 0, 0.58, 1] },
+        }}
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        drag={true}
+        onDragEnd={(e, info) => {
+          const { offset, velocity } = info;
+
+          if (offset.x < -100 || velocity.x < -500) {
+            console.log("👈 Swipe left detected");
+            onSwipeLeft?.();
+          } else if (offset.x > 100 || velocity.x > 500) {
+            console.log("👉 Swipe right detected");
+            onSwipeRight?.();
+          } else if (offset.y > 100) {
+            console.log("📉 Swipe down to close triggered");
+            onClose();
+          } else {
+            console.log("😐 No significant swipe");
+          }
+        }}
+        className={clsx(
+          "fixed bottom-0 left-0 right-0 z-50 bg-zinc-950 text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh]",
+          lgLayoutClasses
+        )}
+      >
         <div className="relative w-full h-44 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
           <Image
             src={photoUrl}
@@ -115,12 +152,12 @@ export default function ListingBottomPanel({
           <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white">
             <div className="flex items-start justify-between pt-4">
               <div>
-                <p className="text-base sm:text-xl md:text-2xl font-semibold mb-1 leading-tight">
+                <p className="text-3xl font-semibold mb-1 leading-tight">
                   {address}
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 leading-tight">
                   $
-                  {(
+                  {Number(
                     fullListing?.listPrice ?? listing.listPrice
                   ).toLocaleString()}
                 </p>
@@ -148,7 +185,7 @@ export default function ListingBottomPanel({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 text-sm">
+            <div className="flex flex-wrap gap-2 text-base sm:text-lg mt-2">
               {fullListing?.bedsTotal !== undefined && (
                 <span className="bg-zinc-800 px-3 py-1 rounded-full">
                   {fullListing.bedsTotal} Bed
@@ -169,6 +206,11 @@ export default function ListingBottomPanel({
                   {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
                 </span>
               )}
+              {fullListing?.yearBuilt && (
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  Built {fullListing.yearBuilt}
+                </span>
+              )}
               {fullListing?.poolYn && (
                 <span className="bg-zinc-800 px-3 py-1 rounded-full">
                   🏊 Pool
@@ -181,6 +223,12 @@ export default function ListingBottomPanel({
               )}
             </div>
 
+            {fullListing?.subdivisionName && (
+              <p className="text-base sm:text-lg font-semibold text-white mt-1">
+                Subdivision: {fullListing.subdivisionName}
+              </p>
+            )}
+
             {fullListing?.publicRemarks && (
               <p className="text-sm text-white mt-2 line-clamp-5">
                 {fullListing.publicRemarks.length > 300
@@ -189,55 +237,26 @@ export default function ListingBottomPanel({
               </p>
             )}
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              {fullListing?.subdivisionName && (
-                <p>
-                  <strong>Subdivision:</strong> {fullListing.subdivisionName}
-                </p>
-              )}
-              {fullListing?.yearBuilt && (
-                <p>
-                  <strong>Year Built:</strong> {fullListing.yearBuilt}
-                </p>
-              )}
-              {daysOnMarket !== null && (
-                <p>
-                  <strong>Days on Market:</strong> {daysOnMarket}
-                </p>
-              )}
-              {fullListing?.parkingTotal !== undefined && (
-                <p>
-                  <strong>Parking:</strong> {fullListing.parkingTotal}
-                </p>
-              )}
-              {fullListing?.heating && (
-                <p>
-                  <strong>Heating:</strong> {fullListing.heating}
-                </p>
-              )}
-              {fullListing?.cooling && (
-                <p>
-                  <strong>Cooling:</strong> {fullListing.cooling}
-                </p>
-              )}
-              {fullListing?.view && (
-                <p>
-                  <strong>View:</strong> {fullListing.view}
-                </p>
-              )}
-              {fullListing?.flooring && (
-                <p>
-                  <strong>Flooring:</strong> {fullListing.flooring}
-                </p>
-              )}
+            <div className="flex justify-center gap-8 mt-6">
+              <button onClick={() => handleSwipe("left")}>
+                <Image
+                  src="/images/swipe-left.png"
+                  alt="Swipe Left"
+                  width={64}
+                  height={64}
+                  className="drop-shadow-lg hover:opacity-80 active:scale-95 transition"
+                />
+              </button>
+              <button onClick={() => handleSwipe("right")}>
+                <Image
+                  src="/images/swipe-right.png"
+                  alt="Swipe Right"
+                  width={64}
+                  height={64}
+                  className="drop-shadow-lg hover:opacity-80 active:scale-95 transition"
+                />
+              </button>
             </div>
-
-            {fullListing?.listOfficeName && fullListing?.listAgentName && (
-              <p className="text-sm text-zinc-600 mt-4">
-                Listing presented by {fullListing.listOfficeName},{" "}
-                {fullListing.listAgentName}
-              </p>
-            )}
 
             <Link
               href={`/mls-listings/${listing.slugAddress ?? listing.slug}`}
@@ -247,7 +266,7 @@ export default function ListingBottomPanel({
             </Link>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

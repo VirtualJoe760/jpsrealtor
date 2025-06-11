@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import Cookies from "js-cookie";
 import type { MapListing, Filters } from "@/types/types";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
 import MapSearchBar from "./search/MapSearchBar";
 import FiltersPanel from "./search/FiltersPannel";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
+import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 
 function debounce<T extends (...args: any[]) => void>(fn: T, delay = 500): T {
   let timer: NodeJS.Timeout;
@@ -32,13 +32,9 @@ export default function MapPageClient() {
   const router = useRouter();
   const mapRef = useRef<MapViewHandles>(null);
 
-  const [isSidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth >= 1024; // open only on desktop (lg: 1024px+)
-    }
-    return false; // SSR fallback (closed by default)
-  });
-
+  const [isSidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
+  );
   const [isFiltersOpen, setFiltersOpen] = useState(false);
   const [allListings, setAllListings] = useState<MapListing[]>([]);
   const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
@@ -46,6 +42,18 @@ export default function MapPageClient() {
     null
   );
   const [filters, setFilters] = useState<Filters>(defaultFilterState);
+  const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
+  const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("likedListings");
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
 
   const lat = parseFloat(searchParams.get("lat") || "");
   const lng = parseFloat(searchParams.get("lng") || "");
@@ -55,7 +63,6 @@ export default function MapPageClient() {
   const centerLng = !isNaN(lng) ? lng : undefined;
   const zoomLevel = !isNaN(zoom) ? zoom : undefined;
 
-  const touchStartX = useRef<number | null>(null);
   const isBottomPanelOpen = !!selectedListing;
 
   useEffect(() => {
@@ -64,6 +71,23 @@ export default function MapPageClient() {
     }
   }, [isBottomPanelOpen, isSidebarOpen, isFiltersOpen]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("likedListings", JSON.stringify(likedListings));
+      } catch (e) {
+        console.error("Failed to save favorites:", e);
+      }
+    }
+  }, [likedListings]);
+
+
+
+  // Save favorites to cookies on change
+  useEffect(() => {
+    Cookies.set("favorites", JSON.stringify(likedListings), { expires: 7 });
+  }, [likedListings]);
+
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
       const next = !prev;
@@ -71,14 +95,6 @@ export default function MapPageClient() {
       return next;
     });
   };
-
-  useEffect(() => {
-    const originalStyle = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = originalStyle;
-    };
-  }, []);
 
   const toggleFilters = () => {
     setFiltersOpen((prev) => {
@@ -92,55 +108,40 @@ export default function MapPageClient() {
     return isSidebarOpen ? "lg:right-[25%] lg:left-0" : "lg:left-0 lg:right-0";
   }, [isSidebarOpen]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches?.[0];
-    if (touch) touchStartX.current = touch.clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const touch = e.changedTouches?.[0];
-    if (touchStartX.current !== null && touch) {
-      const deltaX = touch.clientX - touchStartX.current;
-      if (deltaX > 75) setSidebarOpen(false);
-    }
-    touchStartX.current = null;
-  };
-
   const handleApplyFilters = (newFilters: Filters) => {
     setFilters(newFilters);
     setFiltersOpen(false);
   };
 
   const handleListingSelect = (listing: MapListing) => {
+    const index = visibleListings.findIndex((l) => l._id === listing._id);
+    if (index !== -1) setVisibleIndex(index);
     setSelectedListing({ ...listing });
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("selected", listing.slug!);
     if (listing.latitude && listing.longitude) {
       params.set("lat", listing.latitude.toFixed(6));
       params.set("lng", listing.longitude.toFixed(6));
     }
-    const url = `?${params.toString()}`;
-    router.push(url, { scroll: false });
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   useEffect(() => {
     const selected = searchParams.get("selected");
     if (selected && allListings.length) {
       const listing = allListings.find((l) => l.slug === selected);
-      if (listing) setSelectedListing({ ...listing });
+      if (listing) {
+        setSelectedListing({ ...listing });
+        const index = visibleListings.findIndex((l) => l._id === listing._id);
+        if (index !== -1) setVisibleIndex(index);
+      }
     }
-  }, [searchParams, allListings]);
-
-  useEffect(() => {
-    const shouldLockScroll = isSidebarOpen || isFiltersOpen;
-    document.body.style.overflow = shouldLockScroll ? "hidden" : "auto";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isSidebarOpen, isFiltersOpen]);
+  }, [searchParams, allListings, visibleListings]);
 
   const handleCloseListing = () => {
     setSelectedListing(null);
+    setVisibleIndex(null);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
     router.push(`?${params.toString()}`, { scroll: false });
@@ -193,36 +194,48 @@ export default function MapPageClient() {
     [filters]
   );
 
+  const advanceToNextListing = () => {
+    if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
+      const nextIndex = visibleIndex + 1;
+      const next = visibleListings[nextIndex];
+      const currentSlug = selectedListing?.slugAddress ?? selectedListing?.slug;
+      const nextSlug = next?.slugAddress ?? next?.slug;
+
+      if (nextSlug && nextSlug !== currentSlug) {
+        setVisibleIndex(nextIndex);
+        fetch(`/api/mls-listings/${nextSlug}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.listing) {
+              setSelectedListing(data.listing);
+            } else {
+              console.error("❌ Failed to load next listing");
+            }
+          });
+      }
+    }
+  };
+
+  const handleRemoveFavorite = (listing: MapListing) => {
+    const slug = listing.slugAddress ?? listing.slug;
+    setLikedListings((prev) =>
+      prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== slug)
+    );
+  };
+
+  const handleClearFavorites = () => {
+    setLikedListings([]);
+  };
+
   return (
     <>
-      <div className="relative z-35">
-        <MapSearchBar
-          isOpen={true}
-          onToggle={toggleSidebar}
-          onSearch={(lat: number, lng: number) => {
-            mapRef.current?.flyToCity(lat, lng);
-          }}
-          onToggleFilters={toggleFilters}
-          allListings={allListings}
-        />
-
-        {/* Info bars only visible on sm+ screens */}
-        <div className="hidden sm:flex absolute top-[70px] left-0 right-0 z-40 px-4 space-x-2 items-center">
-          {/* Listings Count */}
-          <div className="bg-emerald-500 text-black text-xs font-semibold rounded-md px-3 py-1 shadow text-center">
-            Listings: {allListings.length}
-          </div>
-
-          {/* Active Filters */}
-          <div className="bg-zinc-800 text-white text-xs font-medium rounded-md px-3 py-1 shadow border border-zinc-700 text-center">
-            Active Filters:{" "}
-            {Object.entries(filters)
-              .filter(([_, v]) => v !== "" && v !== undefined)
-              .map(([key, value]) => `${key}: ${value}`)
-              .join(", ") || "None"}
-          </div>
-        </div>
-      </div>
+      <MapSearchBar
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        onSearch={(lat, lng) => mapRef.current?.flyToCity(lat, lng)}
+        onToggleFilters={toggleFilters}
+        allListings={allListings}
+      />
 
       {isFiltersOpen && (
         <FiltersPanel
@@ -233,14 +246,19 @@ export default function MapPageClient() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway] overflow-hidden overscroll-none">
+      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
         <div
           className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass}`}
         >
           <MapView
             ref={mapRef}
             listings={allListings}
-            setVisibleListings={setVisibleListings}
+            setVisibleListings={(listings) => {
+              const filtered = listings.filter(
+                (l) => l.slug && l.latitude && l.longitude
+              );
+              setVisibleListings(filtered);
+            }}
             centerLat={centerLat}
             centerLng={centerLng}
             zoom={zoomLevel}
@@ -250,95 +268,62 @@ export default function MapPageClient() {
           />
 
           {selectedListing && (
-            <div className="fixed bottom-0 left-0 w-full z-40 transition-all duration-500 transform translate-y-0 opacity-100">
-              <ListingBottomPanel
-                listing={selectedListing}
-                onClose={handleCloseListing}
-                isSidebarOpen={isSidebarOpen}
-                isFiltersOpen={isFiltersOpen}
-              />
-            </div>
+            <ListingBottomPanel
+              key={selectedListing.slugAddress ?? selectedListing.slug}
+              listing={selectedListing}
+              onClose={handleCloseListing}
+              onSwipeLeft={() => {
+                const currentSlug =
+                  selectedListing.slugAddress ?? selectedListing.slug;
+
+                const isFavorite = likedListings.some(
+                  (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                );
+
+                if (isFavorite) {
+                  setLikedListings((prev) =>
+                    prev.filter(
+                      (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
+                    )
+                  );
+                }
+
+                advanceToNextListing();
+              }}
+              onSwipeRight={() => {
+                const currentSlug =
+                  selectedListing.slugAddress ?? selectedListing.slug;
+
+                const alreadyFavorite = likedListings.some(
+                  (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                );
+
+                if (!alreadyFavorite && selectedListing) {
+                  setLikedListings((prev) => {
+                    const full = allListings.find(
+                      (l) => (l.slugAddress ?? l.slug) === currentSlug
+                    );
+                    return full ? [...prev, full] : [...prev, selectedListing];
+                  });
+                }
+
+                advanceToNextListing();
+              }}
+              isSidebarOpen={isSidebarOpen}
+              isFiltersOpen={isFiltersOpen}
+            />
           )}
         </div>
 
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <aside
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className={`fixed top-[64px] right-0 h-[calc(100vh-64px)] w-[100%] sm:w-[100%] md:w-[60%] lg:w-[25%] 2xl:w-[15%]
-          bg-zinc-950 text-white transform transition-transform duration-300 z-40
-          ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
-          border-l border-zinc-800 overflow-y-auto px-4 py-6 pt-6 overscroll-contain`}
-        >
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={toggleSidebar}
-              aria-label="Close Sidebar"
-              className="hover:text-emerald-400 transition"
-            >
-              <X className="w-6 h-6 text-white" />
-            </button>
-          </div>
-
-          <h2 className="text-lg font-semibold mb-6 pt-4 text-emerald-400 tracking-wide">
-            Properties in View
-          </h2>
-
-          <ul className="space-y-5">
-            {visibleListings.map((listing) => (
-              <li key={listing._id}>
-                <Link
-                  href={`/mls-listings/${listing.slugAddress || listing.slug}`}
-                  className="group flex flex-col bg-zinc-900 rounded-xl overflow-hidden shadow-sm border border-zinc-800 hover:border-emerald-500 transition-all duration-200"
-                >
-                  <img
-                    src={listing.primaryPhotoUrl}
-                    alt={listing.address}
-                    className="w-full h-40 object-cover group-hover:opacity-90 transition duration-200"
-                  />
-                  <div className="p-4 space-y-2">
-                    <p className="text-lg font-semibold text-white group-hover:text-emerald-400 transition">
-                      ${listing.listPrice.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-zinc-300">
-                      {listing.unparsedAddress}
-                    </p>
-                    <div className="text-xs text-zinc-400 flex flex-wrap gap-2">
-                      {listing.bedsTotal ? (
-                        <span>{listing.bedsTotal} Bed</span>
-                      ) : null}
-                      {listing.bathroomsTotalInteger !== undefined ? (
-                        <span>{listing.bathroomsTotalInteger} Bath</span>
-                      ) : null}
-                      {listing.livingArea && (
-                        <span>{listing.livingArea.toLocaleString()} SqFt</span>
-                      )}
-                      {listing.lotSizeSqft && (
-                        <span>
-                          {Math.round(listing.lotSizeSqft).toLocaleString()} Lot
-                        </span>
-                      )}
-                      {listing.pool && <span>🏊 Pool</span>}
-                      {listing.spa && <span>🧖 Spa</span>}
-                    </div>
-
-                    {listing.publicRemarks && (
-                      <p className="text-xs text-zinc-400 mt-2 line-clamp-3">
-                        {listing.publicRemarks}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </aside>
+        <FavoritesPannel
+          visibleListings={visibleListings}
+          favorites={likedListings}
+          isSidebarOpen={isSidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onSelectListing={handleListingSelect}
+          onRemoveFavorite={handleRemoveFavorite}
+          onClearFavorites={handleClearFavorites}
+        />
       </div>
     </>
   );

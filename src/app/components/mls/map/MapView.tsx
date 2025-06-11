@@ -1,3 +1,5 @@
+// src/app/components/mls/map/MapView.tsx
+
 "use client";
 
 import {
@@ -37,6 +39,7 @@ interface MapViewProps {
     east: number;
     west: number;
   }) => void;
+  onSelectListingByIndex?: (index: number) => void;
 }
 
 function formatPrice(price?: number): string {
@@ -56,6 +59,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     onSelectListing,
     selectedListing,
     onBoundsChange,
+    onSelectListingByIndex,
   },
   ref
 ) {
@@ -144,7 +148,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   };
 
   const handleMarkerClick = (listing: MapListing) => {
+    const alreadySelected = selectedListing?._id === listing._id;
+    if (alreadySelected) return;
+
     onSelectListing(listing);
+
+    const index = listings.findIndex((l) => l._id === listing._id);
+    if (index !== -1 && onSelectListingByIndex) {
+      onSelectListingByIndex(index);
+    }
 
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -152,14 +164,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
     manualFlyRef.current = false;
 
-    if (!isMobile) {
-      map.easeTo({
-        center: [listing.longitude, listing.latitude],
-        zoom: 15,
-        duration: 600,
-        offset: [0, -250],
-      });
-    }
+    map.easeTo({
+      center: [listing.longitude, listing.latitude],
+      zoom: isMobile ? 14 : undefined,
+      duration: 600,
+      offset: [0, isMobile ? 0 : -250], // <- 250px upward offset on desktop
+    });
   };
 
   useImperativeHandle(ref, () => ({
@@ -215,7 +225,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                 }}
               >
                 <div
-                  className="rounded-full bg-zinc-600/80 text-yellow-300 font-semibold text-sm w-12 h-12 flex items-center justify-center border-2 border-white shadow-md"
+                  className="rounded-full bg-zinc-600/80 text-green-500 font-semibold text-sm w-12 h-12 flex items-center justify-center border-2 border-white shadow-md hover:text-blue-500 hover:border-blue-200 hover:bg-blue-200"
                   style={{
                     boxShadow: "0 0 0 2px rgba(255,255,255,0.4)",
                   }}
