@@ -32,7 +32,13 @@ export default function MapPageClient() {
   const router = useRouter();
   const mapRef = useRef<MapViewHandles>(null);
 
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth >= 1024; // open only on desktop (lg: 1024px+)
+    }
+    return false; // SSR fallback (closed by default)
+  });
+
   const [isFiltersOpen, setFiltersOpen] = useState(false);
   const [allListings, setAllListings] = useState<MapListing[]>([]);
   const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
@@ -189,7 +195,7 @@ export default function MapPageClient() {
 
   return (
     <>
-      <div className="relative z-50">
+      <div className="relative z-30">
         <MapSearchBar
           isOpen={true}
           onToggle={toggleSidebar}

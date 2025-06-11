@@ -9,7 +9,7 @@ import MobileMenu from "./MobileMenu";
 export default function Navbar() {
   return (
     <Disclosure as="nav" className="sticky top-0 z-50 bg-black text-neutral-light">
-      {({ open }) => (
+      {({ open, close }) => (
         <>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="relative flex h-16 items-center justify-between">
@@ -18,8 +18,10 @@ export default function Navbar() {
               <DesktopMenu />
             </div>
           </div>
+
+          {/* Mobile menu panel */}
           <DisclosurePanel className="sm:hidden transition duration-300 ease-in-out">
-            <MobileMenu open={open} />
+            <MobileMenu open={open} onClose={close} />
           </DisclosurePanel>
         </>
       )}

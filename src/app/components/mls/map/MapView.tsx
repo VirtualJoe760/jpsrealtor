@@ -123,7 +123,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     setVisibleListings(visible);
     setLoading(false);
 
-    // 🔁 Trigger server-side filtered listing load
     if (onBoundsChange) {
       onBoundsChange({
         north: bounds.getNorth(),
@@ -146,17 +145,21 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
   const handleMarkerClick = (listing: MapListing) => {
     onSelectListing(listing);
+
     const map = mapRef.current?.getMap();
     if (!map) return;
 
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
     manualFlyRef.current = false;
 
-    map.easeTo({
-      center: [listing.longitude, listing.latitude],
-      zoom: 15,
-      duration: 600,
-      offset: [0, -250],
-    });
+    if (!isMobile) {
+      map.easeTo({
+        center: [listing.longitude, listing.latitude],
+        zoom: 15,
+        duration: 600,
+        offset: [0, -250],
+      });
+    }
   };
 
   useImperativeHandle(ref, () => ({
@@ -211,7 +214,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                   });
                 }}
               >
-                <div className="bg-yellow-500 text-black text-xs font-bold rounded-full px-2 py-1">
+                <div
+                  className="rounded-full bg-zinc-600/80 text-yellow-300 font-semibold text-sm w-12 h-12 flex items-center justify-center border-2 border-white shadow-md"
+                  style={{
+                    boxShadow: "0 0 0 2px rgba(255,255,255,0.4)",
+                  }}
+                >
                   {cluster.properties.point_count}
                 </div>
               </Marker>

@@ -49,6 +49,8 @@ export default function MapSearchBar({
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLUListElement | null>(null);
+  
+
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -131,7 +133,7 @@ export default function MapSearchBar({
 
   return (
     <>
-      <div className="fixed top-16 z-40 w-full px-4 py-2 bg-zinc-950 text-white flex items-center justify-between shadow-sm border-b border-zinc-800 md:border-none">
+      <div className="fixed top-16 z-30 w-full px-4 py-2 bg-zinc-950 text-white flex items-center justify-between shadow-sm border-b border-zinc-800 md:border-none">
         <button onClick={onToggleFilters} aria-label="Toggle Filters">
           <SlidersHorizontal className="w-6 h-6" />
         </button>
