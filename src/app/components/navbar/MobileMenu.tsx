@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "About", href: "/about" },
-  { name: 'Insights', href: '/insights' },
+  { name: "Insights", href: "/insights" },
   { name: "Listings", href: "/mls-listings" },
   { name: "Coachella Valley", href: "/neighborhoods" },
   { name: "Contact", href: "/#contact" },
@@ -16,10 +16,15 @@ function classNames(...classes: string[]) {
 }
 
 export default function MobileMenu({ open }: { open: boolean }) {
-  const pathname = usePathname(); // Get the current pathname
+  const pathname = usePathname();
 
   return (
-    <div className={classNames(open ? "block" : "hidden", "sm:hidden")}>
+    <div
+      className={classNames(
+        open ? "fixed inset-0 z-[100] bg-black/90" : "hidden",
+        "sm:hidden"
+      )}
+    >
       <div className="space-y-1 px-2 pb-3 pt-2">
         {navigation.map((item) => {
           const isActive = pathname === item.href;

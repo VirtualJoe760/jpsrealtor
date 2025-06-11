@@ -90,7 +90,7 @@ export default function ListingBottomPanel({
       className={`fixed bottom-0 left-0 right-0 ${lgLayoutClasses} 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden max-h-[85vh] animate-slide-up`}
     >
       <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
-        <div className="relative w-full h-52 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
+        <div className="relative w-full h-44 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
           <Image
             src={photoUrl}
             alt={address}
@@ -112,10 +112,10 @@ export default function ListingBottomPanel({
             <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="px-5 pb-5 space-y-3 text-white">
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white">
             <div className="flex items-start justify-between pt-4">
               <div>
-                <p className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 leading-tight">
+                <p className="text-base sm:text-xl md:text-2xl font-semibold mb-1 leading-tight">
                   {address}
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 leading-tight">
