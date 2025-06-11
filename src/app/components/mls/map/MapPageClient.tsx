@@ -195,7 +195,7 @@ export default function MapPageClient() {
 
   return (
     <>
-      <div className="relative z-30">
+      <div className="relative z-35">
         <MapSearchBar
           isOpen={true}
           onToggle={toggleSidebar}

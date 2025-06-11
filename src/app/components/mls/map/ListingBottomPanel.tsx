@@ -87,7 +87,7 @@ export default function ListingBottomPanel({
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 ${lgLayoutClasses} 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden sm:max-h-[70vh] max-h-[85vh] animate-slide-up`}
+      className={`fixed bottom-0 left-0 right-0 ${lgLayoutClasses} 2xl:right-[15%] z-50 bg-transparent text-white rounded-t-2xl shadow-lg overflow-hidden  max-h-[85vh] animate-slide-up`}
     >
       <div className="w-full 2xl:max-w-5xl 2xl:mx-auto 2xl:rounded-t-2xl bg-zinc-950 border-t border-zinc-800">
         <div className="relative w-full h-44 sm:h-60 lg:h-72 2xl:h-80 rounded-t-2xl overflow-hidden">
@@ -119,7 +119,8 @@ export default function ListingBottomPanel({
                   {address}
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 leading-tight">
-                  ${(
+                  $
+                  {(
                     fullListing?.listPrice ?? listing.listPrice
                   ).toLocaleString()}
                 </p>
@@ -169,16 +170,22 @@ export default function ListingBottomPanel({
                 </span>
               )}
               {fullListing?.poolYn && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  🏊 Pool
+                </span>
               )}
               {fullListing?.spaYn && (
-                <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
+                <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                  🧖 Spa
+                </span>
               )}
             </div>
 
             {fullListing?.publicRemarks && (
               <p className="text-sm text-white mt-2 line-clamp-5">
-                {fullListing.publicRemarks}
+                {fullListing.publicRemarks.length > 300
+                  ? `${fullListing.publicRemarks.slice(0, 200)}...`
+                  : fullListing.publicRemarks}
               </p>
             )}
 
