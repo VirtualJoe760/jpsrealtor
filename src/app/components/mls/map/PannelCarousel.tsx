@@ -106,17 +106,17 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
           {/* Navigation buttons */}
           <button
             onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1 rounded-full z-10"
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-2 rounded-full z-10"
             aria-label="Previous photo"
           >
-            <ChevronLeft className="w-5 h-5 text-white" />
+            <ChevronLeft className="w-12 h-12 text-white" />
           </button>
           <button
             onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-1 rounded-full z-10"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-2 rounded-full z-10"
             aria-label="Next photo"
           >
-            <ChevronRight className="w-5 h-5 text-white" />
+            <ChevronRight className="w-12 h-12 text-white" />
           </button>
         </>
       )}
