@@ -29,12 +29,13 @@ export interface MapListing {
   poolYn?: boolean;
   spaYn?: boolean;
   associationYN?: boolean;
-  pool?: boolean; // normalized for UI
-  spa?: boolean;  // normalized for UI
+  pool?: boolean;
+  spa?: boolean;
 
   // Remarks and identifiers
   publicRemarks?: string;
   listingId: string;
+  listingKey: string; // ✅ Add this line
   slug?: string;
   slugAddress?: string;
   status?: string;
@@ -55,5 +56,5 @@ export type Filters = {
   hoa: string;
   poolYn?: boolean;
   spaYn?: boolean;
-  associationYN?: boolean; // replaces hasHOA
+  associationYN?: boolean;
 };

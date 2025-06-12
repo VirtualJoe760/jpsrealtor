@@ -1,27 +1,28 @@
+// src/app/api/photos/[listingId]/route.ts
+
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import Photo from "@/models/photos"; // Your provided model
+import Photo from "@/models/photos";
 
 export async function GET(
   req: Request,
   { params }: { params: { listingId: string } }
 ) {
   await dbConnect();
-  const { listingId } = params;
 
   try {
-    const photo = await Photo.findOne({
-      listingId,
-      primary: true,
-    }).lean();
+    const photos = await Photo.find({ listingId: params.listingId })
+      .sort({ primary: -1, Order: 1 }) // Primary first, then ordered
+      .lean();
 
-    if (!photo || !photo.uri300) {
-      return NextResponse.json({ uri300: "/images/no-photo.png" }, { status: 404 });
-    }
+    const result = photos.map((p) => ({
+      Id: p.photoId,
+      Url: p.uri1024 || p.uri800 || p.uri640 || "/images/no-photo.png",
+    }));
 
-    return NextResponse.json({ uri300: photo.uri300 });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(`❌ Failed to load cached photo for ${listingId}:`, error);
-    return NextResponse.json({ uri300: "/images/no-photo.png" }, { status: 500 });
+    console.error("❌ Error fetching all photos:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

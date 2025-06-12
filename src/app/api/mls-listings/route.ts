@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
 
   const url = req.nextUrl;
   const query = url.searchParams;
-
   console.log("🧪 Raw query params:", Object.fromEntries(query.entries()));
 
   const latMin = parseFloat(query.get("south") || "-90");
@@ -57,18 +56,12 @@ export async function GET(req: NextRequest) {
   }
 
   const hasPool = query.get("pool");
-  if (hasPool === "true") {
-    filters.poolYn = true;
-  } else if (hasPool === "false") {
-    filters.poolYn = { $ne: true };
-  }
+  if (hasPool === "true") filters.poolYn = true;
+  else if (hasPool === "false") filters.poolYn = { $ne: true };
 
   const hasSpa = query.get("spa");
-  if (hasSpa === "true") {
-    filters.spaYn = true;
-  } else if (hasSpa === "false") {
-    filters.spaYn = { $ne: true };
-  }
+  if (hasSpa === "true") filters.spaYn = true;
+  else if (hasSpa === "false") filters.spaYn = { $ne: true };
 
   const hasHOA = query.get("hasHOA");
   if (hasHOA === "true") {
@@ -124,11 +117,12 @@ export async function GET(req: NextRequest) {
 
     const listingsWithExtras = await Promise.all(
       listings.map(async (listing) => {
-        const photo = await Photo.findOne({ listingId: String(listing.listingId) })
-          .sort({ primary: -1, Order: 1 })
-          .lean();
-
-        const openHouses = await OpenHouse.find({ listingId: listing.listingId }).lean();
+        const [photo, openHouses] = await Promise.all([
+          Photo.findOne({ listingId: String(listing.listingId) })
+            .sort({ primary: -1, Order: 1 })
+            .lean(),
+          OpenHouse.find({ listingId: listing.listingId }).lean(),
+        ]);
 
         return {
           ...listing,
@@ -142,8 +136,6 @@ export async function GET(req: NextRequest) {
     );
 
     console.log(`✅ Fetched ${listingsWithExtras.length} listings`);
-    console.log("📍 Filters:\n", JSON.stringify(filters, null, 2));
-
     return NextResponse.json({ listings: listingsWithExtras });
   } catch (error) {
     console.error("❌ Failed to fetch filtered listings:", error);

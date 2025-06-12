@@ -127,7 +127,7 @@ export interface IListing extends Document {
   country?: string;
 
   // Timestamps
-  listingKey?: string;
+  listingKey: string;
   modificationTimestamp?: Date;
   listingContractDate?: Date;
   statusChangeTimestamp?: Date;

@@ -68,6 +68,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<any>(null);
   const manualFlyRef = useRef(false);
+  const lastSelectedIdRef = useRef<string | null>(null);
 
   const hydratedInitialViewState: ViewState = {
     latitude: centerLat ?? 33.72,
@@ -137,6 +138,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     }
   };
 
+  // Debounce updateClusters
+  const debouncedUpdateClusters = useMemo(() => {
+    let timer: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        updateClusters();
+      }, 500);
+    };
+  }, [supercluster, listings]);
+
   useEffect(() => {
     if (mapRef.current && geoJsonPoints.length > 0) {
       updateClusters();
@@ -144,12 +156,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   }, [geoJsonPoints.length]);
 
   const handleMoveEnd = () => {
-    updateClusters();
+    debouncedUpdateClusters();
   };
 
   const handleMarkerClick = (listing: MapListing) => {
-    const alreadySelected = selectedListing?._id === listing._id;
-    if (alreadySelected) return;
+    if (lastSelectedIdRef.current === listing._id) return;
+    lastSelectedIdRef.current = listing._id;
 
     onSelectListing(listing);
 
@@ -158,18 +170,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       onSelectListingByIndex(index);
     }
 
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-    manualFlyRef.current = false;
-
-    map.easeTo({
-      center: [listing.longitude, listing.latitude],
-      zoom: isMobile ? 14 : undefined,
-      duration: 600,
-      offset: [0, isMobile ? 0 : -250], // <- 250px upward offset on desktop
-    });
+    // 🛑 Removed map motion here to prevent centering on marker
   };
 
   useImperativeHandle(ref, () => ({
@@ -200,7 +201,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
-        onLoad={updateClusters}
+        onLoad={() => setTimeout(updateClusters, 300)}
       >
         {clusters.map((cluster) => {
           const [lng, lat] = cluster.geometry.coordinates as [number, number];

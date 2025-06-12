@@ -1,22 +1,18 @@
+// src/app/components/mls/map/MapPageClient.tsx
+
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 import type { MapListing, Filters } from "@/types/types";
+import type { IListing } from "@/models/listings";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
 import MapSearchBar from "./search/MapSearchBar";
 import FiltersPanel from "./search/FiltersPannel";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
-
-function debounce<T extends (...args: any[]) => void>(fn: T, delay = 500): T {
-  let timer: NodeJS.Timeout;
-  return ((...args: any[]) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  }) as T;
-}
+import { useListings } from "@/app/utils/map/useListings";
 
 const defaultFilterState: Filters = {
   minPrice: "",
@@ -31,18 +27,15 @@ export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const mapRef = useRef<MapViewHandles>(null);
+  const selectedSlugRef = useRef<string | null>(null);
 
   const [isSidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
   );
   const [isFiltersOpen, setFiltersOpen] = useState(false);
-  const [allListings, setAllListings] = useState<MapListing[]>([]);
-  const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
-  const [selectedListing, setSelectedListing] = useState<MapListing | null>(
-    null
-  );
-  const [filters, setFilters] = useState<Filters>(defaultFilterState);
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
+  const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
+  const [filters, setFilters] = useState<Filters>(defaultFilterState);
   const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -55,21 +48,36 @@ export default function MapPageClient() {
     return [];
   });
 
-  const lat = parseFloat(searchParams.get("lat") || "");
-  const lng = parseFloat(searchParams.get("lng") || "");
-  const zoom = parseFloat(searchParams.get("zoom") || "");
+  const {
+    allListings,
+    visibleListings,
+    setVisibleListings,
+    loadListings,
+  } = useListings();
 
-  const centerLat = !isNaN(lat) ? lat : undefined;
-  const centerLng = !isNaN(lng) ? lng : undefined;
-  const zoomLevel = !isNaN(zoom) ? zoom : undefined;
+  const selectedListing = useMemo(() => {
+    if (visibleIndex === null || visibleIndex >= visibleListings.length) return null;
+    return visibleListings[visibleIndex];
+  }, [visibleIndex, visibleListings]);
 
-  const isBottomPanelOpen = !!selectedListing;
+  const initialLat = useMemo(() => {
+    const val = parseFloat(searchParams.get("lat") || "");
+    return !isNaN(val) ? val : undefined;
+  }, []);
+  const initialLng = useMemo(() => {
+    const val = parseFloat(searchParams.get("lng") || "");
+    return !isNaN(val) ? val : undefined;
+  }, []);
+  const initialZoom = useMemo(() => {
+    const val = parseFloat(searchParams.get("zoom") || "");
+    return !isNaN(val) ? val : undefined;
+  }, []);
 
   useEffect(() => {
-    if (isBottomPanelOpen && isSidebarOpen && isFiltersOpen) {
+    if (selectedListing && isSidebarOpen && isFiltersOpen) {
       setFiltersOpen(false);
     }
-  }, [isBottomPanelOpen, isSidebarOpen, isFiltersOpen]);
+  }, [selectedListing, isSidebarOpen, isFiltersOpen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -81,9 +89,6 @@ export default function MapPageClient() {
     }
   }, [likedListings]);
 
-
-
-  // Save favorites to cookies on change
   useEffect(() => {
     Cookies.set("favorites", JSON.stringify(likedListings), { expires: 7 });
   }, [likedListings]);
@@ -91,7 +96,7 @@ export default function MapPageClient() {
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
       const next = !prev;
-      if (next && isBottomPanelOpen && isFiltersOpen) setFiltersOpen(false);
+      if (next && selectedListing && isFiltersOpen) setFiltersOpen(false);
       return next;
     });
   };
@@ -99,7 +104,7 @@ export default function MapPageClient() {
   const toggleFilters = () => {
     setFiltersOpen((prev) => {
       const next = !prev;
-      if (next && isBottomPanelOpen && isSidebarOpen) setSidebarOpen(false);
+      if (next && selectedListing && isSidebarOpen) setSidebarOpen(false);
       return next;
     });
   };
@@ -113,13 +118,31 @@ export default function MapPageClient() {
     setFiltersOpen(false);
   };
 
+  const fetchFullListing = async (slug: string) => {
+    try {
+      const res = await fetch(`/api/mls-listings/${slug}`);
+      const json = await res.json();
+      if (json?.listing) {
+        setSelectedFullListing(json.listing);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching full listing:", err);
+    }
+  };
+
   const handleListingSelect = (listing: MapListing) => {
     const index = visibleListings.findIndex((l) => l._id === listing._id);
     if (index !== -1) setVisibleIndex(index);
-    setSelectedListing({ ...listing });
+
+    const slug = listing.slugAddress ?? listing.slug;
+    const currentSlug = selectedListing?.slugAddress ?? selectedListing?.slug;
+    if (slug && slug !== currentSlug) {
+      selectedSlugRef.current = slug;
+      fetchFullListing(slug);
+    }
 
     const params = new URLSearchParams(searchParams.toString());
-    params.set("selected", listing.slug!);
+    params.set("selected", listing.slugAddress!);
     if (listing.latitude && listing.longitude) {
       params.set("lat", listing.latitude.toFixed(6));
       params.set("lng", listing.longitude.toFixed(6));
@@ -129,90 +152,41 @@ export default function MapPageClient() {
 
   useEffect(() => {
     const selected = searchParams.get("selected");
-    if (selected && allListings.length) {
-      const listing = allListings.find((l) => l.slug === selected);
-      if (listing) {
-        setSelectedListing({ ...listing });
-        const index = visibleListings.findIndex((l) => l._id === listing._id);
-        if (index !== -1) setVisibleIndex(index);
-      }
+    if (!selected || !allListings.length) return;
+
+    const match = allListings.find(
+      (l) => l.slugAddress === selected || l.slug === selected
+    );
+    if (!match) return;
+
+    const idx = visibleListings.findIndex((l) => l._id === match._id);
+    if (idx !== -1) setVisibleIndex(idx);
+
+    if (selectedSlugRef.current !== selected) {
+      selectedSlugRef.current = selected;
+      fetchFullListing(selected);
     }
-  }, [searchParams, allListings, visibleListings]);
+  }, [searchParams, allListings]);
 
   const handleCloseListing = () => {
-    setSelectedListing(null);
     setVisibleIndex(null);
+    setSelectedFullListing(null);
+    selectedSlugRef.current = null;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  async function loadListings(bounds: any, activeFilters: Filters) {
-    try {
-      const query = new URLSearchParams();
-      Object.entries(bounds).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          query.set(key, value.toString());
-        }
-      });
-
-      if (activeFilters.minPrice)
-        query.set(
-          "minPrice",
-          (parseInt(activeFilters.minPrice) * 1000).toString()
-        );
-      if (activeFilters.maxPrice)
-        query.set(
-          "maxPrice",
-          (parseInt(activeFilters.maxPrice) * 1000).toString()
-        );
-      if (activeFilters.beds) query.set("beds", activeFilters.beds);
-      if (activeFilters.baths) query.set("baths", activeFilters.baths);
-      if (activeFilters.propertyType)
-        query.set("propertySubType", activeFilters.propertyType);
-      if (activeFilters.poolYn !== undefined)
-        query.set("pool", String(activeFilters.poolYn));
-      if (activeFilters.spaYn !== undefined)
-        query.set("spa", String(activeFilters.spaYn));
-      if (activeFilters.hoa) query.set("hoa", activeFilters.hoa);
-      if (activeFilters.associationYN !== undefined)
-        query.set("hasHOA", String(activeFilters.associationYN));
-
-      query.set("propertyType", "A");
-
-      const res = await fetch(`/api/mls-listings?${query.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch listings");
-      const data = await res.json();
-      setAllListings(data.listings || []);
-    } catch (err) {
-      console.error("❌ Error loading listings:", err);
-    }
-  }
-
-  const debouncedLoadListings = useMemo(
-    () => debounce(loadListings, 600),
-    [filters]
-  );
-
   const advanceToNextListing = () => {
     if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
       const nextIndex = visibleIndex + 1;
       const next = visibleListings[nextIndex];
-      const currentSlug = selectedListing?.slugAddress ?? selectedListing?.slug;
       const nextSlug = next?.slugAddress ?? next?.slug;
+      if (!nextSlug) return;
 
-      if (nextSlug && nextSlug !== currentSlug) {
-        setVisibleIndex(nextIndex);
-        fetch(`/api/mls-listings/${nextSlug}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.listing) {
-              setSelectedListing(data.listing);
-            } else {
-              console.error("❌ Failed to load next listing");
-            }
-          });
-      }
+      setVisibleIndex(nextIndex);
+      selectedSlugRef.current = nextSlug;
+      fetchFullListing(nextSlug);
     }
   };
 
@@ -225,6 +199,27 @@ export default function MapPageClient() {
 
   const handleClearFavorites = () => {
     setLikedListings([]);
+  };
+
+  // ✅ Debounce + deduplicate bounding box fetches
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBoundsRef = useRef<string | null>(null);
+
+  const handleBoundsChange = (bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  }) => {
+    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}`;
+
+    if (key === lastBoundsRef.current) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      lastBoundsRef.current = key;
+      loadListings(bounds, filters);
+    }, 500);
   };
 
   return (
@@ -247,9 +242,7 @@ export default function MapPageClient() {
       )}
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
-        <div
-          className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass}`}
-        >
+        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass}`}>
           <MapView
             ref={mapRef}
             listings={allListings}
@@ -259,54 +252,51 @@ export default function MapPageClient() {
               );
               setVisibleListings(filtered);
             }}
-            centerLat={centerLat}
-            centerLng={centerLng}
-            zoom={zoomLevel}
+            centerLat={initialLat}
+            centerLng={initialLng}
+            zoom={initialZoom}
             onSelectListing={handleListingSelect}
             selectedListing={selectedListing}
-            onBoundsChange={(bounds) => debouncedLoadListings(bounds, filters)}
+            onBoundsChange={handleBoundsChange}
           />
 
-          {selectedListing && (
+          {selectedSlugRef.current && selectedListing && selectedFullListing && (
             <ListingBottomPanel
-              key={selectedListing.slugAddress ?? selectedListing.slug}
+              key={selectedSlugRef.current}
               listing={selectedListing}
+              fullListing={selectedFullListing}
               onClose={handleCloseListing}
               onSwipeLeft={() => {
                 const currentSlug =
                   selectedListing.slugAddress ?? selectedListing.slug;
-
-                const isFavorite = likedListings.some(
-                  (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                );
-
-                if (isFavorite) {
+                if (
+                  likedListings.some(
+                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                  )
+                ) {
                   setLikedListings((prev) =>
                     prev.filter(
                       (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
                     )
                   );
                 }
-
                 advanceToNextListing();
               }}
               onSwipeRight={() => {
                 const currentSlug =
                   selectedListing.slugAddress ?? selectedListing.slug;
-
-                const alreadyFavorite = likedListings.some(
-                  (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                );
-
-                if (!alreadyFavorite && selectedListing) {
-                  setLikedListings((prev) => {
-                    const full = allListings.find(
-                      (l) => (l.slugAddress ?? l.slug) === currentSlug
-                    );
-                    return full ? [...prev, full] : [...prev, selectedListing];
-                  });
+                if (
+                  !likedListings.some(
+                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                  )
+                ) {
+                  const full = allListings.find(
+                    (l) => (l.slugAddress ?? l.slug) === currentSlug
+                  );
+                  setLikedListings((prev) =>
+                    full ? [...prev, full] : [...prev, selectedListing]
+                  );
                 }
-
                 advanceToNextListing();
               }}
               isSidebarOpen={isSidebarOpen}
