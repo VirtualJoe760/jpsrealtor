@@ -20,7 +20,7 @@ export async function GET(
     if (["complete", "failed"].includes(task.status)) {
       return NextResponse.json({
         status: task.status,
-        videoUrl: task.videoUrl || null,
+        videoUrl: task.videoUrl ?? null,
       });
     }
 
@@ -29,21 +29,39 @@ export async function GET(
       throw new Error("Missing RUNWAY_API_KEY in environment variables");
     }
 
-    const client = new RunwayML({ apiKey }); // ✅ FIX: Pass as object
+    const client = new RunwayML({ apiKey });
 
     if (!task.predictionId) {
       return NextResponse.json({ error: "Missing predictionId" }, { status: 400 });
     }
 
     const runwayTask = await client.tasks.retrieve(task.predictionId);
-
-
     const status = runwayTask.status;
     const output = runwayTask.output;
 
+    console.log("🎯 RUNWAY RESPONSE:", {
+      predictionId: task.predictionId,
+      status,
+      output,
+    });
+
     if (status === "SUCCEEDED") {
+      await new Promise((res) => setTimeout(res, 3000));
+
+      let videoUrl: string | null = null;
+
+      if (Array.isArray(output)) {
+        videoUrl = output[0] ?? null;
+      } else if (typeof output === "object" && output !== null && "video" in output) {
+        videoUrl = (output as { video?: string }).video ?? null;
+      } else if (typeof output === "string") {
+        videoUrl = output;
+      }
+
+      console.log("🎬 Parsed video URL:", videoUrl);
+
       task.status = "complete";
-      task.videoUrl = Array.isArray(output) ? output[0] : output;
+      task.videoUrl = videoUrl ?? undefined; // must match schema
       await task.save();
     } else if (status === "FAILED") {
       task.status = "failed";
@@ -52,7 +70,7 @@ export async function GET(
 
     return NextResponse.json({
       status: task.status,
-      videoUrl: task.videoUrl || null,
+      videoUrl: task.videoUrl ?? null,
     });
   } catch (err: any) {
     console.error("[RUNWAY_STATUS_ERROR]", err?.response?.data || err.message || err);
