@@ -3,7 +3,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { RunwayTask } from "@/models/RunwayTask";
-import axios from "axios";
+import RunwayML from "@runwayml/sdk";
+
+const client = new RunwayML({
+  apiKey: process.env.RUNWAY_API_KEY,
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,35 +19,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Image URL required" }, { status: 400 });
     }
 
+    // Create local task entry
     const task = await RunwayTask.create({
       imageUrl,
       prompt,
       status: "processing",
     });
 
-    const runwayRes = await axios.post(
-      "https://api.runwayml.com/v1/image-to-video",
-      {
-        model: "gen4_turbo",
-        promptImage: imageUrl,
-        promptText: prompt || "Cinematic real estate animation",
-        ratio: "1280:720",
-        duration: 5,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.RUNWAY_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    // Create a Runway task
+    const runwayTask = await client.imageToVideo.create({
+      model: "gen4_turbo",
+      promptImage: imageUrl,
+      promptText: prompt || "Cinematic real estate animation",
+      ratio: "1280:720",
+      duration: 5,
+    });
 
-    task.predictionId = runwayRes.data.id;
+    // Store prediction ID
+    task.predictionId = runwayTask.id;
     await task.save();
 
     return NextResponse.json({ taskId: task._id });
   } catch (err: any) {
-    console.error("[RUNWAY_CREATE_ERROR]", err?.response?.data || err.message);
+    console.error("[RUNWAY_CREATE_ERROR]", err);
     return NextResponse.json({ error: "Runway task creation failed" }, { status: 500 });
   }
 }

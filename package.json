@@ -18,6 +18,7 @@
     "@next/mdx": "^15.1.4",
     "@portabletext/react": "^3.2.0",
     "@radix-ui/react-accordion": "^1.2.2",
+    "@runwayml/sdk": "^2.3.0",
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/mdx": "^2.0.13",
