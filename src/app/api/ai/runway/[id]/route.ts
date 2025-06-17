@@ -35,9 +35,9 @@ export async function GET(
       return NextResponse.json({ error: "Missing predictionId" }, { status: 400 });
     }
 
-    const runwayTask = await client.tasks.retrieve(task.predictionId);
-    const status = runwayTask.status;
-    const output = runwayTask.output;
+    let runwayTask = await client.tasks.retrieve(task.predictionId);
+    let status = runwayTask.status;
+    let output = runwayTask.output;
 
     console.log("🎯 RUNWAY RESPONSE:", {
       predictionId: task.predictionId,
@@ -46,10 +46,24 @@ export async function GET(
     });
 
     if (status === "SUCCEEDED") {
+      // Give CDN or hosting edge time to propagate file
       await new Promise((res) => setTimeout(res, 3000));
 
-      let videoUrl: string | null = null;
+      // Check if output is unexpectedly empty and retry once
+      const outputIsEmpty =
+        !output ||
+        (Array.isArray(output) && output.length === 0) ||
+        (typeof output === "object" && output !== null && Object.keys(output).length === 0);
 
+      if (outputIsEmpty) {
+        console.log("⚠️ Output empty after success. Retrying fetch...");
+        const retry = await client.tasks.retrieve(task.predictionId);
+        output = retry.output;
+        console.log("🔁 Retried output:", output);
+      }
+
+      // Parse videoUrl defensively
+      let videoUrl: string | null = null;
       if (Array.isArray(output)) {
         videoUrl = output[0] ?? null;
       } else if (typeof output === "object" && output !== null && "video" in output) {
@@ -58,10 +72,10 @@ export async function GET(
         videoUrl = output;
       }
 
-      console.log("🎬 Parsed video URL:", videoUrl);
+      console.log("🎬 Final parsed video URL:", videoUrl);
 
       task.status = "complete";
-      task.videoUrl = videoUrl ?? undefined; // must match schema
+      task.videoUrl = videoUrl ?? undefined;
       await task.save();
     } else if (status === "FAILED") {
       task.status = "failed";
