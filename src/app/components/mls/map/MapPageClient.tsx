@@ -237,7 +237,7 @@ export default function MapPageClient() {
       )}
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
-        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-0`}>
+        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-1`}>
           <MapView
             ref={mapRef}
             listings={allListings}
