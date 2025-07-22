@@ -24,7 +24,7 @@ export const metadata: Metadata = {
         url: "/city-images/cathedral-city.jpg",
         width: 1200,
         height: 630,
-        alt: "Cathedral City Real Estate Map",
+        alt: "Coachella Valley Real Estate Listings",
       },
     ],
   },

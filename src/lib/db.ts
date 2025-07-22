@@ -1,12 +1,13 @@
-// src/lib/db.ts
 import mongoose from "mongoose";
 
 const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) return;
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
 
   try {
     await mongoose.connect(process.env.MONGODB_URI!, {
-      dbName: "your-db-name", // optional: replace with actual DB name if needed
+      dbName: "admin", // ✅ explicitly target the correct DB name
     });
     console.log("✅ MongoDB connected");
   } catch (error) {

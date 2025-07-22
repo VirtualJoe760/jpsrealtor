@@ -1,3 +1,5 @@
+// src\models\listings.ts
+
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 // -----------------------------

@@ -1,5 +1,3 @@
-// src/app/components/mls/map/MapPageClient.tsx
-
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -62,16 +60,32 @@ export default function MapPageClient() {
 
   const initialLat = useMemo(() => {
     const val = parseFloat(searchParams.get("lat") || "");
-    return !isNaN(val) ? val : undefined;
-  }, []);
+    return !isNaN(val) ? val : 33.72; // Coachella Valley default
+  }, [searchParams]);
   const initialLng = useMemo(() => {
     const val = parseFloat(searchParams.get("lng") || "");
-    return !isNaN(val) ? val : undefined;
-  }, []);
+    return !isNaN(val) ? val : -116.37;
+  }, [searchParams]);
   const initialZoom = useMemo(() => {
     const val = parseFloat(searchParams.get("zoom") || "");
-    return !isNaN(val) ? val : undefined;
-  }, []);
+    return !isNaN(val) ? val : 11;
+  }, [searchParams]);
+
+  useEffect(() => {
+    console.log("All listings:", allListings);
+    console.log("Visible listings:", visibleListings);
+  }, [allListings, visibleListings]);
+
+  useEffect(() => {
+    // Load initial listings based on map bounds or default center
+    const initialBounds = {
+      north: initialLat + 0.1,
+      south: initialLat - 0.1,
+      east: initialLng + 0.1,
+      west: initialLng - 0.1,
+    };
+    loadListings(initialBounds, filters);
+  }, [initialLat, initialLng, filters, loadListings]);
 
   useEffect(() => {
     if (selectedListing && isSidebarOpen && isFiltersOpen) {
@@ -150,24 +164,6 @@ export default function MapPageClient() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  useEffect(() => {
-    const selected = searchParams.get("selected");
-    if (!selected || !allListings.length) return;
-
-    const match = allListings.find(
-      (l) => l.slugAddress === selected || l.slug === selected
-    );
-    if (!match) return;
-
-    const idx = visibleListings.findIndex((l) => l._id === match._id);
-    if (idx !== -1) setVisibleIndex(idx);
-
-    if (selectedSlugRef.current !== selected) {
-      selectedSlugRef.current = selected;
-      fetchFullListing(selected);
-    }
-  }, [searchParams, allListings]);
-
   const handleCloseListing = () => {
     setVisibleIndex(null);
     setSelectedFullListing(null);
@@ -201,7 +197,6 @@ export default function MapPageClient() {
     setLikedListings([]);
   };
 
-  // ✅ Debounce + deduplicate bounding box fetches
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
 
@@ -242,7 +237,7 @@ export default function MapPageClient() {
       )}
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
-        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass}`}>
+        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-0`}>
           <MapView
             ref={mapRef}
             listings={allListings}
@@ -250,6 +245,7 @@ export default function MapPageClient() {
               const filtered = listings.filter(
                 (l) => l.slug && l.latitude && l.longitude
               );
+              console.log("Setting visible listings:", filtered);
               setVisibleListings(filtered);
             }}
             centerLat={initialLat}
@@ -258,6 +254,7 @@ export default function MapPageClient() {
             onSelectListing={handleListingSelect}
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
+            onSelectListingByIndex={(index) => setVisibleIndex(index)}
           />
 
           {selectedSlugRef.current && selectedListing && selectedFullListing && (

@@ -48,13 +48,6 @@ export default function CurbAppealPage() {
           setStatus("Complete");
           setVideoUrl(data.videoUrl);
           clearInterval(interval);
-          // Trigger browser download
-          const a = document.createElement("a");
-          a.href = data.videoUrl;
-          a.download = "curb-appeal.mp4";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
         } else if (data.status === "failed") {
           setStatus("Failed");
           clearInterval(interval);
@@ -92,6 +85,17 @@ export default function CurbAppealPage() {
         Generate Video
       </button>
       <p className="mt-4 text-sm">Status: {status}</p>
+
+      {videoUrl && (
+        <div className="mt-6">
+          <h2 className="text-lg font-medium mb-2">Preview</h2>
+          <video
+            src={videoUrl}
+            controls
+            className="w-full max-w-xl rounded shadow"
+          />
+        </div>
+      )}
     </div>
   );
 }

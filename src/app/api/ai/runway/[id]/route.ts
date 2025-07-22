@@ -17,13 +17,6 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (["complete", "failed"].includes(task.status)) {
-      return NextResponse.json({
-        status: task.status,
-        videoUrl: task.videoUrl ?? null,
-      });
-    }
-
     const apiKey = process.env.RUNWAY_API_KEY;
     if (!apiKey) {
       throw new Error("Missing RUNWAY_API_KEY in environment variables");
@@ -46,10 +39,9 @@ export async function GET(
     });
 
     if (status === "SUCCEEDED") {
-      // Give CDN or hosting edge time to propagate file
+      // Wait briefly to allow video to become available
       await new Promise((res) => setTimeout(res, 3000));
 
-      // Check if output is unexpectedly empty and retry once
       const outputIsEmpty =
         !output ||
         (Array.isArray(output) && output.length === 0) ||
@@ -62,8 +54,8 @@ export async function GET(
         console.log("🔁 Retried output:", output);
       }
 
-      // Parse videoUrl defensively
       let videoUrl: string | null = null;
+
       if (Array.isArray(output)) {
         videoUrl = output[0] ?? null;
       } else if (typeof output === "object" && output !== null && "video" in output) {
@@ -74,17 +66,31 @@ export async function GET(
 
       console.log("🎬 Final parsed video URL:", videoUrl);
 
+      // Save in DB for history/tracking, but return live status immediately
       task.status = "complete";
       task.videoUrl = videoUrl ?? undefined;
       await task.save();
-    } else if (status === "FAILED") {
-      task.status = "failed";
-      await task.save();
+
+      return NextResponse.json({
+        status: "complete",
+        videoUrl: videoUrl ?? null,
+      });
     }
 
+    if (status === "FAILED") {
+      task.status = "failed";
+      await task.save();
+
+      return NextResponse.json({
+        status: "failed",
+        videoUrl: null,
+      });
+    }
+
+    // Still processing
     return NextResponse.json({
-      status: task.status,
-      videoUrl: task.videoUrl ?? null,
+      status: "processing",
+      videoUrl: null,
     });
   } catch (err: any) {
     console.error("[RUNWAY_STATUS_ERROR]", err?.response?.data || err.message || err);
