@@ -60,32 +60,29 @@ export default function MapPageClient() {
 
   const initialLat = useMemo(() => {
     const val = parseFloat(searchParams.get("lat") || "");
-    return !isNaN(val) ? val : 33.72; // Coachella Valley default
+    return !isNaN(val) ? val : 33.72;
   }, [searchParams]);
+
   const initialLng = useMemo(() => {
     const val = parseFloat(searchParams.get("lng") || "");
     return !isNaN(val) ? val : -116.37;
   }, [searchParams]);
+
   const initialZoom = useMemo(() => {
     const val = parseFloat(searchParams.get("zoom") || "");
     return !isNaN(val) ? val : 11;
   }, [searchParams]);
 
   useEffect(() => {
-    console.log("All listings:", allListings);
-    console.log("Visible listings:", visibleListings);
-  }, [allListings, visibleListings]);
-
-  useEffect(() => {
-    // Load initial listings based on map bounds or default center
     const initialBounds = {
       north: initialLat + 0.1,
       south: initialLat - 0.1,
       east: initialLng + 0.1,
       west: initialLng - 0.1,
+      zoom: initialZoom,
     };
     loadListings(initialBounds, filters);
-  }, [initialLat, initialLng, filters, loadListings]);
+  }, [initialLat, initialLng, filters, loadListings, initialZoom]);
 
   useEffect(() => {
     if (selectedListing && isSidebarOpen && isFiltersOpen) {
@@ -200,14 +197,10 @@ export default function MapPageClient() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
 
-  const handleBoundsChange = (bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  }) => {
-    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}`;
+  const handleBoundsChange = (bounds: { north: number; south: number; east: number; west: number; zoom: number }) => {
+    if (bounds.zoom < 12) return; // 🔒 Enforce clustering until zoom 12
 
+    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-z${bounds.zoom}`;
     if (key === lastBoundsRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -241,13 +234,6 @@ export default function MapPageClient() {
           <MapView
             ref={mapRef}
             listings={allListings}
-            setVisibleListings={(listings) => {
-              const filtered = listings.filter(
-                (l) => l.slug && l.latitude && l.longitude
-              );
-              console.log("Setting visible listings:", filtered);
-              setVisibleListings(filtered);
-            }}
             centerLat={initialLat}
             centerLng={initialLng}
             zoom={initialZoom}
@@ -264,35 +250,19 @@ export default function MapPageClient() {
               fullListing={selectedFullListing}
               onClose={handleCloseListing}
               onSwipeLeft={() => {
-                const currentSlug =
-                  selectedListing.slugAddress ?? selectedListing.slug;
-                if (
-                  likedListings.some(
-                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                  )
-                ) {
+                const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
+                if (likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === currentSlug)) {
                   setLikedListings((prev) =>
-                    prev.filter(
-                      (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
-                    )
+                    prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== currentSlug)
                   );
                 }
                 advanceToNextListing();
               }}
               onSwipeRight={() => {
-                const currentSlug =
-                  selectedListing.slugAddress ?? selectedListing.slug;
-                if (
-                  !likedListings.some(
-                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                  )
-                ) {
-                  const full = allListings.find(
-                    (l) => (l.slugAddress ?? l.slug) === currentSlug
-                  );
-                  setLikedListings((prev) =>
-                    full ? [...prev, full] : [...prev, selectedListing]
-                  );
+                const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
+                if (!likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === currentSlug)) {
+                  const full = allListings.find((l) => (l.slugAddress ?? l.slug) === currentSlug);
+                  setLikedListings((prev) => (full ? [...prev, full] : [...prev, selectedListing]));
                 }
                 advanceToNextListing();
               }}
