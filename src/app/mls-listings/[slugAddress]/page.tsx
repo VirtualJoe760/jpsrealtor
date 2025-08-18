@@ -6,6 +6,7 @@ import { fetchListingPhotos } from "@/app/utils/spark/photos";
 import type { IListing } from "@/models/listings";
 import { SparkPhoto } from "@/types/photo";
 import ListingClient from "@/app/components/mls/ListingClient";
+import Footer from "@/app/components/Footer";
 
 async function getEnrichedListing(slugAddress: string): Promise<IListing | null> {
   try {
@@ -119,6 +120,7 @@ export default async function ListingPage({
   return (
     <main className="w-full bg-black text-white">
       <ListingClient listing={listing} media={media} address={address} />
+      <Footer />
     </main>
   );
 }

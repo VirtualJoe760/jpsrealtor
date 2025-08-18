@@ -7,8 +7,8 @@ import { Calendar, Phone, MapPinned, Share2 } from "lucide-react";
 
 import CollageHero from "@/app/components/mls/CollageHero";
 import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
+import ListingAttribution from "@/app/components/mls/ListingAttribution";
 import type { IListing } from "@/models/listings";
-import type { SparkPhoto } from "@/types/photo";
 
 function calculateDaysOnMarket(dateString?: string | Date) {
   if (!dateString) return null;
@@ -59,26 +59,20 @@ export default function ListingClient({
           <p className="mt-1 text-sm text-zinc-300">
             <span
               className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                listing.standardStatus === "Active"
-                  ? "bg-green-600"
-                  : "bg-gray-600"
+                listing.standardStatus === "Active" ? "bg-green-600" : "bg-gray-600"
               }`}
             >
               {listing.standardStatus}
             </span>{" "}
             ·{" "}
-            {daysOnMarket !== null
-              ? `${daysOnMarket} days on market`
-              : "Listed date unknown"}
+            {daysOnMarket !== null ? `${daysOnMarket} days on market` : "Listed date unknown"}
           </p>
         </div>
 
         {/* Features */}
         <div className="flex flex-wrap gap-2 text-sm mb-6">
           {listing.bedsTotal !== undefined && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              {listing.bedsTotal} Bed
-            </span>
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.bedsTotal} Bed</span>
           )}
           {listing.bathroomsTotalInteger !== undefined && (
             <span className="bg-zinc-800 px-3 py-1 rounded-full">
@@ -95,12 +89,8 @@ export default function ListingClient({
               {Math.round(listing.lotSizeArea).toLocaleString()} Lot
             </span>
           )}
-          {listing.poolYn && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
-          )}
-          {listing.spaYn && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
-          )}
+          {listing.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
+          {listing.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
         </div>
 
         {/* Action Buttons */}
@@ -122,9 +112,7 @@ export default function ListingClient({
           </a>
 
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-              address
-            )}`}
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center h-12 rounded-full border border-white bg-black text-white hover:bg-white hover:text-black transition"
@@ -153,10 +141,15 @@ export default function ListingClient({
 
         {/* Remarks */}
         {listing.publicRemarks && (
-          <p className="text-lg text-white mb-6 whitespace-pre-line">
-            {listing.publicRemarks}
-          </p>
+          <p className="text-lg text-white mb-6 whitespace-pre-line">{listing.publicRemarks}</p>
         )}
+
+        {/* ✅ IDX Listing Attribution (compliant but subtle) */}
+        <ListingAttribution
+          listing={listing}
+          className="mb-6  text-xs bg-black"
+        />
+        
 
         {/* Grid Details */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-sm mb-8">
@@ -197,13 +190,7 @@ export default function ListingClient({
           )}
         </div>
 
-        {/* Listing Agent Info */}
-        {listing.listOfficeName && listing.listAgentName && (
-          <p className="text-sm text-zinc-600 mb-4">
-            Listing presented by {listing.listOfficeName},{" "}
-            {listing.listAgentName}
-          </p>
-        )}
+        {/* (Old agent block removed; replaced by <ListingAttribution />) */}
 
         {/* Mortgage Calculator */}
         <div className="space-y-6">

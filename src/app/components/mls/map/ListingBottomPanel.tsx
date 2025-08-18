@@ -1,3 +1,4 @@
+// src/app/components/mls/map/ListingBottomPanel.tsx
 "use client";
 
 import { useRef, useState, useEffect } from "react";
@@ -10,6 +11,7 @@ import type { IListing } from "@/models/listings";
 import clsx from "clsx";
 import PannelCarousel from "./PannelCarousel";
 import Image from "next/image";
+import ListingAttribution from "@/app/components/mls/ListingAttribution";
 
 type Props = {
   listing: MapListing;
@@ -44,14 +46,8 @@ export default function ListingBottomPanel({
     "Unknown address";
 
   useEffect(() => {
-    console.log(
-      "🧪 ListingBottomPanel listing.listingKey:",
-      listing?.listingKey
-    );
-    console.log(
-      "🧪 ListingBottomPanel fullListing.listingKey:",
-      fullListing?.listingKey
-    );
+    console.log("🧪 ListingBottomPanel listing.listingKey:", listing?.listingKey);
+    console.log("🧪 ListingBottomPanel fullListing.listingKey:", fullListing?.listingKey);
   }, [listing?.listingKey, fullListing?.listingKey]);
 
   const handleSwipe = (dir: "left" | "right") => {
@@ -63,10 +59,8 @@ export default function ListingBottomPanel({
   };
 
   const getExitAnimation = () => {
-    if (exitSwipe === "left")
-      return { x: -400, y: -120, rotate: -10, opacity: 0 };
-    if (exitSwipe === "right")
-      return { x: 400, y: -120, rotate: 10, opacity: 0 };
+    if (exitSwipe === "left") return { x: -400, y: -120, rotate: -10, opacity: 0 };
+    if (exitSwipe === "right") return { x: 400, y: -120, rotate: 10, opacity: 0 };
     return { opacity: 0 };
   };
 
@@ -121,9 +115,7 @@ export default function ListingBottomPanel({
         <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white overflow-y-auto flex-1">
           <div className="flex items-start justify-between pt-4">
             <div>
-              <p className="text-2xl font-semibold mb-1 leading-tight">
-                {address}
-              </p>
+              <p className="text-2xl font-semibold mb-1 leading-tight">{address}</p>
               <p className="text-2xl font-bold text-emerald-400 leading-tight">
                 ${Number(fullListing.listPrice ?? 0).toLocaleString()}
               </p>
@@ -153,9 +145,7 @@ export default function ListingBottomPanel({
 
           <div className="flex flex-wrap gap-2 text-base sm:text-lg mt-2">
             {fullListing?.bedsTotal !== undefined && (
-              <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                {fullListing.bedsTotal} Bed
-              </span>
+              <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
             )}
             {fullListing?.bathroomsTotalInteger !== undefined && (
               <span className="bg-zinc-800 px-2 py-1 rounded-full">
@@ -173,16 +163,10 @@ export default function ListingBottomPanel({
               </span>
             )}
             {fullListing?.yearBuilt && (
-              <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                Built {fullListing.yearBuilt}
-              </span>
+              <span className="bg-zinc-800 px-2 py-1 rounded-full">Built {fullListing.yearBuilt}</span>
             )}
-            {fullListing?.poolYn && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
-            )}
-            {fullListing?.spaYn && (
-              <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
-            )}
+            {fullListing?.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
+            {fullListing?.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
           </div>
 
           {fullListing?.publicRemarks && (
@@ -192,6 +176,9 @@ export default function ListingBottomPanel({
                 : fullListing.publicRemarks}
             </p>
           )}
+
+          {/* ✅ IDX Attribution (subtle, clickable) */}
+          <ListingAttribution listing={fullListing} className="mt-2" />
 
           <div className="flex justify-center gap-8 mt-6">
             <button onClick={() => handleSwipe("left")}>
