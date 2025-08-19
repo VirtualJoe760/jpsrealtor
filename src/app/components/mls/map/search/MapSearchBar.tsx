@@ -144,7 +144,7 @@ export default function MapSearchBar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Address or cities in California..."
-            className="w-full px-2 py-2 text-start text-white bg-transparent border-b border-emerald-500 placeholder-gray-400 focus:outline-none focus:ring-0 caret-transparent custom-caret"
+            className="w-full px-2 py-2 text-start text-white bg-transparent placeholder-white focus:outline-none focus:ring-0 caret-transparent custom-caret"
           />
 
           {showDropdown && results.length > 0 && (

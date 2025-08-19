@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 import type { MapListing, Filters } from "@/types/types";
@@ -26,6 +26,8 @@ export default function MapPageClient() {
   const router = useRouter();
   const mapRef = useRef<MapViewHandles>(null);
   const selectedSlugRef = useRef<string | null>(null);
+  const listingCache = useRef<Map<string, IListing>>(new Map());
+  const fetchingRef = useRef<Set<string>>(new Set()); // Track ongoing fetches
 
   const [isSidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
@@ -46,12 +48,8 @@ export default function MapPageClient() {
     return [];
   });
 
-  const {
-    allListings,
-    visibleListings,
-    setVisibleListings,
-    loadListings,
-  } = useListings();
+  const { allListings, visibleListings, setVisibleListings, loadListings } =
+    useListings();
 
   const selectedListing = useMemo(() => {
     if (visibleIndex === null || visibleIndex >= visibleListings.length) return null;
@@ -73,6 +71,7 @@ export default function MapPageClient() {
     return !isNaN(val) ? val : 11;
   }, [searchParams]);
 
+  // Initial load
   useEffect(() => {
     const initialBounds = {
       north: initialLat + 0.1,
@@ -83,6 +82,34 @@ export default function MapPageClient() {
     };
     loadListings(initialBounds, filters);
   }, [initialLat, initialLng, filters, loadListings, initialZoom]);
+
+  // Prefetch full listings for visible listings
+  useEffect(() => {
+    const prefetchListings = async () => {
+      const slugsToFetch = visibleListings
+        .slice(0, 5) // Reduced to 5 for performance
+        .map((listing) => listing.slugAddress ?? listing.slug)
+        .filter((slug): slug is string => !!slug && !listingCache.current.has(slug) && !fetchingRef.current.has(slug));
+
+      for (const slug of slugsToFetch) {
+        fetchingRef.current.add(slug);
+        try {
+          const res = await fetch(`/api/mls-listings/${slug}`);
+          const json = await res.json();
+          if (json?.listing) {
+            listingCache.current.set(slug, json.listing);
+            console.log(`Prefetched listing ${slug}`);
+          }
+        } catch (err) {
+          console.error(`❌ Error prefetching listing ${slug}:`, err);
+        } finally {
+          fetchingRef.current.delete(slug);
+        }
+      }
+    };
+
+    prefetchListings();
+  }, [visibleListings]);
 
   useEffect(() => {
     if (selectedListing && isSidebarOpen && isFiltersOpen) {
@@ -129,17 +156,35 @@ export default function MapPageClient() {
     setFiltersOpen(false);
   };
 
-  const fetchFullListing = async (slug: string) => {
+  const fetchFullListing = useCallback(async (slug: string) => {
+    if (listingCache.current.has(slug)) {
+      console.log(`Cache hit for listing ${slug}`);
+      setSelectedFullListing(listingCache.current.get(slug)!);
+      return;
+    }
+
+    if (fetchingRef.current.has(slug)) {
+      console.log(`Fetch already in progress for ${slug}`);
+      return;
+    }
+
+    fetchingRef.current.add(slug);
     try {
+      console.log(`Fetching listing ${slug}`);
       const res = await fetch(`/api/mls-listings/${slug}`);
       const json = await res.json();
       if (json?.listing) {
+        listingCache.current.set(slug, json.listing);
         setSelectedFullListing(json.listing);
+      } else {
+        console.error(`No listing found for slug ${slug}`);
       }
     } catch (err) {
       console.error("❌ Error fetching full listing:", err);
+    } finally {
+      fetchingRef.current.delete(slug);
     }
-  };
+  }, []);
 
   const handleListingSelect = (listing: MapListing) => {
     const index = visibleListings.findIndex((l) => l._id === listing._id);
@@ -197,17 +242,22 @@ export default function MapPageClient() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
 
-  const handleBoundsChange = (bounds: { north: number; south: number; east: number; west: number; zoom: number }) => {
-    if (bounds.zoom < 12) return; // 🔒 Enforce clustering until zoom 12
-
-    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-z${bounds.zoom}`;
+  const handleBoundsChange = (bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+    zoom: number;
+  }) => {
+    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-${bounds.zoom.toFixed(2)}`;
     if (key === lastBoundsRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       lastBoundsRef.current = key;
+      console.log("Bounds changed:", bounds);
       loadListings(bounds, filters);
-    }, 500);
+    }, 300);
   };
 
   return (
