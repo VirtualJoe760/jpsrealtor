@@ -9,7 +9,7 @@ import {
   useMotionValue,
   useTransform,
   AnimatePresence,
-  animate, // <-- use to animate MotionValue (dragX)
+  animate,
 } from "framer-motion";
 import type { MapListing } from "@/types/types";
 import Link from "next/link";
@@ -20,25 +20,25 @@ import Image from "next/image";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
 
 /* =======================
-   🔧 TUNING — tweak these to taste
+   🔧 TUNING
    ======================= */
 const SWIPE = {
-  minOffsetRatio: 0.30,       // fraction of viewport width before swipe triggers
-  minVelocity: 650,           // px/s
-  flyOutRatio: 0.98,          // how far offscreen it flies (fraction of vw)
-  flyOutDuration: 0.22,       // seconds
+  minOffsetRatio: 0.3,
+  minVelocity: 650,
+  flyOutRatio: 0.98,
+  flyOutDuration: 0.22,
   snapSpring: { stiffness: 380, damping: 32 },
-  dragElastic: 0.28,          // stretchiness while dragging (0..1)
-  lockScrollMaxWidth: 1024,   // lock body scroll on <= this width
+  dragElastic: 0.28,
+  lockScrollMaxWidth: 1024,
 };
 
-/* "Pinned" distortion feel */
+/* Distortion feel */
 const PIN = {
-  originYpx: 14,              // transform-origin Y offset in px (distance from top edge to pin)
-  rotZMaxDeg: 8,              // max rotateZ as you pull left/right
-  skewYMaxDeg: 10,            // max skewY as you pull
-  rotXMaxDeg: 6,              // slight perspective tilt while pulling
-  shadowBoost: 0.25,          // increases shadow when pulled
+  originYpx: 14,
+  rotZMaxDeg: 8,
+  skewYMaxDeg: 10,
+  rotXMaxDeg: 6,
+  shadowBoost: 0.25,
 };
 
 type Props = {
@@ -63,15 +63,26 @@ export default function ListingBottomPanel({
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Horizontal drag MotionValue; we NEVER animate x with `controls` to avoid conflicts.
+  // Horizontal MotionValue
   const dragX = useMotionValue(0);
 
-  // Derived transforms for the "pinned" effect (based on dragX)
-  const rotZ = useTransform(dragX, [-300, 0, 300], [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]);
-  const skewY = useTransform(dragX, [-300, 0, 300], [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]);
-  const rotX = useTransform(dragX, [-300, 0, 300], [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]);
+  // Derived transforms
+  const rotZ = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]
+  );
+  const skewY = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]
+  );
+  const rotX = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]
+  );
 
-  // Shadow boost while pulling (string MotionValue for box-shadow)
   const shadowAlpha = useTransform(
     dragX,
     [-300, 0, 300],
@@ -82,7 +93,6 @@ export default function ListingBottomPanel({
     (a: number) => `0 15px 40px rgba(0,0,0,${a})`
   );
 
-  // Swipe direction memory (used after fly-out to trigger parent update)
   const exitDirRef = useRef<"left" | "right" | null>(null);
 
   const address =
@@ -96,7 +106,8 @@ export default function ListingBottomPanel({
   useEffect(() => {
     const shouldLock =
       SWIPE.lockScrollMaxWidth <= 0 ||
-      (typeof window !== "undefined" && window.innerWidth <= SWIPE.lockScrollMaxWidth);
+      (typeof window !== "undefined" &&
+        window.innerWidth <= SWIPE.lockScrollMaxWidth);
 
     if (!shouldLock) return;
 
@@ -108,7 +119,8 @@ export default function ListingBottomPanel({
       right: document.body.style.right,
       width: document.body.style.width,
       overflowY: document.body.style.overflowY,
-      overscrollBehavior: (document.documentElement.style as any).overscrollBehavior,
+      overscrollBehavior: (document.documentElement.style as any)
+        .overscrollBehavior,
     };
 
     document.body.style.position = "fixed";
@@ -126,20 +138,18 @@ export default function ListingBottomPanel({
       document.body.style.right = prev.right;
       document.body.style.width = prev.width;
       document.body.style.overflowY = prev.overflowY;
-      (document.documentElement.style as any).overscrollBehavior = prev.overscrollBehavior;
+      (document.documentElement.style as any).overscrollBehavior =
+        prev.overscrollBehavior;
       const y = Math.abs(parseInt(prev.top || "0", 10)) || scrollY;
       window.scrollTo(0, y);
     };
   }, []);
 
-  // ✅ Deterministic entrance: no `initial` prop.
-  // When the listing changes or mounts, we set a starting state then animate to visible.
+  // Entrance
   useEffect(() => {
-    // start state
     controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
     dragX.set(0);
 
-    // next tick: animate in
     const id = requestAnimationFrame(() => {
       controls.start({
         opacity: 1,
@@ -154,19 +164,16 @@ export default function ListingBottomPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullListing?.listingKey]);
 
-  // Deterministic swipe-out → parent callback → reset
+  // Swipe-out
   const swipeOut = async (dir: "left" | "right") => {
     exitDirRef.current = dir;
     const W = typeof window !== "undefined" ? window.innerWidth : 420;
     const fly = Math.round(W * SWIPE.flyOutRatio);
 
-    // Animate horizontal (x) via MotionValue — avoids conflicts with controls
     const animX = animate(dragX, dir === "left" ? -fly : fly, {
       duration: SWIPE.flyOutDuration,
       ease: [0.42, 0, 0.58, 1],
     });
-
-    // Animate opacity/scale/rotate/y via controls in parallel
     const animOther = controls.start({
       y: -60,
       opacity: 0,
@@ -180,26 +187,28 @@ export default function ListingBottomPanel({
     if (exitDirRef.current === "left") onSwipeLeft?.();
     else if (exitDirRef.current === "right") onSwipeRight?.();
 
-    // Reset instantly so the next card starts centered & visible
     controls.set({ opacity: 1, y: 0, scale: 1, rotate: 0 });
     dragX.set(0);
     exitDirRef.current = null;
   };
 
-  // Drag end logic with thresholds
+  // Drag thresholds
   const handleDragEnd = (
     _e: any,
     info: { offset: { x: number; y: number }; velocity: { x: number } }
   ) => {
     const { offset, velocity } = info;
     const minOffset = Math.round(
-      (typeof window !== "undefined" ? window.innerWidth : 420) * SWIPE.minOffsetRatio
+      (typeof window !== "undefined" ? window.innerWidth : 420) *
+        SWIPE.minOffsetRatio
     );
 
-    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity) return swipeOut("left");
-    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity) return swipeOut("right");
+    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity)
+      return swipeOut("left");
+    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity)
+      return swipeOut("right");
 
-    // Not enough: snap back
+    // Snap back
     controls.start({
       y: 0,
       opacity: 1,
@@ -207,7 +216,6 @@ export default function ListingBottomPanel({
       rotate: 0,
       transition: { type: "spring", ...SWIPE.snapSpring },
     });
-    // Return x to center smoothly
     animate(dragX, 0, { type: "spring", stiffness: 380, damping: 32 });
   };
 
@@ -217,16 +225,8 @@ export default function ListingBottomPanel({
     "lg:left-[15%] lg:right-[15%]": !isSidebarOpen && !isFiltersOpen,
   });
 
-  // Stop gestures from reaching the map behind
-  const stopBehind = {
-    onPointerDown: (e: any) => e.stopPropagation(),
-    onPointerMove: (e: any) => e.stopPropagation(),
-    onClick: (e: any) => e.stopPropagation(),
-    onWheel: (e: any) => e.stopPropagation(),
-    onTouchMove: (e: any) => e.stopPropagation(),
-  };
+  const stopClicks = { onClick: (e: any) => e.stopPropagation() };
 
-  // Single style object; x is MotionValue, others are derived MotionValues
   const panelStyle: any = {
     transformOrigin: `50% ${PIN.originYpx}px`,
     perspective: 1000,
@@ -236,7 +236,6 @@ export default function ListingBottomPanel({
     boxShadow: boxShadowMV,
     background: "rgba(24,24,24,0.85)",
     backdropFilter: "blur(8px)",
-    touchAction: "pan-y", // vertical scroll allowed; prevents horizontal page pan
     x: dragX,
   };
 
@@ -246,31 +245,22 @@ export default function ListingBottomPanel({
         <motion.div
           key={listing._id || listing.listingKey || fullListing.listingKey}
           ref={panelRef}
-          animate={controls} // no `initial` -> avoids invisible first render
+          animate={controls}
           exit={{ opacity: 0, y: 36, transition: { duration: 0.18 } }}
           className={clsx(
             "fixed bottom-0 left-0 right-0 z-50 text-white rounded-t-2xl shadow-lg overflow-hidden",
             "transform-gpu will-change-transform pointer-events-auto",
             lgLayoutClasses
           )}
-          drag="x"
+          style={panelStyle}
+          {...stopClicks}
+          drag="x" // ✅ draggable everywhere
           dragElastic={SWIPE.dragElastic}
           dragMomentum={false}
-          whileDrag={{ scale: 0.985, opacity: 0.995 }}
           onDragEnd={handleDragEnd}
-          style={panelStyle}
-          {...stopBehind}
         >
-          {/* The "pin" visual */}
-          <div
-            aria-hidden
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{ top: PIN.originYpx - 8 }}
-          >
-            <div className="w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-black/60 shadow-[0_6px_8px_rgba(0,0,0,0.35)]" />
-          </div>
-
-          <div {...stopBehind}>
+          {/* Content */}
+          <div {...stopClicks}>
             <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
           </div>
 
@@ -286,11 +276,14 @@ export default function ListingBottomPanel({
           </button>
 
           <div
-            className="flex flex-col max-h-[85vh]"
+            className="flex flex-col max-h:[85vh] max-h-[85vh]"
             style={{ WebkitOverflowScrolling: "touch" }}
-            {...stopBehind}
+            {...stopClicks}
           >
-            <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white overflow-y-auto flex-1">
+            <div
+              className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white overflow-y-auto flex-1 overscroll-contain"
+              style={{ touchAction: "pan-y" }}
+            >
               <div className="flex items-start justify-between pt-4">
                 <div>
                   <p className="text-2xl font-semibold mb-1 leading-tight">
@@ -306,7 +299,10 @@ export default function ListingBottomPanel({
                     aria-label="Share this listing"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigator.share?.({ title: address, url: window.location.href });
+                      navigator.share?.({
+                        title: address,
+                        url: window.location.href,
+                      });
                     }}
                   >
                     <Share2 className="w-4 h-4 text-white" />
@@ -324,7 +320,9 @@ export default function ListingBottomPanel({
 
               <div className="flex flex-wrap gap-2 text-base sm:text-lg mt-2">
                 {fullListing?.bedsTotal !== undefined && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.bedsTotal} Bed
+                  </span>
                 )}
                 {fullListing?.bathroomsTotalInteger !== undefined && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
@@ -342,10 +340,20 @@ export default function ListingBottomPanel({
                   </span>
                 )}
                 {fullListing?.yearBuilt && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">Built {fullListing.yearBuilt}</span>
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    Built {fullListing.yearBuilt}
+                  </span>
                 )}
-                {fullListing?.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
-                {fullListing?.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
+                {fullListing?.poolYn && (
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                    🏊 Pool
+                  </span>
+                )}
+                {fullListing?.spaYn && (
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                    🧖 Spa
+                  </span>
+                )}
               </div>
 
               {fullListing?.publicRemarks && (
@@ -359,7 +367,12 @@ export default function ListingBottomPanel({
               <ListingAttribution listing={fullListing} className="mt-2" />
 
               <div className="flex justify-center gap-8 mt-6">
-                <button onClick={(e) => { e.stopPropagation(); swipeOut("left"); }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    swipeOut("left");
+                  }}
+                >
                   <Image
                     src="/images/swipe-left.png"
                     alt="Swipe Left"
@@ -369,7 +382,12 @@ export default function ListingBottomPanel({
                     className="drop-shadow-lg hover:opacity-80 active:scale-95 transition"
                   />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); swipeOut("right"); }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    swipeOut("right");
+                  }}
+                >
                   <Image
                     src="/images/swipe-right.png"
                     alt="Swipe Right"
@@ -384,7 +402,9 @@ export default function ListingBottomPanel({
 
             <div className="sticky bottom-0 bg-zinc-950/80 px-4 sm:px-5 pb-4 sm:pb-5">
               <Link
-                href={`/mls-listings/${listing.slugAddress || fullListing.slugAddress || ""}`}
+                href={`/mls-listings/${
+                  fullListing.slugAddress || fullListing.slug || ""
+                }`}
                 className="block text-center bg-emerald-500 text-black font-semibold py-2 rounded-md hover:bg-emerald-400 transition"
                 onClick={(e) => e.stopPropagation()}
               >

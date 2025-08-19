@@ -27,7 +27,7 @@ export default function MapPageClient() {
   const mapRef = useRef<MapViewHandles>(null);
   const selectedSlugRef = useRef<string | null>(null);
   const listingCache = useRef<Map<string, IListing>>(new Map());
-  const fetchingRef = useRef<Set<string>>(new Set()); // Track ongoing fetches
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   const [isSidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
@@ -36,6 +36,7 @@ export default function MapPageClient() {
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
   const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilterState);
+  const [selectionLocked, setSelectionLocked] = useState(false); // 🔒
   const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -48,11 +49,12 @@ export default function MapPageClient() {
     return [];
   });
 
-  const { allListings, visibleListings, setVisibleListings, loadListings } =
-    useListings();
+  const { allListings, visibleListings, loadListings } = useListings();
 
   const selectedListing = useMemo(() => {
-    if (visibleIndex === null || visibleIndex >= visibleListings.length) return null;
+    if (visibleIndex === null || visibleIndex < 0 || visibleIndex >= visibleListings.length) {
+      return null;
+    }
     return visibleListings[visibleIndex];
   }, [visibleIndex, visibleListings]);
 
@@ -83,22 +85,28 @@ export default function MapPageClient() {
     loadListings(initialBounds, filters);
   }, [initialLat, initialLng, filters, loadListings, initialZoom]);
 
-  // Prefetch full listings for visible listings
+  // Prefetch full listings
   useEffect(() => {
     const prefetchListings = async () => {
       const slugsToFetch = visibleListings
-        .slice(0, 5) // Reduced to 5 for performance
+        .slice(0, 5)
         .map((listing) => listing.slugAddress ?? listing.slug)
-        .filter((slug): slug is string => !!slug && !listingCache.current.has(slug) && !fetchingRef.current.has(slug));
+        .filter(
+          (slug): slug is string =>
+            !!slug && !listingCache.current.has(slug) && !fetchingRef.current.has(slug)
+        );
 
       for (const slug of slugsToFetch) {
         fetchingRef.current.add(slug);
         try {
           const res = await fetch(`/api/mls-listings/${slug}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
-          if (json?.listing) {
+          if (json?.listing && json.listing.listingKey) {
             listingCache.current.set(slug, json.listing);
-            console.log(`Prefetched listing ${slug}`);
+            console.log(`✅ Prefetched listing ${slug}`);
+          } else {
+            console.warn(`⚠️ No valid listing for slug ${slug}`);
           }
         } catch (err) {
           console.error(`❌ Error prefetching listing ${slug}:`, err);
@@ -111,23 +119,33 @@ export default function MapPageClient() {
     prefetchListings();
   }, [visibleListings]);
 
+  // Clear stale cache
+  useEffect(() => {
+    const validSlugs = new Set(visibleListings.map((l) => l.slugAddress ?? l.slug));
+    for (const slug of listingCache.current.keys()) {
+      if (!validSlugs.has(slug)) {
+        listingCache.current.delete(slug);
+        console.log(`🗑️ Cleared stale cache for ${slug}`);
+      }
+    }
+  }, [visibleListings]);
+
+  // Close filters when selecting a listing
   useEffect(() => {
     if (selectedListing && isSidebarOpen && isFiltersOpen) {
       setFiltersOpen(false);
     }
   }, [selectedListing, isSidebarOpen, isFiltersOpen]);
 
+  // Save liked listings
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("likedListings", JSON.stringify(likedListings));
       } catch (e) {
-        console.error("Failed to save favorites:", e);
+        console.error("❌ Failed to save favorites:", e);
       }
     }
-  }, [likedListings]);
-
-  useEffect(() => {
     Cookies.set("favorites", JSON.stringify(likedListings), { expires: 7 });
   }, [likedListings]);
 
@@ -157,42 +175,48 @@ export default function MapPageClient() {
   };
 
   const fetchFullListing = useCallback(async (slug: string) => {
-    if (listingCache.current.has(slug)) {
-      console.log(`Cache hit for listing ${slug}`);
-      setSelectedFullListing(listingCache.current.get(slug)!);
-      return;
-    }
+    if (!slug) return;
+    if (fetchingRef.current.has(slug)) return;
 
-    if (fetchingRef.current.has(slug)) {
-      console.log(`Fetch already in progress for ${slug}`);
-      return;
+    if (listingCache.current.has(slug)) {
+      const cached = listingCache.current.get(slug)!;
+      if (cached.listingKey) {
+        setSelectedFullListing(cached);
+        return;
+      }
+      listingCache.current.delete(slug);
     }
 
     fetchingRef.current.add(slug);
     try {
-      console.log(`Fetching listing ${slug}`);
       const res = await fetch(`/api/mls-listings/${slug}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (json?.listing) {
+      if (json?.listing && json.listing.listingKey) {
         listingCache.current.set(slug, json.listing);
         setSelectedFullListing(json.listing);
       } else {
-        console.error(`No listing found for slug ${slug}`);
+        setSelectedFullListing(null);
       }
     } catch (err) {
       console.error("❌ Error fetching full listing:", err);
+      setSelectedFullListing(null);
     } finally {
       fetchingRef.current.delete(slug);
     }
   }, []);
 
   const handleListingSelect = (listing: MapListing) => {
+    if (!listing.slugAddress) return;
+
     const index = visibleListings.findIndex((l) => l._id === listing._id);
-    if (index !== -1) setVisibleIndex(index);
+    if (index === -1) return;
+
+    setVisibleIndex(index);
+    setSelectionLocked(true); // 🔒 lock
 
     const slug = listing.slugAddress ?? listing.slug;
-    const currentSlug = selectedListing?.slugAddress ?? selectedListing?.slug;
-    if (slug && slug !== currentSlug) {
+    if (slug && slug !== selectedSlugRef.current) {
       selectedSlugRef.current = slug;
       fetchFullListing(slug);
     }
@@ -210,6 +234,7 @@ export default function MapPageClient() {
     setVisibleIndex(null);
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
+    setSelectionLocked(false); // 🔓 unlock
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
     router.push(`?${params.toString()}`, { scroll: false });
@@ -219,12 +244,20 @@ export default function MapPageClient() {
     if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
       const nextIndex = visibleIndex + 1;
       const next = visibleListings[nextIndex];
-      const nextSlug = next?.slugAddress ?? next?.slug;
-      if (!nextSlug) return;
-
+      if (!next) {
+        handleCloseListing();
+        return;
+      }
+      const nextSlug = next.slugAddress ?? next.slug;
+      if (!nextSlug) {
+        handleCloseListing();
+        return;
+      }
       setVisibleIndex(nextIndex);
       selectedSlugRef.current = nextSlug;
       fetchFullListing(nextSlug);
+    } else {
+      handleCloseListing();
     }
   };
 
@@ -239,6 +272,24 @@ export default function MapPageClient() {
     setLikedListings([]);
   };
 
+  // Bounds → listings change
+  useEffect(() => {
+    if (!selectionLocked) {
+      if (visibleListings.length > 0) {
+        setVisibleIndex(0);
+      } else {
+        setVisibleIndex(null);
+      }
+    } else {
+      if (
+        selectedListing &&
+        !visibleListings.some((l) => l._id === selectedListing._id)
+      ) {
+        console.log("ℹ️ Locked selection not in visibleListings, keeping panel");
+      }
+    }
+  }, [visibleListings, selectionLocked, selectedListing]);
+
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
 
@@ -249,13 +300,16 @@ export default function MapPageClient() {
     west: number;
     zoom: number;
   }) => {
-    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(6)}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-${bounds.zoom.toFixed(2)}`;
+    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(
+      6
+    )}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-${bounds.zoom.toFixed(
+      2
+    )}`;
     if (key === lastBoundsRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       lastBoundsRef.current = key;
-      console.log("Bounds changed:", bounds);
       loadListings(bounds, filters);
     }, 300);
   };
@@ -280,7 +334,9 @@ export default function MapPageClient() {
       )}
 
       <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
-        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-1`}>
+        <div
+          className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-1`}
+        >
           <MapView
             ref={mapRef}
             listings={allListings}
@@ -290,29 +346,43 @@ export default function MapPageClient() {
             onSelectListing={handleListingSelect}
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
-            panelOpen={Boolean(selectedListing)}
+            panelOpen={Boolean(selectedListing && selectedFullListing)}
           />
 
-          {selectedSlugRef.current && selectedListing && selectedFullListing && (
+          {selectedListing && selectedFullListing && (
             <ListingBottomPanel
-              key={selectedSlugRef.current}
+              key={selectedFullListing.listingKey}
               listing={selectedListing}
               fullListing={selectedFullListing}
               onClose={handleCloseListing}
               onSwipeLeft={() => {
                 const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
-                if (likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === currentSlug)) {
+                if (
+                  likedListings.some(
+                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                  )
+                ) {
                   setLikedListings((prev) =>
-                    prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== currentSlug)
+                    prev.filter(
+                      (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
+                    )
                   );
                 }
                 advanceToNextListing();
               }}
               onSwipeRight={() => {
                 const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
-                if (!likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === currentSlug)) {
-                  const full = allListings.find((l) => (l.slugAddress ?? l.slug) === currentSlug);
-                  setLikedListings((prev) => (full ? [...prev, full] : [...prev, selectedListing]));
+                if (
+                  !likedListings.some(
+                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+                  )
+                ) {
+                  const full = allListings.find(
+                    (l) => (l.slugAddress ?? l.slug) === currentSlug
+                  );
+                  setLikedListings((prev) =>
+                    full ? [...prev, full] : [...prev, selectedListing]
+                  );
                 }
                 advanceToNextListing();
               }}

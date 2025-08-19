@@ -33,7 +33,7 @@ interface MapViewProps {
   }) => void;
   onSelectListingByIndex?: (index: number) => void;
 
-  /** NEW: freeze map interactions & background updates while bottom panel is open */
+  /** freeze map interactions & background updates while bottom panel is open */
   panelOpen?: boolean;
 }
 
@@ -72,9 +72,14 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     north: number;
   } | null>(null);
 
+  /** Internal selection fallback so highlight persists even if parent lags */
+  const [internalSelected, setInternalSelected] = useState<MapListing | null>(
+    selectedListing ?? null
+  );
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const lastSelectedIdRef = useRef<string | null>(null);
+  const lastSelectedIdRef = useRef<string | null>(selectedListing?._id ?? null);
   const clusterRef = useRef<Supercluster | null>(null);
   const lastBoundsKeyRef = useRef<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -83,6 +88,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
+
+  // Keep internal selection in sync with prop (and remember last selected id)
+  useEffect(() => {
+    if (selectedListing) {
+      setInternalSelected((prev) =>
+        prev?._id === selectedListing._id ? prev : selectedListing
+      );
+      lastSelectedIdRef.current = selectedListing._id;
+    }
+  }, [selectedListing]);
 
   const hydratedInitialViewState: ViewState = {
     latitude: centerLat ?? 33.72,
@@ -159,9 +174,11 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       north: bounds.getNorth(),
     });
 
-    const key = `${bounds.getNorth().toFixed(6)}-${bounds.getSouth().toFixed(6)}-${bounds
-      .getEast()
-      .toFixed(6)}-${bounds.getWest().toFixed(6)}-${zoomVal.toFixed(2)}`;
+    const key = `${bounds.getNorth().toFixed(6)}-${bounds
+      .getSouth()
+      .toFixed(6)}-${bounds.getEast().toFixed(6)}-${bounds
+      .getWest()
+      .toFixed(6)}-${zoomVal.toFixed(2)}`;
     if (key === lastBoundsKeyRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -232,9 +249,21 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     updateClusters();
   };
 
+  /** ✅ Always keep the clicked marker selected.
+   * If panel is open and the click is for a different marker, ignore it to prevent background reselection. */
   const handleMarkerClick = (listing: MapListing) => {
-    if (lastSelectedIdRef.current === listing._id) return;
+    // Prevent background reselection while the bottom panel is open
+    if (
+      panelOpenRef.current &&
+      lastSelectedIdRef.current &&
+      lastSelectedIdRef.current !== listing._id
+    ) {
+      return;
+    }
+
+    // Update internal and external selection
     lastSelectedIdRef.current = listing._id;
+    setInternalSelected(listing);
     onSelectListing(listing);
 
     if (onSelectListingByIndex) {
@@ -283,6 +312,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return x >= west && x <= east && y >= south && y <= north;
   };
 
+  // Helper to test if a listing should render "selected"
+  const isSelected = (l: MapListing) => {
+    const id = l._id;
+    return (
+      (selectedListing && selectedListing._id === id) ||
+      (internalSelected && internalSelected._id === id)
+    );
+  };
+
   return (
     <div ref={wrapperRef} className="relative w-full h-full">
       <Map
@@ -311,7 +349,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     onMouseLeave={() => setHoveredId(null)}
                     className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
                       ${
-                        selectedListing?._id === listing._id
+                        isSelected(listing)
                           ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
                           : hoveredId === listing._id
                           ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
@@ -344,7 +382,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                       onMouseLeave={() => setHoveredId(null)}
                       className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
                         ${
-                          selectedListing?._id === listing._id
+                          isSelected(listing)
                             ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
                             : hoveredId === listing._id
                             ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
