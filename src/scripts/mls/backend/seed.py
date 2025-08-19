@@ -1,8 +1,9 @@
 import os
 import json
+import time  # Added to fix Pylance error
 from pathlib import Path
 from pymongo import MongoClient, UpdateOne
-from pymongo.errors import BulkWriteError
+from pymongo.errors import BulkWriteError, ConnectionError
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -11,12 +12,22 @@ load_dotenv(dotenv_path=env_path)
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 if not MONGODB_URI:
-    raise Exception("MONGODB_URI is not set in .env.local")
+    raise Exception("❌ MONGODB_URI is not set in .env.local")
 
-# Connect to MongoDB
-client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000, socketTimeoutMS=20000)
-db = client.get_database()
-collection = db.listings
+# Connect to MongoDB with retry
+retries = 3
+for attempt in range(retries):
+    try:
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000, socketTimeoutMS=20000)
+        db = client.get_database()
+        collection = db.listings
+        print("✅ Connected to MongoDB")
+        break
+    except ConnectionError as e:
+        if attempt == retries - 1:
+            raise Exception(f"❌ Failed to connect to MongoDB after {retries} attempts: {e}")
+        print(f"⚠️ MongoDB connection attempt {attempt + 1} failed, retrying...")
+        time.sleep(2 ** attempt)
 
 # File to load listings from
 INPUT_FILE = Path(__file__).resolve().parents[4] / "local-logs" / "flattened_all_listings_preserved.json"
@@ -33,9 +44,15 @@ def simple_slugify(s: str) -> str:
     )
 
 def seed():
+    if not INPUT_FILE.exists():
+        raise Exception(f"❌ Input file {INPUT_FILE} does not exist")
+
     print(f"📄 Loading flattened listings from {INPUT_FILE}")
-    with open(INPUT_FILE, encoding="utf-8") as f:
-        listings = json.load(f)
+    try:
+        with open(INPUT_FILE, encoding="utf-8") as f:
+            listings = json.load(f)
+    except Exception as e:
+        raise Exception(f"❌ Failed to read {INPUT_FILE}: {e}")
 
     operations = []
     skipped = 0
@@ -54,7 +71,6 @@ def seed():
         raw["slug"] = slug
         raw["slugAddress"] = simple_slugify(address)
 
-        # Clean MongoDB-conflicting or deprecated keys
         raw.pop("_id", None)
 
         operations.append(UpdateOne(
@@ -64,8 +80,7 @@ def seed():
         ))
 
     if not operations:
-        print("⚠️ No valid listings to update.")
-        return
+        raise Exception("❌ No valid listings to update")
 
     print(f"🔁 Updating {len(operations)} listings in batches...")
     batch_size = 500
@@ -81,8 +96,16 @@ def seed():
         except BulkWriteError as e:
             failed += len(e.details.get("writeErrors", []))
             print(f"⚠️ Batch {i // batch_size + 1} failed with {failed} errors")
+        except Exception as e:
+            raise Exception(f"❌ Batch {i // batch_size + 1} failed: {e}")
 
     print(f"🏁 Complete: Updated {updated} listings. Skipped: {skipped}, Failed: {failed}")
+    if failed > 0:
+        raise Exception(f"❌ {failed} operations failed during seeding")
 
 if __name__ == "__main__":
-    seed()
+    try:
+        seed()
+    except Exception as e:
+        print(f"❌ Error in seed.py: {e}")
+        exit(1)

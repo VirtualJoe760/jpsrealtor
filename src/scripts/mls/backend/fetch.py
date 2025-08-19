@@ -41,7 +41,8 @@ def fetch_all_listings():
     listings = []
     skiptoken = None
     page = 1
-    batch_size = 1000
+    batch_size = 500  # Reduced to avoid API strain
+    retries = 3
 
     while True:
         url = f"{BASE_URL}?_limit={batch_size}&_expand={','.join(EXPANSIONS)}"
@@ -49,26 +50,49 @@ def fetch_all_listings():
             url += f"&_skiptoken={skiptoken}"
 
         print(f"📄 Page {page}: {url}")
-        res = requests.get(url, headers=headers)
-        if res.status_code != 200:
-            print(f"❌ Error: {res.text}")
-            break
+        for attempt in range(retries):
+            try:
+                res = requests.get(url, headers=headers, timeout=10)
+                if res.status_code == 200:
+                    batch = res.json().get("D", {}).get("Results", [])
+                    if not batch:
+                        print("✅ No more listings to fetch")
+                        break
+                    cleaned = [clean_data(item) for item in batch]
+                    listings.extend(cleaned)
+                    skiptoken = batch[-1].get("Id")
+                    break
+                elif res.status_code == 429:
+                    wait = 3 + attempt * 2
+                    print(f"⏳ Rate limited, waiting {wait}s...")
+                    time.sleep(wait)
+                else:
+                    raise Exception(f"❌ HTTP {res.status_code}: {res.text}")
+            except requests.RequestException as e:
+                print(f"⚠️ Request error: {e}")
+                if attempt == retries - 1:
+                    raise Exception(f"❌ Max retries reached: {e}")
+                time.sleep(2 ** attempt)
 
-        batch = res.json().get("D", {}).get("Results", [])
         if not batch:
             break
 
-        cleaned = [clean_data(item) for item in batch]
-        listings.extend(cleaned)
-
-        skiptoken = batch[-1].get("Id")
         page += 1
-        time.sleep(0.2)
+        time.sleep(0.3)  # Increased throttle
 
-    with OUTPUT_FILE.open("w", encoding="utf-8") as f:
-        json.dump(listings, f, indent=2)
+    if not listings:
+        raise Exception("❌ No listings fetched")
 
-    print(f"✅ Saved {len(listings)} listings to {OUTPUT_FILE}")
+    try:
+        with OUTPUT_FILE.open("w", encoding="utf-8") as f:
+            json.dump(listings, f, indent=2)
+        print(f"✅ Saved {len(listings)} listings to {OUTPUT_FILE}")
+    except Exception as e:
+        raise Exception(f"❌ Failed to write to {OUTPUT_FILE}: {e}")
 
 if __name__ == "__main__":
-    fetch_all_listings()
+    try:
+        fetch_all_listings()
+    except Exception as e:
+        print(f"❌ Error in fetch.py: {e}")
+        exit(1)

@@ -43,18 +43,14 @@ def camelize_keys(obj):
         return obj
 
 def flatten_listing(raw: dict) -> dict | None:
-    # ✅ Grab listing key from StandardFields
     standard = raw.get("StandardFields", {})
     listing_key = standard.get("ListingKey")
     if not listing_key:
         return None
 
     output = {}
-
-    # ✅ Merge standard fields first
     output.update(camelize_keys(standard))
 
-    # ✅ Then top-level (raw), skipping StandardFields and empty junk
     for key, value in raw.items():
         if key == "StandardFields" or value in (None, "********", [], {}):
             continue
@@ -62,11 +58,9 @@ def flatten_listing(raw: dict) -> dict | None:
         if camel_key not in output:
             output[camel_key] = camelize_keys(value)
 
-    # ✅ Set slugAddress from unparsed address
     unparsed = standard.get("UnparsedAddress") or raw.get("UnparsedAddress")
     slug_address = simple_slugify(unparsed) if unparsed else "unknown"
 
-    # ✅ Ensure slug and slugAddress are the first keys
     final = {
         "slug": listing_key,
         "slugAddress": slug_address,
@@ -76,11 +70,16 @@ def flatten_listing(raw: dict) -> dict | None:
     return final
 
 def run():
-    print(f"📄 Loading listings from {input_path}")
-    with input_path.open(encoding="utf-8") as f:
-        listings = json.load(f)
+    if not input_path.exists():
+        raise Exception(f"❌ Input file {input_path} does not exist")
 
-    # 🔍 Print first 3 listings' available keys for inspection
+    print(f"📄 Loading listings from {input_path}")
+    try:
+        with input_path.open(encoding="utf-8") as f:
+            listings = json.load(f)
+    except Exception as e:
+        raise Exception(f"❌ Failed to read {input_path}: {e}")
+
     print("\n🔍 Inspecting keys in first 3 listings...\n")
     for i, listing in enumerate(listings[:3]):
         print(f"📦 Listing {i+1}:")
@@ -100,12 +99,18 @@ def run():
         else:
             skipped += 1
 
-    with output_path.open("w", encoding="utf-8") as f:
-        json.dump(flattened, f, indent=2)
-
-    print(f"\n✅ Flattened {len(flattened)} listings to {output_path}")
-    if skipped:
-        print(f"⚠️ Skipped {skipped} listings with no ListingKey")
+    try:
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(flattened, f, indent=2)
+        print(f"\n✅ Flattened {len(flattened)} listings to {output_path}")
+        if skipped:
+            print(f"⚠️ Skipped {skipped} listings with no ListingKey")
+    except Exception as e:
+        raise Exception(f"❌ Failed to write to {output_path}: {e}")
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as e:
+        print(f"❌ Error in flatten.py: {e}")
+        exit(1)

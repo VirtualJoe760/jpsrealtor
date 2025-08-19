@@ -19,10 +19,14 @@ if not ACCESS_TOKEN:
 if not MONGO_URI:
     raise ValueError("❌ Missing MONGODB_URI in .env.local")
 
-client = MongoClient(MONGO_URI)
-db = client.get_database()
-photos_collection = db.photos
-listings_collection = db.listings
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000, socketTimeoutMS=20000)
+    db = client.get_database()
+    photos_collection = db.photos
+    listings_collection = db.listings
+    print("✅ Connected to MongoDB")
+except Exception as e:
+    raise Exception(f"❌ Failed to connect to MongoDB: {e}")
 
 HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -32,24 +36,28 @@ HEADERS = {
 def fetch_listing_photos(slug, retries=3):
     url = f"https://replication.sparkapi.com/v1/listings/{slug}/photos"
     for attempt in range(retries):
-        res = requests.get(url, headers=HEADERS)
-        if res.status_code == 200:
-            return res.json().get("D", {}).get("Results", [])
-        elif res.status_code == 429 or "over rate" in res.text.lower():
-            wait = 3 + attempt * 2
-            print(f"⏳ Rate limited on {slug}, waiting {wait}s...")
-            time.sleep(wait)
-        else:
-            raise Exception(res.text)
-    raise Exception("❌ Max retries reached")
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=10)
+            if res.status_code == 200:
+                return res.json().get("D", {}).get("Results", [])
+            elif res.status_code == 429 or "over rate" in res.text.lower():
+                wait = 3 + attempt * 2
+                print(f"⏳ Rate limited on {slug}, waiting {wait}s...")
+                time.sleep(wait)
+            else:
+                raise Exception(f"HTTP {res.status_code}: {res.text}")
+        except requests.RequestException as e:
+            if attempt == retries - 1:
+                raise Exception(f"❌ Max retries reached for {slug}: {e}")
+            time.sleep(2 ** attempt)
+    raise Exception(f"❌ Max retries reached for {slug}")
 
 def cache_photo_for_listing(listing):
     slug = listing.get("slug")
     listing_id = listing.get("listingId")
     if not slug or not listing_id:
-        return
+        return f"⚠️ Skipped: missing slug or listingId for {listing.get('_id', 'unknown')}"
 
-    # ✅ Skip if already cached
     if photos_collection.find_one({"listingId": listing_id}):
         return f"⏩ Skipped {slug} (already cached)"
 
@@ -81,24 +89,35 @@ def cache_photo_for_listing(listing):
             upsert=True
         )
 
-        # 🌿 Soft throttle: short pause per request
-        time.sleep(0.3)
-
+        time.sleep(0.5)  # Increased throttle
         return f"✅ Cached photo for {slug}"
     except Exception as e:
         return f"❌ Failed for {slug}: {e}"
 
 def main():
     print("🚀 Starting throttled photo caching...")
-    listings = list(listings_collection.find({}, {"slug": 1, "listingId": 1}))
+    try:
+        listings = list(listings_collection.find({}, {"slug": 1, "listingId": 1}))
+        if not listings:
+            raise Exception("❌ No listings found in MongoDB")
+    except Exception as e:
+        raise Exception(f"❌ Failed to query listings: {e}")
 
-    with ThreadPoolExecutor(max_workers=3) as executor:  # ⬅️ Drop to 3 threads
+    failed = 0
+    with ThreadPoolExecutor(max_workers=2) as executor:  # Reduced to 2 threads
         futures = [executor.submit(cache_photo_for_listing, l) for l in listings]
-
         for future in as_completed(futures):
             result = future.result()
-            if result:
-                print(result)
+            if result and "❌" in result:
+                failed += 1
+            print(result)
+
+    if failed > 0:
+        raise Exception(f"❌ {failed} photo caching operations failed")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"❌ Error in cache_photos.py: {e}")
+        exit(1)

@@ -32,6 +32,9 @@ interface MapViewProps {
     zoom: number;
   }) => void;
   onSelectListingByIndex?: (index: number) => void;
+
+  /** NEW: freeze map interactions & background updates while bottom panel is open */
+  panelOpen?: boolean;
 }
 
 function formatPrice(price?: number): string {
@@ -41,19 +44,7 @@ function formatPrice(price?: number): string {
   return `$${price}`;
 }
 
-// --- helpers for tile math (Web Mercator) ---
-const nAtZ = (z: number) => Math.pow(2, z);
-function lon2tileX(lon: number, z: number) {
-  return Math.floor(((lon + 180) / 360) * nAtZ(z));
-}
-function lat2tileY(lat: number, z: number) {
-  const rad = (lat * Math.PI) / 180;
-  return Math.floor(
-    ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * nAtZ(z)
-  );
-}
-
-const RAW_MARKER_ZOOM = 13; // ⬅️ show ALL listings (no clustering) at zoom >= 13
+const RAW_MARKER_ZOOM = 13; // show ALL markers (no clustering) when zoom >= 13
 
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   {
@@ -65,6 +56,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     selectedListing,
     onBoundsChange,
     onSelectListingByIndex,
+    panelOpen = false,
   },
   ref
 ) {
@@ -86,6 +78,11 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const clusterRef = useRef<Supercluster | null>(null);
   const lastBoundsKeyRef = useRef<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const panelOpenRef = useRef<boolean>(panelOpen);
+
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
 
   const hydratedInitialViewState: ViewState = {
     latitude: centerLat ?? 33.72,
@@ -102,11 +99,28 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     };
   }, []);
 
-  // Initialize supercluster
+  // Enable/disable gestures when panel is open
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+    const handlers = [
+      map.dragPan,
+      map.dragRotate,
+      map.scrollZoom,
+      map.boxZoom,
+      map.keyboard,
+      map.doubleClickZoom,
+      map.touchZoomRotate,
+    ].filter(Boolean);
+    if (panelOpen) handlers.forEach((h: any) => h.disable());
+    else handlers.forEach((h: any) => h.enable());
+  }, [panelOpen]);
+
+  // Initialize supercluster with all listings
   useEffect(() => {
     clusterRef.current = new Supercluster({
       radius: 60,
-      maxZoom: RAW_MARKER_ZOOM, // cluster up to 13 (exclusive)
+      maxZoom: RAW_MARKER_ZOOM, // cluster only below 13
       minPoints: 2,
     });
 
@@ -125,33 +139,25 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       }));
 
     clusterRef.current.load(points);
-    forceRefresh(); // compute for actual viewport
+    forceRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings]);
 
-  // Debounced cluster refresh
   const updateClusters = () => {
+    if (panelOpenRef.current) return;
+
     const map = mapRef.current?.getMap?.();
     if (!map || !clusterRef.current) return;
 
     const bounds = map.getBounds();
     const zoomVal = map.getZoom();
     setCurrentZoom(zoomVal);
-
-    // Keep track of bounds for marker filtering at high zoom
     setViewBounds({
       west: bounds.getWest(),
       south: bounds.getSouth(),
       east: bounds.getEast(),
       north: bounds.getNorth(),
     });
-
-    const bbox: [number, number, number, number] = [
-      bounds.getWest(),
-      bounds.getSouth(),
-      bounds.getEast(),
-      bounds.getNorth(),
-    ];
 
     const key = `${bounds.getNorth().toFixed(6)}-${bounds.getSouth().toFixed(6)}-${bounds
       .getEast()
@@ -160,9 +166,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      if (panelOpenRef.current) return;
       lastBoundsKeyRef.current = key;
 
-      // Only meaningful below RAW_MARKER_ZOOM; harmless above though
+      const bbox: [number, number, number, number] = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ];
       const newClusters = clusterRef.current!.getClusters(bbox, Math.floor(zoomVal));
       setClusters(newClusters);
 
@@ -178,15 +190,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
   const forceRefresh = () => {
     lastBoundsKeyRef.current = null;
-    const map = mapRef.current?.getMap?.();
-    try { map?.resize(); } catch {}
+    try {
+      mapRef.current?.getMap?.()?.resize();
+    } catch {}
     updateClusters();
   };
 
-  // Map event hooks
-  const handleMoveEnd = () => updateClusters();
-  const handleDragEnd = () => updateClusters();
-
+  // Map lifecycle: recompute on load/resize/zoom changes
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
     if (!map) return;
@@ -200,7 +210,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     map.on("resize", onResize);
     map.on("zoomend", onZoomEnd);
 
-    // extra safety if parent resizes
     const ro = new ResizeObserver(() => forceRefresh());
     if (wrapperRef.current) ro.observe(wrapperRef.current);
 
@@ -214,7 +223,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Click handlers
+  const handleMoveEnd = () => {
+    if (panelOpen) return;
+    updateClusters();
+  };
+  const handleDragEnd = () => {
+    if (panelOpen) return;
+    updateClusters();
+  };
+
   const handleMarkerClick = (listing: MapListing) => {
     if (lastSelectedIdRef.current === listing._id) return;
     lastSelectedIdRef.current = listing._id;
@@ -229,6 +246,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const handleClusterClick = (
     cluster: Supercluster.PointFeature<Supercluster.AnyProps>
   ) => {
+    if (panelOpen) return;
     const map = mapRef.current?.getMap?.();
     if (!map || !clusterRef.current) return;
 
@@ -255,11 +273,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     },
   }));
 
-  // In-bounds filter for raw markers at high zoom (to keep DOM light)
+  // In-bounds filter for raw markers at high zoom
   const inView = (l: MapListing) => {
     if (!viewBounds) return true;
     const { west, south, east, north } = viewBounds;
-    const { longitude: x, latitude: y } = l;
+    const x = l.longitude;
+    const y = l.latitude;
     if (x == null || y == null) return false;
     return x >= west && x <= east && y >= south && y <= north;
   };
@@ -272,8 +291,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}
+        interactive={!panelOpen}
       >
-        {/* At street zooms (>= 13): render ALL listings in the current viewport */}
+        {/* Raw markers at zoom >= 13 */}
         {currentZoom >= RAW_MARKER_ZOOM
           ? listings
               .filter((l) => l.longitude != null && l.latitude != null)
@@ -302,7 +322,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                   </div>
                 </Marker>
               ))
-          : // Below 13: show clustered view (as before)
+          : // Clusters below 13
             clusters.map((feature, i) => {
               const [longitude, latitude] = feature.geometry.coordinates;
               const { cluster, point_count, listing } = feature.properties;
