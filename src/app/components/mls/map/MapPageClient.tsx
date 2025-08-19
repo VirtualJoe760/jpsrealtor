@@ -290,7 +290,7 @@ export default function MapPageClient() {
             onSelectListing={handleListingSelect}
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
-            onSelectListingByIndex={(index) => setVisibleIndex(index)}
+            panelOpen={Boolean(selectedListing)}
           />
 
           {selectedSlugRef.current && selectedListing && selectedFullListing && (

@@ -1,3 +1,4 @@
+// src/app/components/mls/map/MapView.tsx
 "use client";
 
 import {
@@ -40,6 +41,20 @@ function formatPrice(price?: number): string {
   return `$${price}`;
 }
 
+// --- helpers for tile math (Web Mercator) ---
+const nAtZ = (z: number) => Math.pow(2, z);
+function lon2tileX(lon: number, z: number) {
+  return Math.floor(((lon + 180) / 360) * nAtZ(z));
+}
+function lat2tileY(lat: number, z: number) {
+  const rad = (lat * Math.PI) / 180;
+  return Math.floor(
+    ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * nAtZ(z)
+  );
+}
+
+const RAW_MARKER_ZOOM = 13; // ⬅️ show ALL listings (no clustering) at zoom >= 13
+
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   {
     listings,
@@ -57,10 +72,19 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const [clusters, setClusters] = useState<
     Supercluster.PointFeature<Supercluster.AnyProps>[]
   >([]);
+  const [currentZoom, setCurrentZoom] = useState<number>(zoom ?? 11);
+  const [viewBounds, setViewBounds] = useState<{
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+  } | null>(null);
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const lastSelectedIdRef = useRef<string | null>(null);
   const clusterRef = useRef<Supercluster | null>(null);
-  const lastBoundsRef = useRef<string | null>(null);
+  const lastBoundsKeyRef = useRef<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const hydratedInitialViewState: ViewState = {
@@ -72,27 +96,28 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   };
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   // Initialize supercluster
   useEffect(() => {
     clusterRef.current = new Supercluster({
       radius: 60,
-      maxZoom: 13,
+      maxZoom: RAW_MARKER_ZOOM, // cluster up to 13 (exclusive)
       minPoints: 2,
     });
 
-    // Load listings into supercluster, limit to 200 to reduce processing
     const points: Supercluster.PointFeature<{
       cluster: boolean;
       listing: MapListing;
     }>[] = listings
-      .filter((listing) => listing.longitude != null && listing.latitude != null)
-      .slice(0, 200)
+      .filter((l) => l.longitude != null && l.latitude != null)
       .map((listing) => ({
         type: "Feature" as const,
-        properties: {
-          cluster: false,
-          listing,
-        },
+        properties: { cluster: false, listing },
         geometry: {
           type: "Point" as const,
           coordinates: [listing.longitude!, listing.latitude!],
@@ -100,19 +125,27 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       }));
 
     clusterRef.current.load(points);
-    updateClusters();
+    forceRefresh(); // compute for actual viewport
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings]);
 
-  // Update clusters on map move with debouncing
+  // Debounced cluster refresh
   const updateClusters = () => {
-    const map = mapRef.current?.getMap();
-    if (!map || !clusterRef.current) {
-      console.log("Skipping updateClusters: map or clusterRef not ready");
-      return;
-    }
+    const map = mapRef.current?.getMap?.();
+    if (!map || !clusterRef.current) return;
 
     const bounds = map.getBounds();
-    const zoom = map.getZoom();
+    const zoomVal = map.getZoom();
+    setCurrentZoom(zoomVal);
+
+    // Keep track of bounds for marker filtering at high zoom
+    setViewBounds({
+      west: bounds.getWest(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      north: bounds.getNorth(),
+    });
+
     const bbox: [number, number, number, number] = [
       bounds.getWest(),
       bounds.getSouth(),
@@ -120,50 +153,68 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       bounds.getNorth(),
     ];
 
-    // Check if bounds have significantly changed
-    const boundsKey = `${bounds.getNorth().toFixed(6)}-${bounds.getSouth().toFixed(6)}-${bounds.getEast().toFixed(6)}-${bounds.getWest().toFixed(6)}-${zoom.toFixed(2)}`;
-    if (boundsKey === lastBoundsRef.current) {
-      console.log("Skipping bounds change: no significant change");
-      return;
-    }
+    const key = `${bounds.getNorth().toFixed(6)}-${bounds.getSouth().toFixed(6)}-${bounds
+      .getEast()
+      .toFixed(6)}-${bounds.getWest().toFixed(6)}-${zoomVal.toFixed(2)}`;
+    if (key === lastBoundsKeyRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      lastBoundsRef.current = boundsKey;
-      // Non-null assertion: clusterRef.current is guaranteed initialized
-      const clusters = clusterRef.current!.getClusters(bbox, Math.floor(zoom));
-      const limitedClusters = clusters.slice(0, 100); // Limit to 100 clusters/markers
-      setClusters(limitedClusters);
-      console.log(`Set ${limitedClusters.length} clusters`);
+      lastBoundsKeyRef.current = key;
 
-      if (onBoundsChange) {
-        console.log("Triggering bounds change:", {
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-          zoom: Math.floor(zoom),
-        });
-        onBoundsChange({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-          zoom: Math.floor(zoom),
-        });
-      }
-    }, 600);
+      // Only meaningful below RAW_MARKER_ZOOM; harmless above though
+      const newClusters = clusterRef.current!.getClusters(bbox, Math.floor(zoomVal));
+      setClusters(newClusters);
+
+      onBoundsChange?.({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+        zoom: Math.floor(zoomVal),
+      });
+    }, 250);
   };
 
-  // Handle map move and drag events
-  const handleMoveEnd = () => {
+  const forceRefresh = () => {
+    lastBoundsKeyRef.current = null;
+    const map = mapRef.current?.getMap?.();
+    try { map?.resize(); } catch {}
     updateClusters();
   };
 
-  const handleDragEnd = () => {
-    updateClusters();
-  };
+  // Map event hooks
+  const handleMoveEnd = () => updateClusters();
+  const handleDragEnd = () => updateClusters();
 
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+
+    const onLoad = () => forceRefresh();
+    if (map.isStyleLoaded()) onLoad();
+    else map.once("load", onLoad);
+
+    const onResize = () => forceRefresh();
+    const onZoomEnd = () => updateClusters();
+    map.on("resize", onResize);
+    map.on("zoomend", onZoomEnd);
+
+    // extra safety if parent resizes
+    const ro = new ResizeObserver(() => forceRefresh());
+    if (wrapperRef.current) ro.observe(wrapperRef.current);
+
+    return () => {
+      try {
+        map.off("resize", onResize);
+        map.off("zoomend", onZoomEnd);
+      } catch {}
+      ro.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Click handlers
   const handleMarkerClick = (listing: MapListing) => {
     if (lastSelectedIdRef.current === listing._id) return;
     lastSelectedIdRef.current = listing._id;
@@ -175,12 +226,11 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     }
   };
 
-  const handleClusterClick = (cluster: Supercluster.PointFeature<Supercluster.AnyProps>) => {
-    const map = mapRef.current?.getMap();
-    if (!map || !clusterRef.current) {
-      console.log("Skipping cluster click: map or clusterRef not ready");
-      return;
-    }
+  const handleClusterClick = (
+    cluster: Supercluster.PointFeature<Supercluster.AnyProps>
+  ) => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !clusterRef.current) return;
 
     const expansionZoom = clusterRef.current!.getClusterExpansionZoom(
       cluster.properties.cluster_id
@@ -188,13 +238,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     map.easeTo({
       center: cluster.geometry.coordinates,
       zoom: Math.min(expansionZoom, 14),
-      duration: 1000,
+      duration: 700,
     });
   };
 
   useImperativeHandle(ref, () => ({
     flyToCity(lat: number, lng: number, zoomLevel = 12) {
-      const map = mapRef.current?.getMap();
+      const map = mapRef.current?.getMap?.();
       if (!map) return;
       map.easeTo({
         center: [lng, lat],
@@ -205,8 +255,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     },
   }));
 
+  // In-bounds filter for raw markers at high zoom (to keep DOM light)
+  const inView = (l: MapListing) => {
+    if (!viewBounds) return true;
+    const { west, south, east, north } = viewBounds;
+    const { longitude: x, latitude: y } = l;
+    if (x == null || y == null) return false;
+    return x >= west && x <= east && y >= south && y <= north;
+  };
+
   return (
-    <div className="relative w-full h-full">
+    <div ref={wrapperRef} className="relative w-full h-full">
       <Map
         ref={mapRef}
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
@@ -214,67 +273,94 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}
       >
-        {clusters.map((feature, i) => {
-          const [longitude, latitude] = feature.geometry.coordinates;
-          const { cluster, point_count, listing } = feature.properties;
-
-          // Skip rendering if coordinates are invalid
-          if (longitude == null || latitude == null) return null;
-
-          if (!cluster) {
-            // Individual marker
-            if (!listing || listing.longitude == null || listing.latitude == null) return null;
-            return (
-              <Marker
-                key={listing._id || i}
-                longitude={longitude}
-                latitude={latitude}
-                anchor="bottom"
-                onClick={() => handleMarkerClick(listing)}
-              >
-                <div
-                  onMouseEnter={() => setHoveredId(listing._id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
-                    ${
-                      selectedListing?._id === listing._id
-                        ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
-                        : hoveredId === listing._id
-                        ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
-                        : "bg-emerald-600 text-white scale-100 z-30 border border-gray-700"
-                    }`}
+        {/* At street zooms (>= 13): render ALL listings in the current viewport */}
+        {currentZoom >= RAW_MARKER_ZOOM
+          ? listings
+              .filter((l) => l.longitude != null && l.latitude != null)
+              .filter(inView)
+              .map((listing, i) => (
+                <Marker
+                  key={listing._id || i}
+                  longitude={listing.longitude!}
+                  latitude={listing.latitude!}
+                  anchor="bottom"
+                  onClick={() => handleMarkerClick(listing)}
                 >
-                  {formatPrice(listing.listPrice)}
-                </div>
-              </Marker>
-            );
-          }
+                  <div
+                    onMouseEnter={() => setHoveredId(listing._id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
+                      ${
+                        selectedListing?._id === listing._id
+                          ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
+                          : hoveredId === listing._id
+                          ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
+                          : "bg-emerald-600 text-white scale-100 z-30 border border-gray-700"
+                      }`}
+                  >
+                    {formatPrice(listing.listPrice)}
+                  </div>
+                </Marker>
+              ))
+          : // Below 13: show clustered view (as before)
+            clusters.map((feature, i) => {
+              const [longitude, latitude] = feature.geometry.coordinates;
+              const { cluster, point_count, listing } = feature.properties;
 
-          // Cluster marker
-          const size = Math.min(40 + point_count * 2, 60);
-          return (
-            <Marker
-              key={`cluster-${feature.properties.cluster_id}`}
-              longitude={longitude}
-              latitude={latitude}
-              anchor="center"
-              onClick={() => handleClusterClick(feature)}
-            >
-              <div
-                className="rounded-full flex items-center justify-center text-white font-[Raleway] font-semibold transition-all duration-200"
-                style={{
-                  backgroundColor: "#4B4B4B",
-                  width: `${size}px`,
-                  height: `${size}px`,
-                  border: "2px solid #000000",
-                  boxShadow: "0 0 8px rgba(255, 255, 255, 0.5)",
-                }}
-              >
-                {point_count}
-              </div>
-            </Marker>
-          );
-        })}
+              if (longitude == null || latitude == null) return null;
+
+              if (!cluster) {
+                if (!listing) return null;
+                return (
+                  <Marker
+                    key={listing._id || i}
+                    longitude={longitude}
+                    latitude={latitude}
+                    anchor="bottom"
+                    onClick={() => handleMarkerClick(listing)}
+                  >
+                    <div
+                      onMouseEnter={() => setHoveredId(listing._id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
+                        ${
+                          selectedListing?._id === listing._id
+                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
+                            : hoveredId === listing._id
+                            ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
+                            : "bg-emerald-600 text-white scale-100 z-30 border border-gray-700"
+                        }`}
+                    >
+                      {formatPrice(listing.listPrice)}
+                    </div>
+                  </Marker>
+                );
+              }
+
+              const size = Math.min(40 + (point_count ?? 0) * 2, 60);
+              return (
+                <Marker
+                  key={`cluster-${feature.properties.cluster_id}`}
+                  longitude={longitude}
+                  latitude={latitude}
+                  anchor="center"
+                  onClick={() => handleClusterClick(feature)}
+                >
+                  <div
+                    className="rounded-full flex items-center justify-center text-white font-[Raleway] font-semibold transition-all duration-200"
+                    style={{
+                      backgroundColor: "#4B4B4B",
+                      width: `${size}px`,
+                      height: `${size}px`,
+                      border: "2px solid #000000",
+                      boxShadow: "0 0 8px rgba(255, 255, 255, 0.5)",
+                    }}
+                  >
+                    {point_count}
+                  </div>
+                </Marker>
+              );
+            })}
       </Map>
     </div>
   );
