@@ -1,15 +1,54 @@
-// src/app/utils/map/useFilters.ts
-
 import { useState, useMemo } from "react";
 import type { Filters } from "@/types/types";
 
 const defaultFilterState: Filters = {
+  // Price
   minPrice: "",
   maxPrice: "",
+
+  // Beds/Baths
   beds: "",
   baths: "",
+
+  // Square Footage
+  minSqft: "",
+  maxSqft: "",
+
+  // Lot Size
+  minLotSize: "",
+  maxLotSize: "",
+
+  // Year Built
+  minYear: "",
+  maxYear: "",
+
+  // Property Type
   propertyType: "",
+  propertySubType: "",
+
+  // Amenities
+  poolYn: false,
+  spaYn: false,
+  viewYn: false,
+  garageYn: false,
+
+  // Garage count
+  minGarages: "",
+
+  // HOA
   hoa: "",
+  associationYN: false,
+
+  // Community
+  gatedCommunity: false,
+  seniorCommunity: false,
+
+  // Land Type
+  landType: "",
+
+  // Location
+  city: "",
+  subdivision: "",
 };
 
 export default function useFilters() {
