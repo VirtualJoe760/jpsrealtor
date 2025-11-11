@@ -1,7 +1,8 @@
 // src/app/components/mls/map/ListingBottomPanel.tsx
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Share2, Calendar } from "lucide-react";
 import {
   motion,
@@ -18,13 +19,14 @@ import clsx from "clsx";
 import PannelCarousel from "./PannelCarousel";
 import Image from "next/image";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
+import DislikedBadge from "./DislikedBadge";
 
 /* =======================
    🔧 TUNING
    ======================= */
 const SWIPE = {
-  minOffsetRatio: 0.3,
-  minVelocity: 650,
+  minOffsetRatio: 0.2, // Reduced from 0.3 (30%) to 0.2 (20%) for easier triggering
+  minVelocity: 450, // Reduced from 650 to 450 for easier swipes on older devices
   flyOutRatio: 0.98,
   flyOutDuration: 0.22,
   snapSpring: { stiffness: 380, damping: 32 },
@@ -49,6 +51,9 @@ type Props = {
   onSwipeRight?: () => void;
   isSidebarOpen: boolean;
   isFiltersOpen: boolean;
+  isDisliked?: boolean;
+  dislikedTimestamp?: number | null;
+  onRemoveDislike?: () => void;
 };
 
 export default function ListingBottomPanel({
@@ -59,9 +64,93 @@ export default function ListingBottomPanel({
   onSwipeRight,
   isSidebarOpen,
   isFiltersOpen,
+  isDisliked = false,
+  dislikedTimestamp = null,
+  onRemoveDislike,
 }: Props) {
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [swipeMessage, setSwipeMessage] = useState<string | null>(null);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [gestureDirection, setGestureDirection] = useState<"horizontal" | "vertical" | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Touch event handlers for scroll vs swipe conflict resolution
+  useEffect(() => {
+    const scrollElement = scrollableRef.current;
+    if (!scrollElement) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      setGestureDirection(null);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+
+      // Only determine direction after significant movement
+      if (dx > 10 || dy > 10) {
+        if (gestureDirection === null) {
+          // Determine gesture direction based on initial movement
+          if (dx > dy * 1.5) {
+            // Horizontal gesture - allow swipe, prevent scroll
+            setGestureDirection("horizontal");
+            e.preventDefault();
+          } else if (dy > dx * 1.5) {
+            // Vertical gesture - allow scroll, prevent swipe
+            setGestureDirection("vertical");
+          }
+        } else if (gestureDirection === "horizontal") {
+          // Continue preventing scroll for horizontal gestures
+          e.preventDefault();
+        }
+      }
+    };
+
+    const handleTouchEnd = () => {
+      touchStartRef.current = null;
+      setGestureDirection(null);
+    };
+
+    scrollElement.addEventListener("touchstart", handleTouchStart, { passive: true });
+    scrollElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    scrollElement.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      scrollElement.removeEventListener("touchstart", handleTouchStart);
+      scrollElement.removeEventListener("touchmove", handleTouchMove);
+      scrollElement.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [gestureDirection]);
+
+  // Get contextual swipe message
+  const getSwipeMessage = () => {
+    const subdivision = fullListing.subdivisionName || (fullListing as any).subdivision;
+    if (subdivision && subdivision.toLowerCase() !== "other") {
+      return `Swiping in ${subdivision}`;
+    }
+
+    // Fallback to property type + city
+    const propertyType = fullListing.propertyType?.replace(/([A-Z])/g, ' $1').trim() || "Property";
+    const city = fullListing.city ||
+                 fullListing.unparsedAddress?.split(",")[1]?.trim() ||
+                 listing.address?.split(",")[1]?.trim() ||
+                 "this area";
+    return `${propertyType} in ${city}`;
+  };
 
   // Horizontal MotionValue
   const dragX = useMotionValue(0);
@@ -167,6 +256,10 @@ export default function ListingBottomPanel({
   // Swipe-out
   const swipeOut = async (dir: "left" | "right") => {
     exitDirRef.current = dir;
+
+    // Show swipe message
+    setSwipeMessage(getSwipeMessage());
+
     const W = typeof window !== "undefined" ? window.innerWidth : 420;
     const fly = Math.round(W * SWIPE.flyOutRatio);
 
@@ -190,6 +283,9 @@ export default function ListingBottomPanel({
     controls.set({ opacity: 1, y: 0, scale: 1, rotate: 0 });
     dragX.set(0);
     exitDirRef.current = null;
+
+    // Hide message after new listing loads
+    setTimeout(() => setSwipeMessage(null), 2000);
   };
 
   // Drag thresholds
@@ -239,7 +335,9 @@ export default function ListingBottomPanel({
     x: dragX,
   };
 
-  return (
+  if (!mounted) return null;
+
+  const panelContent = (
     <AnimatePresence>
       {fullListing?.listingKey && (
         <motion.div
@@ -248,77 +346,119 @@ export default function ListingBottomPanel({
           animate={controls}
           exit={{ opacity: 0, y: 36, transition: { duration: 0.18 } }}
           className={clsx(
-            "fixed bottom-0 left-0 right-0 z-50 text-white rounded-t-2xl shadow-lg overflow-hidden",
+            "fixed bottom-0 left-0 right-0 z-[9999] text-white rounded-t-2xl shadow-lg overflow-hidden flex flex-col",
             "transform-gpu will-change-transform pointer-events-auto",
+            "max-h-[90vh] lg:max-h-[85vh]",
             lgLayoutClasses
           )}
-          style={panelStyle}
+          style={{
+            ...panelStyle,
+          }}
           {...stopClicks}
-          drag="x" // ✅ draggable everywhere
+          drag="x"
           dragElastic={SWIPE.dragElastic}
           dragMomentum={false}
           onDragEnd={handleDragEnd}
         >
-          {/* Content */}
-          <div {...stopClicks}>
-            <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
-          </div>
-
+          {/* Close button - Fixed at top of panel, always visible */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
             aria-label="Close"
-            className="absolute top-2 right-2 bg-black/60 rounded-full p-1 z-10"
+            className="absolute top-3 right-3 bg-black/80 hover:bg-black rounded-full p-2 z-[100] backdrop-blur-md transition-all shadow-xl border border-white/20 pointer-events-auto"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-6 h-6 text-white" />
           </button>
 
+          {/* Disliked badge */}
+          {isDisliked && dislikedTimestamp && onRemoveDislike && (
+            <DislikedBadge
+              timestamp={dislikedTimestamp}
+              onRemove={onRemoveDislike}
+            />
+          )}
+
+          {/* Swipe notification toast */}
+          <AnimatePresence>
+            {swipeMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="absolute top-16 left-1/2 -translate-x-1/2 z-[90] px-6 py-3 bg-emerald-500/95 backdrop-blur-md rounded-full shadow-2xl"
+                {...stopClicks}
+              >
+                <p className="text-black font-semibold text-base whitespace-nowrap">
+                  {swipeMessage}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Photo Carousel - Fixed at top, compact on desktop */}
+          <div {...stopClicks} className="flex-shrink-0">
+            <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
+          </div>
+
+          {/* Fixed Header: Address, Price, Action Buttons - NOT scrollable */}
           <div
-            className="flex flex-col max-h:[85vh] max-h-[85vh]"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            className="flex-shrink-0 px-5 sm:px-6 pt-3 lg:pt-4 pb-2 lg:pb-3 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800"
+            {...stopClicks}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-lg lg:text-2xl font-semibold mb-1 leading-tight">
+                  {address}
+                </p>
+                <p className="text-xl lg:text-2xl font-bold text-emerald-400 leading-tight">
+                  ${Number(fullListing.listPrice ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
+                  aria-label="Share this listing"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.share?.({
+                      title: address,
+                      url: window.location.href,
+                    });
+                  }}
+                >
+                  <Share2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
+                </button>
+                <Link
+                  href="/book-appointment"
+                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
+                  aria-label="Book an appointment"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrollable Middle Section: Details, Remarks, Attribution, Swipe Buttons */}
+          <div
+            ref={scrollableRef}
+            className="flex-1 overflow-y-auto overscroll-contain lg:overflow-visible custom-scrollbar"
+            style={{
+              WebkitOverflowScrolling: "touch",
+              WebkitTouchCallout: "none",
+            }}
             {...stopClicks}
           >
             <div
-              className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3 text-white overflow-y-auto flex-1 overscroll-contain"
+              className="px-5 sm:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 text-white"
               style={{ touchAction: "pan-y" }}
             >
-              <div className="flex items-start justify-between pt-4">
-                <div>
-                  <p className="text-2xl font-semibold mb-1 leading-tight">
-                    {address}
-                  </p>
-                  <p className="text-2xl font-bold text-emerald-400 leading-tight">
-                    ${Number(fullListing.listPrice ?? 0).toLocaleString()}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-                    aria-label="Share this listing"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.share?.({
-                        title: address,
-                        url: window.location.href,
-                      });
-                    }}
-                  >
-                    <Share2 className="w-4 h-4 text-white" />
-                  </button>
-                  <Link
-                    href="/book-appointment"
-                    className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-                    aria-label="Book an appointment"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Calendar className="w-4 h-4 text-white" />
-                  </Link>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-base sm:text-lg mt-2">
+              {/* Property Details */}
+              <div className="flex flex-wrap gap-2 text-sm lg:text-base">
                 {fullListing?.bedsTotal !== undefined && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     {fullListing.bedsTotal} Bed
@@ -339,6 +479,26 @@ export default function ListingBottomPanel({
                     {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
                   </span>
                 )}
+                {fullListing?.subdivisionName && fullListing.subdivisionName.toLowerCase() !== "other" && (
+                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30">
+                    {fullListing.subdivisionName}
+                  </span>
+                )}
+                {fullListing?.landType && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.landType}
+                  </span>
+                )}
+                {fullListing?.associationFee !== undefined && fullListing.associationFee > 0 && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    ${fullListing.associationFee.toLocaleString()}/mo HOA
+                  </span>
+                )}
+                {fullListing?.terms && fullListing.terms.length > 0 && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.terms.join(", ")}
+                  </span>
+                )}
                 {fullListing?.yearBuilt && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     Built {fullListing.yearBuilt}
@@ -357,29 +517,30 @@ export default function ListingBottomPanel({
               </div>
 
               {fullListing?.publicRemarks && (
-                <p className="text-sm text-white mt-2 line-clamp-5">
+                <p className="text-xs lg:text-sm text-white line-clamp-3 lg:line-clamp-4">
                   {fullListing.publicRemarks.length > 300
                     ? `${fullListing.publicRemarks.slice(0, 200)}...`
                     : fullListing.publicRemarks}
                 </p>
               )}
 
-              <ListingAttribution listing={fullListing} className="mt-2" />
+              <ListingAttribution listing={fullListing} />
 
-              <div className="flex justify-center gap-8 mt-6">
+              <div className="flex justify-center gap-6 lg:gap-8 pt-2 pb-2 lg:pb-4">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     swipeOut("left");
                   }}
+                  className="w-14 h-14 lg:w-[72px] lg:h-[72px]"
                 >
                   <Image
                     src="/images/swipe-left.png"
                     alt="Swipe Left"
-                    width={64}
-                    height={64}
-                    sizes="(max-width: 768px) 64px, 64px"
-                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition"
+                    width={72}
+                    height={72}
+                    sizes="(max-width: 1024px) 56px, 72px"
+                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition w-full h-full"
                   />
                 </button>
                 <button
@@ -387,33 +548,45 @@ export default function ListingBottomPanel({
                     e.stopPropagation();
                     swipeOut("right");
                   }}
+                  className="w-14 h-14 lg:w-[72px] lg:h-[72px]"
                 >
                   <Image
                     src="/images/swipe-right.png"
                     alt="Swipe Right"
-                    width={64}
-                    height={64}
-                    sizes="(max-width: 768px) 64px, 64px"
-                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition"
+                    width={72}
+                    height={72}
+                    sizes="(max-width: 1024px) 56px, 72px"
+                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition w-full h-full"
                   />
                 </button>
               </div>
             </div>
+          </div>
 
-            <div className="sticky bottom-0 bg-zinc-950/80 px-4 sm:px-5 pb-4 sm:pb-5">
-              <Link
-                href={`/mls-listings/${
-                  fullListing.slugAddress || fullListing.slug || ""
-                }`}
-                className="block text-center bg-emerald-500 text-black font-semibold py-2 rounded-md hover:bg-emerald-400 transition"
-                onClick={(e) => e.stopPropagation()}
-              >
-                View Full Listing
-              </Link>
-            </div>
+          {/* Fixed Bottom: View Full Listing Button */}
+          <div
+            className="flex-shrink-0 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent px-5 sm:px-6 py-3 lg:py-4 border-t border-zinc-800"
+            style={{
+              paddingBottom: `max(1rem, env(safe-area-inset-bottom, 0px))`,
+            }}
+            {...stopClicks}
+          >
+            <Link
+              href={`/mls-listings/${
+                fullListing.slugAddress || fullListing.slug || ""
+              }`}
+              className="block text-center bg-emerald-500 text-black font-bold py-2.5 lg:py-3 px-4 rounded-lg hover:bg-emerald-400 active:bg-emerald-600 transition-colors duration-200 text-base lg:text-lg shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+              role="button"
+              aria-label={`View full listing for ${address}`}
+            >
+              View Full Listing
+            </Link>
           </div>
         </motion.div>
       )}
     </AnimatePresence>
   );
+
+  return createPortal(panelContent, document.body);
 }

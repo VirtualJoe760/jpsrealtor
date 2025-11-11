@@ -11,7 +11,10 @@ import FiltersPanel from "./search/FiltersPannel";
 import ActiveFilters from "./search/ActiveFilters";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
+import DislikedResetDialog from "@/app/components/mls/map/DislikedResetDialog";
 import { useListings } from "@/app/utils/map/useListings";
+import { useSwipeHistory } from "@/app/utils/map/useSwipeHistory";
+import { useSmartSwipeQueue } from "@/app/utils/map/useSmartSwipeQueue";
 
 const defaultFilterState: Filters = {
   // Price
@@ -64,6 +67,7 @@ export default function MapPageClient() {
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
   );
   const [isFiltersOpen, setFiltersOpen] = useState(false);
+  const [isSatelliteView, setIsSatelliteView] = useState(false); // 🛰️ Satellite toggle
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
   const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilterState);
@@ -81,6 +85,24 @@ export default function MapPageClient() {
   });
 
   const { allListings, visibleListings, loadListings } = useListings();
+
+  // Swipe history and smart queue
+  const swipeHistory = useSwipeHistory();
+  const [dislikedListings, setDislikedListings] = useState<string[]>(swipeHistory.getDislikedKeys());
+
+  // Update disliked listings when they change
+  useEffect(() => {
+    setDislikedListings(swipeHistory.getDislikedKeys());
+  }, [swipeHistory.getDislikedKeys().length]);
+
+  // Get exclude keys - swipeQueue will use a ref internally to avoid infinite loops
+  const excludeKeys = [
+    ...swipeHistory.getViewedKeys(),
+    ...dislikedListings
+  ];
+
+  const swipeQueue = useSmartSwipeQueue({ excludeKeys });
+  const [showDislikedResetDialog, setShowDislikedResetDialog] = useState(false);
 
   const selectedListing = useMemo(() => {
     if (visibleIndex === null || visibleIndex < 0 || visibleIndex >= visibleListings.length) {
@@ -287,28 +309,76 @@ export default function MapPageClient() {
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
     setSelectionLocked(false); // 🔓 unlock
+    swipeHistory.clearViewed(); // Clear session history when panel closes
+    swipeQueue.clear(); // Clear the queue
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const advanceToNextListing = () => {
+  const advanceToNextListing = async () => {
+    console.log("🎬 advanceToNextListing called");
+    console.log("📊 Queue size:", swipeQueue.queueLength);
+
+    // Try to get next listing from smart queue first
+    const nextListing = swipeQueue.getNext();
+    console.log("🎯 Next from queue:", nextListing ? `${nextListing.slugAddress || nextListing.slug}` : "null");
+
+    if (nextListing) {
+      const nextSlug = nextListing.slugAddress ?? nextListing.slug;
+      if (!nextSlug) {
+        console.log("❌ No slug for next listing, closing");
+        handleCloseListing();
+        return;
+      }
+
+      console.log("✅ Using listing from queue:", nextSlug);
+
+      // Mark as viewed
+      swipeHistory.markAsViewed(nextListing.listingKey);
+
+      // Find in visibleListings for index
+      const nextIndex = visibleListings.findIndex((l) => l._id === nextListing._id);
+      if (nextIndex !== -1) {
+        setVisibleIndex(nextIndex);
+        console.log("📍 Found in visibleListings at index:", nextIndex);
+      } else {
+        console.log("⚠️ Listing not in visibleListings, keeping current index");
+      }
+
+      selectedSlugRef.current = nextSlug;
+      await fetchFullListing(nextSlug);
+      return;
+    }
+
+    console.log("⚠️ Queue empty, falling back to sequential");
+
+    // Fallback to original sequential logic if queue is empty
     if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
       const nextIndex = visibleIndex + 1;
       const next = visibleListings[nextIndex];
       if (!next) {
+        console.log("❌ No next listing in visibleListings, closing");
         handleCloseListing();
         return;
       }
       const nextSlug = next.slugAddress ?? next.slug;
       if (!nextSlug) {
+        console.log("❌ No slug for fallback listing, closing");
         handleCloseListing();
         return;
       }
+
+      console.log("📝 Using sequential listing:", nextSlug);
+
+      // Mark as viewed
+      swipeHistory.markAsViewed(next.listingKey);
+
       setVisibleIndex(nextIndex);
       selectedSlugRef.current = nextSlug;
-      fetchFullListing(nextSlug);
+      await fetchFullListing(nextSlug);
     } else {
+      console.log("❌ No more listings, closing panel");
       handleCloseListing();
     }
   };
@@ -324,14 +394,28 @@ export default function MapPageClient() {
     setLikedListings([]);
   };
 
-  // Bounds → listings change
+  const handleRemoveDislike = (listing: MapListing) => {
+    swipeHistory.removeFromDislikes(listing.listingKey);
+    setDislikedListings(swipeHistory.getDislikedKeys());
+  };
+
+  const handleClearDislikes = () => {
+    swipeHistory.resetDislikes();
+    setDislikedListings([]);
+  };
+
+  // Convert disliked listing keys to MapListing objects
+  const dislikedListingsData = useMemo(() => {
+    return allListings.filter((listing) =>
+      dislikedListings.includes(listing.listingKey)
+    );
+  }, [allListings, dislikedListings]);
+
+  // Bounds → listings change (don't auto-select first listing)
   useEffect(() => {
     if (!selectionLocked) {
-      if (visibleListings.length > 0) {
-        setVisibleIndex(0);
-      } else {
-        setVisibleIndex(null);
-      }
+      // Don't auto-select - let user click a marker
+      setVisibleIndex(null);
     } else {
       if (
         selectedListing &&
@@ -341,6 +425,22 @@ export default function MapPageClient() {
       }
     }
   }, [visibleListings, selectionLocked, selectedListing]);
+
+  // Initialize swipe queue when a listing is selected
+  useEffect(() => {
+    if (selectedListing && selectedFullListing) {
+      console.log("🎬 Initializing swipe queue for:", selectedListing.slugAddress || selectedListing.slug);
+      console.log("🏘️ Subdivision:", selectedListing.subdivisionName);
+      console.log("🏠 Property Type:", selectedListing.propertyType);
+
+      // Mark current listing as viewed
+      swipeHistory.markAsViewed(selectedListing.listingKey);
+
+      // Initialize queue with similar listings
+      swipeQueue.initializeQueue(selectedListing);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListing?.listingKey, selectedFullListing?.listingKey]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);
@@ -368,11 +468,31 @@ export default function MapPageClient() {
 
   return (
     <>
+      {/* Minimal iOS Safari fixes */}
+      <style jsx global>{`
+        .map-container {
+          position: fixed;
+          top: 128px;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          overflow: hidden;
+        }
+
+        /* Let MapLibre handle canvas positioning naturally */
+        .maplibregl-map {
+          width: 100%;
+          height: 100%;
+        }
+      `}</style>
+
       <MapSearchBar
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
         onSearch={(lat, lng) => mapRef.current?.flyToCity(lat, lng)}
         onToggleFilters={toggleFilters}
+        onToggleSatellite={() => setIsSatelliteView(prev => !prev)}
+        isSatelliteView={isSatelliteView}
         allListings={allListings}
       />
 
@@ -393,10 +513,8 @@ export default function MapPageClient() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-64px)] relative font-[Raleway]">
-        <div
-          className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-1`}
-        >
+      <div className="map-container flex font-[Raleway]">
+        <div className={`absolute top-0 bottom-0 w-full h-full ${mapPaddingClass} z-10`}>
           <MapView
             ref={mapRef}
             listings={allListings}
@@ -407,61 +525,96 @@ export default function MapPageClient() {
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
             panelOpen={Boolean(selectedListing && selectedFullListing)}
+            isSatelliteView={isSatelliteView}
           />
-
-          {selectedListing && selectedFullListing && (
-            <ListingBottomPanel
-              key={selectedFullListing.listingKey}
-              listing={selectedListing}
-              fullListing={selectedFullListing}
-              onClose={handleCloseListing}
-              onSwipeLeft={() => {
-                const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
-                if (
-                  likedListings.some(
-                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                  )
-                ) {
-                  setLikedListings((prev) =>
-                    prev.filter(
-                      (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
-                    )
-                  );
-                }
-                advanceToNextListing();
-              }}
-              onSwipeRight={() => {
-                const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
-                if (
-                  !likedListings.some(
-                    (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
-                  )
-                ) {
-                  const full = allListings.find(
-                    (l) => (l.slugAddress ?? l.slug) === currentSlug
-                  );
-                  setLikedListings((prev) =>
-                    full ? [...prev, full] : [...prev, selectedListing]
-                  );
-                }
-                advanceToNextListing();
-              }}
-              isSidebarOpen={isSidebarOpen}
-              isFiltersOpen={isFiltersOpen}
-            />
-          )}
         </div>
 
         <FavoritesPannel
           visibleListings={visibleListings}
           favorites={likedListings}
+          dislikedListings={dislikedListingsData}
           isSidebarOpen={isSidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onSelectListing={handleListingSelect}
           onRemoveFavorite={handleRemoveFavorite}
           onClearFavorites={handleClearFavorites}
+          onRemoveDislike={handleRemoveDislike}
+          onClearDislikes={handleClearDislikes}
         />
       </div>
+
+      {selectedListing && selectedFullListing && (
+        <ListingBottomPanel
+          key={selectedFullListing.listingKey}
+          listing={selectedListing}
+          fullListing={selectedFullListing}
+          onClose={handleCloseListing}
+          isDisliked={dislikedListings.includes(selectedListing.listingKey)}
+          dislikedTimestamp={swipeHistory.getDislikedTimestamp(selectedListing.listingKey)}
+          onRemoveDislike={() => {
+            swipeHistory.removeFromDislikes(selectedListing.listingKey);
+            setDislikedListings(swipeHistory.getDislikedKeys());
+          }}
+          onSwipeLeft={() => {
+            // Mark as disliked
+            swipeHistory.markAsDisliked(selectedListing.listingKey);
+            setDislikedListings(swipeHistory.getDislikedKeys());
+
+            // Remove from favorites if present
+            const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
+            if (
+              likedListings.some(
+                (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+              )
+            ) {
+              setLikedListings((prev) =>
+                prev.filter(
+                  (fav) => (fav.slugAddress ?? fav.slug) !== currentSlug
+                )
+              );
+            }
+
+            // Check if user has 100+ dislikes
+            const dislikedCount = swipeHistory.getDislikedCount();
+            if (dislikedCount >= 100) {
+              setShowDislikedResetDialog(true);
+            }
+
+            advanceToNextListing();
+          }}
+          onSwipeRight={() => {
+            // Add to favorites
+            const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
+            if (
+              !likedListings.some(
+                (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
+              )
+            ) {
+              const full = allListings.find(
+                (l) => (l.slugAddress ?? l.slug) === currentSlug
+              );
+              setLikedListings((prev) =>
+                full ? [...prev, full] : [...prev, selectedListing]
+              );
+            }
+
+            advanceToNextListing();
+          }}
+          isSidebarOpen={isSidebarOpen}
+          isFiltersOpen={isFiltersOpen}
+        />
+      )}
+
+      {/* Disliked Reset Dialog */}
+      <DislikedResetDialog
+        isOpen={showDislikedResetDialog}
+        dislikedCount={swipeHistory.getDislikedCount()}
+        onReset={() => {
+          swipeHistory.resetDislikes();
+          setShowDislikedResetDialog(false);
+        }}
+        onClose={() => setShowDislikedResetDialog(false)}
+      />
     </>
   );
 }

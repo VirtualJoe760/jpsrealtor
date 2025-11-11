@@ -42,6 +42,7 @@ export interface MapListing {
   standardStatus?: string;
   propertyType?: string;
   modificationTimestamp?: string;
+  subdivisionName?: string; // For grouping in FavoritesPannel
 
   // Media
   photos?: Photo[];

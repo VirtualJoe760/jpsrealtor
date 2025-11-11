@@ -141,6 +141,45 @@ export async function GET(req: NextRequest) {
     matchStage.subdivisionName = { $regex: new RegExp(subdivision, "i") };
   }
 
+  // ==================== EXCLUDE KEYS (for swipe functionality) ====================
+  const excludeKeys = query.get("excludeKeys");
+  if (excludeKeys) {
+    const keysArray = excludeKeys.split(",").filter(k => k.trim());
+    if (keysArray.length > 0) {
+      matchStage.listingKey = { $nin: keysArray };
+    }
+  }
+
+  // ==================== RADIUS SEARCH ====================
+  const lat = query.get("lat");
+  const lng = query.get("lng");
+  const radius = query.get("radius");
+
+  if (lat && lng && radius) {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    const radiusMiles = parseFloat(radius);
+
+    // Convert miles to degrees (rough approximation)
+    // 1 degree latitude ≈ 69 miles
+    // 1 degree longitude ≈ 69 * cos(latitude) miles
+    const milesPerDegreeLat = 69;
+    const milesPerDegreeLng = 69 * Math.cos(latNum * Math.PI / 180);
+
+    const latDelta = radiusMiles / milesPerDegreeLat;
+    const lngDelta = radiusMiles / milesPerDegreeLng;
+
+    // Override the bounding box with radius-based bounds
+    matchStage.latitude = {
+      $gte: latNum - latDelta,
+      $lte: latNum + latDelta
+    };
+    matchStage.longitude = {
+      $gte: lngNum - lngDelta,
+      $lte: lngNum + lngDelta
+    };
+  }
+
   const skip = parseInt(query.get("skip") || "0", 10);
   const limit = Math.min(parseInt(query.get("limit") || "1000", 10), 1000);
 

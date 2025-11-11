@@ -142,11 +142,11 @@ export default function ActiveFilters({ filters, onRemoveFilter, onClearAll, isF
 
   return (
     <div
-      className={`fixed top-[140px] md:top-[128px] left-0 z-20 px-3 md:px-4 transition-all duration-300 ${
+      className={`fixed top-[140px] md:top-[128px] left-0 z-20 px-3 md:px-4 transition-all duration-300 pointer-events-none ${
         isFiltersOpen ? "md:left-[25%] lg:left-[30%] 2xl:left-[20%]" : "left-0"
       }`}
     >
-      <div className="flex flex-wrap gap-1.5 md:gap-2 items-center">
+      <div className="flex flex-wrap gap-1.5 md:gap-2 items-center pointer-events-auto">
         {activeFilters.map((filter) => (
           <div
             key={filter.key}

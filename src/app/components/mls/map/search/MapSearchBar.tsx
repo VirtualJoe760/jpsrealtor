@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SlidersHorizontal, Settings2, Search } from "lucide-react";
+import { SlidersHorizontal, Settings2, Search, Satellite, Map as MapIcon } from "lucide-react";
 import type { MapListing } from "@/types/types";
 
 type Props = {
@@ -10,6 +10,8 @@ type Props = {
   onToggle: () => void;
   onSearch?: (lat: number, lng: number) => void;
   onToggleFilters: () => void;
+  onToggleSatellite: () => void;
+  isSatelliteView: boolean;
   allListings: MapListing[];
 };
 
@@ -40,6 +42,8 @@ export default function MapSearchBar({
   onToggle,
   onSearch,
   onToggleFilters,
+  onToggleSatellite,
+  isSatelliteView,
   allListings,
 }: Props) {
   const router = useRouter();
@@ -135,14 +139,31 @@ export default function MapSearchBar({
     <>
       <div className="fixed top-16 z-30 w-full px-2 md:px-4 py-3 bg-zinc-950 text-white shadow-lg border-b border-zinc-800">
         <div className="flex items-center justify-between gap-2 md:gap-4">
-          {/* Filters Toggle Button - FAR LEFT */}
-          <button
-            onClick={onToggleFilters}
-            aria-label="Toggle Filters"
-            className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
-          >
-            <SlidersHorizontal className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
-          </button>
+          {/* Left Controls */}
+          <div className="flex items-center gap-2">
+            {/* Filters Toggle Button */}
+            <button
+              onClick={onToggleFilters}
+              aria-label="Toggle Filters"
+              className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+            >
+              <SlidersHorizontal className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
+            </button>
+
+            {/* Satellite Toggle Button */}
+            <button
+              onClick={onToggleSatellite}
+              aria-label={isSatelliteView ? "Switch to Map View" : "Switch to Satellite View"}
+              className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+              title={isSatelliteView ? "Map View" : "Satellite View"}
+            >
+              {isSatelliteView ? (
+                <MapIcon className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
+              ) : (
+                <Satellite className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
+              )}
+            </button>
+          </div>
 
           {/* Search Bar - CENTER */}
           <div className="relative flex-1 max-w-[600px] mx-auto">

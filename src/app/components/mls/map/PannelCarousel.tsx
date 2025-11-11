@@ -69,7 +69,7 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
   const nextIndex = (current + 1) % photos.length;
 
   return (
-    <div className="relative w-full aspect-[16/9] rounded-t-2xl overflow-hidden bg-zinc-900">
+    <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9] rounded-t-2xl overflow-hidden bg-zinc-900">
       {isLoading ? (
         <div className="flex items-center justify-center h-full w-full text-white">
           <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -88,6 +88,8 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
               fill
               className="object-cover"
               priority
+              quality={90}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 90vw"
             />
           </div>
 
@@ -96,28 +98,41 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
             <Image
               src={photos[nextIndex].src}
               alt="Preload next image"
-              width={1}
-              height={1}
+              fill
               className="hidden"
               priority={false}
+              quality={90}
             />
           )}
 
           {/* Navigation buttons */}
           <button
-            onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-2 rounded-full z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              prev();
+            }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 backdrop-blur-sm p-3 rounded-full z-10 transition-all hover:scale-110 active:scale-95 shadow-lg"
             aria-label="Previous photo"
           >
-            <ChevronLeft className="w-12 h-12 text-white" />
+            <ChevronLeft className="w-8 h-8 text-white" />
           </button>
           <button
-            onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 p-2 rounded-full z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              next();
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 backdrop-blur-sm p-3 rounded-full z-10 transition-all hover:scale-110 active:scale-95 shadow-lg"
             aria-label="Next photo"
           >
-            <ChevronRight className="w-12 h-12 text-white" />
+            <ChevronRight className="w-8 h-8 text-white" />
           </button>
+
+          {/* Photo counter */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full z-10">
+            <span className="text-white text-sm font-medium">
+              {current + 1} / {photos.length}
+            </span>
+          </div>
         </>
       )}
     </div>

@@ -35,6 +35,9 @@ interface MapViewProps {
 
   /** freeze map interactions & background updates while bottom panel is open */
   panelOpen?: boolean;
+
+  /** toggle between dark vector map and satellite imagery */
+  isSatelliteView?: boolean;
 }
 
 function formatPrice(price?: number): string {
@@ -45,6 +48,20 @@ function formatPrice(price?: number): string {
 }
 
 const RAW_MARKER_ZOOM = 13; // show ALL markers (no clustering) when zoom >= 13
+
+// MapTiler API Key - temporarily hardcoded to fix loading issue
+const MAPTILER_KEY = "qPF7lP28DzKCz3Yhmgza";
+
+// Debug: Log API key status
+if (typeof window !== 'undefined') {
+  console.log(`🗺️ MapTiler: ✓ Using Toner & Satellite`);
+}
+
+// MapTiler style URLs - Free styles (Toner, Streets, Satellite)
+const MAP_STYLES = {
+  dark: `https://api.maptiler.com/maps/toner-v2/style.json?key=${MAPTILER_KEY}`,
+  hybrid: `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`,
+};
 
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   {
@@ -57,6 +74,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     onBoundsChange,
     onSelectListingByIndex,
     panelOpen = false,
+    isSatelliteView = false,
   },
   ref
 ) {
@@ -333,7 +351,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     <div ref={wrapperRef} className="relative w-full h-full">
       <Map
         ref={mapRef}
-        mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        mapStyle={isSatelliteView ? MAP_STYLES.hybrid : MAP_STYLES.dark}
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}
@@ -347,6 +365,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
               .map((listing, i) => {
                 const selected = isSelected(listing);
                 const hovered = hoveredId === listing._id;
+                // Only show selected styling when panel is CLOSED
+                const showSelected = selected && !panelOpen;
 
                 return (
                   <Marker
@@ -357,11 +377,11 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     onClick={() => handleMarkerClick(listing)}
                   >
                     <div
-                      onMouseEnter={() => !selected && setHoveredId(listing._id)}
+                      onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
                       className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
                         ${
-                          selected
+                          showSelected
                             ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
                             : hovered
                             ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"
@@ -385,6 +405,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
                 const selected = isSelected(listing);
                 const hovered = hoveredId === listing._id;
+                // Only show selected styling when panel is CLOSED
+                const showSelected = selected && !panelOpen;
 
                 return (
                   <Marker
@@ -395,11 +417,11 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     onClick={() => handleMarkerClick(listing)}
                   >
                     <div
-                      onMouseEnter={() => !selected && setHoveredId(listing._id)}
+                      onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
                       className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
                         ${
-                          selected
+                          showSelected
                             ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
                             : hovered
                             ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"

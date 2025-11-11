@@ -95,3 +95,29 @@ a {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Custom styled scrollbar for listing panel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgb(24, 24, 27); /* zinc-900 */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(63, 63, 70); /* zinc-700 */
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(82, 82, 91); /* zinc-600 */
+}
+
+/* Firefox scrollbar styling */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27);
+}

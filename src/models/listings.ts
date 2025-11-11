@@ -168,13 +168,17 @@ export interface IListing extends Document {
   gatedCommunity?: boolean;
   rvAccess?: boolean;
 
-  // Land & HOA
-  landType?: string;
-  associationFee?: number;
-  associationFeeFrequency?: string;
-  associationYn?: boolean;
-  communityFeatures?: string;
-  lotFeatures?: string;
+// Land & HOA
+  landType: String,
+  landLeaseAmount: Number,
+  landLeasePer: String,
+  landLeaseExpirationDate: String,
+  landLeaseYearsRemaining: Number,
+  associationFee: Number,
+  associationFeeFrequency: String,
+  associationYn: Boolean,
+  communityFeatures: String,
+  lotFeatures: String,
 
   // Classification
   propertyType?: string;
