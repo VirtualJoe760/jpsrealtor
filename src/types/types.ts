@@ -8,41 +8,58 @@ export interface Photo {
 
 export interface MapListing {
   _id: string;
+
+  // Location & coordinates
   latitude: number;
   longitude: number;
+  city?: string; // ✅ Added for useSmartSwipeQueue and UI context
+
+  // Pricing
   listPrice: number;
+  associationFee?: number;
+
+  // Address info
   address: string;
   unparsedFirstLineAddress?: string;
   unparsedAddress?: string;
-  primaryPhotoUrl: string;
-  bedsTotal?: number;
-  bathroomsTotalInteger?: number;
+  slug?: string;
+  slugAddress?: string;
 
-  // Optional property details
+  // Primary photo
+  primaryPhotoUrl: string;
+
+  // Core property specs
+  bedsTotal?: number;
   bedroomsTotal?: number;
+  bathroomsTotalInteger?: number;
   bathroomsFull?: number;
   livingArea?: number;
   lotSizeSqft?: number;
-  associationFee?: number;
+  lotSizeArea?: number;
+  yearBuilt?: number;
+  landType?: string; // ✅ Added for lease/fee land distinction
 
-  // Booleans for amenities (raw and normalized)
+  // Status & identifiers
+  listingId: string;
+  listingKey: string;
+  status?: string;
+  standardStatus?: string;
+  modificationTimestamp?: string;
+
+  // Property classification
+  propertyType?: string;
+  propertySubType?: string;
+  subdivisionName?: string;
+
+  // Boolean features / amenities
   poolYn?: boolean;
   spaYn?: boolean;
   associationYN?: boolean;
   pool?: boolean;
   spa?: boolean;
 
-  // Remarks and identifiers
+  // Remarks
   publicRemarks?: string;
-  listingId: string;
-  listingKey: string; // ✅ Add this line
-  slug?: string;
-  slugAddress?: string;
-  status?: string;
-  standardStatus?: string;
-  propertyType?: string;
-  modificationTimestamp?: string;
-  subdivisionName?: string; // For grouping in FavoritesPannel
 
   // Media
   photos?: Photo[];

@@ -228,7 +228,7 @@ export function useSmartSwipeQueue(options: QueueOptions) {
 
     // Filter out any listings that are now in excludeKeys
     const validQueue = queue.filter(
-      listing => !excludeKeysRef.current.includes(listing.listingKey)
+      (listing) => !excludeKeysRef.current.includes(listing.listingKey)
     );
 
     if (validQueue.length === 0) {
@@ -246,21 +246,22 @@ export function useSmartSwipeQueue(options: QueueOptions) {
       refillQueue();
     }
 
-    return next;
+    // ✅ Fix: Ensure we always return MapListing | null
+    return next ?? null;
   }, [queue, minQueueSize, refillQueue]);
 
   // Peek at next listing without removing it
   const peekNext = useCallback((): MapListing | null => {
     const validQueue = queue.filter(
-      listing => !excludeKeysRef.current.includes(listing.listingKey)
+      (listing) => !excludeKeysRef.current.includes(listing.listingKey)
     );
-    return validQueue[0] || null;
+    return validQueue[0] ?? null;
   }, [queue]);
 
   // Get queue size (excluding already viewed/disliked)
   const size = useCallback((): number => {
     const validQueue = queue.filter(
-      listing => !excludeKeysRef.current.includes(listing.listingKey)
+      (listing) => !excludeKeysRef.current.includes(listing.listingKey)
     );
     return validQueue.length;
   }, [queue]);
@@ -274,7 +275,7 @@ export function useSmartSwipeQueue(options: QueueOptions) {
   // Check if queue is empty (excluding already viewed/disliked)
   const isEmpty = useCallback((): boolean => {
     const validQueue = queue.filter(
-      listing => !excludeKeysRef.current.includes(listing.listingKey)
+      (listing) => !excludeKeysRef.current.includes(listing.listingKey)
     );
     return validQueue.length === 0;
   }, [queue]);

@@ -25,8 +25,8 @@ import DislikedBadge from "./DislikedBadge";
    🔧 TUNING
    ======================= */
 const SWIPE = {
-  minOffsetRatio: 0.2, // Reduced from 0.3 (30%) to 0.2 (20%) for easier triggering
-  minVelocity: 450, // Reduced from 650 to 450 for easier swipes on older devices
+  minOffsetRatio: 0.2,
+  minVelocity: 450,
   flyOutRatio: 0.98,
   flyOutDuration: 0.22,
   snapSpring: { stiffness: 380, damping: 32 },
@@ -74,14 +74,16 @@ export default function ListingBottomPanel({
   const [swipeMessage, setSwipeMessage] = useState<string | null>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [gestureDirection, setGestureDirection] = useState<"horizontal" | "vertical" | null>(null);
+  const [gestureDirection, setGestureDirection] = useState<
+    "horizontal" | "vertical" | null
+  >(null);
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  // Touch event handlers for scroll vs swipe conflict resolution
+  // Touch gesture detection
   useEffect(() => {
     const scrollElement = scrollableRef.current;
     if (!scrollElement) return;
@@ -95,26 +97,20 @@ export default function ListingBottomPanel({
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartRef.current) return;
-
       const touch = e.touches[0];
       if (!touch) return;
       const dx = Math.abs(touch.clientX - touchStartRef.current.x);
       const dy = Math.abs(touch.clientY - touchStartRef.current.y);
 
-      // Only determine direction after significant movement
       if (dx > 10 || dy > 10) {
         if (gestureDirection === null) {
-          // Determine gesture direction based on initial movement
           if (dx > dy * 1.5) {
-            // Horizontal gesture - allow swipe, prevent scroll
             setGestureDirection("horizontal");
             e.preventDefault();
           } else if (dy > dx * 1.5) {
-            // Vertical gesture - allow scroll, prevent swipe
             setGestureDirection("vertical");
           }
         } else if (gestureDirection === "horizontal") {
-          // Continue preventing scroll for horizontal gestures
           e.preventDefault();
         }
       }
@@ -136,47 +132,29 @@ export default function ListingBottomPanel({
     };
   }, [gestureDirection]);
 
-  // Get contextual swipe message
   const getSwipeMessage = () => {
     const subdivision = fullListing.subdivisionName || (fullListing as any).subdivision;
     if (subdivision && subdivision.toLowerCase() !== "other") {
       return `Swiping in ${subdivision}`;
     }
 
-    // Fallback to property type + city
-    const propertyType = fullListing.propertyType?.replace(/([A-Z])/g, ' $1').trim() || "Property";
-    const city = fullListing.city ||
-                 fullListing.unparsedAddress?.split(",")[1]?.trim() ||
-                 listing.address?.split(",")[1]?.trim() ||
-                 "this area";
+    const propertyType =
+      fullListing.propertyType?.replace(/([A-Z])/g, " $1").trim() || "Property";
+    const city =
+      fullListing.city ||
+      fullListing.unparsedAddress?.split(",")[1]?.trim() ||
+      listing.address?.split(",")[1]?.trim() ||
+      "this area";
     return `${propertyType} in ${city}`;
   };
 
-  // Horizontal MotionValue
   const dragX = useMotionValue(0);
 
-  // Derived transforms
-  const rotZ = useTransform(
-    dragX,
-    [-300, 0, 300],
-    [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]
-  );
-  const skewY = useTransform(
-    dragX,
-    [-300, 0, 300],
-    [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]
-  );
-  const rotX = useTransform(
-    dragX,
-    [-300, 0, 300],
-    [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]
-  );
+  const rotZ = useTransform(dragX, [-300, 0, 300], [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]);
+  const skewY = useTransform(dragX, [-300, 0, 300], [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]);
+  const rotX = useTransform(dragX, [-300, 0, 300], [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]);
 
-  const shadowAlpha = useTransform(
-    dragX,
-    [-300, 0, 300],
-    [0.35 + PIN.shadowBoost, 0.35, 0.35 + PIN.shadowBoost]
-  );
+  const shadowAlpha = useTransform(dragX, [-300, 0, 300], [0.35 + PIN.shadowBoost, 0.35, 0.35 + PIN.shadowBoost]);
   const boxShadowMV = useTransform<number, string>(
     shadowAlpha,
     (a: number) => `0 15px 40px rgba(0,0,0,${a})`
@@ -191,7 +169,7 @@ export default function ListingBottomPanel({
     listing.address ||
     "Unknown address";
 
-  /* 🚫 BODY SCROLL LOCK (mobile) */
+  // Lock scroll on mobile
   useEffect(() => {
     const shouldLock =
       SWIPE.lockScrollMaxWidth <= 0 ||
@@ -208,8 +186,7 @@ export default function ListingBottomPanel({
       right: document.body.style.right,
       width: document.body.style.width,
       overflowY: document.body.style.overflowY,
-      overscrollBehavior: (document.documentElement.style as any)
-        .overscrollBehavior,
+      overscrollBehavior: (document.documentElement.style as any).overscrollBehavior,
     };
 
     document.body.style.position = "fixed";
@@ -227,18 +204,16 @@ export default function ListingBottomPanel({
       document.body.style.right = prev.right;
       document.body.style.width = prev.width;
       document.body.style.overflowY = prev.overflowY;
-      (document.documentElement.style as any).overscrollBehavior =
-        prev.overscrollBehavior;
+      (document.documentElement.style as any).overscrollBehavior = prev.overscrollBehavior;
       const y = Math.abs(parseInt(prev.top || "0", 10)) || scrollY;
       window.scrollTo(0, y);
     };
   }, []);
 
-  // Entrance
+  // Entrance animation
   useEffect(() => {
     controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
     dragX.set(0);
-
     const id = requestAnimationFrame(() => {
       controls.start({
         opacity: 1,
@@ -248,16 +223,11 @@ export default function ListingBottomPanel({
         transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
       });
     });
-
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullListing?.listingKey]);
+  }, [fullListing?.listingKey, controls, dragX]);
 
-  // Swipe-out
   const swipeOut = async (dir: "left" | "right") => {
     exitDirRef.current = dir;
-
-    // Show swipe message
     setSwipeMessage(getSwipeMessage());
 
     const W = typeof window !== "undefined" ? window.innerWidth : 420;
@@ -284,27 +254,16 @@ export default function ListingBottomPanel({
     dragX.set(0);
     exitDirRef.current = null;
 
-    // Hide message after new listing loads
     setTimeout(() => setSwipeMessage(null), 2000);
   };
 
-  // Drag thresholds
-  const handleDragEnd = (
-    _e: any,
-    info: { offset: { x: number; y: number }; velocity: { x: number } }
-  ) => {
+  const handleDragEnd = (_e: any, info: { offset: { x: number }; velocity: { x: number } }) => {
     const { offset, velocity } = info;
-    const minOffset = Math.round(
-      (typeof window !== "undefined" ? window.innerWidth : 420) *
-        SWIPE.minOffsetRatio
-    );
+    const minOffset = Math.round((typeof window !== "undefined" ? window.innerWidth : 420) * SWIPE.minOffsetRatio);
 
-    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity)
-      return swipeOut("left");
-    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity)
-      return swipeOut("right");
+    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity) return swipeOut("left");
+    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity) return swipeOut("right");
 
-    // Snap back
     controls.start({
       y: 0,
       opacity: 1,
@@ -351,16 +310,14 @@ export default function ListingBottomPanel({
             "max-h-[90vh] lg:max-h-[85vh]",
             lgLayoutClasses
           )}
-          style={{
-            ...panelStyle,
-          }}
+          style={panelStyle}
           {...stopClicks}
           drag="x"
           dragElastic={SWIPE.dragElastic}
           dragMomentum={false}
           onDragEnd={handleDragEnd}
         >
-          {/* Close button - Fixed at top of panel, always visible */}
+          {/* Close Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -372,15 +329,10 @@ export default function ListingBottomPanel({
             <X className="w-6 h-6 text-white" />
           </button>
 
-          {/* Disliked badge */}
           {isDisliked && dislikedTimestamp && onRemoveDislike && (
-            <DislikedBadge
-              timestamp={dislikedTimestamp}
-              onRemove={onRemoveDislike}
-            />
+            <DislikedBadge timestamp={dislikedTimestamp} onRemove={onRemoveDislike} />
           )}
 
-          {/* Swipe notification toast */}
           <AnimatePresence>
             {swipeMessage && (
               <motion.div
@@ -398,12 +350,11 @@ export default function ListingBottomPanel({
             )}
           </AnimatePresence>
 
-          {/* Photo Carousel - Fixed at top, compact on desktop */}
           <div {...stopClicks} className="flex-shrink-0">
             <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
           </div>
 
-          {/* Fixed Header: Address, Price, Action Buttons - NOT scrollable */}
+          {/* Header */}
           <div
             className="flex-shrink-0 px-5 sm:px-6 pt-3 lg:pt-4 pb-2 lg:pb-3 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800"
             {...stopClicks}
@@ -423,10 +374,7 @@ export default function ListingBottomPanel({
                   aria-label="Share this listing"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigator.share?.({
-                      title: address,
-                      url: window.location.href,
-                    });
+                    navigator.share?.({ title: address, url: window.location.href });
                   }}
                 >
                   <Share2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
@@ -443,7 +391,7 @@ export default function ListingBottomPanel({
             </div>
           </div>
 
-          {/* Scrollable Middle Section: Details, Remarks, Attribution, Swipe Buttons */}
+          {/* Details */}
           <div
             ref={scrollableRef}
             className="flex-1 overflow-y-auto overscroll-contain lg:overflow-visible custom-scrollbar"
@@ -453,21 +401,13 @@ export default function ListingBottomPanel({
             }}
             {...stopClicks}
           >
-            <div
-              className="px-5 sm:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 text-white"
-              style={{ touchAction: "pan-y" }}
-            >
-              {/* Property Details */}
+            <div className="px-5 sm:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 text-white" style={{ touchAction: "pan-y" }}>
               <div className="flex flex-wrap gap-2 text-sm lg:text-base">
                 {fullListing?.bedsTotal !== undefined && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                    {fullListing.bedsTotal} Bed
-                  </span>
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
                 )}
                 {fullListing?.bathroomsTotalInteger !== undefined && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                    {fullListing.bathroomsTotalInteger} Bath
-                  </span>
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bathroomsTotalInteger} Bath</span>
                 )}
                 {fullListing?.livingArea !== undefined && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
@@ -485,15 +425,17 @@ export default function ListingBottomPanel({
                   </span>
                 )}
                 {fullListing?.landType && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                    {fullListing.landType}
-                  </span>
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.landType}</span>
                 )}
-                {fullListing?.associationFee !== undefined && fullListing.associationFee > 0 && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                    ${fullListing.associationFee.toLocaleString()}/mo HOA
-                  </span>
-                )}
+
+                {/* ✅ Fixed type-safe associationFee comparison */}
+                {typeof fullListing?.associationFee === "number" &&
+                  fullListing.associationFee > 0 && (
+                    <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                      ${fullListing.associationFee.toLocaleString()}/mo HOA
+                    </span>
+                  )}
+
                 {fullListing?.terms && fullListing.terms.length > 0 && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     {fullListing.terms.join(", ")}
@@ -505,14 +447,10 @@ export default function ListingBottomPanel({
                   </span>
                 )}
                 {fullListing?.poolYn && (
-                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
-                    🏊 Pool
-                  </span>
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
                 )}
                 {fullListing?.spaYn && (
-                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
-                    🧖 Spa
-                  </span>
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
                 )}
               </div>
 
@@ -563,18 +501,14 @@ export default function ListingBottomPanel({
             </div>
           </div>
 
-          {/* Fixed Bottom: View Full Listing Button */}
+          {/* Footer */}
           <div
             className="flex-shrink-0 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent px-5 sm:px-6 py-3 lg:py-4 border-t border-zinc-800"
-            style={{
-              paddingBottom: `max(1rem, env(safe-area-inset-bottom, 0px))`,
-            }}
+            style={{ paddingBottom: `max(1rem, env(safe-area-inset-bottom, 0px))` }}
             {...stopClicks}
           >
             <Link
-              href={`/mls-listings/${
-                fullListing.slugAddress || fullListing.slug || ""
-              }`}
+              href={`/mls-listings/${fullListing.slugAddress || fullListing.slug || ""}`}
               className="block text-center bg-emerald-500 text-black font-bold py-2.5 lg:py-3 px-4 rounded-lg hover:bg-emerald-400 active:bg-emerald-600 transition-colors duration-200 text-base lg:text-lg shadow-lg"
               onClick={(e) => e.stopPropagation()}
               role="button"
