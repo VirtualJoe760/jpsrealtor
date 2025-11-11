@@ -16,6 +16,9 @@ const OpenHouseSchema: Schema<IOpenHouse> = new Schema({
   endTime: String,
 });
 
+// Compound index for optimized open house lookups
+OpenHouseSchema.index({ listingId: 1, date: 1 });
+
 const OpenHouse: Model<IOpenHouse> = mongoose.models.OpenHouse || mongoose.model<IOpenHouse>('OpenHouse', OpenHouseSchema);
 
 export default OpenHouse;

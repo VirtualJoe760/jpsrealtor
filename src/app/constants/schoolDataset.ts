@@ -152,12 +152,12 @@ const desertSandsUnifiedSchoolDistrict: SchoolDistrict = {
         bio: "Thomas Jefferson Middle School focuses on academic achievement and personal growth for students in grades 6-8, fostering a community of respect and collaboration.",
         phoneNumber: "(760) 863-3660",
         address: "83-103 Avenue 48, Indio, CA 92201",
-        websiteUrl: "https://jefferson.dsusd.us/",
+        websiteUrl: "https://tjms.dsusd.us/",
       },
       {
         id: "10",
-        slug: "paige-middle-school",
-        name: "Paige Middle School",
+        slug: "colonel-mitchell-paige-middle-school",
+        name: "Colonel Mitchell Paige Middle School",
         gradeLevel: "Middle",
         coordinates: { lat: 33.7334, lng: -116.3789 },
         photoUrl: "",
@@ -166,7 +166,7 @@ const desertSandsUnifiedSchoolDistrict: SchoolDistrict = {
         bio: "Paige Middle School provides students with a supportive and engaging environment, promoting academic excellence and social development for grades 6-8.",
         phoneNumber: "(760) 238-9720",
         address: "74-200 Country Club Drive, Palm Desert, CA 92260",
-        websiteUrl: "https://paige.dsusd.us/",
+        websiteUrl: "https://dsusdcmpms.ss18.sharpschool.com/",
       },
     ],
     HighSchool: [
@@ -524,7 +524,7 @@ const coachellaValleyUnifiedSchoolDistrict: SchoolDistrict = {
         bio: "Las Palmitas Elementary provides a nurturing environment for academic and personal growth in grades K-6.",
         phoneNumber: "(760) 398-6310",
         address: "86350 Airport Blvd, Thermal, CA 92274",
-        websiteUrl: "https://lp.cvusd.us/",
+        websiteUrl: "https://lpes.cvusd.us/",
       },
       {
         id: "5",
@@ -636,7 +636,7 @@ const coachellaValleyUnifiedSchoolDistrict: SchoolDistrict = {
         bio: "Valle del Sol Elementary provides a nurturing educational experience for students in grades K-6.",
         phoneNumber: "(760) 398-6306",
         address: "51-435 Van Buren St, Coachella, CA 92236",
-        websiteUrl: "https://vdses.cvusd.us/",
+        websiteUrl: "https://vds.cvusd.us/",
       },
       {
         id: "13",
@@ -664,7 +664,7 @@ const coachellaValleyUnifiedSchoolDistrict: SchoolDistrict = {
         bio: "Westside Elementary inspires students in grades K-6 to achieve excellence in academics and character.",
         phoneNumber: "(760) 398-6312",
         address: "82225 Airport Blvd, Thermal, CA 92274",
-        websiteUrl: "https://wse.cvusd.us/",
+        websiteUrl: "https://wes.cvusd.us/",
       },
     ],
     Middle: [

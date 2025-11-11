@@ -10,7 +10,7 @@ export const homeHeroContent = {
   },
   ctaTwo: {
     text: "Contact an Agent",
-    href: "/contact",
+    href: "/#contact",
   },
   heroImage: {
     src: "https://res.cloudinary.com/dcrue4vr6/image/upload/w_850,h_350,q_auto/v1729463634/real-estate-hero.jpg",
@@ -51,7 +51,7 @@ export const aboutSectionContent = {
       body: `I'm ready to dive head first towards finding your next dream property. From Palm Springs to Coachella I can give you the insights you need to make decisions best for you. Feel free to use my livechat feature here on the website which goes directly to my cell, or fill out this contact form especially if you have any photos of property for me to check out.`,
       link: {
         text: "Contact Joseph Today",
-        href: "/contact",
+        href: "/#contact",
       },
       imageUrl: "/misc/bento-3.png",
     },

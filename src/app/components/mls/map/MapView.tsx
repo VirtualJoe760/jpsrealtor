@@ -134,9 +134,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Initialize supercluster with all listings
   useEffect(() => {
     clusterRef.current = new Supercluster({
-      radius: 60,
+      radius: 80, // Increased from 60 for more aggressive clustering
       maxZoom: RAW_MARKER_ZOOM, // cluster only below 13
-      minPoints: 2,
+      minPoints: 2, // Keep at 2 - isolated markers should show individually
     });
 
     const points: Supercluster.PointFeature<{
@@ -261,6 +261,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       return;
     }
 
+    // Clear hover state when selecting
+    setHoveredId(null);
+
     // Update internal and external selection
     lastSelectedIdRef.current = listing._id;
     setInternalSelected(listing);
@@ -313,12 +316,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   };
 
   // Helper to test if a listing should render "selected"
+  // ✅ Fixed: Ensure only ONE marker can be selected, with strict ID matching
   const isSelected = (l: MapListing) => {
     const id = l._id;
-    return (
-      (selectedListing && selectedListing._id === id) ||
-      (internalSelected && internalSelected._id === id)
-    );
+    // Require valid IDs to prevent accidental multi-selection
+    if (!id) return false;
+
+    // Check both prop and internal state with strict equality
+    const matchesSelected = selectedListing && selectedListing._id && selectedListing._id === id;
+    const matchesInternal = internalSelected && internalSelected._id && internalSelected._id === id;
+
+    return !!(matchesSelected || matchesInternal);
   };
 
   return (
@@ -334,32 +342,37 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Raw markers at zoom >= 13 */}
         {currentZoom >= RAW_MARKER_ZOOM
           ? listings
-              .filter((l) => l.longitude != null && l.latitude != null)
+              .filter((l) => l.longitude != null && l.latitude != null && l._id) // ✅ Require valid ID
               .filter(inView)
-              .map((listing, i) => (
-                <Marker
-                  key={listing._id || i}
-                  longitude={listing.longitude!}
-                  latitude={listing.latitude!}
-                  anchor="bottom"
-                  onClick={() => handleMarkerClick(listing)}
-                >
-                  <div
-                    onMouseEnter={() => setHoveredId(listing._id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
-                      ${
-                        isSelected(listing)
-                          ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
-                          : hoveredId === listing._id
-                          ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
-                          : "bg-emerald-600 text-white scale-100 z-30 border border-gray-700"
-                      }`}
+              .map((listing, i) => {
+                const selected = isSelected(listing);
+                const hovered = hoveredId === listing._id;
+
+                return (
+                  <Marker
+                    key={listing._id || `raw-marker-${i}`}
+                    longitude={listing.longitude!}
+                    latitude={listing.latitude!}
+                    anchor="bottom"
+                    onClick={() => handleMarkerClick(listing)}
                   >
-                    {formatPrice(listing.listPrice)}
-                  </div>
-                </Marker>
-              ))
+                    <div
+                      onMouseEnter={() => !selected && setHoveredId(listing._id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
+                        ${
+                          selected
+                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
+                            : hovered
+                            ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"
+                            : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm"
+                        }`}
+                    >
+                      {formatPrice(listing.listPrice)}
+                    </div>
+                  </Marker>
+                );
+              })
           : // Clusters below 13
             clusters.map((feature, i) => {
               const [longitude, latitude] = feature.geometry.coordinates;
@@ -368,25 +381,29 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
               if (longitude == null || latitude == null) return null;
 
               if (!cluster) {
-                if (!listing) return null;
+                if (!listing || !listing._id) return null; // ✅ Require valid listing with ID
+
+                const selected = isSelected(listing);
+                const hovered = hoveredId === listing._id;
+
                 return (
                   <Marker
-                    key={listing._id || i}
+                    key={listing._id || `marker-${i}`}
                     longitude={longitude}
                     latitude={latitude}
                     anchor="bottom"
                     onClick={() => handleMarkerClick(listing)}
                   >
                     <div
-                      onMouseEnter={() => setHoveredId(listing._id)}
+                      onMouseEnter={() => !selected && setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 min-w-[40px] min-h-[20px]
+                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
                         ${
-                          isSelected(listing)
-                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black"
-                            : hoveredId === listing._id
-                            ? "bg-emerald-400 text-black scale-105 z-40 border border-white"
-                            : "bg-emerald-600 text-white scale-100 z-30 border border-gray-700"
+                          selected
+                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
+                            : hovered
+                            ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"
+                            : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm"
                         }`}
                     >
                       {formatPrice(listing.listPrice)}

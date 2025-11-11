@@ -8,17 +8,48 @@ import type { IListing } from "@/models/listings";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
 import MapSearchBar from "./search/MapSearchBar";
 import FiltersPanel from "./search/FiltersPannel";
+import ActiveFilters from "./search/ActiveFilters";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 import { useListings } from "@/app/utils/map/useListings";
 
 const defaultFilterState: Filters = {
+  // Price
   minPrice: "",
   maxPrice: "",
+
+  // Beds/Baths
   beds: "",
   baths: "",
+
+  // Square Footage
+  minSqft: "",
+  maxSqft: "",
+
+  // Lot Size
+  minLotSize: "",
+  maxLotSize: "",
+
+  // Year Built
+  minYear: "",
+  maxYear: "",
+
+  // Property Type
   propertyType: "",
+  propertySubType: "",
+
+  // Garage
+  minGarages: "",
+
+  // HOA
   hoa: "",
+
+  // Land Type
+  landType: "",
+
+  // Location
+  city: "",
+  subdivision: "",
 };
 
 export default function MapPageClient() {
@@ -174,6 +205,27 @@ export default function MapPageClient() {
     setFiltersOpen(false);
   };
 
+  const handleRemoveFilter = (filterKey: keyof Filters) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+
+      // Reset the specific filter to its default value
+      if (typeof newFilters[filterKey] === "boolean" || newFilters[filterKey] === undefined) {
+        // For boolean/undefined filters, set to undefined
+        (newFilters as any)[filterKey] = undefined;
+      } else {
+        // For string filters, set to empty string
+        (newFilters as any)[filterKey] = "";
+      }
+
+      return newFilters;
+    });
+  };
+
+  const handleClearAllFilters = () => {
+    setFilters(defaultFilterState);
+  };
+
   const fetchFullListing = useCallback(async (slug: string) => {
     if (!slug) return;
     if (fetchingRef.current.has(slug)) return;
@@ -322,6 +374,14 @@ export default function MapPageClient() {
         onSearch={(lat, lng) => mapRef.current?.flyToCity(lat, lng)}
         onToggleFilters={toggleFilters}
         allListings={allListings}
+      />
+
+      {/* Active Filters Display */}
+      <ActiveFilters
+        filters={filters}
+        onRemoveFilter={handleRemoveFilter}
+        onClearAll={handleClearAllFilters}
+        isFiltersOpen={isFiltersOpen}
       />
 
       {isFiltersOpen && (

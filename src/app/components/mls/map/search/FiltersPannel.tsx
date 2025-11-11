@@ -1,17 +1,8 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useState } from "react";
-
-type Filters = {
-  minPrice: string;
-  maxPrice: string;
-  beds: string;
-  baths: string;
-  propertyType: string;
-  hoa: string;
-  associationYN?: boolean;
-};
+import type { Filters } from "@/types/types";
 
 type Props = {
   isOpen: boolean;
@@ -26,25 +17,73 @@ export default function FiltersPanel({
   onApply,
   defaultFilters,
 }: Props) {
+  // State for all filters
   const [minPrice, setMinPrice] = useState(defaultFilters.minPrice);
   const [maxPrice, setMaxPrice] = useState(defaultFilters.maxPrice);
   const [beds, setBeds] = useState(defaultFilters.beds);
   const [baths, setBaths] = useState(defaultFilters.baths);
-  const [propertyType, setPropertyType] = useState(defaultFilters.propertyType);
+  const [minSqft, setMinSqft] = useState(defaultFilters.minSqft);
+  const [maxSqft, setMaxSqft] = useState(defaultFilters.maxSqft);
+  const [minLotSize, setMinLotSize] = useState(defaultFilters.minLotSize);
+  const [maxLotSize, setMaxLotSize] = useState(defaultFilters.maxLotSize);
+  const [minYear, setMinYear] = useState(defaultFilters.minYear);
+  const [maxYear, setMaxYear] = useState(defaultFilters.maxYear);
+  const [propertySubType, setPropertySubType] = useState(defaultFilters.propertySubType);
+  const [landType, setLandType] = useState(defaultFilters.landType);
+  const [city, setCity] = useState(defaultFilters.city);
+  const [subdivision, setSubdivision] = useState(defaultFilters.subdivision);
+  const [minGarages, setMinGarages] = useState(defaultFilters.minGarages);
   const [hoa, setHoa] = useState(defaultFilters.hoa);
-  const [hoaPresence, setHoaPresence] = useState<string>("any");
+
+  // Boolean filters
+  const [poolYn, setPoolYn] = useState<boolean | undefined>(defaultFilters.poolYn);
+  const [spaYn, setSpaYn] = useState<boolean | undefined>(defaultFilters.spaYn);
+  const [viewYn, setViewYn] = useState<boolean | undefined>(defaultFilters.viewYn);
+  const [garageYn, setGarageYn] = useState<boolean | undefined>(defaultFilters.garageYn);
+  const [hoaPresence, setHoaPresence] = useState<string>(
+    defaultFilters.associationYN === true ? "yes" : defaultFilters.associationYN === false ? "no" : "any"
+  );
+  const [gatedCommunity, setGatedCommunity] = useState<boolean | undefined>(defaultFilters.gatedCommunity);
+  const [seniorCommunity, setSeniorCommunity] = useState<boolean | undefined>(defaultFilters.seniorCommunity);
+
+  // Collapsible sections
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    basic: true,
+    property: false,
+    amenities: false,
+    community: false,
+    location: false,
+  });
 
   useEffect(() => {
     setMinPrice(defaultFilters.minPrice);
     setMaxPrice(defaultFilters.maxPrice);
     setBeds(defaultFilters.beds);
     setBaths(defaultFilters.baths);
-    setPropertyType(defaultFilters.propertyType);
+    setMinSqft(defaultFilters.minSqft);
+    setMaxSqft(defaultFilters.maxSqft);
+    setMinLotSize(defaultFilters.minLotSize);
+    setMaxLotSize(defaultFilters.maxLotSize);
+    setMinYear(defaultFilters.minYear);
+    setMaxYear(defaultFilters.maxYear);
+    setPropertySubType(defaultFilters.propertySubType);
+    setLandType(defaultFilters.landType);
+    setCity(defaultFilters.city);
+    setSubdivision(defaultFilters.subdivision);
+    setMinGarages(defaultFilters.minGarages);
     setHoa(defaultFilters.hoa);
-    setHoaPresence(
-      defaultFilters.associationYN === true ? "yes" : defaultFilters.associationYN === false ? "no" : "any"
-    );
+    setPoolYn(defaultFilters.poolYn);
+    setSpaYn(defaultFilters.spaYn);
+    setViewYn(defaultFilters.viewYn);
+    setGarageYn(defaultFilters.garageYn);
+    setHoaPresence(defaultFilters.associationYN === true ? "yes" : defaultFilters.associationYN === false ? "no" : "any");
+    setGatedCommunity(defaultFilters.gatedCommunity);
+    setSeniorCommunity(defaultFilters.seniorCommunity);
   }, [defaultFilters]);
+
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const handleApplyFilters = () => {
     const appliedFilters: Filters = {
@@ -52,132 +91,490 @@ export default function FiltersPanel({
       maxPrice,
       beds,
       baths,
-      propertyType,
+      minSqft,
+      maxSqft,
+      minLotSize,
+      maxLotSize,
+      minYear,
+      maxYear,
+      propertyType: "", // Legacy - keep for compatibility
+      propertySubType,
+      landType,
+      city,
+      subdivision,
+      minGarages,
       hoa,
+      poolYn: poolYn === true ? true : poolYn === false ? false : undefined,
+      spaYn: spaYn === true ? true : spaYn === false ? false : undefined,
+      viewYn: viewYn === true ? true : undefined,
+      garageYn: garageYn === true ? true : undefined,
       associationYN: hoaPresence === "yes" ? true : hoaPresence === "no" ? false : undefined,
+      gatedCommunity: gatedCommunity === true ? true : undefined,
+      seniorCommunity: seniorCommunity === true ? true : undefined,
     };
 
-    console.log("📤 Filters sent to parent:", appliedFilters);
+    console.log("📤 Comprehensive filters applied:", appliedFilters);
     onApply(appliedFilters);
   };
 
+  const handleClearFilters = () => {
+    setMinPrice("");
+    setMaxPrice("");
+    setBeds("");
+    setBaths("");
+    setMinSqft("");
+    setMaxSqft("");
+    setMinLotSize("");
+    setMaxLotSize("");
+    setMinYear("");
+    setMaxYear("");
+    setPropertySubType("");
+    setLandType("");
+    setCity("");
+    setSubdivision("");
+    setMinGarages("");
+    setHoa("");
+    setPoolYn(undefined);
+    setSpaYn(undefined);
+    setViewYn(undefined);
+    setGarageYn(undefined);
+    setHoaPresence("any");
+    setGatedCommunity(undefined);
+    setSeniorCommunity(undefined);
+  };
+
+  const SectionHeader = ({ title, section }: { title: string; section: string }) => (
+    <button
+      onClick={() => toggleSection(section)}
+      className="w-full flex justify-between items-center py-2 text-emerald-400 font-semibold text-sm hover:text-emerald-300 transition"
+    >
+      <span>{title}</span>
+      {openSections[section] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+    </button>
+  );
+
   return (
     <aside
-      className={`fixed top-16 left-0 h-[calc(100vh-64px)] w-[90%] sm:w-[70%] md:w-[60%] lg:w-[25%] 2xl:w-[15%] bg-zinc-950 text-white transform transition-transform duration-300 z-50
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} border-r border-r-zinc-800 px-4 py-6 overflow-y-auto`}
+      className={`fixed top-16 left-0 h-[calc(100vh-64px)] w-[90%] sm:w-[70%] md:w-[60%] lg:w-[30%] 2xl:w-[20%] bg-zinc-950 text-white transform transition-transform duration-300 z-50
+        ${isOpen ? "translate-x-0" : "-translate-x-full"} border-r border-r-zinc-800 px-4 py-4 overflow-y-auto`}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold tracking-wide text-emerald-400">Filters</h2>
-        <button onClick={onClose} aria-label="Close Filters Panel">
-          <X className="w-6 h-6 text-white" />
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4 sticky top-0 bg-zinc-950 pb-2 border-b border-zinc-800">
+        <h2 className="text-lg font-bold tracking-wide text-emerald-400">Advanced Filters</h2>
+        <button onClick={onClose} aria-label="Close Filters Panel" className="hover:text-emerald-400 transition">
+          <X className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Price Range */}
+      {/* ========== BASIC FILTERS ========== */}
       <div className="mb-4">
-        <label className="text-sm mb-1 block">Price Range</label>
-        <div className="flex gap-2">
-          <div className="relative w-1/2">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Min"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-400 pr-10"
-            />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-              000
-            </span>
+        <SectionHeader title="Basic Filters" section="basic" />
+        {openSections.basic && (
+          <div className="space-y-3 pl-2">
+            {/* Price Range */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Price Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Min"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Max"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Beds & Baths */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Min Beds</label>
+                <input
+                  type="number"
+                  value={beds}
+                  onChange={(e) => setBeds(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  placeholder="Any"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Min Baths</label>
+                <input
+                  type="number"
+                  value={baths}
+                  onChange={(e) => setBaths(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  placeholder="Any"
+                  min="0"
+                />
+              </div>
+            </div>
           </div>
-          <div className="relative w-1/2">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Max"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-400 pr-10"
-            />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-              000
-            </span>
+        )}
+      </div>
+
+      {/* ========== PROPERTY DETAILS ========== */}
+      <div className="mb-4">
+        <SectionHeader title="Property Details" section="property" />
+        {openSections.property && (
+          <div className="space-y-3 pl-2">
+            {/* Property Type */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Property Type</label>
+              <select
+                value={propertySubType}
+                onChange={(e) => setPropertySubType(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">All Types</option>
+                <option value="Single Family Residence">Single Family Home</option>
+                <option value="Condominium">Condominium</option>
+                <option value="Townhouse">Townhouse</option>
+                <option value="Manufactured Home">Manufactured Home</option>
+                <option value="Mobile Home">Mobile Home</option>
+                <option value="Residential Income">Multi-Family</option>
+              </select>
+            </div>
+
+            {/* Square Footage */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Square Footage (Interior)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Min"
+                  value={minSqft}
+                  onChange={(e) => setMinSqft(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Max"
+                  value={maxSqft}
+                  onChange={(e) => setMaxSqft(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Lot Size */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Lot Size (Sqft)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Min"
+                  value={minLotSize}
+                  onChange={(e) => setMinLotSize(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Max"
+                  value={maxLotSize}
+                  onChange={(e) => setMaxLotSize(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Year Built */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Year Built</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Min"
+                  value={minYear}
+                  onChange={(e) => setMinYear(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Max"
+                  value={maxYear}
+                  onChange={(e) => setMaxYear(e.target.value.replace(/\D/g, ""))}
+                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Land Type (Fee Simple vs Lease) */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Land Ownership</label>
+              <select
+                value={landType}
+                onChange={(e) => setLandType(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">All</option>
+                <option value="Fee Simple">Fee Simple (Own Land)</option>
+                <option value="Leasehold">Leasehold (Lease Land)</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Bed & Bath Count */}
+      {/* ========== AMENITIES ========== */}
       <div className="mb-4">
-        <label className="text-sm mb-1 block">Beds</label>
-        <input
-          type="number"
-          value={beds}
-          onChange={(e) => setBeds(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-400"
-          placeholder="Minimum Beds"
-        />
-      </div>
-      <div className="mb-4">
-        <label className="text-sm mb-1 block">Baths</label>
-        <input
-          type="number"
-          value={baths}
-          onChange={(e) => setBaths(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-400"
-          placeholder="Minimum Baths"
-        />
+        <SectionHeader title="Amenities & Features" section="amenities" />
+        {openSections.amenities && (
+          <div className="space-y-3 pl-2">
+            {/* Pool */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Pool</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPoolYn(poolYn === true ? undefined : true)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    poolYn === true ? "bg-emerald-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setPoolYn(poolYn === false ? undefined : false)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    poolYn === false ? "bg-red-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  No
+                </button>
+                <button
+                  onClick={() => setPoolYn(undefined)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    poolYn === undefined ? "bg-zinc-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+
+            {/* Spa */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Spa/Hot Tub</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSpaYn(spaYn === true ? undefined : true)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    spaYn === true ? "bg-emerald-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setSpaYn(spaYn === false ? undefined : false)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    spaYn === false ? "bg-red-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  No
+                </button>
+                <button
+                  onClick={() => setSpaYn(undefined)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    spaYn === undefined ? "bg-zinc-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+
+            {/* View */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">View</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewYn(viewYn === true ? undefined : true)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    viewYn === true ? "bg-emerald-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Has View
+                </button>
+                <button
+                  onClick={() => setViewYn(undefined)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    viewYn === undefined ? "bg-zinc-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+
+            {/* Garage */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Min Garage Spaces</label>
+              <input
+                type="number"
+                value={minGarages}
+                onChange={(e) => setMinGarages(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                placeholder="Any"
+                min="0"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Property Type */}
+      {/* ========== COMMUNITY & HOA ========== */}
       <div className="mb-4">
-        <label className="text-sm mb-1 block">Property Type</label>
-        <select
-          value={propertyType}
-          onChange={(e) => setPropertyType(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-white"
+        <SectionHeader title="Community & HOA" section="community" />
+        {openSections.community && (
+          <div className="space-y-3 pl-2">
+            {/* HOA Presence */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Has HOA</label>
+              <select
+                value={hoaPresence}
+                onChange={(e) => setHoaPresence(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="any">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            {/* Max HOA Fee */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Max HOA Fee (Monthly)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={hoa}
+                onChange={(e) => setHoa(e.target.value.replace(/\D/g, ""))}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                placeholder="No Limit"
+              />
+            </div>
+
+            {/* Gated Community */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Gated Community</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setGatedCommunity(gatedCommunity === true ? undefined : true)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    gatedCommunity === true ? "bg-emerald-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setGatedCommunity(undefined)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    gatedCommunity === undefined ? "bg-zinc-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+
+            {/* Senior Community */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">55+ Senior Community</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSeniorCommunity(seniorCommunity === true ? undefined : true)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    seniorCommunity === true ? "bg-emerald-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setSeniorCommunity(undefined)}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-md transition ${
+                    seniorCommunity === undefined ? "bg-zinc-600 text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========== LOCATION ========== */}
+      <div className="mb-4">
+        <SectionHeader title="Location" section="location" />
+        {openSections.location && (
+          <div className="space-y-3 pl-2">
+            {/* City */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">City</label>
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">All Cities</option>
+                <option value="Palm Springs">Palm Springs</option>
+                <option value="Cathedral City">Cathedral City</option>
+                <option value="Palm Desert">Palm Desert</option>
+                <option value="Rancho Mirage">Rancho Mirage</option>
+                <option value="Indian Wells">Indian Wells</option>
+                <option value="La Quinta">La Quinta</option>
+                <option value="Indio">Indio</option>
+                <option value="Coachella">Coachella</option>
+                <option value="Desert Hot Springs">Desert Hot Springs</option>
+              </select>
+            </div>
+
+            {/* Subdivision */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Subdivision/Community</label>
+              <input
+                type="text"
+                value={subdivision}
+                onChange={(e) => setSubdivision(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                placeholder="Search by name..."
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="sticky bottom-0 bg-zinc-950 pt-4 pb-2 border-t border-zinc-800 space-y-2">
+        <button
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-md transition duration-200"
+          onClick={handleApplyFilters}
         >
-          <option value="">Any</option>
-          <option value="Single Family Home">Single Family Home</option>
-          <option value="Condominium">Condominium</option>
-          <option value="Townhouse">Townhouse</option>
-          <option value="Manufactured Home">Manufactured Home</option>
-          <option value="Mobile Home">Mobile Home</option>
-        </select>
-      </div>
-
-      {/* HOA Presence */}
-      <div className="mb-4">
-        <label className="text-sm mb-1 block">Has HOA</label>
-        <select
-          value={hoaPresence}
-          onChange={(e) => setHoaPresence(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-white"
+          Apply Filters
+        </button>
+        <button
+          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-2 rounded-md transition duration-200"
+          onClick={handleClearFilters}
         >
-          <option value="any">Any</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
+          Clear All
+        </button>
       </div>
-
-      {/* Max HOA Fee */}
-      <div className="mb-4">
-        <label className="text-sm mb-1 block">Max HOA Fee</label>
-        <input
-          type="number"
-          value={hoa}
-          onChange={(e) => setHoa(e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-400"
-          placeholder="Max HOA Fee"
-        />
-      </div>
-
-      {/* Apply Button */}
-      <button
-        className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-md transition duration-200"
-        onClick={handleApplyFilters}
-      >
-        Apply Filters
-      </button>
     </aside>
   );
 }

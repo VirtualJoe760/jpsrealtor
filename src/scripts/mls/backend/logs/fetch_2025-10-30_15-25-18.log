@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\fetch.py", line 95, in <module>
+    fetch_all_listings()
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\fetch.py", line 35, in fetch_all_listings
+    print(f"\U0001f680 Fetching all listings with expansions: {', '.join(EXPANSIONS)}")
+  File "F:\python12\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\fetch.py", line 97, in <module>
+    print(f"\u274c Error in fetch.py: {e}")
+  File "F:\python12\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>

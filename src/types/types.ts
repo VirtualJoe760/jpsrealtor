@@ -48,13 +48,51 @@ export interface MapListing {
 }
 
 export type Filters = {
+  // Price
   minPrice: string;
   maxPrice: string;
+
+  // Beds/Baths
   beds: string;
   baths: string;
+
+  // Square Footage
+  minSqft: string;
+  maxSqft: string;
+
+  // Lot Size
+  minLotSize: string;
+  maxLotSize: string;
+
+  // Year Built
+  minYear: string;
+  maxYear: string;
+
+  // Property Type
   propertyType: string;
-  hoa: string;
+  propertySubType: string;
+
+  // Amenities (boolean filters)
   poolYn?: boolean;
   spaYn?: boolean;
+  viewYn?: boolean;
+  garageYn?: boolean;
+
+  // Garage count
+  minGarages: string;
+
+  // HOA
+  hoa: string;
   associationYN?: boolean;
+
+  // Community
+  gatedCommunity?: boolean;
+  seniorCommunity?: boolean;
+
+  // Land Type
+  landType: string;
+
+  // Location
+  city: string;
+  subdivision: string;
 };

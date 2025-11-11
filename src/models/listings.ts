@@ -230,9 +230,9 @@ export interface IListing extends Document {
 // -----------------------------
 
 const ListingSchema = new Schema<IListing>({
-  listingId: { type: String, required: true, unique: true },
-  slug: { type: String, required: true, unique: true },
-  slugAddress: String,
+  listingId: { type: String, required: true, unique: true, index: true },
+  slug: { type: String, required: true, unique: true, index: true },
+  slugAddress: { type: String, index: true, sparse: true },
 
   // Core
   status: String,
@@ -374,6 +374,28 @@ const ListingSchema = new Schema<IListing>({
   id: String,
   walkScore: Number,
 });
+
+// -----------------------------
+// Compound Indexes for Query Optimization
+// -----------------------------
+
+// Geographic + Status + Property Type (most common map queries)
+ListingSchema.index({ latitude: 1, longitude: 1, standardStatus: 1, propertyType: 1 });
+
+// Price range queries
+ListingSchema.index({ standardStatus: 1, listPrice: 1 });
+
+// Beds/Baths filtering
+ListingSchema.index({ standardStatus: 1, bedroomsTotal: 1, bathroomsFull: 1 });
+
+// City-based searches
+ListingSchema.index({ city: 1, standardStatus: 1, listPrice: 1 });
+
+// Subdivision searches
+ListingSchema.index({ subdivisionName: 1, standardStatus: 1 }, { sparse: true });
+
+// Features (pool, spa, HOA)
+ListingSchema.index({ standardStatus: 1, poolYn: 1, spaYn: 1, associationFee: 1 });
 
 // -----------------------------
 // Model Export (no default)

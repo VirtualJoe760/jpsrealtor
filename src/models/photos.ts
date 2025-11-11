@@ -32,6 +32,9 @@ const PhotoSchema: Schema<IPhoto> = new Schema({
   primary: Boolean,
 });
 
+// Compound index for optimized photo lookups
+PhotoSchema.index({ listingId: 1, primary: -1, Order: 1 });
+
 // ✅ Avoid model recompilation in development
 const Photo: Model<IPhoto> = mongoose.models.Photo || mongoose.model<IPhoto>('Photo', PhotoSchema);
 

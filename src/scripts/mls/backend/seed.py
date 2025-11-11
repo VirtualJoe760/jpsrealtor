@@ -1,9 +1,11 @@
+# src/scripts/mls/backend/seed.py
+
 import os
 import json
 import time  # Added to fix Pylance error
 from pathlib import Path
 from pymongo import MongoClient, UpdateOne
-from pymongo.errors import BulkWriteError, ConnectionError
+from pymongo.errors import BulkWriteError, ConnectionFailure, ServerSelectionTimeoutError
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,12 +20,18 @@ if not MONGODB_URI:
 retries = 3
 for attempt in range(retries):
     try:
-        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000, socketTimeoutMS=20000)
+        client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=10000,
+            socketTimeoutMS=20000,
+        )
+        # Force a server selection now (otherwise it's lazy)
+        client.admin.command("ping")
         db = client.get_database()
         collection = db.listings
         print("✅ Connected to MongoDB")
         break
-    except ConnectionError as e:
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
         if attempt == retries - 1:
             raise Exception(f"❌ Failed to connect to MongoDB after {retries} attempts: {e}")
         print(f"⚠️ MongoDB connection attempt {attempt + 1} failed, retrying...")
@@ -67,17 +75,21 @@ def seed():
             skipped += 1
             continue
 
+        # Normalize fields we rely on
         raw["listingId"] = listing_id
         raw["slug"] = slug
         raw["slugAddress"] = simple_slugify(address)
 
+        # Remove Mongo _id if present to avoid duplicate key errors on upsert
         raw.pop("_id", None)
 
-        operations.append(UpdateOne(
-            {"listingId": listing_id},
-            {"$set": raw},
-            upsert=True
-        ))
+        operations.append(
+            UpdateOne(
+                {"listingId": listing_id},
+                {"$set": raw},
+                upsert=True,
+            )
+        )
 
     if not operations:
         raise Exception("❌ No valid listings to update")
@@ -88,14 +100,17 @@ def seed():
     failed = 0
 
     for i in range(0, len(operations), batch_size):
-        chunk = operations[i:i + batch_size]
+        chunk = operations[i : i + batch_size]
         try:
             result = collection.bulk_write(chunk, ordered=False)
-            updated += result.upserted_count + result.modified_count
-            print(f"✅ Batch {i // batch_size + 1}: Modified {result.modified_count}, Upserted {result.upserted_count}")
+            modified = result.modified_count or 0
+            upserted = result.upserted_count or 0
+            updated += modified + upserted
+            print(f"✅ Batch {i // batch_size + 1}: Modified {modified}, Upserted {upserted}")
         except BulkWriteError as e:
-            failed += len(e.details.get("writeErrors", []))
-            print(f"⚠️ Batch {i // batch_size + 1} failed with {failed} errors")
+            batch_errors = len(e.details.get("writeErrors", [])) if e.details else 1
+            failed += batch_errors
+            print(f"⚠️ Batch {i // batch_size + 1} failed with {batch_errors} errors")
         except Exception as e:
             raise Exception(f"❌ Batch {i // batch_size + 1} failed: {e}")
 

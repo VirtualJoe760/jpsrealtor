@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SlidersHorizontal, Settings2 } from "lucide-react";
+import { SlidersHorizontal, Settings2, Search } from "lucide-react";
 import type { MapListing } from "@/types/types";
 
 type Props = {
@@ -133,21 +133,31 @@ export default function MapSearchBar({
 
   return (
     <>
-      <div className="fixed top-16 z-30 w-full px-4 py-2 bg-zinc-950 text-white flex items-center justify-between shadow-sm border-b border-zinc-800 md:border-none">
-        <button onClick={onToggleFilters} aria-label="Toggle Filters">
-          <SlidersHorizontal className="w-6 h-6" />
-        </button>
+      <div className="fixed top-16 z-30 w-full px-2 md:px-4 py-3 bg-zinc-950 text-white shadow-lg border-b border-zinc-800">
+        <div className="flex items-center justify-between gap-2 md:gap-4">
+          {/* Filters Toggle Button - FAR LEFT */}
+          <button
+            onClick={onToggleFilters}
+            aria-label="Toggle Filters"
+            className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <SlidersHorizontal className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
+          </button>
 
-        <div className="relative flex-1 mx-2 max-w-[500px]">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Address or cities in California..."
-            className="w-full px-2 py-2 text-start text-white bg-transparent placeholder-white focus:outline-none focus:ring-0 caret-transparent custom-caret"
-          />
+          {/* Search Bar - CENTER */}
+          <div className="relative flex-1 max-w-[600px] mx-auto">
+            <div className="relative flex items-center bg-zinc-900 border-2 border-zinc-700 rounded-lg hover:border-emerald-500 focus-within:border-emerald-500 transition-colors">
+              <Search className="absolute left-3 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by address, city, or neighborhood..."
+                className="w-full pl-10 md:pl-11 pr-3 py-2 md:py-2.5 text-sm md:text-base text-white bg-transparent placeholder-gray-400 focus:outline-none"
+              />
+            </div>
 
-          {showDropdown && results.length > 0 && (
+            {showDropdown && results.length > 0 && (
             <ul
               ref={dropdownRef}
               className="absolute top-10 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:w-[700px] bg-zinc-900 border border-zinc-700 max-h-96 overflow-y-auto z-50 shadow-2xl"
@@ -193,41 +203,18 @@ export default function MapSearchBar({
               ))}
             </ul>
           )}
+          </div>
+
+          {/* Favorites/Settings Toggle Button - FAR RIGHT */}
+          <button
+            onClick={onToggle}
+            aria-label="Toggle Sidebar"
+            className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <Settings2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
+          </button>
         </div>
-
-        <button onClick={onToggle} aria-label="Toggle Sidebar">
-          <Settings2 className="w-6 h-6" />
-        </button>
       </div>
-
-      <style jsx global>{`
-        .custom-caret {
-          position: relative;
-        }
-
-        .custom-caret::after {
-          content: "";
-          position: absolute;
-          top: 50%;
-          left: 0.5ch;
-          transform: translateY(-50%);
-          width: 3px;
-          height: 1.25em;
-          background-color: #10b981; /* emerald-500 */
-          animation: blinkCaret 1.2s infinite;
-          pointer-events: none;
-        }
-
-        @keyframes blinkCaret {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0;
-          }
-        }
-      `}</style>
     </>
   );
 }

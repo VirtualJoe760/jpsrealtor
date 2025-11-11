@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\flatten.py", line 113, in <module>
+    run()
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\flatten.py", line 76, in run
+    print(f"\U0001f4c4 Loading listings from {input_path}")
+  File "F:\python12\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4c4' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\web-clients\joseph-sardella\jpsrealtor\src\scripts\mls\backend\flatten.py", line 115, in <module>
+    print(f"\u274c Error in flatten.py: {e}")
+  File "F:\python12\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>

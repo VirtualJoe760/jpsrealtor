@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const lngMin = parseFloat(query.get("west") || "-180");
   const lngMax = parseFloat(query.get("east") || "180");
 
-  const filters: Record<string, any> = {
+  const matchStage: Record<string, any> = {
     standardStatus: "Active",
     propertyType: "A",
     latitude: { $gte: latMin, $lte: latMax },
@@ -28,23 +28,26 @@ export async function GET(req: NextRequest) {
     listPrice: { $ne: null },
   };
 
+  // ==================== PROPERTY TYPE FILTERS ====================
   const queryPropertyType = query.get("propertyType");
   if (queryPropertyType && queryPropertyType !== "A") {
-    filters.propertyType = queryPropertyType;
+    matchStage.propertyType = queryPropertyType;
   }
 
   const propertySubType = query.get("propertySubType");
-  if (propertySubType) {
-    filters.propertySubType = propertySubType;
+  if (propertySubType && propertySubType !== "all") {
+    matchStage.propertySubType = propertySubType;
   }
 
+  // ==================== PRICE FILTERS ====================
   const minPrice = Number(query.get("minPrice") || "0");
   const maxPrice = Number(query.get("maxPrice") || "99999999");
-  filters.listPrice = { $gte: minPrice, $lte: maxPrice };
+  matchStage.listPrice = { $gte: minPrice, $lte: maxPrice };
 
+  // ==================== BEDS/BATHS FILTERS ====================
   const beds = Number(query.get("beds") || "0");
   if (beds > 0) {
-    filters.$or = [
+    matchStage.$or = [
       { bedroomsTotal: { $gte: beds } },
       { bedsTotal: { $gte: beds } },
     ];
@@ -52,30 +55,90 @@ export async function GET(req: NextRequest) {
 
   const baths = Number(query.get("baths") || "0");
   if (baths > 0) {
-    filters.bathroomsFull = { $gte: baths };
+    matchStage.bathroomsFull = { $gte: baths };
   }
 
+  // ==================== SQUARE FOOTAGE FILTERS ====================
+  const minSqft = Number(query.get("minSqft") || "0");
+  const maxSqft = Number(query.get("maxSqft") || "999999999");
+  if (minSqft > 0 || maxSqft < 999999999) {
+    matchStage.livingArea = { $gte: minSqft, $lte: maxSqft };
+  }
+
+  // ==================== LOT SIZE FILTERS ====================
+  const minLotSize = Number(query.get("minLotSize") || "0");
+  const maxLotSize = Number(query.get("maxLotSize") || "999999999");
+  if (minLotSize > 0 || maxLotSize < 999999999) {
+    matchStage.lotSizeSqft = { $gte: minLotSize, $lte: maxLotSize };
+  }
+
+  // ==================== YEAR BUILT FILTERS ====================
+  const minYear = Number(query.get("minYear") || "0");
+  const maxYear = Number(query.get("maxYear") || new Date().getFullYear());
+  if (minYear > 0 || maxYear < new Date().getFullYear()) {
+    matchStage.yearBuilt = { $gte: minYear, $lte: maxYear };
+  }
+
+  // ==================== AMENITY FILTERS (Pool, Spa, etc.) ====================
   const hasPool = query.get("pool");
-  if (hasPool === "true") filters.poolYn = true;
-  else if (hasPool === "false") filters.poolYn = { $ne: true };
+  if (hasPool === "true") matchStage.poolYn = true;
+  else if (hasPool === "false") matchStage.poolYn = { $ne: true };
 
   const hasSpa = query.get("spa");
-  if (hasSpa === "true") filters.spaYn = true;
-  else if (hasSpa === "false") filters.spaYn = { $ne: true };
+  if (hasSpa === "true") matchStage.spaYn = true;
+  else if (hasSpa === "false") matchStage.spaYn = { $ne: true };
 
+  const hasView = query.get("view");
+  if (hasView === "true") matchStage.viewYn = true;
+
+  const hasGarage = query.get("garage");
+  if (hasGarage === "true") {
+    matchStage.garageSpaces = { $gte: 1 };
+  }
+
+  const minGarages = Number(query.get("minGarages") || "0");
+  if (minGarages > 0) {
+    matchStage.garageSpaces = { $gte: minGarages };
+  }
+
+  // ==================== HOA FILTERS ====================
   const hasHOA = query.get("hasHOA");
   if (hasHOA === "true") {
-    filters.associationFee = { ...filters.associationFee, $gt: 0 };
+    matchStage.associationFee = { ...matchStage.associationFee, $gt: 0 };
   } else if (hasHOA === "false") {
-    filters.associationFee = { ...filters.associationFee, $in: [0, null] };
+    matchStage.associationFee = { ...matchStage.associationFee, $in: [0, null] };
   }
 
   const hoaMax = Number(query.get("hoa") || "");
   if (!isNaN(hoaMax) && hoaMax > 0) {
-    filters.associationFee = {
-      ...(filters.associationFee || {}),
+    matchStage.associationFee = {
+      ...(matchStage.associationFee || {}),
       $lte: hoaMax,
     };
+  }
+
+  // ==================== COMMUNITY FILTERS ====================
+  const gatedCommunity = query.get("gated");
+  if (gatedCommunity === "true") matchStage.gatedCommunity = true;
+
+  const seniorCommunity = query.get("senior");
+  if (seniorCommunity === "true") matchStage.seniorCommunityYn = true;
+
+  // ==================== LAND TYPE FILTERS ====================
+  const landType = query.get("landType");
+  if (landType && landType !== "all") {
+    matchStage.landType = landType;
+  }
+
+  // ==================== LOCATION FILTERS ====================
+  const city = query.get("city");
+  if (city && city !== "all") {
+    matchStage.city = { $regex: new RegExp(city, "i") };
+  }
+
+  const subdivision = query.get("subdivision");
+  if (subdivision) {
+    matchStage.subdivisionName = { $regex: new RegExp(subdivision, "i") };
   }
 
   const skip = parseInt(query.get("skip") || "0", 10);
@@ -87,56 +150,113 @@ export async function GET(req: NextRequest) {
   const sortField = validSortFields.includes(sortBy) ? sortBy : "listPrice";
 
   try {
-    const listings: IListing[] = await Listing.find(filters, {
-      listingId: 1,
-      slug: 1,
-      slugAddress: 1,
-      listPrice: 1,
-      bedroomsTotal: 1,
-      bedsTotal: 1,
-      bathroomsFull: 1,
-      bathroomsTotalInteger: 1,
-      livingArea: 1,
-      lotSizeSqft: 1,
-      latitude: 1,
-      longitude: 1,
-      address: 1,
-      unparsedAddress: 1,
-      unparsedFirstLineAddress: 1,
-      poolYn: 1,
-      spaYn: 1,
-      publicRemarks: 1,
-      propertyType: 1,
-      propertySubType: 1,
-      associationFee: 1,
-    })
-      .sort({ [sortField]: sortOrder })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // 🚀 Use MongoDB Aggregation Pipeline - Single query instead of N+1
+    const listings = await Listing.aggregate([
+      // Stage 1: Filter listings
+      { $match: matchStage },
 
-    const listingsWithExtras = await Promise.all(
-      listings.map(async (listing) => {
-        const [photo, openHouses] = await Promise.all([
-          Photo.findOne({ listingId: String(listing.listingId) })
-            .sort({ primary: -1, Order: 1 })
-            .lean(),
-          OpenHouse.find({ listingId: listing.listingId }).lean(),
-        ]);
+      // Stage 2: Sort
+      { $sort: { [sortField]: sortOrder } },
 
-        return {
-          ...listing,
-          pool: listing.poolYn === true,
-          spa: listing.spaYn === true,
-          hasHOA: listing.associationFee! > 0,
-          primaryPhotoUrl: photo?.uri800 || "/images/no-photo.png",
-          openHouses,
-        };
-      })
+      // Stage 3: Pagination
+      { $skip: skip },
+      { $limit: limit },
+
+      // Stage 4: Join with photos (get primary photo)
+      {
+        $lookup: {
+          from: "photos",
+          let: { listingId: { $toString: "$listingId" } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$listingId", "$$listingId"] } } },
+            { $sort: { primary: -1, Order: 1 } },
+            { $limit: 1 },
+            { $project: { uri800: 1, _id: 0 } }
+          ],
+          as: "photo"
+        }
+      },
+
+      // Stage 5: Join with open houses
+      {
+        $lookup: {
+          from: "openhouses",
+          localField: "listingId",
+          foreignField: "listingId",
+          as: "openHouses"
+        }
+      },
+
+      // Stage 6: Project only needed fields & compute derived fields
+      {
+        $project: {
+          _id: 1, // ✅ Include MongoDB _id for React keys and selection tracking
+          listingId: 1,
+          slug: 1,
+          slugAddress: 1,
+          listPrice: 1,
+          bedroomsTotal: 1,
+          bedsTotal: 1,
+          bathroomsFull: 1,
+          bathroomsTotalInteger: 1,
+          livingArea: 1,
+          lotSizeSqft: 1,
+          latitude: 1,
+          longitude: 1,
+          address: 1,
+          unparsedAddress: 1,
+          unparsedFirstLineAddress: 1,
+          poolYn: 1,
+          spaYn: 1,
+          publicRemarks: 1,
+          propertyType: 1,
+          propertySubType: 1,
+          associationFee: 1,
+          yearBuilt: 1,
+          garageSpaces: 1,
+          city: 1,
+          subdivisionName: 1,
+          landType: 1,
+          viewYn: 1,
+          gatedCommunity: 1,
+          seniorCommunityYn: 1,
+          pool: { $eq: ["$poolYn", true] },
+          spa: { $eq: ["$spaYn", true] },
+          hasHOA: { $gt: [{ $ifNull: ["$associationFee", 0] }, 0] },
+          primaryPhotoUrl: {
+            $ifNull: [
+              { $arrayElemAt: ["$photo.uri800", 0] },
+              "/images/no-photo.png"
+            ]
+          },
+          openHouses: {
+            $map: {
+              input: "$openHouses",
+              as: "oh",
+              in: {
+                listingId: "$$oh.listingId",
+                openHouseId: "$$oh.openHouseId",
+                date: "$$oh.date",
+                startTime: "$$oh.startTime",
+                endTime: "$$oh.endTime"
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    console.log(`✅ Fetched ${listings.length} listings using aggregation pipeline`);
+
+    // Add cache headers for better performance
+    return NextResponse.json(
+      { listings },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        }
+      }
     );
-
-    console.log(`✅ Fetched ${listingsWithExtras.length} listings`);
-    return NextResponse.json({ listings: listingsWithExtras });
   } catch (error) {
     console.error("❌ Failed to fetch filtered listings:", error);
     return NextResponse.json({ error: "Database error" }, { status: 500 });
