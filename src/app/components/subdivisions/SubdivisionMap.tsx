@@ -186,11 +186,24 @@ export default function SubdivisionMap({
       const popup = new maplibregl.Popup({
         offset: 25,
         closeButton: true,
-        closeOnClick: true,
+        closeOnClick: false,
         maxWidth: "240px",
         className: "listing-popup",
         anchor: "bottom",
       }).setHTML(popupContent);
+
+      // Ensure close button is visible
+      popup.on('open', () => {
+        const closeBtn = document.querySelector('.maplibregl-popup-close-button');
+        if (closeBtn) {
+          (closeBtn as HTMLElement).style.display = 'block';
+          (closeBtn as HTMLElement).style.fontSize = '20px';
+          (closeBtn as HTMLElement).style.padding = '4px 8px';
+          (closeBtn as HTMLElement).style.color = '#374151';
+          (closeBtn as HTMLElement).style.cursor = 'pointer';
+          (closeBtn as HTMLElement).style.zIndex = '10';
+        }
+      });
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([listing.longitude, listing.latitude])
