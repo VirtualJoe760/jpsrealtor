@@ -98,6 +98,7 @@ export async function GET(
             stateOrProvince: 1,
             postalCode: 1,
             listPrice: 1,
+            bedsTotal: 1,
             bedroomsTotal: 1,
             bathroomsTotalDecimal: 1,
             livingArea: 1,
@@ -132,6 +133,7 @@ export async function GET(
             stateOrProvince: 1,
             postalCode: 1,
             listPrice: 1,
+            bedsTotal: 1,
             bedroomsTotal: 1,
             bathroomsTotalDecimal: 1,
             livingArea: 1,
@@ -195,9 +197,15 @@ export async function GET(
       const streetAddress = listing.unparsedAddress || listing.address;
       const fullAddress = streetAddress || "";
 
+      // Use bedroomsTotal or bedsTotal, whichever has a value
+      const bedrooms = listing.bedroomsTotal !== undefined && listing.bedroomsTotal !== null
+        ? listing.bedroomsTotal
+        : listing.bedsTotal;
+
       return {
         ...listing,
         address: fullAddress, // Use unparsedAddress as the primary address field
+        bedroomsTotal: bedrooms, // Normalize to bedroomsTotal
         primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
       };
     });

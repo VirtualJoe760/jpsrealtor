@@ -102,6 +102,7 @@ export async function GET(
           stateOrProvince: 1,
           postalCode: 1,
           listPrice: 1,
+          bedsTotal: 1,
           bedroomsTotal: 1,
           bathroomsTotalDecimal: 1,
         })
@@ -125,6 +126,7 @@ export async function GET(
           stateOrProvince: 1,
           postalCode: 1,
           listPrice: 1,
+          bedsTotal: 1,
           bedroomsTotal: 1,
           bathroomsTotalDecimal: 1,
         })
@@ -151,6 +153,11 @@ export async function GET(
         ].filter(Boolean);
         const fullAddress = addressParts.join(", ");
 
+        // Use bedroomsTotal or bedsTotal, whichever has a value
+        const bedrooms = listingDetails.bedroomsTotal !== undefined && listingDetails.bedroomsTotal !== null
+          ? listingDetails.bedroomsTotal
+          : listingDetails.bedsTotal || 0;
+
         return {
           photoId: photo.photoId,
           listingId: photo.listingId,
@@ -169,7 +176,7 @@ export async function GET(
           // Listing details
           address: fullAddress || "Address not available",
           listPrice: listingDetails.listPrice || 0,
-          bedroomsTotal: listingDetails.bedroomsTotal || 0,
+          bedroomsTotal: bedrooms,
           bathroomsTotalDecimal: listingDetails.bathroomsTotalDecimal || 0,
         };
       })
