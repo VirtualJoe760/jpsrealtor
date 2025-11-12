@@ -92,6 +92,7 @@ export async function GET(
             listingId: 1,
             listingKey: 1,
             slug: 1,
+            slugAddress: 1,
             unparsedAddress: 1,
             address: 1,
             city: 1,
@@ -127,6 +128,7 @@ export async function GET(
             listingId: 1,
             listingKey: 1,
             slug: 1,
+            slugAddress: 1,
             unparsedAddress: 1,
             address: 1,
             city: 1,
@@ -205,6 +207,7 @@ export async function GET(
       return {
         ...listing,
         address: fullAddress, // Use unparsedAddress as the primary address field
+        slug: listing.slugAddress || listing.slug, // Use slugAddress for routing
         bedroomsTotal: bedrooms, // Normalize to bedroomsTotal
         primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
       };

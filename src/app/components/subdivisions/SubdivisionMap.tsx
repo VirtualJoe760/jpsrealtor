@@ -111,128 +111,102 @@ export default function SubdivisionMap({
     validListings.forEach((listing) => {
       if (!listing.latitude || !listing.longitude) return;
 
-      // Create custom marker element with photo
+      // Create custom blue dot marker
       const el = document.createElement("div");
       el.className = "custom-marker";
-      el.style.width = "50px";
-      el.style.height = "50px";
-      el.style.borderRadius = "8px";
-      el.style.backgroundColor = "white";
-      el.style.border = "2px solid #2563eb";
-      el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.3)";
+      el.style.width = "20px";
+      el.style.height = "20px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = "#2563eb";
+      el.style.border = "3px solid white";
+      el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
       el.style.cursor = "pointer";
-      el.style.overflow = "hidden";
-      el.style.position = "relative";
-      el.style.transition = "transform 0.2s";
+      el.style.transition = "transform 0.2s, box-shadow 0.2s";
 
       // Add hover effect
       el.onmouseenter = () => {
-        el.style.transform = "scale(1.1)";
+        el.style.transform = "scale(1.3)";
+        el.style.boxShadow = "0 4px 8px rgba(0,0,0,0.5)";
         el.style.zIndex = "1000";
       };
       el.onmouseleave = () => {
         el.style.transform = "scale(1)";
+        el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
         el.style.zIndex = "auto";
       };
 
-      // Add photo if available
-      if (listing.primaryPhotoUrl) {
-        const img = document.createElement("img");
-        img.src = listing.primaryPhotoUrl;
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.objectFit = "cover";
-        el.appendChild(img);
-      } else {
-        // Fallback to icon if no photo
-        el.style.display = "flex";
-        el.style.alignItems = "center";
-        el.style.justifyContent = "center";
-        el.style.backgroundColor = "#2563eb";
-        el.innerHTML = `
-          <svg width="24" height="24" fill="white" viewBox="0 0 20 20">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-          </svg>
-        `;
-      }
+      // Build slug for navigation
+      const listingSlug = listing.slug || "";
 
-      // Format price for display
-      const priceLabel =
-        listing.listPrice && listing.listPrice >= 1000000
-          ? `$${(listing.listPrice / 1000000).toFixed(1)}M`
-          : listing.listPrice && listing.listPrice >= 1000
-          ? `$${Math.round(listing.listPrice / 1000)}k`
-          : "N/A";
-
-      // Enhanced popup content with photo
+      // Enhanced popup content with photo and clickable link
       const popupContent = `
-        <div class="min-w-[250px] max-w-[300px]">
-          ${
-            listing.primaryPhotoUrl
-              ? `<div class="relative h-40 mb-3">
-                  <img
-                    src="${listing.primaryPhotoUrl}"
-                    alt="Property"
-                    class="w-full h-full object-cover rounded-t-lg"
-                  />
-                </div>`
-              : ""
-          }
-          <div class="p-3">
-            <div class="text-xl font-bold text-blue-600 mb-2">
-              ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
-            </div>
-            <div class="text-sm text-gray-700 mb-2 font-medium">
-              ${listing.address || "Address not available"}
-            </div>
+        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity">
+          <div class="min-w-[280px] max-w-[320px]">
             ${
-              listing.bedroomsTotal || listing.bathroomsTotalDecimal
-                ? `<div class="flex gap-3 text-sm text-gray-600">
-                    ${
-                      listing.bedroomsTotal
-                        ? `<div class="flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                            </svg>
-                            <span>${listing.bedroomsTotal} bed${listing.bedroomsTotal !== 1 ? "s" : ""}</span>
-                          </div>`
-                        : ""
-                    }
-                    ${
-                      listing.bathroomsTotalDecimal
-                        ? `<div class="flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
-                              <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5.586l-2.293-2.293A1 1 0 0014.586 7H14z"/>
-                            </svg>
-                            <span>${listing.bathroomsTotalDecimal} bath${listing.bathroomsTotalDecimal !== 1 ? "s" : ""}</span>
-                          </div>`
-                        : ""
-                    }
+              listing.primaryPhotoUrl
+                ? `<div class="relative h-44 mb-3 rounded-t-lg overflow-hidden">
+                    <img
+                      src="${listing.primaryPhotoUrl}"
+                      alt="Property"
+                      class="w-full h-full object-cover"
+                    />
                   </div>`
-                : ""
+                : `<div class="relative h-44 mb-3 rounded-t-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                    <svg class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                  </div>`
             }
+            <div class="px-3 pb-3">
+              <div class="text-2xl font-bold text-blue-600 mb-2">
+                ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
+              </div>
+              <div class="text-sm text-gray-700 mb-2 font-medium leading-snug">
+                ${listing.address || "Address not available"}
+              </div>
+              ${
+                listing.bedroomsTotal !== undefined || listing.bathroomsTotalDecimal !== undefined
+                  ? `<div class="flex gap-3 text-xs text-gray-600">
+                      ${
+                        listing.bedroomsTotal !== undefined && listing.bedroomsTotal !== null
+                          ? `<div class="flex items-center gap-1">
+                              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                              </svg>
+                              <span>${listing.bedroomsTotal}bd</span>
+                            </div>`
+                          : ""
+                      }
+                      ${
+                        listing.bathroomsTotalDecimal !== undefined && listing.bathroomsTotalDecimal !== null
+                          ? `<div class="flex items-center gap-1">
+                              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5.586l-2.293-2.293A1 1 0 0014.586 7H14z"/>
+                              </svg>
+                              <span>${listing.bathroomsTotalDecimal}ba</span>
+                            </div>`
+                          : ""
+                      }
+                    </div>`
+                  : ""
+              }
+            </div>
           </div>
-        </div>
+        </a>
       `;
 
       const popup = new maplibregl.Popup({
-        offset: 30,
+        offset: 15,
         closeButton: true,
         maxWidth: "350px",
+        className: "listing-popup",
       }).setHTML(popupContent);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([listing.longitude, listing.latitude])
         .setPopup(popup)
         .addTo(map.current!);
-
-      // Click handler
-      el.addEventListener("click", () => {
-        if (onListingClick) {
-          onListingClick(listing);
-        }
-      });
 
       markersRef.current.push(marker);
     });
