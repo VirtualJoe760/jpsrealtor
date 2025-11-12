@@ -127,24 +127,24 @@ export default function SubdivisionMap({
 
       // Enhanced popup content with photo and clickable link - smaller size
       const popupContent = `
-        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity">
+        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity rounded-lg overflow-hidden shadow-lg bg-white border border-gray-200">
           <div class="w-[220px]">
             ${
               listing.primaryPhotoUrl
-                ? `<div class="relative h-32 mb-2 rounded-t-lg overflow-hidden">
+                ? `<div class="relative h-32">
                     <img
                       src="${listing.primaryPhotoUrl}"
                       alt="Property"
                       class="w-full h-full object-cover"
                     />
                   </div>`
-                : `<div class="relative h-32 mb-2 rounded-t-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                : `<div class="relative h-32 bg-gray-200 flex items-center justify-center">
                     <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     </svg>
                   </div>`
             }
-            <div class="px-2.5 pb-2.5">
+            <div class="px-2.5 py-2.5">
               <div class="text-lg font-bold text-blue-600 mb-1.5">
                 ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
               </div>
@@ -186,22 +186,41 @@ export default function SubdivisionMap({
       const popup = new maplibregl.Popup({
         offset: 25,
         closeButton: true,
-        closeOnClick: false,
+        closeOnClick: true,
         maxWidth: "240px",
         className: "listing-popup",
         anchor: "bottom",
       }).setHTML(popupContent);
 
-      // Ensure close button is visible
+      // Style close button and popup
       popup.on('open', () => {
+        const popupEl = document.querySelector('.maplibregl-popup-content');
         const closeBtn = document.querySelector('.maplibregl-popup-close-button');
+
+        if (popupEl) {
+          (popupEl as HTMLElement).style.padding = '0';
+          (popupEl as HTMLElement).style.borderRadius = '0.5rem';
+          (popupEl as HTMLElement).style.overflow = 'hidden';
+        }
+
         if (closeBtn) {
-          (closeBtn as HTMLElement).style.display = 'block';
-          (closeBtn as HTMLElement).style.fontSize = '20px';
-          (closeBtn as HTMLElement).style.padding = '4px 8px';
-          (closeBtn as HTMLElement).style.color = '#374151';
+          (closeBtn as HTMLElement).style.position = 'absolute';
+          (closeBtn as HTMLElement).style.top = '8px';
+          (closeBtn as HTMLElement).style.right = '8px';
+          (closeBtn as HTMLElement).style.fontSize = '24px';
+          (closeBtn as HTMLElement).style.fontWeight = 'bold';
+          (closeBtn as HTMLElement).style.color = 'white';
+          (closeBtn as HTMLElement).style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+          (closeBtn as HTMLElement).style.borderRadius = '50%';
+          (closeBtn as HTMLElement).style.width = '28px';
+          (closeBtn as HTMLElement).style.height = '28px';
+          (closeBtn as HTMLElement).style.display = 'flex';
+          (closeBtn as HTMLElement).style.alignItems = 'center';
+          (closeBtn as HTMLElement).style.justifyContent = 'center';
           (closeBtn as HTMLElement).style.cursor = 'pointer';
-          (closeBtn as HTMLElement).style.zIndex = '10';
+          (closeBtn as HTMLElement).style.zIndex = '100';
+          (closeBtn as HTMLElement).style.lineHeight = '1';
+          (closeBtn as HTMLElement).style.padding = '0';
         }
       });
 
