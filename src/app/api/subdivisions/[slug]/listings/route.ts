@@ -6,6 +6,7 @@ import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
 import { Listing } from "@/models/listings";
 import { CRMLSListing } from "@/models/crmls-listings";
+import Photo from "@/models/photos";
 
 export async function GET(
   req: NextRequest,
@@ -152,6 +153,45 @@ export async function GET(
 
     // Apply limit to combined results
     listings = listings.slice(0, limit);
+
+    // Fetch primary photos for all listings
+    const listingIds = listings.map((l) => l.listingId);
+    const photos = await Photo.find({
+      listingId: { $in: listingIds },
+      primary: true,
+    })
+      .select({
+        listingId: 1,
+        uri1600: 1,
+        uri1280: 1,
+        uri1024: 1,
+        uri800: 1,
+        uri640: 1,
+        uri300: 1,
+        uriLarge: 1,
+      })
+      .lean();
+
+    // Create a map of listingId to photo URL
+    const photoMap = new Map();
+    photos.forEach((photo) => {
+      const photoUrl =
+        photo.uri1600 ||
+        photo.uri1280 ||
+        photo.uri1024 ||
+        photo.uri800 ||
+        photo.uri640 ||
+        photo.uri300 ||
+        photo.uriLarge ||
+        "";
+      photoMap.set(photo.listingId, photoUrl);
+    });
+
+    // Attach photos to listings
+    listings = listings.map((listing) => ({
+      ...listing,
+      primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
+    }));
 
     return NextResponse.json({
       listings,

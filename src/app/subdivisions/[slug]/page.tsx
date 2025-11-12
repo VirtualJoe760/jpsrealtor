@@ -146,13 +146,13 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
         {/* Map */}
         {subdivision.coordinates && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Location</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Location & Listings Map</h2>
             <SubdivisionMap
+              subdivisionSlug={params.slug}
               subdivision={{
                 name: subdivision.name,
                 coordinates: subdivision.coordinates,
               }}
-              listings={[]}
               height="500px"
             />
           </div>

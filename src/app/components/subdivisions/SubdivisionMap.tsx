@@ -23,15 +23,15 @@ interface Subdivision {
 }
 
 interface SubdivisionMapProps {
+  subdivisionSlug: string;
   subdivision: Subdivision;
-  listings: Listing[];
   onListingClick?: (listing: Listing) => void;
   height?: string;
 }
 
 export default function SubdivisionMap({
+  subdivisionSlug,
   subdivision,
-  listings,
   onListingClick,
   height = "400px",
 }: SubdivisionMapProps) {
@@ -39,6 +39,26 @@ export default function SubdivisionMap({
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch listings for this subdivision
+  useEffect(() => {
+    async function fetchListings() {
+      try {
+        const response = await fetch(`/api/subdivisions/${subdivisionSlug}/listings?limit=50`);
+        if (response.ok) {
+          const data = await response.json();
+          setListings(data.listings || []);
+        }
+      } catch (error) {
+        console.error("Error fetching listings for map:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchListings();
+  }, [subdivisionSlug]);
 
   // Initialize map
   useEffect(() => {
@@ -183,15 +203,17 @@ export default function SubdivisionMap({
         style={{ width: "100%", height }}
         className="rounded-lg overflow-hidden shadow-md"
       />
-      {!mapLoaded && (
+      {(!mapLoaded || loading) && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600">Loading map...</p>
+            <p className="text-sm text-gray-600">
+              {loading ? "Loading listings..." : "Loading map..."}
+            </p>
           </div>
         </div>
       )}
-      {mapLoaded && listings.length === 0 && (
+      {mapLoaded && !loading && listings.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80">
           <p className="text-gray-600">No listings to display on map</p>
         </div>

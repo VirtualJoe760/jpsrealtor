@@ -72,33 +72,87 @@ export async function GET(
       return NextResponse.json({ photos: [] });
     }
 
-    // Fetch photos for these listings from Photo model
-    // Prioritize primary photos, but get multiple per listing
-    const photos = await Photo.find({
-      listingId: { $in: listingIds },
-    })
-      .sort({ listingId: 1, primary: -1, Order: 1 })
-      .limit(limit)
-      .lean();
+    // Get one primary photo per listing
+    // Group by listingId and get only primary photos
+    const photos = await Photo.aggregate([
+      {
+        $match: {
+          listingId: { $in: listingIds },
+          primary: true, // Only get primary photos
+        },
+      },
+      {
+        $limit: limit,
+      },
+    ]);
 
-    // Transform photos to include best available URI
-    const transformedPhotos = photos.map((photo) => ({
-      photoId: photo.photoId,
-      listingId: photo.listingId,
-      caption: photo.caption || "",
-      src:
-        photo.uri1600 ||
-        photo.uri1280 ||
-        photo.uri1024 ||
-        photo.uri800 ||
-        photo.uri640 ||
-        photo.uri300 ||
-        photo.uriLarge ||
-        "",
-      thumb: photo.uriThumb || photo.uri300 || "",
-      primary: photo.primary || false,
-      order: photo.Order || 0,
-    })).filter((p) => p.src); // Only include photos with valid src
+    // Get listing details for each photo
+    const listingDetailsMap = new Map();
+
+    if (subdivision.mlsSources.includes("GPS")) {
+      const gpsListings = await Listing.find({
+        listingId: { $in: photos.map((p) => p.listingId) },
+      })
+        .select({
+          listingId: 1,
+          address: 1,
+          listPrice: 1,
+          bedroomsTotal: 1,
+          bathroomsTotalDecimal: 1,
+        })
+        .lean();
+
+      gpsListings.forEach((listing) => {
+        listingDetailsMap.set(listing.listingId, listing);
+      });
+    }
+
+    if (subdivision.mlsSources.includes("CRMLS")) {
+      const crmlsListings = await CRMLSListing.find({
+        listingId: { $in: photos.map((p) => p.listingId) },
+      })
+        .select({
+          listingId: 1,
+          address: 1,
+          listPrice: 1,
+          bedroomsTotal: 1,
+          bathroomsTotalDecimal: 1,
+        })
+        .lean();
+
+      crmlsListings.forEach((listing) => {
+        listingDetailsMap.set(listing.listingId, listing);
+      });
+    }
+
+    // Transform photos to include listing details
+    const transformedPhotos = photos
+      .map((photo) => {
+        const listingDetails = listingDetailsMap.get(photo.listingId);
+        if (!listingDetails) return null;
+
+        return {
+          photoId: photo.photoId,
+          listingId: photo.listingId,
+          caption: photo.caption || "",
+          src:
+            photo.uri1600 ||
+            photo.uri1280 ||
+            photo.uri1024 ||
+            photo.uri800 ||
+            photo.uri640 ||
+            photo.uri300 ||
+            photo.uriLarge ||
+            "",
+          thumb: photo.uriThumb || photo.uri300 || "",
+          // Listing details
+          address: listingDetails.address || "",
+          listPrice: listingDetails.listPrice || 0,
+          bedroomsTotal: listingDetails.bedroomsTotal || 0,
+          bathroomsTotalDecimal: listingDetails.bathroomsTotalDecimal || 0,
+        };
+      })
+      .filter((p) => p && p.src); // Only include photos with valid src
 
     return NextResponse.json({
       photos: transformedPhotos,
