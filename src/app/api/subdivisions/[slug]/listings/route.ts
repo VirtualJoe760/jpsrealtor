@@ -92,6 +92,7 @@ export async function GET(
             listingId: 1,
             listingKey: 1,
             slug: 1,
+            unparsedAddress: 1,
             address: 1,
             city: 1,
             stateOrProvince: 1,
@@ -125,6 +126,7 @@ export async function GET(
             listingId: 1,
             listingKey: 1,
             slug: 1,
+            unparsedAddress: 1,
             address: 1,
             city: 1,
             stateOrProvince: 1,
@@ -187,11 +189,18 @@ export async function GET(
       photoMap.set(photo.listingId, photoUrl);
     });
 
-    // Attach photos to listings
-    listings = listings.map((listing) => ({
-      ...listing,
-      primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
-    }));
+    // Attach photos to listings and build full address
+    listings = listings.map((listing) => {
+      // Use unparsedAddress or address for the street address
+      const streetAddress = listing.unparsedAddress || listing.address;
+      const fullAddress = streetAddress || "";
+
+      return {
+        ...listing,
+        address: fullAddress, // Use unparsedAddress as the primary address field
+        primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
+      };
+    });
 
     return NextResponse.json({
       listings,

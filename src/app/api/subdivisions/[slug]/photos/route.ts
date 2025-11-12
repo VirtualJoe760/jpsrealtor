@@ -95,6 +95,7 @@ export async function GET(
       })
         .select({
           listingId: 1,
+          unparsedAddress: 1,
           address: 1,
           city: 1,
           stateOrProvince: 1,
@@ -116,6 +117,7 @@ export async function GET(
       })
         .select({
           listingId: 1,
+          unparsedAddress: 1,
           address: 1,
           city: 1,
           stateOrProvince: 1,
@@ -137,9 +139,10 @@ export async function GET(
         const listingDetails = listingDetailsMap.get(photo.listingId);
         if (!listingDetails) return null;
 
-        // Build complete address
+        // Build complete address using unparsedAddress or address
+        const streetAddress = listingDetails.unparsedAddress || listingDetails.address;
         const addressParts = [
-          listingDetails.address,
+          streetAddress,
           listingDetails.city,
           listingDetails.stateOrProvince,
           listingDetails.postalCode,
