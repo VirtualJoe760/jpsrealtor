@@ -77,6 +77,8 @@ export default function ListingBottomPanel({
   const [gestureDirection, setGestureDirection] = useState<
     "horizontal" | "vertical" | null
   >(null);
+  const dragStartTimeRef = useRef<number>(0);
+  const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
     setMounted(true);
@@ -212,19 +214,26 @@ export default function ListingBottomPanel({
 
   // Entrance animation
   useEffect(() => {
-    controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
-    dragX.set(0);
-    const id = requestAnimationFrame(() => {
-      controls.start({
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        rotate: 0,
-        transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
+    if (!mounted) return; // Don't animate until mounted
+
+    // Use setTimeout to ensure component is fully rendered
+    const timeoutId = setTimeout(() => {
+      controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
+      dragX.set(0);
+
+      requestAnimationFrame(() => {
+        controls.start({
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          rotate: 0,
+          transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
+        });
       });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [fullListing?.listingKey, controls, dragX]);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fullListing?.listingKey, controls, dragX, mounted]);
 
   const swipeOut = async (dir: "left" | "right") => {
     exitDirRef.current = dir;
@@ -257,8 +266,22 @@ export default function ListingBottomPanel({
     setTimeout(() => setSwipeMessage(null), 2000);
   };
 
+  const handleDragStart = () => {
+    dragStartTimeRef.current = Date.now();
+    dragStartPosRef.current = { x: dragX.get(), y: 0 };
+  };
+
   const handleDragEnd = (_e: any, info: { offset: { x: number }; velocity: { x: number } }) => {
     const { offset, velocity } = info;
+    const dragDuration = Date.now() - dragStartTimeRef.current;
+    const dragDistance = Math.abs(offset.x);
+
+    // Ignore very short drags (likely clicks)
+    if (dragDuration < 100 && dragDistance < 5) {
+      animate(dragX, 0, { type: "spring", stiffness: 380, damping: 32 });
+      return;
+    }
+
     const minOffset = Math.round((typeof window !== "undefined" ? window.innerWidth : 420) * SWIPE.minOffsetRatio);
 
     if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity) return swipeOut("left");
@@ -315,6 +338,7 @@ export default function ListingBottomPanel({
           drag="x"
           dragElastic={SWIPE.dragElastic}
           dragMomentum={false}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           {/* Close Button */}

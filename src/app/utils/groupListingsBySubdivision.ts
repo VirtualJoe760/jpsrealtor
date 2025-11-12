@@ -9,9 +9,12 @@ export interface GroupedListing {
  * Groups listings by subdivision name
  * Sorts by price within each subdivision (low to high)
  * Puts listings without subdivision in "Other" group at end
+ * @param listings - Array of listings to group
+ * @param prioritySubdivision - Optional subdivision name to prioritize at the top
  */
 export function groupListingsBySubdivision(
-  listings: MapListing[]
+  listings: MapListing[],
+  prioritySubdivision?: string | null
 ): GroupedListing[] {
   const grouped: Record<string, MapListing[]> = {};
 
@@ -28,6 +31,9 @@ export function groupListingsBySubdivision(
     grouped[subdivision].push(listing);
   });
 
+  // Normalize priority subdivision for comparison
+  const normalizedPriority = prioritySubdivision?.toLowerCase().trim() || null;
+
   // Convert to array and sort
   const result = Object.entries(grouped)
     .map(([subdivision, listings]) => ({
@@ -39,10 +45,22 @@ export function groupListingsBySubdivision(
         return priceA - priceB;
       }),
     }))
-    // Sort subdivisions alphabetically, with "Other" at end
+    // Sort subdivisions with priority at top, then alphabetically, with "Other" at end
     .sort((a, b) => {
+      const aLower = a.subdivision.toLowerCase();
+      const bLower = b.subdivision.toLowerCase();
+
+      // Priority subdivision comes first
+      if (normalizedPriority) {
+        if (aLower === normalizedPriority) return -1;
+        if (bLower === normalizedPriority) return 1;
+      }
+
+      // "Other" always at end
       if (a.subdivision === "Other") return 1;
       if (b.subdivision === "Other") return -1;
+
+      // Alphabetically otherwise
       return a.subdivision.localeCompare(b.subdivision);
     });
 

@@ -97,18 +97,26 @@ function getMarkerColors(propertyType?: string, mlsSource?: string, hovered?: bo
 
 const RAW_MARKER_ZOOM = 13; // show ALL markers (no clustering) when zoom >= 13
 
-// MapTiler API Key - temporarily hardcoded to fix loading issue
-const MAPTILER_KEY = "qPF7lP28DzKCz3Yhmgza";
+// MapTiler API Key - Use environment variable or fallback to OSM
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
 
 // Debug: Log API key status
 if (typeof window !== 'undefined') {
-  console.log(`🗺️ MapTiler: ✓ Using Toner & Satellite`);
+  if (MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here") {
+    console.log(`🗺️ MapTiler: ✓ Using MapTiler styles`);
+  } else {
+    console.log(`🗺️ Map: ✓ Using OpenStreetMap (free, no API key)`);
+  }
 }
 
-// MapTiler style URLs - Free styles (Toner, Streets, Satellite)
+// Map style URLs - Use OSM if MapTiler key not configured
 const MAP_STYLES = {
-  dark: `https://api.maptiler.com/maps/toner-v2/style.json?key=${MAPTILER_KEY}`,
-  hybrid: `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`,
+  dark: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/toner-v2/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  hybrid: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
 };
 
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
@@ -315,18 +323,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     updateClusters();
   };
 
-  /** ✅ Always keep the clicked marker selected.
-   * If panel is open and the click is for a different marker, ignore it to prevent background reselection. */
+  /** ✅ Handle marker clicks - allow switching between listings even when panel is open */
   const handleMarkerClick = (listing: MapListing) => {
-    // Prevent background reselection while the bottom panel is open
-    if (
-      panelOpenRef.current &&
-      lastSelectedIdRef.current &&
-      lastSelectedIdRef.current !== listing._id
-    ) {
-      return;
-    }
-
     // Clear hover state when selecting
     setHoveredId(null);
 

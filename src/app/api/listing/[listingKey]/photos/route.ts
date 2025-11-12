@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { Listing } from "@/models/listings";
+import { CRMLSListing } from "@/models/crmls-listings";
+import Photo from "@/models/photos";
 import { fetchListingPhotos } from "@/app/utils/spark/photos";
 
 interface RawPhoto {
@@ -27,48 +29,117 @@ export async function GET(
   const { listingKey } = params;
 
   try {
-    const listing = await Listing.findOne({ listingKey }).lean();
+    // 🔍 Try to find listing in GPS MLS first, then CRMLS
+    // GPS: uses "listingKey" field
+    // CRMLS: uses "listingKey" if populated, otherwise try "slug" or "listingId"
+    let listing: any = await Listing.findOne({ listingKey }).lean();
+    let mlsSource = "GPS";
+
+    if (!listing) {
+      // Try CRMLS collection - try listingKey, slug, or listingId
+      listing = await CRMLSListing.findOne({
+        $or: [
+          { listingKey },
+          { slug: listingKey },
+          { listingId: listingKey }
+        ]
+      }).lean();
+      mlsSource = "CRMLS";
+    }
 
     if (!listing) {
       console.warn("⚠️ No listing found for listingKey:", listingKey);
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    console.log("📸 Fetching Spark photos for:", listing.slug);
-    const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug);
+    console.log(`✅ Found ${mlsSource} listing:`, {
+      listingId: listing.listingId,
+      listingKey: listing.listingKey,
+      slug: listing.slug
+    });
 
-    if (!Array.isArray(rawPhotos)) {
-      console.warn("⚠️ No photos returned from Spark API for:", listing.slug);
-      return NextResponse.json({ photos: [] }, { status: 200 });
+    let safePhotos: any[] = [];
+
+    if (mlsSource === "CRMLS") {
+      // 📸 CRMLS: Fetch photos from Spark API using the listing's slug or listingId
+      console.log("📸 Fetching CRMLS photos from Spark API for:", listing.slug || listing.listingId);
+      const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug || listing.listingId);
+
+      if (!Array.isArray(rawPhotos)) {
+        console.warn("⚠️ No photos returned from Spark API for CRMLS listing:", listing.slug || listing.listingId);
+        return NextResponse.json({ photos: [] }, { status: 200 });
+      }
+
+      safePhotos = rawPhotos
+        .map((p: RawPhoto) => {
+          const src =
+            p.Uri2048 ||
+            p.Uri1600 ||
+            p.Uri1280 ||
+            p.Uri1024 ||
+            p.Uri800 ||
+            p.Uri640 ||
+            p.Uri300 ||
+            p.UriThumb ||
+            p.UriLarge ||
+            "";
+
+          if (!src) {
+            console.warn("⛔ Skipping photo with missing src:", {
+              photoId: p.Id,
+              caption: p.Caption,
+            });
+          }
+
+          return {
+            id: p.Id,
+            caption: p.Caption || "",
+            src,
+            primary: p.Primary ?? false,
+          };
+        })
+        .filter((p) => p.src);
+
+      console.log(`✅ Returning ${safePhotos.length} CRMLS photos from Spark API`);
+    } else {
+      // 📸 GPS: Fetch photos from Spark API
+      console.log("📸 Fetching GPS photos from Spark API for:", listing.slug);
+      const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug);
+
+      if (!Array.isArray(rawPhotos)) {
+        console.warn("⚠️ No photos returned from Spark API for:", listing.slug);
+        return NextResponse.json({ photos: [] }, { status: 200 });
+      }
+
+      safePhotos = rawPhotos
+        .map((p: RawPhoto) => {
+          const src =
+            p.Uri800 ||
+            p.Uri640 ||
+            p.Uri300 ||
+            p.UriThumb ||
+            p.UriLarge ||
+            "";
+
+          if (!src) {
+            console.warn("⛔ Skipping photo with missing src:", {
+              photoId: p.Id,
+              caption: p.Caption,
+            });
+          }
+
+          return {
+            id: p.Id,
+            caption: p.Caption || "",
+            src,
+            primary: p.Primary ?? false,
+          };
+        })
+        .filter((p) => p.src);
+
+      console.log(`✅ Returning ${safePhotos.length} GPS photos from Spark API`);
     }
 
-    const safePhotos = rawPhotos
-      .map((p: RawPhoto) => {
-        const src =
-          p.Uri800 ||
-          p.Uri640 ||
-          p.Uri300 ||
-          p.UriThumb ||
-          p.UriLarge ||
-          "";
-
-        if (!src) {
-          console.warn("⛔ Skipping photo with missing src:", {
-            photoId: p.Id,
-            caption: p.Caption,
-          });
-        }
-
-        return {
-          id: p.Id,
-          caption: p.Caption || "",
-          src,
-          primary: p.Primary ?? false,
-        };
-      })
-      .filter((p) => p.src);
-
-    console.log(`✅ Returning ${safePhotos.length} photos for:`, listing.slug);
     return NextResponse.json({ photos: safePhotos });
   } catch (error) {
     console.error("❌ Error fetching listing photos:", error);

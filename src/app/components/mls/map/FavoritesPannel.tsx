@@ -16,6 +16,7 @@ type Props = {
   favorites: MapListing[];
   dislikedListings: MapListing[];
   isSidebarOpen: boolean;
+  selectedListing?: MapListing | null;
   onClose: () => void;
   onSelectListing: (listing: MapListing) => void;
   onRemoveFavorite: (listing: MapListing) => void;
@@ -29,6 +30,7 @@ export default function FavoritesPannel({
   favorites,
   dislikedListings,
   isSidebarOpen,
+  selectedListing,
   onClose,
   onSelectListing,
   onRemoveFavorite,
@@ -195,26 +197,49 @@ export default function FavoritesPannel({
           ) : (
             <div className="space-y-6">
               {(() => {
-                const groupedListings = groupListingsBySubdivision(listingsToShow);
+                // Get the priority subdivision from the currently selected listing
+                const prioritySubdivision = selectedListing
+                  ? ((selectedListing as any).subdivisionName ||
+                     (selectedListing as any).subdivision)
+                  : null;
 
-                return groupedListings.map((group) => (
-                  <div key={group.subdivision}>
-                    {/* Subdivision Header */}
-                    <div className="sticky top-[120px] z-20 bg-zinc-900/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-900/70 py-2 -mx-4 px-4 border-b border-zinc-800">
-                      <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">
-                        {getSubdivisionDisplayName(group.subdivision)}
-                      </h3>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {group.listings.length}{" "}
-                        {group.listings.length === 1 ? "property" : "properties"}
-                      </p>
-                    </div>
+                const groupedListings = groupListingsBySubdivision(
+                  listingsToShow,
+                  prioritySubdivision
+                );
 
-                    {/* Listings in this subdivision */}
-                    <ul className="space-y-4 mt-3">
-                      {group.listings.map((listing) => (
-                        <li key={listing._id} className="relative group">
-                          <button
+                return groupedListings.map((group) => {
+                  // Check if this is the priority subdivision
+                  const isPrioritySubdivision =
+                    prioritySubdivision &&
+                    group.subdivision.toLowerCase() === prioritySubdivision.toLowerCase();
+
+                  return (
+                    <div key={group.subdivision}>
+                      {/* Subdivision Header */}
+                      <div className="sticky top-[120px] z-20 bg-zinc-900/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-900/70 py-2 -mx-4 px-4 border-b border-zinc-800">
+                        <h3
+                          className={`text-sm font-semibold uppercase tracking-wider ${
+                            isPrioritySubdivision
+                              ? "text-emerald-400 animate-pulse"
+                              : "text-emerald-400"
+                          }`}
+                        >
+                          {isPrioritySubdivision && "⭐ "}
+                          {getSubdivisionDisplayName(group.subdivision)}
+                          {isPrioritySubdivision && " - Current Selection"}
+                        </h3>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          {group.listings.length}{" "}
+                          {group.listings.length === 1 ? "property" : "properties"}
+                        </p>
+                      </div>
+
+                      {/* Listings in this subdivision */}
+                      <ul className="space-y-4 mt-3">
+                        {group.listings.map((listing) => (
+                          <li key={listing._id} className="relative group">
+                            <button
                             onClick={(e) => {
                               e.stopPropagation();
                               if (activeTab === "favorites") {
@@ -316,11 +341,12 @@ export default function FavoritesPannel({
                               </div>
                             </div>
                           </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ));
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                });
               })()}
             </div>
           )}

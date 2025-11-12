@@ -14,6 +14,7 @@ export interface IPhoto extends Document {
   uri2048?: string;
   uriLarge?: string;
   primary?: boolean;
+  Order?: number; // Photo display order
 }
 
 const PhotoSchema: Schema<IPhoto> = new Schema({
@@ -30,6 +31,7 @@ const PhotoSchema: Schema<IPhoto> = new Schema({
   uri2048: String,
   uriLarge: String,
   primary: Boolean,
+  Order: Number,
 });
 
 // Compound index for optimized photo lookups

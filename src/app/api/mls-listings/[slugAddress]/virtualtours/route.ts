@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import { Listing } from "@/models/listings";
+import { CRMLSListing } from "@/models/crmls-listings";
 
 export async function GET(
   req: Request,
@@ -10,7 +11,13 @@ export async function GET(
   const { slugAddress } = params;
 
   try {
-    const listing = await Listing.findOne({ slugAddress }).lean();
+    // 🔍 Try to find listing in GPS MLS first, then CRMLS
+    let listing: any = await Listing.findOne({ slugAddress }).lean();
+
+    if (!listing) {
+      // Try CRMLS collection
+      listing = await CRMLSListing.findOne({ slugAddress }).lean();
+    }
 
     if (!listing) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
@@ -18,7 +25,7 @@ export async function GET(
 
     // ✅ Filter videos by Type === "VirtualTour"
     const virtualTours = (listing.Videos || []).filter(
-      (video) => video.Type === "VirtualTour"
+      (video: any) => video.Type === "VirtualTour"
     );
 
     return NextResponse.json({ virtualTours });

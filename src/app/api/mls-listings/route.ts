@@ -151,11 +151,9 @@ export async function GET(req: NextRequest) {
 
   // ==================== EXCLUDE KEYS (for swipe functionality) ====================
   const excludeKeys = query.get("excludeKeys");
+  let excludeKeysArray: string[] = [];
   if (excludeKeys) {
-    const keysArray = excludeKeys.split(",").filter(k => k.trim());
-    if (keysArray.length > 0) {
-      matchStage.listingKey = { $nin: keysArray };
-    }
+    excludeKeysArray = excludeKeys.split(",").filter(k => k.trim());
   }
 
   // ==================== RADIUS SEARCH ====================
@@ -296,9 +294,30 @@ export async function GET(req: NextRequest) {
     ];
 
     // 🚀 Fetch from both GPS and CRMLS collections in parallel
+    // GPS uses "listingKey", CRMLS uses "listingId"
+    const gpsMatchStage = { ...matchStage };
+    const crmlsMatchStage = { ...matchStage };
+
+    // Apply exclude keys with the correct field name for each MLS
+    if (excludeKeysArray.length > 0) {
+      gpsMatchStage.listingKey = { $nin: excludeKeysArray };
+      crmlsMatchStage.listingId = { $nin: excludeKeysArray };
+    }
+
+    // Create separate pipelines for GPS and CRMLS
+    const gpsPipeline = [
+      { $match: gpsMatchStage },
+      ...pipeline.slice(1) // Use the rest of the pipeline stages
+    ];
+
+    const crmlsPipeline = [
+      { $match: crmlsMatchStage },
+      ...pipeline.slice(1) // Use the rest of the pipeline stages
+    ];
+
     const [gpsListings, crmlsListings] = await Promise.all([
-      Listing.aggregate(pipeline as any),
-      CRMLSListing.aggregate(pipeline as any),
+      Listing.aggregate(gpsPipeline as any),
+      CRMLSListing.aggregate(crmlsPipeline as any),
     ]);
 
     // Add mlsSource identifier if not present

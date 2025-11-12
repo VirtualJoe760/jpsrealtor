@@ -41,6 +41,7 @@ const nextConfig = {
       { protocol: "https", hostname: "villaestatesmo.com" },
       { protocol: "https", hostname: "www.thaler.tirol" },
       { protocol: "https", hostname: "cdn.photos.sparkplatform.com" },
+      { protocol: "https", hostname: "media.crmls.org" }, // CRMLS photo CDN
     ],
   },
 

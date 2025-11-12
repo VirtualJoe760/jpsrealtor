@@ -29,6 +29,7 @@ export interface ICRMLSVideo {
 // CRMLS Listing Interface
 export interface ICRMLSListing extends Document {
   listingId: string;
+  listingKey?: string; // Same as slug - for compatibility with GPS MLS queries
   slug: string;
   slugAddress?: string;
   mlsSource: "CRMLS"; // Identifier for MLS source
@@ -148,6 +149,7 @@ const CRMLSVideoSchema = new Schema<ICRMLSVideo>({
 const CRMLSListingSchema = new Schema<ICRMLSListing>(
   {
     listingId: { type: String, required: true, unique: true },
+    listingKey: { type: String, index: true }, // Same as slug - for compatibility with GPS MLS queries
     slug: { type: String, required: true },
     slugAddress: String,
     mlsSource: { type: String, default: "CRMLS", immutable: true },
@@ -240,8 +242,7 @@ const CRMLSListingSchema = new Schema<ICRMLSListing>(
   { timestamps: true, collection: "crmls_listings" }
 );
 
-// Indexes for performance
-CRMLSListingSchema.index({ listingId: 1 }, { unique: true });
+// Indexes for performance (listingId and listingKey already indexed via schema)
 CRMLSListingSchema.index({ slug: 1 });
 CRMLSListingSchema.index({ slugAddress: 1 });
 CRMLSListingSchema.index({ latitude: 1, longitude: 1 });
