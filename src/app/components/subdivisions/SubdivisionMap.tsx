@@ -121,19 +121,6 @@ export default function SubdivisionMap({
       el.style.border = "3px solid white";
       el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
       el.style.cursor = "pointer";
-      el.style.transition = "transform 0.2s, box-shadow 0.2s";
-
-      // Add hover effect
-      el.onmouseenter = () => {
-        el.style.transform = "scale(1.3)";
-        el.style.boxShadow = "0 4px 8px rgba(0,0,0,0.5)";
-        el.style.zIndex = "1000";
-      };
-      el.onmouseleave = () => {
-        el.style.transform = "scale(1)";
-        el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
-        el.style.zIndex = "auto";
-      };
 
       // Build slug for navigation
       const listingSlug = listing.slug || "";
