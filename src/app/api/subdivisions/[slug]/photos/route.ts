@@ -95,6 +95,7 @@ export async function GET(
       })
         .select({
           listingId: 1,
+          slug: 1,
           unparsedAddress: 1,
           address: 1,
           city: 1,
@@ -117,6 +118,7 @@ export async function GET(
       })
         .select({
           listingId: 1,
+          slug: 1,
           unparsedAddress: 1,
           address: 1,
           city: 1,
@@ -152,6 +154,7 @@ export async function GET(
         return {
           photoId: photo.photoId,
           listingId: photo.listingId,
+          slug: listingDetails.slug || "",
           caption: photo.caption || "",
           src:
             photo.uri1600 ||

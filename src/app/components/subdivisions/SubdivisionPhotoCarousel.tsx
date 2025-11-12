@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface Photo {
   photoId: string;
   listingId: string;
+  slug: string;
   caption: string;
   src: string;
   thumb: string;
@@ -173,64 +175,68 @@ export default function SubdivisionPhotoCarousel({
           {currentIndex + 1} / {photos.length}
         </div>
 
-        {/* Listing Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6">
+        {/* Listing Info Overlay - Clickable */}
+        <Link
+          href={`/listings/${currentPhoto.slug}`}
+          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 hover:from-black/95 hover:via-black/75 transition-all cursor-pointer"
+        >
           <div className="text-white">
-            {/* Address */}
-            <div className="text-sm font-medium mb-2 opacity-90">
-              {currentPhoto.address || "Address not available"}
-            </div>
-
             {/* Price */}
-            <div className="text-3xl font-bold mb-3">
+            <div className="text-3xl font-bold mb-2">
               {currentPhoto.listPrice
                 ? `$${currentPhoto.listPrice.toLocaleString()}`
                 : "Price not available"}
             </div>
 
             {/* Beds & Baths */}
-            {(currentPhoto.bedroomsTotal || currentPhoto.bathroomsTotalDecimal) && (
-              <div className="flex items-center gap-4 text-sm">
-                {currentPhoto.bedroomsTotal > 0 && (
-                  <div className="flex items-center gap-1">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                      />
-                    </svg>
-                    <span>{currentPhoto.bedroomsTotal} bed{currentPhoto.bedroomsTotal !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-                {currentPhoto.bathroomsTotalDecimal > 0 && (
-                  <div className="flex items-center gap-1">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                      />
-                    </svg>
-                    <span>{currentPhoto.bathroomsTotalDecimal} bath{currentPhoto.bathroomsTotalDecimal !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-4 text-base mb-3">
+              {currentPhoto.bedroomsTotal > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    />
+                  </svg>
+                  <span className="font-medium">{currentPhoto.bedroomsTotal} bed{currentPhoto.bedroomsTotal !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {currentPhoto.bedroomsTotal > 0 && currentPhoto.bathroomsTotalDecimal > 0 && (
+                <span className="text-white/60">|</span>
+              )}
+              {currentPhoto.bathroomsTotalDecimal > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                    />
+                  </svg>
+                  <span className="font-medium">{currentPhoto.bathroomsTotalDecimal} bath{currentPhoto.bathroomsTotalDecimal !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Address - Bottom, Larger */}
+            <div className="text-lg font-medium opacity-95">
+              {currentPhoto.address || "Address not available"}
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Thumbnail Strip */}
