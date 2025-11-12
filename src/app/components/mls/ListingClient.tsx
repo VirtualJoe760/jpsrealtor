@@ -264,9 +264,9 @@ export default function ListingClient({
               <strong>Flooring:</strong> {listing.flooring}
             </p>
           )}
-          {listing.roofType && (
+          {listing.roof && (
             <p>
-              <strong>Roof:</strong> {listing.roofType}
+              <strong>Roof:</strong> {listing.roof}
             </p>
           )}
           {listing.city && (

@@ -2,6 +2,9 @@ import { useState, useMemo } from "react";
 import type { Filters } from "@/types/types";
 
 const defaultFilterState: Filters = {
+  // Listing Type
+  listingType: "sale",
+
   // Price
   minPrice: "",
   maxPrice: "",

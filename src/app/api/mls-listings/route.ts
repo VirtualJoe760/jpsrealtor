@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(query.get("limit") || "1000", 10), 1000);
 
   const sortBy = query.get("sortBy") || "listPrice";
-  const sortOrder = query.get("sortOrder") === "desc" ? -1 : 1;
+  const sortOrder: 1 | -1 = query.get("sortOrder") === "desc" ? -1 : 1;
   const validSortFields = ["listPrice", "livingArea", "lotSizeSqft"];
   const sortField = validSortFields.includes(sortBy) ? sortBy : "listPrice";
 
@@ -297,8 +297,8 @@ export async function GET(req: NextRequest) {
 
     // 🚀 Fetch from both GPS and CRMLS collections in parallel
     const [gpsListings, crmlsListings] = await Promise.all([
-      Listing.aggregate(pipeline),
-      CRMLSListing.aggregate(pipeline),
+      Listing.aggregate(pipeline as any),
+      CRMLSListing.aggregate(pipeline as any),
     ]);
 
     // Add mlsSource identifier if not present
