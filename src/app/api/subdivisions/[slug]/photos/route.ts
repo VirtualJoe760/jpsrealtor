@@ -96,6 +96,9 @@ export async function GET(
         .select({
           listingId: 1,
           address: 1,
+          city: 1,
+          stateOrProvince: 1,
+          postalCode: 1,
           listPrice: 1,
           bedroomsTotal: 1,
           bathroomsTotalDecimal: 1,
@@ -114,6 +117,9 @@ export async function GET(
         .select({
           listingId: 1,
           address: 1,
+          city: 1,
+          stateOrProvince: 1,
+          postalCode: 1,
           listPrice: 1,
           bedroomsTotal: 1,
           bathroomsTotalDecimal: 1,
@@ -131,6 +137,15 @@ export async function GET(
         const listingDetails = listingDetailsMap.get(photo.listingId);
         if (!listingDetails) return null;
 
+        // Build complete address
+        const addressParts = [
+          listingDetails.address,
+          listingDetails.city,
+          listingDetails.stateOrProvince,
+          listingDetails.postalCode,
+        ].filter(Boolean);
+        const fullAddress = addressParts.join(", ");
+
         return {
           photoId: photo.photoId,
           listingId: photo.listingId,
@@ -146,7 +161,7 @@ export async function GET(
             "",
           thumb: photo.uriThumb || photo.uri300 || "",
           // Listing details
-          address: listingDetails.address || "",
+          address: fullAddress || "Address not available",
           listPrice: listingDetails.listPrice || 0,
           bedroomsTotal: listingDetails.bedroomsTotal || 0,
           bathroomsTotalDecimal: listingDetails.bathroomsTotalDecimal || 0,
