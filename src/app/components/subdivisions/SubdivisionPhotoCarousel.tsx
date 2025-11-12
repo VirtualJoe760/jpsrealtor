@@ -177,7 +177,7 @@ export default function SubdivisionPhotoCarousel({
 
         {/* Listing Info Overlay - Clickable */}
         <Link
-          href={`/listings/${currentPhoto.slug}`}
+          href={`/mls-listings/${currentPhoto.slug}`}
           className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 hover:from-black/95 hover:via-black/75 transition-all cursor-pointer"
         >
           <div className="text-white">
@@ -190,7 +190,7 @@ export default function SubdivisionPhotoCarousel({
 
             {/* Beds & Baths */}
             <div className="flex items-center gap-4 text-base mb-3">
-              {currentPhoto.bedroomsTotal > 0 && (
+              {(currentPhoto.bedroomsTotal !== undefined && currentPhoto.bedroomsTotal !== null) && (
                 <div className="flex items-center gap-1.5">
                   <svg
                     className="w-5 h-5"
@@ -208,10 +208,11 @@ export default function SubdivisionPhotoCarousel({
                   <span className="font-medium">{currentPhoto.bedroomsTotal} bed{currentPhoto.bedroomsTotal !== 1 ? 's' : ''}</span>
                 </div>
               )}
-              {currentPhoto.bedroomsTotal > 0 && currentPhoto.bathroomsTotalDecimal > 0 && (
+              {(currentPhoto.bedroomsTotal !== undefined && currentPhoto.bedroomsTotal !== null) &&
+               (currentPhoto.bathroomsTotalDecimal !== undefined && currentPhoto.bathroomsTotalDecimal !== null) && (
                 <span className="text-white/60">|</span>
               )}
-              {currentPhoto.bathroomsTotalDecimal > 0 && (
+              {(currentPhoto.bathroomsTotalDecimal !== undefined && currentPhoto.bathroomsTotalDecimal !== null) && (
                 <div className="flex items-center gap-1.5">
                   <svg
                     className="w-5 h-5"
