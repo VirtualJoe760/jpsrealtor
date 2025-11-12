@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "WebFetch(domain:maplibre.org)"
+      "WebFetch(domain:maplibre.org)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(\"F:\\web-clients\\joseph-sardella\\jpsrealtor\\local-logs\\crmls\\field-comparison.txt\")",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

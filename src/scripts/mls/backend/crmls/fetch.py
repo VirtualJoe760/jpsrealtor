@@ -6,15 +6,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load env
-env_path = Path(__file__).resolve().parents[4] / ".env.local"
+env_path = Path(__file__).resolve().parents[5] / ".env.local"
 load_dotenv(dotenv_path=env_path)
 
 BASE_URL = "https://replication.sparkapi.com/v1/listings"
-ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")
+ACCESS_TOKEN = os.getenv("SPARK_ACCESS_TOKEN")  # Same token as GPS
 EXPANSIONS = ["Rooms", "Units", "OpenHouses", "VirtualTours"]
-LOCAL_LOGS_DIR = Path(__file__).resolve().parents[4] / "local-logs"
+LOCAL_LOGS_DIR = Path(__file__).resolve().parents[5] / "local-logs" / "crmls"
 LOCAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_FILE = LOCAL_LOGS_DIR / "all_listings_with_expansions.json"
+OUTPUT_FILE = LOCAL_LOGS_DIR / "all_crmls_listings_with_expansions.json"
 
 def clean_data(obj):
     if isinstance(obj, dict):
@@ -32,7 +32,7 @@ def fetch_all_listings():
     if not ACCESS_TOKEN:
         raise Exception("❌ SPARK_ACCESS_TOKEN is missing in .env.local")
 
-    print(f"🚀 Fetching all listings with expansions: {', '.join(EXPANSIONS)}")
+    print(f"🚀 Fetching CRMLS listings with expansions: {', '.join(EXPANSIONS)}")
     print(f"📋 Property Types: Residential (A), Residential Lease (B), Residential Income/Multi-Family (C)")
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -42,13 +42,13 @@ def fetch_all_listings():
     listings = []
     skiptoken = None
     page = 1
-    batch_size = 500  # Reduced to avoid API strain
+    batch_size = 500
     retries = 3
 
     while True:
-        # Filter for GPS MLS ID + property types + Active status
-        # GPS MLS ID from data share: 20190211172710340762000000
-        mls_filter = "MlsId Eq '20190211172710340762000000'"
+        # Filter for CRMLS MLS ID + property types + Active status
+        # CRMLS MLS ID from data share: 20200218121507636729000000
+        mls_filter = "MlsId Eq '20200218121507636729000000'"
         property_filter = "PropertyType Eq 'A' Or PropertyType Eq 'B' Or PropertyType Eq 'C'"
         status_filter = "StandardStatus Eq 'Active'"
         combined_filter = f"{mls_filter} And ({property_filter}) And {status_filter}"
@@ -64,7 +64,7 @@ def fetch_all_listings():
                 if res.status_code == 200:
                     batch = res.json().get("D", {}).get("Results", [])
                     if not batch:
-                        print("✅ No more listings to fetch")
+                        print("✅ No more CRMLS listings to fetch")
                         break
                     cleaned = [clean_data(item) for item in batch]
                     listings.extend(cleaned)
@@ -86,15 +86,15 @@ def fetch_all_listings():
             break
 
         page += 1
-        time.sleep(0.3)  # Increased throttle
+        time.sleep(0.3)
 
     if not listings:
-        raise Exception("❌ No listings fetched")
+        raise Exception("❌ No CRMLS listings fetched")
 
     try:
         with OUTPUT_FILE.open("w", encoding="utf-8") as f:
             json.dump(listings, f, indent=2)
-        print(f"✅ Saved {len(listings)} listings to {OUTPUT_FILE}")
+        print(f"✅ Saved {len(listings)} CRMLS listings to {OUTPUT_FILE}")
     except Exception as e:
         raise Exception(f"❌ Failed to write to {OUTPUT_FILE}: {e}")
 
@@ -102,5 +102,5 @@ if __name__ == "__main__":
     try:
         fetch_all_listings()
     except Exception as e:
-        print(f"❌ Error in fetch.py: {e}")
+        print(f"❌ Error in CRMLS fetch.py: {e}")
         exit(1)

@@ -403,6 +403,11 @@ export default function ListingBottomPanel({
           >
             <div className="px-5 sm:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 text-white" style={{ touchAction: "pan-y" }}>
               <div className="flex flex-wrap gap-2 text-sm lg:text-base">
+                {fullListing?.subdivisionName && fullListing.subdivisionName.toLowerCase() !== "other" && (
+                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30">
+                    {fullListing.subdivisionName}
+                  </span>
+                )}
                 {fullListing?.bedsTotal !== undefined && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
                 )}
@@ -417,11 +422,6 @@ export default function ListingBottomPanel({
                 {fullListing?.lotSizeArea !== undefined && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
-                  </span>
-                )}
-                {fullListing?.subdivisionName && fullListing.subdivisionName.toLowerCase() !== "other" && (
-                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30">
-                    {fullListing.subdivisionName}
                   </span>
                 )}
                 {fullListing?.landType && (

@@ -50,6 +50,7 @@ export interface MapListing {
   propertyType?: string;
   propertySubType?: string;
   subdivisionName?: string;
+  mlsSource?: string; // "GPS" or "CRMLS"
 
   // Boolean features / amenities
   poolYn?: boolean;
@@ -66,6 +67,9 @@ export interface MapListing {
 }
 
 export type Filters = {
+  // Listing Type (Sale vs Rental vs Multi-Family)
+  listingType: string; // 'sale' (A), 'rental' (B), or 'multifamily' (C)
+
   // Price
   minPrice: string;
   maxPrice: string;

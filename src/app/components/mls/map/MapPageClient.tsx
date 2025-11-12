@@ -17,6 +17,9 @@ import { useSwipeHistory } from "@/app/utils/map/useSwipeHistory";
 import { useSmartSwipeQueue } from "@/app/utils/map/useSmartSwipeQueue";
 
 const defaultFilterState: Filters = {
+  // Listing Type (default to 'sale' for residential properties)
+  listingType: "sale",
+
   // Price
   minPrice: "",
   maxPrice: "",

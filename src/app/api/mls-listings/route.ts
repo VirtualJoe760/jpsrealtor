@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { Listing, IListing } from "@/models/listings";
+import { CRMLSListing } from "@/models/crmls-listings";
 import Photo from "@/models/photos";
 import OpenHouse from "@/models/openHouses";
 
@@ -20,9 +21,16 @@ export async function GET(req: NextRequest) {
   const lngMin = parseFloat(query.get("west") || "-180");
   const lngMax = parseFloat(query.get("east") || "180");
 
+  // ==================== LISTING TYPE FILTER (Sale vs Rental vs Multi-Family) ====================
+  const listingType = query.get("listingType") || "sale";
+  const propertyTypeCode =
+    listingType === "rental" ? "B" : // B = Residential Lease
+    listingType === "multifamily" ? "C" : // C = Residential Income/Multi-Family
+    "A"; // A = Residential (default)
+
   const matchStage: Record<string, any> = {
     standardStatus: "Active",
-    propertyType: "A",
+    propertyType: propertyTypeCode,
     latitude: { $gte: latMin, $lte: latMax },
     longitude: { $gte: lngMin, $lte: lngMax },
     listPrice: { $ne: null },
@@ -30,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   // ==================== PROPERTY TYPE FILTERS ====================
   const queryPropertyType = query.get("propertyType");
-  if (queryPropertyType && queryPropertyType !== "A") {
+  if (queryPropertyType && queryPropertyType !== "A" && queryPropertyType !== "B" && queryPropertyType !== "C") {
     matchStage.propertyType = queryPropertyType;
   }
 
@@ -189,8 +197,8 @@ export async function GET(req: NextRequest) {
   const sortField = validSortFields.includes(sortBy) ? sortBy : "listPrice";
 
   try {
-    // 🚀 Use MongoDB Aggregation Pipeline - Single query instead of N+1
-    const listings = await Listing.aggregate([
+    // Build aggregation pipeline (same for both GPS and CRMLS)
+    const pipeline = [
       // Stage 1: Filter listings
       { $match: matchStage },
 
@@ -229,7 +237,7 @@ export async function GET(req: NextRequest) {
       // Stage 6: Project only needed fields & compute derived fields
       {
         $project: {
-          _id: 1, // ✅ Include MongoDB _id for React keys and selection tracking
+          _id: 1,
           listingId: 1,
           slug: 1,
           slugAddress: 1,
@@ -239,6 +247,7 @@ export async function GET(req: NextRequest) {
           bathroomsFull: 1,
           bathroomsTotalInteger: 1,
           livingArea: 1,
+          lotSizeArea: 1,
           lotSizeSqft: 1,
           latitude: 1,
           longitude: 1,
@@ -259,6 +268,7 @@ export async function GET(req: NextRequest) {
           viewYn: 1,
           gatedCommunity: 1,
           seniorCommunityYn: 1,
+          mlsSource: 1, // Include MLS source
           pool: { $eq: ["$poolYn", true] },
           spa: { $eq: ["$spaYn", true] },
           hasHOA: { $gt: [{ $ifNull: ["$associationFee", 0] }, 0] },
@@ -283,9 +293,37 @@ export async function GET(req: NextRequest) {
           }
         }
       }
+    ];
+
+    // 🚀 Fetch from both GPS and CRMLS collections in parallel
+    const [gpsListings, crmlsListings] = await Promise.all([
+      Listing.aggregate(pipeline),
+      CRMLSListing.aggregate(pipeline),
     ]);
 
-    console.log(`✅ Fetched ${listings.length} listings using aggregation pipeline`);
+    // Add mlsSource identifier if not present
+    const gpsWithSource = gpsListings.map(listing => ({
+      ...listing,
+      mlsSource: listing.mlsSource || "GPS"
+    }));
+
+    const crmlsWithSource = crmlsListings.map(listing => ({
+      ...listing,
+      mlsSource: listing.mlsSource || "CRMLS"
+    }));
+
+    // Merge and sort the results
+    const allListings = [...gpsWithSource, ...crmlsWithSource];
+    allListings.sort((a, b) => {
+      const aValue = a[sortField] || 0;
+      const bValue = b[sortField] || 0;
+      return sortOrder * (aValue - bValue);
+    });
+
+    // Apply pagination to merged results
+    const listings = allListings.slice(0, limit);
+
+    console.log(`✅ Fetched ${gpsListings.length} GPS + ${crmlsListings.length} CRMLS = ${listings.length} total listings`);
 
     // Add cache headers for better performance
     return NextResponse.json(

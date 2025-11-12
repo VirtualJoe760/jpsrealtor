@@ -18,6 +18,25 @@ function calculateDaysOnMarket(dateString?: string | Date) {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// Map property type codes to human-readable names
+function getPropertyTypeLabel(code?: string): string {
+  if (!code) return "";
+
+  const mapping: Record<string, string> = {
+    'A': 'Residential',
+    'B': 'Residential Lease',
+    'C': 'Residential Income',
+    'D': 'Land',
+    'E': 'Manufactured In Park',
+    'F': 'Commercial Sale',
+    'G': 'Commercial Lease',
+    'H': 'Business Opportunity',
+    'I': 'Vacation Rental',
+  };
+
+  return mapping[code.toUpperCase()] || code;
+}
+
 export default function ListingClient({
   listing,
   media,
@@ -44,7 +63,7 @@ export default function ListingClient({
           <div>
             <p className="text-4xl font-semibold leading-tight">{address}</p>
             <p className="text-sm text-zinc-400 mt-1">
-              MLS#: {listing.listingId} · {listing.propertyTypeLabel} ·{" "}
+              MLS#: {listing.listingId} · {getPropertyTypeLabel(listing.propertyType)} ·{" "}
               {listing.propertySubType || "Unknown Subtype"}
             </p>
           </div>
@@ -71,6 +90,11 @@ export default function ListingClient({
 
         {/* Features */}
         <div className="flex flex-wrap gap-2 text-sm mb-6">
+          {listing.subdivisionName && listing.subdivisionName.toLowerCase() !== "other" && (
+            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30">
+              {listing.subdivisionName}
+            </span>
+          )}
           {listing.bedsTotal !== undefined && (
             <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.bedsTotal} Bed</span>
           )}
@@ -88,6 +112,22 @@ export default function ListingClient({
             <span className="bg-zinc-800 px-3 py-1 rounded-full">
               {Math.round(listing.lotSizeArea).toLocaleString()} Lot
             </span>
+          )}
+          {listing.landType && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.landType}</span>
+          )}
+          {typeof listing.associationFee === "number" && listing.associationFee > 0 && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">
+              ${listing.associationFee.toLocaleString()}/mo HOA
+            </span>
+          )}
+          {listing.terms && listing.terms.length > 0 && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">
+              {listing.terms.join(", ")}
+            </span>
+          )}
+          {listing.yearBuilt && (
+            <span className="bg-zinc-800 px-3 py-1 rounded-full">Built {listing.yearBuilt}</span>
           )}
           {listing.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
           {listing.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
@@ -158,14 +198,50 @@ export default function ListingClient({
               <strong>Subdivision:</strong> {listing.subdivisionName}
             </p>
           )}
+          {listing.landType && (
+            <p>
+              <strong>Land Type:</strong> {listing.landType}
+            </p>
+          )}
           {listing.yearBuilt && (
             <p>
               <strong>Year Built:</strong> {listing.yearBuilt}
             </p>
           )}
+          {listing.propertyType && (
+            <p>
+              <strong>Property Type:</strong> {getPropertyTypeLabel(listing.propertyType)}
+            </p>
+          )}
+          {listing.propertySubType && (
+            <p>
+              <strong>Property Subtype:</strong> {listing.propertySubType}
+            </p>
+          )}
+          {listing.stories !== undefined && (
+            <p>
+              <strong>Stories:</strong> {listing.stories}
+            </p>
+          )}
+          {typeof listing.associationFee === "number" && listing.associationFee > 0 && (
+            <p>
+              <strong>HOA Fee:</strong> ${listing.associationFee.toLocaleString()}/
+              {listing.associationFeeFrequency || "mo"}
+            </p>
+          )}
+          {listing.terms && listing.terms.length > 0 && (
+            <p>
+              <strong>Terms:</strong> {listing.terms.join(", ")}
+            </p>
+          )}
           {listing.parkingTotal !== undefined && (
             <p>
-              <strong>Parking:</strong> {listing.parkingTotal}
+              <strong>Parking Spaces:</strong> {listing.parkingTotal}
+            </p>
+          )}
+          {listing.garageSpaces !== undefined && (
+            <p>
+              <strong>Garage Spaces:</strong> {listing.garageSpaces}
             </p>
           )}
           {listing.heating && (
@@ -186,6 +262,26 @@ export default function ListingClient({
           {listing.flooring && (
             <p>
               <strong>Flooring:</strong> {listing.flooring}
+            </p>
+          )}
+          {listing.roofType && (
+            <p>
+              <strong>Roof:</strong> {listing.roofType}
+            </p>
+          )}
+          {listing.city && (
+            <p>
+              <strong>City:</strong> {listing.city}
+            </p>
+          )}
+          {listing.postalCode && (
+            <p>
+              <strong>Zip Code:</strong> {listing.postalCode}
+            </p>
+          )}
+          {listing.countyOrParish && (
+            <p>
+              <strong>County:</strong> {listing.countyOrParish}
             </p>
           )}
         </div>

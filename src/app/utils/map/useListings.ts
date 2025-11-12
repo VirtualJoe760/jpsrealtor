@@ -14,6 +14,9 @@ export function useListings() {
       west: String(bounds.west),
     };
 
+    // Listing Type (sale vs rental)
+    if (filters.listingType) params.listingType = filters.listingType;
+
     // Price filters
     if (filters.minPrice) params.minPrice = filters.minPrice;
     if (filters.maxPrice) params.maxPrice = filters.maxPrice;

@@ -18,6 +18,7 @@ export default function FiltersPanel({
   defaultFilters,
 }: Props) {
   // State for all filters
+  const [listingType, setListingType] = useState(defaultFilters.listingType);
   const [minPrice, setMinPrice] = useState(defaultFilters.minPrice);
   const [maxPrice, setMaxPrice] = useState(defaultFilters.maxPrice);
   const [beds, setBeds] = useState(defaultFilters.beds);
@@ -56,6 +57,7 @@ export default function FiltersPanel({
   });
 
   useEffect(() => {
+    setListingType(defaultFilters.listingType);
     setMinPrice(defaultFilters.minPrice);
     setMaxPrice(defaultFilters.maxPrice);
     setBeds(defaultFilters.beds);
@@ -87,6 +89,7 @@ export default function FiltersPanel({
 
   const handleApplyFilters = () => {
     const appliedFilters: Filters = {
+      listingType,
       minPrice,
       maxPrice,
       beds,
@@ -118,6 +121,7 @@ export default function FiltersPanel({
   };
 
   const handleClearFilters = () => {
+    setListingType("sale"); // Reset to default
     setMinPrice("");
     setMaxPrice("");
     setBeds("");
@@ -171,6 +175,43 @@ export default function FiltersPanel({
         <SectionHeader title="Basic Filters" section="basic" />
         {openSections.basic && (
           <div className="space-y-3 pl-2">
+            {/* Listing Type Toggle */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Listing Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setListingType("sale")}
+                  className={`px-2 py-2 text-sm rounded-md font-medium transition ${
+                    listingType === "sale"
+                      ? "bg-emerald-500 text-black"
+                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                  }`}
+                >
+                  For Sale
+                </button>
+                <button
+                  onClick={() => setListingType("rental")}
+                  className={`px-2 py-2 text-sm rounded-md font-medium transition ${
+                    listingType === "rental"
+                      ? "bg-purple-500 text-white"
+                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                  }`}
+                >
+                  For Rent
+                </button>
+                <button
+                  onClick={() => setListingType("multifamily")}
+                  className={`px-2 py-2 text-sm rounded-md font-medium transition ${
+                    listingType === "multifamily"
+                      ? "bg-yellow-500 text-black"
+                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                  }`}
+                >
+                  Multi-Family
+                </button>
+              </div>
+            </div>
+
             {/* Price Range */}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Price Range</label>

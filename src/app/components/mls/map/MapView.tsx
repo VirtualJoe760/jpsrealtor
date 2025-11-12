@@ -47,6 +47,54 @@ function formatPrice(price?: number): string {
   return `$${price}`;
 }
 
+// Get marker colors based on property type (sale = green, rental = purple, multi-family = yellow)
+// CRMLS uses slightly different shades than GPS
+function getMarkerColors(propertyType?: string, mlsSource?: string, hovered?: boolean, selected?: boolean) {
+  const isRental = propertyType === "B"; // B = Residential Lease
+  const isMultiFamily = propertyType === "C"; // C = Residential Income/Multi-Family
+  const isCRMLS = mlsSource === "CRMLS";
+
+  if (selected) {
+    return "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg";
+  }
+
+  if (hovered) {
+    if (isRental) {
+      // GPS: purple, CRMLS: violet
+      return isCRMLS
+        ? "bg-violet-400 text-white scale-110 z-40 border-2 border-white shadow-md"
+        : "bg-purple-400 text-white scale-110 z-40 border-2 border-white shadow-md";
+    }
+    if (isMultiFamily) {
+      // GPS: yellow, CRMLS: pastel light yellow
+      return isCRMLS
+        ? "bg-yellow-200 text-black scale-110 z-40 border-2 border-white shadow-md"
+        : "bg-yellow-400 text-black scale-110 z-40 border-2 border-white shadow-md";
+    }
+    // GPS: emerald, CRMLS: lighter emerald
+    return isCRMLS
+      ? "bg-emerald-300 text-black scale-110 z-40 border-2 border-white shadow-md"
+      : "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md";
+  }
+
+  if (isRental) {
+    // GPS: purple, CRMLS: violet
+    return isCRMLS
+      ? "bg-violet-600 text-white scale-100 z-30 border border-violet-700 shadow-sm"
+      : "bg-purple-600 text-white scale-100 z-30 border border-purple-700 shadow-sm";
+  }
+  if (isMultiFamily) {
+    // GPS: yellow, CRMLS: pastel light yellow
+    return isCRMLS
+      ? "bg-yellow-400 text-black scale-100 z-30 border border-yellow-500 shadow-sm"
+      : "bg-yellow-600 text-black scale-100 z-30 border border-yellow-700 shadow-sm";
+  }
+  // GPS: emerald, CRMLS: lighter emerald
+  return isCRMLS
+    ? "bg-emerald-500 text-white scale-100 z-30 border border-emerald-600 shadow-sm"
+    : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm";
+}
+
 const RAW_MARKER_ZOOM = 13; // show ALL markers (no clustering) when zoom >= 13
 
 // MapTiler API Key - temporarily hardcoded to fix loading issue
@@ -379,14 +427,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     <div
                       onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
-                        ${
-                          showSelected
-                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
-                            : hovered
-                            ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"
-                            : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm"
-                        }`}
+                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px] ${getMarkerColors(
+                        listing.propertyType,
+                        listing.mlsSource,
+                        hovered,
+                        showSelected
+                      )}`}
                     >
                       {formatPrice(listing.listPrice)}
                     </div>
@@ -419,14 +465,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     <div
                       onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px]
-                        ${
-                          showSelected
-                            ? "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg"
-                            : hovered
-                            ? "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md"
-                            : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm"
-                        }`}
+                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px] ${getMarkerColors(
+                        listing.propertyType,
+                        listing.mlsSource,
+                        hovered,
+                        showSelected
+                      )}`}
                     >
                       {formatPrice(listing.listPrice)}
                     </div>
