@@ -125,39 +125,39 @@ export default function SubdivisionMap({
       // Build slug for navigation
       const listingSlug = listing.slug || "";
 
-      // Enhanced popup content with photo and clickable link
+      // Enhanced popup content with photo and clickable link - smaller size
       const popupContent = `
         <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity">
-          <div class="min-w-[280px] max-w-[320px]">
+          <div class="w-[220px]">
             ${
               listing.primaryPhotoUrl
-                ? `<div class="relative h-44 mb-3 rounded-t-lg overflow-hidden">
+                ? `<div class="relative h-32 mb-2 rounded-t-lg overflow-hidden">
                     <img
                       src="${listing.primaryPhotoUrl}"
                       alt="Property"
                       class="w-full h-full object-cover"
                     />
                   </div>`
-                : `<div class="relative h-44 mb-3 rounded-t-lg overflow-hidden bg-gray-200 flex items-center justify-center">
-                    <svg class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                : `<div class="relative h-32 mb-2 rounded-t-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                    <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     </svg>
                   </div>`
             }
-            <div class="px-3 pb-3">
-              <div class="text-2xl font-bold text-blue-600 mb-2">
+            <div class="px-2.5 pb-2.5">
+              <div class="text-lg font-bold text-blue-600 mb-1.5">
                 ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
               </div>
-              <div class="text-sm text-gray-700 mb-2 font-medium leading-snug">
+              <div class="text-xs text-gray-700 mb-1.5 font-medium leading-tight">
                 ${listing.address || "Address not available"}
               </div>
               ${
                 listing.bedroomsTotal !== undefined || listing.bathroomsTotalDecimal !== undefined
-                  ? `<div class="flex gap-3 text-xs text-gray-600">
+                  ? `<div class="flex gap-2.5 text-xs text-gray-600">
                       ${
                         listing.bedroomsTotal !== undefined && listing.bedroomsTotal !== null
                           ? `<div class="flex items-center gap-1">
-                              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                               </svg>
                               <span>${listing.bedroomsTotal}bd</span>
@@ -167,7 +167,7 @@ export default function SubdivisionMap({
                       ${
                         listing.bathroomsTotalDecimal !== undefined && listing.bathroomsTotalDecimal !== null
                           ? `<div class="flex items-center gap-1">
-                              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
                                 <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5.586l-2.293-2.293A1 1 0 0014.586 7H14z"/>
                               </svg>
@@ -184,10 +184,12 @@ export default function SubdivisionMap({
       `;
 
       const popup = new maplibregl.Popup({
-        offset: 15,
+        offset: 25,
         closeButton: true,
-        maxWidth: "350px",
+        closeOnClick: true,
+        maxWidth: "240px",
         className: "listing-popup",
+        anchor: "bottom",
       }).setHTML(popupContent);
 
       const marker = new maplibregl.Marker({ element: el })
