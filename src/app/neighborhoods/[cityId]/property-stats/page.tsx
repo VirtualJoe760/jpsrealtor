@@ -111,7 +111,6 @@ export default async function PropertyStatsPage({
             const quarterData = Object.fromEntries(
               Object.entries(areaData).map(([area, data]) => {
                 if (!data) {
-                  console.warn(`No data available for area: ${area}`);
                   return [area, {}];
                 }
 
@@ -120,7 +119,6 @@ export default async function PropertyStatsPage({
                   (entry) => entry?.slug === slug
                 );
 
-                console.log(`Accessing data for ${area} in ${slug}:`, accessedData);
                 return [area, accessedData || {}];
               })
             );
@@ -130,7 +128,6 @@ export default async function PropertyStatsPage({
             );
 
             if (!hasData) {
-              console.warn(`No data available for ${quarter}`);
               return null;
             }
 

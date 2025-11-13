@@ -112,6 +112,11 @@ export default function SubdivisionPhotoCarousel({
 
   const currentPhoto = photos[currentIndex];
 
+  // Safety check (should never happen due to early return above)
+  if (!currentPhoto) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       {/* Main Photo Display */}

@@ -15,7 +15,6 @@ async function fetchWithBackoff(url: string, token: string, retries = 5): Promis
     if (res.status !== 429) return res;
 
     const delay = Math.pow(2, attempt) * 500;
-    console.warn(`⏳ Rate limited (429). Retrying in ${delay}ms...`);
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
@@ -25,7 +24,6 @@ async function fetchWithBackoff(url: string, token: string, retries = 5): Promis
 export async function fetchListingPhotos(slug: string) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) throw new Error("Missing SPARK_ACCESS_TOKEN");
-  console.log("Spark API Listing Photos Slug:",slug);
 
   const url = `${SPARK_API_BASE}/${slug}/photos`;
 

@@ -110,7 +110,6 @@ export default async function ListingPage({
   try {
     rawPhotos = await fetchListingPhotos(listing.slug);
   } catch (err) {
-    console.warn(`📛 Could not load photos for listing ${listing.slug}:`, err);
     rawPhotos = [];
   }
 

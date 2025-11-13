@@ -103,9 +103,7 @@ const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
 // Debug: Log API key status
 if (typeof window !== 'undefined') {
   if (MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here") {
-    console.log(`🗺️ MapTiler: ✓ Using MapTiler styles`);
   } else {
-    console.log(`🗺️ Map: ✓ Using OpenStreetMap (free, no API key)`);
   }
 }
 

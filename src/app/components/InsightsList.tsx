@@ -16,14 +16,12 @@ export default function InsightsList({
   currentPage,
   category,
 }: InsightsListProps) {
-  console.log("Posts passed to InsightsList:", posts); // Debug posts array
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-10">
       <div className="space-y-12">
         {posts.map((post) => {
           const { slugId, title, image, altText, description, date } = post; // Explicit destructuring
-          console.log(`Post in map: slugId=${slugId}, title=${title}`); // Debug each post
 
           return (
             <div

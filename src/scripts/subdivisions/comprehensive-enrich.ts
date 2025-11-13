@@ -53,7 +53,7 @@ function normalizeName(name: string): string {
 
 function getCityFromLocation(location: string): string {
   const match = location.match(/([^,]+)/);
-  if (match) {
+  if (match && match[1]) {
     const city = match[1].trim();
     if (city.includes("Palm Springs")) return "Palm Springs";
     if (city.includes("La Quinta")) return "La Quinta";
@@ -153,14 +153,9 @@ async function getHOAData(sub: MergedSubdivision) {
       let feeCount = 0;
 
       for (const listing of gpsListings) {
-        if (listing.associationFee && listing.associationFee > 0) {
-          totalFees += listing.associationFee;
+        if (listing.associationFee && Number(listing.associationFee) > 0) {
+          totalFees += Number(listing.associationFee);
           feeCount++;
-        }
-        if (listing.associationFee2 && listing.associationFee2 > 0) {
-          totalFees += listing.associationFee2;
-          feeCount++;
-          hoaData.hasDualHOA = true;
         }
         if (listing.communityFeatures) {
           const features = listing.communityFeatures.split(",").map((f: string) => f.trim());
@@ -187,8 +182,8 @@ async function getHOAData(sub: MergedSubdivision) {
       let feeCount = 0;
 
       for (const listing of crmlsListings) {
-        if (listing.associationFee && listing.associationFee > 0) {
-          totalFees += listing.associationFee;
+        if (listing.associationFee && Number(listing.associationFee) > 0) {
+          totalFees += Number(listing.associationFee);
           feeCount++;
         }
         if (listing.communityFeatures) {
@@ -288,6 +283,8 @@ async function comprehensiveEnrich() {
 
   for (let i = 0; i < subdivisions.length; i++) {
     const sub = subdivisions[i];
+    if (!sub) continue;
+
     const progress = `[${i + 1}/${subdivisions.length}]`;
 
     // Check for manual data

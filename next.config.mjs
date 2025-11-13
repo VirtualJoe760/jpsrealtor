@@ -8,6 +8,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Enable MDX support
+  pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
+
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "www.dreamexoticrentals.com" },
@@ -55,8 +58,8 @@ const nextConfig = {
 };
 
 // MDX plugin wrapper (ESM)
-const mdx = createMDX({
-  extension: /\.mdx?$/,
+const withMDX = createMDX({
+  // Add any MDX options here if needed
 });
 
-export default mdx(nextConfig);
+export default withMDX(nextConfig);

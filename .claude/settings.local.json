@@ -12,7 +12,18 @@
       "Bash(node:*)",
       "Bash(npx tsx:*)",
       "Bash(pkill:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git push:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(curl:*)",
+      "Bash(npx next build)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(rm:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"rd /s /q .next\")"
     ],
     "deny": [],
     "ask": []

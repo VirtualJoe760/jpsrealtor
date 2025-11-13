@@ -18,7 +18,6 @@ export async function getPhotoUrl(photoReference: string, apiKey: string): Promi
       return resolvedUrl;
     }
 
-    console.warn("Photo redirect location not found.");
     return null;
   } catch (error) {
     console.error("Error resolving photo URL:", error);

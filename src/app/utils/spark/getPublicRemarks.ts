@@ -22,7 +22,6 @@ export async function getPublicRemarks(listingKey: string): Promise<string | nul
 
   const url = `${BASE_URL}/${listingKey}`;
 
-  console.log("🚀 Fetching PublicRemarks for:", listingKey);
 
   try {
     const res = await fetch(url, {
@@ -46,9 +45,7 @@ export async function getPublicRemarks(listingKey: string): Promise<string | nul
     const remarks = json?.D?.Results?.[0]?.StandardFields?.PublicRemarks ?? null;
 
     if (remarks) {
-      console.log("✅ PublicRemarks retrieved successfully");
     } else {
-      console.warn("⚠️ No PublicRemarks found for this listing.");
     }
 
     return remarks;

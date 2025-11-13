@@ -116,7 +116,6 @@ export default function FiltersPanel({
       seniorCommunity: seniorCommunity === true ? true : undefined,
     };
 
-    console.log("📤 Comprehensive filters applied:", appliedFilters);
     onApply(appliedFilters);
   };
 

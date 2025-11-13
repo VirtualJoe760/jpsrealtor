@@ -6,7 +6,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const photoReference = searchParams.get("photo_reference");
 
-    console.log("Photo Reference Received:", photoReference);
 
     if (!photoReference) {
       console.error("No photo_reference provided.");
@@ -27,12 +26,10 @@ export async function GET(req: Request) {
     }
 
     const url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${apiKey}`;
-    console.log("Requesting Photo URL:", url);
 
     // Fetch the photo using the Google API
     const response = await axios.get(url, { responseType: "arraybuffer" });
 
-    console.log("Google Photo API Response Headers:", response.headers);
 
     if (!response.headers['content-type'].startsWith('image')) {
       console.error(

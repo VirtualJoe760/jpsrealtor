@@ -32,7 +32,6 @@ export async function fetchBighornActiveListings(): Promise<any[]> {
     let url = `${BASE_URL}?_limit=1000&_filter=StandardStatus eq 'Active' and SubdivisionName eq 'Bighorn Golf Club'&_expand=Photos`;
     if (skiptoken) url += `&_skiptoken=${skiptoken}`;
 
-    console.log(`📦 Fetching page ${page}...`);
 
     const res = await fetch(url, { headers: HEADERS });
     const data = (await res.json()) as SparkApiResponse;

@@ -96,7 +96,6 @@ export function useSmartSwipeQueue(options: QueueOptions) {
   const fetchSimilarListings = useCallback(
     async (ctx: FetchContext): Promise<MapListing[]> => {
       if (fetchingRef.current) {
-        console.log("🔄 Already fetching, skipping...");
         return [];
       }
 
@@ -106,13 +105,10 @@ export function useSmartSwipeQueue(options: QueueOptions) {
       try {
         // Try with exact subdivision first
         let params = buildQueryParams(ctx, 1); // Start with 1 mile
-        console.log("🎯 Fetching similar listings with params:", params.toString());
-        console.log("🏘️ Context:", ctx);
 
         let response = await fetch(`/api/mls-listings?${params.toString()}`);
         let data = await response.json();
 
-        console.log("📦 Received listings:", data.listings?.length || 0);
 
         if (data.listings && data.listings.length > 0) {
           return data.listings;
@@ -123,12 +119,10 @@ export function useSmartSwipeQueue(options: QueueOptions) {
 
         if (ctx.latitude && ctx.longitude) {
           for (const radius of radiusSequence) {
-            console.log(`🔄 No results with previous radius, trying ${radius} miles...`);
             params = buildQueryParams(ctx, radius);
             response = await fetch(`/api/mls-listings?${params.toString()}`);
             data = await response.json();
 
-            console.log(`📦 Received (${radius} mile):`, data.listings?.length || 0);
 
             if (data.listings && data.listings.length > 0) {
               return data.listings;
@@ -138,7 +132,6 @@ export function useSmartSwipeQueue(options: QueueOptions) {
 
         // If still no results, try without property type filter
         if (ctx.propertyType && ctx.city) {
-          console.log("🔄 Still no results, trying without property type filter...");
           params = new URLSearchParams();
           params.set("city", ctx.city);
           params.set("limit", "20");
@@ -146,18 +139,15 @@ export function useSmartSwipeQueue(options: QueueOptions) {
             params.set("excludeKeys", excludeKeysRef.current.join(","));
           }
 
-          console.log("🎯 Final attempt params:", params.toString());
           response = await fetch(`/api/mls-listings?${params.toString()}`);
           data = await response.json();
 
-          console.log("📦 Received (no type filter):", data.listings?.length || 0);
 
           if (data.listings && data.listings.length > 0) {
             return data.listings;
           }
         }
 
-        console.log("❌ No listings found with any criteria");
         return [];
       } catch (error) {
         console.error("❌ Failed to fetch similar listings:", error);
@@ -173,10 +163,8 @@ export function useSmartSwipeQueue(options: QueueOptions) {
   // Initialize queue with a current listing's context
   const initializeQueue = useCallback(
     async (currentListing: MapListing | null) => {
-      console.log("🚀 initializeQueue called with:", currentListing ? currentListing.slugAddress || currentListing.slug : "null");
 
       if (!currentListing) {
-        console.log("❌ No current listing, clearing queue");
         setQueue([]);
         setContext(null);
         return;
@@ -190,12 +178,10 @@ export function useSmartSwipeQueue(options: QueueOptions) {
         longitude: currentListing.longitude,
       };
 
-      console.log("🎯 Queue context:", ctx);
 
       setContext(ctx);
 
       const listings = await fetchSimilarListings(ctx);
-      console.log("📝 Setting queue with", listings.length, "listings (max:", maxQueueSize, ")");
       setQueue(listings.slice(0, maxQueueSize));
     },
     [fetchSimilarListings, maxQueueSize]
@@ -232,7 +218,6 @@ export function useSmartSwipeQueue(options: QueueOptions) {
     );
 
     if (validQueue.length === 0) {
-      console.log("⚠️ Queue empty after filtering excludeKeys");
       setQueue([]);
       return null;
     }

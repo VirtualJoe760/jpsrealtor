@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 interface Listing {
   listingId: string;
+  slug?: string;
   latitude?: number;
   longitude?: number;
   listPrice?: number;
@@ -13,6 +14,8 @@ interface Listing {
   bedroomsTotal?: number;
   bathroomsTotalDecimal?: number;
   primaryPhotoUrl?: string;
+  propertyType?: string;
+  propertySubType?: string;
 }
 
 interface Subdivision {
@@ -28,6 +31,7 @@ interface SubdivisionMapProps {
   subdivision: Subdivision;
   onListingClick?: (listing: Listing) => void;
   height?: string;
+  propertyTypeFilter?: "all" | "sale" | "rental";
 }
 
 export default function SubdivisionMap({
@@ -35,6 +39,7 @@ export default function SubdivisionMap({
   subdivision,
   onListingClick,
   height = "400px",
+  propertyTypeFilter: externalPropertyTypeFilter,
 }: SubdivisionMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -42,12 +47,13 @@ export default function SubdivisionMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental">(externalPropertyTypeFilter || "all");
 
   // Fetch listings for this subdivision
   useEffect(() => {
     async function fetchListings() {
       try {
-        const response = await fetch(`/api/subdivisions/${subdivisionSlug}/listings?limit=50`);
+        const response = await fetch(`/api/subdivisions/${subdivisionSlug}/listings?limit=100`);
         if (response.ok) {
           const data = await response.json();
           setListings(data.listings || []);
@@ -66,11 +72,14 @@ export default function SubdivisionMap({
     if (!mapContainer.current || map.current) return;
 
     // Default center (use subdivision coordinates or first listing)
-    const center: [number, number] = subdivision.coordinates
-      ? [subdivision.coordinates.longitude, subdivision.coordinates.latitude]
-      : listings.length > 0 && listings[0].longitude && listings[0].latitude
-      ? [listings[0].longitude, listings[0].latitude]
-      : [-116.5453, 33.8303]; // Default: Palm Springs
+    let center: [number, number];
+    if (subdivision.coordinates) {
+      center = [subdivision.coordinates.longitude, subdivision.coordinates.latitude];
+    } else if (listings.length > 0 && listings[0]?.longitude && listings[0]?.latitude) {
+      center = [listings[0].longitude, listings[0].latitude];
+    } else {
+      center = [-116.5453, 33.8303]; // Default: Palm Springs
+    }
 
     // Use CartoDB basemap (free, no API key required)
     map.current = new maplibregl.Map({
@@ -100,10 +109,23 @@ export default function SubdivisionMap({
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
+    // Helper function to determine if listing is a rental
+    // PropertyType codes: A = Residential (Sale), B = Residential Lease (Rental), C = Multi-Family
+    const isRental = (listing: Listing) => {
+      return listing.propertyType === "B";
+    };
+
     // Filter listings with valid coordinates
-    const validListings = listings.filter(
+    let validListings = listings.filter(
       (l) => l.latitude && l.longitude
     );
+
+    // Apply property type filter
+    if (propertyTypeFilter === "sale") {
+      validListings = validListings.filter(l => !isRental(l));
+    } else if (propertyTypeFilter === "rental") {
+      validListings = validListings.filter(l => isRental(l));
+    }
 
     if (validListings.length === 0) return;
 
@@ -111,13 +133,17 @@ export default function SubdivisionMap({
     validListings.forEach((listing) => {
       if (!listing.latitude || !listing.longitude) return;
 
-      // Create custom blue dot marker
+      // Determine marker color based on property type
+      const rental = isRental(listing);
+      const markerColor = rental ? "#9333ea" : "#10b981"; // purple for rental, green for sale
+
+      // Create custom dot marker
       const el = document.createElement("div");
       el.className = "custom-marker";
       el.style.width = "20px";
       el.style.height = "20px";
       el.style.borderRadius = "50%";
-      el.style.backgroundColor = "#2563eb";
+      el.style.backgroundColor = markerColor;
       el.style.border = "3px solid white";
       el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
       el.style.cursor = "pointer";
@@ -246,22 +272,67 @@ export default function SubdivisionMap({
       });
     } else if (validListings.length === 1) {
       const listing = validListings[0];
-      if (listing.longitude && listing.latitude) {
+      if (listing && listing.longitude && listing.latitude) {
         map.current.flyTo({
           center: [listing.longitude, listing.latitude],
           zoom: 14,
         });
       }
     }
-  }, [listings, mapLoaded, onListingClick]);
+  }, [listings, mapLoaded, onListingClick, propertyTypeFilter]);
 
   return (
-    <div className="relative">
-      <div
-        ref={mapContainer}
-        style={{ width: "100%", height }}
-        className="rounded-lg overflow-hidden shadow-md"
-      />
+    <div className="space-y-4">
+      {/* Property Type Toggle */}
+      <div className="flex items-center gap-4">
+        <span className="text-sm font-medium text-gray-700">Show on map:</span>
+        <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+          <button
+            onClick={() => setPropertyTypeFilter("all")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              propertyTypeFilter === "all"
+                ? "bg-blue-600 text-white"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("sale")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              propertyTypeFilter === "sale"
+                ? "bg-green-600 text-white"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-600"></span>
+              For Sale
+            </span>
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("rental")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              propertyTypeFilter === "rental"
+                ? "bg-purple-600 text-white"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-purple-600"></span>
+              For Rent
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Map Container */}
+      <div className="relative">
+        <div
+          ref={mapContainer}
+          style={{ width: "100%", height }}
+          className="rounded-lg overflow-hidden shadow-md"
+        />
       {(!mapLoaded || loading) && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center">
@@ -277,6 +348,7 @@ export default function SubdivisionMap({
           <p className="text-gray-600">No listings to display on map</p>
         </div>
       )}
+      </div>
     </div>
   );
 }

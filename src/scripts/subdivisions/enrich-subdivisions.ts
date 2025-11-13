@@ -191,6 +191,8 @@ async function enrichSubdivisions() {
 
   for (let i = 0; i < subdivisions.length; i++) {
     const sub = subdivisions[i];
+    if (!sub) continue;
+
     const progress = `[${i + 1}/${subdivisions.length}]`;
 
     // Skip if already has manual data
@@ -212,7 +214,7 @@ async function enrichSubdivisions() {
             subdivisionName: { $regex: new RegExp(`^${sub.name}$`, "i") },
             city: sub.city,
             standardStatus: "Active",
-            primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+            primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
           })
             .sort({ listPrice: -1 }) // Get highest priced listing
             .lean();
@@ -224,7 +226,7 @@ async function enrichSubdivisions() {
             subdivisionName: { $regex: new RegExp(`^${sub.name}$`, "i") },
             city: sub.city,
             standardStatus: "Active",
-            primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+            primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
           })
             .sort({ listPrice: -1 })
             .lean();

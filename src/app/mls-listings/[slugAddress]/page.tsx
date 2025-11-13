@@ -132,7 +132,6 @@ export default async function ListingPage({
         }));
       }
     } catch (err) {
-      console.warn(`📛 Could not load CRMLS photos for listing ${listing.listingKey}:`, err);
       rawPhotos = [];
     }
   } else {
@@ -140,7 +139,6 @@ export default async function ListingPage({
     try {
       rawPhotos = await fetchListingPhotos(listing.slug);
     } catch (err) {
-      console.warn(`📛 Could not load photos for listing ${listing.slug}:`, err);
       rawPhotos = [];
     }
   }

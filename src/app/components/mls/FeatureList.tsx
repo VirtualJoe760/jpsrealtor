@@ -20,7 +20,6 @@ type Props = Pick<
 >;
 
 export default function FeatureList(props: Props) {
-  console.log("🧾 FeatureList Props:", props);
 
   const {
     furnished,

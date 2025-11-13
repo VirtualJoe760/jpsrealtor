@@ -52,7 +52,6 @@ export default function CurbAppealPage() {
           setStatus("Failed");
           clearInterval(interval);
         } else {
-          console.log("Status:", data.status);
         }
       } catch (error) {
         console.error("Polling error:", error);

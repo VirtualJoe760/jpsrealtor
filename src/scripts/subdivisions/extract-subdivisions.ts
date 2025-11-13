@@ -133,7 +133,6 @@ const LEGACY_COUNTY_MAP: Record<string, string> = {
   "Lakewood": "Los Angeles",
   "Redondo Beach": "Los Angeles",
   "Santa Monica": "Los Angeles",
-  "Westminster": "Los Angeles",
   "Arcadia": "Los Angeles",
   "Montebello": "Los Angeles",
   "Monterey Park": "Los Angeles",
@@ -243,7 +242,7 @@ async function extractSubdivisions() {
       {
         $match: {
           standardStatus: "Active",
-          city: { $exists: true, $ne: null, $ne: "" },
+          city: { $exists: true, $nin: [null, ""] },
           listPrice: { $exists: true, $gt: 0 },
         },
       },
@@ -297,7 +296,7 @@ async function extractSubdivisions() {
       {
         $match: {
           standardStatus: "Active",
-          city: { $exists: true, $ne: null, $ne: "" },
+          city: { $exists: true, $nin: [null, ""] },
           listPrice: { $exists: true, $gt: 0 },
         },
       },

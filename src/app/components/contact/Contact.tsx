@@ -62,7 +62,6 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
         campaign, // Include campaign name
       };
 
-      console.log("Form Data Sent:", formData);
 
       const res = await fetch("/api/contact", {
         method: "POST",

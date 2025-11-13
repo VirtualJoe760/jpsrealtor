@@ -41,9 +41,7 @@ export default function ListingDrawer({ listing, onClose }: Props) {
     // Detect horizontal swipe for favorite/dismiss
     if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 50) {
       if (deltaX > 0) {
-        console.log("✅ Favorited:", listing?.slugAddress);
       } else {
-        console.log("❌ Dismissed:", listing?.slugAddress);
       }
       setIsSwiping(false);
       onClose();

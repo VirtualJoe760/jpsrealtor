@@ -64,13 +64,10 @@ export async function fetchCityAreaData(city: City) {
     for (const [quarter, data] of Object.entries(allQuarterlyData)) {
       if (data[area]) {
         results[area][quarter] = data[area];
-        console.log(`Data loaded for ${area} in ${quarter}`);
       } else {
-        console.warn(`No data found for ${area} in ${quarter}`);
       }
     }
   }
 
-  console.log("Final Results:", results);
   return results;
 }

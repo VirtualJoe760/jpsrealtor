@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
 
   const url = req.nextUrl;
   const query = url.searchParams;
-  console.log("🧪 Raw query params:", Object.fromEntries(query.entries()));
 
   const latMin = parseFloat(query.get("south") || "-90");
   const latMax = parseFloat(query.get("north") || "90");
@@ -342,7 +341,6 @@ export async function GET(req: NextRequest) {
     // Apply pagination to merged results
     const listings = allListings.slice(0, limit);
 
-    console.log(`✅ Fetched ${gpsListings.length} GPS + ${crmlsListings.length} CRMLS = ${listings.length} total listings`);
 
     // Add cache headers for better performance
     return NextResponse.json(

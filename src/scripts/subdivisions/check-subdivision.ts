@@ -77,7 +77,7 @@ async function checkSubdivision() {
     subdivisionName: { $regex: new RegExp(`^${subdivisionName}$`, "i") },
     city,
     standardStatus: "Active",
-    primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+    primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
   })
     .sort({ listPrice: -1 })
     .limit(3)
@@ -97,7 +97,7 @@ async function checkSubdivision() {
     subdivisionName: { $regex: new RegExp(`^${subdivisionName}$`, "i") },
     city,
     standardStatus: "Active",
-    primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+    primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
   })
     .sort({ listPrice: -1 })
     .limit(3)

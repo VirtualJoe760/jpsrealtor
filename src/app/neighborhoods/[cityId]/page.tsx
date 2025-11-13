@@ -1,23 +1,47 @@
 // src\app\neighborhoods\[cityId]\page.tsx
 
 import React from "react";
-import VariableHero from "@/components/VariableHero";
-import { coachellaValleyCities } from "@/constants/cities";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import LocalInfoCard from "@/components/LocalInfoCard";
-import { generateSlug } from "@/utils/slug";
-import subdivisions from "@/constants/subdivisions";
-import Image from "next/image";
+import { findCountyBySlug, soCalCounties, CountyCity } from "@/app/constants/counties";
+import CountyCityGrid from "@/app/components/neighborhoods/CountyCityGrid";
+import CityMap from "@/app/components/cities/CityMap";
+import CityStats from "@/app/components/cities/CityStats";
+import SubdivisionsSection from "@/app/components/cities/SubdivisionsSection";
+import HOASection from "@/app/components/cities/HOASection";
+import dbConnect from "@/lib/mongoose";
+import { City } from "@/models/cities";
+import Link from "next/link";
 
-// Generate metadata for the city page
+// Helper function to find a city across all counties
+function findCityById(cityId: string): { city: CountyCity; countyName: string } | null {
+  for (const county of soCalCounties) {
+    const city = county.cities.find((c) => c.id === cityId);
+    if (city) {
+      return { city, countyName: county.name };
+    }
+  }
+  return null;
+}
+
+// Generate metadata for the city or county page
 export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
-  const city = coachellaValleyCities.find((c) => c.id === params.cityId);
-  if (!city) return {};
+  // Check if this is a county
+  const county = findCountyBySlug(params.cityId);
+  if (county) {
+    return {
+      title: `${county.name} Real Estate | Cities & Neighborhoods`,
+      description: `Explore homes and properties across ${county.name}. ${county.description}`,
+    };
+  }
+
+  // Otherwise check if it's a city
+  const cityData = findCityById(params.cityId);
+  if (!cityData) return {};
 
   return {
-    title: `${city.name} Real Estate | Coachella Valley`,
-    description: `Explore homes and properties in ${city.name}, a beautiful community in the Coachella Valley.`,
+    title: `${cityData.city.name} Real Estate | ${cityData.countyName}`,
+    description: `Explore homes and properties in ${cityData.city.name}, a beautiful community in ${cityData.countyName}.`,
   };
 }
 
@@ -25,110 +49,116 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
   const resolvedParams = await params;
   const { cityId } = resolvedParams;
 
-  // Find the city data based on cityId
-  const city = coachellaValleyCities.find((c) => c.id === cityId);
+  // Check if this is a county first
+  const county = findCountyBySlug(cityId);
+  if (county) {
+    return <CountyCityGrid county={county} />;
+  }
+
+  // Find the city data based on cityId across all counties
+  const cityData = findCityById(cityId);
 
   // Handle city not found
-  if (!city) {
+  if (!cityData) {
     notFound(); // Returns a 404 page
   }
 
-  // Get subdivisions for the city
-  const citySubdivisions = subdivisions[`${cityId}-neighborhood` as keyof typeof subdivisions] || [];
+  const { city, countyName } = cityData;
 
-  // Generate slugs dynamically for the infoCards
-  const infoCards = [
-    {
-      title: "Subdivisions",
-      description: "Explore subdivision neighborhoods in Coachella Valley.",
-      imageUrl: "/infocards/subdivisions.png",
-      link: { text: "View Subdivisions", href: `/neighborhoods/${cityId}/subdivisions` },
-    },
-    {
-      title: "Find HOA",
-      description: "Looking to get ahold of the HOA? I've got you covered.",
-      imageUrl: "/infocards/hoa.png",
-      link: { text: "HOA Contact Info", href: `/neighborhoods/${cityId}/hoa-contact-info` },
-    },
-    {
-      title: "Schools",
-      description: "Learn about our School Districts. Find the best schools in the area.",
-      imageUrl: "/infocards/school.png",
-      link: { text: "View Schools", href: `/neighborhoods/coachella-valley/school-district` },
-    },
-    {
-      title: "Local Business",
-      description: "Discover popular dining spots, Search and explore local business gems.",
-      imageUrl: "/infocards/resturants.png",
-      link: { text: "Search Local Business", href: `/neighborhoods/${cityId}/local-business` },
-    },
-    {
-      title: "Events",
-      description: "From Coachella Music Festival, to the BNP Paribas, Check out local events happening.",
-      imageUrl: "/infocards/events.png",
-      link: { text: "View Events", href: `/neighborhoods/${cityId}/events` },
-    },
-    {
-      title: "Property Statistics",
-      description: "Look at closed and expired listings statistics of the city's real estate track record.",
-      imageUrl: "/infocards/business.png",
-      link: { text: "Property Stats", href: `/neighborhoods/${cityId}/property-stats/` },
-    },
-  ];
+  // Get city data from the Cities model
+  await dbConnect();
+
+  const cityDoc = await City.findOne({ slug: cityId }).lean().exec();
+
+  // Fallback if city not found in database
+  const initialStats = cityDoc
+    ? {
+        listingCount: cityDoc.listingCount,
+        avgPrice: cityDoc.avgPrice,
+        medianPrice: cityDoc.medianPrice || 0,
+        priceRange: cityDoc.priceRange,
+      }
+    : {
+        listingCount: 0,
+        avgPrice: 0,
+        medianPrice: 0,
+        priceRange: { min: 0, max: 0 },
+      };
 
   return (
-    <>
+    <div className="min-h-screen bg-black">
       {/* Hero Section */}
-      <VariableHero
-        backgroundImage={`/city-images/${city.id}.jpg`}
-        heroContext={city.name}
-        description={city.description}
-      />
-
-      {/* Main Content Section */}
-      <section className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-4xl font-bold mb-4">{city.heading}</h1>
-        <p className="text-lg leading-7 mb-6">{city.body}</p>
-
-        {/* Population Info */}
-        <div className="p-4 rounded-md mb-8">
-          <p className="text-xl font-semibold">
-            Population: {city.population.toLocaleString()}
-          </p>
-        </div>
-      </section>
-
-      {/* Local Info Section */}
-      <section className="py-10 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {infoCards.map((card, index) => (
-              <LocalInfoCard key={index} {...card} />
-            ))}
+      <div className="bg-gradient-to-br from-black via-gray-900/90 to-black border-b border-gray-800 text-white py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <div className="mb-4">
+            <p className="text-sm text-gray-400 mb-2">{countyName}</p>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 drop-shadow-2xl">{city.name}</h1>
+            {city.description && (
+              <p className="text-xl text-gray-300 leading-relaxed max-w-3xl">{city.description}</p>
+            )}
+            {city.population && (
+              <p className="text-lg text-gray-400 mt-3">
+                Population: <span className="font-semibold text-white">{city.population.toLocaleString()}</span>
+              </p>
+            )}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Subdivisions Section */}
-      <section className="py-10 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {citySubdivisions.map((subdivision) => (
-              <div key={subdivision.name} className="p-4 bg-white rounded shadow">
-                <Image
-                  src={subdivision.photo}
-                  alt={subdivision.name}
-                  width={300}
-                  height={200}
-                  className="mb-4 rounded"
-                />
-                <h2 className="text-xl font-semibold">{subdivision.name}</h2>
-                <p>{subdivision.description}</p>
-              </div>
-            ))}
+      {/* Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Map View */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Listings in {city.name}</h2>
+          <CityMap
+            cityId={cityId}
+            cityName={city.name}
+            coordinates={cityDoc?.coordinates}
+            height="600px"
+          />
+        </div>
+
+        {/* Stats with Auto-Cycling */}
+        <CityStats
+          cityId={cityId}
+          initialStats={initialStats}
+        />
+
+        {/* Dynamic Community Data Sections */}
+        <SubdivisionsSection cityId={cityId} />
+        <HOASection cityId={cityId} />
+
+        {/* Branded Buy/Sell CTA Section */}
+        <div className="mt-16 mb-8">
+          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-gray-700 rounded-2xl p-8 md:p-12 shadow-2xl">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
+              Ready to Make Your Move in {city.name}?
+            </h2>
+            <p className="text-lg text-gray-300 mb-8 text-center max-w-3xl mx-auto">
+              Whether you're buying your dream home or selling your property, Joey Sardella is your trusted local expert in {city.name}.
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link
+                href={`/neighborhoods/${cityId}/buy`}
+                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+              >
+                <span className="relative z-10">🏡 Buy a Home in {city.name}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+              </Link>
+              <Link
+                href={`/neighborhoods/${cityId}/sell`}
+                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+              >
+                <span className="relative z-10">💰 Sell Your {city.name} Home</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+              </Link>
+            </div>
+            <p className="text-sm text-gray-400 mt-6 text-center">
+              Expert service • Local market knowledge • Proven results
+            </p>
           </div>
         </div>
-      </section>
-    </>
+      </div>
+    </div>
   );
 }

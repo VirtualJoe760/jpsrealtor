@@ -32,12 +32,7 @@ export async function GET(
     let status = runwayTask.status;
     let output = runwayTask.output;
 
-    console.log("🎯 RUNWAY RESPONSE:", {
-      predictionId: task.predictionId,
-      status,
-      output,
-    });
-
+    
     if (status === "SUCCEEDED") {
       // Wait briefly to allow video to become available
       await new Promise((res) => setTimeout(res, 3000));
@@ -48,10 +43,8 @@ export async function GET(
         (typeof output === "object" && output !== null && Object.keys(output).length === 0);
 
       if (outputIsEmpty) {
-        console.log("⚠️ Output empty after success. Retrying fetch...");
         const retry = await client.tasks.retrieve(task.predictionId);
         output = retry.output;
-        console.log("🔁 Retried output:", output);
       }
 
       let videoUrl: string | null = null;
@@ -63,8 +56,6 @@ export async function GET(
       } else if (typeof output === "string") {
         videoUrl = output;
       }
-
-      console.log("🎬 Final parsed video URL:", videoUrl);
 
       // Save in DB for history/tracking, but return live status immediately
       task.status = "complete";

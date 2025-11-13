@@ -41,10 +41,8 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
         }
 
         const data = await res.json();
-        console.log("✅ Photos fetched:", data.photos?.length);
 
         if (!Array.isArray(data.photos)) {
-          console.warn("⚠️ Unexpected photos format:", data);
           setPhotos([]);
           setIsLoading(false);
           return;

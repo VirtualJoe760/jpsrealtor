@@ -60,13 +60,13 @@ const SubdivisionSchema = new Schema<ISubdivision>(
   {
     // Core Identity
     name: { type: String, required: true },
-    slug: { type: String, required: true, unique: true },
-    normalizedName: { type: String, required: true, index: true },
+    slug: { type: String, required: true },
+    normalizedName: { type: String, required: true },
 
     // Location
-    city: { type: String, required: true, index: true },
-    county: { type: String, required: true, index: true },
-    region: { type: String, required: true, index: true },
+    city: { type: String, required: true },
+    county: { type: String, required: true },
+    region: { type: String, required: true },
 
     coordinates: {
       latitude: Number,

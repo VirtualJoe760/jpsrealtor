@@ -21,7 +21,6 @@ export const QuarterlyAnalysis: React.FC<QuarterlyAnalysisProps> = ({ areaData, 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Object.entries(areaData).map(([area, data]) => {
           if (!data) {
-            console.warn(`No data found for ${area} in ${quarter}`);
             return null;
           }
 

@@ -32,7 +32,6 @@ const ListingCarousel: React.FC<ListingCarouselProps> = ({ listingId, initialPho
           setCurrentIndex(0); // Reset index when new photos are loaded
         }
       } catch (err) {
-        console.warn("📛 Could not load all photos:", err);
       }
     };
 

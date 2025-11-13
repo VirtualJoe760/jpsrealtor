@@ -1,0 +1,211 @@
+// src/app/neighborhoods/[cityId]/[slug]/page.tsx
+// Subdivision detail page
+
+import { Metadata } from "next";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import SubdivisionListings from "@/app/components/subdivisions/SubdivisionListings";
+import SubdivisionPhotoCarousel from "@/app/components/subdivisions/SubdivisionPhotoCarousel";
+import SubdivisionReviews from "@/app/components/subdivisions/SubdivisionReviews";
+import SubdivisionForum from "@/app/components/subdivisions/SubdivisionForum";
+import SubdivisionStats from "@/app/components/subdivisions/SubdivisionStats";
+import dbConnect from "@/lib/mongoose";
+import Subdivision from "@/models/subdivisions";
+import { findCityByName } from "@/app/constants/counties";
+import { notFound } from "next/navigation";
+
+// Dynamically import map component with no SSR
+const SubdivisionMap = dynamic(
+  () => import("@/app/components/subdivisions/SubdivisionMap"),
+  { ssr: false }
+);
+
+interface SubdivisionPageProps {
+  params: {
+    cityId: string;
+    slug: string;
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: SubdivisionPageProps): Promise<Metadata> {
+  await dbConnect();
+
+  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+
+  if (!subdivision) {
+    return {
+      title: "Subdivision Not Found",
+    };
+  }
+
+  // Validate cityId matches subdivision's city
+  const cityData = findCityByName(subdivision.city);
+  if (!cityData || cityData.city.id !== params.cityId) {
+    return {
+      title: "Subdivision Not Found",
+    };
+  }
+
+  return {
+    title: `${subdivision.name} Homes for Sale | ${subdivision.city}, ${subdivision.region}`,
+    description:
+      subdivision.description ||
+      `Browse ${subdivision.listingCount} homes for sale in ${subdivision.name}, ${subdivision.city}. Average price: $${subdivision.avgPrice.toLocaleString()}`,
+    keywords: subdivision.keywords?.join(", ") || undefined,
+  };
+}
+
+export default async function SubdivisionPage({ params }: SubdivisionPageProps) {
+  await dbConnect();
+
+  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+
+  if (!subdivision) {
+    notFound();
+  }
+
+  // Validate cityId matches subdivision's city
+  const cityData = findCityByName(subdivision.city);
+  if (!cityData || cityData.city.id !== params.cityId) {
+    notFound();
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{subdivision.name}</h1>
+          <p className="text-xl text-gray-600">
+            {subdivision.city}, {subdivision.region}
+          </p>
+        </div>
+
+        {/* Photo Carousel */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Featured Listings</h2>
+          <SubdivisionPhotoCarousel
+            subdivisionSlug={params.slug}
+            subdivisionName={subdivision.name}
+            limit={20}
+          />
+        </div>
+
+        {/* Stats with Toggle */}
+        <SubdivisionStats
+          subdivisionSlug={params.slug}
+          initialStats={{
+            listingCount: subdivision.listingCount,
+            avgPrice: subdivision.avgPrice,
+            medianPrice: subdivision.medianPrice,
+            priceRange: subdivision.priceRange,
+          }}
+        />
+
+        {/* Description */}
+        {subdivision.description && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">About {subdivision.name}</h2>
+            <p className="text-gray-700 leading-relaxed">{subdivision.description}</p>
+
+            {/* Features */}
+            {subdivision.features && subdivision.features.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Features & Amenities</h3>
+                <div className="flex flex-wrap gap-2">
+                  {subdivision.features.map((feature, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+                    >
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Community Features */}
+            {subdivision.communityFeatures && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Community Features</h3>
+                <p className="text-gray-600">{subdivision.communityFeatures}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Map */}
+        {subdivision.coordinates && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Location & Listings Map</h2>
+            <SubdivisionMap
+              subdivisionSlug={params.slug}
+              subdivision={{
+                name: subdivision.name,
+                coordinates: subdivision.coordinates,
+              }}
+              height="500px"
+            />
+          </div>
+        )}
+
+        {/* Listings */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Available Homes</h2>
+          <SubdivisionListings subdivisionSlug={params.slug} />
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mb-8">
+          <SubdivisionReviews
+            subdivisionName={subdivision.name}
+            subdivisionSlug={params.slug}
+          />
+        </div>
+
+        {/* Forum Section */}
+        <div className="mb-8">
+          <SubdivisionForum
+            subdivisionName={subdivision.name}
+            subdivisionSlug={params.slug}
+          />
+        </div>
+
+        {/* Branded Buy/Sell CTA Section */}
+        <div className="mt-16 mb-8">
+          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-gray-700 rounded-2xl p-8 md:p-12 shadow-2xl">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
+              Interested in {subdivision.name}?
+            </h2>
+            <p className="text-lg text-gray-300 mb-8 text-center max-w-3xl mx-auto">
+              Whether you're looking to buy or sell in this exclusive community, Joey Sardella has the local expertise to guide you through every step of the process.
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link
+                href={`/neighborhoods/${params.cityId}/${params.slug}/buy`}
+                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+              >
+                <span className="relative z-10">🏡 Buy in {subdivision.name}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+              </Link>
+              <Link
+                href={`/neighborhoods/${params.cityId}/${params.slug}/sell`}
+                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+              >
+                <span className="relative z-10">💰 Sell Your Home Here</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+              </Link>
+            </div>
+            <p className="text-sm text-gray-400 mt-6 text-center">
+              Community specialist • Professional marketing • Expert negotiation
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

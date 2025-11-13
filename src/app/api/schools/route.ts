@@ -60,7 +60,6 @@ export async function GET(req: Request) {
     const type = "school";
     const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=${type}&key=${apiKey}`;
 
-    console.log("Requesting Google Places API:", placesUrl);
 
     // Make the API request
     const response = await axios.get(placesUrl);

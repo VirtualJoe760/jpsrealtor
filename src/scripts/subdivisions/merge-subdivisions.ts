@@ -101,7 +101,7 @@ function normalizeName(name: string): string {
 function getCityFromLocation(location: string): string {
   // Examples: "La Quinta, CA", "Central Palm Springs"
   const match = location.match(/([^,]+)/);
-  if (match) {
+  if (match && match[1]) {
     const city = match[1].trim();
     // Handle "Central Palm Springs" -> "Palm Springs"
     if (city.includes("Palm Springs")) return "Palm Springs";
@@ -228,8 +228,9 @@ async function mergeSubdivisions() {
 
     console.log(`📋 Manual-only subdivisions by source file:`);
     const byFile = manualOnlySubdivisions.reduce((acc, sub) => {
-      if (!acc[sub.sourceFile]) acc[sub.sourceFile] = [];
-      acc[sub.sourceFile].push(sub.name);
+      const sourceFile = sub.sourceFile || 'unknown';
+      if (!acc[sourceFile]) acc[sourceFile] = [];
+      acc[sourceFile].push(sub.name);
       return acc;
     }, {} as Record<string, string[]>);
 

@@ -109,6 +109,7 @@ export async function GET(
             longitude: 1,
             standardStatus: 1,
             propertyType: 1,
+            propertySubType: 1,
             mlsSource: 1,
           })
           .lean(),
@@ -145,6 +146,7 @@ export async function GET(
             longitude: 1,
             standardStatus: 1,
             propertyType: 1,
+            propertySubType: 1,
             mlsSource: 1,
           })
           .lean(),
@@ -162,7 +164,9 @@ export async function GET(
 
     // Fetch primary photos for all listings
     const listingIds = listings.map((l) => l.listingId);
-    const photos = await Photo.find({
+
+    // First try to get primary photos
+    let photos = await Photo.find({
       listingId: { $in: listingIds },
       primary: true,
     })
@@ -177,6 +181,36 @@ export async function GET(
         uriLarge: 1,
       })
       .lean();
+
+    // For listings without primary photos, get the first available photo
+    const listingsWithPhotos = new Set(photos.map(p => p.listingId));
+    const listingsWithoutPhotos = listingIds.filter(id => !listingsWithPhotos.has(id));
+
+    if (listingsWithoutPhotos.length > 0) {
+      const firstPhotos = await Photo.aggregate([
+        { $match: { listingId: { $in: listingsWithoutPhotos } } },
+        { $sort: { order: 1, _id: 1 } },
+        {
+          $group: {
+            _id: "$listingId",
+            photo: { $first: "$$ROOT" }
+          }
+        },
+        {
+          $project: {
+            listingId: "$_id",
+            uri1600: "$photo.uri1600",
+            uri1280: "$photo.uri1280",
+            uri1024: "$photo.uri1024",
+            uri800: "$photo.uri800",
+            uri640: "$photo.uri640",
+            uri300: "$photo.uri300",
+            uriLarge: "$photo.uriLarge",
+          }
+        }
+      ]);
+      photos = [...photos, ...firstPhotos];
+    }
 
     // Create a map of listingId to photo URL
     const photoMap = new Map();

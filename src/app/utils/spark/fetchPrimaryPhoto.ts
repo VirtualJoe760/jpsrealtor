@@ -6,7 +6,6 @@ export async function fetchPrimaryPhotoUrl(listingId: string): Promise<string> {
     const data = await res.json();
     return data?.uri300 || "/images/no-photo.png";
   } catch (err) {
-    console.warn(`❌ Failed to fetch cached photo for ${listingId}`, err);
     return "/images/no-photo.png";
   }
 }

@@ -48,25 +48,17 @@ export async function GET(
     }
 
     if (!listing) {
-      console.warn("⚠️ No listing found for listingKey:", listingKey);
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    console.log(`✅ Found ${mlsSource} listing:`, {
-      listingId: listing.listingId,
-      listingKey: listing.listingKey,
-      slug: listing.slug
-    });
-
+    
     let safePhotos: any[] = [];
 
     if (mlsSource === "CRMLS") {
       // 📸 CRMLS: Fetch photos from Spark API using the listing's slug or listingId
-      console.log("📸 Fetching CRMLS photos from Spark API for:", listing.slug || listing.listingId);
       const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug || listing.listingId);
 
       if (!Array.isArray(rawPhotos)) {
-        console.warn("⚠️ No photos returned from Spark API for CRMLS listing:", listing.slug || listing.listingId);
         return NextResponse.json({ photos: [] }, { status: 200 });
       }
 
@@ -85,11 +77,7 @@ export async function GET(
             "";
 
           if (!src) {
-            console.warn("⛔ Skipping photo with missing src:", {
-              photoId: p.Id,
-              caption: p.Caption,
-            });
-          }
+                      }
 
           return {
             id: p.Id,
@@ -100,14 +88,11 @@ export async function GET(
         })
         .filter((p) => p.src);
 
-      console.log(`✅ Returning ${safePhotos.length} CRMLS photos from Spark API`);
     } else {
       // 📸 GPS: Fetch photos from Spark API
-      console.log("📸 Fetching GPS photos from Spark API for:", listing.slug);
       const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug);
 
       if (!Array.isArray(rawPhotos)) {
-        console.warn("⚠️ No photos returned from Spark API for:", listing.slug);
         return NextResponse.json({ photos: [] }, { status: 200 });
       }
 
@@ -122,11 +107,7 @@ export async function GET(
             "";
 
           if (!src) {
-            console.warn("⛔ Skipping photo with missing src:", {
-              photoId: p.Id,
-              caption: p.Caption,
-            });
-          }
+                      }
 
           return {
             id: p.Id,
@@ -137,7 +118,6 @@ export async function GET(
         })
         .filter((p) => p.src);
 
-      console.log(`✅ Returning ${safePhotos.length} GPS photos from Spark API`);
     }
 
     return NextResponse.json({ photos: safePhotos });

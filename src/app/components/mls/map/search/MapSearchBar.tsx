@@ -88,12 +88,9 @@ export default function MapSearchBar({
   // Debug: Log results
   useEffect(() => {
     if (results.length > 0) {
-      console.log("📦 Search Results:");
       results.forEach((r, idx) => {
         if (r.type === "listing") {
-          console.log(`🔹 Listing [${idx}]`, r);
         } else {
-          console.log(`🌐 Geocode [${idx}]`, r);
         }
       });
     }
@@ -113,7 +110,6 @@ export default function MapSearchBar({
   }, []);
 
   const handleSelect = (result: SearchResult) => {
-    console.log("📌 Selected search result:", result);
 
     setQuery("");
     setResults([]);
@@ -197,7 +193,6 @@ export default function MapSearchBar({
                         alt="thumbnail"
                         className="w-20 h-20 object-cover flex-shrink-0"
                         onError={(e) => {
-                          console.warn("🚫 Image failed to load for:", r.slug);
                           (e.target as HTMLImageElement).src =
                             "/images/no-photo.png";
                         }}

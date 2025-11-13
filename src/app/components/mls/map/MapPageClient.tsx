@@ -200,9 +200,7 @@ export default function MapPageClient() {
           const json = await res.json();
           if (json?.listing && json.listing.listingKey) {
             listingCache.current.set(slug, json.listing);
-            console.log(`✅ Prefetched listing ${slug}`);
           } else {
-            console.warn(`⚠️ No valid listing for slug ${slug}`);
           }
         } catch (err) {
           console.error(`❌ Error prefetching listing ${slug}:`, err);
@@ -221,7 +219,6 @@ export default function MapPageClient() {
     for (const slug of listingCache.current.keys()) {
       if (!validSlugs.has(slug)) {
         listingCache.current.delete(slug);
-        console.log(`🗑️ Cleared stale cache for ${slug}`);
       }
     }
   }, [visibleListings]);
@@ -348,7 +345,6 @@ export default function MapPageClient() {
         listingCache.current.set(slug, json.listing);
         setSelectedFullListing(json.listing);
       } else {
-        console.warn(`⚠️ No valid listing data for ${slug}`);
         setSelectedFullListing(null);
       }
     } catch (err) {
@@ -381,7 +377,6 @@ export default function MapPageClient() {
     );
 
     if (listing) {
-      console.log("🔄 Restoring selected listing from URL:", selectedSlug);
       const index = visibleListings.findIndex((l) => l._id === listing._id);
       if (index !== -1) {
         setVisibleIndex(index);
@@ -439,22 +434,17 @@ export default function MapPageClient() {
   };
 
   const advanceToNextListing = async () => {
-    console.log("🎬 advanceToNextListing called");
-    console.log("📊 Queue size:", swipeQueue.queueLength);
 
     // Try to get next listing from smart queue first
     const nextListing = swipeQueue.getNext();
-    console.log("🎯 Next from queue:", nextListing ? `${nextListing.slugAddress || nextListing.slug}` : "null");
 
     if (nextListing) {
       const nextSlug = nextListing.slugAddress ?? nextListing.slug;
       if (!nextSlug) {
-        console.log("❌ No slug for next listing, closing");
         handleCloseListing();
         return;
       }
 
-      console.log("✅ Using listing from queue:", nextSlug);
 
       // Mark as viewed
       swipeHistory.markAsViewed(nextListing.listingKey);
@@ -463,9 +453,7 @@ export default function MapPageClient() {
       const nextIndex = visibleListings.findIndex((l) => l._id === nextListing._id);
       if (nextIndex !== -1) {
         setVisibleIndex(nextIndex);
-        console.log("📍 Found in visibleListings at index:", nextIndex);
       } else {
-        console.log("⚠️ Listing not in visibleListings, keeping current index");
       }
 
       selectedSlugRef.current = nextSlug;
@@ -473,25 +461,21 @@ export default function MapPageClient() {
       return;
     }
 
-    console.log("⚠️ Queue empty, falling back to sequential");
 
     // Fallback to original sequential logic if queue is empty
     if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
       const nextIndex = visibleIndex + 1;
       const next = visibleListings[nextIndex];
       if (!next) {
-        console.log("❌ No next listing in visibleListings, closing");
         handleCloseListing();
         return;
       }
       const nextSlug = next.slugAddress ?? next.slug;
       if (!nextSlug) {
-        console.log("❌ No slug for fallback listing, closing");
         handleCloseListing();
         return;
       }
 
-      console.log("📝 Using sequential listing:", nextSlug);
 
       // Mark as viewed
       swipeHistory.markAsViewed(next.listingKey);
@@ -500,7 +484,6 @@ export default function MapPageClient() {
       selectedSlugRef.current = nextSlug;
       await fetchFullListing(nextSlug);
     } else {
-      console.log("❌ No more listings, closing panel");
       handleCloseListing();
     }
   };
@@ -543,7 +526,6 @@ export default function MapPageClient() {
         selectedListing &&
         !visibleListings.some((l) => l._id === selectedListing._id)
       ) {
-        console.log("ℹ️ Locked selection not in visibleListings, keeping panel");
       }
     }
   }, [visibleListings, selectionLocked, selectedListing]);
@@ -551,9 +533,6 @@ export default function MapPageClient() {
   // Initialize swipe queue when a listing is selected
   useEffect(() => {
     if (selectedListing && selectedFullListing) {
-      console.log("🎬 Initializing swipe queue for:", selectedListing.slugAddress || selectedListing.slug);
-      console.log("🏘️ Subdivision:", selectedListing.subdivisionName);
-      console.log("🏠 Property Type:", selectedListing.propertyType);
 
       // Mark current listing as viewed
       swipeHistory.markAsViewed(selectedListing.listingKey);

@@ -117,7 +117,6 @@ export async function GET(req: Request) {
         });
       }
     } catch (err) {
-      console.warn("OpenCage error:", err);
     }
   }
 

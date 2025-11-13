@@ -37,7 +37,7 @@ export async function GET() {
 
     subdivisionList.forEach(sub => {
       urls.push({
-        url: `${baseUrl}/neighborhoods/${city.id}/subdivisions/${sub.slug}`,
+        url: `${baseUrl}/neighborhoods/${city.id}/${sub.slug}`,
         lastModified: now,
         changeFrequency: 'daily',
         priority: 1.0,

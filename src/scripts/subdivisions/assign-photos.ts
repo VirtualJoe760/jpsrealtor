@@ -55,6 +55,8 @@ async function assignPhotos() {
 
   for (let i = 0; i < missingPhotos.length; i++) {
     const sub = missingPhotos[i];
+    if (!sub) continue;
+
     const progress = `[${i + 1}/${missingPhotos.length}]`;
 
     console.log(`${progress} 📸 Searching for photo: ${sub.name} (${sub.city})...`);
@@ -68,7 +70,7 @@ async function assignPhotos() {
           subdivisionName: sub.name,
           city: sub.city,
           standardStatus: "Active",
-          primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+          primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
         })
           .sort({ listPrice: -1 })
           .lean();
@@ -79,7 +81,7 @@ async function assignPhotos() {
           subdivisionName: sub.name,
           city: sub.city,
           standardStatus: "Active",
-          primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+          primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
         })
           .sort({ listPrice: -1 })
           .lean();
@@ -91,7 +93,7 @@ async function assignPhotos() {
           subdivisionName: { $regex: new RegExp(`^${escapeRegex(sub.name)}$`, "i") },
           city: { $regex: new RegExp(`^${escapeRegex(sub.city)}$`, "i") },
           standardStatus: "Active",
-          primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+          primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
         })
           .sort({ listPrice: -1 })
           .lean();
@@ -102,7 +104,7 @@ async function assignPhotos() {
           subdivisionName: { $regex: new RegExp(`^${escapeRegex(sub.name)}$`, "i") },
           city: { $regex: new RegExp(`^${escapeRegex(sub.city)}$`, "i") },
           standardStatus: "Active",
-          primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+          primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
         })
           .sort({ listPrice: -1 })
           .lean();
@@ -116,7 +118,7 @@ async function assignPhotos() {
           listing = await Listing.findOne({
             city: { $regex: new RegExp(`^${escapeRegex(cityName)}$`, "i") },
             standardStatus: "Active",
-            primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+            primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
             $or: [
               { subdivisionName: { $exists: false } },
               { subdivisionName: null },
@@ -132,7 +134,7 @@ async function assignPhotos() {
           listing = await CRMLSListing.findOne({
             city: { $regex: new RegExp(`^${escapeRegex(cityName)}$`, "i") },
             standardStatus: "Active",
-            primaryPhotoUrl: { $exists: true, $ne: null, $ne: "" },
+            primaryPhotoUrl: { $exists: true, $nin: [null, ""] },
             $or: [
               { subdivisionName: { $exists: false } },
               { subdivisionName: null },
