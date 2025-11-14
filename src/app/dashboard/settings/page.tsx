@@ -61,7 +61,7 @@ export default function SettingsPage() {
         setProfile({
           name: profileData.profile.name || "",
           phone: profileData.profile.phone || "",
-          birthday: profileData.profile.birthday ? new Date(profileData.profile.birthday).toISOString().split('T')[0] : "",
+          birthday: profileData.profile.birthday ? (new Date(profileData.profile.birthday).toISOString().split('T')[0] || "") : "",
           profileDescription: profileData.profile.profileDescription || "",
           realEstateGoals: profileData.profile.realEstateGoals || "",
           currentAddress: profileData.profile.currentAddress || "",

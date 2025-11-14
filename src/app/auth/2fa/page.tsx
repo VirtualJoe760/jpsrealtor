@@ -1,12 +1,12 @@
 // src/app/auth/2fa/page.tsx
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
-export default function TwoFactorPage() {
+function TwoFactorForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [code, setCode] = useState("");
@@ -196,5 +196,17 @@ export default function TwoFactorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TwoFactorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <TwoFactorForm />
+    </Suspense>
   );
 }

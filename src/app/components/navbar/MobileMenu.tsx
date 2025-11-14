@@ -10,7 +10,7 @@ const navigation = [
   { name: "About", href: "/about" },
   { name: "Insights", href: "/insights" },
   { name: "Listings", href: "/mls-listings" },
-  { name: "Coachella Valley", href: "/neighborhoods" },
+  { name: "Neighborhoods", href: "/neighborhoods" },
 ];
 
 function classNames(...classes: string[]) {

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User, { IUser } from "@/models/user";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     // Find current user
-    const user = await User.findOne({ email: session.user.email });
+    const user: IUser | null = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find partner
-    const partner = await User.findOne({ email: partnerEmail.toLowerCase() });
+    const partner: IUser | null = await User.findOne({ email: partnerEmail.toLowerCase() });
     if (!partner) {
       return NextResponse.json(
         { error: "Partner account not found" },
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Can't link to self
-    if (user._id.equals(partner._id)) {
+    if (user._id.toString() === partner._id.toString()) {
       return NextResponse.json(
         { error: "Cannot link to your own account" },
         { status: 400 }
@@ -92,7 +92,7 @@ export async function DELETE(request: NextRequest) {
     await dbConnect();
 
     // Find current user
-    const user = await User.findOne({ email: session.user.email });
+    const user: IUser | null = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },

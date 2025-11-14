@@ -6,6 +6,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export type UserRole = "admin" | "endUser" | "vacationRentalHost" | "realEstateAgent" | "serviceProvider";
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   // Basic Info
   email: string;
   emailVerified: Date | null;
@@ -209,7 +210,6 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Indexes for performance
-UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ roles: 1 });
 UserSchema.index({ isAdmin: 1 });
 UserSchema.index({ serviceCategory: 1, serviceAreas: 1 }); // For service provider search
