@@ -25,6 +25,7 @@ export function useSmartSwipeQueue(options: QueueOptions) {
   const [queue, setQueue] = useState<MapListing[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [context, setContext] = useState<FetchContext | null>(null);
+  const [isExhausted, setIsExhausted] = useState(false); // Track if all properties are shown
   const fetchingRef = useRef(false);
   const excludeKeysRef = useRef<string[]>(options.excludeKeys);
 
@@ -36,9 +37,9 @@ export function useSmartSwipeQueue(options: QueueOptions) {
     excludeKeysRef.current = options.excludeKeys;
   }, [options.excludeKeys]);
 
-  // Build query parameters based on context and priority
+  // Build query parameters based on priority level
   const buildQueryParams = useCallback(
-    (ctx: FetchContext, radiusMiles = 5): URLSearchParams => {
+    (ctx: FetchContext, priority: number): URLSearchParams => {
       const params = new URLSearchParams();
 
       // Always exclude already seen listings
@@ -46,53 +47,66 @@ export function useSmartSwipeQueue(options: QueueOptions) {
         params.set("excludeKeys", excludeKeysRef.current.join(","));
       }
 
-      // Priority 1: Same subdivision and property type
-      if (ctx.subdivision && ctx.subdivision.toLowerCase() !== "other") {
-        params.set("subdivision", ctx.subdivision);
-        if (ctx.propertyType) {
+      const isNonHOA = ctx.subdivision &&
+        (ctx.subdivision.toLowerCase() === "not applicable" ||
+         ctx.subdivision.toLowerCase() === "other");
+
+      // Priority 1: Same subdivision, same property type (skip for Non-HOA)
+      if (priority === 1) {
+        if (ctx.subdivision && !isNonHOA && ctx.propertyType) {
+          params.set("subdivision", ctx.subdivision);
           params.set("propertyType", ctx.propertyType);
+          params.set("limit", "50");
+          return params;
         }
-        params.set("limit", "20");
-        return params;
       }
 
-      // Priority 2: Same property type in wider area (by city or radius)
-      if (ctx.propertyType) {
-        params.set("propertyType", ctx.propertyType);
+      // Priority 2: Same subdivision, any property type (skip for Non-HOA)
+      if (priority === 2) {
+        if (ctx.subdivision && !isNonHOA) {
+          params.set("subdivision", ctx.subdivision);
+          params.set("limit", "50");
+          return params;
+        }
+      }
 
-        // Use city if available
+      // Priority 3: Same city, same property type (important for Non-HOA properties)
+      if (priority === 3) {
+        if (ctx.city && ctx.propertyType) {
+          params.set("city", ctx.city);
+          params.set("propertyType", ctx.propertyType);
+          params.set("limit", "50");
+          return params;
+        }
+      }
+
+      // Priority 4: Same city, any property type
+      if (priority === 4) {
         if (ctx.city) {
           params.set("city", ctx.city);
+          params.set("limit", "50");
+          return params;
         }
-
-        // Or use radius search if coordinates available
-        if (ctx.latitude && ctx.longitude) {
-          params.set("lat", ctx.latitude.toString());
-          params.set("lng", ctx.longitude.toString());
-          params.set("radius", radiusMiles.toString());
-        }
-
-        params.set("limit", "20");
-        return params;
       }
 
-      // Priority 3: Just geographic area
-      if (ctx.city) {
-        params.set("city", ctx.city);
-        params.set("limit", "20");
-      } else if (ctx.latitude && ctx.longitude) {
-        params.set("lat", ctx.latitude.toString());
-        params.set("lng", ctx.longitude.toString());
-        params.set("radius", radiusMiles.toString());
-        params.set("limit", "20");
+      // Priority 5: 2 mile radius, same property type (fallback)
+      if (priority === 5) {
+        if (ctx.latitude && ctx.longitude && ctx.propertyType) {
+          params.set("lat", ctx.latitude.toString());
+          params.set("lng", ctx.longitude.toString());
+          params.set("radius", "2"); // 2 miles
+          params.set("propertyType", ctx.propertyType);
+          params.set("limit", "50");
+          return params;
+        }
       }
 
       return params;
     },
-    [] // No dependencies - uses ref which doesn't trigger re-renders
+    []
   );
 
-  // Fetch similar listings based on context
+  // Fetch similar listings based on context with priority order
   const fetchSimilarListings = useCallback(
     async (ctx: FetchContext): Promise<MapListing[]> => {
       if (fetchingRef.current) {
@@ -103,51 +117,66 @@ export function useSmartSwipeQueue(options: QueueOptions) {
       setIsLoading(true);
 
       try {
-        // Try with exact subdivision first
-        let params = buildQueryParams(ctx, 1); // Start with 1 mile
-
+        // Priority 1: Same subdivision, same property type
+        let params = buildQueryParams(ctx, 1);
         let response = await fetch(`/api/mls-listings?${params.toString()}`);
         let data = await response.json();
 
-
         if (data.listings && data.listings.length > 0) {
+          console.log(`✅ Found ${data.listings.length} listings (Priority 1: Same subdivision + property type)`);
           return data.listings;
         }
 
-        // Progressive radius expansion: 1mi → 2mi → 5mi → city
-        const radiusSequence = [2, 5];
-
-        if (ctx.latitude && ctx.longitude) {
-          for (const radius of radiusSequence) {
-            params = buildQueryParams(ctx, radius);
-            response = await fetch(`/api/mls-listings?${params.toString()}`);
-            data = await response.json();
-
-
-            if (data.listings && data.listings.length > 0) {
-              return data.listings;
-            }
-          }
-        }
-
-        // If still no results, try without property type filter
-        if (ctx.propertyType && ctx.city) {
-          params = new URLSearchParams();
-          params.set("city", ctx.city);
-          params.set("limit", "20");
-          if (excludeKeysRef.current.length > 0) {
-            params.set("excludeKeys", excludeKeysRef.current.join(","));
-          }
-
+        // Priority 2: Same subdivision, any property type
+        params = buildQueryParams(ctx, 2);
+        if (params.toString()) {
           response = await fetch(`/api/mls-listings?${params.toString()}`);
           data = await response.json();
 
-
           if (data.listings && data.listings.length > 0) {
+            console.log(`✅ Found ${data.listings.length} listings (Priority 2: Same subdivision)`);
             return data.listings;
           }
         }
 
+        // Priority 3: Same city, same property type
+        params = buildQueryParams(ctx, 3);
+        if (params.toString()) {
+          response = await fetch(`/api/mls-listings?${params.toString()}`);
+          data = await response.json();
+
+          if (data.listings && data.listings.length > 0) {
+            console.log(`✅ Found ${data.listings.length} listings (Priority 3: Same city + property type)`);
+            return data.listings;
+          }
+        }
+
+        // Priority 4: Same city, any property type
+        params = buildQueryParams(ctx, 4);
+        if (params.toString()) {
+          response = await fetch(`/api/mls-listings?${params.toString()}`);
+          data = await response.json();
+
+          if (data.listings && data.listings.length > 0) {
+            console.log(`✅ Found ${data.listings.length} listings (Priority 4: Same city)`);
+            return data.listings;
+          }
+        }
+
+        // Priority 5: 2 mile radius, same property type (final fallback)
+        params = buildQueryParams(ctx, 5);
+        if (params.toString()) {
+          response = await fetch(`/api/mls-listings?${params.toString()}`);
+          data = await response.json();
+
+          if (data.listings && data.listings.length > 0) {
+            console.log(`✅ Found ${data.listings.length} listings (Priority 5: 2-mile radius)`);
+            return data.listings;
+          }
+        }
+
+        // No more properties found
+        console.log(`⚠️ No more properties found for context:`, ctx);
         return [];
       } catch (error) {
         console.error("❌ Failed to fetch similar listings:", error);
@@ -157,7 +186,7 @@ export function useSmartSwipeQueue(options: QueueOptions) {
         fetchingRef.current = false;
       }
     },
-    [buildQueryParams] // buildQueryParams is stable now (no deps)
+    [buildQueryParams]
   );
 
   // Initialize queue with a current listing's context
@@ -194,6 +223,12 @@ export function useSmartSwipeQueue(options: QueueOptions) {
     }
 
     const listings = await fetchSimilarListings(context);
+
+    if (listings.length === 0) {
+      // No more properties available
+      setIsExhausted(true);
+      return;
+    }
 
     setQueue((prevQueue) => {
       // Add new listings that aren't already in queue
@@ -255,6 +290,7 @@ export function useSmartSwipeQueue(options: QueueOptions) {
   const clear = useCallback(() => {
     setQueue([]);
     setContext(null);
+    setIsExhausted(false);
   }, []);
 
   // Check if queue is empty (excluding already viewed/disliked)
@@ -274,5 +310,6 @@ export function useSmartSwipeQueue(options: QueueOptions) {
     isEmpty,
     isLoading,
     queueLength: queue.length,
+    isExhausted,
   };
 }

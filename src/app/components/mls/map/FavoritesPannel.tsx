@@ -238,8 +238,8 @@ export default function FavoritesPannel({
                       {/* Listings in this subdivision */}
                       <ul className="space-y-4 mt-3">
                         {group.listings.map((listing) => (
-                          <li key={listing._id} className="relative group">
-                            <button
+                          <li key={listing.listingId || listing._id || listing.listingKey} className="relative group">
+                            <div
                             onClick={(e) => {
                               e.stopPropagation();
                               if (activeTab === "favorites") {
@@ -250,8 +250,22 @@ export default function FavoritesPannel({
                                 onSelectListing(listing);
                               }
                             }}
-                            className="w-full text-left"
-                            type="button"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (activeTab === "favorites") {
+                                  router.push(
+                                    `/mls-listings/${listing.slugAddress || listing.slug}`
+                                  );
+                                } else {
+                                  onSelectListing(listing);
+                                }
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            className="w-full text-left cursor-pointer"
                           >
                             <div className="flex flex-col bg-zinc-900 rounded-lg overflow-hidden shadow-sm border border-zinc-800 hover:border-emerald-500 transition-all duration-200 hover:shadow-md hover:shadow-emerald-500/10">
                               {/* Image Container */}
@@ -340,7 +354,7 @@ export default function FavoritesPannel({
                                 )}
                               </div>
                             </div>
-                          </button>
+                          </div>
                           </li>
                         ))}
                       </ul>

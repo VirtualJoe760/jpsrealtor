@@ -12,8 +12,9 @@ import ActiveFilters from "./search/ActiveFilters";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 import DislikedResetDialog from "@/app/components/mls/map/DislikedResetDialog";
+import SwipeCompletionModal from "@/app/components/mls/map/SwipeCompletionModal";
 import { useListings } from "@/app/utils/map/useListings";
-import { useSwipeHistory } from "@/app/utils/map/useSwipeHistory";
+import { useSwipeBatch } from "@/app/utils/map/useSwipeBatch";
 import { useSmartSwipeQueue } from "@/app/utils/map/useSmartSwipeQueue";
 
 const defaultFilterState: Filters = {
@@ -126,26 +127,19 @@ export default function MapPageClient() {
     }
     return [];
   });
+  const [dislikedListings, setDislikedListings] = useState<any[]>([]);
 
   const { allListings, visibleListings, loadListings } = useListings();
 
-  // Swipe history and smart queue
-  const swipeHistory = useSwipeHistory();
-  const [dislikedListings, setDislikedListings] = useState<string[]>(swipeHistory.getDislikedKeys());
+  // Database-first swipe system with smart batching
+  const swipeBatch = useSwipeBatch();
 
-  // Update disliked listings when they change
-  useEffect(() => {
-    setDislikedListings(swipeHistory.getDislikedKeys());
-  }, [swipeHistory.getDislikedKeys().length]);
-
-  // Get exclude keys - swipeQueue will use a ref internally to avoid infinite loops
-  const excludeKeys = [
-    ...swipeHistory.getViewedKeys(),
-    ...dislikedListings
-  ];
+  // Get exclude keys from database
+  const excludeKeys = swipeBatch.getExcludeKeys();
 
   const swipeQueue = useSmartSwipeQueue({ excludeKeys });
   const [showDislikedResetDialog, setShowDislikedResetDialog] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   const selectedListing = useMemo(() => {
     if (visibleIndex === null || visibleIndex < 0 || visibleIndex >= visibleListings.length) {
@@ -241,6 +235,43 @@ export default function MapPageClient() {
     }
     Cookies.set("favorites", JSON.stringify(likedListings), { expires: 7 });
   }, [likedListings]);
+
+  // Fetch disliked listings from API
+  useEffect(() => {
+    async function fetchDislikedListings() {
+      if (!swipeBatch.isReady) return;
+
+      try {
+        const response = await fetch("/api/swipes/user");
+        if (!response.ok) {
+          console.error("Failed to fetch swipe data");
+          return;
+        }
+
+        const data = await response.json();
+        const disliked = data.dislikedListings || [];
+
+        console.log(`📋 Fetched ${disliked.length} disliked listings from API`);
+
+        // Map to format expected by FavoritesPannel
+        const dislikedData = disliked.map((item: any) => ({
+          ...item.listingData,
+          listingKey: item.listingKey,
+          listingId: item.listingData?.listingId || item.listingKey,
+          _id: item.listingData?._id || item._id,
+          swipedAt: item.swipedAt,
+          expiresAt: item.expiresAt,
+        })).filter((item: any) => item && Object.keys(item).length > 4); // More than just metadata
+
+        console.log(`✅ Processed ${dislikedData.length} disliked listings with data`);
+        setDislikedListings(dislikedData);
+      } catch (error) {
+        console.error("Error fetching disliked listings:", error);
+      }
+    }
+
+    fetchDislikedListings();
+  }, [swipeBatch.isReady, swipeBatch.isSyncing]); // Refresh when batch syncs
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
@@ -422,12 +453,15 @@ export default function MapPageClient() {
   };
 
   const handleCloseListing = () => {
+    // Flush any pending swipes when user closes the panel
+    swipeBatch.flushSwipes();
+
     setVisibleIndex(null);
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
     setSelectionLocked(false); // 🔓 unlock
-    swipeHistory.clearViewed(); // Clear session history when panel closes
-    swipeQueue.clear(); // Clear the queue
+    swipeQueue.clear(); // Clear the queue (also resets isExhausted)
+    setShowCompletionModal(false); // Reset completion modal
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -446,21 +480,38 @@ export default function MapPageClient() {
       }
 
 
-      // Mark as viewed
-      swipeHistory.markAsViewed(nextListing.listingKey);
+      // No need to track "viewed" - exclude keys from DB handle this
 
       // Find in visibleListings for index
       const nextIndex = visibleListings.findIndex((l) => l._id === nextListing._id);
       if (nextIndex !== -1) {
         setVisibleIndex(nextIndex);
       } else {
+        // Listing not in visibleListings - still need to update state to show new listing
+        setVisibleIndex(null);
       }
 
       selectedSlugRef.current = nextSlug;
       await fetchFullListing(nextSlug);
+
+      // Update URL to reflect new listing
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("selected", nextSlug);
+      if (nextListing.latitude && nextListing.longitude) {
+        params.set("lat", nextListing.latitude.toFixed(6));
+        params.set("lng", nextListing.longitude.toFixed(6));
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+
       return;
     }
 
+    // Check if queue is exhausted (no more properties in area)
+    if (swipeQueue.isExhausted) {
+      handleCloseListing();
+      setShowCompletionModal(true);
+      return;
+    }
 
     // Fallback to original sequential logic if queue is empty
     if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
@@ -477,14 +528,14 @@ export default function MapPageClient() {
       }
 
 
-      // Mark as viewed
-      swipeHistory.markAsViewed(next.listingKey);
+      // No need to track "viewed" - exclude keys from DB handle this
 
       setVisibleIndex(nextIndex);
       selectedSlugRef.current = nextSlug;
       await fetchFullListing(nextSlug);
     } else {
       handleCloseListing();
+      setShowCompletionModal(true);
     }
   };
 
@@ -500,21 +551,17 @@ export default function MapPageClient() {
   };
 
   const handleRemoveDislike = (listing: MapListing) => {
-    swipeHistory.removeFromDislikes(listing.listingKey);
-    setDislikedListings(swipeHistory.getDislikedKeys());
+    // TODO: Implement remove dislike in new system
+    console.log("Remove dislike:", listing.listingKey);
   };
 
   const handleClearDislikes = () => {
-    swipeHistory.resetDislikes();
-    setDislikedListings([]);
+    // TODO: Implement clear dislikes in new system
+    console.log("Clear all dislikes");
   };
 
-  // Convert disliked listing keys to MapListing objects
-  const dislikedListingsData = useMemo(() => {
-    return allListings.filter((listing) =>
-      dislikedListings.includes(listing.listingKey)
-    );
-  }, [allListings, dislikedListings]);
+  // Use the disliked listings from state (fetched from API)
+  const dislikedListingsData = dislikedListings;
 
   // Bounds → listings change (don't auto-select first listing)
   useEffect(() => {
@@ -533,10 +580,6 @@ export default function MapPageClient() {
   // Initialize swipe queue when a listing is selected
   useEffect(() => {
     if (selectedListing && selectedFullListing) {
-
-      // Mark current listing as viewed
-      swipeHistory.markAsViewed(selectedListing.listingKey);
-
       // Initialize queue with similar listings
       swipeQueue.initializeQueue(selectedListing);
     }
@@ -651,19 +694,46 @@ export default function MapPageClient() {
           listing={selectedListing}
           fullListing={selectedFullListing}
           onClose={handleCloseListing}
-          isDisliked={dislikedListings.includes(selectedListing.listingKey)}
-          dislikedTimestamp={swipeHistory.getDislikedTimestamp(selectedListing.listingKey)}
+          onViewFullListing={() => {
+            // Flush pending swipes before user views full listing
+            swipeBatch.flushSwipes();
+          }}
+          isDisliked={swipeBatch.isExcluded(selectedFullListing.listingKey)}
+          dislikedTimestamp={null}
           onRemoveDislike={() => {
-            swipeHistory.removeFromDislikes(selectedListing.listingKey);
-            setDislikedListings(swipeHistory.getDislikedKeys());
+            // TODO: Implement in new system
           }}
           onSwipeLeft={() => {
-            // Mark as disliked
-            swipeHistory.markAsDisliked(selectedListing.listingKey);
-            setDislikedListings(swipeHistory.getDislikedKeys());
+            // Check if swipe system is ready
+            if (!swipeBatch.isReady) {
+              console.warn("⚠️ Swipe system not ready yet");
+              return;
+            }
+
+            // Database-first: Add to batch queue (will sync in background)
+            // Pass full listing data so we can display it in the disliked panel
+            swipeBatch.markAsDisliked(selectedFullListing.listingKey, selectedFullListing);
+
+            console.log(`👎 Disliked: ${selectedFullListing.listingKey}`);
+
+            // Optimistically add to disliked state for immediate UI feedback
+            const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
+            if (
+              !dislikedListings.some(
+                (disliked) => disliked.listingKey === selectedFullListing.listingKey
+              )
+            ) {
+              setDislikedListings((prev) => [
+                ...prev,
+                {
+                  ...selectedFullListing,
+                  swipedAt: new Date().toISOString(),
+                  expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min from now
+                } as any
+              ]);
+            }
 
             // Remove from favorites if present
-            const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
             if (
               likedListings.some(
                 (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
@@ -676,28 +746,29 @@ export default function MapPageClient() {
               );
             }
 
-            // Check if user has 100+ dislikes
-            const dislikedCount = swipeHistory.getDislikedCount();
-            if (dislikedCount >= 100) {
-              setShowDislikedResetDialog(true);
-            }
-
             advanceToNextListing();
           }}
           onSwipeRight={() => {
-            // Add to favorites
+            // Check if swipe system is ready
+            if (!swipeBatch.isReady) {
+              console.warn("⚠️ Swipe system not ready yet");
+              return;
+            }
+
+            // Database-first: Add to batch queue (will sync in background)
+            // Use selectedFullListing which has all the data we need
+            swipeBatch.markAsLiked(selectedFullListing.listingKey, selectedFullListing);
+
+            console.log(`❤️ Liked: ${selectedFullListing.listingKey}`);
+
+            // Also add to local state for immediate UI feedback
             const currentSlug = selectedListing.slugAddress ?? selectedListing.slug;
             if (
               !likedListings.some(
                 (fav) => (fav.slugAddress ?? fav.slug) === currentSlug
               )
             ) {
-              const full = allListings.find(
-                (l) => (l.slugAddress ?? l.slug) === currentSlug
-              );
-              setLikedListings((prev) =>
-                full ? [...prev, full] : [...prev, selectedListing]
-              );
+              setLikedListings((prev) => [...prev, selectedFullListing as unknown as MapListing]);
             }
 
             advanceToNextListing();
@@ -707,15 +778,23 @@ export default function MapPageClient() {
         />
       )}
 
-      {/* Disliked Reset Dialog */}
+      {/* Disliked Reset Dialog - Disabled in database-first system */}
+      {/* TODO: Re-implement with API call if needed */}
       <DislikedResetDialog
         isOpen={showDislikedResetDialog}
-        dislikedCount={swipeHistory.getDislikedCount()}
+        dislikedCount={0}
         onReset={() => {
-          swipeHistory.resetDislikes();
+          // TODO: Implement reset via API
           setShowDislikedResetDialog(false);
         }}
         onClose={() => setShowDislikedResetDialog(false)}
+      />
+
+      {/* Swipe Completion Modal */}
+      <SwipeCompletionModal
+        isOpen={showCompletionModal}
+        favoritesCount={likedListings.length}
+        onClose={() => setShowCompletionModal(false)}
       />
     </>
   );

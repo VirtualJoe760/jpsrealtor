@@ -1,29 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch",
-      "WebFetch(domain:maplibre.org)",
-      "Bash(find:*)",
-      "Bash(python:*)",
-      "Bash(\"F:\\web-clients\\joseph-sardella\\jpsrealtor\\local-logs\\crmls\\field-comparison.txt\")",
-      "Bash(cat:*)",
-      "Bash(npm run build:*)",
-      "Bash(npx tsc:*)",
+      "Bash(powershell -Command \"\n$content = @''\n# NextAuth Configuration (Required for Authentication)\nNEXTAUTH_URL=http://localhost:3000\nNEXTAUTH_SECRET=generate_with_openssl_rand_base64_32\n\n# Base URL\nNEXT_PUBLIC_BASE_URL=http://localhost:3000\n\n# MongoDB Database (Required)\nMONGODB_URI=mongodb+srv://username:password@host/database\n\n# Email Configuration (Required for user verification emails)\nEMAIL_USER=your_email@gmail.com\nEMAIL_PASS=your_app_specific_password\n\n# JWT Secret (for additional auth if needed)\nJWT_SECRET=generate_with_openssl_rand_base64_32\n\n# Cloudinary (for image uploads)\nCLOUDINARY_CLOUD_NAME=your_cloud_name\nCLOUDINARY_SECRET=your_secret\nCLOUDINARY_API_KEY=your_api_key\n\n# Google Services\nNEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key\nNEXT_PUBLIC_GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your_search_engine_id\nNEXT_PUBLIC_GOOGLE_API_KEY=your_google_api_key\n\n# Yelp API (for business data)\nYELP_FUSION_API_KEY=your_yelp_api_key\nYELP_FUSION_CLIENT_ID=your_yelp_client_id\n\n# MapTiler\nMAPTILER_KEY=your_maptiler_key\n\n# Twilio (for SMS)\nTWILIO_ACCOUNT_SID=your_twilio_sid\nTWILIO_AUTH_TOKEN=your_twilio_token\nTWILIO_PHONE_NUMBER=your_twilio_phone\n\n# SendFox (for email marketing)\nJPSREALTOR_SENDFOX_API_TOKEN=your_sendfox_token\n\n# People Data API\nPEOPLE_DATA_API_KEY=your_people_data_key\n\n# Spark API (MLS/Real Estate Data)\nSPARK_OAUTH_KEY=your_spark_key\nSPARK_OAUTH_SECRET=your_spark_secret\nSPARK_ACCESS_TOKEN=your_spark_access_token\nSPARK_REFRESH_TOKEN=your_spark_refresh_token\n''@\n$content | Out-File -FilePath ''.env.example'' -Encoding UTF8\necho ''.env.example created''\n\")",
+      "Bash(timeout 30 npx tsc:*)",
       "Bash(node:*)",
-      "Bash(npx tsx:*)",
-      "Bash(pkill:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push)",
-      "Bash(git push:*)",
-      "mcp__ide__getDiagnostics",
-      "Bash(curl:*)",
-      "Bash(npx next build)",
-      "Bash(npm run dev:*)",
-      "Bash(netstat:*)",
-      "Bash(rm:*)",
-      "Bash(taskkill:*)",
-      "Bash(cmd //c \"rd /s /q .next\")"
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

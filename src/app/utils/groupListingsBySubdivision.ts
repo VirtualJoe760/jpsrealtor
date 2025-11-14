@@ -75,5 +75,6 @@ export function getSubdivisionDisplayName(
 ): string {
   if (!subdivision) return "Other Areas";
   if (subdivision.toLowerCase() === "other") return "Other Areas";
+  if (subdivision.toLowerCase() === "not applicable") return "Non-HOA";
   return subdivision;
 }

@@ -347,9 +347,9 @@ export default function CityMap({
   return (
     <div className="space-y-4">
       {/* Controls Bar */}
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        {/* Property Type Toggle */}
-        <div className="flex gap-2 bg-gray-900 p-2 rounded-lg">
+      <div className="flex flex-wrap gap-4 items-center">
+        {/* Property Type & Map Style Combined Tabs */}
+        <div className="flex gap-2 bg-gray-900 p-2 rounded-lg flex-wrap">
           <button
             onClick={() => setPropertyTypeFilter("sale")}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${
@@ -380,10 +380,11 @@ export default function CityMap({
           >
             All
           </button>
-        </div>
 
-        {/* Map Style Toggle */}
-        <div className="flex gap-2 bg-gray-900 p-2 rounded-lg">
+          {/* Divider */}
+          <div className="w-px bg-gray-700 mx-1"></div>
+
+          {/* Map Style Tabs */}
           <button
             onClick={() => setMapStyle("dark")}
             className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
@@ -506,7 +507,13 @@ export default function CityMap({
       {/* Map Container */}
       <div
         ref={mapContainer}
-        style={{ width: "100%", height, borderRadius: "12px", overflow: "hidden" }}
+        style={{
+          width: "100%",
+          height,
+          borderRadius: "12px",
+          overflow: "hidden",
+          touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
+        }}
         className="shadow-xl border border-gray-700"
       />
 

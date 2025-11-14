@@ -1,15 +1,32 @@
 // src/types/next-auth.d.ts
-import "next-auth";
+// Type definitions for NextAuth to include custom user properties
+
+import NextAuth, { DefaultSession, DefaultUser } from "next-auth";
+import { JWT } from "next-auth/jwt";
+import { UserRole } from "@/models/user";
 
 declare module "next-auth" {
-  interface User {
-    id: string;
-    name: string;
-    email: string;
-    role?: string; // Optional role field for users
+  /**
+   * Returned by `useSession`, `getSession` and received as a prop on the `SessionProvider` React Context
+   */
+  interface Session {
+    user: {
+      id: string;
+      roles: UserRole[];
+      isAdmin: boolean;
+    } & DefaultSession["user"];
   }
 
-  interface Session {
-    user: User;
+  interface User extends DefaultUser {
+    roles: UserRole[];
+    isAdmin: boolean;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    roles: UserRole[];
+    isAdmin: boolean;
   }
 }

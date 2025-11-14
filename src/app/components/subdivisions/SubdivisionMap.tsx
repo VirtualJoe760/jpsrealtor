@@ -330,7 +330,11 @@ export default function SubdivisionMap({
       <div className="relative">
         <div
           ref={mapContainer}
-          style={{ width: "100%", height }}
+          style={{
+            width: "100%",
+            height,
+            touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
+          }}
           className="rounded-lg overflow-hidden shadow-md"
         />
       {(!mapLoaded || loading) && (

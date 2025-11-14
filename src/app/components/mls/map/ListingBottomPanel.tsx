@@ -49,6 +49,7 @@ type Props = {
   onClose: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
+  onViewFullListing?: () => void; // Callback when user clicks "View Full Listing"
   isSidebarOpen: boolean;
   isFiltersOpen: boolean;
   isDisliked?: boolean;
@@ -62,6 +63,7 @@ export default function ListingBottomPanel({
   onClose,
   onSwipeLeft,
   onSwipeRight,
+  onViewFullListing,
   isSidebarOpen,
   isFiltersOpen,
   isDisliked = false,
@@ -534,7 +536,11 @@ export default function ListingBottomPanel({
             <Link
               href={`/mls-listings/${fullListing.slugAddress || fullListing.slug || ""}`}
               className="block text-center bg-emerald-500 text-black font-bold py-2.5 lg:py-3 px-4 rounded-lg hover:bg-emerald-400 active:bg-emerald-600 transition-colors duration-200 text-base lg:text-lg shadow-lg"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                // Flush pending swipes before navigating
+                onViewFullListing?.();
+              }}
               role="button"
               aria-label={`View full listing for ${address}`}
             >
