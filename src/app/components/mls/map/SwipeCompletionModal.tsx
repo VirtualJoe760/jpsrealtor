@@ -56,12 +56,13 @@ export default function SwipeCompletionModal({
 
           {/* Title */}
           <h2 className="text-3xl font-bold text-white text-center mb-3">
-            Finished Swiping!
+            Swipe Queue Complete!
           </h2>
 
           {/* Message */}
           <p className="text-gray-300 text-center mb-2">
-            You've reviewed all properties in this area.
+            You have finished the swipe queue.
+            {favoritesCount > 0 && " Would you like to review your favorites in your dashboard?"}
           </p>
 
           {/* Favorites Count */}

@@ -14,8 +14,7 @@ import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 import DislikedResetDialog from "@/app/components/mls/map/DislikedResetDialog";
 import SwipeCompletionModal from "@/app/components/mls/map/SwipeCompletionModal";
 import { useListings } from "@/app/utils/map/useListings";
-import { useSwipeBatch } from "@/app/utils/map/useSwipeBatch";
-import { useSmartSwipeQueue } from "@/app/utils/map/useSmartSwipeQueue";
+import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 
 const defaultFilterState: Filters = {
   // Listing Type (default to 'sale' for residential properties)
@@ -131,13 +130,8 @@ export default function MapPageClient() {
 
   const { allListings, visibleListings, loadListings } = useListings();
 
-  // Database-first swipe system with smart batching
-  const swipeBatch = useSwipeBatch();
-
-  // Get exclude keys from database
-  const excludeKeys = swipeBatch.getExcludeKeys();
-
-  const swipeQueue = useSmartSwipeQueue({ excludeKeys });
+  // Consolidated swipe queue with batching and priority
+  const swipeQueue = useSwipeQueue();
   const [showDislikedResetDialog, setShowDislikedResetDialog] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
@@ -207,6 +201,40 @@ export default function MapPageClient() {
     prefetchListings();
   }, [visibleListings]);
 
+  // Prefetch next swipe queue items for instant transitions
+  useEffect(() => {
+    if (!swipeQueue.isReady || !selectedFullListing) return;
+
+    const prefetchSwipeQueue = async () => {
+      const nextListings = swipeQueue.peekNext(3); // Get next 3 listings in queue
+
+      for (const listing of nextListings) {
+        const slug = listing.slugAddress ?? listing.slug;
+        if (!slug || listingCache.current.has(slug) || fetchingRef.current.has(slug)) {
+          continue;
+        }
+
+        // Prefetch in background
+        fetchingRef.current.add(slug);
+        try {
+          const res = await fetch(`/api/mls-listings/${slug}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          if (json?.listing && json.listing.listingKey) {
+            listingCache.current.set(slug, json.listing);
+            console.log(`⚡ Prefetched: ${slug}`);
+          }
+        } catch (err) {
+          console.warn(`Failed to prefetch ${slug}:`, err);
+        } finally {
+          fetchingRef.current.delete(slug);
+        }
+      }
+    };
+
+    prefetchSwipeQueue();
+  }, [swipeQueue.queueLength, swipeQueue.isReady, selectedFullListing]);
+
   // Clear stale cache
   useEffect(() => {
     const validSlugs = new Set(visibleListings.map((l) => l.slugAddress ?? l.slug));
@@ -239,7 +267,7 @@ export default function MapPageClient() {
   // Fetch disliked listings from API
   useEffect(() => {
     async function fetchDislikedListings() {
-      if (!swipeBatch.isReady) return;
+      if (!swipeQueue.isReady) return;
 
       try {
         const response = await fetch("/api/swipes/user");
@@ -271,7 +299,7 @@ export default function MapPageClient() {
     }
 
     fetchDislikedListings();
-  }, [swipeBatch.isReady, swipeBatch.isSyncing]); // Refresh when batch syncs
+  }, [swipeQueue.isReady, swipeQueue.isSyncing]); // Refresh when batch syncs
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
@@ -454,13 +482,13 @@ export default function MapPageClient() {
 
   const handleCloseListing = () => {
     // Flush any pending swipes when user closes the panel
-    swipeBatch.flushSwipes();
+    swipeQueue.flushSwipes();
 
     setVisibleIndex(null);
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
     setSelectionLocked(false); // 🔓 unlock
-    swipeQueue.clear(); // Clear the queue (also resets isExhausted)
+    swipeQueue.reset(); // Clear the queue (also resets isExhausted)
     setShowCompletionModal(false); // Reset completion modal
     const params = new URLSearchParams(searchParams.toString());
     params.delete("selected");
@@ -469,10 +497,11 @@ export default function MapPageClient() {
 
   const advanceToNextListing = async () => {
 
-    // Try to get next listing from smart queue first
-    const nextListing = swipeQueue.getNext();
+    // Try to get next listing from intelligent queue
+    const { listing: nextListing, reason } = swipeQueue.getNext();
 
     if (nextListing) {
+      console.log(`🎯 Showing next listing${reason ? ` (${reason})` : ''}`);
       const nextSlug = nextListing.slugAddress ?? nextListing.slug;
       if (!nextSlug) {
         handleCloseListing();
@@ -492,7 +521,19 @@ export default function MapPageClient() {
       }
 
       selectedSlugRef.current = nextSlug;
-      await fetchFullListing(nextSlug);
+
+      // Check cache first for instant loading
+      if (listingCache.current.has(nextSlug)) {
+        const cached = listingCache.current.get(nextSlug)!;
+        if (cached.listingKey) {
+          setSelectedFullListing(cached);
+          setIsLoadingListing(false);
+          console.log(`⚡ Used prefetched data for ${nextSlug}`);
+        }
+      } else {
+        // Fetch in background if not cached
+        fetchFullListing(nextSlug);
+      }
 
       // Update URL to reflect new listing
       const params = new URLSearchParams(searchParams.toString());
@@ -508,35 +549,17 @@ export default function MapPageClient() {
 
     // Check if queue is exhausted (no more properties in area)
     if (swipeQueue.isExhausted) {
+      console.log("🏁 Queue exhausted - showing completion modal");
       handleCloseListing();
       setShowCompletionModal(true);
       return;
     }
 
-    // Fallback to original sequential logic if queue is empty
-    if (visibleIndex !== null && visibleIndex < visibleListings.length - 1) {
-      const nextIndex = visibleIndex + 1;
-      const next = visibleListings[nextIndex];
-      if (!next) {
-        handleCloseListing();
-        return;
-      }
-      const nextSlug = next.slugAddress ?? next.slug;
-      if (!nextSlug) {
-        handleCloseListing();
-        return;
-      }
-
-
-      // No need to track "viewed" - exclude keys from DB handle this
-
-      setVisibleIndex(nextIndex);
-      selectedSlugRef.current = nextSlug;
-      await fetchFullListing(nextSlug);
-    } else {
-      handleCloseListing();
-      setShowCompletionModal(true);
-    }
+    // Queue is empty but not exhausted - it's still loading
+    // DO NOT fall back to visible map listings as they may be from different cities/property types
+    console.log("⏳ Queue is loading, please wait...");
+    // Close the listing view for now
+    handleCloseListing();
   };
 
   const handleRemoveFavorite = (listing: MapListing) => {
@@ -696,23 +719,23 @@ export default function MapPageClient() {
           onClose={handleCloseListing}
           onViewFullListing={() => {
             // Flush pending swipes before user views full listing
-            swipeBatch.flushSwipes();
+            swipeQueue.flushSwipes();
           }}
-          isDisliked={swipeBatch.isExcluded(selectedFullListing.listingKey)}
+          isDisliked={swipeQueue.isExcluded(selectedFullListing.listingKey)}
           dislikedTimestamp={null}
           onRemoveDislike={() => {
             // TODO: Implement in new system
           }}
           onSwipeLeft={() => {
             // Check if swipe system is ready
-            if (!swipeBatch.isReady) {
+            if (!swipeQueue.isReady) {
               console.warn("⚠️ Swipe system not ready yet");
               return;
             }
 
             // Database-first: Add to batch queue (will sync in background)
             // Pass full listing data so we can display it in the disliked panel
-            swipeBatch.markAsDisliked(selectedFullListing.listingKey, selectedFullListing);
+            swipeQueue.markAsDisliked(selectedFullListing.listingKey, selectedFullListing);
 
             console.log(`👎 Disliked: ${selectedFullListing.listingKey}`);
 
@@ -750,14 +773,14 @@ export default function MapPageClient() {
           }}
           onSwipeRight={() => {
             // Check if swipe system is ready
-            if (!swipeBatch.isReady) {
+            if (!swipeQueue.isReady) {
               console.warn("⚠️ Swipe system not ready yet");
               return;
             }
 
             // Database-first: Add to batch queue (will sync in background)
             // Use selectedFullListing which has all the data we need
-            swipeBatch.markAsLiked(selectedFullListing.listingKey, selectedFullListing);
+            swipeQueue.markAsLiked(selectedFullListing.listingKey, selectedFullListing);
 
             console.log(`❤️ Liked: ${selectedFullListing.listingKey}`);
 

@@ -12,7 +12,11 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next; Write-Output ''.next directory removed'' } else { Write-Output ''No .next directory found'' }\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git log:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout 10 npx tsc:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

@@ -28,7 +28,7 @@ const SWIPE = {
   minOffsetRatio: 0.2,
   minVelocity: 450,
   flyOutRatio: 0.98,
-  flyOutDuration: 0.22,
+  flyOutDuration: 0.2, // Slightly faster for smoother transitions
   snapSpring: { stiffness: 380, damping: 32 },
   dragElastic: 0.28,
   lockScrollMaxWidth: 1024,
@@ -218,23 +218,32 @@ export default function ListingBottomPanel({
   useEffect(() => {
     if (!mounted) return; // Don't animate until mounted
 
-    // Use setTimeout to ensure component is fully rendered
-    const timeoutId = setTimeout(() => {
-      controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
-      dragX.set(0);
+    // Immediate smooth entrance animation
+    requestAnimationFrame(() => {
+      try {
+        if (!mounted) return;
 
-      requestAnimationFrame(() => {
-        controls.start({
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          rotate: 0,
-          transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
+        controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
+        dragX.set(0);
+
+        // Immediate animation start for fluid transitions
+        requestAnimationFrame(() => {
+          if (mounted) {
+            controls.start({
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              rotate: 0,
+              transition: { duration: 0.18, ease: [0.42, 0, 0.58, 1] }, // Slightly faster
+            }).catch(() => {
+              // Silently catch animation errors
+            });
+          }
         });
-      });
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
+      } catch (err) {
+        // Silently catch if controls aren't ready
+      }
+    });
   }, [fullListing?.listingKey, controls, dragX, mounted]);
 
   const swipeOut = async (dir: "left" | "right") => {
@@ -261,7 +270,7 @@ export default function ListingBottomPanel({
     if (exitDirRef.current === "left") onSwipeLeft?.();
     else if (exitDirRef.current === "right") onSwipeRight?.();
 
-    controls.set({ opacity: 1, y: 0, scale: 1, rotate: 0 });
+    // Don't reset controls here - let entrance animation handle the transition
     dragX.set(0);
     exitDirRef.current = null;
 
@@ -317,6 +326,7 @@ export default function ListingBottomPanel({
     background: "rgba(24,24,24,0.85)",
     backdropFilter: "blur(8px)",
     x: dragX,
+    willChange: "transform, opacity", // Hardware acceleration hint
   };
 
   if (!mounted) return null;

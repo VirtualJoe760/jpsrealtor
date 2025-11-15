@@ -36,8 +36,9 @@ export async function GET(req: NextRequest) {
   };
 
   // ==================== PROPERTY TYPE FILTERS ====================
+  // If propertyType is explicitly provided in query, use it (overrides listingType default)
   const queryPropertyType = query.get("propertyType");
-  if (queryPropertyType && queryPropertyType !== "A" && queryPropertyType !== "B" && queryPropertyType !== "C") {
+  if (queryPropertyType) {
     matchStage.propertyType = queryPropertyType;
   }
 
@@ -236,6 +237,7 @@ export async function GET(req: NextRequest) {
         $project: {
           _id: 1,
           listingId: 1,
+          listingKey: 1, // GPS has listingKey, CRMLS will use listingId below
           slug: 1,
           slugAddress: 1,
           listPrice: 1,
@@ -327,7 +329,8 @@ export async function GET(req: NextRequest) {
 
     const crmlsWithSource = crmlsListings.map(listing => ({
       ...listing,
-      mlsSource: listing.mlsSource || "CRMLS"
+      mlsSource: listing.mlsSource || "CRMLS",
+      listingKey: listing.listingKey || listing.listingId // CRMLS uses listingId as the unique key
     }));
 
     // Merge and sort the results

@@ -144,17 +144,29 @@ export default function DashboardPage() {
 
   const removeFavorite = async (listingKey: string) => {
     try {
-      // TODO: Implement DELETE /api/swipes/user/[listingKey] endpoint
-      // For now, just update local state
       console.log(`🗑️ Removing favorite: ${listingKey}`);
 
-      // Update local state
+      // Optimistically update local state
       setFavorites((prev) => prev.filter((fav) => fav.listingKey !== listingKey));
+
+      // Call API to remove from database
+      const response = await fetch(`/api/user/favorites/${listingKey}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove favorite");
+      }
+
+      const data = await response.json();
+      console.log(`✅ Favorite removed. Remaining: ${data.remainingCount}`);
 
       // Refresh from server to stay in sync
       await syncFavorites();
     } catch (error) {
       console.error("❌ Error removing favorite:", error);
+      // Revert optimistic update on error
+      await syncFavorites();
     }
   };
 
