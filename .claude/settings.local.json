@@ -7,7 +7,12 @@
       "Bash(npx tsc:*)",
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next; Write-Output ''.next directory removed'' } else { Write-Output ''No .next directory found'' }\")",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Footer from "./Footer";
 import Navbar from "./navbar/Navbar";
 import { Providers } from "../providers";
+import MetaPixel from "../../components/MetaPixel";
 
 export default function ClientLayoutWrapper({
   children,
@@ -16,6 +17,7 @@ export default function ClientLayoutWrapper({
 
   return (
     <Providers>
+      <MetaPixel />
       <Navbar />
       {children}
       {!hideFooter && <Footer />}

@@ -104,7 +104,7 @@ const UserSchema = new Schema<IUser>(
       trim: true,
     },
     emailVerified: { type: Date, default: null },
-    password: { type: String, required: true },
+    password: { type: String, required: false }, // Not required for OAuth users
     name: String,
     image: String,
 

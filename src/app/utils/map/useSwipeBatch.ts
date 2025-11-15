@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getOrCreateFingerprint } from "@/app/utils/fingerprint";
+import { trackAddToWishlist } from "@/lib/meta-pixel";
 
 type SwipeAction = {
   listingKey: string;
@@ -185,6 +186,19 @@ export function useSwipeBatch() {
     console.log(`🔵 markAsLiked CALLED with listingKey:`, listingKey);
     console.trace("Stack trace for markAsLiked");
     addSwipe(listingKey, "like", listingData);
+
+    // Track with Meta Pixel for retargeting
+    if (listingData) {
+      trackAddToWishlist({
+        listingKey,
+        address: listingData.UnparsedAddress || listingData.StreetName,
+        price: listingData.ListPrice,
+        bedrooms: listingData.BedroomsTotal,
+        bathrooms: listingData.BathroomsTotalInteger,
+        city: listingData.City,
+        subdivision: listingData.SubdivisionName,
+      });
+    }
   }, [addSwipe]);
 
   // Mark as disliked
