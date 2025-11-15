@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
 
   const propertySubType = query.get("propertySubType");
   if (propertySubType && propertySubType !== "all") {
-    matchStage.propertySubType = propertySubType;
+    // Use regex matching to catch variations like "Single Family Residence", "Single Family", etc.
+    matchStage.propertySubType = { $regex: new RegExp(propertySubType, "i") };
   }
 
   // ==================== PRICE FILTERS ====================

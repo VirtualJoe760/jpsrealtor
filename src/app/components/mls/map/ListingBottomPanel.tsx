@@ -22,19 +22,19 @@ import ListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
 
 /* =======================
-   🔧 TUNING
-   ======================= */
+   🔧 SWIPE TUNING
+======================= */
 const SWIPE = {
   minOffsetRatio: 0.2,
   minVelocity: 450,
   flyOutRatio: 0.98,
-  flyOutDuration: 0.2, // Slightly faster for smoother transitions
+  flyOutDuration: 0.2,
   snapSpring: { stiffness: 380, damping: 32 },
   dragElastic: 0.28,
   lockScrollMaxWidth: 1024,
 };
 
-/* Distortion feel */
+/* Distortion animation feel */
 const PIN = {
   originYpx: 14,
   rotZMaxDeg: 8,
@@ -49,7 +49,7 @@ type Props = {
   onClose: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
-  onViewFullListing?: () => void; // Callback when user clicks "View Full Listing"
+  onViewFullListing?: () => void;
   isSidebarOpen: boolean;
   isFiltersOpen: boolean;
   isDisliked?: boolean;
@@ -80,31 +80,34 @@ export default function ListingBottomPanel({
     "horizontal" | "vertical" | null
   >(null);
   const dragStartTimeRef = useRef<number>(0);
-  const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragX = useMotionValue(0);
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  // Touch gesture detection
+  /* ========================
+       TOUCH SCROLL HANDLER
+  ======================== */
   useEffect(() => {
     const scrollElement = scrollableRef.current;
     if (!scrollElement) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch) return;
-      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      const t = e.touches?.[0];
+      if (!t) return;
+
+      touchStartRef.current = { x: t.clientX, y: t.clientY };
       setGestureDirection(null);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!touchStartRef.current) return;
-      const touch = e.touches[0];
-      if (!touch) return;
-      const dx = Math.abs(touch.clientX - touchStartRef.current.x);
-      const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+      const t = e.touches?.[0];
+      if (!t || !touchStartRef.current) return;
+
+      const dx = Math.abs(t.clientX - touchStartRef.current.x);
+      const dy = Math.abs(t.clientY - touchStartRef.current.y);
 
       if (dx > 10 || dy > 10) {
         if (gestureDirection === null) {
@@ -125,9 +128,15 @@ export default function ListingBottomPanel({
       setGestureDirection(null);
     };
 
-    scrollElement.addEventListener("touchstart", handleTouchStart, { passive: true });
-    scrollElement.addEventListener("touchmove", handleTouchMove, { passive: false });
-    scrollElement.addEventListener("touchend", handleTouchEnd, { passive: true });
+    scrollElement.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    scrollElement.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    scrollElement.addEventListener("touchend", handleTouchEnd, {
+      passive: true,
+    });
 
     return () => {
       scrollElement.removeEventListener("touchstart", handleTouchStart);
@@ -137,34 +146,38 @@ export default function ListingBottomPanel({
   }, [gestureDirection]);
 
   const getSwipeMessage = () => {
-    const subdivision = fullListing.subdivisionName || (fullListing as any).subdivision;
+    const subdivision = fullListing.subdivisionName;
     if (subdivision && subdivision.toLowerCase() !== "other") {
       return `Swiping in ${subdivision}`;
     }
-
-    const propertyType =
-      fullListing.propertyType?.replace(/([A-Z])/g, " $1").trim() || "Property";
-    const city =
-      fullListing.city ||
-      fullListing.unparsedAddress?.split(",")[1]?.trim() ||
-      listing.address?.split(",")[1]?.trim() ||
-      "this area";
-    return `${propertyType} in ${city}`;
+    return "";
   };
 
-  const dragX = useMotionValue(0);
-
-  const rotZ = useTransform(dragX, [-300, 0, 300], [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]);
-  const skewY = useTransform(dragX, [-300, 0, 300], [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]);
-  const rotX = useTransform(dragX, [-300, 0, 300], [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]);
-
-  const shadowAlpha = useTransform(dragX, [-300, 0, 300], [0.35 + PIN.shadowBoost, 0.35, 0.35 + PIN.shadowBoost]);
-  const boxShadowMV = useTransform<number, string>(
-    shadowAlpha,
-    (a: number) => `0 15px 40px rgba(0,0,0,${a})`
+  const rotZ = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [-PIN.rotZMaxDeg, 0, PIN.rotZMaxDeg]
+  );
+  const skewY = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [PIN.skewYMaxDeg, 0, -PIN.skewYMaxDeg]
+  );
+  const rotX = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [PIN.rotXMaxDeg, 0, PIN.rotXMaxDeg]
   );
 
-  const exitDirRef = useRef<"left" | "right" | null>(null);
+  const shadowAlpha = useTransform(
+    dragX,
+    [-300, 0, 300],
+    [0.35 + PIN.shadowBoost, 0.35, 0.35 + PIN.shadowBoost]
+  );
+
+  const boxShadowMV = useTransform(shadowAlpha, (a) => {
+    return `0 15px 40px rgba(0,0,0,${a})`;
+  });
 
   const address =
     fullListing.unparsedAddress ||
@@ -173,81 +186,38 @@ export default function ListingBottomPanel({
     listing.address ||
     "Unknown address";
 
-  // Lock scroll on mobile
+  /* ======================
+        ENTRANCE ANIMATION
+  ====================== */
   useEffect(() => {
-    const shouldLock =
-      SWIPE.lockScrollMaxWidth <= 0 ||
-      (typeof window !== "undefined" &&
-        window.innerWidth <= SWIPE.lockScrollMaxWidth);
+    if (!mounted) return;
 
-    if (!shouldLock) return;
+    // Reset instantly
+    controls.set({ opacity: 0, y: 28, scale: 0.985 });
+    dragX.set(0);
 
-    const scrollY = window.scrollY || window.pageYOffset;
-    const prev = {
-      position: document.body.style.position,
-      top: document.body.style.top,
-      left: document.body.style.left,
-      right: document.body.style.right,
-      width: document.body.style.width,
-      overflowY: document.body.style.overflowY,
-      overscrollBehavior: (document.documentElement.style as any).overscrollBehavior,
-    };
+    // Wait for next event loop to guarantee mount
+    const timer = setTimeout(() => {
+      if (!mounted || !panelRef.current) return;
 
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
-    document.body.style.overflowY = "hidden";
-    (document.documentElement.style as any).overscrollBehavior = "none";
+      controls
+        .start({
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: { duration: 0.18, ease: [0.42, 0, 0.58, 1] },
+        })
+        .catch(() => {});
+    }, 0);
 
-    return () => {
-      document.body.style.position = prev.position;
-      document.body.style.top = prev.top;
-      document.body.style.left = prev.left;
-      document.body.style.right = prev.right;
-      document.body.style.width = prev.width;
-      document.body.style.overflowY = prev.overflowY;
-      (document.documentElement.style as any).overscrollBehavior = prev.overscrollBehavior;
-      const y = Math.abs(parseInt(prev.top || "0", 10)) || scrollY;
-      window.scrollTo(0, y);
-    };
-  }, []);
+    return () => clearTimeout(timer);
+  }, [mounted, fullListing.listingKey]);
 
-  // Entrance animation
-  useEffect(() => {
-    if (!mounted) return; // Don't animate until mounted
-
-    // Immediate smooth entrance animation
-    requestAnimationFrame(() => {
-      try {
-        if (!mounted) return;
-
-        controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
-        dragX.set(0);
-
-        // Immediate animation start for fluid transitions
-        requestAnimationFrame(() => {
-          if (mounted) {
-            controls.start({
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              rotate: 0,
-              transition: { duration: 0.18, ease: [0.42, 0, 0.58, 1] }, // Slightly faster
-            }).catch(() => {
-              // Silently catch animation errors
-            });
-          }
-        });
-      } catch (err) {
-        // Silently catch if controls aren't ready
-      }
-    });
-  }, [fullListing?.listingKey, controls, dragX, mounted]);
+  /* ======================
+         SWIPE LOGIC
+  ====================== */
 
   const swipeOut = async (dir: "left" | "right") => {
-    exitDirRef.current = dir;
     setSwipeMessage(getSwipeMessage());
 
     const W = typeof window !== "undefined" ? window.innerWidth : 420;
@@ -257,6 +227,7 @@ export default function ListingBottomPanel({
       duration: SWIPE.flyOutDuration,
       ease: [0.42, 0, 0.58, 1],
     });
+
     const animOther = controls.start({
       y: -60,
       opacity: 0,
@@ -267,36 +238,30 @@ export default function ListingBottomPanel({
 
     await Promise.all([animOther, animX.finished]);
 
-    if (exitDirRef.current === "left") onSwipeLeft?.();
-    else if (exitDirRef.current === "right") onSwipeRight?.();
+    dir === "left" ? onSwipeLeft?.() : onSwipeRight?.();
 
-    // Don't reset controls here - let entrance animation handle the transition
     dragX.set(0);
-    exitDirRef.current = null;
-
     setTimeout(() => setSwipeMessage(null), 2000);
   };
 
   const handleDragStart = () => {
     dragStartTimeRef.current = Date.now();
-    dragStartPosRef.current = { x: dragX.get(), y: 0 };
   };
 
-  const handleDragEnd = (_e: any, info: { offset: { x: number }; velocity: { x: number } }) => {
+  const handleDragEnd = (
+    _e: any,
+    info: { offset: { x: number }; velocity: { x: number } }
+  ) => {
     const { offset, velocity } = info;
-    const dragDuration = Date.now() - dragStartTimeRef.current;
-    const dragDistance = Math.abs(offset.x);
 
-    // Ignore very short drags (likely clicks)
-    if (dragDuration < 100 && dragDistance < 5) {
-      animate(dragX, 0, { type: "spring", stiffness: 380, damping: 32 });
-      return;
-    }
+    const minOffset = Math.round(
+      (window.innerWidth || 420) * SWIPE.minOffsetRatio
+    );
 
-    const minOffset = Math.round((typeof window !== "undefined" ? window.innerWidth : 420) * SWIPE.minOffsetRatio);
-
-    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity) return swipeOut("left");
-    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity) return swipeOut("right");
+    if (offset.x < -minOffset || velocity.x < -SWIPE.minVelocity)
+      return swipeOut("left");
+    if (offset.x > minOffset || velocity.x > SWIPE.minVelocity)
+      return swipeOut("right");
 
     controls.start({
       y: 0,
@@ -305,7 +270,12 @@ export default function ListingBottomPanel({
       rotate: 0,
       transition: { type: "spring", ...SWIPE.snapSpring },
     });
-    animate(dragX, 0, { type: "spring", stiffness: 380, damping: 32 });
+
+    animate(dragX, 0, {
+      type: "spring",
+      stiffness: 380,
+      damping: 32,
+    });
   };
 
   const lgLayoutClasses = clsx({
@@ -326,7 +296,6 @@ export default function ListingBottomPanel({
     background: "rgba(24,24,24,0.85)",
     backdropFilter: "blur(8px)",
     x: dragX,
-    willChange: "transform, opacity", // Hardware acceleration hint
   };
 
   if (!mounted) return null;
@@ -335,40 +304,44 @@ export default function ListingBottomPanel({
     <AnimatePresence>
       {fullListing?.listingKey && (
         <motion.div
-          key={listing._id || listing.listingKey || fullListing.listingKey}
+          key={listing._id || fullListing.listingKey}
           ref={panelRef}
           animate={controls}
           exit={{ opacity: 0, y: 36, transition: { duration: 0.18 } }}
           className={clsx(
             "fixed bottom-0 left-0 right-0 z-[9999] text-white rounded-t-2xl shadow-lg overflow-hidden flex flex-col",
-            "transform-gpu will-change-transform pointer-events-auto",
-            "max-h-[90vh] lg:max-h-[85vh]",
+            "transform-gpu pointer-events-auto",
+            "max-h-[90vh] md:max-h-[48vh] lg:max-h-[85vh]",
             lgLayoutClasses
           )}
           style={panelStyle}
-          {...stopClicks}
           drag="x"
           dragElastic={SWIPE.dragElastic}
           dragMomentum={false}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          {...stopClicks}
         >
-          {/* Close Button */}
+          {/* Close button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            aria-label="Close"
-            className="absolute top-3 right-3 bg-black/80 hover:bg-black rounded-full p-2 z-[100] backdrop-blur-md transition-all shadow-xl border border-white/20 pointer-events-auto"
+            className="absolute top-3 right-3 bg-black/80 hover:bg-black rounded-full p-2 z-[100] border border-white/20"
           >
             <X className="w-6 h-6 text-white" />
           </button>
 
+          {/* Disliked Badge */}
           {isDisliked && dislikedTimestamp && onRemoveDislike && (
-            <DislikedBadge timestamp={dislikedTimestamp} onRemove={onRemoveDislike} />
+            <DislikedBadge
+              timestamp={dislikedTimestamp}
+              onRemove={onRemoveDislike}
+            />
           )}
 
+          {/* Swipe message */}
           <AnimatePresence>
             {swipeMessage && (
               <motion.div
@@ -376,8 +349,7 @@ export default function ListingBottomPanel({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="absolute top-16 left-1/2 -translate-x-1/2 z-[90] px-6 py-3 bg-emerald-500/95 backdrop-blur-md rounded-full shadow-2xl"
-                {...stopClicks}
+                className="absolute top-16 left-1/2 -translate-x-1/2 z-[90] px-6 py-3 bg-emerald-500/95 rounded-full shadow-2xl"
               >
                 <p className="text-black font-semibold text-base whitespace-nowrap">
                   {swipeMessage}
@@ -386,173 +358,176 @@ export default function ListingBottomPanel({
             )}
           </AnimatePresence>
 
+          {/* PHOTO CAROUSEL */}
           <div {...stopClicks} className="flex-shrink-0">
             <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
           </div>
 
-          {/* Header */}
-          <div
-            className="flex-shrink-0 px-5 sm:px-6 pt-3 lg:pt-4 pb-2 lg:pb-3 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800"
-            {...stopClicks}
-          >
+          {/* HEADER */}
+          <div className="flex-shrink-0 px-5 sm:px-6 md:px-3 pt-3 pb-2 bg-zinc-900/95 border-b border-zinc-800">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-lg lg:text-2xl font-semibold mb-1 leading-tight">
+                <p className="text-lg md:text-sm lg:text-2xl font-semibold leading-tight">
                   {address}
                 </p>
-                <p className="text-xl lg:text-2xl font-bold text-emerald-400 leading-tight">
+                <p className="text-xl md:text-base lg:text-2xl font-bold text-emerald-400 leading-tight">
                   ${Number(fullListing.listPrice ?? 0).toLocaleString()}
                 </p>
               </div>
+
               <div className="flex gap-2">
                 <button
-                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-                  aria-label="Share this listing"
+                  className="w-8 h-8 lg:w-9 lg:h-9 bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-700"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigator.share?.({ title: address, url: window.location.href });
+                    navigator.share?.({
+                      title: address,
+                      url: window.location.href,
+                    });
                   }}
                 >
-                  <Share2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
+                  <Share2 className="w-4 h-4 text-white" />
                 </button>
+
                 <Link
                   href="/book-appointment"
-                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-zinc-700"
-                  aria-label="Book an appointment"
+                  className="w-8 h-8 lg:w-9 lg:h-9 bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-700"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
+                  <Calendar className="w-4 h-4 text-white" />
                 </Link>
               </div>
             </div>
           </div>
 
-          {/* Details */}
+          {/* CONTENT */}
           <div
             ref={scrollableRef}
-            className="flex-1 overflow-y-auto overscroll-contain lg:overflow-visible custom-scrollbar"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              WebkitTouchCallout: "none",
-            }}
+            className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-5 py-3 md:py-1 lg:py-4"
             {...stopClicks}
           >
-            <div className="px-5 sm:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 text-white" style={{ touchAction: "pan-y" }}>
+            <div className="text-white space-y-3">
+              {/* BADGES */}
               <div className="flex flex-wrap gap-2 text-sm lg:text-base">
-                {fullListing?.subdivisionName && fullListing.subdivisionName.toLowerCase() !== "other" && (
+                {fullListing.subdivisionName && (
                   <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30">
                     {fullListing.subdivisionName}
                   </span>
                 )}
-                {fullListing?.bedsTotal !== undefined && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bedsTotal} Bed</span>
+
+                {typeof fullListing.bedsTotal === "number" && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.bedsTotal} Bed
+                  </span>
                 )}
-                {fullListing?.bathroomsTotalInteger !== undefined && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.bathroomsTotalInteger} Bath</span>
+
+                {typeof fullListing.bathroomsTotalInteger === "number" && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.bathroomsTotalInteger} Bath
+                  </span>
                 )}
-                {fullListing?.livingArea !== undefined && (
+
+                {typeof fullListing.livingArea === "number" && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     {fullListing.livingArea.toLocaleString()} SqFt
                   </span>
                 )}
-                {fullListing?.lotSizeArea !== undefined && (
+
+                {typeof fullListing.lotSizeArea === "number" && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
                   </span>
                 )}
-                {fullListing?.landType && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">{fullListing.landType}</span>
+
+                {fullListing.landType && (
+                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                    {fullListing.landType}
+                  </span>
                 )}
 
-                {/* ✅ Fixed type-safe associationFee comparison */}
-                {typeof fullListing?.associationFee === "number" &&
+                {typeof fullListing.associationFee === "number" &&
                   fullListing.associationFee > 0 && (
                     <span className="bg-zinc-800 px-2 py-1 rounded-full">
                       ${fullListing.associationFee.toLocaleString()}/mo HOA
                     </span>
                   )}
 
-                {fullListing?.terms && fullListing.terms.length > 0 && (
-                  <span className="bg-zinc-800 px-2 py-1 rounded-full">
-                    {fullListing.terms.join(", ")}
-                  </span>
-                )}
-                {fullListing?.yearBuilt && (
+                {typeof fullListing.yearBuilt === "number" && (
                   <span className="bg-zinc-800 px-2 py-1 rounded-full">
                     Built {fullListing.yearBuilt}
                   </span>
                 )}
-                {fullListing?.poolYn && (
-                  <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>
+
+                {fullListing.poolYn && (
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                    🏊 Pool
+                  </span>
                 )}
-                {fullListing?.spaYn && (
-                  <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>
+
+                {fullListing.spaYn && (
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full">
+                    🧖 Spa
+                  </span>
                 )}
               </div>
 
-              {fullListing?.publicRemarks && (
-                <p className="text-xs lg:text-sm text-white line-clamp-3 lg:line-clamp-4">
-                  {fullListing.publicRemarks.length > 300
-                    ? `${fullListing.publicRemarks.slice(0, 200)}...`
-                    : fullListing.publicRemarks}
+              {fullListing.publicRemarks && (
+                <p className="text-xs lg:text-sm text-white line-clamp-4">
+                  {fullListing.publicRemarks}
                 </p>
               )}
 
               <ListingAttribution listing={fullListing} />
+            </div>
 
-              <div className="flex justify-center gap-6 lg:gap-8 pt-2 pb-2 lg:pb-4">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    swipeOut("left");
-                  }}
-                  className="w-14 h-14 lg:w-[72px] lg:h-[72px]"
-                >
-                  <Image
-                    src="/images/swipe-left.png"
-                    alt="Swipe Left"
-                    width={72}
-                    height={72}
-                    sizes="(max-width: 1024px) 56px, 72px"
-                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition w-full h-full"
-                  />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    swipeOut("right");
-                  }}
-                  className="w-14 h-14 lg:w-[72px] lg:h-[72px]"
-                >
-                  <Image
-                    src="/images/swipe-right.png"
-                    alt="Swipe Right"
-                    width={72}
-                    height={72}
-                    sizes="(max-width: 1024px) 56px, 72px"
-                    className="drop-shadow-lg hover:opacity-80 active:scale-95 transition w-full h-full"
-                  />
-                </button>
-              </div>
+            {/* Swipe buttons */}
+            <div className="flex justify-center gap-6 lg:gap-8 pt-4 pb-2">
+              <button
+                onClick={() => swipeOut("left")}
+                className="w-14 h-14 lg:w-20 lg:h-20"
+              >
+                <Image
+                  src="/images/swipe-left.png"
+                  alt="Swipe Left"
+                  fill={false}
+                  width={72}
+                  height={72}
+                  className="drop-shadow-lg hover:opacity-80 active:scale-95"
+                />
+              </button>
+
+              <button
+                onClick={() => swipeOut("right")}
+                className="w-14 h-14 lg:w-20 lg:h-20"
+              >
+                <Image
+                  src="/images/swipe-right.png"
+                  alt="Swipe Right"
+                  fill={false}
+                  width={72}
+                  height={72}
+                  className="drop-shadow-lg hover:opacity-80 active:scale-95"
+                />
+              </button>
             </div>
           </div>
 
-          {/* Footer */}
+          {/* Footer CTA */}
           <div
-            className="flex-shrink-0 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent px-5 sm:px-6 py-3 lg:py-4 border-t border-zinc-800"
-            style={{ paddingBottom: `max(1rem, env(safe-area-inset-bottom, 0px))` }}
-            {...stopClicks}
+            className="bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent px-5 py-3 border-t border-zinc-800"
+            style={{
+              paddingBottom: `max(1rem, env(safe-area-inset-bottom, 0px))`,
+            }}
           >
             <Link
-              href={`/mls-listings/${fullListing.slugAddress || fullListing.slug || ""}`}
-              className="block text-center bg-emerald-500 text-black font-bold py-2.5 lg:py-3 px-4 rounded-lg hover:bg-emerald-400 active:bg-emerald-600 transition-colors duration-200 text-base lg:text-lg shadow-lg"
+              href={`/mls-listings/${
+                fullListing.slugAddress || fullListing.slug || ""
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
-                // Flush pending swipes before navigating
                 onViewFullListing?.();
               }}
-              role="button"
-              aria-label={`View full listing for ${address}`}
+              className="block text-center bg-emerald-500 text-black font-bold py-3 rounded-lg hover:bg-emerald-400 active:bg-emerald-600 text-lg shadow-lg"
             >
               View Full Listing
             </Link>

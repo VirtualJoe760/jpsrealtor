@@ -127,6 +127,7 @@ export default function MapPageClient() {
     return [];
   });
   const [dislikedListings, setDislikedListings] = useState<any[]>([]);
+  const [isInSwipeSession, setIsInSwipeSession] = useState(false); // Track if actively swiping
 
   const { allListings, visibleListings, loadListings } = useListings();
 
@@ -299,7 +300,7 @@ export default function MapPageClient() {
     }
 
     fetchDislikedListings();
-  }, [swipeQueue.isReady, swipeQueue.isSyncing]); // Refresh when batch syncs
+  }, [swipeQueue.isReady]); // Refresh when swipe system is ready
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
@@ -420,6 +421,12 @@ export default function MapPageClient() {
     const selectedSlug = searchParams.get("selected");
     if (!selectedSlug) return;
 
+    // Don't restore if we're in an active swipe session
+    if (isInSwipeSession) {
+      console.log("🔒 Skipping URL restoration - in swipe session");
+      return;
+    }
+
     // Don't restore if we already have this listing selected
     if (selectedSlugRef.current === selectedSlug && selectedFullListing) {
       return;
@@ -442,9 +449,14 @@ export default function MapPageClient() {
       }
       setSelectionLocked(true);
       selectedSlugRef.current = selectedSlug;
+
+      // Initialize swipe queue when restoring from URL
+      console.log("🎬 Restored from URL - initializing queue for:", listing.unparsedAddress || listing.address);
+      swipeQueue.initializeQueue(listing);
+
       fetchFullListing(selectedSlug);
     }
-  }, [searchParams, allListings, visibleListings, selectedFullListing, fetchFullListing]);
+  }, [searchParams, allListings, visibleListings, selectedFullListing, fetchFullListing, isInSwipeSession]);
 
   const handleListingSelect = (listing: MapListing) => {
     if (!listing.slugAddress) return;
@@ -461,6 +473,11 @@ export default function MapPageClient() {
 
     setVisibleIndex(index);
     setSelectionLocked(true); // 🔒 lock
+    setIsInSwipeSession(true); // 🎯 Start swipe session
+
+    // Initialize swipe queue for this listing
+    console.log("🎬 User clicked marker - initializing queue for:", listing.unparsedAddress || listing.address);
+    swipeQueue.initializeQueue(listing);
 
     // Fetch new listing data
     if (slug) {
@@ -488,6 +505,7 @@ export default function MapPageClient() {
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
     setSelectionLocked(false); // 🔓 unlock
+    setIsInSwipeSession(false); // 🎯 End swipe session
     swipeQueue.reset(); // Clear the queue (also resets isExhausted)
     setShowCompletionModal(false); // Reset completion modal
     const params = new URLSearchParams(searchParams.toString());
@@ -496,12 +514,18 @@ export default function MapPageClient() {
   };
 
   const advanceToNextListing = async () => {
+    console.log("🔍 === ADVANCE TO NEXT LISTING CALLED ===");
+    console.log("🔍 Current listing:", selectedFullListing?.unparsedAddress || "none");
+    console.log("🔍 Current listingKey:", selectedFullListing?.listingKey || "none");
 
     // Try to get next listing from intelligent queue
     const { listing: nextListing, reason } = swipeQueue.getNext();
 
     if (nextListing) {
       console.log(`🎯 Showing next listing${reason ? ` (${reason})` : ''}`);
+      console.log("🔍 Next listing:", nextListing.slug);
+      console.log("🔍 Next listingKey:", nextListing.listingKey);
+
       const nextSlug = nextListing.slugAddress ?? nextListing.slug;
       if (!nextSlug) {
         handleCloseListing();
@@ -523,15 +547,23 @@ export default function MapPageClient() {
       selectedSlugRef.current = nextSlug;
 
       // Check cache first for instant loading
+      console.log("🔍 Checking cache for:", nextSlug);
+      console.log("🔍 Cache has listing:", listingCache.current.has(nextSlug));
+
       if (listingCache.current.has(nextSlug)) {
         const cached = listingCache.current.get(nextSlug)!;
+        console.log("🔍 Cached listing key:", cached.listingKey);
+        console.log("🔍 Cached listing address:", cached.unparsedAddress);
+
         if (cached.listingKey) {
+          console.log(`⚡ SETTING selectedFullListing to cached:`, cached.unparsedAddress);
           setSelectedFullListing(cached);
           setIsLoadingListing(false);
           console.log(`⚡ Used prefetched data for ${nextSlug}`);
         }
       } else {
         // Fetch in background if not cached
+        console.log("🔍 NOT in cache, fetching:", nextSlug);
         fetchFullListing(nextSlug);
       }
 
@@ -600,14 +632,8 @@ export default function MapPageClient() {
     }
   }, [visibleListings, selectionLocked, selectedListing]);
 
-  // Initialize swipe queue when a listing is selected
-  useEffect(() => {
-    if (selectedListing && selectedFullListing) {
-      // Initialize queue with similar listings
-      swipeQueue.initializeQueue(selectedListing);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedListing?.listingKey, selectedFullListing?.listingKey]);
+  // NOTE: Queue initialization moved to handleListingSelect()
+  // We ONLY initialize when user clicks a marker, NOT when advancing through queue
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastBoundsRef = useRef<string | null>(null);

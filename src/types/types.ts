@@ -13,6 +13,7 @@ export interface MapListing {
   latitude: number;
   longitude: number;
   city?: string; // ✅ Added for useSmartSwipeQueue and UI context
+  postalCode?: string; // ✅ Added for zipcode filtering in swipe queue
 
   // Pricing
   listPrice: number;
