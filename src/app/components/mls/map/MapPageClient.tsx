@@ -466,11 +466,15 @@ export default function MapPageClient() {
 
     const slug = listing.slugAddress ?? listing.slug;
 
-    // If selecting the same listing, do nothing
-    if (slug === selectedSlugRef.current && selectedFullListing) {
+    // If selecting the same listing AND panel is currently open AND we have the full listing, do nothing
+    // This prevents re-initializing the queue when clicking the same marker while panel is open
+    // But allows re-selection if panel was closed (visibleIndex === null)
+    if (slug === selectedSlugRef.current && selectedFullListing && visibleIndex !== null) {
+      console.log("⏭️ Same listing already selected and panel open - ignoring click");
       return;
     }
 
+    console.log("📍 Selecting listing:", slug);
     setVisibleIndex(index);
     setSelectionLocked(true); // 🔒 lock
     setIsInSwipeSession(true); // 🎯 Start swipe session

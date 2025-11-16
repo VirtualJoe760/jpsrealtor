@@ -99,6 +99,10 @@ export async function GET(
       safePhotos = rawPhotos
         .map((p: RawPhoto) => {
           const src =
+            p.Uri2048 ||
+            p.Uri1600 ||
+            p.Uri1280 ||
+            p.Uri1024 ||
             p.Uri800 ||
             p.Uri640 ||
             p.Uri300 ||

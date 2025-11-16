@@ -82,11 +82,16 @@ export default {
           from: { transform: 'translateY(100%)' },
           to: { transform: 'translateY(0%)' },
         },
+        'scroll-left': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'slide-up': 'slide-up 0.25s ease-out forwards',
+        'scroll-slow': 'scroll-left 60s linear infinite',
       },
     },
   },

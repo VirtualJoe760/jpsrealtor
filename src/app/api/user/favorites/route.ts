@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         totalDislikes: 0,
         topSubdivisions: [],
         topCities: [],
-        topPropertyTypes: [],
+        topPropertySubTypes: [],
       },
     });
   } catch (error) {
@@ -119,17 +119,22 @@ export async function POST(request: NextRequest) {
 function calculateAnalytics(favorites: any[]) {
   const subdivisionCounts: Record<string, number> = {};
   const cityCounts: Record<string, number> = {};
-  const propertyTypeCounts: Record<string, number> = {};
+  const propertySubTypeCounts: Record<string, number> = {};
 
   favorites.forEach((fav) => {
-    if (fav.subdivision) {
-      subdivisionCounts[fav.subdivision] = (subdivisionCounts[fav.subdivision] || 0) + 1;
+    // Check both top-level and listingData for fields
+    const subdivision = fav.subdivision || fav.listingData?.subdivisionName;
+    const city = fav.city || fav.listingData?.city;
+    const propertySubType = fav.propertySubType || fav.listingData?.propertySubType;
+
+    if (subdivision) {
+      subdivisionCounts[subdivision] = (subdivisionCounts[subdivision] || 0) + 1;
     }
-    if (fav.city) {
-      cityCounts[fav.city] = (cityCounts[fav.city] || 0) + 1;
+    if (city) {
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
     }
-    if (fav.propertyType) {
-      propertyTypeCounts[fav.propertyType] = (propertyTypeCounts[fav.propertyType] || 0) + 1;
+    if (propertySubType) {
+      propertySubTypeCounts[propertySubType] = (propertySubTypeCounts[propertySubType] || 0) + 1;
     }
   });
 
@@ -144,7 +149,7 @@ function calculateAnalytics(favorites: any[]) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const topPropertyTypes = Object.entries(propertyTypeCounts)
+  const topPropertySubTypes = Object.entries(propertySubTypeCounts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
@@ -154,6 +159,6 @@ function calculateAnalytics(favorites: any[]) {
     totalDislikes: 0, // Will be updated separately when we track dislikes
     topSubdivisions,
     topCities,
-    topPropertyTypes,
+    topPropertySubTypes,
   };
 }

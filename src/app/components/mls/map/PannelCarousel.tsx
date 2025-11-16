@@ -92,9 +92,10 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
             alt={alt}
             fill
             className="object-cover"
-            priority
-            quality={90}
-            sizes="100vw"
+            priority={current === 0}
+            loading={current === 0 ? "eager" : "lazy"}
+            quality={85}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 1200px"
           />
 
           {/* Preload Next Photo */}
@@ -104,7 +105,8 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
               alt="Next"
               fill
               className="hidden"
-              quality={90}
+              quality={85}
+              loading="lazy"
             />
           )}
 

@@ -168,6 +168,10 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         prev?._id === selectedListing._id ? prev : selectedListing
       );
       lastSelectedIdRef.current = selectedListing._id;
+    } else {
+      // Clear internal selection when selectedListing becomes null
+      setInternalSelected(null);
+      lastSelectedIdRef.current = null;
     }
   }, [selectedListing]);
 

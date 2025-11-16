@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           totalDislikes: 0,
           topSubdivisions: [],
           topCities: [],
-          topPropertyTypes: [],
+          topPropertySubTypes: [],
         },
       });
     }
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         totalDislikes: validDislikes.length,
         topSubdivisions: [],
         topCities: [],
-        topPropertyTypes: [],
+        topPropertySubTypes: [],
       },
     });
   } catch (error) {

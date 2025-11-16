@@ -350,8 +350,8 @@ export function useSwipeQueue(): SwipeQueueHook {
       console.log("City:", clickedListing.city || "N/A");
       console.log("Postal Code:", clickedListing.postalCode || "N/A");
 
-      const priceBracket = getPriceBracket(clickedListing.listPrice || clickedListing.currentPrice);
-      console.log("Price:", `$${(clickedListing.listPrice || clickedListing.currentPrice || 0).toLocaleString()}`, `(${priceBracket.label})`);
+      const priceBracket = getPriceBracket(clickedListing.listPrice || 0);
+      console.log("Price:", `$${(clickedListing.listPrice || 0).toLocaleString()}`, `(${priceBracket.label})`);
       console.log("=".repeat(80) + "\n");
 
       // Build reference for scoring
@@ -362,7 +362,7 @@ export function useSwipeQueue(): SwipeQueueHook {
         latitude: clickedListing.latitude || 0,
         longitude: clickedListing.longitude || 0,
         postalCode: clickedListing.postalCode || "",
-        listPrice: clickedListing.listPrice || clickedListing.currentPrice || 0,
+        listPrice: clickedListing.listPrice || 0,
       };
 
       try {
@@ -439,7 +439,7 @@ export function useSwipeQueue(): SwipeQueueHook {
             }
 
             // Filter by price bracket compatibility (same or ±1 bracket)
-            const listingPrice = listing.listPrice || listing.currentPrice;
+            const listingPrice = listing.listPrice || 0;
             if (!arePricesCompatible(reference.listPrice, listingPrice)) {
               priceFilteredCount++;
               return false;

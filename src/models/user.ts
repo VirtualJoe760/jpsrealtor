@@ -52,7 +52,7 @@ export interface IUser extends Document {
     swipedAt: Date;
     subdivision?: string;
     city?: string;
-    propertyType?: string;
+    propertySubType?: string;
   }>;
   dislikedListings: Array<{
     listingKey: string;
@@ -75,7 +75,7 @@ export interface IUser extends Document {
     totalDislikes: number;
     topSubdivisions: Array<{ name: string; count: number }>;
     topCities: Array<{ name: string; count: number }>;
-    topPropertyTypes: Array<{ type: string; count: number }>;
+    topPropertySubTypes: Array<{ type: string; count: number }>;
     lastUpdated: Date;
   };
 
@@ -156,7 +156,7 @@ const UserSchema = new Schema<IUser>(
       swipedAt: { type: Date, default: Date.now },
       subdivision: String,
       city: String,
-      propertyType: String,
+      propertySubType: String,
     }],
     dislikedListings: [{
       listingKey: { type: String, required: true },
@@ -185,7 +185,7 @@ const UserSchema = new Schema<IUser>(
         name: String,
         count: Number,
       }],
-      topPropertyTypes: [{
+      topPropertySubTypes: [{
         type: { type: String },  // Use { type: { type: String } } because 'type' is a Mongoose keyword
         count: Number,
       }],

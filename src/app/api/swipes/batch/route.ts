@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
             swipedAt: new Date(swipe.timestamp),
             subdivision: swipe.listingData?.subdivisionName,
             city: swipe.listingData?.city,
-            propertyType: swipe.listingData?.propertyType,
+            propertySubType: swipe.listingData?.propertySubType,
           });
           likesAdded++;
         } else {
@@ -181,17 +181,22 @@ export async function POST(request: NextRequest) {
 function calculateAnalytics(likedListings: any[]) {
   const subdivisionCounts: Record<string, number> = {};
   const cityCounts: Record<string, number> = {};
-  const propertyTypeCounts: Record<string, number> = {};
+  const propertySubTypeCounts: Record<string, number> = {};
 
   likedListings.forEach((listing) => {
-    if (listing.subdivision) {
-      subdivisionCounts[listing.subdivision] = (subdivisionCounts[listing.subdivision] || 0) + 1;
+    // Check both top-level and listingData for fields
+    const subdivision = listing.subdivision || listing.listingData?.subdivisionName;
+    const city = listing.city || listing.listingData?.city;
+    const propertySubType = listing.propertySubType || listing.listingData?.propertySubType;
+
+    if (subdivision) {
+      subdivisionCounts[subdivision] = (subdivisionCounts[subdivision] || 0) + 1;
     }
-    if (listing.city) {
-      cityCounts[listing.city] = (cityCounts[listing.city] || 0) + 1;
+    if (city) {
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
     }
-    if (listing.propertyType) {
-      propertyTypeCounts[listing.propertyType] = (propertyTypeCounts[listing.propertyType] || 0) + 1;
+    if (propertySubType) {
+      propertySubTypeCounts[propertySubType] = (propertySubTypeCounts[propertySubType] || 0) + 1;
     }
   });
 
@@ -206,7 +211,7 @@ function calculateAnalytics(likedListings: any[]) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const topPropertyTypes = Object.entries(propertyTypeCounts)
+  const topPropertySubTypes = Object.entries(propertySubTypeCounts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
@@ -216,6 +221,6 @@ function calculateAnalytics(likedListings: any[]) {
     totalDislikes: 0, // Will be calculated separately
     topSubdivisions,
     topCities,
-    topPropertyTypes,
+    topPropertySubTypes,
   };
 }
