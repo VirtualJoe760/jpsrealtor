@@ -17,8 +17,8 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
-import ChatWidget from "../components/chat/ChatWidget";
-import GoalTracker from "../components/chat/GoalTracker";
+// import ChatWidget from "../components/chat/ChatWidget";
+// import GoalTracker from "../components/chat/GoalTracker";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper functions
@@ -552,9 +552,9 @@ export default function DashboardPage() {
         )}
 
         {/* AI Dream Home Profile */}
-        {user.email && (
+        {/* {user.email && (
           <GoalTracker userId={user.email} className="mb-8" />
-        )}
+        )} */}
 
         {/* Swipe Insights */}
         {analytics && (analytics.topCities.length > 0 || analytics.topSubdivisions.length > 0) && (
@@ -910,7 +910,7 @@ export default function DashboardPage() {
         </div>
 
         {/* AI Chat Assistant */}
-        <ChatWidget context="dashboard" />
+        {/* <ChatWidget context="dashboard" /> */}
       </div>
     </div>
   );

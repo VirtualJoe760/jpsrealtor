@@ -2,7 +2,7 @@ import React from "react";
 import AboutCta from "./components/AboutCta";
 import BlogCta from "./components/BlogCta";
 import Contact from "./components/contact/Contact";
-import ChatWidget from "./components/chat/ChatWidget";
+// import ChatWidget from "./components/chat/ChatWidget";
 
 import { getLatestPosts } from "@/utils/fetchPosts";
 import VariableHeroWrapper from "./components/VariableHeroWrapper";
@@ -17,7 +17,7 @@ export default async function Home() {
       <AboutCta />
       <BlogCta posts={recentPosts} />
       <Contact />
-      <ChatWidget context="homepage" />
+      {/* <ChatWidget context="homepage" /> */}
     </>
   );
 }

@@ -11,6 +11,20 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER || process.env.EMAIL_SERVER_USER,
     pass: process.env.EMAIL_PASS || process.env.EMAIL_SERVER_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: false, // Allow self-signed certificates
+  },
+  debug: true, // Enable debug output
+  logger: true, // Log to console
+});
+
+// Verify transporter configuration on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email transporter verification failed:", error);
+  } else {
+    console.log("✅ Email server is ready to send messages");
+  }
 });
 
 export async function sendVerificationEmail(
@@ -18,7 +32,18 @@ export async function sendVerificationEmail(
   token: string,
   name: string
 ) {
-  const verificationUrl = `${process.env.NEXTAUTH_URL}/auth/verify-email?token=${token}`;
+  // Use NEXT_PUBLIC_BASE_URL for production, fallback to NEXTAUTH_URL
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const verificationUrl = `${baseUrl}/auth/verify-email?token=${token}`;
+
+  console.log('📧 Sending verification email to:', email);
+  console.log('🔗 Verification URL:', verificationUrl);
+  console.log('📮 Email config:', {
+    host: process.env.EMAIL_SERVER_HOST || "smtp.gmail.com",
+    port: process.env.EMAIL_SERVER_PORT || "587",
+    user: process.env.EMAIL_USER ? '***' + process.env.EMAIL_USER.slice(-10) : 'NOT SET',
+    from: process.env.EMAIL_FROM || "noreply@jpsrealtor.com",
+  });
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || "noreply@jpsrealtor.com",
@@ -96,9 +121,16 @@ export async function sendVerificationEmail(
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Verification email sent successfully:', info.messageId);
+    console.log('📬 Response:', info.response);
+    return info;
   } catch (error) {
-    console.error("Error sending verification email:", error);
+    console.error("❌ Error sending verification email:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      console.error("Stack:", error.stack);
+    }
     throw error;
   }
 }

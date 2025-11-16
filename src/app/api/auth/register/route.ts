@@ -60,16 +60,25 @@ export async function POST(request: NextRequest) {
     });
 
     // Send verification email
+    let emailSent = false;
     try {
       await sendVerificationEmail(email, token, name || email);
+      emailSent = true;
+      console.log('✅ Registration email sent to:', email);
     } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-      // Don't fail registration if email fails
+      console.error("❌ Failed to send verification email:", emailError);
+      if (emailError instanceof Error) {
+        console.error("Email error details:", emailError.message);
+      }
+      // Don't fail registration if email fails, but warn the user
     }
 
     return NextResponse.json(
       {
-        message: "User created successfully. Please check your email to verify your account.",
+        message: emailSent
+          ? "User created successfully. Please check your email to verify your account."
+          : "User created successfully, but we couldn't send the verification email. Please contact support.",
+        emailSent,
         user: {
           id: user._id,
           email: user.email,
