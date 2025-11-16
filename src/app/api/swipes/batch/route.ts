@@ -61,6 +61,12 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+
+      // Link anonymousId to logged-in user if provided
+      if (anonymousId && user.anonymousId !== anonymousId) {
+        console.log(`🔗 Linking anonymousId ${anonymousId} to user ${session.user.email}`);
+        user.anonymousId = anonymousId;
+      }
     } else if (anonymousId) {
       // Anonymous user - find or create
       user = await User.findOne({ anonymousId });
