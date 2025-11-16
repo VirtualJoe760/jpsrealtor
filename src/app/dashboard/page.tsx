@@ -17,6 +17,8 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
+import ChatWidget from "../components/chat/ChatWidget";
+import GoalTracker from "../components/chat/GoalTracker";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper functions
@@ -357,6 +359,31 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
+  // ────── Auto-refresh on window focus ──────
+  useEffect(() => {
+    const handleFocus = () => {
+      if (status === "authenticated") {
+        console.log("🔄 Dashboard focused - refreshing favorites");
+        syncFavorites();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [status]);
+
+  // ────── Auto-refresh every 30 seconds ──────
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const intervalId = setInterval(() => {
+      console.log("🔄 Auto-refreshing favorites (30s interval)");
+      syncFavorites();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [status]);
+
   // ────── Sync favorites ──────
   const syncFavorites = async () => {
     try {
@@ -522,6 +549,11 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* AI Dream Home Profile */}
+        {user.email && (
+          <GoalTracker userId={user.email} className="mb-8" />
         )}
 
         {/* Swipe Insights */}
@@ -876,6 +908,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* AI Chat Assistant */}
+        <ChatWidget context="dashboard" />
       </div>
     </div>
   );
