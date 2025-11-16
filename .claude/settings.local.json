@@ -20,7 +20,11 @@
       "Bash(git checkout:*)",
       "Bash(pip install:*)",
       "Bash(timeout 5 npx tsc:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install:*)",
+      "Bash(timeout 60 npx tsc:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

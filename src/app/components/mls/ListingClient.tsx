@@ -8,6 +8,7 @@ import { Calendar, Phone, MapPinned, Share2 } from "lucide-react";
 import CollageHero from "@/app/components/mls/CollageHero";
 import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
+import ChatWidget from "@/app/components/chat/ChatWidget";
 import type { IListing } from "@/models/listings";
 
 function calculateDaysOnMarket(dateString?: string | Date) {
@@ -293,6 +294,9 @@ export default function ListingClient({
           <MortgageCalculator />
         </div>
       </div>
+
+      {/* AI Chat Assistant - Context-aware for this listing */}
+      <ChatWidget context="listing" listingData={listing} />
     </div>
   );
 }
