@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { User, Settings, LogOut, ChevronDown, BarChart3 } from "lucide-react";
 
 const navigation = [
   { name: "About", href: "/about" },
@@ -21,7 +21,18 @@ export default function DesktopMenu() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Check if user is admin
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetch("/api/user/check-admin")
+        .then((res) => res.json())
+        .then((data) => setIsAdmin(data.isAdmin))
+        .catch(() => setIsAdmin(false));
+    }
+  }, [session]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -89,6 +100,16 @@ export default function DesktopMenu() {
                   <User className="w-4 h-4 mr-2" />
                   Dashboard
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Link
                   href="/dashboard/settings"
                   onClick={() => setIsDropdownOpen(false)}

@@ -79,6 +79,17 @@ export interface IUser extends Document {
     lastUpdated: Date;
   };
 
+  // Activity Tracking (for admin analytics)
+  activityMetrics?: {
+    totalSessions: number;
+    totalSearches: number;
+    totalListingsViewed: number;
+    totalFavorites: number;
+    lastActivityAt: Date;
+    engagementScore: number; // 0-100
+    lastSessionDuration?: number; // milliseconds
+  };
+
   // Admin tracking
   isAdmin: boolean;
   canPromoteAdmins: boolean; // Only for super admin
@@ -192,6 +203,17 @@ const UserSchema = new Schema<IUser>(
       lastUpdated: Date,
     },
 
+    // Activity Tracking
+    activityMetrics: {
+      totalSessions: { type: Number, default: 0 },
+      totalSearches: { type: Number, default: 0 },
+      totalListingsViewed: { type: Number, default: 0 },
+      totalFavorites: { type: Number, default: 0 },
+      lastActivityAt: Date,
+      engagementScore: { type: Number, default: 0, min: 0, max: 100 },
+      lastSessionDuration: Number,
+    },
+
     // Admin tracking
     isAdmin: { type: Boolean, default: false },
     canPromoteAdmins: { type: Boolean, default: false },
@@ -211,6 +233,8 @@ const UserSchema = new Schema<IUser>(
 
 // Indexes for performance
 UserSchema.index({ roles: 1 });
+UserSchema.index({ "activityMetrics.lastActivityAt": -1 }); // For sorting by recent activity
+UserSchema.index({ "activityMetrics.engagementScore": -1 }); // For sorting by engagement
 UserSchema.index({ isAdmin: 1 });
 UserSchema.index({ serviceCategory: 1, serviceAreas: 1 }); // For service provider search
 

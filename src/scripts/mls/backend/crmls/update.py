@@ -39,8 +39,9 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
 db = client.get_database()
-collection = db.crmls_listings  # CRMLS collection
-print("✅ Connected to MongoDB (CRMLS)")
+collection = db.crmls_listings  # CRMLS active collection
+closed_collection = db.crmlsClosedListings  # CRMLS closed/sold listings
+print("✅ Connected to MongoDB (CRMLS active + closed collections)")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 🌐 FETCH SINGLE LISTING STATUS
@@ -100,14 +101,30 @@ def check_listing(listing):
 
     if not spark_ts or not local_ts:
         if spark_status != local_status:
-            collection.update_one(
-                {"listingKey": listing_key},
-                {"$set": {
-                    "standardStatus": spark_status,
-                    "statusLastChecked": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            return f"🔄 {listing_key}: {local_status} → {spark_status}"
+            # Check if listing is now CLOSED (sold) - move to closed collection
+            if spark_status == "Closed":
+                full_listing = collection.find_one({"listingKey": listing_key})
+                if full_listing:
+                    full_listing["standardStatus"] = spark_status
+                    full_listing["statusLastChecked"] = datetime.now(timezone.utc).isoformat()
+                    full_listing.pop("_id", None)  # Remove _id to avoid duplicate key error
+                    closed_collection.update_one(
+                        {"listingKey": listing_key},
+                        {"$set": full_listing},
+                        upsert=True
+                    )
+                    collection.delete_one({"listingKey": listing_key})
+                    return f"🏠💰 {listing_key}: {local_status} → SOLD (moved to closed collection)"
+            else:
+                # Other status changes (Pending, Expired, etc.) - just update in place
+                collection.update_one(
+                    {"listingKey": listing_key},
+                    {"$set": {
+                        "standardStatus": spark_status,
+                        "statusLastChecked": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                return f"🔄 {listing_key}: {local_status} → {spark_status}"
         return f"✅ {listing_key}: unchanged"
 
     try:
@@ -118,15 +135,32 @@ def check_listing(listing):
         local_dt = datetime.now(timezone.utc)
 
     if spark_dt > local_dt or spark_status != local_status:
-        collection.update_one(
-            {"listingKey": listing_key},
-            {"$set": {
-                "standardStatus": spark_status,
-                "statusChangeTimestamp": spark_ts,
-                "statusLastChecked": datetime.now(timezone.utc).isoformat(),
-            }},
-        )
-        return f"🔁 {listing_key}: status updated → {spark_status}"
+        # Check if listing is now CLOSED (sold) - move to closed collection
+        if spark_status == "Closed":
+            full_listing = collection.find_one({"listingKey": listing_key})
+            if full_listing:
+                full_listing["standardStatus"] = spark_status
+                full_listing["statusChangeTimestamp"] = spark_ts
+                full_listing["statusLastChecked"] = datetime.now(timezone.utc).isoformat()
+                full_listing.pop("_id", None)  # Remove _id to avoid duplicate key error
+                closed_collection.update_one(
+                    {"listingKey": listing_key},
+                    {"$set": full_listing},
+                    upsert=True
+                )
+                collection.delete_one({"listingKey": listing_key})
+                return f"🏠💰 {listing_key}: {local_status} → SOLD (moved to closed collection)"
+        else:
+            # Other status changes (Pending, Expired, etc.) - just update in place
+            collection.update_one(
+                {"listingKey": listing_key},
+                {"$set": {
+                    "standardStatus": spark_status,
+                    "statusChangeTimestamp": spark_ts,
+                    "statusLastChecked": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            return f"🔁 {listing_key}: status updated → {spark_status}"
     else:
         return f"✅ {listing_key}: unchanged"
 
@@ -145,6 +179,7 @@ def main():
 
     changed = 0
     removed = 0
+    sold = 0  # Track listings moved to closed collection
     checked = 0
     batch_size = 1000
 
@@ -155,7 +190,9 @@ def main():
             try:
                 result = future.result()
                 checked += 1
-                if "🔄" in result or "🔁" in result:
+                if "🏠💰" in result:
+                    sold += 1
+                elif "🔄" in result or "🔁" in result:
                     changed += 1
                 elif "❌" in result:
                     removed += 1
@@ -171,11 +208,12 @@ def main():
                 print("✅ Resuming updates...\n")
 
     # Summary
-    print(f"\n🏁 Done! {changed} CRMLS listings updated, {removed} off-market, checked {checked} total.")
+    print(f"\n🏁 Done! {changed} CRMLS listings updated, {sold} sold (moved to closed), {removed} off-market, checked {checked} total.")
     log = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checked": checked,
         "changed": changed,
+        "sold": sold,
         "removed": removed,
     }
     log_path = LOG_DIR / f"status_check_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Trash2,
   Check,
+  BarChart3,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -324,6 +325,7 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Mobile pagination
   const [mobilePage, setMobilePage] = useState(1);
@@ -344,6 +346,12 @@ export default function DashboardPage() {
           if (data.twoFactorEnabled) setTwoFactorEnabled(true);
         })
         .catch((err) => console.error("Error fetching user data:", err));
+
+      // Check if user is admin
+      fetch("/api/user/check-admin")
+        .then((res) => res.json())
+        .then((data) => setIsAdmin(data.isAdmin))
+        .catch(() => setIsAdmin(false));
 
       syncFavorites();
     }
@@ -451,11 +459,22 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-900 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Welcome back, {user.name || "User"}!
-          </h1>
-          <p className="text-gray-400">Your personalized dashboard with favorites and insights</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              Welcome back, {user.name || "User"}!
+            </h1>
+            <p className="text-gray-400">Your personalized dashboard with favorites and insights</p>
+          </div>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Admin Dashboard
+            </Link>
+          )}
         </div>
 
         {/* Statistics Cards */}

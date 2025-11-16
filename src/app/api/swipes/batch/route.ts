@@ -147,6 +147,32 @@ export async function POST(request: NextRequest) {
     // Update lastSwipeSync
     user.lastSwipeSync = now;
 
+    // Update activity metrics
+    const totalFavorites = user.likedListings.length;
+    const totalSessions = user.activityMetrics?.totalSessions || 0;
+    const totalSearches = user.activityMetrics?.totalSearches || 0;
+    const totalListingsViewed = user.activityMetrics?.totalListingsViewed || 0;
+
+    // Calculate engagement score
+    const favoritesScore = Math.min(totalFavorites * 5, 50);
+    const searchesScore = Math.min(totalSearches * 2, 25);
+    const viewsScore = Math.min(totalListingsViewed * 0.5, 15);
+    const sessionScore = Math.min(totalSessions, 10);
+    const engagementScore = Math.min(
+      Math.round(favoritesScore + searchesScore + viewsScore + sessionScore),
+      100
+    );
+
+    user.activityMetrics = {
+      totalSessions: user.activityMetrics?.totalSessions || 0,
+      totalSearches: user.activityMetrics?.totalSearches || 0,
+      totalListingsViewed: user.activityMetrics?.totalListingsViewed || 0,
+      totalFavorites,
+      lastActivityAt: now,
+      engagementScore,
+      lastSessionDuration: user.activityMetrics?.lastSessionDuration || 0,
+    };
+
     // Save to database
     console.log(`💾 Saving to database...`);
     console.log(`  - Total liked listings in DB: ${user.likedListings.length}`);
