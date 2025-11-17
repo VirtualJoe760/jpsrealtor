@@ -31,61 +31,114 @@ export async function sendVerificationEmail(
                 font-family: Arial, sans-serif;
                 line-height: 1.6;
                 color: #333;
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
               }
               .container {
                 max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
+                margin: 40px auto;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               }
               .header {
                 background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
                 color: white;
-                padding: 30px;
+                padding: 40px 30px;
                 text-align: center;
-                border-radius: 10px 10px 0 0;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
               }
               .content {
-                background: #f9fafb;
-                padding: 30px;
-                border-radius: 0 0 10px 10px;
+                padding: 40px 30px;
               }
               .button {
                 display: inline-block;
-                padding: 12px 30px;
+                padding: 14px 32px;
                 background: #3b82f6;
-                color: white;
+                color: white !important;
                 text-decoration: none;
-                border-radius: 5px;
+                border-radius: 6px;
+                margin: 25px 0;
+                font-weight: 600;
+              }
+              .button:hover {
+                background: #2563eb;
+              }
+              .link-fallback {
+                word-break: break-all;
+                color: #3b82f6;
+                font-size: 13px;
                 margin: 20px 0;
               }
+              .signature {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 14px;
+                line-height: 1.8;
+              }
+              .signature-name {
+                font-weight: 600;
+                margin-bottom: 5px;
+              }
+              .signature-info {
+                color: #666;
+                margin: 2px 0;
+              }
+              .signature-links a {
+                color: #3b82f6;
+                text-decoration: none;
+              }
               .footer {
+                background: #f9fafb;
+                padding: 20px 30px;
                 text-align: center;
-                margin-top: 20px;
                 color: #666;
                 font-size: 12px;
+                border-top: 1px solid #e5e7eb;
               }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1>Welcome to Joey Sardella Real Estate!</h1>
+                <h1>Welcome to JPSRealtor!</h1>
               </div>
               <div class="content">
                 <p>Hi ${name},</p>
-                <p>Thank you for registering! Please verify your email address to get started.</p>
-                <p>Click the button below to verify your email:</p>
+                <p>Thank you for creating an account with JPSRealtor. To get started, please verify your email address by clicking the button below:</p>
                 <p style="text-align: center;">
                   <a href="${verificationUrl}" class="button">Verify Email Address</a>
                 </p>
                 <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-                <p>This link will expire in 24 hours.</p>
-                <p>If you didn't create an account, you can safely ignore this email.</p>
-                <p>Best regards,<br>Joey Sardella Real Estate Team</p>
+                <p class="link-fallback">${verificationUrl}</p>
+                <p style="color: #666; font-size: 14px;">This verification link will expire in 24 hours.</p>
+                <p style="color: #666; font-size: 14px; margin-top: 30px;">If you didn't create this account, you can safely ignore this email.</p>
+
+                <div class="signature">
+                  <p class="signature-name">Sincerely,</p>
+                  <p class="signature-name">Joseph Sardella</p>
+                  <p class="signature-info">DRE: 02106916</p>
+                  <p class="signature-info">Obsidian Group - eXp Realty</p>
+                  <br>
+                  <p class="signature-info signature-links">
+                    E: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a><br>
+                    W: <a href="mailto:joseph@obsidianregroup.com">joseph@obsidianregroup.com</a> (for transactions)<br>
+                    P: <a href="tel:+17603333676">(760) 333-3676</a><br>
+                    W: <a href="tel:+17608336334">(760) 833-6334</a><br>
+                    <a href="https://www.obsidianregroup.com">www.obsidianregroup.com</a><br>
+                    <a href="https://jpsrealtor.com">https://jpsrealtor.com</a>
+                  </p>
+                </div>
               </div>
               <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} Joey Sardella Real Estate. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} Joseph Sardella - Obsidian Group, eXp Realty. All rights reserved.</p>
               </div>
             </div>
           </body>
@@ -126,40 +179,74 @@ export async function send2FACode(
                 font-family: Arial, sans-serif;
                 line-height: 1.6;
                 color: #333;
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
               }
               .container {
                 max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
+                margin: 40px auto;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               }
               .header {
                 background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
                 color: white;
-                padding: 30px;
+                padding: 40px 30px;
                 text-align: center;
-                border-radius: 10px 10px 0 0;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
               }
               .content {
+                padding: 40px 30px;
+              }
+              .code-container {
                 background: #f9fafb;
+                border: 2px solid #3b82f6;
+                border-radius: 8px;
                 padding: 30px;
-                border-radius: 0 0 10px 10px;
+                text-align: center;
+                margin: 25px 0;
               }
               .code {
                 display: inline-block;
-                padding: 20px 40px;
-                background: #1e3a8a;
-                color: white;
-                font-size: 32px;
+                font-size: 36px;
                 font-weight: bold;
-                letter-spacing: 8px;
-                border-radius: 8px;
-                margin: 20px 0;
+                letter-spacing: 10px;
+                color: #1e3a8a;
+                font-family: 'Courier New', monospace;
+              }
+              .signature {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 14px;
+                line-height: 1.8;
+              }
+              .signature-name {
+                font-weight: 600;
+                margin-bottom: 5px;
+              }
+              .signature-info {
+                color: #666;
+                margin: 2px 0;
+              }
+              .signature-links a {
+                color: #3b82f6;
+                text-decoration: none;
               }
               .footer {
+                background: #f9fafb;
+                padding: 20px 30px;
                 text-align: center;
-                margin-top: 20px;
                 color: #666;
                 font-size: 12px;
+                border-top: 1px solid #e5e7eb;
               }
             </style>
           </head>
@@ -171,15 +258,30 @@ export async function send2FACode(
               <div class="content">
                 <p>Hi ${name},</p>
                 <p>Your verification code for two-factor authentication is:</p>
-                <p style="text-align: center;">
-                  <span class="code">${code}</span>
-                </p>
-                <p>This code will expire in 10 minutes.</p>
-                <p>If you didn't request this code, please ignore this email and consider changing your password.</p>
-                <p>Best regards,<br>Joey Sardella Real Estate Team</p>
+                <div class="code-container">
+                  <div class="code">${code}</div>
+                </div>
+                <p style="color: #666; font-size: 14px; text-align: center;">This code will expire in 10 minutes.</p>
+                <p style="color: #dc2626; font-size: 14px; margin-top: 30px;"><strong>Security Notice:</strong> If you didn't request this code, please ignore this email and consider changing your password immediately.</p>
+
+                <div class="signature">
+                  <p class="signature-name">Sincerely,</p>
+                  <p class="signature-name">Joseph Sardella</p>
+                  <p class="signature-info">DRE: 02106916</p>
+                  <p class="signature-info">Obsidian Group - eXp Realty</p>
+                  <br>
+                  <p class="signature-info signature-links">
+                    E: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a><br>
+                    W: <a href="mailto:joseph@obsidianregroup.com">joseph@obsidianregroup.com</a> (for transactions)<br>
+                    P: <a href="tel:+17603333676">(760) 333-3676</a><br>
+                    W: <a href="tel:+17608336334">(760) 833-6334</a><br>
+                    <a href="https://www.obsidianregroup.com">www.obsidianregroup.com</a><br>
+                    <a href="https://jpsrealtor.com">https://jpsrealtor.com</a>
+                  </p>
+                </div>
               </div>
               <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} Joey Sardella Real Estate. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} Joseph Sardella - Obsidian Group, eXp Realty. All rights reserved.</p>
               </div>
             </div>
           </body>
