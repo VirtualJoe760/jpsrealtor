@@ -92,7 +92,7 @@ export async function sendVerificationEmail(
       `,
     });
 
-    console.log('✅ Verification email sent successfully via Resend:', data.id);
+    console.log('✅ Verification email sent successfully via Resend:', data);
     return data;
   } catch (error) {
     console.error("❌ Error sending verification email via Resend:", error);
@@ -185,7 +185,7 @@ export async function send2FACode(
       `,
     });
 
-    console.log('✅ 2FA code sent successfully via Resend:', data.id);
+    console.log('✅ 2FA code sent successfully via Resend:', data);
     return data;
   } catch (error) {
     console.error("❌ Error sending 2FA code via Resend:", error);
