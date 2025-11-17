@@ -5,7 +5,7 @@ import crypto from "crypto";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/user";
 import VerificationToken from "@/models/verificationToken";
-import { sendVerificationEmail } from "@/lib/email";
+import { sendVerificationEmail } from "@/lib/email-resend";
 
 export async function POST(request: NextRequest) {
   try {

@@ -6,7 +6,7 @@ import { randomInt } from "crypto";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/user";
 import TwoFactorToken from "@/models/twoFactorToken";
-import { send2FACode } from "@/lib/email";
+import { send2FACode } from "@/lib/email-resend";
 
 export async function POST(request: NextRequest) {
   try {
