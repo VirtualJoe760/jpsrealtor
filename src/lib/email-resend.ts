@@ -20,6 +20,7 @@ export async function sendVerificationEmail(
     const data = await resend.emails.send({
       from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
       to: [email],
+      replyTo: 'noreply@jpsrealtor.com',
       subject: 'Verify your email address',
       html: `
         <!DOCTYPE html>
@@ -114,6 +115,7 @@ export async function send2FACode(
     const data = await resend.emails.send({
       from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
       to: [email],
+      replyTo: 'noreply@jpsrealtor.com',
       subject: 'Your Two-Factor Authentication Code',
       html: `
         <!DOCTYPE html>
