@@ -3,6 +3,7 @@
 
 import { useEffect } from "react";
 import MobileBottomNav from "./navbar/MobileBottomNav";
+import GlobalHamburgerMenu from "./GlobalHamburgerMenu";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 
@@ -64,6 +65,7 @@ export default function ClientLayoutWrapper({
   return (
     <Providers>
       <MetaPixel />
+      <GlobalHamburgerMenu />
       {children}
       <MobileBottomNav />
     </Providers>

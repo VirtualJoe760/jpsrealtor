@@ -25,8 +25,8 @@ export default function MobileBottomNav() {
     {
       name: "Map",
       icon: Map,
-      href: "/chat?view=map",
-      active: pathname?.startsWith("/chat") && pathname.includes("view=map"),
+      href: "/mls-listings",
+      active: pathname?.startsWith("/mls-listings"),
     },
     {
       name: "Articles",

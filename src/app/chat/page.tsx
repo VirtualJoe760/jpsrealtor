@@ -9,7 +9,6 @@ import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import MLSPreloader from "@/app/components/mls/MLSPreloader";
 import EnhancedSidebar from "./components/EnhancedSidebar";
 import IntegratedChatWidget from "./components/IntegratedChatWidget";
-import MapViewIntegrated from "./components/MapViewIntegrated";
 import ArticlesView from "./components/ArticlesView";
 import DashboardViewIntegrated from "./components/DashboardViewIntegrated";
 import SubdivisionsView from "./components/SubdivisionsView";
@@ -28,10 +27,9 @@ function URLSyncHandler() {
     const viewParam = searchParams.get('view');
 
     // Map URL params to internal view states
-    type ViewType = 'chat' | 'map' | 'articles' | 'dashboard' | 'subdivisions';
+    type ViewType = 'chat' | 'articles' | 'dashboard' | 'subdivisions';
     const validViews: Record<string, ViewType> = {
       'chat': 'chat',
-      'map': 'map',
       'articles': 'articles',
       'dashboard': 'dashboard',
       'subdivisions': 'subdivisions'
@@ -58,12 +56,6 @@ function ChatPageContent() {
         return (
           <motion.div key="chat" {...blurFade(0.5)} className="h-full">
             <IntegratedChatWidget />
-          </motion.div>
-        );
-      case "map":
-        return (
-          <motion.div key="map" {...blurFade(0.5)} className="h-full">
-            <MapViewIntegrated />
           </motion.div>
         );
       case "articles":
@@ -96,7 +88,6 @@ function ChatPageContent() {
   const handleViewChange = (view: string) => {
     const viewMap: Record<string, any> = {
       "new-chat": "chat",
-      "map-view": "map",
       "articles": "articles",
       "dashboard": "dashboard",
       "subdivisions": "subdivisions",

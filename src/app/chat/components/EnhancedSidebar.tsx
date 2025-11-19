@@ -36,7 +36,7 @@ interface SidebarProps {
 const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "new-chat", label: "Chat", icon: MessageSquare },
-  { id: "map-view", label: "Map View", icon: Map, hasSubMenu: true },
+  { id: "map-view", label: "Map View", icon: Map, href: "/mls-listings" },
   { id: "articles", label: "Articles", icon: FileText },
   { id: "neighborhoods", label: "Neighborhoods", icon: Home },
 ];
@@ -428,15 +428,15 @@ export default function EnhancedSidebar({ currentView, onViewChange, onClose }: 
             <div key={item.id}>
               <motion.button
                 onClick={() => {
-                  if (item.hasSubMenu) {
-                    // For items with submenus (Map View), only toggle the dropdown
-                    toggleMapFilters();
-                  } else if (item.id === "neighborhoods") {
+                  if (item.id === "neighborhoods") {
                     // Navigate to neighborhoods page
                     router.push("/neighborhoods");
+                  } else if (item.id === "map-view") {
+                    // Navigate to map listings page
+                    router.push("/mls-listings");
                   } else {
-                    // For regular items, change the view
-                    const viewParam = item.id === "new-chat" ? "chat" : item.id === "map-view" ? "map" : item.id;
+                    // For regular items, change the view within chat
+                    const viewParam = item.id === "new-chat" ? "chat" : item.id;
                     router.push(`/chat?view=${viewParam}`, { scroll: false });
                     onViewChange(item.id);
                   }
@@ -464,19 +464,10 @@ export default function EnhancedSidebar({ currentView, onViewChange, onClose }: 
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {item.hasSubMenu && !isCollapsed && (
-                  <motion.div
-                    initial={false}
-                    animate={{ rotate: mapFiltersOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
-                  </motion.div>
-                )}
               </motion.button>
 
-              {/* Map View Filters Accordion */}
-              {item.hasSubMenu && !isCollapsed && (
+              {/* Map View Filters Accordion - Removed since map is now standalone */}
+              {false && (
                 <AnimatePresence>
                   {mapFiltersOpen && (
                     <motion.div
