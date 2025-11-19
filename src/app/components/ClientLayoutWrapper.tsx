@@ -1,11 +1,7 @@
 // app/components/ClientLayoutWrapper.tsx
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import Footer from "./Footer";
-import Navbar from "./navbar/Navbar";
-import MobileBottomNav from "./navbar/MobileBottomNav";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 
@@ -14,10 +10,6 @@ export default function ClientLayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const hideFooter = pathname?.startsWith("/mls-listings") || pathname?.startsWith("/chat") || pathname?.startsWith("/neighborhoods");
-  const hideNavbar = pathname?.startsWith("/chat") || pathname?.startsWith("/neighborhoods");
-
   // Aggressive double-tap zoom and pinch zoom prevention for iOS
   useEffect(() => {
     let lastTouchEnd = 0;
@@ -71,10 +63,7 @@ export default function ClientLayoutWrapper({
   return (
     <Providers>
       <MetaPixel />
-      {!hideNavbar && <Navbar />}
       {children}
-      {!hideFooter && <Footer />}
-      <MobileBottomNav />
     </Providers>
   );
 }
