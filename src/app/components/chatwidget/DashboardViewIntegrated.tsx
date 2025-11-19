@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { crossDissolve } from "../utils/motion";
+import { crossDissolve } from "@/app/utils/chat/motion";
 import DashboardPage from "@/app/dashboard/page";
 
 export default function DashboardViewIntegrated() {

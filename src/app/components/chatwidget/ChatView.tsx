@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Mic } from "lucide-react";
-import { crossDissolve, fadeSlideIn } from "../utils/motion";
+import { crossDissolve, fadeSlideIn } from "@/app/utils/chat/motion";
 import StarsCanvas from "./StarsCanvas";
 
 export default function ChatView() {

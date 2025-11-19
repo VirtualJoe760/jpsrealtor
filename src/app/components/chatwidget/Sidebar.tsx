@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { slidePanel, fadeSlideIn, staggerChildren } from "../utils/motion";
+import { slidePanel, fadeSlideIn, staggerChildren } from "@/app/utils/chat/motion";
 import {
   ChevronLeft,
   ChevronRight,

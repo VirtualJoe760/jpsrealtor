@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { crossDissolve } from "../utils/motion";
+import { crossDissolve } from "@/app/utils/chat/motion";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
 import dynamic from "next/dynamic";

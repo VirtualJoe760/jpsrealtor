@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { crossDissolve, fadeSlideIn } from "../utils/motion";
+import { crossDissolve, fadeSlideIn } from "@/app/utils/chat/motion";
 import { FileText } from "lucide-react";
 
 export default function ArticlesView() {

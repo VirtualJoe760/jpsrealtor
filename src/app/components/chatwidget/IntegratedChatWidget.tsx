@@ -19,7 +19,7 @@ import { InitProgressReport } from "@mlc-ai/web-llm";
 import { User, Bot, Loader2 } from "lucide-react";
 import AnimatedChatInput from "./AnimatedChatInput";
 import StarsCanvas from "./StarsCanvas";
-import { fadeSlideIn } from "../utils/motion";
+import { fadeSlideIn } from "@/app/utils/chat/motion";
 import { useSession } from "next-auth/react";
 import { addToConversationHistory, updateConversationMessageCount, saveConversationMessages } from "./EnhancedSidebar";
 import Image from "next/image";
