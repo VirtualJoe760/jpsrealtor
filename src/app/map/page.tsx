@@ -1,5 +1,6 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
 import { motion, AnimatePresence } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
