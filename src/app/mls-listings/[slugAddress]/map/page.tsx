@@ -102,11 +102,11 @@ export default function ListingMapPage({
     propertyType: listing.propertyType,
     propertySubType: listing.propertySubType,
     address: listing.unparsedAddress || listing.unparsedFirstLineAddress || listing.address || "Unknown",
-    listPrice: listing.listPrice,
+    listPrice: listing.listPrice ?? 0,
     bedroomsTotal: listing.bedroomsTotal,
     bathroomsTotalInteger: listing.bathroomsTotalInteger,
     livingArea: listing.livingArea,
-    primaryPhotoUrl: listing.primaryPhotoUrl,
+    primaryPhotoUrl: listing.primaryPhotoUrl ?? "",
   };
 
   return (
