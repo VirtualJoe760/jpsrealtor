@@ -107,10 +107,8 @@ function ChatPageContent() {
 
   return (
     <div className="md:flex h-screen w-screen bg-black overflow-hidden relative">
-      {/* URL Sync Handler wrapped in Suspense */}
-      <Suspense fallback={null}>
-        <URLSyncHandler />
-      </Suspense>
+      {/* URL Sync Handler */}
+      <URLSyncHandler />
 
       {/* Persistent Starfield Background */}
       <div className="absolute inset-0 z-0">
@@ -185,21 +183,27 @@ function ChatPageContent() {
   );
 }
 
-export default function ChatPage() {
+function ChatPageWrapper() {
   return (
     <EnhancedChatProvider>
       <MLSProvider>
-        <Suspense fallback={
-          <div className="h-screen w-screen bg-black flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-neutral-400 text-sm">Loading chat...</p>
-            </div>
-          </div>
-        }>
-          <ChatPageContent />
-        </Suspense>
+        <ChatPageContent />
       </MLSProvider>
     </EnhancedChatProvider>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-neutral-400 text-sm">Loading chat...</p>
+        </div>
+      </div>
+    }>
+      <ChatPageWrapper />
+    </Suspense>
   );
 }
