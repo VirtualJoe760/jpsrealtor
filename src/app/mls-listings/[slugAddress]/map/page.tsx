@@ -92,6 +92,7 @@ export default function ListingMapPage({
   const mapListing = {
     _id: listing._id?.toString() || listing.listingKey,
     listingKey: listing.listingKey,
+    listingId: listing.listingId,
     slug: listing.slug,
     slugAddress: listing.slugAddress || listing.slug,
     latitude: listing.latitude,
