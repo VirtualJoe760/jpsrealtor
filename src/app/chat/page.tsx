@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -176,7 +176,16 @@ export default function ChatPage() {
   return (
     <EnhancedChatProvider>
       <MLSProvider>
-        <ChatPageContent />
+        <Suspense fallback={
+          <div className="h-screen w-screen bg-black flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-neutral-400 text-sm">Loading chat...</p>
+            </div>
+          </div>
+        }>
+          <ChatPageContent />
+        </Suspense>
       </MLSProvider>
     </EnhancedChatProvider>
   );
