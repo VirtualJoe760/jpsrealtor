@@ -15,7 +15,7 @@ export default function ClientLayoutWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const hideFooter = pathname?.startsWith("/mls-listings") || pathname?.startsWith("/chat");
+  const hideFooter = pathname?.startsWith("/mls-listings") || pathname?.startsWith("/chat") || pathname?.startsWith("/neighborhoods");
   const hideNavbar = pathname?.startsWith("/chat") || pathname?.startsWith("/neighborhoods");
 
   // Aggressive double-tap zoom and pinch zoom prevention for iOS
