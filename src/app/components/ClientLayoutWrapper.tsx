@@ -8,6 +8,7 @@ import EnhancedSidebar from "./EnhancedSidebar";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
+import PageTransition from "./PageTransition";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -28,7 +29,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </div>
 
       <MobileBottomNav />

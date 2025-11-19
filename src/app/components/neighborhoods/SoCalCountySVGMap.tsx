@@ -366,25 +366,6 @@ export default function SoCalCountySVGMap() {
         </div>
       )}
 
-      {/* Legend - Responsive */}
-      <div className="absolute top-0 right-0 bg-gradient-to-bl from-gray-900/95 via-gray-900/90 to-transparent backdrop-blur-sm rounded-bl-2xl md:rounded-bl-3xl p-3 sm:p-4 md:p-6 text-white text-xs sm:text-sm z-10 pointer-events-none">
-        <p className="font-bold mb-2 md:mb-3 text-sm md:text-lg">Coverage</p>
-        <div className="space-y-1 sm:space-y-2">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-blue-600 rounded border border-blue-400 md:border-2"></div>
-            <span className="text-gray-200 text-xs sm:text-sm">
-              <span className="hidden sm:inline">10 Southern California Regions</span>
-              <span className="sm:hidden">10 Regions</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation hint - Responsive */}
-      <div className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 bg-gray-900/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-gray-200 text-xs sm:text-sm z-10 pointer-events-none border border-gray-700">
-        <p className="hidden sm:block">Hover to preview • Click to explore</p>
-        <p className="sm:hidden">Tap to explore</p>
-      </div>
     </div>
   );
 }

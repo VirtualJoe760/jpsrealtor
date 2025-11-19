@@ -134,13 +134,13 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 initial={false}
                 whileHover={{ x: isCollapsed ? 0 : 3 }}
                 whileTap={{ scale: 0.98 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-base md:text-sm transition-all ${
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} ${isCollapsed ? 'p-3' : 'px-3 py-3 md:py-2.5'} rounded-lg text-base md:text-sm transition-all ${
                   isActive
                     ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 md:from-purple-500/20 md:to-pink-500/20 text-white border border-emerald-500/30 md:border-purple-500/30 shadow-lg shadow-emerald-500/10"
                     : "text-neutral-400 hover:bg-emerald-500/10 md:hover:bg-neutral-800/50 hover:text-neutral-200"
                 }`}
               >
-                <Icon className="w-6 h-6 md:w-5 md:h-5 flex-shrink-0" strokeWidth={2} />
+                <Icon className={`${isCollapsed ? 'w-5 h-5' : 'w-6 h-6 md:w-5 md:h-5'} flex-shrink-0`} strokeWidth={2} />
                 <AnimatePresence mode="wait">
                   {!isCollapsed && (
                     <motion.span

@@ -708,28 +708,38 @@ FUNCTION CALLING RULES:
               transition={{ duration: 0.5, delay: 0.7 }}
               className="hidden md:flex flex-wrap gap-3 justify-center max-w-2xl"
             >
-              {["Articles", "Map View", "Dashboard", "Subdivisions"].map((action, index) => (
-                <motion.button
-                  key={action}
-                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 120,
-                    damping: 15,
-                    delay: 0.8 + index * 0.1
-                  }}
-                  whileHover={{
-                    scale: 1.08,
-                    y: -4,
-                    boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)"
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-6 py-2.5 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700/50 rounded-full text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50 transition-colors duration-300 shadow-lg"
-                >
-                  {action}
-                </motion.button>
-              ))}
+              {["Articles", "Map", "Dashboard", "Neighborhoods"].map((action, index) => {
+                const actionMap: Record<string, () => void> = {
+                  "Articles": () => window.location.href = "/insights",
+                  "Map": () => window.location.href = "/map",
+                  "Dashboard": () => window.location.href = "/dashboard",
+                  "Neighborhoods": () => window.location.href = "/neighborhoods",
+                };
+
+                return (
+                  <motion.button
+                    key={action}
+                    onClick={actionMap[action]}
+                    initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 120,
+                      damping: 15,
+                      delay: 0.8 + index * 0.1
+                    }}
+                    whileHover={{
+                      scale: 1.08,
+                      y: -4,
+                      boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)"
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-6 py-2.5 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700/50 rounded-full text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50 transition-colors duration-300 shadow-lg cursor-pointer"
+                  >
+                    {action}
+                  </motion.button>
+                );
+              })}
             </motion.div>
           </motion.div>
           </div>

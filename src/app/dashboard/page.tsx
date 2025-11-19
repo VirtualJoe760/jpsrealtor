@@ -17,6 +17,8 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
 
@@ -473,9 +475,9 @@ export default function DashboardPage() {
   // ────── Loading / unauth ──────
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
+      <SpaticalBackground className="min-h-screen" showGradient={true}>
+        <div className="min-h-screen" />
+      </SpaticalBackground>
     );
   }
   if (!session) return null;
@@ -483,10 +485,16 @@ export default function DashboardPage() {
 
   // ────── Render ──────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-900 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
+    <SpaticalBackground className="min-h-screen" showGradient={true}>
+      <div className="min-h-screen py-12 px-4" data-page="dashboard">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-8 flex items-start justify-between"
+        >
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">
               Welcome back, {user.name || "User"}!
@@ -502,12 +510,17 @@ export default function DashboardPage() {
               Admin Dashboard
             </Link>
           )}
-        </div>
+        </motion.div>
 
         {/* Statistics Cards */}
         {analytics && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Total Favorites</p>
@@ -517,9 +530,14 @@ export default function DashboardPage() {
                   <Heart className="w-6 h-6 text-red-400" />
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Top City</p>
@@ -532,9 +550,14 @@ export default function DashboardPage() {
                   <MapPin className="w-6 h-6 text-blue-400" />
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Top Subdivision</p>
@@ -547,7 +570,7 @@ export default function DashboardPage() {
                   <Building2 className="w-6 h-6 text-green-400" />
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
@@ -558,7 +581,12 @@ export default function DashboardPage() {
 
         {/* Swipe Insights */}
         {analytics && (analytics.topCities.length > 0 || analytics.topSubdivisions.length > 0) && (
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8"
+          >
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
               <TrendingUp className="w-6 h-6 mr-2 text-blue-400" />
               Your Swipe Insights
@@ -617,11 +645,16 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Favorite Properties */}
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8"
+        >
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-2xl font-bold text-white flex items-center">
               <Heart className="w-6 h-6 mr-2 text-red-400" />
@@ -844,10 +877,15 @@ export default function DashboardPage() {
               </div>
             </>
           )}
-        </div>
+        </motion.div>
 
         {/* Account Info */}
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6"
+        >
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -907,11 +945,12 @@ export default function DashboardPage() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* AI Chat Assistant */}
         {/* <ChatWidget context="dashboard" /> */}
+        </div>
       </div>
-    </div>
+    </SpaticalBackground>
   );
 }
