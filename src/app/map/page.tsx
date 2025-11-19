@@ -1,16 +1,17 @@
 "use client";
 
 export const dynamic = 'force-dynamic';
+
 import { motion, AnimatePresence } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe } from "lucide-react";
 import type { MapListing } from "@/types/types";
 
 // Dynamic imports for map components (client-side only)
-const MapView = dynamic(
+const MapView = dynamicImport(
   () => import("@/app/components/mls/map/MapView"),
   {
     ssr: false,
@@ -25,12 +26,12 @@ const MapView = dynamic(
   }
 );
 
-const ListingBottomPanel = dynamic(
+const ListingBottomPanel = dynamicImport(
   () => import("@/app/components/mls/map/ListingBottomPanel"),
   { ssr: false }
 );
 
-const FavoritesPannel = dynamic(
+const FavoritesPannel = dynamicImport(
   () => import("@/app/components/mls/map/FavoritesPannel"),
   { ssr: false }
 );
