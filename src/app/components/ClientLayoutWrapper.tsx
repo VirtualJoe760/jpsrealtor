@@ -4,8 +4,37 @@
 import { useEffect } from "react";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import GlobalHamburgerMenu from "./GlobalHamburgerMenu";
+import EnhancedSidebar from "./EnhancedSidebar";
+import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const { isCollapsed } = useSidebar();
+
+  return (
+    <>
+      <MetaPixel />
+      <GlobalHamburgerMenu />
+
+      {/* Desktop: Always visible sidebar */}
+      <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
+        <EnhancedSidebar />
+      </div>
+
+      {/* Main content with sidebar spacing on desktop */}
+      <div
+        className={`transition-[margin] duration-300 ${
+          isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
+        }`}
+      >
+        {children}
+      </div>
+
+      <MobileBottomNav />
+    </>
+  );
+}
 
 export default function ClientLayoutWrapper({
   children,
@@ -64,10 +93,9 @@ export default function ClientLayoutWrapper({
 
   return (
     <Providers>
-      <MetaPixel />
-      <GlobalHamburgerMenu />
-      {children}
-      <MobileBottomNav />
+      <SidebarProvider>
+        <LayoutContent>{children}</LayoutContent>
+      </SidebarProvider>
     </Providers>
   );
 }

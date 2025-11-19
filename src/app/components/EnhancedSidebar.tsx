@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -14,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useSidebar } from "./SidebarContext";
 
 interface SidebarProps {
   onClose?: () => void; // Optional prop to close sidebar on mobile
@@ -28,14 +28,10 @@ const navigationItems = [
 ];
 
 export default function EnhancedSidebar({ onClose }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   const handleNavigate = (href: string, label: string) => {
     console.log(`🧭 Navigating to ${label}:`, href);
