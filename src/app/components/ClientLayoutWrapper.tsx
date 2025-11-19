@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
+import MobileBottomNav from "./navbar/MobileBottomNav";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 
@@ -64,6 +65,7 @@ export default function ClientLayoutWrapper({
     <Providers>
       <MetaPixel />
       {children}
+      <MobileBottomNav />
     </Providers>
   );
 }
