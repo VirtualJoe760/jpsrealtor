@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { EnhancedChatProvider, useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import MLSPreloader from "@/app/components/mls/MLSPreloader";
@@ -15,6 +15,9 @@ import DashboardViewIntegrated from "./components/DashboardViewIntegrated";
 import SubdivisionsView from "./components/SubdivisionsView";
 import StarsCanvas from "./components/StarsCanvas";
 import { blurFade, fadeSlideIn } from "./utils/motion";
+
+// Force dynamic rendering for this page since it uses search params
+export const dynamic = 'force-dynamic';
 
 // Component that handles URL search params synchronization
 function URLSyncHandler() {
