@@ -106,7 +106,7 @@ function ChatPageContent() {
   };
 
   return (
-    <div className="md:flex h-screen w-screen bg-black overflow-hidden relative">
+    <div className="md:flex h-screen w-screen bg-black overflow-hidden relative" data-page="chat">
       {/* URL Sync Handler */}
       <URLSyncHandler />
 

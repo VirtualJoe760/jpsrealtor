@@ -10,7 +10,7 @@ const SoCalCountySVGMap = dynamic(
 
 const NeighborhoodsPage: React.FC = () => {
   return (
-    <div className="w-full h-[65vh] sm:h-[80vh] md:h-screen overflow-hidden">
+    <div className="w-full h-[65vh] sm:h-[80vh] md:h-screen overflow-hidden" data-page="neighborhoods">
       <SoCalCountySVGMap />
     </div>
   );
