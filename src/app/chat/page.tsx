@@ -16,13 +16,11 @@ import SubdivisionsView from "./components/SubdivisionsView";
 import StarsCanvas from "./components/StarsCanvas";
 import { blurFade, fadeSlideIn } from "./utils/motion";
 
-function ChatPageContent() {
+// Component that handles URL search params synchronization
+function URLSyncHandler() {
   const { currentView, setCurrentView } = useEnhancedChat();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const searchParams = useSearchParams();
-  const router = useRouter();
 
-  // Sync view with URL search params
   useEffect(() => {
     const viewParam = searchParams.get('view');
 
@@ -43,6 +41,13 @@ function ChatPageContent() {
       setCurrentView(newView);
     }
   }, [searchParams, currentView, setCurrentView]);
+
+  return null;
+}
+
+function ChatPageContent() {
+  const { currentView, setCurrentView } = useEnhancedChat();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const renderView = () => {
     switch (currentView) {
@@ -99,6 +104,11 @@ function ChatPageContent() {
 
   return (
     <div className="md:flex h-screen w-screen bg-black overflow-hidden relative">
+      {/* URL Sync Handler wrapped in Suspense */}
+      <Suspense fallback={null}>
+        <URLSyncHandler />
+      </Suspense>
+
       {/* Persistent Starfield Background */}
       <div className="absolute inset-0 z-0">
         <StarsCanvas />
