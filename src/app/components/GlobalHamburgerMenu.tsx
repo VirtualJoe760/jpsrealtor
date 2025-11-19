@@ -28,8 +28,8 @@ export default function GlobalHamburgerMenu() {
     {
       name: "Map",
       icon: Map,
-      href: "/mls-listings",
-      active: pathname?.startsWith("/mls-listings"),
+      href: "/map",
+      active: pathname?.startsWith("/map"),
     },
     {
       name: "Neighborhoods",

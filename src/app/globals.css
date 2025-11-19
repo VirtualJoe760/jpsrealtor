@@ -27,8 +27,9 @@ body {
   user-select: none;
 }
 
-/* Prevent page scrolling only on chat and neighborhoods pages */
+/* Prevent page scrolling only on chat, map, and neighborhoods pages */
 body:has([data-page="chat"]),
+body:has([data-page="map"]),
 body:has([data-page="neighborhoods"]) {
   overflow: hidden;
   height: 100vh;

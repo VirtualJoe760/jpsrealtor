@@ -36,7 +36,7 @@ interface SidebarProps {
 const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "new-chat", label: "Chat", icon: MessageSquare },
-  { id: "map-view", label: "Map View", icon: Map, href: "/mls-listings" },
+  { id: "map-view", label: "Map View", icon: Map, href: "/map" },
   { id: "articles", label: "Articles", icon: FileText },
   { id: "neighborhoods", label: "Neighborhoods", icon: Home },
 ];
@@ -432,8 +432,8 @@ export default function EnhancedSidebar({ currentView, onViewChange, onClose }: 
                     // Navigate to neighborhoods page
                     router.push("/neighborhoods");
                   } else if (item.id === "map-view") {
-                    // Navigate to map listings page
-                    router.push("/mls-listings");
+                    // Navigate to map page
+                    router.push("/map");
                   } else {
                     // For regular items, change the view within chat
                     const viewParam = item.id === "new-chat" ? "chat" : item.id;
