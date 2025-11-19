@@ -1,6 +1,6 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { motion, AnimatePresence } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
