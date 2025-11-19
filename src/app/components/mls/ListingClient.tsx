@@ -3,12 +3,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, Phone, MapPinned, Share2 } from "lucide-react";
+import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 import CollageHero from "@/app/components/mls/CollageHero";
 import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
-// import ChatWidget from "@/app/components/chat/ChatWidget";
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import type { IListing } from "@/models/listings";
 
 function calculateDaysOnMarket(dateString?: string | Date) {
@@ -38,6 +39,30 @@ function getPropertyTypeLabel(code?: string): string {
   return mapping[code.toUpperCase()] || code;
 }
 
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 15,
+    },
+  },
+};
+
 export default function ListingClient({
   listing,
   media,
@@ -54,249 +79,425 @@ export default function ListingClient({
   const [copied, setCopied] = useState(false);
   const daysOnMarket = calculateDaysOnMarket(listing.listingContractDate);
 
+  // Generate subdivision URL
+  const getSubdivisionUrl = () => {
+    if (!listing.subdivisionName || !listing.city) return null;
+
+    // Filter out non-applicable subdivisions
+    const nonApplicableValues = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
+    const lowerSubdivision = listing.subdivisionName.toLowerCase().trim();
+    if (nonApplicableValues.some(val => lowerSubdivision.includes(val))) {
+      return null;
+    }
+
+    // Create city slug
+    const citySlug = listing.city
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    // Create subdivision slug from name - keep it simple
+    const subdivisionSlug = listing.subdivisionName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return `/neighborhoods/${citySlug}/${subdivisionSlug}`;
+  };
+
+  const subdivisionUrl = getSubdivisionUrl();
+
   return (
-    <div>
-      <CollageHero media={media} />
+    <SpaticalBackground showGradient={true}>
+      <div className="min-h-screen">
+        {/* Hero Section */}
+        <div className="w-full">
+          <CollageHero media={media} />
+        </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
-          <div>
-            <p className="text-4xl font-semibold leading-tight">{address}</p>
-            <p className="text-sm text-zinc-400 mt-1">
-              MLS#: {listing.listingId} · {getPropertyTypeLabel(listing.propertyType)} ·{" "}
-              {listing.propertySubType || "Unknown Subtype"}
-            </p>
+        {/* Main Content with Panels */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-7xl mx-auto px-4 py-8 space-y-6"
+        >
+          {/* Header Panel - Price & Address */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 md:p-8 shadow-2xl"
+          >
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+              {/* Left - Address & Info */}
+              <div className="flex-1">
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                  {address}
+                </h1>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-400 mb-4">
+                  <span className="flex items-center gap-1.5">
+                    <HomeIcon className="w-4 h-4" />
+                    MLS# {listing.listingId}
+                  </span>
+                  <span>•</span>
+                  <span>{getPropertyTypeLabel(listing.propertyType)}</span>
+                  <span>•</span>
+                  <span>{listing.propertySubType || "Unknown Subtype"}</span>
+                </div>
+
+                {/* Status Badge */}
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+                      listing.standardStatus === "Active"
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : "bg-neutral-700/50 text-neutral-300 border border-neutral-600/30"
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${listing.standardStatus === "Active" ? "bg-emerald-400 animate-pulse" : "bg-neutral-400"}`} />
+                    {listing.standardStatus}
+                  </span>
+                  {daysOnMarket !== null && (
+                    <span className="flex items-center gap-1.5 text-neutral-400 text-sm">
+                      <CalendarIcon className="w-4 h-4" />
+                      {daysOnMarket} days on market
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right - Price */}
+              <div className="text-right lg:text-right">
+                <div className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2">
+                  ${listing.listPrice?.toLocaleString()}
+                  {listing.propertyType?.toLowerCase().includes("lease") && (
+                    <span className="text-3xl md:text-4xl">/mo</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-6">
+              {(listing.bedroomsTotal !== undefined || listing.bedsTotal !== undefined) && (
+                <div className="flex items-center gap-3 bg-neutral-900/50 rounded-xl p-3 border border-neutral-700/30">
+                  <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                    <Bed className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{listing.bedroomsTotal || listing.bedsTotal}</div>
+                    <div className="text-xs text-neutral-400">Beds</div>
+                  </div>
+                </div>
+              )}
+
+              {listing.bathroomsTotalInteger !== undefined && (
+                <div className="flex items-center gap-3 bg-neutral-900/50 rounded-xl p-3 border border-neutral-700/30">
+                  <div className="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center">
+                    <Bath className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{listing.bathroomsTotalInteger}</div>
+                    <div className="text-xs text-neutral-400">Baths</div>
+                  </div>
+                </div>
+              )}
+
+              {listing.livingArea !== undefined && (
+                <div className="flex items-center gap-3 bg-neutral-900/50 rounded-xl p-3 border border-neutral-700/30">
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                    <Square className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{listing.livingArea.toLocaleString()}</div>
+                    <div className="text-xs text-neutral-400">Sq Ft</div>
+                  </div>
+                </div>
+              )}
+
+              {listing.lotSizeArea !== undefined && (
+                <div className="flex items-center gap-3 bg-neutral-900/50 rounded-xl p-3 border border-neutral-700/30">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                    <TreePine className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{Math.round(listing.lotSizeArea).toLocaleString()}</div>
+                    <div className="text-xs text-neutral-400">Lot Sq Ft</div>
+                  </div>
+                </div>
+              )}
+
+              {typeof listing.associationFee === "number" && listing.associationFee > 0 && (
+                <div className="flex items-center gap-3 bg-neutral-900/50 rounded-xl p-3 border border-neutral-700/30">
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">${listing.associationFee.toLocaleString()}</div>
+                    <div className="text-xs text-neutral-400">HOA/mo</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+              <Link
+                href="/book-appointment"
+                className="flex items-center justify-center gap-2 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-semibold transition-all shadow-lg hover:shadow-emerald-500/50"
+              >
+                <Calendar className="w-5 h-5" />
+                <span className="hidden sm:inline">Schedule</span>
+              </Link>
+
+              <a
+                href="tel:7603333676"
+                className="flex items-center justify-center gap-2 h-12 rounded-xl border border-neutral-600 bg-neutral-900/50 hover:bg-neutral-800/50 text-white font-semibold transition-all"
+              >
+                <Phone className="w-5 h-5" />
+                <span className="hidden sm:inline">Call</span>
+              </a>
+
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 h-12 rounded-xl border border-neutral-600 bg-neutral-900/50 hover:bg-neutral-800/50 text-white font-semibold transition-all"
+              >
+                <MapPinned className="w-5 h-5" />
+                <span className="hidden sm:inline">Directions</span>
+              </a>
+
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(window.location.href);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="flex items-center justify-center gap-2 h-12 rounded-xl border border-neutral-600 bg-neutral-900/50 hover:bg-neutral-800/50 text-white font-semibold transition-all relative"
+              >
+                <Share2 className="w-5 h-5" />
+                <span className="hidden sm:inline">{copied ? "Copied!" : "Share"}</span>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Two Column Layout */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Left Column - Description & Features */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Description Panel */}
+              {listing.publicRemarks && (
+                <motion.div
+                  variants={itemVariants}
+                  className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 shadow-2xl"
+                >
+                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <div className="w-1 h-6 bg-gradient-to-b from-emerald-400 to-cyan-400 rounded-full" />
+                    Property Description
+                  </h2>
+                  <p className="text-lg text-neutral-300 leading-relaxed whitespace-pre-line">
+                    {listing.publicRemarks}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Features Panel */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 shadow-2xl"
+              >
+                <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-gradient-to-b from-purple-400 to-pink-400 rounded-full" />
+                  Features & Amenities
+                </h2>
+
+                <div className="flex flex-wrap gap-2">
+                  {listing.subdivisionName && listing.subdivisionName.toLowerCase() !== "other" && (
+                    subdivisionUrl ? (
+                      <Link
+                        href={subdivisionUrl}
+                        className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full border border-emerald-500/30 text-sm font-medium hover:bg-emerald-500/30 hover:border-emerald-500/50 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        {listing.subdivisionName}
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    ) : (
+                      <span className="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full border border-emerald-500/30 text-sm font-medium">
+                        {listing.subdivisionName}
+                      </span>
+                    )
+                  )}
+                  {listing.landType && (
+                    <span className="bg-neutral-800/70 px-4 py-2 rounded-full border border-neutral-700/30 text-sm text-white">
+                      {listing.landType}
+                    </span>
+                  )}
+                  {listing.terms && listing.terms.length > 0 && (
+                    <span className="bg-neutral-800/70 px-4 py-2 rounded-full border border-neutral-700/30 text-sm text-white">
+                      {listing.terms.join(", ")}
+                    </span>
+                  )}
+                  {listing.yearBuilt && (
+                    <span className="bg-neutral-800/70 px-4 py-2 rounded-full border border-neutral-700/30 text-sm text-white">
+                      Built {listing.yearBuilt}
+                    </span>
+                  )}
+                  {listing.poolYn && (
+                    <span className="bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full border border-blue-500/30 text-sm font-medium">
+                      🏊 Pool
+                    </span>
+                  )}
+                  {listing.spaYn && (
+                    <span className="bg-purple-500/20 text-purple-400 px-4 py-2 rounded-full border border-purple-500/30 text-sm font-medium">
+                      🧖 Spa
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Property Details Panel */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 shadow-2xl"
+              >
+                <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-blue-400 rounded-full" />
+                  Property Details
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {listing.subdivisionName && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Subdivision</div>
+                      <div className="text-white font-medium">{listing.subdivisionName}</div>
+                    </div>
+                  )}
+                  {listing.landType && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Land Type</div>
+                      <div className="text-white font-medium">{listing.landType}</div>
+                    </div>
+                  )}
+                  {listing.yearBuilt && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Year Built</div>
+                      <div className="text-white font-medium">{listing.yearBuilt}</div>
+                    </div>
+                  )}
+                  {listing.propertyType && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Property Type</div>
+                      <div className="text-white font-medium">{getPropertyTypeLabel(listing.propertyType)}</div>
+                    </div>
+                  )}
+                  {listing.propertySubType && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Property Subtype</div>
+                      <div className="text-white font-medium">{listing.propertySubType}</div>
+                    </div>
+                  )}
+                  {listing.stories !== undefined && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Stories</div>
+                      <div className="text-white font-medium">{listing.stories}</div>
+                    </div>
+                  )}
+                  {listing.parkingTotal !== undefined && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Parking Spaces</div>
+                      <div className="text-white font-medium">{listing.parkingTotal}</div>
+                    </div>
+                  )}
+                  {listing.garageSpaces !== undefined && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Garage Spaces</div>
+                      <div className="text-white font-medium">{listing.garageSpaces}</div>
+                    </div>
+                  )}
+                  {listing.heating && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Heating</div>
+                      <div className="text-white font-medium">{listing.heating}</div>
+                    </div>
+                  )}
+                  {listing.cooling && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Cooling</div>
+                      <div className="text-white font-medium">{listing.cooling}</div>
+                    </div>
+                  )}
+                  {listing.view && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">View</div>
+                      <div className="text-white font-medium">{listing.view}</div>
+                    </div>
+                  )}
+                  {listing.flooring && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Flooring</div>
+                      <div className="text-white font-medium">{listing.flooring}</div>
+                    </div>
+                  )}
+                  {listing.roof && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Roof</div>
+                      <div className="text-white font-medium">{listing.roof}</div>
+                    </div>
+                  )}
+                  {listing.city && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">City</div>
+                      <div className="text-white font-medium">{listing.city}</div>
+                    </div>
+                  )}
+                  {listing.postalCode && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">Zip Code</div>
+                      <div className="text-white font-medium">{listing.postalCode}</div>
+                    </div>
+                  )}
+                  {listing.countyOrParish && (
+                    <div className="bg-neutral-900/30 rounded-xl p-4 border border-neutral-700/20">
+                      <div className="text-xs text-neutral-400 mb-1">County</div>
+                      <div className="text-white font-medium">{listing.countyOrParish}</div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Attribution Panel */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 shadow-2xl"
+              >
+                <ListingAttribution
+                  listing={listing}
+                  className="text-xs text-neutral-400"
+                />
+              </motion.div>
+            </div>
+
+            {/* Right Column - Mortgage Calculator */}
+            <div className="space-y-6">
+              <motion.div
+                variants={itemVariants}
+                className="bg-black/40 backdrop-blur-xl border border-neutral-800/50 rounded-2xl p-6 shadow-2xl sticky top-6"
+              >
+                <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-gradient-to-b from-green-400 to-emerald-400 rounded-full" />
+                  Mortgage Calculator
+                </h2>
+                <MortgageCalculator
+                  price={listing.listPrice || 500000}
+                  downPayment={listing.listPrice ? Math.round(listing.listPrice * 0.20) : 100000}
+                />
+              </motion.div>
+            </div>
           </div>
-        </div>
-
-        {/* Pricing */}
-        <div className="mb-4">
-          <p className="text-5xl pb-3 font-extrabold text-emerald-400 tracking-tight">
-            ${listing.listPrice?.toLocaleString()}
-            {listing.propertyType?.toLowerCase().includes("lease") ? "/mo" : ""}
-          </p>
-          <p className="mt-1 text-sm text-zinc-300">
-            <span
-              className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                listing.standardStatus === "Active" ? "bg-green-600" : "bg-gray-600"
-              }`}
-            >
-              {listing.standardStatus}
-            </span>{" "}
-            ·{" "}
-            {daysOnMarket !== null ? `${daysOnMarket} days on market` : "Listed date unknown"}
-          </p>
-        </div>
-
-        {/* Features */}
-        <div className="flex flex-wrap gap-2 text-sm mb-6">
-          {listing.subdivisionName && listing.subdivisionName.toLowerCase() !== "other" && (
-            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30">
-              {listing.subdivisionName}
-            </span>
-          )}
-          {listing.bedsTotal !== undefined && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.bedsTotal} Bed</span>
-          )}
-          {listing.bathroomsTotalInteger !== undefined && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              {listing.bathroomsTotalInteger} Bath
-            </span>
-          )}
-          {listing.livingArea !== undefined && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              {listing.livingArea.toLocaleString()} SqFt
-            </span>
-          )}
-          {listing.lotSizeArea !== undefined && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              {Math.round(listing.lotSizeArea).toLocaleString()} Lot
-            </span>
-          )}
-          {listing.landType && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">{listing.landType}</span>
-          )}
-          {typeof listing.associationFee === "number" && listing.associationFee > 0 && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              ${listing.associationFee.toLocaleString()}/mo HOA
-            </span>
-          )}
-          {listing.terms && listing.terms.length > 0 && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">
-              {listing.terms.join(", ")}
-            </span>
-          )}
-          {listing.yearBuilt && (
-            <span className="bg-zinc-800 px-3 py-1 rounded-full">Built {listing.yearBuilt}</span>
-          )}
-          {listing.poolYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🏊 Pool</span>}
-          {listing.spaYn && <span className="bg-zinc-800 px-3 py-1 rounded-full">🧖 Spa</span>}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <Link
-            href="/book-appointment"
-            className="flex items-center justify-center h-12 rounded-full border border-white bg-black text-white hover:bg-white hover:text-black transition"
-            aria-label="Schedule Showing"
-          >
-            <Calendar className="w-5 h-5" />
-          </Link>
-
-          <a
-            href="tel:7603333676"
-            className="flex items-center justify-center h-12 rounded-full border border-white bg-black text-white hover:bg-white hover:text-black transition"
-            aria-label="Call Agent"
-          >
-            <Phone className="w-5 h-5" />
-          </a>
-
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center h-12 rounded-full border border-white bg-black text-white hover:bg-white hover:text-black transition"
-            aria-label="Get Directions"
-          >
-            <MapPinned className="w-5 h-5" />
-          </a>
-
-          <button
-            onClick={async () => {
-              await navigator.clipboard.writeText(window.location.href);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className="flex items-center justify-center h-12 rounded-full border border-white bg-black text-white hover:bg-white hover:text-black transition relative"
-            aria-label="Share Listing"
-          >
-            <Share2 className="w-5 h-5" />
-            {copied && (
-              <span className="absolute -bottom-6 text-xs bg-zinc-800 px-2 py-0.5 rounded text-white">
-                Copied!
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Remarks */}
-        {listing.publicRemarks && (
-          <p className="text-lg text-white mb-6 whitespace-pre-line">{listing.publicRemarks}</p>
-        )}
-
-        {/* ✅ IDX Listing Attribution (compliant but subtle) */}
-        <ListingAttribution
-          listing={listing}
-          className="mb-6  text-xs bg-black"
-        />
-        
-
-        {/* Grid Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-sm mb-8">
-          {listing.subdivisionName && (
-            <p>
-              <strong>Subdivision:</strong> {listing.subdivisionName}
-            </p>
-          )}
-          {listing.landType && (
-            <p>
-              <strong>Land Type:</strong> {listing.landType}
-            </p>
-          )}
-          {listing.yearBuilt && (
-            <p>
-              <strong>Year Built:</strong> {listing.yearBuilt}
-            </p>
-          )}
-          {listing.propertyType && (
-            <p>
-              <strong>Property Type:</strong> {getPropertyTypeLabel(listing.propertyType)}
-            </p>
-          )}
-          {listing.propertySubType && (
-            <p>
-              <strong>Property Subtype:</strong> {listing.propertySubType}
-            </p>
-          )}
-          {listing.stories !== undefined && (
-            <p>
-              <strong>Stories:</strong> {listing.stories}
-            </p>
-          )}
-          {typeof listing.associationFee === "number" && listing.associationFee > 0 && (
-            <p>
-              <strong>HOA Fee:</strong> ${listing.associationFee.toLocaleString()}/
-              {listing.associationFeeFrequency || "mo"}
-            </p>
-          )}
-          {listing.terms && listing.terms.length > 0 && (
-            <p>
-              <strong>Terms:</strong> {listing.terms.join(", ")}
-            </p>
-          )}
-          {listing.parkingTotal !== undefined && (
-            <p>
-              <strong>Parking Spaces:</strong> {listing.parkingTotal}
-            </p>
-          )}
-          {listing.garageSpaces !== undefined && (
-            <p>
-              <strong>Garage Spaces:</strong> {listing.garageSpaces}
-            </p>
-          )}
-          {listing.heating && (
-            <p>
-              <strong>Heating:</strong> {listing.heating}
-            </p>
-          )}
-          {listing.cooling && (
-            <p>
-              <strong>Cooling:</strong> {listing.cooling}
-            </p>
-          )}
-          {listing.view && (
-            <p>
-              <strong>View:</strong> {listing.view}
-            </p>
-          )}
-          {listing.flooring && (
-            <p>
-              <strong>Flooring:</strong> {listing.flooring}
-            </p>
-          )}
-          {listing.roof && (
-            <p>
-              <strong>Roof:</strong> {listing.roof}
-            </p>
-          )}
-          {listing.city && (
-            <p>
-              <strong>City:</strong> {listing.city}
-            </p>
-          )}
-          {listing.postalCode && (
-            <p>
-              <strong>Zip Code:</strong> {listing.postalCode}
-            </p>
-          )}
-          {listing.countyOrParish && (
-            <p>
-              <strong>County:</strong> {listing.countyOrParish}
-            </p>
-          )}
-        </div>
-
-        {/* (Old agent block removed; replaced by <ListingAttribution />) */}
-
-        {/* Mortgage Calculator */}
-        <div className="space-y-6">
-          <MortgageCalculator />
-        </div>
+        </motion.div>
       </div>
-
-      {/* AI Chat Assistant - Context-aware for this listing */}
-      {/* <ChatWidget context="listing" listingData={listing} /> */}
-    </div>
+    </SpaticalBackground>
   );
 }

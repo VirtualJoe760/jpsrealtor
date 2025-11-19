@@ -88,7 +88,7 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black" data-page="neighborhoods-city">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-black via-gray-900/90 to-black border-b border-gray-800 text-white py-12 md:py-16">
         <div className="container mx-auto px-4">

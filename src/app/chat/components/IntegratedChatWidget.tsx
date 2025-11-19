@@ -22,6 +22,7 @@ import StarsCanvas from "./StarsCanvas";
 import { fadeSlideIn } from "../utils/motion";
 import { useSession } from "next-auth/react";
 import { addToConversationHistory, updateConversationMessageCount, saveConversationMessages } from "./EnhancedSidebar";
+import Image from "next/image";
 
 // Simple markdown parser for basic formatting
 function parseMarkdown(text: string): React.ReactNode {
@@ -643,31 +644,64 @@ FUNCTION CALLING RULES:
             {/* Logo */}
             <div className="flex items-center justify-center gap-1.5 md:gap-3">
               <motion.div
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
+                initial={{ scale: 0, rotateY: -180 }}
+                animate={{
+                  scale: 1,
+                  rotateY: 0,
+                }}
                 transition={{
                   type: "spring",
                   stiffness: 150,
                   damping: 15,
                   delay: 0.3
                 }}
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                className="w-7 h-7 md:w-14 md:h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/50 flex-shrink-0"
+                whileHover={{
+                  scale: 1.1,
+                  rotateY: 15,
+                  rotateX: 5,
+                }}
+                style={{
+                  transformStyle: "preserve-3d",
+                  perspective: 1000
+                }}
+                className="w-12 h-12 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
               >
-                <svg
-                  className="w-4 h-4 md:w-9 md:h-9 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <motion.div
+                  animate={{
+                    rotateY: [0, 5, 0, -5, 0],
+                    rotateX: [0, 2, 0, -2, 0],
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{ transformStyle: "preserve-3d" }}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                  <Image
+                    src="/images/brand/EXP-white-square.png"
+                    alt="eXp Realty"
+                    width={96}
+                    height={96}
+                    className="object-contain drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                    priority
                   />
-                </svg>
+                </motion.div>
               </motion.div>
+
+              {/* Vertical Divider */}
+              <motion.div
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 100,
+                  damping: 15,
+                  delay: 0.4
+                }}
+                className="h-6 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+              />
+
               <motion.h1
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -677,9 +711,32 @@ FUNCTION CALLING RULES:
                   damping: 15,
                   delay: 0.5
                 }}
-                className="text-lg md:text-6xl font-light tracking-wider text-white whitespace-nowrap"
+                whileHover={{
+                  scale: 1.02,
+                  textShadow: "0 0 20px rgba(168,85,247,0.5)"
+                }}
+                style={{
+                  transformStyle: "preserve-3d",
+                  perspective: 1000
+                }}
+                className="text-lg md:text-6xl font-light tracking-wider text-white whitespace-nowrap relative"
               >
-                JPSREALTOR
+                <motion.span
+                  animate={{
+                    textShadow: [
+                      "0 0 10px rgba(168,85,247,0.3)",
+                      "0 0 20px rgba(168,85,247,0.5)",
+                      "0 0 10px rgba(168,85,247,0.3)"
+                    ]
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  JPSREALTOR
+                </motion.span>
               </motion.h1>
             </div>
 

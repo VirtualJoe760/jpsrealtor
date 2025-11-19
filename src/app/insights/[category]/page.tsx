@@ -9,9 +9,9 @@ import { Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string };
+  params: Promise<{ category: string }>;
 }): Promise<Metadata> {
-  const category = params.category;
+  const { category } = await params;
 
   // Format the category name
   const formattedCategory = category
@@ -46,11 +46,12 @@ export default async function CategoryPage({
   params,
   searchParams,
 }: {
-  params: { category: string };
-  searchParams: { page?: string };
+  params: Promise<{ category: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
-  const { category } = params;
-  const page = searchParams.page ? parseInt(searchParams.page, 10) : 1;
+  const { category } = await params;
+  const resolvedSearchParams = await searchParams;
+  const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page, 10) : 1;
 
   // Format category name
   const formattedCategory = category

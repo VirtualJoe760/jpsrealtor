@@ -375,9 +375,9 @@ export default function EnhancedSidebar({ currentView, onViewChange, onClose }: 
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="w-10 h-10 md:w-8 md:h-8 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl md:rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <div className="w-16 h-16 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl md:rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/30">
                   <svg
-                    className="w-6 h-6 md:w-5 md:h-5 text-white"
+                    className="w-10 h-10 md:w-8 md:h-8 text-white"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

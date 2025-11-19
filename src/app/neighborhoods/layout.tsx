@@ -3,14 +3,18 @@
  * No traditional navigation - seamless, immersive experience
  */
 
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
+
 export default function NeighborhoodsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen w-screen overflow-hidden bg-black">
-      {children}
-    </div>
+    <SpaticalBackground className="h-screen w-screen overflow-auto" showGradient={true}>
+      <div className="min-h-screen">
+        {children}
+      </div>
+    </SpaticalBackground>
   );
 }

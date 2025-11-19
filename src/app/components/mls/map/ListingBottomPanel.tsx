@@ -107,6 +107,34 @@ export default function ListingBottomPanel({
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Generate subdivision URL
+  const getSubdivisionUrl = () => {
+    if (!fullListing.subdivisionName || !fullListing.city) return null;
+
+    // Filter out non-applicable subdivisions
+    const nonApplicableValues = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
+    const lowerSubdivision = fullListing.subdivisionName.toLowerCase().trim();
+    if (nonApplicableValues.some(val => lowerSubdivision.includes(val))) {
+      return null;
+    }
+
+    // Create city slug
+    const citySlug = fullListing.city
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    // Create subdivision slug from name - keep it simple
+    const subdivisionSlug = fullListing.subdivisionName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return `/neighborhoods/${citySlug}/${subdivisionSlug}`;
+  };
+
+  const subdivisionUrl = getSubdivisionUrl();
+
   const [mounted, setMounted] = useState(false);
 
   /* The only dynamic values we care about: left offset and width */
@@ -373,14 +401,26 @@ export default function ListingBottomPanel({
       <div className="flex-1 overflow-y-auto px-4 py-2.5 custom-scrollbar min-h-0">
         <div className="flex flex-wrap gap-1.5 text-sm mb-2.5">
           {fullListing.subdivisionName && (
-            <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/20">
-              {fullListing.subdivisionName}
-            </span>
+            subdivisionUrl ? (
+              <Link
+                href={subdivisionUrl}
+                className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/20 hover:bg-emerald-500/30 hover:border-emerald-500/40 transition-all inline-flex items-center gap-1"
+              >
+                {fullListing.subdivisionName}
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            ) : (
+              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/20">
+                {fullListing.subdivisionName}
+              </span>
+            )
           )}
 
-          {fullListing.bedsTotal != null && (
+          {(fullListing.bedsTotal != null || fullListing.bedroomsTotal != null) && (
             <span className="bg-zinc-800 px-2 py-1 rounded-full">
-              {fullListing.bedsTotal} Bed
+              {fullListing.bedsTotal || fullListing.bedroomsTotal} Bed
             </span>
           )}
 

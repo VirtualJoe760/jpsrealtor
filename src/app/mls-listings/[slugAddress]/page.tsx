@@ -51,9 +51,10 @@ function formatPhotos(photos: SparkPhoto[], fallbackUrl: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: { slugAddress: string };
+  params: Promise<{ slugAddress: string }>;
 }): Promise<Metadata> {
-  const listing = await getEnrichedListing(params.slugAddress);
+  const { slugAddress } = await params;
+  const listing = await getEnrichedListing(slugAddress);
 
   if (!listing) return { title: "Listing Not Found" };
 
@@ -96,9 +97,10 @@ export async function generateMetadata({
 export default async function ListingPage({
   params,
 }: {
-  params: { slugAddress: string };
+  params: Promise<{ slugAddress: string }>;
 }) {
-  const listing = await getEnrichedListing(params.slugAddress);
+  const { slugAddress } = await params;
+  const listing = await getEnrichedListing(slugAddress);
   if (!listing) return notFound();
 
   const address =
