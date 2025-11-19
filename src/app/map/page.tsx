@@ -1,7 +1,6 @@
 "use client";
 
-export const revalidate = 0;
-
+import { Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
@@ -380,8 +379,17 @@ function MapPageContent() {
 
 export default function MapPage() {
   return (
-    <MLSProvider>
-      <MapPageContent />
-    </MLSProvider>
+    <Suspense fallback={
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+          <p className="text-neutral-400">Loading map...</p>
+        </div>
+      </div>
+    }>
+      <MLSProvider>
+        <MapPageContent />
+      </MLSProvider>
+    </Suspense>
   );
 }

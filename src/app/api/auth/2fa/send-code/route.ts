@@ -8,6 +8,9 @@ import User from "@/models/user";
 import TwoFactorToken from "@/models/twoFactorToken";
 import { send2FACode } from "@/lib/email-resend";
 
+// Mark this route as dynamic to prevent static optimization during build
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();

@@ -8,6 +8,9 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/user";
 import { sendVerificationEmail } from "@/lib/email-resend";
 
+// Mark this route as dynamic to prevent static optimization during build
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

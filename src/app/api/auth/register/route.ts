@@ -7,6 +7,9 @@ import User from "@/models/user";
 import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
 
+// Mark this route as dynamic to prevent static optimization during build
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

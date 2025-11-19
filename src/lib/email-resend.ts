@@ -3,7 +3,19 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to avoid errors during build when API key might not be set
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+}
 
 export async function sendVerificationEmail(
   email: string,
@@ -17,6 +29,7 @@ export async function sendVerificationEmail(
   console.log('🔗 Verification URL:', verificationUrl);
 
   try {
+    const resend = getResendClient();
     const data = await resend.emails.send({
       from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
       to: [email],
@@ -165,6 +178,7 @@ export async function send2FACode(
   console.log('📧 Sending 2FA code via Resend to:', email);
 
   try {
+    const resend = getResendClient();
     const data = await resend.emails.send({
       from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
       to: [email],
