@@ -23,10 +23,10 @@ interface RawPhoto {
 
 export async function GET(
   req: Request,
-  { params }: { params: { listingKey: string } }
+  { params }: { params: Promise<{ listingKey: string }> }
 ) {
   await dbConnect();
-  const { listingKey } = params;
+  const { listingKey } = await params;
 
   try {
     // 🔍 Try to find listing in GPS MLS first, then CRMLS

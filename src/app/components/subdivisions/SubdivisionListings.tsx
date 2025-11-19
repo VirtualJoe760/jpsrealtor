@@ -177,8 +177,8 @@ export default function SubdivisionListings({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading listings...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading listings...</p>
         </div>
       </div>
     );
@@ -186,8 +186,8 @@ export default function SubdivisionListings({
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <p className="text-red-600">{error}</p>
+      <div className="bg-red-900/20 border border-red-800 rounded-lg p-6 text-center">
+        <p className="text-red-400">{error}</p>
       </div>
     );
   }
@@ -196,12 +196,12 @@ export default function SubdivisionListings({
     <div className="space-y-4">
       {/* Header */}
       {subdivision && (
-        <div className="border-b pb-4">
-          <h2 className="text-2xl font-bold text-gray-900">{subdivision.name}</h2>
-          <p className="text-gray-600">
+        <div className="border-b border-gray-800 pb-4">
+          <h2 className="text-2xl font-bold text-white">{subdivision.name}</h2>
+          <p className="text-gray-300">
             {subdivision.city}, {subdivision.region}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             {listings.length > 0
               ? `${listings.length} listing${listings.length !== 1 ? "s" : ""} available`
               : "No listings available"}
@@ -211,14 +211,14 @@ export default function SubdivisionListings({
 
       {/* Property Type Toggle */}
       <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-gray-700">Show listings:</span>
-        <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+        <span className="text-sm font-medium text-gray-300">Show listings:</span>
+        <div className="inline-flex rounded-lg border border-gray-700 bg-gray-900 p-1">
           <button
             onClick={() => setPropertyTypeFilter("all")}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               propertyTypeFilter === "all"
                 ? "bg-blue-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
+                : "text-gray-300 hover:bg-gray-800"
             }`}
           >
             All
@@ -228,11 +228,11 @@ export default function SubdivisionListings({
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               propertyTypeFilter === "sale"
                 ? "bg-green-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
+                : "text-gray-300 hover:bg-gray-800"
             }`}
           >
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-green-600"></span>
+              <span className="w-3 h-3 rounded-full bg-green-500"></span>
               For Sale
             </span>
           </button>
@@ -241,11 +241,11 @@ export default function SubdivisionListings({
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               propertyTypeFilter === "rental"
                 ? "bg-purple-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
+                : "text-gray-300 hover:bg-gray-800"
             }`}
           >
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-600"></span>
+              <span className="w-3 h-3 rounded-full bg-purple-500"></span>
               For Rent
             </span>
           </button>
@@ -253,14 +253,14 @@ export default function SubdivisionListings({
       </div>
 
       {/* Filters Accordion */}
-      <div className="bg-gray-50 rounded-lg overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-100 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
         >
-          <h3 className="font-semibold text-gray-900">Filter Listings</h3>
+          <h3 className="font-semibold text-white">Filter Listings</h3>
           <svg
-            className={`w-5 h-5 text-gray-600 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -280,7 +280,7 @@ export default function SubdivisionListings({
               </button>
               <button
                 onClick={handleFilterClear}
-                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                className="px-3 py-1.5 text-sm bg-gray-700 text-gray-200 rounded-md hover:bg-gray-600 transition-colors"
               >
                 Clear
               </button>
@@ -288,86 +288,86 @@ export default function SubdivisionListings({
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
           {/* Price */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Min Price</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Min Price</label>
             <input
               type="number"
               placeholder="Any"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max Price</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Max Price</label>
             <input
               type="number"
               placeholder="Any"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           {/* Beds */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Min Beds</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Min Beds</label>
             <input
               type="number"
               placeholder="Any"
               value={minBeds}
               onChange={(e) => setMinBeds(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max Beds</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Max Beds</label>
             <input
               type="number"
               placeholder="Any"
               value={maxBeds}
               onChange={(e) => setMaxBeds(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           {/* Baths */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Min Baths</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Min Baths</label>
             <input
               type="number"
               placeholder="Any"
               value={minBaths}
               onChange={(e) => setMinBaths(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max Baths</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Max Baths</label>
             <input
               type="number"
               placeholder="Any"
               value={maxBaths}
               onChange={(e) => setMaxBaths(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           {/* Sqft */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Min Sqft</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Min Sqft</label>
             <input
               type="number"
               placeholder="Any"
               value={minSqft}
               onChange={(e) => setMinSqft(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max Sqft</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Max Sqft</label>
             <input
               type="number"
               placeholder="Any"
               value={maxSqft}
               onChange={(e) => setMaxSqft(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
             </div>
@@ -382,10 +382,10 @@ export default function SubdivisionListings({
             <Link
               key={listing.listingId}
               href={`/mls-listings/${listing.slug}`}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer block"
+              className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl overflow-hidden hover:shadow-2xl hover:border-gray-700 transition-all cursor-pointer block"
             >
               {/* Photo */}
-              <div className="relative h-48 bg-gray-200">
+              <div className="relative h-48 bg-gray-800">
                 {listing.primaryPhotoUrl ? (
                   <Image
                     src={listing.primaryPhotoUrl}
@@ -395,12 +395,12 @@ export default function SubdivisionListings({
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="flex items-center justify-center h-full text-gray-500">
                     No Image
                   </div>
                 )}
                 {listing.mlsSource && (
-                  <div className="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-xs font-semibold">
+                  <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-semibold text-white">
                     {listing.mlsSource}
                   </div>
                 )}
@@ -408,29 +408,29 @@ export default function SubdivisionListings({
 
               {/* Details */}
               <div className="p-4">
-                <div className="text-2xl font-bold text-blue-600 mb-2">
+                <div className="text-2xl font-bold text-blue-400 mb-2">
                   {formatPrice(listing.listPrice)}
                 </div>
-                <div className="text-sm text-gray-600 mb-3">
+                <div className="text-sm text-gray-300 mb-3">
                   <div className="font-medium">{listing.address}</div>
                   <div>
                     {listing.city}, {listing.stateOrProvince} {listing.postalCode}
                   </div>
                 </div>
-                <div className="flex gap-4 text-sm text-gray-700">
+                <div className="flex gap-4 text-sm text-gray-400">
                   {listing.bedroomsTotal !== undefined && (
                     <div>
-                      <span className="font-semibold">{listing.bedroomsTotal}</span> Beds
+                      <span className="font-semibold text-white">{listing.bedroomsTotal}</span> Beds
                     </div>
                   )}
                   {listing.bathroomsTotalDecimal !== undefined && (
                     <div>
-                      <span className="font-semibold">{listing.bathroomsTotalDecimal}</span> Baths
+                      <span className="font-semibold text-white">{listing.bathroomsTotalDecimal}</span> Baths
                     </div>
                   )}
                   {listing.livingArea && (
                     <div>
-                      <span className="font-semibold">{listing.livingArea.toLocaleString()}</span> sqft
+                      <span className="font-semibold text-white">{listing.livingArea.toLocaleString()}</span> sqft
                     </div>
                   )}
                 </div>
@@ -444,8 +444,8 @@ export default function SubdivisionListings({
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No listings found matching your criteria.</p>
+        <div className="text-center py-12 bg-gray-900 border border-gray-800 rounded-lg">
+          <p className="text-gray-300">No listings found matching your criteria.</p>
         </div>
       )}
 
@@ -455,17 +455,17 @@ export default function SubdivisionListings({
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gray-800 text-gray-200 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-700"
           >
             Previous
           </button>
-          <span className="px-4 py-2 text-gray-700">
+          <span className="px-4 py-2 text-gray-300">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gray-800 text-gray-200 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-700"
           >
             Next
           </button>

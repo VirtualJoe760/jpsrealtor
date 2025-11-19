@@ -108,11 +108,11 @@ export default function SubdivisionStats({
       <div className="flex items-center">
         <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-semibold transition-all duration-500 ${
           currentType === "sale"
-            ? "bg-green-100 text-green-800"
-            : "bg-purple-100 text-purple-800"
+            ? "bg-green-900/50 text-green-300 border border-green-700"
+            : "bg-purple-900/50 text-purple-300 border border-purple-700"
         }`}>
           <span className={`w-3 h-3 rounded-full ${
-            currentType === "sale" ? "bg-green-600" : "bg-purple-600"
+            currentType === "sale" ? "bg-green-500" : "bg-purple-500"
           }`}></span>
           {currentType === "sale" ? "For Sale" : "For Rent"}
         </span>
@@ -124,30 +124,30 @@ export default function SubdivisionStats({
           isTransitioning ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-1">Active Listings</div>
-          <div className="text-3xl font-bold text-blue-600">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
+          <div className="text-sm text-gray-400 mb-1">Active Listings</div>
+          <div className="text-3xl font-bold text-blue-400">
             {stats.listingCount}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-1">Average Price</div>
-          <div className="text-3xl font-bold text-green-600">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
+          <div className="text-sm text-gray-400 mb-1">Average Price</div>
+          <div className="text-3xl font-bold text-green-400">
             ${stats.avgPrice >= 1000000
               ? `${(stats.avgPrice / 1000000).toFixed(1)}M`
               : `${(stats.avgPrice / 1000).toFixed(0)}k`}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 mb-1">Price Range</div>
-          <div className="text-xl font-bold text-gray-900">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
+          <div className="text-sm text-gray-400 mb-1">Price Range</div>
+          <div className="text-xl font-bold text-white">
             {formatPriceRange()}
           </div>
         </div>
         {stats.medianPrice && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Median Price</div>
-            <div className="text-3xl font-bold text-gray-900">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
+            <div className="text-sm text-gray-400 mb-1">Median Price</div>
+            <div className="text-3xl font-bold text-white">
               ${stats.medianPrice >= 1000000
                 ? `${(stats.medianPrice / 1000000).toFixed(1)}M`
                 : `${(stats.medianPrice / 1000).toFixed(0)}k`}

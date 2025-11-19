@@ -13,12 +13,15 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   context?: "homepage" | "listing" | "dashboard" | "general";
+  listings?: any[]; // For messages that include property listings
+  isLoading?: boolean; // For temporary loading messages
 }
 
 export interface ChatContextType {
   messages: ChatMessage[];
   addMessage: (message: Omit<ChatMessage, "id" | "timestamp">) => void;
   clearMessages: () => void;
+  loadMessages: (messages: ChatMessage[]) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   sessionId: string;
@@ -29,7 +32,12 @@ export interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+interface ChatProviderProps {
+  children: ReactNode;
+  disableAutoLoad?: boolean; // For /chat route - start fresh
+}
+
+export function ChatProvider({ children, disableAutoLoad = false }: ChatProviderProps) {
   const { data: session } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -40,32 +48,43 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   // Set userId from session or generate anonymous ID
   useEffect(() => {
-    if (session?.user?.email) {
-      setUserId(session.user.email);
-    } else {
-      // Generate or retrieve anonymous ID from localStorage
-      const storedAnonymousId = localStorage.getItem("anonymousUserId");
-      if (storedAnonymousId) {
-        setUserId(storedAnonymousId);
-      } else {
-        const newAnonymousId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem("anonymousUserId", newAnonymousId);
-        setUserId(newAnonymousId);
+    const updateUserId = () => {
+      if (session?.user?.email) {
+        setUserId(session.user.email);
+      } else if (typeof window !== 'undefined') {
+        // Generate or retrieve anonymous ID from localStorage
+        const storedAnonymousId = localStorage.getItem("anonymousUserId");
+        if (storedAnonymousId) {
+          setUserId(storedAnonymousId);
+        } else {
+          const newAnonymousId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          localStorage.setItem("anonymousUserId", newAnonymousId);
+          setUserId(newAnonymousId);
+        }
       }
-    }
-  }, [session]);
+    };
+
+    updateUserId();
+  }, [session?.user?.email]); // Only depend on email, not whole session object
 
   // Preload AI model in background on mount
   useEffect(() => {
     // Import dynamically to avoid blocking initial render
     const preloadModel = async () => {
       try {
+        // Check if WebGPU is supported before attempting to load WebLLM
+        if (typeof navigator !== 'undefined' && !('gpu' in navigator)) {
+          console.log("ℹ️ WebGPU not supported - skipping AI model preload (will use server-side AI)");
+          return;
+        }
+
         const { initializeWebLLM } = await import("@/lib/webllm");
         console.log("🚀 Starting background AI model preload...");
         await initializeWebLLM();
         console.log("✅ AI model preloaded and ready!");
       } catch (error) {
-        console.error("⚠️ AI model preload failed (will retry on first use):", error);
+        console.warn("⚠️ AI model preload failed (will use server-side AI):", error);
+        // Fail silently - the app will fall back to server-side AI
       }
     };
 
@@ -74,9 +93,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // Load chat history from server when userId is available
+  // Load chat history from server when userId is available (unless disabled)
   useEffect(() => {
     if (!userId || isInitialized) return;
+
+    // If auto-load is disabled (for /chat route), just mark as initialized
+    if (disableAutoLoad) {
+      console.log("🚫 Chat history auto-load disabled - starting fresh");
+      setIsInitialized(true);
+      return;
+    }
 
     const loadChatHistory = async () => {
       setLoadingHistory(true);
@@ -94,10 +120,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               context: msg.context,
             }));
             setMessages(loadedMessages);
+            console.log("📚 Loaded", loadedMessages.length, "messages from history");
+          } else {
+            console.warn("Chat history response missing data:", data);
           }
+        } else {
+          // Handle non-OK response
+          console.error("Failed to load chat history:", response.status, response.statusText);
+          // Still initialize so user can start chatting
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
+        // Don't throw - allow user to continue with empty chat
       } finally {
         setLoadingHistory(false);
         setIsInitialized(true);
@@ -105,7 +139,39 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     loadChatHistory();
-  }, [userId, isInitialized]);
+  }, [userId, isInitialized, disableAutoLoad]);
+
+  // Helper function to retry message logging with exponential backoff
+  const logMessageWithRetry = async (messageData: any, retries = 3) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await fetch("/api/chat/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(messageData),
+        });
+
+        if (response.ok) {
+          return; // Success, exit
+        }
+
+        // If not ok and not last attempt, continue to retry
+        if (attempt < retries - 1) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } catch (error) {
+        // If last attempt, log error
+        if (attempt === retries - 1) {
+          console.error("Failed to log message after", retries, "attempts:", error);
+        } else {
+          // Otherwise, wait and retry
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+  };
 
   // Add a new message
   const addMessage = (message: Omit<ChatMessage, "id" | "timestamp">) => {
@@ -117,19 +183,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     setMessages((prev) => [...prev, newMessage]);
 
-    // Log to server asynchronously (don't wait for response)
+    // Log to server asynchronously with retry logic
     if (userId) {
-      fetch("/api/chat/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          sessionId,
-          context: message.context || "general",
-          role: message.role,
-          content: message.content,
-        }),
-      }).catch((error) => console.error("Error logging message:", error));
+      logMessageWithRetry({
+        userId,
+        sessionId,
+        context: message.context || "general",
+        role: message.role,
+        content: message.content,
+      });
     }
   };
 
@@ -138,12 +200,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages([]);
   };
 
+  // Load messages (for restoring conversations)
+  const loadMessages = (loadedMessages: ChatMessage[]) => {
+    setMessages(loadedMessages);
+  };
+
   return (
     <ChatContext.Provider
       value={{
         messages,
         addMessage,
         clearMessages,
+        loadMessages,
         isOpen,
         setIsOpen,
         sessionId,

@@ -12,9 +12,9 @@ import MDXLink from "@/app/components/mdx/Link";
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string; slugId: string };
+  params: Promise<{ category: string; slugId: string }>;
 }) {
-  const { slugId } = params; // Destructure params directly
+  const { slugId } = await params; // Destructure params directly
 
   if (!slugId) {
     console.error("Missing slugId for metadata.");
@@ -48,9 +48,9 @@ const components = {
 export default async function PostPage({
   params,
 }: {
-  params: { category: string; slugId: string };
+  params: Promise<{ category: string; slugId: string }>;
 }) {
-  const { slugId } = params;
+  const { slugId } = await params;
 
   if (!slugId) {
     console.error("Missing slugId parameter in URL.");

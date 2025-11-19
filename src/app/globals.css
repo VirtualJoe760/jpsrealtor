@@ -2,9 +2,107 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS Safe Area Support */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  .pl-safe {
+    padding-left: max(0px, env(safe-area-inset-left));
+  }
+  .pr-safe {
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
 body {
   font-family: 'Raleway', sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
+  /* Disable pinch-to-zoom on iOS */
+  touch-action: pan-x pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent page scrolling */
+  overflow: hidden;
+  height: 100vh;
+  position: fixed;
+  width: 100%;
+}
+
+/* Add padding for mobile bottom nav on small screens */
+@media (max-width: 640px) {
+  body {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Re-enable text selection for inputs and text areas */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Disable double-tap zoom on iOS - Most aggressive approach */
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+* {
+  touch-action: manipulation !important;
+  -ms-touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection for text inputs */
+input, textarea, select {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Prevent zoom on specific interactive elements */
+button, a, img, div, section, aside, nav {
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-touch-callout: none;
+}
+
+/* Prevent zoom on images */
+img {
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Allow scrolling in scrollable containers while preventing zoom */
+.overflow-y-auto, .overflow-x-auto, .overflow-auto {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y manipulation !important;
+  /* Performance optimizations */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Optimize transforms and animations */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
 }
 
 h2 {
@@ -86,6 +184,37 @@ a {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Global dark mode scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27); /* zinc-700 thumb, zinc-900 track */
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgb(24, 24, 27); /* zinc-900 */
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(63, 63, 70); /* zinc-700 */
+  border-radius: 4px;
+  border: 2px solid rgb(24, 24, 27); /* Creates padding effect */
+  transition: background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(82, 82, 91); /* zinc-600 */
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgb(24, 24, 27); /* zinc-900 */
 }
 
 .no-scrollbar::-webkit-scrollbar {

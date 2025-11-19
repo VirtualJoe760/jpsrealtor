@@ -12,14 +12,70 @@ export function detectFunctionCall(text: string): {
   params: any;
   cleanedText: string;
 } | null {
-  // Pattern 1: searchListings({...})
+  // CRITICAL: Remove conversation echoes first (AI hallucinating conversation history)
+  // Remove patterns like "User: ...", "You: ...", "Assistant: ..."
+  let preprocessedText = text.replace(/^(User|You|Assistant):\s*.+$/gm, '').trim();
+
+  // Pattern 1: searchListings({...}) - Find FIRST occurrence only
   const searchPattern = /searchListings\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
-  const match = text.match(searchPattern);
+  const match = preprocessedText.match(searchPattern);
 
   if (match && match[1]) {
     try {
       const params = JSON.parse(match[1]);
-      const cleanedText = text.replace(match[0], "").trim();
+
+      // Remove ALL function calls (not just the first one - AI might generate multiple)
+      let cleanedText = preprocessedText.replace(/searchListings\s*\(\s*\{[\s\S]*?\}\s*\)/gi, '').trim();
+
+      // CRITICAL CLEANUP: Remove hallucinated content after function call
+      // Remove everything after "response=" blocks (AI hallucinating multiple responses)
+      cleanedText = (cleanedText.split(/\n\s*response\s*=/i)[0] ?? cleanedText).trim();
+
+      // Remove response_carousel_N, response_panel_N and similar hallucinated references
+      cleanedText = cleanedText.replace(/\s*response_(carousel|panel|card|listing)_\d+\s*/gi, ' ').trim();
+
+      // Remove system prompt leakage - cut off at common instruction markers
+      const instructionMarkers = [
+        'Function call:',
+        'For searching in',
+        'For market trends',
+        'Remember to:',
+        'Supported property types',
+        'When suggesting',
+        'If unsure about',
+        'Example response',
+        'If the user only',
+        'When a user requests',
+        'FUNCTION CALLING:',
+        'Available parameters:',
+        'CRITICAL:',
+        'Your expertise:',
+        'What you can do:',
+        'IMPORTANT SEARCH RULES:',
+        'PROPERTY TYPE FILTERING:',
+        'Your communication style:'
+      ];
+
+      for (const marker of instructionMarkers) {
+        const markerIndex = cleanedText.indexOf(marker);
+        if (markerIndex !== -1) {
+          cleanedText = cleanedText.substring(0, markerIndex).trim();
+          break;
+        }
+      }
+
+      // Remove broken image links like [](https://...)
+      cleanedText = cleanedText.replace(/\[\]\([^)]+\)/g, '').trim();
+
+      // Remove [/instruction] tags and similar patterns
+      cleanedText = cleanedText.replace(/\[\/?\w+\]/g, '').trim();
+
+      // Remove standalone URLs that aren't part of markdown links
+      cleanedText = cleanedText.replace(/^https?:\/\/[^\s]+$/gm, '').trim();
+
+      // Remove extra blank lines
+      cleanedText = cleanedText.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+
       return {
         type: "search",
         params,

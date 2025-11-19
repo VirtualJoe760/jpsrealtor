@@ -9,7 +9,7 @@ import User from "@/models/user";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { listingKey: string } }
+  { params }: { params: Promise<{ listingKey: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function DELETE(
       );
     }
 
-    const { listingKey } = params;
+    const { listingKey } = await params;
 
     await dbConnect();
 

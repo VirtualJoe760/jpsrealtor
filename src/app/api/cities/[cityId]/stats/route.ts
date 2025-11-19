@@ -5,7 +5,7 @@ import { CRMLSListing } from "@/models/crmls-listings";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { cityId: string } }
+  { params }: { params: Promise<{ cityId: string }> }
 ) {
   try {
     await dbConnect();

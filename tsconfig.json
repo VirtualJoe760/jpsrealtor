@@ -1,32 +1,59 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
-    "types": ["@types/node", "@types/react", "@types/react-dom", "recharts", "lucide-react"],
+    "types": [
+      "@types/node",
+      "@types/react",
+      "@types/react-dom",
+      "recharts",
+      "lucide-react"
+    ],
     "plugins": [
       {
         "name": "next"
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/app/components/*"],
-      "@/utils/*": ["./src/app/utils/*"],
-      "@/models/*": ["./src/models/*"],
-      "@/constants/*": ["./src/app/constants/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/lib/*": ["./src/lib/*"],
+      "@/*": [
+        "./src/*"
+      ],
+      "@/components/*": [
+        "./src/app/components/*"
+      ],
+      "@/utils/*": [
+        "./src/app/utils/*"
+      ],
+      "@/models/*": [
+        "./src/models/*"
+      ],
+      "@/constants/*": [
+        "./src/app/constants/*"
+      ],
+      "@/types/*": [
+        "./src/types/*"
+      ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
+      "@payload-config": [
+        "./src/payload.config.ts"
+      ]
     },
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true
@@ -37,8 +64,14 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
-    "next.config.mjs"
-, "src/app/utils/fetchSendFoxLists.mjs", "next-sitemap.config.mjs", "next-sitemap.config.js", "src/scripts/mls/test.mjs", "src/app/api/mls-listings/slugaddress/documents/route.ts"  ],
+    "next.config.mjs",
+    "src/app/utils/fetchSendFoxLists.mjs",
+    "next-sitemap.config.mjs",
+    "next-sitemap.config.js",
+    "src/scripts/mls/test.mjs",
+    "src/app/api/mls-listings/slugaddress/documents/route.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "**/*.test.ts",

@@ -7,12 +7,13 @@ import RunwayML from "@runwayml/sdk";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
 
-    const task = await RunwayTask.findById(params.id);
+    const { id } = await params;
+    const task = await RunwayTask.findById(id);
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }

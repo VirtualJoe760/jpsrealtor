@@ -3,11 +3,6 @@ import createMDX from "@next/mdx";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ⬇️ Disable ESLint during production builds (fixes the "Invalid Options" error)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
   // Enable MDX support
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
 
@@ -62,4 +57,5 @@ const withMDX = createMDX({
   // Add any MDX options here if needed
 });
 
+// Apply MDX only (Payload temporarily disabled for build)
 export default withMDX(nextConfig);

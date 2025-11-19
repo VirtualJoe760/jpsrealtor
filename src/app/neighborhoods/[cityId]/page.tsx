@@ -25,9 +25,11 @@ function findCityById(cityId: string): { city: CountyCity; countyName: string } 
 }
 
 // Generate metadata for the city or county page
-export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ cityId: string }> }): Promise<Metadata> {
+  const { cityId } = await params;
+
   // Check if this is a county
-  const county = findCountyBySlug(params.cityId);
+  const county = findCountyBySlug(cityId);
   if (county) {
     return {
       title: `${county.name} Real Estate | Cities & Neighborhoods`,
@@ -36,7 +38,7 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
   }
 
   // Otherwise check if it's a city
-  const cityData = findCityById(params.cityId);
+  const cityData = findCityById(cityId);
   if (!cityData) return {};
 
   return {

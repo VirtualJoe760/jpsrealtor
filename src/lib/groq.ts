@@ -1,0 +1,98 @@
+// src/lib/groq.ts
+// Groq API client for fast, cheap AI inference
+
+import Groq from "groq-sdk";
+
+// Initialize Groq client
+if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === "your_groq_api_key_here") {
+  console.error("⚠️  GROQ_API_KEY is missing or using placeholder!");
+  console.error("   Get your API key from: https://console.groq.com/");
+  console.error("   Add it to .env.local as: GROQ_API_KEY=gsk_your_actual_key");
+}
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || "",
+});
+
+// Model configuration for different tiers
+export const GROQ_MODELS = {
+  // Free tier: Fast and cheap
+  FREE: "llama-3.1-8b-instant", // 840 TPS, ~$0.013/month per user
+
+  // Premium tier: Smarter and better quality
+  PREMIUM: "llama-3.3-70b-versatile", // 394 TPS, ~$0.15-0.30/month per user
+} as const;
+
+export interface GroqChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface GroqChatOptions {
+  messages: GroqChatMessage[];
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+}
+
+/**
+ * Create a chat completion using Groq
+ * @param options Chat options
+ * @returns Chat completion response
+ */
+export async function createChatCompletion(options: GroqChatOptions) {
+  const {
+    messages,
+    model = GROQ_MODELS.FREE,
+    temperature = 0.3,
+    maxTokens = 500,
+    stream = false,
+  } = options;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages,
+      model,
+      temperature,
+      max_tokens: maxTokens,
+      stream,
+    });
+
+    return completion;
+  } catch (error: any) {
+    console.error("Groq API error:", error);
+    throw new Error(`Groq API error: ${error.message}`);
+  }
+}
+
+/**
+ * Create a streaming chat completion
+ * @param options Chat options
+ * @returns Async iterator of chat completion chunks
+ */
+export async function createStreamingChatCompletion(options: GroqChatOptions) {
+  const {
+    messages,
+    model = GROQ_MODELS.FREE,
+    temperature = 0.3,
+    maxTokens = 500,
+  } = options;
+
+  try {
+    const stream = await groq.chat.completions.create({
+      messages,
+      model,
+      temperature,
+      max_tokens: maxTokens,
+      stream: true,
+    });
+
+    return stream;
+  } catch (error: any) {
+    console.error("Groq streaming API error:", error);
+    throw new Error(`Groq streaming API error: ${error.message}`);
+  }
+}
+
+export default groq;

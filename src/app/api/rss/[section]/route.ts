@@ -46,9 +46,9 @@ function getPostsBySection(section?: string) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { section: string } }
+  { params }: { params: Promise<{ section: string }> }
 ) {
-  const { section } = params;
+  const { section } = await params;
   const feedUrl = `${baseUrl}/api/rss/${section}`;
 
   const posts = getPostsBySection(section);

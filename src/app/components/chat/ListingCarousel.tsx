@@ -1,12 +1,14 @@
 // src/app/components/chat/ListingCarousel.tsx
-// Simple listing carousel for chat (you'll redesign this later)
+// Auto-scrolling listing carousel for chat (dashboard-style)
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Home, Bed, Bath, Maximize2 } from "lucide-react";
+import { Home, Bed, Bath, Maximize2, Heart } from "lucide-react";
+import { useMLSContext } from "@/app/components/mls/MLSProvider";
+import type { MapListing } from "@/types/types";
 
 export interface Listing {
   id: string;
@@ -20,6 +22,8 @@ export interface Listing {
   subdivision?: string;
   type?: string;
   url: string;
+  slug?: string;
+  slugAddress?: string;
 }
 
 interface ListingCarouselProps {
@@ -28,132 +32,223 @@ interface ListingCarouselProps {
 }
 
 export default function ListingCarousel({ listings, title }: ListingCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { likedListings, toggleFavorite } = useMLSContext();
+
+  // Helper function to check if a listing is favorited
+  const isFavorited = (listing: Listing) => {
+    const slug = listing.slugAddress || listing.slug || listing.id;
+    return likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === slug);
+  };
+
+  // Handle favorite toggle
+  const handleFavoriteClick = (e: React.MouseEvent, listing: Listing) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Convert Listing to MapListing format for toggleFavorite
+    const mapListing: MapListing = {
+      _id: listing.id,
+      listingId: listing.id,
+      listingKey: listing.id,
+      slug: listing.slug || listing.id,
+      slugAddress: listing.slugAddress || listing.slug || listing.id,
+      primaryPhotoUrl: listing.image || '',
+      unparsedAddress: listing.address,
+      address: listing.address,
+      latitude: 0, // Not available in chat listing format
+      longitude: 0, // Not available in chat listing format
+      listPrice: listing.price,
+      bedsTotal: listing.beds,
+      bathroomsTotalInteger: listing.baths,
+      livingArea: listing.sqft,
+      city: listing.city,
+      subdivisionName: listing.subdivision,
+    };
+
+    toggleFavorite(mapListing);
+  };
+
+  // Auto-scroll effect (same as dashboard)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || listings.length === 0) return;
+
+    let intervalId: NodeJS.Timeout | null = null;
+    const scrollSpeed = 0.5; // pixels per tick
+    const tickInterval = 20; // ms between ticks (50fps)
+    let isUserScrolling = false;
+    let userScrollTimeout: NodeJS.Timeout | null = null;
+
+    const autoScroll = () => {
+      if (container && !isUserScrolling) {
+        // Infinite loop: Reset to start when reaching halfway point
+        const halfWidth = container.scrollWidth / 2;
+        if (container.scrollLeft >= halfWidth - 10) {
+          container.scrollLeft = 0;
+        }
+        container.scrollLeft += scrollSpeed;
+      }
+    };
+
+    const handleUserInteraction = () => {
+      isUserScrolling = true;
+      if (userScrollTimeout) clearTimeout(userScrollTimeout);
+      userScrollTimeout = setTimeout(() => {
+        isUserScrolling = false;
+      }, 2000);
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+      handleUserInteraction();
+
+      // Keep infinite loop while wheeling
+      const halfWidth = container.scrollWidth / 2;
+      if (container.scrollLeft >= halfWidth - 10) {
+        container.scrollLeft = 0;
+      } else if (container.scrollLeft < 10) {
+        container.scrollLeft = halfWidth - container.clientWidth;
+      }
+    };
+
+    const handleMouseEnter = () => {
+      isUserScrolling = true;
+    };
+
+    const handleMouseLeave = () => {
+      isUserScrolling = false;
+    };
+
+    // Start auto-scroll after short delay
+    const startTimer = setTimeout(() => {
+      const canScroll = container.scrollWidth > container.clientWidth;
+      if (canScroll) {
+        intervalId = setInterval(autoScroll, tickInterval);
+      }
+    }, 500);
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    container.addEventListener("mouseenter", handleMouseEnter);
+    container.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      clearTimeout(startTimer);
+      if (userScrollTimeout) clearTimeout(userScrollTimeout);
+      if (intervalId !== null) clearInterval(intervalId);
+      // Only remove event listeners if container still exists
+      if (container) {
+        container.removeEventListener("wheel", handleWheel);
+        container.removeEventListener("mouseenter", handleMouseEnter);
+        container.removeEventListener("mouseleave", handleMouseLeave);
+      }
+    };
+  }, [listings.length]);
 
   if (listings.length === 0) {
     return (
-      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
-        <p className="text-gray-400 text-sm">No listings found matching your criteria.</p>
+      <div className="p-4 bg-neutral-800/50 rounded-lg border border-neutral-700">
+        <p className="text-neutral-400 text-sm">No listings found matching your criteria.</p>
       </div>
     );
   }
 
-  const currentListing = listings[currentIndex];
-
-  if (!currentListing) {
-    return null;
-  }
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? listings.length - 1 : prev - 1));
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev === listings.length - 1 ? 0 : prev + 1));
-  };
+  // Duplicate listings for infinite scroll
+  const duplicatedListings = [...listings, ...listings];
 
   return (
-    <div className="my-3 bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden max-w-md">
+    <div className="my-4">
       {title && (
-        <div className="px-4 py-2 bg-gray-800 border-b border-gray-700">
+        <div className="mb-3">
           <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="text-xs text-gray-400">{listings.length} properties found</p>
+          <p className="text-xs text-neutral-400">{listings.length} properties found</p>
         </div>
       )}
 
-      {/* Image */}
-      <div className="relative h-48 bg-gray-900">
-        {currentListing.image ? (
-          <Image
-            src={currentListing.image}
-            alt={currentListing.address}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <Home className="w-12 h-12 text-gray-600" />
-          </div>
-        )}
+      <div
+        ref={scrollContainerRef}
+        className="flex gap-4 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {duplicatedListings.map((listing, index) => (
+          <div
+            key={`${listing.id}-${index}`}
+            className="flex-shrink-0 w-72 bg-neutral-800/50 border border-neutral-700 rounded-xl overflow-hidden transition-all group hover:border-neutral-600"
+          >
+            {/* Image */}
+            <div className="relative h-44">
+              {listing.image ? (
+                <Image
+                  src={listing.image}
+                  alt={listing.address || "Property"}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-neutral-700">
+                  <Home className="h-12 w-12 text-neutral-500" />
+                </div>
+              )}
 
-        {/* Navigation arrows */}
-        {listings.length > 1 && (
-          <>
-            <button
-              onClick={goToPrevious}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-white" />
-            </button>
-            <button
-              onClick={goToNext}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-white" />
-            </button>
-          </>
-        )}
+              {/* Favorite Heart Icon */}
+              <button
+                onClick={(e) => handleFavoriteClick(e, listing)}
+                className="absolute right-2 top-2 rounded-full bg-black/50 p-2 transition-colors hover:bg-black/70 z-10"
+                title={isFavorited(listing) ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Heart
+                  className={`h-5 w-5 transition-all ${
+                    isFavorited(listing)
+                      ? "fill-red-400 text-red-400"
+                      : "text-white"
+                  }`}
+                />
+              </button>
+            </div>
 
-        {/* Counter */}
-        {listings.length > 1 && (
-          <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-xs text-white">
-            {currentIndex + 1} / {listings.length}
+            {/* Details */}
+            <div className="p-4">
+              <p className="mb-2 text-2xl font-bold text-emerald-400">
+                ${listing.price?.toLocaleString() || "N/A"}
+              </p>
+              <p className="mb-3 truncate text-sm text-neutral-300">
+                {listing.address || "No address"}
+              </p>
+
+              <div className="mb-3 flex gap-4 text-sm text-neutral-400">
+                <div className="flex items-center gap-1">
+                  <Bed className="w-4 h-4" />
+                  <span>{listing.beds ?? 0} bd</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Bath className="w-4 h-4" />
+                  <span>{listing.baths ?? 0} ba</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Maximize2 className="w-4 h-4" />
+                  <span>{listing.sqft?.toLocaleString() ?? 0} sqft</span>
+                </div>
+              </div>
+
+              {listing.subdivision && (
+                <p className="mb-3 truncate text-xs text-neutral-500">
+                  {listing.subdivision}
+                </p>
+              )}
+
+              <Link
+                href={listing.url}
+                target="_blank"
+                className="block w-full rounded-lg bg-neutral-700 py-2 text-center text-sm text-white transition-colors hover:bg-neutral-600"
+              >
+                View Details
+              </Link>
+            </div>
           </div>
-        )}
+        ))}
       </div>
-
-      {/* Details */}
-      <div className="p-4">
-        <p className="text-2xl font-bold text-emerald-400 mb-2">
-          ${currentListing.price.toLocaleString()}
-        </p>
-
-        <p className="text-sm text-gray-300 mb-3 truncate">{currentListing.address}</p>
-
-        {/* Specs */}
-        <div className="flex gap-4 mb-3 text-sm text-gray-400">
-          <div className="flex items-center gap-1">
-            <Bed className="w-4 h-4" />
-            <span>{currentListing.beds} bd</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Bath className="w-4 h-4" />
-            <span>{currentListing.baths} ba</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Maximize2 className="w-4 h-4" />
-            <span>{currentListing.sqft.toLocaleString()} sqft</span>
-          </div>
-        </div>
-
-        {currentListing.subdivision && (
-          <p className="text-xs text-gray-500 mb-3 truncate">{currentListing.subdivision}</p>
-        )}
-
-        {/* View button */}
-        <Link
-          href={currentListing.url}
-          target="_blank"
-          className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg transition-colors text-sm font-medium"
-        >
-          View Full Details
-        </Link>
-      </div>
-
-      {/* Dots indicator */}
-      {listings.length > 1 && (
-        <div className="flex justify-center gap-1 pb-3">
-          {listings.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentIndex ? "bg-blue-500" : "bg-gray-600"
-              }`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

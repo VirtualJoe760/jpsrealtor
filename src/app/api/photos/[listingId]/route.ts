@@ -6,12 +6,14 @@ import Photo from "@/models/photos";
 
 export async function GET(
   req: Request,
-  { params }: { params: { listingId: string } }
+  { params }: { params: Promise<{ listingId: string }> }
 ) {
   await dbConnect();
 
+  const { listingId } = await params;
+
   try {
-    const photos = await Photo.find({ listingId: params.listingId })
+    const photos = await Photo.find({ listingId })
       .sort({ primary: -1, Order: 1 }) // Primary first, then ordered
       .lean();
 

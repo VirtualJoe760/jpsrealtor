@@ -105,12 +105,15 @@ const UserGoalsSchema = new Schema<IUserGoals>(
       pets: Boolean,
       workFromHome: Boolean,
 
-      // Confidence
+      // Confidence (optional)
       confidence: {
-        budget: { type: Number, min: 0, max: 1 },
-        beds: { type: Number, min: 0, max: 1 },
-        location: { type: Number, min: 0, max: 1 },
-        features: { type: Number, min: 0, max: 1 },
+        type: {
+          budget: { type: Number, min: 0, max: 1 },
+          beds: { type: Number, min: 0, max: 1 },
+          location: { type: Number, min: 0, max: 1 },
+          features: { type: Number, min: 0, max: 1 },
+        },
+        required: false,
       },
     },
     lastUpdatedFrom: {

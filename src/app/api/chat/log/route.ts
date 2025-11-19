@@ -30,6 +30,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Security: Verify userId matches authenticated user (if authenticated)
+    // Allow anonymous users (userId starts with "anon_"), but authenticated users must match session
+    if (session?.user?.email) {
+      if (userId !== session.user.email) {
+        return NextResponse.json(
+          { error: "Forbidden: userId does not match authenticated user" },
+          { status: 403 }
+        );
+      }
+    } else if (!userId.startsWith("anon_")) {
+      // If not authenticated and userId is not anonymous, reject
+      return NextResponse.json(
+        { error: "Unauthorized: must be authenticated or use anonymous ID" },
+        { status: 401 }
+      );
+    }
+
     // Connect to database
     await connectDB();
 
@@ -71,6 +88,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing userId parameter" },
         { status: 400 }
+      );
+    }
+
+    // Security: Verify userId matches authenticated user (if authenticated)
+    // Allow anonymous users (userId starts with "anon_"), but authenticated users must match session
+    if (session?.user?.email) {
+      if (userId !== session.user.email) {
+        return NextResponse.json(
+          { error: "Forbidden: cannot access other users' chat history" },
+          { status: 403 }
+        );
+      }
+    } else if (!userId.startsWith("anon_")) {
+      // If not authenticated and userId is not anonymous, reject
+      return NextResponse.json(
+        { error: "Unauthorized: must be authenticated or use anonymous ID" },
+        { status: 401 }
       );
     }
 

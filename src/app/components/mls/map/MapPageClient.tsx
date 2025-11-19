@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
+import { Satellite, Map as MapIcon } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
@@ -474,6 +475,18 @@ export default function MapPageClient() {
       return;
     }
 
+    // Auto-close sidebar on tablets in portrait mode when selecting a listing
+    if (typeof window !== "undefined") {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isTabletPortrait = width >= 768 && width < 1024 && height > width;
+
+      if (isTabletPortrait && isSidebarOpen) {
+        console.log("📱 Tablet portrait detected - closing sidebar for listing panel");
+        setSidebarOpen(false);
+      }
+    }
+
     console.log("📍 Selecting listing:", slug);
     setVisibleIndex(index);
     setSelectionLocked(true); // 🔒 lock
@@ -722,7 +735,7 @@ export default function MapPageClient() {
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
             panelOpen={Boolean(selectedListing && selectedFullListing)}
-            isSatelliteView={isSatelliteView}
+            mapStyle={isSatelliteView ? 'satellite' : 'toner'}
           />
         </div>
 
@@ -827,7 +840,7 @@ export default function MapPageClient() {
             advanceToNextListing();
           }}
           isSidebarOpen={isSidebarOpen}
-          isFiltersOpen={isFiltersOpen}
+          
         />
       )}
 
@@ -849,6 +862,21 @@ export default function MapPageClient() {
         favoritesCount={likedListings.length}
         onClose={() => setShowCompletionModal(false)}
       />
+
+      {/* Mobile Skin Toggle Button - Bottom Left */}
+      <button
+        onClick={() => setIsSatelliteView(prev => !prev)}
+        className="md:hidden fixed bottom-24 left-4 z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 backdrop-blur-xl border border-emerald-500/30 flex items-center justify-center hover:from-emerald-500/30 hover:to-cyan-500/30 hover:border-emerald-500/50 active:scale-95 transition-all shadow-2xl shadow-emerald-500/20"
+        aria-label={isSatelliteView ? "Switch to Map View" : "Switch to Satellite View"}
+        title={isSatelliteView ? "Map View" : "Satellite View"}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {isSatelliteView ? (
+          <MapIcon className="w-7 h-7 text-emerald-400" strokeWidth={2.5} />
+        ) : (
+          <Satellite className="w-7 h-7 text-emerald-400" strokeWidth={2.5} />
+        )}
+      </button>
     </>
   );
 }

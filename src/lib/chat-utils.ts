@@ -2,12 +2,34 @@
 // Utility functions for chat: prompts, goal extraction, context building
 
 /**
+ * User data interface for personalization
+ */
+export interface UserData {
+  name?: string;
+  profileDescription?: string;
+  realEstateGoals?: string;
+  homeownerStatus?: "own" | "rent" | "other";
+  topCities?: Array<{ name: string; count: number }>;
+  topSubdivisions?: Array<{ name: string; count: number }>;
+  favoriteCount?: number;
+  chatGoals?: {
+    minBudget?: number;
+    maxBudget?: number;
+    minBeds?: number;
+    preferredCities?: string[];
+    mustHave?: string[];
+    timeline?: string;
+  };
+}
+
+/**
  * Build the system prompt based on context
  */
 export function buildSystemPrompt(
   context: "homepage" | "listing" | "dashboard" | "general",
   listingData?: any,
-  userLocation?: { city?: string; region?: string } | null
+  userLocation?: { city?: string; region?: string } | null,
+  userData?: UserData | null
 ): string {
   // Build location-specific greeting
   let locationContext = "";
@@ -22,42 +44,130 @@ export function buildSystemPrompt(
     }
   }
 
-  const basePrompt = `You are an expert Southern California real estate assistant for JPSRealtor.com, specializing in the Coachella Valley.
+  // Build personalization context
+  let personalizationContext = "";
+  if (userData) {
+    const parts: string[] = [];
 
-${locationContext}
+    // Add user name for personalization
+    if (userData.name) {
+      parts.push(`You're helping ${userData.name} find their perfect home.`);
+    }
 
-Key areas you know well:
-PRIMARY FOCUS - Coachella Valley:
-- Palm Springs, Palm Desert, Indian Wells, Rancho Mirage, La Quinta, Cathedral City
-- Desert luxury living, golf communities, mountain views, resort-style amenities
-- Pool homes, gated communities, vacation rentals
+    // Add real estate goals if available
+    if (userData.realEstateGoals) {
+      parts.push(`Their stated real estate goals: "${userData.realEstateGoals}"`);
+    }
 
-ALSO SERVE - Southern California:
-- Riverside County, San Bernardino County
-- Temecula wine country, Inland Empire
-- General Southern California real estate
+    // Add homeowner status context
+    if (userData.homeownerStatus) {
+      const statusContext = userData.homeownerStatus === "rent"
+        ? "They currently rent, so they may be a first-time buyer or looking to transition to homeownership."
+        : userData.homeownerStatus === "own"
+        ? "They currently own a home, so they may be upgrading, downsizing, or investing."
+        : "";
+      if (statusContext) parts.push(statusContext);
+    }
 
-IMPORTANT CAPABILITIES:
-- You can search the MLS database in real-time
-- When users ask about available homes, use the searchListings function
-- Show actual listings with photos, prices, and details
-- You can display results as listing cards with carousels
-- You can show properties on a map
+    // Add favorite cities/subdivisions if they've shown interest
+    if (userData.topCities && userData.topCities.length > 0) {
+      const cityNames = userData.topCities.slice(0, 3).map(c => c.name).join(", ");
+      parts.push(`They've shown interest in: ${cityNames}.`);
+    }
 
-Your personality:
-- Warm, professional, and enthusiastic about desert/SoCal living
-- Keep responses concise (2-4 sentences unless asked for detail)
-- Ask clarifying questions to understand their dream home
-- Extract preferences naturally through conversation
-- ALWAYS search listings when users ask about available homes`;
+    if (userData.topSubdivisions && userData.topSubdivisions.length > 0) {
+      const subdivisionNames = userData.topSubdivisions.slice(0, 2).map(s => s.name).join(", ");
+      parts.push(`Favorite subdivisions: ${subdivisionNames}.`);
+    }
+
+    // Add favorite count for context
+    if (userData.favoriteCount && userData.favoriteCount > 0) {
+      parts.push(`They've favorited ${userData.favoriteCount} properties so far.`);
+    }
+
+    // Add chat goals if available
+    if (userData.chatGoals) {
+      const goalParts: string[] = [];
+      if (userData.chatGoals.minBudget || userData.chatGoals.maxBudget) {
+        const budgetStr = userData.chatGoals.maxBudget
+          ? `up to $${(userData.chatGoals.maxBudget / 1000000).toFixed(1)}M`
+          : `around $${(userData.chatGoals.minBudget! / 1000000).toFixed(1)}M`;
+        goalParts.push(`Budget: ${budgetStr}`);
+      }
+      if (userData.chatGoals.minBeds) {
+        goalParts.push(`${userData.chatGoals.minBeds}+ bedrooms`);
+      }
+      if (userData.chatGoals.preferredCities && userData.chatGoals.preferredCities.length > 0) {
+        goalParts.push(`Cities: ${userData.chatGoals.preferredCities.join(", ")}`);
+      }
+      if (userData.chatGoals.mustHave && userData.chatGoals.mustHave.length > 0) {
+        goalParts.push(`Must-haves: ${userData.chatGoals.mustHave.join(", ")}`);
+      }
+      if (userData.chatGoals.timeline) {
+        goalParts.push(`Timeline: ${userData.chatGoals.timeline}`);
+      }
+
+      if (goalParts.length > 0) {
+        parts.push(`From previous conversations - ${goalParts.join(" | ")}`);
+      }
+    }
+
+    if (parts.length > 0) {
+      personalizationContext = `\n\nABOUT THIS USER:\n${parts.join("\n")}`;
+    }
+  }
+
+  const basePrompt = `You are Joe's AI assistant for JPSRealtor.com, helping find homes in Southern California.
+${locationContext}${personalizationContext}
+
+Primary Expertise: Coachella Valley (Palm Springs, Palm Desert, Indian Wells, Rancho Mirage, La Quinta, Cathedral City)
+Secondary Coverage: San Diego County, Orange County, Riverside County, and all of Southern California
+
+IMPORTANT - NEVER DISMISS OTHER AREAS:
+- If user asks about San Diego, LA, OC, etc. → Engage! Offer to help them explore
+- Compare areas if they're deciding: "Want me to compare San Diego and Coachella Valley for family-friendliness?"
+- Show expertise in both areas, don't push them to Coachella Valley
+- We serve ALL of Southern California, not just the desert
+
+CONVERSATION STRATEGY:
+- Have a CONVERSATION first, search later
+- When asked about neighborhoods/communities/areas, ANSWER THE QUESTION (don't search yet!)
+- Build context about their needs (family, budget, lifestyle) before showing properties
+- Only use searchListings() when they're READY to see actual homes
+
+When to TALK (don't search):
+- "What are family-friendly communities?" → Recommend areas, ask follow-up questions
+- "Tell me about Indian Wells" → Describe the community, discuss benefits
+- "What's the best area for golf?" → Suggest neighborhoods, learn their preferences
+- "I have kids" → Ask about ages, schools, discuss family areas
+
+When to SEARCH (use searchListings):
+- "Show me homes in Indian Wells" → Search!
+- "I want 3 bedrooms under $600k" → Search!
+- User confirms "yes" after you've discussed and they're ready
+- They ask to see properties after conversation
+
+Style: Friendly, helpful guide. Ask follow-up questions to understand their life, not just their budget.
+
+After searchListings():
+- Keep response SHORT (1 sentence)
+- DON'T describe listings (carousel shows them!)
+- Example: "Found 10 family-friendly homes in Indian Wells." NOT "I found 4 homes... Note: 3/3 means..."`;
 
   if (context === "homepage") {
+    const userName = userData?.name ? ` ${userData.name}` : "";
+    const greetingExamples = userData?.name
+      ? `"Hey ${userData.name}! What can I help you find today?"` + ', "Hi there! Ready to explore some properties?"'
+      : '"Hey! What brings you here today?", "Hi there! Looking for a home in the desert?", "Hey! What can I help you find?"';
+
     return `${basePrompt}
 
-CURRENT CONTEXT: Homepage - First interaction
-Your goal: Welcome them warmly and start discovering what they're looking for.
-Ask about their ideal home (beds, budget, location, must-have features).
-If they describe what they want, IMMEDIATELY use searchListings to show them actual properties.`;
+CURRENT CONTEXT: First conversation${userName ? ` with ${userData?.name || ""}` : ""}
+- If they greet you (hi/hello/hey), respond casually and warmly
+- Examples: ${greetingExamples}
+- Get to their needs quickly - ask about beds, budget, location, or features
+- If you know their preferences from before, reference them naturally
+- If they tell you what they want, IMMEDIATELY use searchListings to show actual properties`;
   }
 
   if (context === "listing" && listingData) {

@@ -1,12 +1,6 @@
 // src/app/mls-listings/page.tsx
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
-import { Suspense } from "react";
-
-// 🔁 Dynamically import the client-only map component
-const MapPageClient = dynamic(() => import("@/app/components/mls/map/MapPageClient"), {
-  ssr: false,
-});
+import MapClientWrapper from "./MapClientWrapper";
 
 // 🧠 SEO Metadata
 export const metadata: Metadata = {
@@ -36,23 +30,10 @@ export const metadata: Metadata = {
   },
 };
 
-function LoadingFallback() {
-  return (
-    <div className="fixed top-32 bottom-0 left-0 right-0 flex items-center justify-center w-full bg-black">
-      <div className="text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-zinc-400 text-sm">Loading map and listings...</p>
-      </div>
-    </div>
-  );
-}
-
 export default function SearchMapPage() {
   return (
     <div className="fixed top-32 bottom-0 left-0 right-0 overflow-hidden">
-      <Suspense fallback={<LoadingFallback />}>
-        <MapPageClient />
-      </Suspense>
+      <MapClientWrapper />
     </div>
   );
 }

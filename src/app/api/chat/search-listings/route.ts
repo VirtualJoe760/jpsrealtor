@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { CRMLSListing } from "@/models/crmls-listings";
+import Photo from "@/models/photos";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,6 +31,20 @@ export async function POST(req: NextRequest) {
     // Build query
     const query: any = {
       standardStatus: "Active", // Only active listings
+      mlsStatus: "Active", // Ensure active
+      // Only show "For Sale" properties by default (exclude rentals)
+      // Combined filters: exclude rental types AND ensure sale-level pricing
+      $and: [
+        {
+          $or: [
+            { propertySubType: { $nin: ["Rental", "Lease", "For Lease", "Residential Lease"] } },
+            { propertySubType: { $exists: false } },
+          ],
+        },
+        // Additional safeguard: Rentals typically have monthly prices under $20k
+        // For-sale properties have prices starting around $50k+
+        { listPrice: { $gte: 50000 } }
+      ],
     };
 
     // Beds
@@ -73,9 +88,19 @@ export async function POST(req: NextRequest) {
       query.city = { $in: cities.map((c: string) => new RegExp(c, "i")) };
     }
 
-    // Property types
+    // Property types - NEVER override rental filter
     if (propertyTypes && propertyTypes.length > 0) {
-      query.propertySubType = { $in: propertyTypes };
+      // Filter out any rental types and combine with existing $nin filter
+      const saleTypes = propertyTypes.filter(
+        (t: string) => !["Rental", "Lease", "For Lease", "Residential Lease"].includes(t)
+      );
+      if (saleTypes.length > 0) {
+        // Use $and to combine type filter with rental exclusion
+        query.$and = [
+          ...(query.$and || []),
+          { propertySubType: { $in: saleTypes } }
+        ];
+      }
     }
 
     // Features (simplified)
@@ -94,7 +119,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (conditions.length > 0) {
-      query.$and = conditions;
+      // Combine with existing $and conditions instead of overwriting
+      query.$and = [...(query.$and || []), ...conditions];
     }
 
     // Execute search
@@ -102,24 +128,56 @@ export async function POST(req: NextRequest) {
       .sort({ listPrice: 1 }) // Sort by price ascending
       .limit(limit)
       .select(
-        "listingKey listPrice bedsTotal bathroomsTotalInteger livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertySubType slugAddress"
+        "listingId listingKey listPrice bedsTotal bathroomsTotalInteger livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertySubType slugAddress latitude longitude"
       )
       .lean();
 
+    // Fetch primary photos for all listings
+    // IMPORTANT: Photos collection uses listingId (short ID), not listingKey (long ID)
+    const listingIds = listings.map((l: any) => l.listingId);
+    const photos = await Photo.find({
+      listingId: { $in: listingIds },
+      primary: true
+    }).lean();
+
+    // Create a map of listingId -> photo URL
+    const photoMap = new Map();
+    photos.forEach((photo: any) => {
+      const photoUrl = photo.uri1280 || photo.uri1024 || photo.uri800 || photo.uri640 || photo.uriThumb;
+      if (photoUrl) {
+        photoMap.set(photo.listingId, photoUrl);
+      }
+    });
+
     // Format results
-    const results = listings.map((listing: any) => ({
-      id: listing.listingKey,
-      price: listing.listPrice,
-      beds: listing.bedsTotal,
-      baths: listing.bathroomsTotalInteger,
-      sqft: listing.livingArea,
-      city: listing.city,
-      address: listing.unparsedAddress,
-      image: listing.primaryPhotoUrl,
-      subdivision: listing.subdivisionName,
-      type: listing.propertySubType,
-      url: `/mls-listings/${listing.slugAddress || listing.listingKey}`,
-    }));
+    const results = listings.map((listing: any) => {
+      // Priority: 1) Photos collection (use listingId), 2) primaryPhotoUrl from listing, 3) placeholder
+      const photoFromCollection = photoMap.get(listing.listingId);
+      const photoUrl = photoFromCollection || listing.primaryPhotoUrl;
+
+      // Only use placeholder if no photo found anywhere
+      const finalPhotoUrl = photoUrl || `https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop`;
+
+      return {
+        id: listing.listingKey,
+        price: listing.listPrice,
+        beds: listing.bedsTotal,
+        baths: listing.bathroomsTotalInteger,
+        sqft: listing.livingArea,
+        city: listing.city,
+        address: listing.unparsedAddress,
+        // Use photo with proper fallback chain
+        image: finalPhotoUrl,
+        subdivision: listing.subdivisionName,
+        type: listing.propertySubType,
+        url: `/mls-listings/${listing.slugAddress || listing.listingKey}`,
+        // Add coordinates for map display
+        latitude: listing.latitude,
+        longitude: listing.longitude,
+        slug: listing.slugAddress,
+        slugAddress: listing.slugAddress,
+      };
+    });
 
     return NextResponse.json({
       success: true,

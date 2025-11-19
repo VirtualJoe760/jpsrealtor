@@ -10,12 +10,12 @@ import Photo from "@/models/photos";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   await dbConnect();
 
   try {
-    const { slug } = params;
+    const { slug } = await params;
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get("limit") || "20");
 

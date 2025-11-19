@@ -30,6 +30,20 @@ export async function initializeWebLLM(
     return initializationPromise;
   }
 
+  // Check browser compatibility
+  if (typeof window === 'undefined') {
+    throw new Error("WebLLM can only run in browser environment");
+  }
+
+  // Check for required browser APIs
+  if (!('caches' in window)) {
+    console.warn("⚠️ Cache API not available - WebLLM may not work properly");
+  }
+
+  if (!('gpu' in navigator)) {
+    throw new Error("WebGPU is not supported in this browser. Please use Chrome, Edge, or a WebGPU-compatible browser.");
+  }
+
   // Add progress callback if provided
   if (onProgress) {
     progressCallbacks.add(onProgress);
@@ -54,7 +68,8 @@ export async function initializeWebLLM(
       return engine;
     } catch (error) {
       console.error("❌ Failed to initialize WebLLM:", error);
-      throw new Error("Failed to initialize AI engine. Please refresh the page and try again.");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to initialize AI engine: ${errorMessage}. Please ensure you're using a WebGPU-compatible browser and refresh the page.`);
     } finally {
       isInitializing = false;
       progressCallbacks.clear();

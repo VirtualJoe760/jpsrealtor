@@ -36,8 +36,8 @@ interface MapViewProps {
   /** freeze map interactions & background updates while bottom panel is open */
   panelOpen?: boolean;
 
-  /** toggle between dark vector map and satellite imagery */
-  isSatelliteView?: boolean;
+  /** map style: toner (black & white), dark (dark matter), satellite, or bright (OSM) */
+  mapStyle?: 'toner' | 'dark' | 'satellite' | 'bright';
 }
 
 function formatPrice(price?: number): string {
@@ -107,14 +107,18 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Map style URLs - Use OSM if MapTiler key not configured
+// Map style URLs - 4 different map styles
 const MAP_STYLES = {
-  dark: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+  toner: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
     ? `https://api.maptiler.com/maps/toner-v2/style.json?key=${MAPTILER_KEY}`
-    : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  hybrid: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json", // Black & White
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", // Dark Matter
+  satellite: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
     ? `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`
-    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", // Satellite
+  bright: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/bright/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", // OSM Bright/Normal
 };
 
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
@@ -128,7 +132,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     onBoundsChange,
     onSelectListingByIndex,
     panelOpen = false,
-    isSatelliteView = false,
+    mapStyle = 'toner',
   },
   ref
 ) {
@@ -399,7 +403,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     <div ref={wrapperRef} className="relative w-full h-full">
       <Map
         ref={mapRef}
-        mapStyle={isSatelliteView ? MAP_STYLES.hybrid : MAP_STYLES.dark}
+        mapStyle={MAP_STYLES[mapStyle]}
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}

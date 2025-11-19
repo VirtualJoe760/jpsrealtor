@@ -5,12 +5,12 @@ import Subdivision from "@/models/subdivisions";
 
 export async function GET(
   request: Request,
-  { params }: { params: { cityId: string } }
+  { params }: { params: Promise<{ cityId: string }> }
 ) {
   try {
     await dbConnect();
 
-    const { cityId } = params;
+    const { cityId } = await params;
 
     // Convert cityId to city name
     const cityName = cityId

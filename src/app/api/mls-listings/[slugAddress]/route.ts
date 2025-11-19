@@ -8,11 +8,11 @@ import OpenHouse from "@/models/openHouses";
 
 export async function GET(
   req: Request,
-  { params }: { params: { slugAddress: string } }
+  { params }: { params: Promise<{ slugAddress: string }> }
 ) {
   await dbConnect();
 
-  const { slugAddress } = params;
+  const { slugAddress } = await params;
 
   try {
     // 🔍 Try to find listing in GPS MLS first, then CRMLS

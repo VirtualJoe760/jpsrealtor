@@ -28,7 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        {/* Scripts... */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+      </head>
+      <body suppressHydrationWarning>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=G-613BBEB2FS`}
           strategy="afterInteractive"
@@ -41,10 +44,6 @@ export default function RootLayout({
             gtag('config', 'G-613BBEB2FS');
           `}
         </Script>
-        {/* Other Scripts truncated for brevity */}
-        <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-      </head>
-      <body>
         <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
       </body>
     </html>

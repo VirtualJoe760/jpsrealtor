@@ -70,7 +70,7 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
       className="
         relative
         w-full
-        aspect-[16/9] md:aspect-[21/9]
+        h-[300px] sm:h-[320px] md:h-[340px] lg:h-[360px] xl:h-[400px] 2xl:h-[450px]
         rounded-t-2xl
         overflow-hidden
         bg-zinc-900
@@ -94,8 +94,9 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
             className="object-cover"
             priority={current === 0}
             loading={current === 0 ? "eager" : "lazy"}
-            quality={85}
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 1200px"
+            quality={100}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 90vw, (max-width: 1440px) 1200px, (max-width: 1920px) 1600px, 2000px"
+            unoptimized={false}
           />
 
           {/* Preload Next Photo */}

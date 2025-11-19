@@ -48,6 +48,7 @@ export default function SubdivisionMap({
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental">(externalPropertyTypeFilter || "all");
+  const [mapTheme, setMapTheme] = useState<"dark" | "light">("dark");
 
   // Fetch listings for this subdivision
   useEffect(() => {
@@ -81,10 +82,14 @@ export default function SubdivisionMap({
       center = [-116.5453, 33.8303]; // Default: Palm Springs
     }
 
-    // Use CartoDB basemap (free, no API key required)
+    // Use CartoDB basemap (free, no API key required) - default to dark theme
+    const mapStyle = mapTheme === "dark"
+      ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+      : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+      style: mapStyle,
       center,
       zoom: 13,
     });
@@ -99,7 +104,18 @@ export default function SubdivisionMap({
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [mapTheme]);
+
+  // Update map style when theme changes
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const mapStyle = mapTheme === "dark"
+      ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+      : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+
+    map.current.setStyle(mapStyle);
+  }, [mapTheme, mapLoaded]);
 
   // Update markers when listings change
   useEffect(() => {
@@ -151,9 +167,9 @@ export default function SubdivisionMap({
       // Build slug for navigation
       const listingSlug = listing.slug || "";
 
-      // Enhanced popup content with photo and clickable link - smaller size
+      // Enhanced popup content with photo and clickable link - smaller size - DARK MODE
       const popupContent = `
-        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity rounded-lg overflow-hidden shadow-lg bg-white border border-gray-200">
+        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity rounded-lg overflow-hidden shadow-lg bg-gray-900 border border-gray-700">
           <div class="w-[220px]">
             ${
               listing.primaryPhotoUrl
@@ -164,22 +180,22 @@ export default function SubdivisionMap({
                       class="w-full h-full object-cover"
                     />
                   </div>`
-                : `<div class="relative h-32 bg-gray-200 flex items-center justify-center">
-                    <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                : `<div class="relative h-32 bg-gray-800 flex items-center justify-center">
+                    <svg class="w-12 h-12 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     </svg>
                   </div>`
             }
             <div class="px-2.5 py-2.5">
-              <div class="text-lg font-bold text-blue-600 mb-1.5">
+              <div class="text-lg font-bold text-blue-400 mb-1.5">
                 ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
               </div>
-              <div class="text-xs text-gray-700 mb-1.5 font-medium leading-tight">
+              <div class="text-xs text-gray-300 mb-1.5 font-medium leading-tight">
                 ${listing.address || "Address not available"}
               </div>
               ${
                 listing.bedroomsTotal !== undefined || listing.bathroomsTotalDecimal !== undefined
-                  ? `<div class="flex gap-2.5 text-xs text-gray-600">
+                  ? `<div class="flex gap-2.5 text-xs text-gray-400">
                       ${
                         listing.bedroomsTotal !== undefined && listing.bedroomsTotal !== null
                           ? `<div class="flex items-center gap-1">
@@ -283,46 +299,84 @@ export default function SubdivisionMap({
 
   return (
     <div className="space-y-4">
-      {/* Property Type Toggle */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-gray-700">Show on map:</span>
-        <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
-          <button
-            onClick={() => setPropertyTypeFilter("all")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              propertyTypeFilter === "all"
-                ? "bg-blue-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setPropertyTypeFilter("sale")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              propertyTypeFilter === "sale"
-                ? "bg-green-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-green-600"></span>
-              For Sale
-            </span>
-          </button>
-          <button
-            onClick={() => setPropertyTypeFilter("rental")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              propertyTypeFilter === "rental"
-                ? "bg-purple-600 text-white"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-600"></span>
-              For Rent
-            </span>
-          </button>
+      {/* Controls Row */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        {/* Property Type Toggle */}
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-gray-300">Show on map:</span>
+          <div className="inline-flex rounded-lg border border-gray-700 bg-gray-900 p-1">
+            <button
+              onClick={() => setPropertyTypeFilter("all")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                propertyTypeFilter === "all"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setPropertyTypeFilter("sale")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                propertyTypeFilter === "sale"
+                  ? "bg-green-600 text-white"
+                  : "text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                For Sale
+              </span>
+            </button>
+            <button
+              onClick={() => setPropertyTypeFilter("rental")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                propertyTypeFilter === "rental"
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                For Rent
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Map Theme Toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-300">Map theme:</span>
+          <div className="inline-flex rounded-lg border border-gray-700 bg-gray-900 p-1">
+            <button
+              onClick={() => setMapTheme("dark")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                mapTheme === "dark"
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:bg-gray-800"
+              }`}
+              title="Dark theme"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+              Dark
+            </button>
+            <button
+              onClick={() => setMapTheme("light")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                mapTheme === "light"
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:bg-gray-800"
+              }`}
+              title="Light theme"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              </svg>
+              Light
+            </button>
+          </div>
         </div>
       </div>
 
@@ -338,18 +392,18 @@ export default function SubdivisionMap({
           className="rounded-lg overflow-hidden shadow-md"
         />
       {(!mapLoaded || loading) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-300">
               {loading ? "Loading listings..." : "Loading map..."}
             </p>
           </div>
         </div>
       )}
       {mapLoaded && !loading && listings.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80">
-          <p className="text-gray-600">No listings to display on map</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+          <p className="text-gray-300">No listings to display on map</p>
         </div>
       )}
       </div>
