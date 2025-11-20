@@ -162,7 +162,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen" data-page="admin">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 pt-16 md:pt-0">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
             <BarChart3 className="w-10 h-10 text-blue-400" />
             Admin Dashboard

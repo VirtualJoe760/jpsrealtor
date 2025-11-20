@@ -567,18 +567,6 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
           })}
 
           {/* Conversation History Section */}
-          {(() => {
-            const shouldShow = !effectivelyCollapsed && conversationHistory.length > 0;
-            console.log('🔍 [History Render Check]', {
-              effectivelyCollapsed,
-              historyLength: conversationHistory.length,
-              shouldShow,
-              history: conversationHistory,
-              onClose,
-              isMobile
-            });
-            return null;
-          })()}
 
           {/* Debug: Always visible test */}
           {!effectivelyCollapsed && (
