@@ -11,16 +11,10 @@ export default function MobileBottomNav() {
 
   const navItems = [
     {
-      name: "Neighborhoods",
-      icon: Home,
-      href: "/neighborhoods",
-      active: pathname?.startsWith("/neighborhoods"),
-    },
-    {
       name: "Chat",
       icon: MessageSquare,
-      href: "/chat",
-      active: pathname?.startsWith("/chat"),
+      href: "/",
+      active: pathname === "/",
     },
     {
       name: "Map",

@@ -1,0 +1,29 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 6.5s
+   Running TypeScript ...
+Failed to compile.
+
+./src/lib/ai-community-research.ts:43:11
+Type error: Property 'default' does not exist on type 'typeof import("F:/web-clients/joseph-sardella/jpsrealtor/src/models/listings")'.
+
+[0m [90m 41 |[39m
+ [90m 42 |[39m   [90m// Import Listing model dynamically to avoid circular dependencies[39m
+[31m[1m>[22m[39m[90m 43 |[39m   [36mconst[39m { [36mdefault[39m[33m:[39m [33mListing[39m } [33m=[39m [36mawait[39m [36mimport[39m([32m'@/models/listings'[39m)[33m;[39m
+ [90m    |[39m           [31m[1m^[22m[39m
+ [90m 44 |[39m
+ [90m 45 |[39m   [90m// Get all active listings in this subdivision[39m
+ [90m 46 |[39m   [36mconst[39m listings [33m=[39m [36mawait[39m [33mListing[39m[33m.[39mfind({[0m
+Next.js build worker exited with code: 1 and signal: null

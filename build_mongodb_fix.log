@@ -1,0 +1,81 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 3 errors:
+./src/app/api/chat/save/route.ts:6:1
+Module not found: Can't resolve '@/app/api/auth/[...nextauth]/auth-options'
+[0m [90m 4 |[39m [36mimport[39m { [33mNextRequest[39m[33m,[39m [33mNextResponse[39m } [36mfrom[39m [32m'next/server'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { getServerSession } [36mfrom[39m [32m'next-auth'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { authOptions } [36mfrom[39m [32m'@/app/api/auth/[...nextauth]/auth-options'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m dbConnect [36mfrom[39m [32m'@/lib/mongoose'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m [33mSavedChat[39m [36mfrom[39m [32m'@/models/saved-chat'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+Import map: aliased to relative './src/app/api/auth/[...nextauth]/auth-options' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/lib/ai-community-research.ts:43:38
+Module not found: Can't resolve '@/models/Listing'
+[0m [90m 41 |[39m
+ [90m 42 |[39m   [90m// Import Listing model dynamically to avoid circular dependencies[39m
+[31m[1m>[22m[39m[90m 43 |[39m   [36mconst[39m { [36mdefault[39m[33m:[39m [33mListing[39m } [33m=[39m [36mawait[39m [36mimport[39m([32m'@/models/Listing'[39m)[33m;[39m
+ [90m    |[39m                                      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 44 |[39m
+ [90m 45 |[39m   [90m// Get all active listings in this subdivision[39m
+ [90m 46 |[39m   [36mconst[39m listings [33m=[39m [36mawait[39m [33mListing[39m[33m.[39mfind({[0m
+
+Import map: aliased to relative './src/models/Listing' inside of [project]/
+
+
+Import trace:
+  App Route:
+    ./src/lib/ai-community-research.ts
+    ./src/app/api/chat/research-community/route.ts
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/lib/ai-community-research.ts:398:38
+Module not found: Can't resolve '@/models/Listing'
+[0m [90m 396 |[39m
+ [90m 397 |[39m   [90m// Import Listing model[39m
+[31m[1m>[22m[39m[90m 398 |[39m   [36mconst[39m { [36mdefault[39m[33m:[39m [33mListing[39m } [33m=[39m [36mawait[39m [36mimport[39m([32m'@/models/Listing'[39m)[33m;[39m
+ [90m     |[39m                                      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 399 |[39m
+ [90m 400 |[39m   [90m// Count unique addresses (both active and sold)[39m
+ [90m 401 |[39m   [36mconst[39m uniqueAddresses [33m=[39m [36mawait[39m [33mListing[39m[33m.[39mdistinct([32m'address'[39m[33m,[39m {[0m
+
+Import map: aliased to relative './src/models/Listing' inside of [project]/
+
+
+Import trace:
+  App Route:
+    ./src/lib/ai-community-research.ts
+    ./src/app/api/chat/research-community/route.ts
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/app/api/chat/save/route.ts:6:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/lib/ai-community-research.ts:43:38)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/lib/ai-community-research.ts:398:38)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)

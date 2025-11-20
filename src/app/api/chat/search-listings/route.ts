@@ -20,10 +20,11 @@ export async function POST(req: NextRequest) {
       minSqft,
       maxSqft,
       cities,
+      subdivisions,
       propertyTypes,
       hasPool,
       hasView,
-      limit = 10,
+      limit, // Optional limit - if not provided, return ALL results
     } = body;
 
     await connectDB();
@@ -32,9 +33,14 @@ export async function POST(req: NextRequest) {
     const query: any = {
       standardStatus: "Active", // Only active listings
       mlsStatus: "Active", // Ensure active
+    };
+
+    // Only apply rental filters if NOT searching by subdivision
+    // When searching by subdivision, include ALL listings (for sale, rent, multi-family)
+    if (!subdivisions || subdivisions.length === 0) {
       // Only show "For Sale" properties by default (exclude rentals)
       // Combined filters: exclude rental types AND ensure sale-level pricing
-      $and: [
+      query.$and = [
         {
           $or: [
             { propertySubType: { $nin: ["Rental", "Lease", "For Lease", "Residential Lease"] } },
@@ -44,8 +50,8 @@ export async function POST(req: NextRequest) {
         // Additional safeguard: Rentals typically have monthly prices under $20k
         // For-sale properties have prices starting around $50k+
         { listPrice: { $gte: 50000 } }
-      ],
-    };
+      ];
+    }
 
     // Beds
     if (minBeds && maxBeds) {
@@ -88,18 +94,40 @@ export async function POST(req: NextRequest) {
       query.city = { $in: cities.map((c: string) => new RegExp(c, "i")) };
     }
 
-    // Property types - NEVER override rental filter
+    // Subdivisions - fuzzy matching to handle partial names and variations
+    if (subdivisions && subdivisions.length > 0) {
+      // Use partial matching for flexibility (e.g., "Indian Palms" matches "Indian Palms Country Club")
+      // Also handles variations like "Ironwood Country Club" matching "Ironwood Country Club North/South/West"
+      query.subdivisionName = {
+        $in: subdivisions.map((s: string) => {
+          // Escape special regex characters
+          const escapedName = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          // Match the name at the start of the subdivision name to catch variations
+          return new RegExp(`^${escapedName}`, "i");
+        })
+      };
+    }
+
+    // Property types
     if (propertyTypes && propertyTypes.length > 0) {
-      // Filter out any rental types and combine with existing $nin filter
-      const saleTypes = propertyTypes.filter(
-        (t: string) => !["Rental", "Lease", "For Lease", "Residential Lease"].includes(t)
-      );
-      if (saleTypes.length > 0) {
-        // Use $and to combine type filter with rental exclusion
+      // If searching by subdivision, include ALL property types (including rentals)
+      if (subdivisions && subdivisions.length > 0) {
+        // Include all requested types, even rentals
         query.$and = [
           ...(query.$and || []),
-          { propertySubType: { $in: saleTypes } }
+          { propertySubType: { $in: propertyTypes } }
         ];
+      } else {
+        // Otherwise, filter out rental types for general searches
+        const saleTypes = propertyTypes.filter(
+          (t: string) => !["Rental", "Lease", "For Lease", "Residential Lease"].includes(t)
+        );
+        if (saleTypes.length > 0) {
+          query.$and = [
+            ...(query.$and || []),
+            { propertySubType: { $in: saleTypes } }
+          ];
+        }
       }
     }
 
@@ -124,13 +152,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Execute search
-    const listings = await CRMLSListing.find(query)
+    const listingsQuery = CRMLSListing.find(query)
       .sort({ listPrice: 1 }) // Sort by price ascending
-      .limit(limit)
       .select(
-        "listingId listingKey listPrice bedsTotal bathroomsTotalInteger livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertySubType slugAddress latitude longitude"
-      )
-      .lean();
+        "listingId listingKey listPrice bedsTotal bathroomsTotalInteger livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertyType propertySubType slugAddress latitude longitude"
+      );
+
+    // Only apply limit if provided, otherwise return ALL results
+    const listings = limit
+      ? await listingsQuery.limit(limit).lean()
+      : await listingsQuery.lean();
 
     // Fetch primary photos for all listings
     // IMPORTANT: Photos collection uses listingId (short ID), not listingKey (long ID)
@@ -169,7 +200,9 @@ export async function POST(req: NextRequest) {
         // Use photo with proper fallback chain
         image: finalPhotoUrl,
         subdivision: listing.subdivisionName,
-        type: listing.propertySubType,
+        propertyType: listing.propertyType, // MLS property type code (A=Sale, B=Rental, C=Multi-Family)
+        propertySubType: listing.propertySubType,
+        type: listing.propertySubType, // Keep for backward compatibility
         url: `/mls-listings/${listing.slugAddress || listing.listingKey}`,
         // Add coordinates for map display
         latitude: listing.latitude,

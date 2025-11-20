@@ -5,10 +5,10 @@ import { Listing } from "@/app/components/chat/ListingCarousel";
 
 /**
  * Parse AI response for function calls
- * The AI can request searches by outputting JSON in a specific format
+ * The AI can request searches or community research by outputting JSON in a specific format
  */
 export function detectFunctionCall(text: string): {
-  type: "search" | null;
+  type: "search" | "research" | "matchLocation" | null;
   params: any;
   cleanedText: string;
 } | null {
@@ -16,13 +16,66 @@ export function detectFunctionCall(text: string): {
   // Remove patterns like "User: ...", "You: ...", "Assistant: ..."
   let preprocessedText = text.replace(/^(User|You|Assistant):\s*.+$/gm, '').trim();
 
-  // Pattern 1: searchListings({...}) - Find FIRST occurrence only
+  // Pattern 1: matchLocation({...}) - AI matching location to county/city/subdivision
+  const matchLocationPattern = /matchLocation\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
+  const matchLocationMatch = preprocessedText.match(matchLocationPattern);
+
+  if (matchLocationMatch && matchLocationMatch[1]) {
+    try {
+      let jsonString = matchLocationMatch[1];
+      jsonString = jsonString.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+      const params = JSON.parse(jsonString);
+
+      let cleanedText = preprocessedText.replace(/matchLocation\s*\(\s*\{[\s\S]*?\}\s*\)/gi, '').trim();
+      cleanedText = (cleanedText.split(/\n\s*response\s*=/i)[0] ?? cleanedText).trim();
+
+      return {
+        type: "matchLocation",
+        params,
+        cleanedText,
+      };
+    } catch (e) {
+      console.error("Failed to parse matchLocation params:", e);
+    }
+  }
+
+  // Pattern 2: researchCommunity({...}) - AI researching community facts
+  const researchPattern = /researchCommunity\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
+  const researchMatch = preprocessedText.match(researchPattern);
+
+  if (researchMatch && researchMatch[1]) {
+    try {
+      let jsonString = researchMatch[1];
+      jsonString = jsonString.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+      const params = JSON.parse(jsonString);
+
+      let cleanedText = preprocessedText.replace(/researchCommunity\s*\(\s*\{[\s\S]*?\}\s*\)/gi, '').trim();
+      cleanedText = (cleanedText.split(/\n\s*response\s*=/i)[0] ?? cleanedText).trim();
+
+      return {
+        type: "research",
+        params,
+        cleanedText,
+      };
+    } catch (e) {
+      console.error("Failed to parse research params:", e);
+    }
+  }
+
+  // Pattern 3: searchListings({...}) - Find FIRST occurrence only
   const searchPattern = /searchListings\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
   const match = preprocessedText.match(searchPattern);
 
   if (match && match[1]) {
     try {
-      const params = JSON.parse(match[1]);
+      let jsonString = match[1];
+
+      // Fix common JSON formatting issues from AI
+      // Replace unquoted keys with quoted keys (e.g., cities: -> "cities":)
+      jsonString = jsonString.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+
+      // Try to parse the cleaned JSON
+      const params = JSON.parse(jsonString);
 
       // Remove ALL function calls (not just the first one - AI might generate multiple)
       let cleanedText = preprocessedText.replace(/searchListings\s*\(\s*\{[\s\S]*?\}\s*\)/gi, '').trim();
@@ -86,7 +139,7 @@ export function detectFunctionCall(text: string): {
     }
   }
 
-  // Pattern 2: Look for natural language indicators
+  // Pattern 4: Look for natural language indicators
   const searchKeywords = [
     "let me search",
     "i'll search",

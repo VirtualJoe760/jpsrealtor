@@ -16,29 +16,83 @@ import ListingCarousel, { type Listing } from "@/app/components/chat/ListingCaro
 import ChatMapView from "@/app/components/chat/ChatMapView";
 import { detectFunctionCall, executeMLSSearch, formatSearchResultsForAI } from "@/lib/ai-functions";
 import { InitProgressReport } from "@mlc-ai/web-llm";
-import { User, Bot, Loader2 } from "lucide-react";
+import { User, Bot, Loader2, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
 import AnimatedChatInput from "./AnimatedChatInput";
 import StarsCanvas from "./StarsCanvas";
 import { fadeSlideIn } from "@/app/utils/chat/motion";
 import { useSession } from "next-auth/react";
-import { addToConversationHistory, updateConversationMessageCount, saveConversationMessages } from "./EnhancedSidebar";
+import { addToConversationHistory, updateConversationMessageCount, saveConversationMessages, loadConversationMessages } from "./EnhancedSidebar";
 import Image from "next/image";
 
 // Simple markdown parser for basic formatting
 function parseMarkdown(text: string): React.ReactNode {
   if (!text) return text;
 
-  // Split by bold markers but keep them
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+  // First, handle links and bold together
+  const elements: React.ReactNode[] = [];
+  let currentIndex = 0;
+  let key = 0;
 
-  return parts.map((part, index) => {
-    // Check if this part is wrapped in **
-    if (part.startsWith('**') && part.endsWith('**')) {
-      const boldText = part.slice(2, -2); // Remove ** from both ends
-      return <strong key={index} className="font-bold text-white">{boldText}</strong>;
+  // Combined regex to match both bold (**text**) and links ([text](url))
+  const markdownRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
+  let match;
+
+  while ((match = markdownRegex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > currentIndex) {
+      elements.push(
+        <React.Fragment key={key++}>
+          {text.slice(currentIndex, match.index)}
+        </React.Fragment>
+      );
     }
-    return <React.Fragment key={index}>{part}</React.Fragment>;
-  });
+
+    const matched = match[0];
+
+    // Check if it's bold
+    if (matched.startsWith('**') && matched.endsWith('**')) {
+      const boldText = matched.slice(2, -2);
+      elements.push(
+        <strong key={key++} className="font-bold text-white">
+          {boldText}
+        </strong>
+      );
+    }
+    // Check if it's a link
+    else if (matched.startsWith('[')) {
+      const linkMatch = matched.match(/\[(.*?)\]\((.*?)\)/);
+      if (linkMatch) {
+        const [, linkText, linkUrl] = linkMatch;
+        // Check if it's an internal link (starts with /)
+        const isInternal = linkUrl?.startsWith('/') ?? false;
+        elements.push(
+          <a
+            key={key++}
+            href={linkUrl || '#'}
+            className="text-emerald-400 hover:text-emerald-300 underline transition-colors font-medium"
+            target={isInternal ? undefined : "_blank"}
+            rel={isInternal ? undefined : "noopener noreferrer"}
+          >
+            {linkText}
+          </a>
+        );
+      }
+    }
+
+    currentIndex = match.index + matched.length;
+  }
+
+  // Add remaining text
+  if (currentIndex < text.length) {
+    elements.push(
+      <React.Fragment key={key++}>
+        {text.slice(currentIndex)}
+      </React.Fragment>
+    );
+  }
+
+  return elements.length > 0 ? elements : text;
 }
 
 // Helper function to log chat messages via API (non-blocking)
@@ -79,12 +133,24 @@ export default function IntegratedChatWidget() {
   const [retryCount, setRetryCount] = useState(0);
   const [useAPIFallback, setUseAPIFallback] = useState(true); // Always use Groq API for fast, reliable responses
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [conversationId] = useState(() => `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [conversationId] = useState(() => {
+    // Check if we're loading a previous conversation from URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const loadConversationId = params.get('conversation');
+      if (loadConversationId) {
+        console.log("📂 Loading conversation from URL:", loadConversationId);
+        return loadConversationId;
+      }
+    }
+    return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  });
   const [hasTrackedFirstMessage, setHasTrackedFirstMessage] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const MAX_RETRIES = 2; // ISSUE #3 FIX: Retry up to 2 times before giving up
+  const router = useRouter();
 
   // ISSUE #5 FIX: Track if user has manually scrolled away from bottom
   const [isUserScrolling, setIsUserScrolling] = useState(false);
@@ -224,6 +290,37 @@ export default function IntegratedChatWidget() {
     fetchUserData();
   }, [session, userId]);
 
+  // Load conversation from localStorage if URL parameter is present
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const loadConversationId = params.get('conversation');
+
+      if (loadConversationId && messages.length === 0) {
+        console.log("📂 Loading messages for conversation:", loadConversationId);
+        const savedMessages = loadConversationMessages(loadConversationId);
+
+        if (savedMessages.length > 0) {
+          console.log(`✅ Loaded ${savedMessages.length} messages from history`);
+          // Restore messages to chat
+          savedMessages.forEach(msg => {
+            addMessage({
+              role: msg.role as 'user' | 'assistant' | 'system',
+              content: msg.content,
+              context: "general",
+              listings: msg.listings,
+            });
+          });
+
+          // Mark as already tracked to prevent duplicate history entries
+          setHasTrackedFirstMessage(true);
+        } else {
+          console.warn("⚠️ No saved messages found for conversation:", loadConversationId);
+        }
+      }
+    }
+  }, []); // Only run on mount
+
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (messages.length > 0 && conversationId) {
@@ -323,6 +420,110 @@ export default function IntegratedChatWidget() {
       timestamp: new Date().toISOString()
     });
 
+    // Check if user is responding to a disambiguation prompt
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === 'assistant' && (lastMessage as any).disambiguationOptions) {
+      const options = (lastMessage as any).disambiguationOptions;
+
+      // Try to match user's response to one of the options
+      let selectedOption = null;
+
+      // Check if user typed a number (e.g., "1", "2")
+      const numberMatch = userMessage.match(/^\d+$/);
+      if (numberMatch) {
+        const index = parseInt(numberMatch[0]) - 1;
+        if (index >= 0 && index < options.length) {
+          selectedOption = options[index];
+        }
+      }
+
+      // Check if user typed a name or part of a name
+      if (!selectedOption) {
+        const userLower = userMessage.toLowerCase();
+        selectedOption = options.find((opt: any) =>
+          opt.name.toLowerCase().includes(userLower) ||
+          opt.city.toLowerCase().includes(userLower) ||
+          opt.displayName.toLowerCase().includes(userLower)
+        );
+      }
+
+      if (selectedOption) {
+        console.log('✅ User selected disambiguation option:', selectedOption);
+
+        // Add user's choice message
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading
+        setStreamingMessage("Searching properties...");
+
+        try {
+          // Re-call match-location API with specific choice
+          const matchResponse = await fetch('/api/chat/match-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: selectedOption.name, specificChoice: selectedOption })
+          });
+
+          if (!matchResponse.ok) {
+            throw new Error(`Location match API failed: ${matchResponse.status}`);
+          }
+
+          const matchResult = await matchResponse.json();
+          setStreamingMessage("");
+
+          if (matchResult.success && matchResult.searchParams) {
+            // Execute search with the selected subdivision
+            const searchResponse = await executeMLSSearch(matchResult.searchParams);
+
+            if (searchResponse.success && searchResponse.listings.length > 0) {
+              const actualCount = searchResponse.listings.length;
+              const messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in ${selectedOption.displayName}`;
+
+              addMessage({
+                role: "assistant",
+                content: messageContent,
+                context: "general",
+                listings: searchResponse.listings,
+                searchFilters: matchResult.searchParams,
+              });
+
+              setSearchResults(searchResponse.listings);
+
+              // Add results to context
+              const resultsContext = formatSearchResultsForAI(searchResponse.listings);
+              addMessage({
+                role: "system",
+                content: `[Search Results] ${resultsContext}`,
+                context: "general",
+              });
+            } else {
+              addMessage({
+                role: "assistant",
+                content: `I couldn't find any properties in ${selectedOption.displayName}.`,
+                context: "general",
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Disambiguation search error:', error);
+          setStreamingMessage("");
+          addMessage({
+            role: "assistant",
+            content: "I encountered an error while searching. Please try again.",
+            context: "general",
+          });
+        } finally {
+          setIsStreaming(false);
+        }
+
+        return; // Don't proceed with normal AI flow
+      }
+    }
+
     // DON'T add user message yet - wait to see if it triggers a search
     // We'll add it conditionally based on the AI's response
 
@@ -406,7 +607,197 @@ FUNCTION CALLING RULES:
       // Check for function calls
       const functionCall = detectFunctionCall(fullResponse);
 
-      if (functionCall && functionCall.type === "search") {
+      if (functionCall && functionCall.type === "matchLocation") {
+        console.log("🎯 AI requesting location match:", functionCall.params);
+
+        // Track conversation history on first user message
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          updateConversationMessageCount(conversationId);
+        }
+
+        // Log function call (async, non-blocking)
+        logChatMessageAsync('system', `Function call detected: matchLocation`, userId, {
+          functionCall: functionCall.params,
+          timestamp: new Date().toISOString()
+        });
+
+        // Add user message so they can see what they asked for
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading state
+        setStreamingMessage("Finding location match...");
+
+        try {
+          const matchResponse = await fetch('/api/chat/match-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(functionCall.params)
+          });
+
+          if (!matchResponse.ok) {
+            throw new Error(`Location match API failed: ${matchResponse.status}`);
+          }
+
+          const matchResult = await matchResponse.json();
+
+          // Clear loading state
+          setStreamingMessage("");
+
+          // Log match results (async, non-blocking)
+          logChatMessageAsync('system', `Location match completed: ${matchResult.match?.type}`, userId, {
+            matchResults: matchResult,
+            timestamp: new Date().toISOString()
+          });
+
+          // Check if disambiguation is needed
+          if (matchResult.needsDisambiguation && matchResult.options) {
+            console.log('🤔 Disambiguation needed - showing options to user');
+
+            // Build disambiguation message with clickable options
+            let disambiguationMessage = matchResult.message || "I found multiple communities with that name. Which one did you mean?\n\n";
+
+            matchResult.options.forEach((option: any, index: number) => {
+              disambiguationMessage += `\n${index + 1}. **${option.displayName}**`;
+            });
+
+            disambiguationMessage += "\n\nPlease type the number or name to specify which community you're interested in.";
+
+            addMessage({
+              role: "assistant",
+              content: disambiguationMessage,
+              context: "general",
+              disambiguationOptions: matchResult.options, // Store options for handling user's choice
+            });
+
+            return; // Wait for user to choose
+          }
+
+          if (matchResult.success && matchResult.searchParams) {
+            // Found a match! Now execute the search with the correct parameters
+            const locationName = matchResult.match.name;
+            const locationType = matchResult.match.type;
+            const isSubdivision = locationType === 'subdivision';
+            const isCounty = locationType === 'county';
+            const limitApplied = matchResult.limitApplied || false;
+
+            console.log('✅ Location matched:', locationName, `(${locationType})`);
+            console.log('🔍 Executing search with params:', matchResult.searchParams);
+
+            // Show loading state for search
+            setStreamingMessage("Searching properties...");
+
+            const searchResponse = await executeMLSSearch(matchResult.searchParams);
+
+            // Clear loading state
+            setStreamingMessage("");
+
+            if (searchResponse.success && searchResponse.listings.length > 0) {
+              // ✅ RESULTS FOUND - Show them!
+              console.log('🏠 Search API returned:', searchResponse.count, 'total properties');
+              console.log('🏠 Listings array contains:', searchResponse.listings.length, 'properties');
+
+              const actualCount = searchResponse.listings.length;
+              let messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in ${locationName}`;
+
+              // Add type context for clarity
+              if (isSubdivision) {
+                messageContent += ' (subdivision)';
+              } else if (isCounty) {
+                messageContent += ' (county';
+                if (limitApplied) {
+                  messageContent += ' - showing first 100).\n\nClick **Map View** to explore all available listings';
+                } else {
+                  messageContent += ')';
+                }
+              } else if (locationType === 'city') {
+                messageContent += ' (city)';
+              }
+
+              addMessage({
+                role: "assistant",
+                content: messageContent,
+                context: "general",
+                listings: searchResponse.listings,
+                searchFilters: matchResult.searchParams, // Keep filters intact
+              });
+
+              // Update search results for map
+              setSearchResults(searchResponse.listings);
+
+              // Add results to context (system message)
+              const resultsContext = formatSearchResultsForAI(searchResponse.listings);
+              addMessage({
+                role: "system",
+                content: `[Search Results] ${resultsContext}`,
+                context: "general",
+              });
+            } else if (isSubdivision && searchResponse.listings.length === 0) {
+              // ⚠️ SUBDIVISION RETURNED 0 RESULTS - Offer city fallback
+              console.warn('⚠️ Subdivision search returned 0 results:', locationName);
+              console.log('🔄 Offering city fallback to user...');
+
+              const cityName = matchResult.match.city || matchResult.searchParams.cities?.[0];
+
+              if (cityName) {
+                addMessage({
+                  role: "assistant",
+                  content: `I couldn't find any properties currently listed in ${locationName} (subdivision). Would you like to see properties in ${cityName} (city) instead?`,
+                  context: "general",
+                });
+              } else {
+                addMessage({
+                  role: "assistant",
+                  content: `I couldn't find any properties in ${locationName}. Would you like to try a different location or adjust your search criteria?`,
+                  context: "general",
+                });
+              }
+            } else {
+              // ❌ NO RESULTS (non-subdivision or generic failure)
+              addMessage({
+                role: "assistant",
+                content: `I couldn't find any properties in ${locationName}. Would you like to try a different location or adjust your search criteria?`,
+                context: "general",
+              });
+            }
+          } else {
+            // No match found - check if there are suggestions
+            let noMatchMessage = matchResult.message || "I couldn't find that location. Could you provide more details or try a different area?";
+
+            if (matchResult.suggestions && matchResult.suggestions.length > 0) {
+              // Build message with suggestions
+              noMatchMessage += "\n\nDid you mean one of these?\n";
+              matchResult.suggestions.forEach((suggestion: any) => {
+                const typeLabel = suggestion.type === 'subdivision' ? '(subdivision)' :
+                                 suggestion.type === 'city' ? '(city)' : '(county)';
+                noMatchMessage += `\n• **${suggestion.name}** ${typeLabel}`;
+              });
+              noMatchMessage += "\n\nPlease clarify which location you meant.";
+            }
+
+            addMessage({
+              role: "assistant",
+              content: noMatchMessage,
+              context: "general",
+            });
+          }
+        } catch (error) {
+          console.error('Location match error:', error);
+          setStreamingMessage("");
+
+          addMessage({
+            role: "assistant",
+            content: "I encountered an error while trying to match that location. Please try again.",
+            context: "general",
+          });
+        }
+      } else if (functionCall && functionCall.type === "search") {
         console.log("🔍 AI requesting MLS search:", functionCall.params);
 
         // Track conversation history on first user message (even for searches)
@@ -453,12 +844,63 @@ FUNCTION CALLING RULES:
           // DON'T show the AI's raw response - it contains function calls
           // Just show a clean, user-friendly message
 
-          console.log('🏠 Adding message with listings:', searchResponse.listings.length, 'properties');
+          console.log('🏠 Search API returned:', searchResponse.count, 'total properties');
+          console.log('🏠 Listings array contains:', searchResponse.listings.length, 'properties');
+          console.log('🏠 Search params:', functionCall.params);
+
+          if (searchResponse.listings.length > 0) {
+            console.log('🏠 First few listings:', searchResponse.listings.slice(0, 3).map(l => ({
+              address: l.address,
+              price: l.price,
+              subdivision: l.subdivision
+            })));
+          }
+
+          // Warn if subdivision search returns suspiciously few results
+          if (functionCall.params.subdivisions && searchResponse.listings.length < 5) {
+            console.warn('⚠️ Subdivision search returned only', searchResponse.listings.length, 'listings');
+            console.warn('⚠️ Searched for:', functionCall.params.subdivisions);
+            console.warn('⚠️ This might indicate a subdivision name mismatch in the database');
+          }
+
+          // If searching by subdivision, fetch subdivision data for link
+          // IMPORTANT: Use actual listing count, not AI's hallucinated count
+          const actualCount = searchResponse.listings.length;
+          let messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} matching your criteria.`;
+
+          if (functionCall.params.subdivisions && functionCall.params.subdivisions.length > 0) {
+            const subdivisionName = functionCall.params.subdivisions[0];
+
+            // Fetch subdivision data to get the slug
+            try {
+              const subdivisionResponse = await fetch(`/api/subdivisions?search=${encodeURIComponent(subdivisionName)}&limit=1`);
+              if (subdivisionResponse.ok) {
+                const subdivisionData = await subdivisionResponse.json();
+                if (subdivisionData.subdivisions && subdivisionData.subdivisions.length > 0) {
+                  const subdivision = subdivisionData.subdivisions[0];
+
+                  // Import findCityByName to get cityId
+                  const { findCityByName } = await import('@/app/constants/counties');
+                  const cityData = findCityByName(subdivision.city);
+
+                  if (cityData) {
+                    const subdivisionUrl = `/neighborhoods/${cityData.city.id}/${subdivision.slug}`;
+                    messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in **${subdivision.name}**. [View ${subdivision.name} Community Page →](${subdivisionUrl})`;
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch subdivision data:', error);
+              // Continue with default message
+            }
+          }
+
           addMessage({
             role: "assistant",
-            content: `Found ${searchResponse.count} properties matching your criteria.`,
+            content: messageContent,
             context: "general",
             listings: searchResponse.listings, // Attach listings to message
+            searchFilters: functionCall.params, // Attach search filters for map navigation
           });
 
           // Update search results for map
@@ -478,6 +920,100 @@ FUNCTION CALLING RULES:
             context: "general",
           });
         }
+      } else if (functionCall && functionCall.type === "research") {
+        console.log("🔬 AI requesting community research:", functionCall.params);
+
+        // Track conversation history on first user message
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          updateConversationMessageCount(conversationId);
+        }
+
+        // Log function call (async, non-blocking)
+        logChatMessageAsync('system', `Function call detected: researchCommunity`, userId, {
+          functionCall: functionCall.params,
+          timestamp: new Date().toISOString()
+        });
+
+        // Add user message so they can see what they asked for
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading state
+        setStreamingMessage("Researching community facts...");
+
+        try {
+          const researchResponse = await fetch('/api/chat/research-community', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'answer',
+              ...functionCall.params
+            })
+          });
+
+          if (!researchResponse.ok) {
+            throw new Error(`Research API failed: ${researchResponse.status}`);
+          }
+
+          const result = await researchResponse.json();
+
+          // Clear loading state
+          setStreamingMessage("");
+
+          // Log research results (async, non-blocking)
+          logChatMessageAsync('system', `Research completed: ${result.factType}`, userId, {
+            researchResults: {
+              factType: result.factType,
+              confidence: result.confidence,
+              recorded: result.recorded,
+              subdivisionName: functionCall.params.subdivisionName
+            },
+            timestamp: new Date().toISOString()
+          });
+
+          if (result.success) {
+            // Display the AI's answer with optional recorded indicator
+            let responseContent = result.answer;
+
+            if (result.recorded) {
+              responseContent += "\n\n✅ *Fact recorded to database for future reference*";
+            }
+
+            addMessage({
+              role: "assistant",
+              content: responseContent,
+              context: "general",
+            });
+
+            // Add the research result to the conversation context (system message)
+            addMessage({
+              role: "system",
+              content: `[Research Result] ${result.factType}: ${JSON.stringify(result.factValue)} (confidence: ${result.confidence})`,
+              context: "general",
+            });
+          } else {
+            addMessage({
+              role: "assistant",
+              content: result.error || "I encountered an error while researching that community. Please try again.",
+              context: "general",
+            });
+          }
+        } catch (error) {
+          console.error('Research API error:', error);
+          setStreamingMessage("");
+
+          addMessage({
+            role: "assistant",
+            content: "I encountered an error while researching that community. Please try again.",
+            context: "general",
+          });
+        }
       } else {
         // Regular message (no function call) - add user message first
         addMessage({
@@ -485,15 +1021,6 @@ FUNCTION CALLING RULES:
           content: userMessage,
           context: "general",
         });
-
-        // Track conversation history on first user message
-        if (!hasTrackedFirstMessage) {
-          addToConversationHistory(userMessage, conversationId);
-          setHasTrackedFirstMessage(true);
-        } else {
-          // Update message count for existing conversation
-          updateConversationMessageCount(conversationId);
-        }
 
         // Clean response to remove any system prompt leakage
         let cleanResponse = fullResponse;
@@ -524,6 +1051,15 @@ FUNCTION CALLING RULES:
           content: cleanResponse,
           context: "general",
         });
+
+        // Track conversation history on first message exchange
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          // Update message count for existing conversation
+          updateConversationMessageCount(conversationId);
+        }
       }
 
       // Extract and save goals
@@ -607,6 +1143,66 @@ FUNCTION CALLING RULES:
     };
   }, [chatMode]);
 
+  // Calculate bounds from listings for map view
+  const calculateListingsBounds = (listings: Listing[]) => {
+    console.log('🗺️ calculateListingsBounds called with', listings?.length || 0, 'listings');
+
+    if (!listings || listings.length === 0) {
+      console.warn('⚠️ No listings provided to calculateListingsBounds');
+      return null;
+    }
+
+    const validListings = listings.filter(l => l.latitude && l.longitude);
+    console.log('📍 Found', validListings.length, 'listings with valid coordinates out of', listings.length);
+
+    if (validListings.length === 0) {
+      console.warn('⚠️ No listings with valid lat/lng coordinates');
+      return null;
+    }
+
+    const lats = validListings.map(l => l.latitude!);
+    const lngs = validListings.map(l => l.longitude!);
+
+    const north = Math.max(...lats);
+    const south = Math.min(...lats);
+    const east = Math.max(...lngs);
+    const west = Math.min(...lngs);
+
+    console.log('📐 Raw bounds calculated:', { north, south, east, west });
+
+    // Add 10% padding
+    const latPadding = (north - south) * 0.1 || 0.01;
+    const lngPadding = (east - west) * 0.1 || 0.01;
+
+    const bounds = {
+      north: north + latPadding,
+      south: south - latPadding,
+      east: east + lngPadding,
+      west: west - lngPadding,
+      zoom: 13
+    };
+
+    console.log('✅ Final bounds with padding:', bounds);
+    return bounds;
+  };
+
+  // Handle "View on Full Map" button click
+  const handleViewOnMap = (listings: Listing[]) => {
+    console.log('🚀 handleViewOnMap called');
+    const bounds = calculateListingsBounds(listings);
+
+    if (bounds) {
+      const boundsParam = encodeURIComponent(JSON.stringify(bounds));
+      const mapUrl = `/map?bounds=${boundsParam}`;
+      console.log('🎯 Navigating to map with bounds:', mapUrl);
+      console.log('📦 Bounds object being passed:', bounds);
+      router.push(mapUrl);
+    } else {
+      console.warn('⚠️ No bounds calculated, navigating to default map view');
+      router.push('/map');
+    }
+  };
+
   return (
     <div className={`relative h-full w-full flex flex-col ${chatMode === 'landing' ? 'overflow-hidden' : ''}`}>
       {/* ISSUE #2 FIX: Keep stars visible in all modes, just reduce opacity in conversation */}
@@ -628,7 +1224,7 @@ FUNCTION CALLING RULES:
       {/* Landing Page - Centered Group Container */}
       <AnimatePresence>
         {chatMode === 'landing' && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pb-4 md:pb-0">
+          <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pb-48 md:pb-0">
             <motion.div
               initial={{ opacity: 0, y: -30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -639,10 +1235,10 @@ FUNCTION CALLING RULES:
                 damping: 20,
                 duration: 0.8
               }}
-              className="w-full max-w-[90%] md:max-w-4xl flex flex-col items-center gap-4 md:gap-8"
+              className="w-full max-w-[90%] md:max-w-4xl flex flex-col items-center gap-6 md:gap-8"
             >
             {/* Logo */}
-            <div className="flex items-center justify-center gap-1.5 md:gap-3">
+            <div className="flex items-center justify-center gap-3 md:gap-3">
               <motion.div
                 initial={{ scale: 0, rotateY: -180 }}
                 animate={{
@@ -664,7 +1260,7 @@ FUNCTION CALLING RULES:
                   transformStyle: "preserve-3d",
                   perspective: 1000
                 }}
-                className="w-12 h-12 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
+                className="w-20 h-20 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
               >
                 <motion.div
                   animate={{
@@ -699,7 +1295,7 @@ FUNCTION CALLING RULES:
                   damping: 15,
                   delay: 0.4
                 }}
-                className="h-6 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                className="h-10 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
               />
 
               <motion.h1
@@ -719,7 +1315,7 @@ FUNCTION CALLING RULES:
                   transformStyle: "preserve-3d",
                   perspective: 1000
                 }}
-                className="text-lg md:text-6xl font-light tracking-wider text-white whitespace-nowrap relative"
+                className="text-3xl md:text-6xl font-light tracking-wider text-white whitespace-nowrap relative"
               >
                 <motion.span
                   animate={{
@@ -933,7 +1529,33 @@ FUNCTION CALLING RULES:
                         }}
                         className="mt-4"
                       >
-                        <ChatMapView listings={message.listings} />
+                        <ChatMapView
+                          listings={message.listings}
+                          searchFilters={(message as any).searchFilters}
+                        />
+                      </motion.div>
+
+                      {/* View on Full Map Button */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 100,
+                          damping: 15,
+                          delay: 0.3
+                        }}
+                        className="mt-3"
+                      >
+                        <motion.button
+                          onClick={() => handleViewOnMap(message.listings!)}
+                          whileHover={{ scale: 1.02, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 md:py-3 px-3 md:px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
+                        >
+                          <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+                          <span>View on Full Map</span>
+                        </motion.button>
                       </motion.div>
 
                       {/* Listing Carousel */}
@@ -1029,10 +1651,10 @@ FUNCTION CALLING RULES:
                 behavior: 'smooth'
               });
             }}
-            className="fixed bottom-24 right-6 md:right-8 z-20 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
+            className="fixed bottom-24 right-4 md:right-8 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
           >
             <svg
-              className="w-6 h-6 text-white"
+              className="w-5 h-5 md:w-6 md:h-6 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

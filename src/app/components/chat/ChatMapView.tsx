@@ -4,15 +4,25 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Map, { Marker } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapListing } from "@/types/types";
-import { Home } from "lucide-react";
+import { Home, MapPin } from "lucide-react";
 import Image from "next/image";
 
 interface ChatMapViewProps {
   listings: any[]; // Chat listings format
   onSelectListing?: (listing: any) => void;
+  searchFilters?: {
+    city?: string;
+    subdivision?: string;
+    propertyType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minBeds?: number;
+    maxBeds?: number;
+  };
 }
 
 // Convert chat listing format to MapListing format
@@ -60,11 +70,10 @@ const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ||
                      process.env.NEXT_PUBLIC_MAPTILER_API_KEY ||
                      "";
 
-const MAPTILER_STYLE = MAPTILER_KEY
-  ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
-  : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"; // Better fallback with actual tiles
+const MAPTILER_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"; // Dark Matter style
 
-export default function ChatMapView({ listings, onSelectListing }: ChatMapViewProps) {
+export default function ChatMapView({ listings, onSelectListing, searchFilters }: ChatMapViewProps) {
+  const router = useRouter();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -81,10 +90,20 @@ export default function ChatMapView({ listings, onSelectListing }: ChatMapViewPr
   const mapListings = listings.map(toMapListing);
   const validListings = mapListings.filter(l => l.latitude && l.longitude);
 
+  console.log('🗺️ ChatMapView listings debug:', {
+    totalListings: listings.length,
+    validListings: validListings.length,
+    sampleListing: listings[0],
+    sampleMappedListing: mapListings[0]
+  });
+
   if (validListings.length === 0) {
     return (
-      <div className="w-full h-[400px] bg-neutral-800 rounded-lg flex items-center justify-center">
-        <p className="text-neutral-400">No location data available for these listings</p>
+      <div className="w-full h-[300px] md:h-[400px] bg-neutral-800 rounded-lg flex items-center justify-center border border-neutral-700">
+        <div className="text-center p-4">
+          <p className="text-neutral-400 mb-2">Map data unavailable</p>
+          <p className="text-neutral-500 text-sm">{listings.length} properties found but location coordinates are missing</p>
+        </div>
       </div>
     );
   }
@@ -137,8 +156,46 @@ export default function ChatMapView({ listings, onSelectListing }: ChatMapViewPr
     }
   }, [onSelectListing]);
 
+  const handleOpenInMapView = useCallback(() => {
+    // Build URL params from search filters
+    const params = new URLSearchParams();
+
+    if (searchFilters?.city) {
+      params.set('city', searchFilters.city);
+    }
+    if (searchFilters?.subdivision) {
+      params.set('subdivision', searchFilters.subdivision);
+    }
+    if (searchFilters?.propertyType) {
+      params.set('propertyType', searchFilters.propertyType);
+    }
+    if (searchFilters?.minPrice) {
+      params.set('minPrice', searchFilters.minPrice.toString());
+    }
+    if (searchFilters?.maxPrice) {
+      params.set('maxPrice', searchFilters.maxPrice.toString());
+    }
+    if (searchFilters?.minBeds) {
+      params.set('minBeds', searchFilters.minBeds.toString());
+    }
+    if (searchFilters?.maxBeds) {
+      params.set('maxBeds', searchFilters.maxBeds.toString());
+    }
+
+    // Add bounds to zoom to the subdivision
+    if (validListings.length > 0) {
+      params.set('bounds', JSON.stringify(paddedBounds));
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `/map?${queryString}` : '/map';
+
+    console.log('🗺️ Navigating to map view:', url);
+    router.push(url);
+  }, [searchFilters, validListings.length, paddedBounds, router]);
+
   return (
-    <div className="relative w-full h-[500px] rounded-lg overflow-hidden border border-neutral-700">
+    <div className="relative w-full h-[350px] md:h-[500px] rounded-lg overflow-hidden border border-neutral-700">
       {mapError && (
         <div className="absolute inset-0 bg-neutral-900/90 flex items-center justify-center z-50">
           <p className="text-red-400">Map Error: {mapError}</p>
@@ -240,14 +297,15 @@ export default function ChatMapView({ listings, onSelectListing }: ChatMapViewPr
         })}
       </Map>
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-neutral-900/90 backdrop-blur-sm border border-neutral-700 rounded-lg p-3 text-xs">
-        <p className="text-white font-semibold mb-1">
-          {listings.length} {listings.length === 1 ? "Property" : "Properties"}
-        </p>
-        <p className="text-neutral-400">
-          Hover over markers to preview
-        </p>
+      {/* Open in Map View Button */}
+      <div className="absolute bottom-4 left-4">
+        <button
+          onClick={handleOpenInMapView}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base"
+        >
+          <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+          <span>Open in Map View</span>
+        </button>
       </div>
     </div>
   );

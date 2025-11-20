@@ -188,6 +188,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   };
 
+  // Log initial view state for debugging
+  useEffect(() => {
+    console.log('🗺️ MapView initial viewState:', hydratedInitialViewState);
+    console.log('📍 MapView props - centerLat:', centerLat, 'centerLng:', centerLng, 'zoom:', zoom);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -364,8 +370,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
   useImperativeHandle(ref, () => ({
     flyToCity(lat: number, lng: number, zoomLevel = 12) {
+      console.log('🚁 flyToCity called - lat:', lat, 'lng:', lng, 'zoom:', zoomLevel);
       const map = mapRef.current?.getMap?.();
-      if (!map) return;
+      if (!map) {
+        console.error('❌ flyToCity: map ref not available');
+        return;
+      }
+      console.log('✅ flyToCity: executing easeTo animation');
       map.easeTo({
         center: [lng, lat],
         zoom: zoomLevel,

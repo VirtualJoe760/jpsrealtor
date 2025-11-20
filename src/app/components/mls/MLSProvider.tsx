@@ -130,7 +130,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
 
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
   const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
-  const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>('toner');
+  const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>('dark');
   const [isLoading, setIsLoading] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [isLoadingListing, setIsLoadingListing] = useState(false);
@@ -293,12 +293,15 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   // Actions
   const loadListings = useCallback(
     async (bounds: any, filters: Filters) => {
+      console.log('🔄 MLSProvider.loadListings called with bounds:', bounds);
+      console.log('🔄 MLSProvider.loadListings filters:', filters);
       setIsLoading(true);
       try {
         await loadListingsCore(bounds, filters);
         setIsPreloaded(true);
+        console.log('✅ MLSProvider.loadListings completed successfully');
       } catch (error) {
-        console.error("Failed to load listings:", error);
+        console.error("❌ Failed to load listings:", error);
       } finally {
         setIsLoading(false);
       }

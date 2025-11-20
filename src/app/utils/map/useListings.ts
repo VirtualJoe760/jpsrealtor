@@ -7,12 +7,17 @@ export function useListings() {
   const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
 
   const loadListings = useCallback(async (bounds: any, filters: Filters) => {
+    console.log('🔍 useListings.loadListings called with bounds:', bounds);
+    console.log('🔍 useListings.loadListings filters:', filters);
+
     const params: Record<string, string> = {
       north: String(bounds.north),
       south: String(bounds.south),
       east: String(bounds.east),
       west: String(bounds.west),
     };
+
+    console.log('📦 Bounds converted to params:', params);
 
     // Listing Type (sale vs rental)
     if (filters.listingType) params.listingType = filters.listingType;
@@ -66,9 +71,14 @@ export function useListings() {
     if (filters.subdivision) params.subdivision = filters.subdivision;
 
     const queryString = new URLSearchParams(params).toString();
+    const apiUrl = `/api/mls-listings?${queryString}`;
 
-    const res = await fetch(`/api/mls-listings?${queryString}`);
+    console.log('🌐 Fetching listings from:', apiUrl);
+
+    const res = await fetch(apiUrl);
     const data = await res.json();
+
+    console.log('✅ Received', data.listings?.length || 0, 'listings from API');
 
     setAllListings(data.listings || []);
     setVisibleListings(data.listings || []);

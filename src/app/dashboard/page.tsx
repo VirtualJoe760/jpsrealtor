@@ -493,23 +493,24 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mb-8 flex items-start justify-between"
+          className="mb-6 md:mb-8"
         >
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">
+          <div className="flex items-center justify-between mb-3 md:mb-0">
+            <h1 className="text-2xl md:text-4xl font-bold text-white">
               Welcome back, {user.name || "User"}!
             </h1>
-            <p className="text-gray-400">Your personalized dashboard with favorites and insights</p>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs md:text-sm font-medium"
+              >
+                <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Admin Dashboard</span>
+                <span className="sm:hidden">Admin</span>
+              </Link>
+            )}
           </div>
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Admin Dashboard
-            </Link>
-          )}
+          <p className="text-gray-400 text-sm md:text-base">Your personalized dashboard with favorites and insights</p>
         </motion.div>
 
         {/* Statistics Cards */}

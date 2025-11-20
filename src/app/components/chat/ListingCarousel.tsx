@@ -24,6 +24,8 @@ export interface Listing {
   url: string;
   slug?: string;
   slugAddress?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface ListingCarouselProps {
@@ -174,10 +176,10 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
         {duplicatedListings.map((listing, index) => (
           <div
             key={`${listing.id}-${index}`}
-            className="flex-shrink-0 w-72 bg-neutral-800/50 border border-neutral-700 rounded-xl overflow-hidden transition-all group hover:border-neutral-600"
+            className="flex-shrink-0 w-64 md:w-72 bg-neutral-800/50 border border-neutral-700 rounded-xl overflow-hidden transition-all group hover:border-neutral-600"
           >
             {/* Image */}
-            <div className="relative h-44">
+            <div className="relative h-36 md:h-44">
               {listing.image ? (
                 <Image
                   src={listing.image}

@@ -1,0 +1,29 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 16.2s
+   Running TypeScript ...
+Failed to compile.
+
+./src/collections/CommunityFacts.ts:4:34
+Type error: Cannot find module 'payload/types' or its corresponding type declarations.
+
+[0m [90m 2 |[39m [90m// Community-specific facts, amenities, and deep data for AI chat[39m
+ [90m 3 |[39m
+[31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m { [33mCollectionConfig[39m } [36mfrom[39m [32m'payload/types'[39m[33m;[39m
+ [90m   |[39m                                  [31m[1m^[22m[39m
+ [90m 5 |[39m
+ [90m 6 |[39m [36mexport[39m [36mconst[39m [33mCommunityFacts[39m[33m:[39m [33mCollectionConfig[39m [33m=[39m {
+ [90m 7 |[39m   slug[33m:[39m [32m'community-facts'[39m[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null

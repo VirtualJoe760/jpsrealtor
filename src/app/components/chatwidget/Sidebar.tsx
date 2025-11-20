@@ -76,9 +76,9 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="flex items-center gap-2"
               >
-                <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
                   <svg
-                    className="w-4 h-4 text-white"
+                    className="w-5 h-5 text-white"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

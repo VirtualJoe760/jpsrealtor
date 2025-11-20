@@ -14,7 +14,9 @@ export interface ChatMessage {
   timestamp: Date;
   context?: "homepage" | "listing" | "dashboard" | "general";
   listings?: any[]; // For messages that include property listings
+  searchFilters?: any; // For preserving search filters (e.g., subdivision parameters)
   isLoading?: boolean; // For temporary loading messages
+  disambiguationOptions?: any[]; // For subdivision disambiguation choices
 }
 
 export interface ChatContextType {

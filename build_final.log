@@ -1,0 +1,56 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 6.2s
+   Running TypeScript ...
+   Collecting page data using 23 workers ...
+(node:41996) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:43040) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:18408) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44212) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44212) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2720) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:34928) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34928) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+   Generating static pages using 23 workers (0/62) ...
+❌ Failed to fetch enriched listing: Error: Dynamic server usage: Route /listing couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /listing couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+❌ Failed to fetch enriched listing: Error: Dynamic server usage: Route /listing couldn't be rendered statically because it used no-store fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /listing couldn't be rendered statically because it used no-store fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+ ⨯ useSearchParams() should be wrapped in a suspense boundary at page "/map". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+    at S (F:\web-clients\joseph-sardella\jpsrealtor\.next\server\chunks\ssr\node_modules_next_15323350._.js:2:2111)
+    at p (F:\web-clients\joseph-sardella\jpsrealtor\.next\server\chunks\ssr\node_modules_next_15323350._.js:4:4878)
+    at k (F:\web-clients\joseph-sardella\jpsrealtor\.next\server\chunks\ssr\src_app_components_mls_MLSProvider_tsx_b3394469._.js:1:1065)
+    at ar (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:84366)
+    at aa (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:86185)
+    at as (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:107952)
+    at ao (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:105374)
+    at an (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:84718)
+    at aa (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:86234)
+    at as (F:\web-clients\joseph-sardella\jpsrealtor\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.prod.js:2:107952)
+Error occurred prerendering page "/map". Read more: https://nextjs.org/docs/messages/prerender-error
+Export encountered an error on /map/page: /map, exiting the build.
+ ⨯ Next.js build worker exited with code: 1 and signal: null

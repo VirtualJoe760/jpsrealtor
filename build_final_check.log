@@ -1,0 +1,29 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 7.0s
+   Running TypeScript ...
+Failed to compile.
+
+./src/lib/ai-community-research.ts:351:57
+Type error: Parameter 't' implicitly has an 'any' type.
+
+[0m [90m 349 |[39m     [36mif[39m (lowerQ[33m.[39mincludes([32m'property type'[39m) [33m||[39m lowerQ[33m.[39mincludes([32m'condos'[39m) [33m||[39m lowerQ[33m.[39mincludes([32m'single family'[39m)) {
+ [90m 350 |[39m       [36mif[39m (facts[33m.[39mpropertyTypes[33m.[39mhasData) {
+[31m[1m>[22m[39m[90m 351 |[39m         [36mconst[39m typesList [33m=[39m facts[33m.[39mpropertyTypes[33m.[39mtypes[33m.[39mmap(t [33m=>[39m [32m`${t.type} (${t.percentage}%)`[39m)[33m.[39mjoin([32m', '[39m)[33m;[39m
+ [90m     |[39m                                                         [31m[1m^[22m[39m
+ [90m 352 |[39m         [36mreturn[39m {
+ [90m 353 |[39m           answer[33m:[39m [32m`${subdivisionName} has the following property types: ${typesList} (based on ${facts.totalListings} current listings).`[39m[33m,[39m
+ [90m 354 |[39m           factType[33m:[39m [32m'propertyTypes'[39m[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null

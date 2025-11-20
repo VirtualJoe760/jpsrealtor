@@ -1,0 +1,167 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 6.3s
+   Running TypeScript ...
+   Collecting page data using 23 workers ...
+(node:44960) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:39116) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39116) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:41552) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:39116) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:1872) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1872) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:38140) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages using 23 workers (0/62) ...
+❌ Failed to fetch enriched listing: Error: Dynamic server usage: Route /listing couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /listing couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+❌ Failed to fetch enriched listing: Error: Dynamic server usage: Route /listing couldn't be rendered statically because it used no-store fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /listing couldn't be rendered statically because it used no-store fetch http://localhost:3000/api/listing/undefined /listing. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+(node:2720) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2720) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2720) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+   Generating static pages using 23 workers (15/62) 
+   Generating static pages using 23 workers (30/62) 
+   Generating static pages using 23 workers (46/62) 
+ ✓ Generating static pages using 23 workers (62/62) in 1292.3ms
+   Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /admin
+├ ƒ /api/activity/search
+├ ƒ /api/activity/update-user-metrics
+├ ƒ /api/admin/analytics
+├ ƒ /api/ai/runway
+├ ƒ /api/ai/runway/[id]
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/2fa/disable
+├ ƒ /api/auth/2fa/enable
+├ ƒ /api/auth/2fa/send-code
+├ ƒ /api/auth/2fa/verify-code
+├ ƒ /api/auth/check-verification
+├ ƒ /api/auth/register
+├ ƒ /api/auth/resend-verification
+├ ƒ /api/auth/test-email
+├ ƒ /api/auth/user
+├ ƒ /api/auth/verify
+├ ƒ /api/auth/verify-email
+├ ƒ /api/chat/goals
+├ ƒ /api/chat/log
+├ ƒ /api/chat/log-local
+├ ƒ /api/chat/search-listings
+├ ƒ /api/chat/stream
+├ ƒ /api/cities/[cityId]/hoa
+├ ƒ /api/cities/[cityId]/listings
+├ ƒ /api/cities/[cityId]/photos
+├ ƒ /api/cities/[cityId]/schools
+├ ƒ /api/cities/[cityId]/stats
+├ ƒ /api/cities/[cityId]/subdivisions
+├ ƒ /api/contact
+├ ƒ /api/listing/[listingKey]/photos
+├ ƒ /api/mls-listings
+├ ƒ /api/mls-listings/[slugAddress]
+├ ƒ /api/mls-listings/[slugAddress]/documents
+├ ƒ /api/mls-listings/[slugAddress]/openhouses
+├ ƒ /api/mls-listings/[slugAddress]/videos
+├ ƒ /api/mls-listings/[slugAddress]/virtualtours
+├ ƒ /api/mortgage-rates
+├ ƒ /api/photos/[listingId]
+├ ƒ /api/rss/[section]
+├ ƒ /api/schoolImage
+├ ƒ /api/schools
+├ ƒ /api/scrapeMLS
+├ ƒ /api/search
+├ ƒ /api/subdivisions
+├ ƒ /api/subdivisions/[slug]
+├ ƒ /api/subdivisions/[slug]/listings
+├ ƒ /api/subdivisions/[slug]/photos
+├ ƒ /api/subdivisions/[slug]/stats
+├ ƒ /api/swipes/batch
+├ ƒ /api/swipes/exclude-keys
+├ ƒ /api/swipes/user
+├ ƒ /api/test-photos
+├ ƒ /api/uploadImage
+├ ƒ /api/user/check-admin
+├ ƒ /api/user/favorites
+├ ƒ /api/user/favorites/[listingKey]
+├ ƒ /api/user/link-partner
+├ ƒ /api/user/profile
+├ ƒ /api/yelp-search
+├ ○ /auth/2fa
+├ ○ /auth/error
+├ ○ /auth/signin
+├ ○ /auth/signup
+├ ○ /auth/verify-email
+├ ○ /book-appointment
+├ ○ /campaign/direct-mail
+├ ○ /chat
+├ ○ /curb-appeal
+├ ○ /dashboard
+├ ○ /dashboard/settings
+├ ○ /insights
+├ ƒ /insights/[category]
+├ ƒ /insights/[category]/[slugId]
+├ ƒ /listing
+├ ○ /listings
+├ ○ /map
+├ ○ /mls-listings
+├ ƒ /mls-listings/[slugAddress]
+├ ƒ /mls-listings/[slugAddress]/map
+├ ○ /neighborhoods
+├ ƒ /neighborhoods/[cityId]
+├ ƒ /neighborhoods/[cityId]/[slug]
+├ ƒ /neighborhoods/[cityId]/[slug]/buy
+├ ƒ /neighborhoods/[cityId]/[slug]/sell
+├ ƒ /neighborhoods/[cityId]/buy
+├ ƒ /neighborhoods/[cityId]/events
+├ ƒ /neighborhoods/[cityId]/events/[slug]
+├ ƒ /neighborhoods/[cityId]/hoa-contact-info
+├ ƒ /neighborhoods/[cityId]/local-business
+├ ƒ /neighborhoods/[cityId]/property-stats
+├ ƒ /neighborhoods/[cityId]/school-district
+├ ƒ /neighborhoods/[cityId]/school-district/[district]
+├ ƒ /neighborhoods/[cityId]/sell
+├ ○ /newsletter-signup
+├ ○ /open-house-registration
+├ ○ /open-house-signup
+├ ○ /robots.txt
+├ ○ /selling
+├ ○ /sitemap
+├ ƒ /subdivisions/[slug]
+├ ƒ /subdivisions/[slug]/buy
+├ ƒ /subdivisions/[slug]/sell
+├ ○ /subscribed
+└ ○ /success
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
