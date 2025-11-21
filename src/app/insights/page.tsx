@@ -1,51 +1,78 @@
 // src\app\insights\page.tsx
-import React from "react";
-import InsightsCategories from "@/components/InsightsCategories";
-import VariableHero from "@/components/VariableHero";
+"use client";
 
-// Metadata for the insights landing page
-export async function generateMetadata() {
-  return {
-    title: "Real Estate Insights - Coachella Valley",
-    description:
-      "Explore real estate insights, market trends, and expert advice for buying, selling, and investing in Coachella Valley. Stay informed and make confident decisions.",
-    keywords: [
-      "real estate insights",
-      "Coachella Valley real estate",
-      "home buying tips",
-      "market trends",
-      "property advice",
-      "home selling tips",
-      "real estate market analysis",
-      "local market insights",
-      "Coachella Valley homes",
-    ],
-    openGraph: {
-      title: "Real Estate Insights - Coachella Valley",
-      description:
-        "Get expert real estate insights, local market trends, and practical advice for buyers, sellers, and investors in Coachella Valley.",
-      images: [
-        {
-          url: "https://images.unsplash.com/photo-1715559929394-4c5fdda7c50d?q=80&w=2574&auto=format&fit=crop",
-          alt: "Coachella Valley Insights Hero Image",
-        },
-      ],
-      url: "https://jpsrealtor.com/insights",
-    },
-  };
-}
+import React from "react";
+import { motion } from "framer-motion";
+import InsightsCategories from "@/components/InsightsCategories";
+import { BookOpen, TrendingUp, Sparkles } from "lucide-react";
 
 const InsightsPage = () => {
   return (
-    <div className="bg-black text-white">
-      {/* Hero Section */}
-      <VariableHero
-        backgroundImage="https://images.unsplash.com/photo-1715559929394-4c5fdda7c50d?q=80&w=2574&auto=format&fit=crop"
-        heroContext="Real Estate Insights"
-        description="Discover expert advice, market insights, and tips for buying, selling, and investing in Coachella Valley real estate."
-      />
-      {/* Insights Categories Section */}
-      <InsightsCategories />
+    <div className="min-h-screen py-12 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-12 text-center"
+        >
+          <div className="flex items-center justify-center gap-2 text-gray-400 mb-4">
+            <BookOpen className="w-5 h-5" />
+            <span className="text-sm uppercase tracking-wider">Expert Knowledge</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-2xl">
+            Real Estate Insights
+          </h1>
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            Discover expert advice, market insights, and tips for buying, selling, and investing in Coachella Valley real estate.
+          </p>
+        </motion.div>
+
+        {/* Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+        >
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="w-8 h-8 text-emerald-400" />
+              <Sparkles className="w-5 h-5 text-gray-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-1">Market Trends</h3>
+            <p className="text-gray-400 text-sm">Stay ahead with latest insights</p>
+          </div>
+
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <BookOpen className="w-8 h-8 text-blue-400" />
+              <Sparkles className="w-5 h-5 text-gray-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-1">Expert Guides</h3>
+            <p className="text-gray-400 text-sm">Learn from industry professionals</p>
+          </div>
+
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Sparkles className="w-8 h-8 text-purple-400" />
+              <Sparkles className="w-5 h-5 text-gray-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-1">Local Knowledge</h3>
+            <p className="text-gray-400 text-sm">Coachella Valley expertise</p>
+          </div>
+        </motion.div>
+
+        {/* Insights Categories Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <InsightsCategories />
+        </motion.div>
+      </div>
     </div>
   );
 };

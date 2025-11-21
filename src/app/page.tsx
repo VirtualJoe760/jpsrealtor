@@ -10,7 +10,6 @@ import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidg
 import ArticlesView from "@/app/components/chatwidget/ArticlesView";
 import DashboardViewIntegrated from "@/app/components/chatwidget/DashboardViewIntegrated";
 import SubdivisionsView from "@/app/components/chatwidget/SubdivisionsView";
-import StarsCanvas from "@/app/components/chatwidget/StarsCanvas";
 import { blurFade } from "@/app/utils/chat/motion";
 
 // Force dynamic rendering for this page since it uses search params
@@ -83,14 +82,9 @@ function HomePageContent() {
   };
 
   return (
-    <div className="h-screen w-screen bg-black overflow-hidden relative" data-page="home" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
+    <div className="h-screen w-screen overflow-hidden relative" data-page="home" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* URL Sync Handler */}
       <URLSyncHandler />
-
-      {/* Persistent Starfield Background */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <StarsCanvas />
-      </div>
 
       {/* Background MLS Preloader - Loads map data invisibly */}
       <MLSPreloader />

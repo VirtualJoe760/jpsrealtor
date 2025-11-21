@@ -16,7 +16,10 @@
       "Bash(npm install:*)",
       "Bash(node -e:*)",
       "Bash(cat:*)",
-      "Bash(sshpass -p \"dstreet280\" ssh -o StrictHostKeyChecking=no root@147.182.236.138 \"echo ''SSH connection successful''; whoami; hostname\")"
+      "Bash(sshpass -p \"dstreet280\" ssh -o StrictHostKeyChecking=no root@147.182.236.138 \"echo ''SSH connection successful''; whoami; hostname\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

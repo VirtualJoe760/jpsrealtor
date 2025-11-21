@@ -18,7 +18,6 @@ import {
   BarChart3,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
 
@@ -475,9 +474,7 @@ export default function DashboardPage() {
   // ────── Loading / unauth ──────
   if (status === "loading") {
     return (
-      <SpaticalBackground className="min-h-screen" showGradient={true}>
-        <div className="min-h-screen" />
-      </SpaticalBackground>
+      <div className="min-h-screen" />
     );
   }
   if (!session) return null;
@@ -485,8 +482,7 @@ export default function DashboardPage() {
 
   // ────── Render ──────
   return (
-    <SpaticalBackground className="min-h-screen" showGradient={true}>
-      <div className="min-h-screen py-12 px-4" data-page="dashboard">
+    <div className="min-h-screen py-12 px-4" data-page="dashboard">
         <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -952,6 +948,5 @@ export default function DashboardPage() {
         {/* <ChatWidget context="dashboard" /> */}
         </div>
       </div>
-    </SpaticalBackground>
   );
 }

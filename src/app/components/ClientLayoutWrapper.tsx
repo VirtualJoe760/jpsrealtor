@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import GlobalHamburgerMenu from "./GlobalHamburgerMenu";
 import EnhancedSidebar from "./EnhancedSidebar";
@@ -9,14 +10,32 @@ import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 import PageTransition from "./PageTransition";
+import SpaticalBackground from "./backgrounds/SpaticalBackground";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
+  const pathname = usePathname();
+
+  // Pages where we DON'T want the spatial background
+  const pagesWithoutBackground = [
+    '/map',
+    '/mls-listings',
+  ];
+
+  // Check if current page should have spatial background
+  const shouldShowBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page));
 
   return (
     <>
       <MetaPixel />
       <GlobalHamburgerMenu />
+
+      {/* Global Spatial Background - Persists across navigation */}
+      {shouldShowBackground && (
+        <div className="fixed inset-0 z-0">
+          <SpaticalBackground showGradient={true} className="h-full w-full" />
+        </div>
+      )}
 
       {/* Desktop: Always visible sidebar */}
       <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
@@ -25,7 +44,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main content with sidebar spacing on desktop */}
       <div
-        className={`transition-[margin] duration-300 ${
+        className={`relative z-10 transition-[margin] duration-300 ${
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >

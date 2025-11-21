@@ -383,9 +383,9 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
         {/* Header with Logo */}
         <div className="flex items-center justify-between p-6 md:p-4 border-b border-white/10">
           <AnimatePresence mode="wait">
-            {!effectivelyCollapsed && (
+            {!effectivelyCollapsed ? (
               <motion.div
-                key="logo"
+                key="logo-expanded"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
@@ -428,22 +428,86 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                   />
                 </motion.div>
               </motion.div>
+            ) : (
+              <motion.div
+                key="logo-collapsed"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.3, type: "spring" }}
+                className="flex items-center justify-center w-full"
+              >
+                <motion.div
+                  whileHover={{
+                    scale: 1.15,
+                    rotateY: 10,
+                    rotateZ: 5,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 15
+                  }}
+                  style={{
+                    transformStyle: "preserve-3d",
+                  }}
+                  className="relative w-12 h-12 rounded-lg flex items-center justify-center cursor-pointer"
+                >
+                  {/* Glow effect behind EXP logo */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-br from-red-500/20 to-blue-500/20 rounded-lg blur-md"
+                    animate={{
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  {/* Subtle floating animation */}
+                  <motion.div
+                    animate={{
+                      y: [0, -4, 0],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="relative z-10 w-full h-full"
+                  >
+                    <Image
+                      src="/images/brand/EXP-white-square.png"
+                      alt="eXp Realty"
+                      width={48}
+                      height={48}
+                      className="object-contain w-full h-full drop-shadow-2xl"
+                      priority
+                    />
+                  </motion.div>
+                </motion.div>
+              </motion.div>
             )}
           </AnimatePresence>
 
           {/* Desktop Collapse Toggle */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleSidebar}
-            className="hidden md:flex w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 items-center justify-center hover:bg-black/80 transition-colors shadow-lg"
-          >
-            {effectivelyCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-neutral-300" strokeWidth={2.5} />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-neutral-300" strokeWidth={2.5} />
-            )}
-          </motion.button>
+          {!isMobile && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleSidebar}
+              className="flex w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 items-center justify-center hover:bg-black/80 transition-colors shadow-lg flex-shrink-0"
+            >
+              <motion.div
+                initial={false}
+                animate={{ rotate: effectivelyCollapsed ? 0 : 180 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                <ChevronRight className="w-3.5 h-3.5 text-neutral-300" strokeWidth={2.5} />
+              </motion.div>
+            </motion.button>
+          )}
         </div>
 
         {/* Main Navigation */}

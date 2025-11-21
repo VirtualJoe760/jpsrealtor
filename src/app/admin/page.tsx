@@ -16,7 +16,6 @@ import {
   Building2,
   Calendar,
 } from "lucide-react";
-import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 
 type AdminAnalytics = {
   userSignups: {
@@ -132,18 +131,18 @@ export default function AdminDashboard() {
 
   if (status === "loading" || isLoading) {
     return (
-      <SpaticalBackground className="min-h-screen flex items-center justify-center" showGradient={true}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading admin dashboard...</p>
         </div>
-      </SpaticalBackground>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <SpaticalBackground className="min-h-screen flex items-center justify-center" showGradient={true}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Activity className="w-8 h-8 text-red-400" />
@@ -151,15 +150,14 @@ export default function AdminDashboard() {
           <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
           <p className="text-gray-400">{error}</p>
         </div>
-      </SpaticalBackground>
+      </div>
     );
   }
 
   if (!analytics) return null;
 
   return (
-    <SpaticalBackground className="min-h-screen" showGradient={true}>
-      <div className="min-h-screen" data-page="admin">
+    <div className="min-h-screen" data-page="admin">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-8 pt-16 md:pt-0">
@@ -436,6 +434,6 @@ export default function AdminDashboard() {
         </div>
         </div>
       </div>
-    </SpaticalBackground>
+    </div>
   );
 }

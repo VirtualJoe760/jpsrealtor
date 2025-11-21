@@ -3,8 +3,8 @@
 import { getPostsBySection } from "@/utils/fetchPosts";
 import InsightsList from "@/components/InsightsList";
 import { insightsCategoriesContent, categoriesPageContent } from "@/constants/staticContent";
-import VariableHero from "@/components/VariableHero";
 import { Metadata } from "next";
+import CategoryPageClient from "./CategoryPageClient";
 
 export async function generateMetadata({
   params,
@@ -61,28 +61,18 @@ export default async function CategoryPage({
   // Fetch posts with pagination
   const { posts, totalPages } = await getPostsBySection(category, page, 5);
 
+  const selectedCategory = insightsCategoriesContent.categories.find(
+    (cat) => cat.href.split("/").pop() === category
+  );
+
   return (
-    <>
-      <VariableHero
-        backgroundImage="/misc/house1.png"
-        heroContext={categoriesPageContent.title(formattedCategory)}
-      />
-      <div className="bg-black text-white">
-        <header className="text-start py-12 px-6 lg:px-12">
-          <h1 className="text-4xl mt-4 mb-8 max-w-3xl mx-auto font-bold">
-            Read {categoriesPageContent.title(formattedCategory)}
-          </h1>
-          <p className="text-lg mt-4 mb-8 max-w-3xl mx-auto">
-            {categoriesPageContent.description(formattedCategory)}
-          </p>
-        </header>
-        <InsightsList
-          posts={posts}
-          totalPages={totalPages}
-          currentPage={page}
-          category={category}
-        />
-      </div>
-    </>
+    <CategoryPageClient
+      formattedCategory={formattedCategory}
+      category={category}
+      posts={posts}
+      totalPages={totalPages}
+      currentPage={page}
+      categoryIcon={selectedCategory?.icon}
+    />
   );
 }
