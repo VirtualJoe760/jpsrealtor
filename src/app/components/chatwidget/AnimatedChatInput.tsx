@@ -130,8 +130,8 @@ export default function AnimatedChatInput({
                 placeholder={placeholder}
                 rows={1}
                 disabled={isStreaming}
-                className="w-full bg-transparent px-4 md:px-6 py-3 md:py-4 pr-24 md:pr-28 text-white placeholder:text-neutral-500 focus:outline-none resize-none max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent md:text-base"
-                style={{ minHeight: '56px', fontSize: '16px' }}
+                className="w-full bg-transparent px-4 md:px-6 py-3 md:py-4 pr-24 md:pr-28 text-white placeholder:text-neutral-500 focus:outline-none resize-none max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent md:text-base text-left"
+                style={{ minHeight: '56px', fontSize: '16px', textAlign: 'left', direction: 'ltr' }}
               />
 
               {/* Streaming indicator */}

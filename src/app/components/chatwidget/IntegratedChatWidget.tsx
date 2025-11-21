@@ -12,9 +12,15 @@ import {
   UserData,
 } from "@/lib/chat-utils";
 import { getLocationWithCache } from "@/lib/geolocation";
-import ListingCarousel, { type Listing } from "@/app/components/chat/ListingCarousel";
+import ListingCarousel, {
+  type Listing,
+} from "@/app/components/chat/ListingCarousel";
 import ChatMapView from "@/app/components/chat/ChatMapView";
-import { detectFunctionCall, executeMLSSearch, formatSearchResultsForAI } from "@/lib/ai-functions";
+import {
+  detectFunctionCall,
+  executeMLSSearch,
+  formatSearchResultsForAI,
+} from "@/lib/ai-functions";
 import { InitProgressReport } from "@mlc-ai/web-llm";
 import { User, Bot, Loader2, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -22,7 +28,12 @@ import AnimatedChatInput from "./AnimatedChatInput";
 import StarsCanvas from "./StarsCanvas";
 import { fadeSlideIn } from "@/app/utils/chat/motion";
 import { useSession } from "next-auth/react";
-import { addToConversationHistory, updateConversationMessageCount, saveConversationMessages, loadConversationMessages } from "./EnhancedSidebar";
+import {
+  addToConversationHistory,
+  updateConversationMessageCount,
+  saveConversationMessages,
+  loadConversationMessages,
+} from "./EnhancedSidebar";
 import Image from "next/image";
 
 // Simple markdown parser for basic formatting
@@ -51,7 +62,7 @@ function parseMarkdown(text: string): React.ReactNode {
     const matched = match[0];
 
     // Check if it's bold
-    if (matched.startsWith('**') && matched.endsWith('**')) {
+    if (matched.startsWith("**") && matched.endsWith("**")) {
       const boldText = matched.slice(2, -2);
       elements.push(
         <strong key={key++} className="font-bold text-white">
@@ -60,16 +71,16 @@ function parseMarkdown(text: string): React.ReactNode {
       );
     }
     // Check if it's a link
-    else if (matched.startsWith('[')) {
+    else if (matched.startsWith("[")) {
       const linkMatch = matched.match(/\[(.*?)\]\((.*?)\)/);
       if (linkMatch) {
         const [, linkText, linkUrl] = linkMatch;
         // Check if it's an internal link (starts with /)
-        const isInternal = linkUrl?.startsWith('/') ?? false;
+        const isInternal = linkUrl?.startsWith("/") ?? false;
         elements.push(
           <a
             key={key++}
-            href={linkUrl || '#'}
+            href={linkUrl || "#"}
             className="text-emerald-400 hover:text-emerald-300 underline transition-colors font-medium"
             target={isInternal ? undefined : "_blank"}
             rel={isInternal ? undefined : "noopener noreferrer"}
@@ -86,9 +97,7 @@ function parseMarkdown(text: string): React.ReactNode {
   // Add remaining text
   if (currentIndex < text.length) {
     elements.push(
-      <React.Fragment key={key++}>
-        {text.slice(currentIndex)}
-      </React.Fragment>
+      <React.Fragment key={key++}>{text.slice(currentIndex)}</React.Fragment>
     );
   }
 
@@ -96,16 +105,21 @@ function parseMarkdown(text: string): React.ReactNode {
 }
 
 // Helper function to log chat messages via API (non-blocking)
-const logChatMessageAsync = async (role: string, content: string, userId: string, metadata?: any) => {
+const logChatMessageAsync = async (
+  role: string,
+  content: string,
+  userId: string,
+  metadata?: any
+) => {
   try {
-    await fetch('/api/chat/log-local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, content, userId, metadata })
+    await fetch("/api/chat/log-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content, userId, metadata }),
     });
   } catch (error) {
     // Silently fail - logging shouldn't break the app
-    console.warn('Failed to log message:', error);
+    console.warn("Failed to log message:", error);
   }
 };
 
@@ -127,7 +141,10 @@ export default function IntegratedChatWidget() {
   const [loadingProgress, setLoadingProgress] = useState("");
   const [loadingPercent, setLoadingPercent] = useState(0);
   const [error, setError] = useState("");
-  const [userLocation, setUserLocation] = useState<{ city?: string; region?: string } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    city?: string;
+    region?: string;
+  } | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -135,11 +152,10 @@ export default function IntegratedChatWidget() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [conversationId] = useState(() => {
     // Check if we're loading a previous conversation from URL
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const loadConversationId = params.get('conversation');
+      const loadConversationId = params.get("conversation");
       if (loadConversationId) {
-        console.log("📂 Loading conversation from URL:", loadConversationId);
         return loadConversationId;
       }
     }
@@ -159,7 +175,7 @@ export default function IntegratedChatWidget() {
   // ISSUE #4 FIX: Single unified message interface with proper TypeScript types
   interface DisplayMessage {
     id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant" | "system";
     content: string;
     timestamp: Date;
     isLoading?: boolean;
@@ -177,13 +193,15 @@ export default function IntegratedChatWidget() {
         const isNotSystemMessage = msg.role !== "system";
         return matchesContext && isNotSystemMessage;
       })
-      .map(msg => ({
+      .map((msg) => ({
         id: msg.id || `msg_${msg.timestamp}`,
-        role: msg.role as 'user' | 'assistant' | 'system',
+        role: msg.role as "user" | "assistant" | "system",
         content: msg.content,
         timestamp: new Date(msg.timestamp),
         // Safely check if listings exist and is an array
-        listings: Array.isArray((msg as any).listings) ? (msg as any).listings : undefined
+        listings: Array.isArray((msg as any).listings)
+          ? (msg as any).listings
+          : undefined,
       }));
 
     // Add streaming message if present
@@ -198,7 +216,7 @@ export default function IntegratedChatWidget() {
 
     // Remove duplicate messages by ID (deduplication)
     const seen = new Set<string>();
-    return baseMessages.filter(msg => {
+    return baseMessages.filter((msg) => {
       if (seen.has(msg.id)) return false;
       seen.add(msg.id);
       return true;
@@ -226,8 +244,8 @@ export default function IntegratedChatWidget() {
       }
     };
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
   // ISSUE #5 FIX: Auto-scroll only if user is at bottom (not interrupting reading)
@@ -253,17 +271,23 @@ export default function IntegratedChatWidget() {
       try {
         // Fetch user profile if authenticated
         if (session?.user?.email) {
-          const profileResponse = await fetch('/api/user/profile');
+          const profileResponse = await fetch("/api/user/profile");
           if (profileResponse.ok) {
             const { profile } = await profileResponse.json();
 
             // Fetch favorites and analytics
-            const favoritesResponse = await fetch('/api/user/favorites');
-            const favoritesData = favoritesResponse.ok ? await favoritesResponse.json() : null;
+            const favoritesResponse = await fetch("/api/user/favorites");
+            const favoritesData = favoritesResponse.ok
+              ? await favoritesResponse.json()
+              : null;
 
             // Fetch chat goals
-            const goalsResponse = await fetch(`/api/chat/goals?userId=${userId}`);
-            const goalsData = goalsResponse.ok ? await goalsResponse.json() : null;
+            const goalsResponse = await fetch(
+              `/api/chat/goals?userId=${userId}`
+            );
+            const goalsData = goalsResponse.ok
+              ? await goalsResponse.json()
+              : null;
 
             // Build userData object
             const data: UserData = {
@@ -278,11 +302,10 @@ export default function IntegratedChatWidget() {
             };
 
             setUserData(data);
-            console.log('📊 User data loaded for personalization:', data);
           }
         }
       } catch (error) {
-        console.error('Failed to fetch user data for personalization:', error);
+        console.error("Failed to fetch user data for personalization:", error);
         // Fail gracefully - chat works without personalization
       }
     };
@@ -292,20 +315,18 @@ export default function IntegratedChatWidget() {
 
   // Load conversation from localStorage if URL parameter is present
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const loadConversationId = params.get('conversation');
+      const loadConversationId = params.get("conversation");
 
       if (loadConversationId && messages.length === 0) {
-        console.log("📂 Loading messages for conversation:", loadConversationId);
         const savedMessages = loadConversationMessages(loadConversationId);
 
         if (savedMessages.length > 0) {
-          console.log(`✅ Loaded ${savedMessages.length} messages from history`);
           // Restore messages to chat
-          savedMessages.forEach(msg => {
+          savedMessages.forEach((msg) => {
             addMessage({
-              role: msg.role as 'user' | 'assistant' | 'system',
+              role: msg.role as "user" | "assistant" | "system",
               content: msg.content,
               context: "general",
               listings: msg.listings,
@@ -314,8 +335,6 @@ export default function IntegratedChatWidget() {
 
           // Mark as already tracked to prevent duplicate history entries
           setHasTrackedFirstMessage(true);
-        } else {
-          console.warn("⚠️ No saved messages found for conversation:", loadConversationId);
         }
       }
     }
@@ -325,8 +344,8 @@ export default function IntegratedChatWidget() {
   useEffect(() => {
     if (messages.length > 0 && conversationId) {
       const messagesToSave = messages
-        .filter(msg => msg.role !== "system") // Don't save system messages
-        .map(msg => ({
+        .filter((msg) => msg.role !== "system") // Don't save system messages
+        .map((msg) => ({
           role: msg.role,
           content: msg.content,
           timestamp: new Date(msg.timestamp).getTime(),
@@ -337,14 +356,14 @@ export default function IntegratedChatWidget() {
   }, [messages, conversationId]);
 
   // Always use Groq API for fast, reliable responses on both mobile and desktop
-  useEffect(() => {
-    console.log('🚀 Using Groq API for AI responses (works on mobile and desktop)');
-  }, []);
 
   // DO NOT send automatic welcome message - let AI respond naturally to first user message
 
   // ISSUE #3 FIX: Separate function to get AI response with retry logic and API fallback
-  const getAIResponse = async (llmMessages: any[], attemptNumber: number = 0): Promise<string> => {
+  const getAIResponse = async (
+    llmMessages: any[],
+    attemptNumber: number = 0
+  ): Promise<string> => {
     const progressCallback = (report: InitProgressReport) => {
       setLoadingProgress(report.text);
       setLoadingPercent(Math.round(report.progress * 100));
@@ -353,15 +372,14 @@ export default function IntegratedChatWidget() {
     // Always use Groq API for fast, reliable responses
     if (useAPIFallback) {
       try {
-        console.log('🚀 Using Groq API (fast & cheap)...');
-        const response = await fetch('/api/chat/stream', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: llmMessages,
             userId,
-            userTier: 'free' // TODO: Get from user's subscription status
-          })
+            userTier: "free", // TODO: Get from user's subscription status
+          }),
         });
 
         if (!response.ok) {
@@ -369,13 +387,9 @@ export default function IntegratedChatWidget() {
         }
 
         const data = await response.json();
-        console.log('✅ Groq response received:', {
-          model: data.metadata?.model,
-          processingTime: data.metadata?.processingTime + 'ms'
-        });
         return data.response;
       } catch (error) {
-        console.error('Groq API failed:', error);
+        console.error("Groq API failed:", error);
         throw error;
       }
     }
@@ -393,7 +407,7 @@ export default function IntegratedChatWidget() {
         chunkBuffer += chunk;
 
         // Throttle updates for smoother streaming (update every 20ms for faster display)
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
 
         fullResponse = chunkBuffer;
         setStreamingMessage(fullResponse);
@@ -401,7 +415,7 @@ export default function IntegratedChatWidget() {
 
       return fullResponse;
     } catch (error) {
-      console.error('WebLLM streaming failed:', error);
+      console.error("WebLLM streaming failed:", error);
       // Clear streaming message on error
       setStreamingMessage("");
       throw error;
@@ -416,13 +430,17 @@ export default function IntegratedChatWidget() {
     const startTime = Date.now();
 
     // Log user message (async, non-blocking)
-    logChatMessageAsync('user', userMessage, userId, {
-      timestamp: new Date().toISOString()
+    logChatMessageAsync("user", userMessage, userId, {
+      timestamp: new Date().toISOString(),
     });
 
     // Check if user is responding to a disambiguation prompt
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === 'assistant' && (lastMessage as any).disambiguationOptions) {
+    if (
+      lastMessage &&
+      lastMessage.role === "assistant" &&
+      (lastMessage as any).disambiguationOptions
+    ) {
       const options = (lastMessage as any).disambiguationOptions;
 
       // Try to match user's response to one of the options
@@ -440,16 +458,15 @@ export default function IntegratedChatWidget() {
       // Check if user typed a name or part of a name
       if (!selectedOption) {
         const userLower = userMessage.toLowerCase();
-        selectedOption = options.find((opt: any) =>
-          opt.name.toLowerCase().includes(userLower) ||
-          opt.city.toLowerCase().includes(userLower) ||
-          opt.displayName.toLowerCase().includes(userLower)
+        selectedOption = options.find(
+          (opt: any) =>
+            opt.name.toLowerCase().includes(userLower) ||
+            opt.city.toLowerCase().includes(userLower) ||
+            opt.displayName.toLowerCase().includes(userLower)
         );
       }
 
       if (selectedOption) {
-        console.log('✅ User selected disambiguation option:', selectedOption);
-
         // Add user's choice message
         addMessage({
           role: "user",
@@ -462,14 +479,19 @@ export default function IntegratedChatWidget() {
 
         try {
           // Re-call match-location API with specific choice
-          const matchResponse = await fetch('/api/chat/match-location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: selectedOption.name, specificChoice: selectedOption })
+          const matchResponse = await fetch("/api/chat/match-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: selectedOption.name,
+              specificChoice: selectedOption,
+            }),
           });
 
           if (!matchResponse.ok) {
-            throw new Error(`Location match API failed: ${matchResponse.status}`);
+            throw new Error(
+              `Location match API failed: ${matchResponse.status}`
+            );
           }
 
           const matchResult = await matchResponse.json();
@@ -477,11 +499,13 @@ export default function IntegratedChatWidget() {
 
           if (matchResult.success && matchResult.searchParams) {
             // Execute search with the selected subdivision
-            const searchResponse = await executeMLSSearch(matchResult.searchParams);
+            const searchResponse = await executeMLSSearch(
+              matchResult.searchParams
+            );
 
             if (searchResponse.success && searchResponse.listings.length > 0) {
               const actualCount = searchResponse.listings.length;
-              const messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in ${selectedOption.displayName}`;
+              const messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in ${selectedOption.displayName}`;
 
               addMessage({
                 role: "assistant",
@@ -494,7 +518,9 @@ export default function IntegratedChatWidget() {
               setSearchResults(searchResponse.listings);
 
               // Add results to context
-              const resultsContext = formatSearchResultsForAI(searchResponse.listings);
+              const resultsContext = formatSearchResultsForAI(
+                searchResponse.listings
+              );
               addMessage({
                 role: "system",
                 content: `[Search Results] ${resultsContext}`,
@@ -509,11 +535,12 @@ export default function IntegratedChatWidget() {
             }
           }
         } catch (error) {
-          console.error('Disambiguation search error:', error);
+          console.error("Disambiguation search error:", error);
           setStreamingMessage("");
           addMessage({
             role: "assistant",
-            content: "I encountered an error while searching. Please try again.",
+            content:
+              "I encountered an error while searching. Please try again.",
             context: "general",
           });
         } finally {
@@ -533,17 +560,26 @@ export default function IntegratedChatWidget() {
     while (currentAttempt <= MAX_RETRIES) {
       try {
         // Build conversation history - EXCLUDE system messages (they're internal only)
-        const conversationMessages = messages.filter(msg =>
-          (!msg.context || msg.context === context) && msg.role !== "system"
+        const conversationMessages = messages.filter(
+          (msg) =>
+            (!msg.context || msg.context === context) && msg.role !== "system"
         );
         const history = buildConversationHistory(
-          conversationMessages.map((m) => ({ role: m.role, content: m.content }))
+          conversationMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          }))
         );
 
         history.push({ role: "user", content: userMessage });
 
         // Build system prompt - MUST BE FIRST MESSAGE (with personalization)
-        const systemPrompt = buildSystemPrompt("general", null, userLocation, userData);
+        const systemPrompt = buildSystemPrompt(
+          "general",
+          null,
+          userLocation,
+          userData
+        );
 
         const enhancedSystemPrompt = `${systemPrompt}
 
@@ -555,7 +591,10 @@ FUNCTION CALLING RULES:
 - DON'T make multiple search calls in one response`;
 
         // CRITICAL: System message MUST be first, then conversation history
-        const llmMessages = [{ role: "system", content: enhancedSystemPrompt }, ...history];
+        const llmMessages = [
+          { role: "system", content: enhancedSystemPrompt },
+          ...history,
+        ];
 
         // ISSUE #3 FIX: Get AI response with retry logic
         fullResponse = await getAIResponse(llmMessages, currentAttempt);
@@ -563,28 +602,30 @@ FUNCTION CALLING RULES:
         setStreamingMessage("");
 
         // Log AI response (async, non-blocking)
-        logChatMessageAsync('assistant', fullResponse, userId, {
+        logChatMessageAsync("assistant", fullResponse, userId, {
           loadingTime: Date.now() - startTime,
           attemptNumber: currentAttempt,
           usedAPIFallback: useAPIFallback,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         // Success! Break out of retry loop
         setRetryCount(0);
         break;
-
       } catch (err: any) {
         currentAttempt++;
-        console.error(`Chat error (attempt ${currentAttempt}/${MAX_RETRIES + 1}):`, err);
+        console.error(
+          `Chat error (attempt ${currentAttempt}/${MAX_RETRIES + 1}):`,
+          err
+        );
 
         // Clear streaming message on error
         setStreamingMessage("");
 
         // ISSUE #3 FIX: If WebLLM fails and we're not already using API fallback, switch to it
-        const isWebGPUError = err.message?.includes('WebGPU') || err.message?.includes('GPU');
+        const isWebGPUError =
+          err.message?.includes("WebGPU") || err.message?.includes("GPU");
         if (!useAPIFallback && isWebGPUError) {
-          console.log('⚠️ WebLLM failed, switching to API fallback...');
           setUseAPIFallback(true);
           currentAttempt = 0; // Reset attempt counter for API fallback
           continue; // Retry with API
@@ -597,19 +638,15 @@ FUNCTION CALLING RULES:
 
         // Wait before retrying (exponential backoff)
         const waitTime = Math.min(1000 * Math.pow(2, currentAttempt - 1), 5000);
-        console.log(`⏳ Retrying in ${waitTime}ms...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
     }
 
     try {
-
       // Check for function calls
       const functionCall = detectFunctionCall(fullResponse);
 
       if (functionCall && functionCall.type === "matchLocation") {
-        console.log("🎯 AI requesting location match:", functionCall.params);
-
         // Track conversation history on first user message
         if (!hasTrackedFirstMessage) {
           addToConversationHistory(userMessage, conversationId);
@@ -619,10 +656,15 @@ FUNCTION CALLING RULES:
         }
 
         // Log function call (async, non-blocking)
-        logChatMessageAsync('system', `Function call detected: matchLocation`, userId, {
-          functionCall: functionCall.params,
-          timestamp: new Date().toISOString()
-        });
+        logChatMessageAsync(
+          "system",
+          `Function call detected: matchLocation`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
 
         // Add user message so they can see what they asked for
         addMessage({
@@ -635,14 +677,16 @@ FUNCTION CALLING RULES:
         setStreamingMessage("Finding location match...");
 
         try {
-          const matchResponse = await fetch('/api/chat/match-location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(functionCall.params)
+          const matchResponse = await fetch("/api/chat/match-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(functionCall.params),
           });
 
           if (!matchResponse.ok) {
-            throw new Error(`Location match API failed: ${matchResponse.status}`);
+            throw new Error(
+              `Location match API failed: ${matchResponse.status}`
+            );
           }
 
           const matchResult = await matchResponse.json();
@@ -651,23 +695,29 @@ FUNCTION CALLING RULES:
           setStreamingMessage("");
 
           // Log match results (async, non-blocking)
-          logChatMessageAsync('system', `Location match completed: ${matchResult.match?.type}`, userId, {
-            matchResults: matchResult,
-            timestamp: new Date().toISOString()
-          });
+          logChatMessageAsync(
+            "system",
+            `Location match completed: ${matchResult.match?.type}`,
+            userId,
+            {
+              matchResults: matchResult,
+              timestamp: new Date().toISOString(),
+            }
+          );
 
           // Check if disambiguation is needed
           if (matchResult.needsDisambiguation && matchResult.options) {
-            console.log('🤔 Disambiguation needed - showing options to user');
-
             // Build disambiguation message with clickable options
-            let disambiguationMessage = matchResult.message || "I found multiple communities with that name. Which one did you mean?\n\n";
+            let disambiguationMessage =
+              matchResult.message ||
+              "I found multiple communities with that name. Which one did you mean?\n\n";
 
             matchResult.options.forEach((option: any, index: number) => {
               disambiguationMessage += `\n${index + 1}. **${option.displayName}**`;
             });
 
-            disambiguationMessage += "\n\nPlease type the number or name to specify which community you're interested in.";
+            disambiguationMessage +=
+              "\n\nPlease type the number or name to specify which community you're interested in.";
 
             addMessage({
               role: "assistant",
@@ -683,41 +733,38 @@ FUNCTION CALLING RULES:
             // Found a match! Now execute the search with the correct parameters
             const locationName = matchResult.match.name;
             const locationType = matchResult.match.type;
-            const isSubdivision = locationType === 'subdivision';
-            const isCounty = locationType === 'county';
+            const isSubdivision = locationType === "subdivision";
+            const isCounty = locationType === "county";
             const limitApplied = matchResult.limitApplied || false;
-
-            console.log('✅ Location matched:', locationName, `(${locationType})`);
-            console.log('🔍 Executing search with params:', matchResult.searchParams);
 
             // Show loading state for search
             setStreamingMessage("Searching properties...");
 
-            const searchResponse = await executeMLSSearch(matchResult.searchParams);
+            const searchResponse = await executeMLSSearch(
+              matchResult.searchParams
+            );
 
             // Clear loading state
             setStreamingMessage("");
 
             if (searchResponse.success && searchResponse.listings.length > 0) {
               // ✅ RESULTS FOUND - Show them!
-              console.log('🏠 Search API returned:', searchResponse.count, 'total properties');
-              console.log('🏠 Listings array contains:', searchResponse.listings.length, 'properties');
-
               const actualCount = searchResponse.listings.length;
-              let messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in ${locationName}`;
+              let messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in ${locationName}`;
 
               // Add type context for clarity
               if (isSubdivision) {
-                messageContent += ' (subdivision)';
+                messageContent += " (subdivision)";
               } else if (isCounty) {
-                messageContent += ' (county';
+                messageContent += " (county";
                 if (limitApplied) {
-                  messageContent += ' - showing first 100).\n\nClick **Map View** to explore all available listings';
+                  messageContent +=
+                    " - showing first 100).\n\nClick **Map View** to explore all available listings";
                 } else {
-                  messageContent += ')';
+                  messageContent += ")";
                 }
-              } else if (locationType === 'city') {
-                messageContent += ' (city)';
+              } else if (locationType === "city") {
+                messageContent += " (city)";
               }
 
               addMessage({
@@ -732,7 +779,9 @@ FUNCTION CALLING RULES:
               setSearchResults(searchResponse.listings);
 
               // Add results to context (system message)
-              const resultsContext = formatSearchResultsForAI(searchResponse.listings);
+              const resultsContext = formatSearchResultsForAI(
+                searchResponse.listings
+              );
               addMessage({
                 role: "system",
                 content: `[Search Results] ${resultsContext}`,
@@ -740,10 +789,8 @@ FUNCTION CALLING RULES:
               });
             } else if (isSubdivision && searchResponse.listings.length === 0) {
               // ⚠️ SUBDIVISION RETURNED 0 RESULTS - Offer city fallback
-              console.warn('⚠️ Subdivision search returned 0 results:', locationName);
-              console.log('🔄 Offering city fallback to user...');
-
-              const cityName = matchResult.match.city || matchResult.searchParams.cities?.[0];
+              const cityName =
+                matchResult.match.city || matchResult.searchParams.cities?.[0];
 
               if (cityName) {
                 addMessage({
@@ -768,14 +815,20 @@ FUNCTION CALLING RULES:
             }
           } else {
             // No match found - check if there are suggestions
-            let noMatchMessage = matchResult.message || "I couldn't find that location. Could you provide more details or try a different area?";
+            let noMatchMessage =
+              matchResult.message ||
+              "I couldn't find that location. Could you provide more details or try a different area?";
 
             if (matchResult.suggestions && matchResult.suggestions.length > 0) {
               // Build message with suggestions
               noMatchMessage += "\n\nDid you mean one of these?\n";
               matchResult.suggestions.forEach((suggestion: any) => {
-                const typeLabel = suggestion.type === 'subdivision' ? '(subdivision)' :
-                                 suggestion.type === 'city' ? '(city)' : '(county)';
+                const typeLabel =
+                  suggestion.type === "subdivision"
+                    ? "(subdivision)"
+                    : suggestion.type === "city"
+                      ? "(city)"
+                      : "(county)";
                 noMatchMessage += `\n• **${suggestion.name}** ${typeLabel}`;
               });
               noMatchMessage += "\n\nPlease clarify which location you meant.";
@@ -788,18 +841,17 @@ FUNCTION CALLING RULES:
             });
           }
         } catch (error) {
-          console.error('Location match error:', error);
+          console.error("Location match error:", error);
           setStreamingMessage("");
 
           addMessage({
             role: "assistant",
-            content: "I encountered an error while trying to match that location. Please try again.",
+            content:
+              "I encountered an error while trying to match that location. Please try again.",
             context: "general",
           });
         }
       } else if (functionCall && functionCall.type === "search") {
-        console.log("🔍 AI requesting MLS search:", functionCall.params);
-
         // Track conversation history on first user message (even for searches)
         if (!hasTrackedFirstMessage) {
           addToConversationHistory(userMessage, conversationId);
@@ -810,10 +862,15 @@ FUNCTION CALLING RULES:
         }
 
         // Log function call (async, non-blocking)
-        logChatMessageAsync('system', `Function call detected: searchListings`, userId, {
-          functionCall: functionCall.params,
-          timestamp: new Date().toISOString()
-        });
+        logChatMessageAsync(
+          "system",
+          `Function call detected: searchListings`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
 
         // ADD user message so they can see what they asked for
         addMessage({
@@ -831,66 +888,62 @@ FUNCTION CALLING RULES:
         setStreamingMessage("");
 
         // Log search results (async, non-blocking)
-        logChatMessageAsync('system', `Search completed: ${searchResponse.count} listings found`, userId, {
-          searchResults: {
-            count: searchResponse.count,
-            cities: functionCall.params.cities,
-            filters: functionCall.params
-          },
-          timestamp: new Date().toISOString()
-        });
+        logChatMessageAsync(
+          "system",
+          `Search completed: ${searchResponse.count} listings found`,
+          userId,
+          {
+            searchResults: {
+              count: searchResponse.count,
+              cities: functionCall.params.cities,
+              filters: functionCall.params,
+            },
+            timestamp: new Date().toISOString(),
+          }
+        );
 
         if (searchResponse.success && searchResponse.listings.length > 0) {
           // DON'T show the AI's raw response - it contains function calls
           // Just show a clean, user-friendly message
 
-          console.log('🏠 Search API returned:', searchResponse.count, 'total properties');
-          console.log('🏠 Listings array contains:', searchResponse.listings.length, 'properties');
-          console.log('🏠 Search params:', functionCall.params);
-
-          if (searchResponse.listings.length > 0) {
-            console.log('🏠 First few listings:', searchResponse.listings.slice(0, 3).map(l => ({
-              address: l.address,
-              price: l.price,
-              subdivision: l.subdivision
-            })));
-          }
-
-          // Warn if subdivision search returns suspiciously few results
-          if (functionCall.params.subdivisions && searchResponse.listings.length < 5) {
-            console.warn('⚠️ Subdivision search returned only', searchResponse.listings.length, 'listings');
-            console.warn('⚠️ Searched for:', functionCall.params.subdivisions);
-            console.warn('⚠️ This might indicate a subdivision name mismatch in the database');
-          }
-
           // If searching by subdivision, fetch subdivision data for link
           // IMPORTANT: Use actual listing count, not AI's hallucinated count
           const actualCount = searchResponse.listings.length;
-          let messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} matching your criteria.`;
+          let messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} matching your criteria.`;
 
-          if (functionCall.params.subdivisions && functionCall.params.subdivisions.length > 0) {
+          if (
+            functionCall.params.subdivisions &&
+            functionCall.params.subdivisions.length > 0
+          ) {
             const subdivisionName = functionCall.params.subdivisions[0];
 
             // Fetch subdivision data to get the slug
             try {
-              const subdivisionResponse = await fetch(`/api/subdivisions?search=${encodeURIComponent(subdivisionName)}&limit=1`);
+              const subdivisionResponse = await fetch(
+                `/api/subdivisions?search=${encodeURIComponent(subdivisionName)}&limit=1`
+              );
               if (subdivisionResponse.ok) {
                 const subdivisionData = await subdivisionResponse.json();
-                if (subdivisionData.subdivisions && subdivisionData.subdivisions.length > 0) {
+                if (
+                  subdivisionData.subdivisions &&
+                  subdivisionData.subdivisions.length > 0
+                ) {
                   const subdivision = subdivisionData.subdivisions[0];
 
                   // Import findCityByName to get cityId
-                  const { findCityByName } = await import('@/app/constants/counties');
+                  const { findCityByName } = await import(
+                    "@/app/constants/counties"
+                  );
                   const cityData = findCityByName(subdivision.city);
 
                   if (cityData) {
                     const subdivisionUrl = `/neighborhoods/${cityData.city.id}/${subdivision.slug}`;
-                    messageContent = `Found ${actualCount} ${actualCount === 1 ? 'property' : 'properties'} in **${subdivision.name}**. [View ${subdivision.name} Community Page →](${subdivisionUrl})`;
+                    messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${subdivision.name}**. [View ${subdivision.name} Community Page →](${subdivisionUrl})`;
                   }
                 }
               }
             } catch (error) {
-              console.error('Failed to fetch subdivision data:', error);
+              console.error("Failed to fetch subdivision data:", error);
               // Continue with default message
             }
           }
@@ -907,7 +960,9 @@ FUNCTION CALLING RULES:
           setSearchResults(searchResponse.listings);
 
           // Add results to context (system message - won't be displayed)
-          const resultsContext = formatSearchResultsForAI(searchResponse.listings);
+          const resultsContext = formatSearchResultsForAI(
+            searchResponse.listings
+          );
           addMessage({
             role: "system",
             content: `[Search Results] ${resultsContext}`,
@@ -916,13 +971,12 @@ FUNCTION CALLING RULES:
         } else {
           addMessage({
             role: "assistant",
-            content: "I couldn't find any properties matching those criteria. Would you like to adjust your search?",
+            content:
+              "I couldn't find any properties matching those criteria. Would you like to adjust your search?",
             context: "general",
           });
         }
       } else if (functionCall && functionCall.type === "research") {
-        console.log("🔬 AI requesting community research:", functionCall.params);
-
         // Track conversation history on first user message
         if (!hasTrackedFirstMessage) {
           addToConversationHistory(userMessage, conversationId);
@@ -932,10 +986,15 @@ FUNCTION CALLING RULES:
         }
 
         // Log function call (async, non-blocking)
-        logChatMessageAsync('system', `Function call detected: researchCommunity`, userId, {
-          functionCall: functionCall.params,
-          timestamp: new Date().toISOString()
-        });
+        logChatMessageAsync(
+          "system",
+          `Function call detected: researchCommunity`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
 
         // Add user message so they can see what they asked for
         addMessage({
@@ -948,13 +1007,13 @@ FUNCTION CALLING RULES:
         setStreamingMessage("Researching community facts...");
 
         try {
-          const researchResponse = await fetch('/api/chat/research-community', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const researchResponse = await fetch("/api/chat/research-community", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: 'answer',
-              ...functionCall.params
-            })
+              action: "answer",
+              ...functionCall.params,
+            }),
           });
 
           if (!researchResponse.ok) {
@@ -967,22 +1026,28 @@ FUNCTION CALLING RULES:
           setStreamingMessage("");
 
           // Log research results (async, non-blocking)
-          logChatMessageAsync('system', `Research completed: ${result.factType}`, userId, {
-            researchResults: {
-              factType: result.factType,
-              confidence: result.confidence,
-              recorded: result.recorded,
-              subdivisionName: functionCall.params.subdivisionName
-            },
-            timestamp: new Date().toISOString()
-          });
+          logChatMessageAsync(
+            "system",
+            `Research completed: ${result.factType}`,
+            userId,
+            {
+              researchResults: {
+                factType: result.factType,
+                confidence: result.confidence,
+                recorded: result.recorded,
+                subdivisionName: functionCall.params.subdivisionName,
+              },
+              timestamp: new Date().toISOString(),
+            }
+          );
 
           if (result.success) {
             // Display the AI's answer with optional recorded indicator
             let responseContent = result.answer;
 
             if (result.recorded) {
-              responseContent += "\n\n✅ *Fact recorded to database for future reference*";
+              responseContent +=
+                "\n\n✅ *Fact recorded to database for future reference*";
             }
 
             addMessage({
@@ -1000,17 +1065,20 @@ FUNCTION CALLING RULES:
           } else {
             addMessage({
               role: "assistant",
-              content: result.error || "I encountered an error while researching that community. Please try again.",
+              content:
+                result.error ||
+                "I encountered an error while researching that community. Please try again.",
               context: "general",
             });
           }
         } catch (error) {
-          console.error('Research API error:', error);
+          console.error("Research API error:", error);
           setStreamingMessage("");
 
           addMessage({
             role: "assistant",
-            content: "I encountered an error while researching that community. Please try again.",
+            content:
+              "I encountered an error while researching that community. Please try again.",
             context: "general",
           });
         }
@@ -1025,17 +1093,17 @@ FUNCTION CALLING RULES:
         // Clean response to remove any system prompt leakage
         let cleanResponse = fullResponse;
         const instructionMarkers = [
-          'Function call:',
-          'For searching in',
-          'For market trends',
-          'Remember to:',
-          'Supported property types',
-          'When suggesting',
-          'If unsure about',
-          'Example response',
-          'FUNCTION CALLING:',
-          'Available parameters:',
-          'CRITICAL:',
+          "Function call:",
+          "For searching in",
+          "For market trends",
+          "Remember to:",
+          "Supported property types",
+          "When suggesting",
+          "If unsure about",
+          "Example response",
+          "FUNCTION CALLING:",
+          "Available parameters:",
+          "CRITICAL:",
         ];
 
         for (const marker of instructionMarkers) {
@@ -1065,7 +1133,6 @@ FUNCTION CALLING RULES:
       // Extract and save goals
       const goals = extractGoalsFromText(userMessage);
       if (Object.keys(goals).length > 0 && userId) {
-        console.log("📊 Extracted goals:", goals);
         // Capture userId at the time of extraction to avoid race conditions
         const currentUserId = userId;
         const goalsToSave = { ...goals };
@@ -1081,12 +1148,14 @@ FUNCTION CALLING RULES:
       console.error("Chat error:", err);
 
       // Detect mobile WebGPU issues
-      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      const isWebGPUError = err.message?.includes('WebGPU') || err.message?.includes('GPU');
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const isWebGPUError =
+        err.message?.includes("WebGPU") || err.message?.includes("GPU");
 
       let errorMessage = "";
       if (isMobile && isWebGPUError) {
-        errorMessage = "AI chat requires desktop browser with WebGPU support. Please try on desktop or use our contact form.";
+        errorMessage =
+          "AI chat requires desktop browser with WebGPU support. Please try on desktop or use our contact form.";
       } else {
         errorMessage = err.message || "Something went wrong. Please try again.";
       }
@@ -1094,12 +1163,12 @@ FUNCTION CALLING RULES:
       setError(errorMessage);
 
       // Log error (async, non-blocking)
-      logChatMessageAsync('system', `Error occurred: ${errorMessage}`, userId, {
+      logChatMessageAsync("system", `Error occurred: ${errorMessage}`, userId, {
         error: err.message || err.toString(),
         stack: err.stack,
         isMobile,
         isWebGPUError,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } finally {
       setIsStreaming(false);
@@ -1111,7 +1180,6 @@ FUNCTION CALLING RULES:
   const handleMicClick = () => {
     // TODO: Implement voice input
     setIsVoiceActive(!isVoiceActive);
-    console.log("🎤 Voice input clicked");
   };
 
   const handleMinimizedClick = () => {
@@ -1120,55 +1188,48 @@ FUNCTION CALLING RULES:
 
   // Prevent body scroll when in landing mode (only on mobile)
   useEffect(() => {
-    if (chatMode === 'landing' && typeof window !== 'undefined') {
+    if (chatMode === "landing" && typeof window !== "undefined") {
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
         // Save scroll position
         const scrollY = window.scrollY;
-        document.body.style.overflow = 'hidden';
-        document.body.style.height = '100vh';
-        document.body.style.touchAction = 'none';
+        document.body.style.overflow = "hidden";
+        document.body.style.height = "100vh";
+        document.body.style.touchAction = "none";
       }
     } else {
-      document.body.style.overflow = '';
-      document.body.style.height = '';
-      document.body.style.touchAction = '';
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+      document.body.style.touchAction = "";
     }
 
     // Cleanup on unmount
     return () => {
-      document.body.style.overflow = '';
-      document.body.style.height = '';
-      document.body.style.touchAction = '';
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+      document.body.style.touchAction = "";
     };
   }, [chatMode]);
 
   // Calculate bounds from listings for map view
   const calculateListingsBounds = (listings: Listing[]) => {
-    console.log('🗺️ calculateListingsBounds called with', listings?.length || 0, 'listings');
-
     if (!listings || listings.length === 0) {
-      console.warn('⚠️ No listings provided to calculateListingsBounds');
       return null;
     }
 
-    const validListings = listings.filter(l => l.latitude && l.longitude);
-    console.log('📍 Found', validListings.length, 'listings with valid coordinates out of', listings.length);
+    const validListings = listings.filter((l) => l.latitude && l.longitude);
 
     if (validListings.length === 0) {
-      console.warn('⚠️ No listings with valid lat/lng coordinates');
       return null;
     }
 
-    const lats = validListings.map(l => l.latitude!);
-    const lngs = validListings.map(l => l.longitude!);
+    const lats = validListings.map((l) => l.latitude!);
+    const lngs = validListings.map((l) => l.longitude!);
 
     const north = Math.max(...lats);
     const south = Math.min(...lats);
     const east = Math.max(...lngs);
     const west = Math.min(...lngs);
-
-    console.log('📐 Raw bounds calculated:', { north, south, east, west });
 
     // Add 10% padding
     const latPadding = (north - south) * 0.1 || 0.01;
@@ -1179,42 +1240,40 @@ FUNCTION CALLING RULES:
       south: south - latPadding,
       east: east + lngPadding,
       west: west - lngPadding,
-      zoom: 13
+      zoom: 13,
     };
 
-    console.log('✅ Final bounds with padding:', bounds);
     return bounds;
   };
 
   // Handle "View on Full Map" button click
   const handleViewOnMap = (listings: Listing[]) => {
-    console.log('🚀 handleViewOnMap called');
     const bounds = calculateListingsBounds(listings);
 
     if (bounds) {
       const boundsParam = encodeURIComponent(JSON.stringify(bounds));
       const mapUrl = `/map?bounds=${boundsParam}`;
-      console.log('🎯 Navigating to map with bounds:', mapUrl);
-      console.log('📦 Bounds object being passed:', bounds);
       router.push(mapUrl);
     } else {
-      console.warn('⚠️ No bounds calculated, navigating to default map view');
-      router.push('/map');
+      router.push("/map");
     }
   };
 
   return (
-    <div className={`relative h-full w-full flex flex-col ${chatMode === 'landing' ? 'overflow-hidden' : ''}`}>
+    <div
+      className={`relative h-full w-full flex flex-col overflow-x-hidden ${chatMode === "landing" ? "overflow-y-hidden" : "overflow-y-auto"}`}
+      style={{ maxWidth: '100vw' }}
+    >
       {/* ISSUE #2 FIX: Keep stars visible in all modes, just reduce opacity in conversation */}
       <AnimatePresence>
-        {currentView === 'chat' && (
+        {currentView === "chat" && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: chatMode === 'landing' ? 1 : 0.3 }}
+            animate={{ opacity: chatMode === "landing" ? 1 : 0.3 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}
             className="absolute inset-0 z-0 pointer-events-none"
-            style={{ overflow: 'hidden' }}
+            style={{ overflow: "hidden" }}
           >
             <StarsCanvas />
           </motion.div>
@@ -1223,7 +1282,7 @@ FUNCTION CALLING RULES:
 
       {/* Landing Page - Centered Group Container */}
       <AnimatePresence>
-        {chatMode === 'landing' && (
+        {chatMode === "landing" && (
           <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pb-48 md:pb-0">
             <motion.div
               initial={{ opacity: 0, y: -30 }}
@@ -1233,175 +1292,178 @@ FUNCTION CALLING RULES:
                 type: "spring",
                 stiffness: 100,
                 damping: 20,
-                duration: 0.8
+                duration: 0.8,
               }}
               className="w-full max-w-[90%] md:max-w-4xl flex flex-col items-center gap-6 md:gap-8"
             >
-            {/* Logo */}
-            <div className="flex items-center justify-center gap-3 md:gap-3">
-              <motion.div
-                initial={{ scale: 0, rotateY: -180 }}
-                animate={{
-                  scale: 1,
-                  rotateY: 0,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 150,
-                  damping: 15,
-                  delay: 0.3
-                }}
-                whileHover={{
-                  scale: 1.1,
-                  rotateY: 15,
-                  rotateX: 5,
-                }}
-                style={{
-                  transformStyle: "preserve-3d",
-                  perspective: 1000
-                }}
-                className="w-20 h-20 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
-              >
+              {/* Logo */}
+              <div className="flex items-center justify-center gap-3 md:gap-3">
                 <motion.div
+                  initial={{ scale: 0, rotateY: -180 }}
                   animate={{
-                    rotateY: [0, 5, 0, -5, 0],
-                    rotateX: [0, 2, 0, -2, 0],
+                    scale: 1,
+                    rotateY: 0,
                   }}
                   transition={{
-                    duration: 6,
-                    repeat: Infinity,
-                    ease: "easeInOut"
+                    type: "spring",
+                    stiffness: 150,
+                    damping: 15,
+                    delay: 0.3,
                   }}
-                  style={{ transformStyle: "preserve-3d" }}
+                  whileHover={{
+                    scale: 1.1,
+                    rotateY: 15,
+                    rotateX: 5,
+                  }}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    perspective: 1000,
+                  }}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
                 >
-                  <Image
-                    src="/images/brand/EXP-white-square.png"
-                    alt="eXp Realty"
-                    width={96}
-                    height={96}
-                    className="object-contain drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"
-                    priority
-                  />
+                  <motion.div
+                    animate={{
+                      rotateY: [0, 5, 0, -5, 0],
+                      rotateX: [0, 2, 0, -2, 0],
+                    }}
+                    transition={{
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    style={{ transformStyle: "preserve-3d" }}
+                  >
+                    <Image
+                      src="/images/brand/EXP-white-square.png"
+                      alt="eXp Realty"
+                      width={96}
+                      height={96}
+                      className="object-contain drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                      priority
+                    />
+                  </motion.div>
                 </motion.div>
+
+                {/* Vertical Divider */}
+                <motion.div
+                  initial={{ opacity: 0, scaleY: 0 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 15,
+                    delay: 0.4,
+                  }}
+                  className="h-10 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                />
+
+                <motion.h1
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 15,
+                    delay: 0.5,
+                  }}
+                  whileHover={{
+                    scale: 1.02,
+                    textShadow: "0 0 20px rgba(168,85,247,0.5)",
+                  }}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    perspective: 1000,
+                  }}
+                  className="text-3xl md:text-6xl font-light tracking-wider text-white relative"
+                >
+                  <motion.span
+                    animate={{
+                      textShadow: [
+                        "0 0 10px rgba(168,85,247,0.3)",
+                        "0 0 20px rgba(168,85,247,0.5)",
+                        "0 0 10px rgba(168,85,247,0.3)",
+                      ],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    JPSREALTOR
+                  </motion.span>
+                </motion.h1>
+              </div>
+
+              {/* Chat Input - Positioned within the group */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+                className="w-full max-w-[700px]"
+              >
+                <AnimatedChatInput
+                  mode="landing"
+                  onSend={handleSend}
+                  onMicClick={handleMicClick}
+                  onMinimizedClick={handleMinimizedClick}
+                  isStreaming={isStreaming}
+                  streamingText={streamingMessage}
+                />
               </motion.div>
 
-              {/* Vertical Divider */}
+              {/* Quick Action Pills - Positioned within the group */}
               <motion.div
-                initial={{ opacity: 0, scaleY: 0 }}
-                animate={{ opacity: 1, scaleY: 1 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 100,
-                  damping: 15,
-                  delay: 0.4
-                }}
-                className="h-10 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
-              />
-
-              <motion.h1
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 100,
-                  damping: 15,
-                  delay: 0.5
-                }}
-                whileHover={{
-                  scale: 1.02,
-                  textShadow: "0 0 20px rgba(168,85,247,0.5)"
-                }}
-                style={{
-                  transformStyle: "preserve-3d",
-                  perspective: 1000
-                }}
-                className="text-3xl md:text-6xl font-light tracking-wider text-white whitespace-nowrap relative"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+                className="hidden md:flex flex-wrap gap-3 justify-center max-w-2xl"
               >
-                <motion.span
-                  animate={{
-                    textShadow: [
-                      "0 0 10px rgba(168,85,247,0.3)",
-                      "0 0 20px rgba(168,85,247,0.5)",
-                      "0 0 10px rgba(168,85,247,0.3)"
-                    ]
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  JPSREALTOR
-                </motion.span>
-              </motion.h1>
-            </div>
+                {["Articles", "Map", "Dashboard", "Neighborhoods"].map(
+                  (action, index) => {
+                    const actionMap: Record<string, () => void> = {
+                      Articles: () => (window.location.href = "/insights"),
+                      Map: () => (window.location.href = "/map"),
+                      Dashboard: () => (window.location.href = "/dashboard"),
+                      Neighborhoods: () =>
+                        (window.location.href = "/neighborhoods"),
+                    };
 
-            {/* Chat Input - Positioned within the group */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="w-full max-w-[700px]"
-            >
-              <AnimatedChatInput
-                mode="landing"
-                onSend={handleSend}
-                onMicClick={handleMicClick}
-                onMinimizedClick={handleMinimizedClick}
-                isStreaming={isStreaming}
-                streamingText={streamingMessage}
-              />
+                    return (
+                      <motion.button
+                        key={action}
+                        onClick={actionMap[action]}
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 120,
+                          damping: 15,
+                          delay: 0.8 + index * 0.1,
+                        }}
+                        whileHover={{
+                          scale: 1.08,
+                          y: -4,
+                          boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)",
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className="px-6 py-2.5 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700/50 rounded-full text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50 transition-colors duration-300 shadow-lg cursor-pointer"
+                      >
+                        {action}
+                      </motion.button>
+                    );
+                  }
+                )}
+              </motion.div>
             </motion.div>
-
-            {/* Quick Action Pills - Positioned within the group */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, delay: 0.7 }}
-              className="hidden md:flex flex-wrap gap-3 justify-center max-w-2xl"
-            >
-              {["Articles", "Map", "Dashboard", "Neighborhoods"].map((action, index) => {
-                const actionMap: Record<string, () => void> = {
-                  "Articles": () => window.location.href = "/insights",
-                  "Map": () => window.location.href = "/map",
-                  "Dashboard": () => window.location.href = "/dashboard",
-                  "Neighborhoods": () => window.location.href = "/neighborhoods",
-                };
-
-                return (
-                  <motion.button
-                    key={action}
-                    onClick={actionMap[action]}
-                    initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 120,
-                      damping: 15,
-                      delay: 0.8 + index * 0.1
-                    }}
-                    whileHover={{
-                      scale: 1.08,
-                      y: -4,
-                      boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)"
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-6 py-2.5 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700/50 rounded-full text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50 transition-colors duration-300 shadow-lg cursor-pointer"
-                  >
-                    {action}
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-          </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       {/* Messages Container (only in conversation mode) */}
       <AnimatePresence>
-        {chatMode === 'conversation' && (
+        {chatMode === "conversation" && (
           <motion.div
             ref={messagesContainerRef}
             initial={{ opacity: 0, y: 30 }}
@@ -1411,11 +1473,11 @@ FUNCTION CALLING RULES:
               type: "spring",
               stiffness: 100,
               damping: 20,
-              duration: 0.6
+              duration: 0.6,
             }}
             className="flex-1 overflow-y-auto px-4 py-6 pb-32 space-y-4 relative z-10 max-w-4xl mx-auto w-full [&::-webkit-scrollbar]:hidden"
             style={{
-              scrollbarWidth: 'none'
+              scrollbarWidth: "none",
             }}
             onScroll={(e) => {
               const container = e.currentTarget;
@@ -1432,7 +1494,7 @@ FUNCTION CALLING RULES:
                   stiffness: 120,
                   damping: 15,
                   delay: index * 0.08,
-                  duration: 0.5
+                  duration: 0.5,
                 }}
                 className={`flex gap-4 ${
                   message.role === "user" ? "justify-end" : "justify-start"
@@ -1446,7 +1508,7 @@ FUNCTION CALLING RULES:
                       type: "spring",
                       stiffness: 200,
                       damping: 15,
-                      delay: index * 0.08 + 0.1
+                      delay: index * 0.08 + 0.1,
                     }}
                     className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0"
                   >
@@ -1506,16 +1568,18 @@ FUNCTION CALLING RULES:
                           className="w-2 h-2 bg-purple-400 rounded-full"
                         />
                       </motion.div>
-                      <span className="text-purple-300 leading-relaxed">{parseMarkdown(message.content)}</span>
+                      <span className="text-purple-300 leading-relaxed">
+                        {parseMarkdown(message.content)}
+                      </span>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap leading-relaxed">{parseMarkdown(message.content)}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed">
+                      {parseMarkdown(message.content)}
+                    </p>
                   )}
 
                   {/* Listing Map and Carousel */}
-                  {message.listings && message.listings.length > 0 && (() => {
-                    console.log('🎠 Rendering map and carousel for message:', message.id, 'with', message.listings.length, 'listings');
-                    return (
+                  {message.listings && message.listings.length > 0 && (
                     <>
                       {/* Map View */}
                       <motion.div
@@ -1525,7 +1589,7 @@ FUNCTION CALLING RULES:
                           type: "spring",
                           stiffness: 100,
                           damping: 15,
-                          delay: 0.2
+                          delay: 0.2,
                         }}
                         className="mt-4"
                       >
@@ -1543,7 +1607,7 @@ FUNCTION CALLING RULES:
                           type: "spring",
                           stiffness: 100,
                           damping: 15,
-                          delay: 0.3
+                          delay: 0.3,
                         }}
                         className="mt-3"
                       >
@@ -1566,15 +1630,14 @@ FUNCTION CALLING RULES:
                           type: "spring",
                           stiffness: 100,
                           damping: 15,
-                          delay: 0.4
+                          delay: 0.4,
                         }}
                         className="mt-4"
                       >
                         <ListingCarousel listings={message.listings} />
                       </motion.div>
                     </>
-                    );
-                  })()}
+                  )}
                 </motion.div>
 
                 {message.role === "user" && (
@@ -1585,7 +1648,7 @@ FUNCTION CALLING RULES:
                       type: "spring",
                       stiffness: 200,
                       damping: 15,
-                      delay: index * 0.08 + 0.1
+                      delay: index * 0.08 + 0.1,
                     }}
                     className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0 shadow-lg"
                   >
@@ -1604,13 +1667,17 @@ FUNCTION CALLING RULES:
                 transition={{
                   type: "spring",
                   stiffness: 150,
-                  damping: 15
+                  damping: 15,
                 }}
                 className="flex items-center gap-3 text-sm text-neutral-400 bg-neutral-800/50 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg"
               >
                 <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
                 <span>{loadingProgress}</span>
-                {loadingPercent > 0 && <span className="text-purple-400 font-medium">({loadingPercent}%)</span>}
+                {loadingPercent > 0 && (
+                  <span className="text-purple-400 font-medium">
+                    ({loadingPercent}%)
+                  </span>
+                )}
               </motion.div>
             )}
 
@@ -1623,7 +1690,7 @@ FUNCTION CALLING RULES:
                 transition={{
                   type: "spring",
                   stiffness: 150,
-                  damping: 15
+                  damping: 15,
                 }}
                 className="bg-red-900/50 border border-red-700 rounded-lg px-4 py-3 text-red-200 shadow-lg shadow-red-900/30 backdrop-blur-sm"
               >
@@ -1638,7 +1705,7 @@ FUNCTION CALLING RULES:
 
       {/* Scroll to Top Button */}
       <AnimatePresence>
-        {showScrollTop && chatMode === 'conversation' && (
+        {showScrollTop && chatMode === "conversation" && (
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1648,7 +1715,7 @@ FUNCTION CALLING RULES:
             onClick={() => {
               messagesContainerRef.current?.scrollTo({
                 top: 0,
-                behavior: 'smooth'
+                behavior: "smooth",
               });
             }}
             className="fixed bottom-24 right-4 md:right-8 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
@@ -1671,7 +1738,7 @@ FUNCTION CALLING RULES:
       </AnimatePresence>
 
       {/* Animated Chat Input - Only shown in conversation and minimized modes */}
-      {chatMode !== 'landing' && (
+      {chatMode !== "landing" && (
         <AnimatedChatInput
           mode={chatMode}
           onSend={handleSend}

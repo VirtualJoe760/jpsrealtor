@@ -25,6 +25,9 @@ body {
   touch-action: pan-x pan-y;
   -webkit-user-select: none;
   user-select: none;
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* Prevent page scrolling only on chat, map, and neighborhoods pages */
@@ -55,6 +58,9 @@ html {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   touch-action: manipulation;
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 * {

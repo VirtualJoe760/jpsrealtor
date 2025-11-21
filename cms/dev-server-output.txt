@@ -1,0 +1,12 @@
+   ▲ Next.js 15.2.3
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.4.20:3002
+   - Experiments (use with caution):
+     ⨯ reactCompiler
+
+ ✓ Starting...
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbopack'
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+ ✓ Ready in 4.2s
+[?25h

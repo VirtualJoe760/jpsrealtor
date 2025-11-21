@@ -568,15 +568,6 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
 
           {/* Conversation History Section */}
 
-          {/* Debug: Always visible test */}
-          {!effectivelyCollapsed && (
-            <div className="pt-4 pb-2 px-3">
-              <div className="text-xs text-emerald-400 bg-emerald-500/10 p-2 rounded">
-                DEBUG: History section active. Count: {conversationHistory.length}
-              </div>
-            </div>
-          )}
-
           <AnimatePresence mode="wait">
             {!effectivelyCollapsed && conversationHistory.length > 0 && (
               <motion.div

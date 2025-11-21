@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
 
   const baths = Number(query.get("baths") || "0");
   if (baths > 0) {
-    matchStage.bathroomsFull = { $gte: baths };
+    // Use bathroomsTotalDecimal for more accurate bathroom filtering
+    // This field is more reliably populated in MLS data
+    matchStage.bathroomsTotalDecimal = { $gte: baths };
   }
 
   // ==================== SQUARE FOOTAGE FILTERS ====================

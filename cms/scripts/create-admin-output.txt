@@ -1,0 +1,32 @@
+
+> jpsrealtor-cms@1.0.0 create-admin
+> cross-env NODE_OPTIONS=--no-deprecation tsx scripts/create-admin-user.ts
+
+[dotenv@17.2.3] injecting env (4) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+================================================================================
+PAYLOAD CMS - CREATE FIRST ADMIN USER
+================================================================================
+
+🔍 Environment Check:
+   PAYLOAD_SECRET: ✅ Set
+   MONGODB_URI: ✅ Set
+
+📦 Initializing Payload CMS...
+[22:43:52] [33mWARN[39m: [36mNo email adapter provided. Email will be written to console. More info at https://payloadcms.com/docs/email/overview.[39m
+✅ Payload initialized successfully
+
+👤 Creating admin user...
+   Email: admin@jpsrealtor.com
+   Password: ChangeThisPassword123!
+
+✅ Admin user created successfully!
+
+User Details:
+   ID: 691eb8a97c328404c3d1abe4
+   Email: admin@jpsrealtor.com
+   Created At: 2025-11-20T06:43:53.188Z
+   Updated At: 2025-11-20T06:43:53.189Z
+
+================================================================================
+✅ SUCCESS - Admin user created
+================================================================================

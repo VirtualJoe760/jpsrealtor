@@ -83,12 +83,12 @@ function HomePageContent() {
   };
 
   return (
-    <div className="h-screen w-screen bg-black overflow-hidden relative" data-page="home">
+    <div className="h-screen w-screen bg-black overflow-hidden relative" data-page="home" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* URL Sync Handler */}
       <URLSyncHandler />
 
       {/* Persistent Starfield Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <StarsCanvas />
       </div>
 
@@ -96,7 +96,7 @@ function HomePageContent() {
       <MLSPreloader />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full md:w-auto h-full relative overflow-hidden z-10">
+      <main className="flex-1 w-full h-full relative overflow-x-hidden overflow-y-auto z-10">
         <AnimatePresence mode="wait">{renderView()}</AnimatePresence>
 
         {/* Subtle gradient overlay for depth */}
