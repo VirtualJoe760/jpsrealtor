@@ -346,75 +346,47 @@ export default function CityMap({
 
   return (
     <div className="space-y-4">
-      {/* Controls Bar */}
-      <div className="flex flex-wrap gap-4 items-center">
-        {/* Property Type & Map Style Combined Tabs */}
-        <div className="flex gap-2 bg-gray-900 p-2 rounded-lg flex-wrap">
-          <button
-            onClick={() => setPropertyTypeFilter("sale")}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              propertyTypeFilter === "sale"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            For Sale
-          </button>
-          <button
-            onClick={() => setPropertyTypeFilter("rental")}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              propertyTypeFilter === "rental"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            For Rent
-          </button>
-          <button
-            onClick={() => setPropertyTypeFilter("all")}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              propertyTypeFilter === "all"
-                ? "bg-gray-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            All
-          </button>
-
-          {/* Divider */}
-          <div className="w-px bg-gray-700 mx-1"></div>
-
-          {/* Map Style Tabs */}
-          <button
-            onClick={() => setMapStyle("dark")}
-            className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
-              mapStyle === "dark"
-                ? "bg-gray-700 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            🌙 Dark
-          </button>
-          <button
-            onClick={() => setMapStyle("light")}
-            className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
-              mapStyle === "light"
-                ? "bg-gray-300 text-gray-900"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            ☀️ Light
-          </button>
-        </div>
+      {/* Property Type Filter Bar */}
+      <div className="flex gap-2 bg-gray-800/70 backdrop-blur-sm p-2 rounded-lg border border-gray-700">
+        <button
+          onClick={() => setPropertyTypeFilter("sale")}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            propertyTypeFilter === "sale"
+              ? "bg-emerald-500 text-black"
+              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
+          }`}
+        >
+          For Sale
+        </button>
+        <button
+          onClick={() => setPropertyTypeFilter("rental")}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            propertyTypeFilter === "rental"
+              ? "bg-purple-500 text-white"
+              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
+          }`}
+        >
+          For Rent
+        </button>
+        <button
+          onClick={() => setPropertyTypeFilter("all")}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            propertyTypeFilter === "all"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
+          }`}
+        >
+          All
+        </button>
       </div>
 
       {/* Filter Accordion */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+      <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg overflow-hidden border border-gray-700">
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-700 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-700/70 transition-colors"
         >
-          <h3 className="font-semibold text-white">Filter Listings</h3>
+          <h3 className="font-semibold text-white">Advanced Filters</h3>
           <svg
             className={`w-5 h-5 text-gray-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
             fill="none"
@@ -504,25 +476,51 @@ export default function CityMap({
         )}
       </div>
 
-      {/* Map Container */}
-      <div
-        ref={mapContainer}
-        style={{
-          width: "100%",
-          height,
-          borderRadius: "12px",
-          overflow: "hidden",
-          touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
-        }}
-        className="shadow-xl border border-gray-700"
-      />
+      {/* Map Container with Style Tabs */}
+      <div className="relative">
+        <div
+          ref={mapContainer}
+          style={{
+            width: "100%",
+            height,
+            borderRadius: "12px",
+            overflow: "hidden",
+            touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
+          }}
+          className="shadow-xl border border-gray-700"
+        />
 
-      {/* Loading State */}
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50 rounded-lg">
-          <div className="text-white">Loading map...</div>
+        {/* Map Style Tabs - Bottom of Map */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-black/80 backdrop-blur-md p-2 rounded-lg border border-gray-700 shadow-2xl">
+          <button
+            onClick={() => setMapStyle("dark")}
+            className={`px-4 py-2 rounded-md font-medium transition-all flex items-center gap-2 ${
+              mapStyle === "dark"
+                ? "bg-gray-700 text-white shadow-lg"
+                : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+          >
+            🌙 Dark
+          </button>
+          <button
+            onClick={() => setMapStyle("light")}
+            className={`px-4 py-2 rounded-md font-medium transition-all flex items-center gap-2 ${
+              mapStyle === "light"
+                ? "bg-white text-gray-900 shadow-lg"
+                : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+          >
+            ☀️ Light
+          </button>
         </div>
-      )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50 rounded-lg">
+            <div className="text-white">Loading map...</div>
+          </div>
+        )}
+      </div>
 
       {/* Listing Count and View All Button */}
       <div className="flex items-center justify-between">
@@ -534,7 +532,7 @@ export default function CityMap({
         </div>
         <Link
           href="/mls-listings"
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
+          className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
         >
           View All Listings →
         </Link>

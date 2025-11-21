@@ -118,19 +118,22 @@ export default function ListingBottomPanel({
       return null;
     }
 
-    // Create city slug
-    const citySlug = fullListing.city
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
+    // Import the findCityByName function to get the proper cityId
+    const { findCityByName } = require('@/app/constants/counties');
 
-    // Create subdivision slug from name - keep it simple
+    const cityData = findCityByName(fullListing.city);
+    if (!cityData) return null;
+
+    // Use the city's ID from the counties constant
+    const cityId = cityData.city.id;
+
+    // Create subdivision slug from name - this should match the database slug
     const subdivisionSlug = fullListing.subdivisionName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    return `/neighborhoods/${citySlug}/${subdivisionSlug}`;
+    return `/neighborhoods/${cityId}/${subdivisionSlug}`;
   };
 
   const subdivisionUrl = getSubdivisionUrl();

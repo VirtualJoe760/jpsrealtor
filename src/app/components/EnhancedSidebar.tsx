@@ -278,11 +278,9 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
     if (label === "Dashboard" && !session) {
       router.push("/auth/signin");
     } else if (label === "Chat" && href === "/") {
-      // For Chat button, start a new conversation by reloading the page
-      // This clears any existing conversation and starts fresh
-      if (typeof window !== 'undefined') {
-        window.location.href = "/";
-      }
+      // For Chat button, start a new conversation without page reload
+      // Navigate to home - the home page will handle chat reset
+      router.push("/?new=true", { scroll: false });
     } else {
       router.push(href);
     }

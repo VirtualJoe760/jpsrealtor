@@ -88,51 +88,49 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
       };
 
   return (
-    <div className="min-h-screen bg-black" data-page="neighborhoods-city">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-black via-gray-900/90 to-black border-b border-gray-800 text-white py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-4">
-            <p className="text-sm text-gray-400 mb-2">{countyName}</p>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3 drop-shadow-2xl">{city.name}</h1>
-            {city.description && (
-              <p className="text-xl text-gray-300 leading-relaxed max-w-3xl">{city.description}</p>
-            )}
-            {city.population && (
-              <p className="text-lg text-gray-400 mt-3">
-                Population: <span className="font-semibold text-white">{city.population.toLocaleString()}</span>
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Map View */}
+    <div className="min-h-screen py-12 px-4" data-page="neighborhoods-city">
+      <div className="max-w-7xl mx-auto">
+        {/* Hero Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Listings in {city.name}</h2>
-          <CityMap
-            cityId={cityId}
-            cityName={city.name}
-            coordinates={cityDoc?.coordinates}
-            height="600px"
-          />
+          <p className="text-sm text-gray-400 mb-2 flex items-center gap-2">
+            <span>{countyName}</span>
+          </p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-2xl">{city.name}</h1>
+          {city.description && (
+            <p className="text-xl text-gray-300 leading-relaxed max-w-3xl">{city.description}</p>
+          )}
+          {city.population && (
+            <p className="text-lg text-gray-400 mt-3">
+              Population: <span className="font-semibold text-white">{city.population.toLocaleString()}</span>
+            </p>
+          )}
         </div>
 
-        {/* Stats with Auto-Cycling */}
-        <CityStats
-          cityId={cityId}
-          initialStats={initialStats}
-        />
+        {/* Content */}
+        <div className="space-y-8">
+          {/* Map View */}
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">Listings in {city.name}</h2>
+            <CityMap
+              cityId={cityId}
+              cityName={city.name}
+              coordinates={cityDoc?.coordinates}
+              height="600px"
+            />
+          </div>
 
-        {/* Dynamic Community Data Sections */}
-        <SubdivisionsSection cityId={cityId} />
-        <HOASection cityId={cityId} />
+          {/* Stats with Auto-Cycling */}
+          <CityStats
+            cityId={cityId}
+            initialStats={initialStats}
+          />
 
-        {/* Branded Buy/Sell CTA Section */}
-        <div className="mt-16 mb-8">
-          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-gray-700 rounded-2xl p-8 md:p-12 shadow-2xl">
+          {/* Dynamic Community Data Sections */}
+          <SubdivisionsSection cityId={cityId} />
+          <HOASection cityId={cityId} />
+
+          {/* Branded Buy/Sell CTA Section */}
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 md:p-12 shadow-2xl">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
               Ready to Make Your Move in {city.name}?
             </h2>
@@ -142,17 +140,15 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
             <div className="flex flex-wrap gap-4 justify-center">
               <Link
                 href={`/neighborhoods/${cityId}/buy`}
-                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+                className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl text-lg"
               >
-                <span className="relative z-10">🏡 Buy a Home in {city.name}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                Buy a Home in {city.name}
               </Link>
               <Link
                 href={`/neighborhoods/${cityId}/sell`}
-                className="group relative px-8 py-4 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 hover:from-gray-600 hover:via-gray-700 hover:to-gray-800 text-white font-bold rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-lg border border-gray-600"
+                className="px-8 py-4 bg-gray-800/70 backdrop-blur-sm border border-gray-700 hover:bg-gray-700/70 text-white font-bold rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl text-lg"
               >
-                <span className="relative z-10">💰 Sell Your {city.name} Home</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-200 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                Sell Your {city.name} Home
               </Link>
             </div>
             <p className="text-sm text-gray-400 mt-6 text-center">

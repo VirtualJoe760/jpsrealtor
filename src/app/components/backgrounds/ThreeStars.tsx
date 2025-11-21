@@ -55,9 +55,9 @@ export default function ThreeStars() {
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Update rotation - Smooth and fluid
-      rotationX += delta * 0.08;
-      rotationY += delta * 0.12;
+      // Update rotation - Very slow and ambient
+      rotationX += delta * 0.01;
+      rotationY += delta * 0.015;
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;

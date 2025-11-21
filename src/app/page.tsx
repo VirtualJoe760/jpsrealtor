@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { EnhancedChatProvider, useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
+import { useChatContext } from "@/app/components/chat/ChatProvider";
 import MLSPreloader from "@/app/components/mls/MLSPreloader";
 import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidget";
 import ArticlesView from "@/app/components/chatwidget/ArticlesView";
@@ -18,10 +19,21 @@ export const dynamic = 'force-dynamic';
 // Component that handles URL search params synchronization
 function URLSyncHandler() {
   const { currentView, setCurrentView } = useEnhancedChat();
+  const { clearMessages } = useChatContext();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
+    const newParam = searchParams.get('new');
+
+    // If new=true, clear messages for a fresh chat
+    if (newParam === 'true') {
+      clearMessages();
+      // Remove the 'new' param from URL to avoid clearing again on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('new');
+      window.history.replaceState({}, '', url.toString());
+    }
 
     // Map URL params to internal view states
     type ViewType = 'chat' | 'articles' | 'dashboard' | 'subdivisions';
@@ -38,7 +50,7 @@ function URLSyncHandler() {
     if (newView !== currentView) {
       setCurrentView(newView);
     }
-  }, [searchParams, currentView, setCurrentView]);
+  }, [searchParams, currentView, setCurrentView, clearMessages]);
 
   return null;
 }

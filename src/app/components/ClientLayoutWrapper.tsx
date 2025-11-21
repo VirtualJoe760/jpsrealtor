@@ -48,9 +48,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
-        <PageTransition>
-          {children}
-        </PageTransition>
+        {children}
       </div>
 
       <MobileBottomNav />

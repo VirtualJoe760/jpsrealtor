@@ -55,10 +55,9 @@ export default function ThreeStars() {
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Update rotation - MUCH slower for smooth effect
-      // Reversed direction: positive values instead of negative
-      rotationX += delta / 50;
-      rotationY += delta / 75;
+      // Update rotation - Very slow and ambient
+      rotationX += delta * 0.01;
+      rotationY += delta * 0.015;
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
