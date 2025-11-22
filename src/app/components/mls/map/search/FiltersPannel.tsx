@@ -3,6 +3,7 @@
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Filters } from "@/types/types";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 type Props = {
   isOpen: boolean;
@@ -17,6 +18,23 @@ export default function FiltersPanel({
   onApply,
   defaultFilters,
 }: Props) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
+  // Theme-aware classes
+  const panelBg = isLight ? 'bg-white' : 'bg-zinc-950';
+  const panelBorder = isLight ? 'border-gray-300' : 'border-zinc-800';
+  const sectionBorder = isLight ? 'border-gray-200' : 'border-zinc-800';
+  const textPrimary = isLight ? 'text-gray-900' : 'text-white';
+  const textSecondary = isLight ? 'text-gray-600' : 'text-gray-400';
+  const textAccent = isLight ? 'text-blue-600' : 'text-emerald-400';
+  const inputBg = isLight ? 'bg-gray-50' : 'bg-zinc-900';
+  const inputBorder = isLight ? 'border-gray-300' : 'border-zinc-700';
+  const inputFocus = isLight ? 'focus:border-blue-500' : '${inputFocus}';
+  const buttonInactive = isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-zinc-800 text-white hover:bg-zinc-700';
+  const buttonActive = isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-black';
+  const hoverAccent = isLight ? 'hover:text-blue-600' : 'hover:text-emerald-400';
+
   // State for all filters
   const [listingType, setListingType] = useState(defaultFilters.listingType);
   const [minPrice, setMinPrice] = useState(defaultFilters.minPrice);
@@ -149,7 +167,7 @@ export default function FiltersPanel({
   const SectionHeader = ({ title, section }: { title: string; section: string }) => (
     <button
       onClick={() => toggleSection(section)}
-      className="w-full flex justify-between items-center py-2 text-emerald-400 font-semibold text-sm hover:text-emerald-300 transition"
+      className={`w-full flex justify-between items-center py-2 ${textAccent} font-semibold text-sm ${hoverAccent} transition`}
     >
       <span>{title}</span>
       {openSections[section] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -158,13 +176,13 @@ export default function FiltersPanel({
 
   return (
     <aside
-      className={`fixed top-16 left-0 h-[calc(100vh-64px)] w-[90%] sm:w-[70%] md:w-[60%] lg:w-[30%] 2xl:w-[20%] bg-zinc-950 text-white transform transition-transform duration-300 z-50
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} border-r border-r-zinc-800 px-4 py-4 overflow-y-auto`}
+      className={`fixed top-16 left-0 h-[calc(100vh-64px)] w-[90%] sm:w-[70%] md:w-[60%] lg:w-[30%] 2xl:w-[20%] ${panelBg} ${textPrimary} transform transition-transform duration-300 z-50
+        ${isOpen ? "translate-x-0" : "-translate-x-full"} border-r ${panelBorder} px-4 py-4 overflow-y-auto shadow-2xl`}
     >
       {/* Header */}
-      <div className="flex justify-between items-center mb-4 sticky top-0 bg-zinc-950 pb-2 border-b border-zinc-800">
-        <h2 className="text-lg font-bold tracking-wide text-emerald-400">Advanced Filters</h2>
-        <button onClick={onClose} aria-label="Close Filters Panel" className="hover:text-emerald-400 transition">
+      <div className={`flex justify-between items-center mb-4 sticky top-0 ${panelBg} pb-2 border-b ${sectionBorder}`}>
+        <h2 className={`text-lg font-bold tracking-wide ${textAccent}`}>Advanced Filters</h2>
+        <button onClick={onClose} aria-label="Close Filters Panel" className={`${hoverAccent} transition`}>
           <X className="w-6 h-6" />
         </button>
       </div>
@@ -176,14 +194,14 @@ export default function FiltersPanel({
           <div className="space-y-3 pl-2">
             {/* Listing Type Toggle */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Listing Type</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Listing Type</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setListingType("sale")}
                   className={`px-2 py-2 text-sm rounded-md font-medium transition ${
                     listingType === "sale"
-                      ? "bg-emerald-500 text-black"
-                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                      ? buttonActive
+                      : buttonInactive
                   }`}
                 >
                   For Sale
@@ -193,7 +211,7 @@ export default function FiltersPanel({
                   className={`px-2 py-2 text-sm rounded-md font-medium transition ${
                     listingType === "rental"
                       ? "bg-purple-500 text-white"
-                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                      : buttonInactive
                   }`}
                 >
                   For Rent
@@ -203,7 +221,7 @@ export default function FiltersPanel({
                   className={`px-2 py-2 text-sm rounded-md font-medium transition ${
                     listingType === "multifamily"
                       ? "bg-yellow-500 text-black"
-                      : "bg-zinc-800 text-white hover:bg-zinc-700"
+                      : buttonInactive
                   }`}
                 >
                   Multi-Family
@@ -213,7 +231,7 @@ export default function FiltersPanel({
 
             {/* Price Range */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Price Range</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Price Range</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -221,7 +239,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
                 <input
                   type="text"
@@ -229,7 +247,7 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
               </div>
             </div>
@@ -237,23 +255,23 @@ export default function FiltersPanel({
             {/* Beds & Baths */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Min Beds</label>
+                <label className={`text-xs ${textSecondary} mb-1 block`}>Min Beds</label>
                 <input
                   type="number"
                   value={beds}
                   onChange={(e) => setBeds(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                   placeholder="Any"
                   min="0"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Min Baths</label>
+                <label className={`text-xs ${textSecondary} mb-1 block`}>Min Baths</label>
                 <input
                   type="number"
                   value={baths}
                   onChange={(e) => setBaths(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                   placeholder="Any"
                   min="0"
                 />
@@ -270,11 +288,11 @@ export default function FiltersPanel({
           <div className="space-y-3 pl-2">
             {/* Property Type */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Property Type</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Property Type</label>
               <select
                 value={propertySubType}
                 onChange={(e) => setPropertySubType(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
               >
                 <option value="">All Types</option>
                 <option value="Single Family Residence">Single Family Home</option>
@@ -288,7 +306,7 @@ export default function FiltersPanel({
 
             {/* Square Footage */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Square Footage (Interior)</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Square Footage (Interior)</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -296,7 +314,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minSqft}
                   onChange={(e) => setMinSqft(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
                 <input
                   type="text"
@@ -304,14 +322,14 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxSqft}
                   onChange={(e) => setMaxSqft(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Lot Size */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Lot Size (Sqft)</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Lot Size (Sqft)</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -319,7 +337,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minLotSize}
                   onChange={(e) => setMinLotSize(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
                 <input
                   type="text"
@@ -327,14 +345,14 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxLotSize}
                   onChange={(e) => setMaxLotSize(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Year Built */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Year Built</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Year Built</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -342,7 +360,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minYear}
                   onChange={(e) => setMinYear(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
                 <input
                   type="text"
@@ -350,18 +368,18 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxYear}
                   onChange={(e) => setMaxYear(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Land Type (Fee Simple vs Lease) */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Land Ownership</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Land Ownership</label>
               <select
                 value={landType}
                 onChange={(e) => setLandType(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
               >
                 <option value="">All</option>
                 <option value="Fee Simple">Fee Simple (Own Land)</option>
@@ -379,7 +397,7 @@ export default function FiltersPanel({
           <div className="space-y-3 pl-2">
             {/* Pool */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Pool</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Pool</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPoolYn(poolYn === true ? undefined : true)}
@@ -410,7 +428,7 @@ export default function FiltersPanel({
 
             {/* Spa */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Spa/Hot Tub</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Spa/Hot Tub</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSpaYn(spaYn === true ? undefined : true)}
@@ -441,7 +459,7 @@ export default function FiltersPanel({
 
             {/* View */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">View</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>View</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setViewYn(viewYn === true ? undefined : true)}
@@ -464,12 +482,12 @@ export default function FiltersPanel({
 
             {/* Garage */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Min Garage Spaces</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Min Garage Spaces</label>
               <input
                 type="number"
                 value={minGarages}
                 onChange={(e) => setMinGarages(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 placeholder="Any"
                 min="0"
               />
@@ -485,11 +503,11 @@ export default function FiltersPanel({
           <div className="space-y-3 pl-2">
             {/* HOA Presence */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Has HOA</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Has HOA</label>
               <select
                 value={hoaPresence}
                 onChange={(e) => setHoaPresence(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
               >
                 <option value="any">Any</option>
                 <option value="yes">Yes</option>
@@ -499,20 +517,20 @@ export default function FiltersPanel({
 
             {/* Max HOA Fee */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Max HOA Fee (Monthly)</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Max HOA Fee (Monthly)</label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={hoa}
                 onChange={(e) => setHoa(e.target.value.replace(/\D/g, ""))}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 placeholder="No Limit"
               />
             </div>
 
             {/* Gated Community */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Gated Community</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Gated Community</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setGatedCommunity(gatedCommunity === true ? undefined : true)}
@@ -535,7 +553,7 @@ export default function FiltersPanel({
 
             {/* Senior Community */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">55+ Senior Community</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>55+ Senior Community</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSeniorCommunity(seniorCommunity === true ? undefined : true)}
@@ -566,11 +584,11 @@ export default function FiltersPanel({
           <div className="space-y-3 pl-2">
             {/* City */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">City</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>City</label>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md text-white focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
               >
                 <option value="">All Cities</option>
                 <option value="Palm Springs">Palm Springs</option>
@@ -587,12 +605,12 @@ export default function FiltersPanel({
 
             {/* Subdivision */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Subdivision/Community</label>
+              <label className={`text-xs ${textSecondary} mb-1 block`}>Subdivision/Community</label>
               <input
                 type="text"
                 value={subdivision}
                 onChange={(e) => setSubdivision(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm bg-zinc-900 border border-zinc-700 rounded-md placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
                 placeholder="Search by name..."
               />
             </div>

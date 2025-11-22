@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { generateSessionId } from "@/lib/chat-utils";
 
@@ -198,14 +198,14 @@ export function ChatProvider({ children, disableAutoLoad = false }: ChatProvider
   };
 
   // Clear all messages
-  const clearMessages = () => {
+  const clearMessages = useCallback(() => {
     setMessages([]);
-  };
+  }, []);
 
   // Load messages (for restoring conversations)
-  const loadMessages = (loadedMessages: ChatMessage[]) => {
+  const loadMessages = useCallback((loadedMessages: ChatMessage[]) => {
     setMessages(loadedMessages);
-  };
+  }, []);
 
   return (
     <ChatContext.Provider

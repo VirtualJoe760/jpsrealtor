@@ -10,6 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapListing } from "@/types/types";
 import { Home, MapPin } from "lucide-react";
 import Image from "next/image";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface ChatMapViewProps {
   listings: any[]; // Chat listings format
@@ -78,6 +79,8 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapRef = useRef<any>(null);
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   // Log map configuration
   console.log('🗺️ ChatMapView config:', {
@@ -99,10 +102,14 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
 
   if (validListings.length === 0) {
     return (
-      <div className="w-full h-[300px] md:h-[400px] bg-neutral-800 rounded-lg flex items-center justify-center border border-neutral-700">
+      <div className={`w-full h-[300px] md:h-[400px] rounded-lg flex items-center justify-center border ${
+        isLight
+          ? 'bg-gray-100 border-gray-300'
+          : 'bg-neutral-800 border-neutral-700'
+      }`}>
         <div className="text-center p-4">
-          <p className="text-neutral-400 mb-2">Map data unavailable</p>
-          <p className="text-neutral-500 text-sm">{listings.length} properties found but location coordinates are missing</p>
+          <p className={`mb-2 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Map data unavailable</p>
+          <p className={`text-sm ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>{listings.length} properties found but location coordinates are missing</p>
         </div>
       </div>
     );
@@ -195,10 +202,14 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   }, [searchFilters, validListings.length, paddedBounds, router]);
 
   return (
-    <div className="relative w-full h-[350px] md:h-[500px] rounded-lg overflow-hidden border border-neutral-700">
+    <div className={`relative w-full h-[350px] md:h-[500px] rounded-lg overflow-hidden border ${
+      isLight ? 'border-gray-300' : 'border-neutral-700'
+    }`}>
       {mapError && (
-        <div className="absolute inset-0 bg-neutral-900/90 flex items-center justify-center z-50">
-          <p className="text-red-400">Map Error: {mapError}</p>
+        <div className={`absolute inset-0 flex items-center justify-center z-50 ${
+          isLight ? 'bg-white/90' : 'bg-neutral-900/90'
+        }`}>
+          <p className="text-red-500">Map Error: {mapError}</p>
         </div>
       )}
       <Map
@@ -258,9 +269,15 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
                 {/* Hover preview card */}
                 {isHovered && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[200] pointer-events-none">
-                    <div className="bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl p-2 w-48">
+                    <div className={`rounded-lg shadow-2xl p-2 w-48 ${
+                      isLight
+                        ? 'bg-white border border-gray-300'
+                        : 'bg-neutral-900 border border-neutral-700'
+                    }`}>
                       {/* Image */}
-                      <div className="relative w-full h-24 mb-2 rounded overflow-hidden bg-neutral-800">
+                      <div className={`relative w-full h-24 mb-2 rounded overflow-hidden ${
+                        isLight ? 'bg-gray-200' : 'bg-neutral-800'
+                      }`}>
                         {listing.image ? (
                           <Image
                             src={listing.image}
@@ -271,20 +288,26 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full">
-                            <Home className="w-8 h-8 text-neutral-600" />
+                            <Home className={`w-8 h-8 ${isLight ? 'text-gray-400' : 'text-neutral-600'}`} />
                           </div>
                         )}
                       </div>
 
                       {/* Details */}
-                      <div className="text-white">
-                        <p className="text-lg font-bold text-emerald-400 mb-1">
+                      <div>
+                        <p className={`text-lg font-bold mb-1 ${
+                          isLight ? 'text-blue-600' : 'text-emerald-400'
+                        }`}>
                           ${listing.price?.toLocaleString()}
                         </p>
-                        <p className="text-xs text-neutral-300 truncate mb-1">
+                        <p className={`text-xs truncate mb-1 ${
+                          isLight ? 'text-gray-700' : 'text-neutral-300'
+                        }`}>
                           {listing.address}
                         </p>
-                        <p className="text-xs text-neutral-400">
+                        <p className={`text-xs ${
+                          isLight ? 'text-gray-600' : 'text-neutral-400'
+                        }`}>
                           {listing.beds}bd • {listing.baths}ba • {listing.sqft?.toLocaleString()} sqft
                         </p>
                       </div>

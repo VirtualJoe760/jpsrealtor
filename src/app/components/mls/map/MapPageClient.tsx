@@ -3,11 +3,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
-import { Satellite, Map as MapIcon } from "lucide-react";
+import { Satellite, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
-import MapSearchBar from "./search/MapSearchBar";
 import FiltersPanel from "./search/FiltersPannel";
 import ActiveFilters from "./search/ActiveFilters";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
@@ -16,6 +15,7 @@ import DislikedResetDialog from "@/app/components/mls/map/DislikedResetDialog";
 import SwipeCompletionModal from "@/app/components/mls/map/SwipeCompletionModal";
 import { useListings } from "@/app/utils/map/useListings";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 const defaultFilterState: Filters = {
   // Listing Type (default to 'sale' for residential properties)
@@ -66,12 +66,25 @@ export default function MapPageClient() {
   const selectedSlugRef = useRef<string | null>(null);
   const listingCache = useRef<Map<string, IListing>>(new Map());
   const fetchingRef = useRef<Set<string>>(new Set());
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   const [isSidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
   );
   const [isFiltersOpen, setFiltersOpen] = useState(false);
   const [isSatelliteView, setIsSatelliteView] = useState(false); // 🛰️ Satellite toggle
+
+  // Debug: Log theme state DURING RENDER (after all state declarations)
+  console.log('🎨 MapPageClient RENDER - currentTheme:', currentTheme);
+  console.log('🎨 MapPageClient RENDER - isLight:', isLight);
+  console.log('🎨 MapPageClient RENDER - isSatelliteView:', isSatelliteView);
+  console.log('🎨 MapPageClient RENDER - Calculated mapStyle:', isSatelliteView ? 'satellite' : (isLight ? 'bright' : 'dark'));
+
+  // Debug: Log theme state in useEffect
+  useEffect(() => {
+    console.log('🎨 MapPageClient useEffect - Theme:', currentTheme, '| isLight:', isLight, '| Map style will be:', isSatelliteView ? 'satellite' : (isLight ? 'bright' : 'dark'));
+  }, [currentTheme, isLight, isSatelliteView]);
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
   const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
   // Initialize filters from URL params or defaults
@@ -696,16 +709,6 @@ export default function MapPageClient() {
         }
       `}</style>
 
-      <MapSearchBar
-        isOpen={isSidebarOpen}
-        onToggle={toggleSidebar}
-        onSearch={(lat, lng) => mapRef.current?.flyToCity(lat, lng)}
-        onToggleFilters={toggleFilters}
-        onToggleSatellite={() => setIsSatelliteView(prev => !prev)}
-        isSatelliteView={isSatelliteView}
-        allListings={allListings}
-      />
-
       {/* Active Filters Display */}
       <ActiveFilters
         filters={filters}
@@ -735,7 +738,7 @@ export default function MapPageClient() {
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
             panelOpen={Boolean(selectedListing && selectedFullListing)}
-            mapStyle={isSatelliteView ? 'satellite' : 'toner'}
+            mapStyle={isSatelliteView ? 'satellite' : (isLight ? 'bright' : 'dark')}
           />
         </div>
 
@@ -863,18 +866,40 @@ export default function MapPageClient() {
         onClose={() => setShowCompletionModal(false)}
       />
 
+      {/* Filters Button - Top Right */}
+      <button
+        onClick={toggleFilters}
+        className={`fixed top-20 right-4 z-40 w-14 h-14 rounded-2xl backdrop-blur-xl border flex items-center justify-center active:scale-95 transition-all shadow-2xl ${
+          isFiltersOpen
+            ? (isLight
+              ? 'bg-blue-500 border-blue-600 text-white'
+              : 'bg-emerald-500 border-emerald-400 text-black')
+            : (isLight
+              ? 'bg-white/90 border-gray-300 text-blue-600 hover:bg-blue-50 shadow-gray-300/20'
+              : 'bg-gray-800/90 border-gray-600 text-emerald-400 hover:bg-gray-700/90 shadow-emerald-500/20')
+        }`}
+        aria-label={isFiltersOpen ? "Close Filters" : "Open Filters"}
+        title="Filters"
+      >
+        <SlidersHorizontal className="w-6 h-6" strokeWidth={2.5} />
+      </button>
+
       {/* Mobile Skin Toggle Button - Bottom Left */}
       <button
         onClick={() => setIsSatelliteView(prev => !prev)}
-        className="md:hidden fixed bottom-24 left-4 z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 backdrop-blur-xl border border-emerald-500/30 flex items-center justify-center hover:from-emerald-500/30 hover:to-cyan-500/30 hover:border-emerald-500/50 active:scale-95 transition-all shadow-2xl shadow-emerald-500/20"
+        className={`md:hidden fixed bottom-24 left-4 z-40 w-14 h-14 rounded-2xl backdrop-blur-xl border flex items-center justify-center active:scale-95 transition-all shadow-2xl ${
+          isLight
+            ? 'bg-gradient-to-br from-blue-400/30 to-emerald-400/30 border-blue-500/40 hover:from-blue-500/40 hover:to-emerald-500/40 hover:border-blue-600/50 shadow-blue-400/20'
+            : 'bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-emerald-500/30 hover:from-emerald-500/30 hover:to-cyan-500/30 hover:border-emerald-500/50 shadow-emerald-500/20'
+        }`}
         aria-label={isSatelliteView ? "Switch to Map View" : "Switch to Satellite View"}
         title={isSatelliteView ? "Map View" : "Satellite View"}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {isSatelliteView ? (
-          <MapIcon className="w-7 h-7 text-emerald-400" strokeWidth={2.5} />
+          <MapIcon className={`w-7 h-7 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} strokeWidth={2.5} />
         ) : (
-          <Satellite className="w-7 h-7 text-emerald-400" strokeWidth={2.5} />
+          <Satellite className={`w-7 h-7 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} strokeWidth={2.5} />
         )}
       </button>
     </>

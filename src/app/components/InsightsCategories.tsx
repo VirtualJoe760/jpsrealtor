@@ -1,18 +1,23 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { insightsCategoriesContent } from "@/constants/staticContent"; // Import static content
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const InsightsCategories = () => {
+  const { textPrimary, textSecondary } = useThemeClasses();
+
   return (
     <div className="py-24 sm:py-32" aria-labelledby="tips-categories-heading">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
           {/* Dynamic heading and description */}
-          <h2 id="tips-categories-heading" className="text-3xl font-bold tracking-tight pb-3 text-white sm:text-4xl">
+          <h2 id="tips-categories-heading" className={`text-3xl font-bold tracking-tight pb-3 sm:text-4xl ${textPrimary}`}>
             {insightsCategoriesContent.heading}
           </h2>
-          <p className="mt-2 text-lg leading-8 text-white">
+          <p className={`mt-2 text-lg leading-8 ${textSecondary}`}>
             {insightsCategoriesContent.description}
           </p>
         </div>

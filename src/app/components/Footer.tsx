@@ -1,5 +1,8 @@
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useThemeClasses } from '@/app/contexts/ThemeContext';
 
 const navigation = {
   main: [
@@ -30,9 +33,12 @@ const navigation = {
 };
 
 export default function Example() {
+  const { bgPrimary, textPrimary, textSecondary, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
   return (
     <footer>
-      <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8 bg-black">
+      <div className={`mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8 ${isLight ? 'bg-white' : 'bg-black'}`}>
         <nav
           aria-label="Footer"
           className="-mb-6 flex flex-wrap justify-center gap-x-12 gap-y-3 text-sm/6"
@@ -41,7 +47,7 @@ export default function Example() {
             <Link
               key={item.name}
               href={item.href}
-              className="text-white hover:text-gray-300"
+              className={`${textPrimary} ${isLight ? 'hover:text-emerald-600' : 'hover:text-gray-300'}`}
             >
               {item.name}
             </Link>
@@ -52,7 +58,7 @@ export default function Example() {
             <Link
               key={item.name}
               href={item.href}
-              className="text-white hover:text-gray-300"
+              className={`${textPrimary} ${isLight ? 'hover:text-emerald-600' : 'hover:text-gray-300'}`}
             >
               <span className="sr-only">{item.name}</span>
               <Image
@@ -65,7 +71,7 @@ export default function Example() {
             </Link>
           ))}
         </div>
-        <p className="mt-10 text-center text-sm/6 text-gray-400">
+        <p className={`mt-10 text-center text-sm/6 ${textSecondary}`}>
           &copy; Joseph Sardella | Coachella Valley Realtor | eXp Realty | Obsidian Group
         </p>
       </div>

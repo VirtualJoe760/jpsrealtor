@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { X, User, Settings, LogOut, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const navigation = [
   { name: "About", href: "/about" },
@@ -28,6 +29,8 @@ export default function MobileMenu({
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [isAdmin, setIsAdmin] = useState(false);
+  const { currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   // Check if user is admin
   useEffect(() => {
@@ -42,14 +45,22 @@ export default function MobileMenu({
   return (
     <div
       className={classNames(
-        open ? "fixed inset-0 z-50 bg-black/90 backdrop-blur-sm" : "hidden",
+        open
+          ? isLight
+            ? "fixed inset-0 z-50 bg-white/95 backdrop-blur-sm"
+            : "fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+          : "hidden",
         "sm:hidden"
       )}
     >
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+        className={`absolute top-4 right-4 z-50 p-2 rounded-full transition ${
+          isLight
+            ? "bg-gray-200 text-gray-900 hover:bg-gray-300"
+            : "bg-white/10 text-white hover:bg-white/20"
+        }`}
         aria-label="Close menu"
       >
         <X className="w-6 h-6" />
@@ -67,8 +78,12 @@ export default function MobileMenu({
               aria-current={isActive ? "page" : undefined}
               className={classNames(
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white hover:bg-white/10",
+                  ? isLight
+                    ? "bg-emerald-100 text-emerald-900"
+                    : "bg-white/10 text-white"
+                  : isLight
+                    ? "text-gray-700 hover:bg-gray-100"
+                    : "text-white hover:bg-white/10",
                 "block rounded-md px-3 py-2 text-lg font-medium"
               )}
             >
@@ -78,24 +93,40 @@ export default function MobileMenu({
         })}
 
         {/* Auth section */}
-        <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
+        <div className={`mt-4 space-y-2 border-t pt-4 ${
+          isLight ? "border-gray-200" : "border-white/10"
+        }`}>
           {status === "loading" ? (
-            <div className="px-3 py-2 text-white/50">Loading...</div>
+            <div className={`px-3 py-2 ${isLight ? 'text-gray-500' : 'text-white/50'}`}>Loading...</div>
           ) : session ? (
             <div className="space-y-2">
-              <div className="flex items-center space-x-3 px-3 py-2 bg-white/10 rounded-md">
-                <div className="w-10 h-10 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white text-sm font-bold">
+              <div className={`flex items-center space-x-3 px-3 py-2 rounded-md ${
+                isLight ? "bg-gray-100" : "bg-white/10"
+              }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                  isLight
+                    ? "bg-emerald-600 text-white"
+                    : "bg-gradient-to-br from-gray-700 to-gray-900 text-white"
+                }`}>
                   {session.user.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <p className="text-white font-medium">{session.user.name || 'User'}</p>
-                  <p className="text-gray-400 text-sm">{session.user.email}</p>
+                  <p className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                    {session.user.name || 'User'}
+                  </p>
+                  <p className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {session.user.email}
+                  </p>
                 </div>
               </div>
               <Link
                 href="/dashboard"
                 onClick={onClose}
-                className="flex items-center rounded-md px-3 py-2 text-lg font-medium text-white hover:bg-white/10 transition-colors"
+                className={`flex items-center rounded-md px-3 py-2 text-lg font-medium transition-colors ${
+                  isLight
+                    ? "text-gray-700 hover:bg-gray-100"
+                    : "text-white hover:bg-white/10"
+                }`}
               >
                 <User className="w-5 h-5 mr-3" />
                 Dashboard
@@ -104,7 +135,11 @@ export default function MobileMenu({
                 <Link
                   href="/admin"
                   onClick={onClose}
-                  className="flex items-center rounded-md px-3 py-2 text-lg font-medium text-blue-400 hover:bg-white/10 transition-colors"
+                  className={`flex items-center rounded-md px-3 py-2 text-lg font-medium transition-colors ${
+                    isLight
+                      ? "text-blue-600 hover:bg-blue-50"
+                      : "text-blue-400 hover:bg-white/10"
+                  }`}
                 >
                   <BarChart3 className="w-5 h-5 mr-3" />
                   Admin Dashboard
@@ -113,7 +148,11 @@ export default function MobileMenu({
               <Link
                 href="/dashboard/settings"
                 onClick={onClose}
-                className="flex items-center rounded-md px-3 py-2 text-lg font-medium text-white hover:bg-white/10 transition-colors"
+                className={`flex items-center rounded-md px-3 py-2 text-lg font-medium transition-colors ${
+                  isLight
+                    ? "text-gray-700 hover:bg-gray-100"
+                    : "text-white hover:bg-white/10"
+                }`}
               >
                 <Settings className="w-5 h-5 mr-3" />
                 Settings
@@ -123,7 +162,11 @@ export default function MobileMenu({
                   onClose();
                   signOut({ callbackUrl: '/' });
                 }}
-                className="flex items-center w-full rounded-md px-3 py-2 text-lg font-medium text-red-400 hover:bg-white/10 transition-colors"
+                className={`flex items-center w-full rounded-md px-3 py-2 text-lg font-medium transition-colors ${
+                  isLight
+                    ? "text-red-600 hover:bg-gray-100"
+                    : "text-red-400 hover:bg-white/10"
+                }`}
               >
                 <LogOut className="w-5 h-5 mr-3" />
                 Sign Out
@@ -133,7 +176,11 @@ export default function MobileMenu({
             <Link
               href="/auth/signin"
               onClick={onClose}
-              className="block rounded-md px-3 py-2 text-lg font-medium bg-white text-black hover:bg-gray-200 transition-colors text-center"
+              className={`block rounded-md px-3 py-2 text-lg font-medium transition-colors text-center ${
+                isLight
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-white text-black hover:bg-gray-200"
+              }`}
             >
               Login
             </Link>

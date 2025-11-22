@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { User, Settings, LogOut, ChevronDown, BarChart3 } from "lucide-react";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const navigation = [
   { name: "About", href: "/about" },
@@ -23,6 +24,8 @@ export default function DesktopMenu() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { currentTheme, textPrimary } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   // Check if user is admin
   useEffect(() => {
@@ -60,8 +63,8 @@ export default function DesktopMenu() {
               aria-current={isActive ? "page" : undefined}
               className={classNames(
                 isActive
-                  ? "bg-neutral-light text-neutral-dark"
-                  : "text-white hover:text-gray-300",
+                  ? isLight ? "bg-emerald-100 text-emerald-900" : "bg-neutral-light text-neutral-dark"
+                  : isLight ? "text-gray-700 hover:text-emerald-600" : "text-white hover:text-gray-300",
                 "rounded-md px-3 py-2 text-sm font-medium"
               )}
             >
@@ -72,14 +75,22 @@ export default function DesktopMenu() {
 
         {/* Auth section */}
         {status === "loading" ? (
-          <div className="px-3 py-2 text-sm text-gray-400">...</div>
+          <div className={`px-3 py-2 text-sm ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>...</div>
         ) : session ? (
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium bg-white text-black hover:bg-gray-200 transition-colors"
+              className={`flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                isLight
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-white text-black hover:bg-gray-200"
+              }`}
             >
-              <div className="w-6 h-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                isLight
+                  ? "bg-emerald-700 text-white"
+                  : "bg-gradient-to-br from-gray-700 to-gray-900 text-white"
+              }`}>
                 {session.user.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <span>{session.user.name || 'Profile'}</span>
@@ -91,11 +102,19 @@ export default function DesktopMenu() {
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200">
+              <div className={`absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-1 z-50 border ${
+                isLight
+                  ? "bg-white border-gray-200"
+                  : "bg-gray-900 border-gray-700"
+              }`}>
                 <Link
                   href="/dashboard"
                   onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                    isLight
+                      ? "text-gray-700 hover:bg-gray-100"
+                      : "text-gray-200 hover:bg-gray-800"
+                  }`}
                 >
                   <User className="w-4 h-4 mr-2" />
                   Dashboard
@@ -104,7 +123,11 @@ export default function DesktopMenu() {
                   <Link
                     href="/admin"
                     onClick={() => setIsDropdownOpen(false)}
-                    className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                    className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                      isLight
+                        ? "text-blue-600 hover:bg-blue-50"
+                        : "text-blue-400 hover:bg-gray-800"
+                    }`}
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Admin Dashboard
@@ -113,18 +136,26 @@ export default function DesktopMenu() {
                 <Link
                   href="/dashboard/settings"
                   onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                    isLight
+                      ? "text-gray-700 hover:bg-gray-100"
+                      : "text-gray-200 hover:bg-gray-800"
+                  }`}
                 >
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </Link>
-                <hr className="my-1 border-gray-200" />
+                <hr className={`my-1 ${isLight ? 'border-gray-200' : 'border-gray-700'}`} />
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
                     signOut({ callbackUrl: '/' });
                   }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
+                  className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
+                    isLight
+                      ? "text-red-600 hover:bg-gray-100"
+                      : "text-red-400 hover:bg-gray-800"
+                  }`}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign Out
@@ -135,7 +166,11 @@ export default function DesktopMenu() {
         ) : (
           <Link
             href="/auth/signin"
-            className="rounded-md px-4 py-2 text-sm font-medium bg-white text-black hover:bg-gray-200 transition-colors"
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-white text-black hover:bg-gray-200"
+            }`}
           >
             Login
           </Link>

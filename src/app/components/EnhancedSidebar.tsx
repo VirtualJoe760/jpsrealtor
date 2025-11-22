@@ -7,6 +7,7 @@ import {
   ChevronRight,
   MessageSquare,
   Map,
+  MapPin,
   FileText,
   LayoutDashboard,
   Home,
@@ -18,11 +19,14 @@ import {
   ChevronDown,
   ChevronUp,
   Bookmark,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface SidebarProps {
   onClose?: () => void; // Optional prop to close sidebar on mobile
@@ -147,30 +151,91 @@ export async function addToConversationHistory(firstMessage: string, conversatio
   saveConversationHistory(updatedHistory);
 }
 
-export function updateConversationMessageCount(conversationId: string) {
+export async function updateConversationMessageCount(conversationId: string) {
+  // Update localStorage
   const history = getConversationHistory();
   const updated = history.map(conv =>
     conv.id === conversationId
-      ? { ...conv, messageCount: conv.messageCount + 1 }
+      ? { ...conv, messageCount: conv.messageCount + 1, timestamp: Date.now() }
       : conv
   );
   saveConversationHistory(updated);
+
+  // Also update the database to keep it in sync
+  try {
+    const conv = updated.find(c => c.id === conversationId);
+    if (conv) {
+      await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: conv.id,
+          title: conv.title,
+          messages: [], // Messages are stored separately, just update metadata
+        }),
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update conversation in database:', error);
+  }
 }
 
 // Save messages for a specific conversation
-export function saveConversationMessages(conversationId: string, messages: StoredMessage[]) {
+export async function saveConversationMessages(conversationId: string, messages: StoredMessage[]) {
   if (typeof window === "undefined") return;
+
+  // Save to localStorage for quick access
   try {
     const key = `${MESSAGES_STORAGE_PREFIX}${conversationId}`;
     localStorage.setItem(key, JSON.stringify(messages));
   } catch (error) {
-    console.error("Failed to save conversation messages:", error);
+    console.error("Failed to save conversation messages to localStorage:", error);
+  }
+
+  // Also save to database for cross-device persistence
+  try {
+    const history = getConversationHistory();
+    const conv = history.find(c => c.id === conversationId);
+    if (conv) {
+      await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          title: conv.title,
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp,
+          })),
+        }),
+      });
+      console.log(`💾 Saved ${messages.length} messages to database for conversation: ${conversationId}`);
+    }
+  } catch (error) {
+    console.error('Failed to save conversation messages to database:', error);
   }
 }
 
 // Load messages for a specific conversation
-export function loadConversationMessages(conversationId: string): StoredMessage[] {
+export async function loadConversationMessages(conversationId: string): Promise<StoredMessage[]> {
   if (typeof window === "undefined") return [];
+
+  // Try loading from database first for cross-device sync
+  try {
+    const response = await fetch(`/api/chat/history/messages?conversationId=${conversationId}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.messages && data.messages.length > 0) {
+        console.log(`📥 Loaded ${data.messages.length} messages from database for conversation: ${conversationId}`);
+        return data.messages;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load messages from database, falling back to localStorage:', error);
+  }
+
+  // Fallback to localStorage
   try {
     const key = `${MESSAGES_STORAGE_PREFIX}${conversationId}`;
     const stored = localStorage.getItem(key);
@@ -242,6 +307,8 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<ConversationHistory[]>([]);
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
+  const [savedCommunities, setSavedCommunities] = useState<Array<{ name: string; id: string; type: 'city' | 'subdivision'; cityId?: string }>>([]);
+  const [isCommunitiesCollapsed, setIsCommunitiesCollapsed] = useState(false);
 
   // On mobile (when onClose exists), always treat sidebar as expanded
   const isMobile = !!onClose;
@@ -270,6 +337,31 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
 
     return () => clearInterval(interval);
   }, [isMobile, isCollapsed, effectivelyCollapsed]);
+
+  // Load saved communities (cities and subdivisions) from user favorites
+  useEffect(() => {
+    const loadSavedCommunities = async () => {
+      if (!session?.user?.email) return;
+
+      try {
+        const response = await fetch('/api/user/favorite-communities');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.communities) {
+            setSavedCommunities(data.communities);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load saved communities:', error);
+      }
+    };
+
+    loadSavedCommunities();
+
+    // Refresh every 30 seconds to catch new favorites
+    const interval = setInterval(loadSavedCommunities, 30000);
+    return () => clearInterval(interval);
+  }, [session?.user?.email]);
 
   const handleNavigate = (href: string, label: string) => {
     console.log(`🧭 Navigating to ${label}:`, href);
@@ -332,11 +424,20 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
 
   const currentView = getActiveId();
 
+  // Theme support
+  const { currentTheme, toggleTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
+  // Theme-aware colors
+  const textPrimary = isLight ? "text-gray-900" : "text-white";
+  const textSecondary = isLight ? "text-gray-600" : "text-neutral-400";
+  const textMuted = isLight ? "text-gray-500" : "text-neutral-600";
+
   return (
     <motion.aside
       initial={false}
       animate={{
-        width: effectivelyCollapsed ? "80px" : "280px",
+        width: effectivelyCollapsed ? "88px" : "280px",
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="relative h-screen max-h-screen flex flex-col z-30 overflow-hidden"
@@ -345,11 +446,27 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {/* Glass-morphism background with stars visible behind */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-2xl border-r border-white/10" />
+      {/* Background - theme-aware */}
+      <div className={`absolute inset-0 border-r ${
+        isLight
+          ? isMobile
+            ? 'bg-gradient-to-b from-white via-gray-50 to-white border-emerald-500/20'
+            : 'bg-white/90 backdrop-blur-2xl border-gray-200'
+          : isMobile
+            ? 'bg-gradient-to-b from-black via-gray-950 to-black border-emerald-500/20'
+            : 'bg-black/40 backdrop-blur-2xl border-white/10'
+      }`} />
 
-      {/* Gradient overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-transparent to-cyan-900/10 pointer-events-none" />
+      {/* Gradient overlay for depth - theme-aware */}
+      <div className={`absolute inset-0 pointer-events-none ${
+        isLight
+          ? isMobile
+            ? 'bg-gradient-to-b from-emerald-50/50 via-transparent to-emerald-50/50'
+            : 'bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50'
+          : isMobile
+            ? 'bg-gradient-to-b from-emerald-900/5 via-transparent to-emerald-900/10'
+            : 'bg-gradient-to-br from-purple-900/10 via-transparent to-cyan-900/10'
+      }`} />
 
       {/* Animated gradient accent on the right edge */}
       <motion.div
@@ -369,17 +486,34 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
         {/* Mobile Close Button - Top Right */}
         {onClose && (
           <motion.button
-            whileHover={{ scale: 1.05, rotate: 90 }}
-            whileTap={{ scale: 0.95 }}
             onClick={onClose}
-            className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/80 transition-colors shadow-lg"
+            className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 flex items-center justify-center active:scale-95 transition-transform"
+            aria-label="Close menu"
           >
-            <X className="w-5 h-5 text-emerald-400" strokeWidth={2.5} />
+            <div className="relative w-6 h-6 flex items-center justify-center">
+              {/* X Lines */}
+              <motion.span
+                initial={{ rotate: 45, backgroundColor: "#10b981" }}
+                className="absolute w-7 h-0.5 rounded-full"
+                style={{
+                  boxShadow: "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                }}
+              />
+              <motion.span
+                initial={{ rotate: -45, backgroundColor: "#10b981" }}
+                className="absolute w-7 h-0.5 rounded-full"
+                style={{
+                  boxShadow: "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                }}
+              />
+            </div>
           </motion.button>
         )}
 
         {/* Header with Logo */}
-        <div className="flex items-center justify-between p-6 md:p-4 border-b border-white/10">
+        <div className={`flex items-center justify-between p-6 md:p-4 border-b ${
+          isLight ? 'border-gray-200' : 'border-white/10'
+        }`}>
           <AnimatePresence mode="wait">
             {!effectivelyCollapsed ? (
               <motion.div
@@ -390,7 +524,8 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 transition={{ duration: 0.3, type: "spring" }}
                 className="flex items-center justify-center flex-1"
               >
-                <motion.div
+                <motion.button
+                  onClick={toggleSidebar}
                   whileHover={{
                     rotateY: 15,
                     rotateX: 5,
@@ -401,7 +536,7 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                     transformStyle: "preserve-3d",
                     perspective: 1000,
                   }}
-                  className="relative w-full max-w-[240px] h-28 md:h-24 rounded-xl flex items-center justify-center group"
+                  className="relative w-full max-w-[240px] h-28 md:h-24 rounded-xl flex items-center justify-center group cursor-pointer"
                 >
                   {/* Glow effect behind logo */}
                   <motion.div
@@ -416,15 +551,28 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                       ease: "easeInOut",
                     }}
                   />
-                  <Image
-                    src="/images/brand/logo-white-obsidian.png"
-                    alt="Obsidian Group"
-                    width={240}
-                    height={96}
-                    className="object-contain w-full h-full relative z-10 drop-shadow-2xl"
-                    priority
-                  />
-                </motion.div>
+                  {/* Floating animation */}
+                  <motion.div
+                    animate={{
+                      y: [0, -6, 0],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="relative z-10 w-full h-full flex items-center justify-center"
+                  >
+                    <Image
+                      src={isLight ? "/images/brand/obsidian-logo-black.png" : "/images/brand/logo-white-obsidian.png"}
+                      alt="Obsidian Group"
+                      width={240}
+                      height={96}
+                      className="object-contain w-full h-full drop-shadow-2xl"
+                      priority
+                    />
+                  </motion.div>
+                </motion.button>
               </motion.div>
             ) : (
               <motion.div
@@ -435,7 +583,8 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 transition={{ duration: 0.3, type: "spring" }}
                 className="flex items-center justify-center w-full"
               >
-                <motion.div
+                <motion.button
+                  onClick={toggleSidebar}
                   whileHover={{
                     scale: 1.15,
                     rotateY: 10,
@@ -463,7 +612,7 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                       ease: "easeInOut",
                     }}
                   />
-                  {/* Subtle floating animation */}
+                  {/* Floating animation */}
                   <motion.div
                     animate={{
                       y: [0, -4, 0],
@@ -476,7 +625,7 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                     className="relative z-10 w-full h-full"
                   >
                     <Image
-                      src="/images/brand/EXP-white-square.png"
+                      src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
                       alt="eXp Realty"
                       width={48}
                       height={48}
@@ -484,25 +633,49 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                       priority
                     />
                   </motion.div>
-                </motion.div>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Desktop Collapse Toggle */}
+          {/* Desktop Collapse Toggle Arrow - floats with logo */}
           {!isMobile && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleSidebar}
-              className="flex w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 items-center justify-center hover:bg-black/80 transition-colors shadow-lg flex-shrink-0"
+              className="flex w-9 h-9 items-center justify-center transition-transform flex-shrink-0"
+              aria-label={effectivelyCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              animate={{
+                y: [0, -3, 0],
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             >
               <motion.div
                 initial={false}
                 animate={{ rotate: effectivelyCollapsed ? 0 : 180 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="relative"
               >
-                <ChevronRight className="w-3.5 h-3.5 text-neutral-300" strokeWidth={2.5} />
+                {/* Glow effect background */}
+                <div className={`absolute inset-0 blur-md rounded-full ${
+                  isLight ? 'bg-blue-500/40' : 'bg-emerald-400/40'
+                }`} />
+                <ChevronRight
+                  className={`w-5 h-5 relative z-10 ${
+                    isLight ? 'text-blue-500' : 'text-emerald-400'
+                  }`}
+                  strokeWidth={2.5}
+                  style={{
+                    filter: isLight
+                      ? "drop-shadow(0 0 6px rgba(59,130,246,0.8))"
+                      : "drop-shadow(0 0 6px rgba(16,185,129,0.8))"
+                  }}
+                />
               </motion.div>
             </motion.button>
           )}
@@ -538,8 +711,10 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                   whileTap={{ scale: 0.98 }}
                   className={`relative w-full flex items-center ${effectivelyCollapsed ? 'justify-center' : 'gap-3'} ${effectivelyCollapsed ? 'p-3' : 'px-4 py-3'} rounded-xl text-base md:text-sm transition-all overflow-hidden group ${
                     isActive
-                      ? "text-white shadow-lg"
-                      : "text-neutral-400 hover:text-white"
+                      ? isLight
+                        ? 'text-white font-semibold shadow-lg'
+                        : `${textPrimary} shadow-lg`
+                      : `${textSecondary} hover:${textPrimary}`
                   }`}
                   style={{
                     transformStyle: "preserve-3d",
@@ -549,15 +724,25 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                   <motion.div
                     className={`absolute inset-0 rounded-xl transition-all ${
                       isActive
-                        ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30"
-                        : "bg-black/20 backdrop-blur-sm border border-white/5 group-hover:bg-black/40 group-hover:border-white/10"
+                        ? isLight
+                          ? "bg-blue-500 border border-blue-600 shadow-lg shadow-blue-500/30"
+                          : "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30"
+                        : isLight
+                          ? "bg-white/40 backdrop-blur-sm border border-gray-200 group-hover:bg-white/60 group-hover:border-blue-200"
+                          : "bg-black/20 backdrop-blur-sm border border-white/5 group-hover:bg-black/40 group-hover:border-white/10"
                     }`}
                     animate={isActive ? {
-                      boxShadow: [
-                        "0 0 20px rgba(16, 185, 129, 0.2)",
-                        "0 0 40px rgba(6, 182, 212, 0.3)",
-                        "0 0 20px rgba(16, 185, 129, 0.2)",
-                      ],
+                      boxShadow: isLight
+                        ? [
+                            "0 0 20px rgba(59, 130, 246, 0.3)",
+                            "0 0 40px rgba(59, 130, 246, 0.4)",
+                            "0 0 20px rgba(59, 130, 246, 0.3)",
+                          ]
+                        : [
+                            "0 0 20px rgba(16, 185, 129, 0.2)",
+                            "0 0 40px rgba(6, 182, 212, 0.3)",
+                            "0 0 20px rgba(16, 185, 129, 0.2)",
+                          ],
                     } : {}}
                     transition={{
                       duration: 3,
@@ -573,7 +758,11 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl blur-sm"
+                        className={`absolute inset-0 rounded-xl blur-sm ${
+                          isLight
+                            ? "bg-blue-100/60"
+                            : "bg-gradient-to-r from-purple-500/10 to-pink-500/10"
+                        }`}
                       />
                     )}
                   </AnimatePresence>
@@ -594,7 +783,11 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                   >
                     <Icon
                       className={`${effectivelyCollapsed ? 'w-6 h-6' : 'w-6 h-6 md:w-5 md:h-5'} flex-shrink-0 transition-colors ${
-                        isActive ? "text-emerald-400" : ""
+                        isActive
+                          ? isLight
+                            ? "text-white"
+                            : "text-emerald-400"
+                          : ""
                       }`}
                       strokeWidth={2.5}
                     />
@@ -619,7 +812,11 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                   {isActive && !effectivelyCollapsed && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute right-2 w-1.5 h-8 bg-gradient-to-b from-emerald-400 to-cyan-400 rounded-full"
+                      className={`absolute right-2 w-1.5 h-8 rounded-full ${
+                        isLight
+                          ? "bg-blue-600"
+                          : "bg-gradient-to-b from-emerald-400 to-cyan-400"
+                      }`}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
@@ -639,14 +836,16 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 className="pt-4 pb-2 px-3"
               >
                 {/* History Header - Collapsible */}
-                <div className="w-full flex items-center justify-between mb-2 px-2 py-1.5 rounded-lg hover:bg-black/20 transition-colors group">
+                <div className={`w-full flex items-center justify-between mb-2 px-2 py-1.5 rounded-lg transition-colors group ${
+                  isLight ? "hover:bg-gray-100" : "hover:bg-black/20"
+                }`}>
                   <button
                     onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
                     className="flex items-center gap-2 flex-1"
                   >
-                    <Clock className="w-3.5 h-3.5 text-neutral-500" />
-                    <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">History</h3>
-                    <span className="text-xs text-neutral-600">({conversationHistory.length})</span>
+                    <Clock className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-gray-600' : 'text-neutral-500'}`}>History</h3>
+                    <span className={`text-xs ${isLight ? 'text-gray-500' : 'text-neutral-600'}`}>({conversationHistory.length})</span>
                   </button>
                   <div className="flex items-center gap-2">
                     <button
@@ -661,9 +860,9 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                       className="p-1"
                     >
                       {isHistoryCollapsed ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-neutral-500" />
+                        <ChevronDown className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5 text-neutral-500" />
+                        <ChevronUp className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
                       )}
                     </button>
                   </div>
@@ -683,17 +882,21 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                         {conversationHistory.map((conversation, index) => (
                           <div key={conversation.id}>
                             {index > 0 && (
-                              <hr className="border-t border-white/5 my-1" />
+                              <hr className={`border-t my-1 ${isLight ? 'border-gray-200' : 'border-white/5'}`} />
                             )}
-                            <div className="group relative py-2 px-2 hover:bg-black/20 rounded-lg transition-colors">
+                            <div className={`group relative py-2 px-2 rounded-lg transition-colors ${
+                              isLight ? 'hover:bg-gray-100' : 'hover:bg-black/20'
+                            }`}>
                               <button
                                 onClick={() => handleLoadConversation(conversation.id)}
                                 className="w-full flex items-start gap-2 text-left"
                               >
-                                <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 text-emerald-500/40 mt-0.5" />
+                                <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                                  isLight ? 'text-emerald-600/60' : 'text-emerald-500/40'
+                                }`} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-neutral-300 truncate leading-relaxed">{conversation.title}</p>
-                                  <p className="text-[10px] text-neutral-600 mt-0.5">
+                                  <p className={`text-xs ${textSecondary} truncate leading-relaxed`}>{conversation.title}</p>
+                                  <p className={`text-[10px] ${textMuted} mt-0.5`}>
                                     {conversation.messageCount} msgs • {new Date(conversation.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                   </p>
                                 </div>
@@ -701,7 +904,11 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                               {/* Delete button - shown on hover */}
                               <button
                                 onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded bg-black/60 border border-white/10 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400 transition-all"
+                                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded border opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400 transition-all ${
+                                  isLight
+                                    ? 'bg-white border-gray-300'
+                                    : 'bg-black/60 border-white/10'
+                                }`}
                                 title="Delete conversation"
                               >
                                 <X className="w-3 h-3" />
@@ -716,7 +923,149 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Saved Communities Section */}
+          <AnimatePresence mode="wait">
+            {!effectivelyCollapsed && savedCommunities.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="pt-4 pb-2 px-3"
+              >
+                {/* Communities Header - Collapsible */}
+                <div className={`w-full flex items-center justify-between mb-2 px-2 py-1.5 rounded-lg transition-colors group ${
+                  isLight ? "hover:bg-gray-100" : "hover:bg-black/20"
+                }`}>
+                  <button
+                    onClick={() => setIsCommunitiesCollapsed(!isCommunitiesCollapsed)}
+                    className="flex items-center gap-2 flex-1"
+                  >
+                    <Bookmark className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-gray-600' : 'text-neutral-500'}`}>Communities</h3>
+                    <span className={`text-xs ${isLight ? 'text-gray-500' : 'text-neutral-600'}`}>({savedCommunities.length})</span>
+                  </button>
+                  <button
+                    onClick={() => setIsCommunitiesCollapsed(!isCommunitiesCollapsed)}
+                    className="p-1"
+                  >
+                    {isCommunitiesCollapsed ? (
+                      <ChevronDown className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
+                    ) : (
+                      <ChevronUp className={`w-3.5 h-3.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Communities List - Collapsible */}
+                <AnimatePresence>
+                  {!isCommunitiesCollapsed && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="space-y-0 max-h-[40vh] md:max-h-[20vh] overflow-y-auto custom-scrollbar">
+                        {savedCommunities.map((community, index) => (
+                          <div key={community.id}>
+                            {index > 0 && (
+                              <hr className={`border-t my-1 ${isLight ? 'border-gray-200' : 'border-white/5'}`} />
+                            )}
+                            <div className={`group relative py-2 px-2 rounded-lg transition-colors ${
+                              isLight ? 'hover:bg-gray-100' : 'hover:bg-black/20'
+                            }`}>
+                              <button
+                                onClick={() => {
+                                  const url = community.type === 'city'
+                                    ? `/neighborhoods/${community.id}`
+                                    : `/neighborhoods/${community.cityId}/${community.id}`;
+                                  router.push(url);
+                                  if (onClose) onClose();
+                                }}
+                                className="w-full flex items-start gap-2 text-left"
+                              >
+                                {community.type === 'city' ? (
+                                  <MapPin className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                                    isLight ? 'text-emerald-600/60' : 'text-emerald-500/40'
+                                  }`} />
+                                ) : (
+                                  <Home className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                                    isLight ? 'text-blue-600/60' : 'text-blue-500/40'
+                                  }`} />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-xs ${textSecondary} truncate leading-relaxed`}>{community.name}</p>
+                                  <p className={`text-[10px] ${textMuted} mt-0.5`}>
+                                    {community.type === 'city' ? 'City' : 'Subdivision'}
+                                  </p>
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
+
+        {/* Theme Toggle Button */}
+        <AnimatePresence>
+          {!effectivelyCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.3 }}
+              className={`px-4 py-3 border-t ${
+                isLight ? 'border-gray-200' : 'border-white/10'
+              }`}
+            >
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleTheme}
+                className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  isLight
+                    ? 'bg-gray-200/80 hover:bg-gray-300/80 text-gray-900'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <AnimatePresence mode="wait">
+                  {isLight ? (
+                    <motion.div
+                      key="moon"
+                      initial={{ rotate: -180, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 180, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Moon className="w-5 h-5" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="sun"
+                      initial={{ rotate: 180, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -180, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Sun className="w-5 h-5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <span className="font-medium text-sm">
+                  {isLight ? 'Dark Mode' : 'Light Mode'}
+                </span>
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <AnimatePresence>
@@ -726,10 +1075,14 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="relative p-4 md:p-3 border-t border-white/10"
+              className={`relative p-4 pb-20 md:pb-3 md:p-3 border-t ${
+                isLight ? 'border-gray-200' : 'border-white/10'
+              }`}
             >
               {/* Glass panel background */}
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-md" />
+              <div className={`absolute inset-0 backdrop-blur-md ${
+                isLight ? 'bg-white/50' : 'bg-black/20'
+              }`} />
 
               {/* Sparkle decoration */}
               <motion.div
@@ -746,7 +1099,7 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 <Sparkles className="w-4 h-4" />
               </motion.div>
 
-              <div className="relative text-xs text-neutral-400 text-center leading-relaxed">
+              <div className={`relative text-xs ${textSecondary} text-center leading-relaxed`}>
                 <motion.p
                   className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400"
                   animate={{
@@ -763,10 +1116,10 @@ export default function EnhancedSidebar({ onClose }: SidebarProps) {
                 >
                   Joseph Sardella
                 </motion.p>
-                <p className="mt-0.5 text-neutral-500">eXp Realty | Obsidian Group</p>
-                <p className="mt-0.5 text-neutral-600">DRE# 02106916</p>
+                <p className={`mt-0.5 ${textMuted}`}>eXp Realty | Obsidian Group</p>
+                <p className={`mt-0.5 ${textMuted}`}>DRE# 02106916</p>
                 <motion.p
-                  className="mt-2 text-neutral-700"
+                  className={`mt-2 ${textMuted}`}
                   animate={{
                     opacity: [0.5, 1, 0.5],
                   }}

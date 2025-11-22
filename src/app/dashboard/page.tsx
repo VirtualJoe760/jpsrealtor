@@ -18,6 +18,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useThemeClasses } from "../contexts/ThemeContext";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
 
@@ -86,13 +87,23 @@ function DesktopFavorites({
   selectedListings,
   toggleSelectListing,
   removeFavorite,
+  themeProps,
 }: {
   favorites: FavoriteProperty[];
   selectedListings: Set<string>;
   toggleSelectListing: (key: string) => void;
   removeFavorite: (key: string) => void;
+  themeProps: {
+    currentTheme: string;
+    cardBg: string;
+    cardBorder: string;
+    textPrimary: string;
+    textSecondary: string;
+    isLight: boolean;
+  };
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { currentTheme, cardBg, cardBorder, textPrimary, textSecondary, isLight } = themeProps;
 
   // --------------------------------------------------------------
   // 1. JS‑driven auto‑scroll + user‑interaction pause
@@ -242,9 +253,9 @@ function DesktopFavorites({
           return (
             <div
               key={`${listing.listingKey}-${index}`}
-              className={`flex-shrink-0 w-80 bg-gray-800/50 border rounded-xl overflow-hidden
+              className={`flex-shrink-0 w-80 ${cardBg} border rounded-xl overflow-hidden
                          transition-all group
-                         ${isSelected ? "border-blue-500 ring-2 ring-blue-500/50" : "border-gray-700"}
+                         ${isSelected ? "border-blue-500 ring-2 ring-blue-500/50" : isLight ? "border-gray-300" : "border-gray-700"}
                          hover:border-gray-600`}
             >
               {/* Image */}
@@ -275,7 +286,9 @@ function DesktopFavorites({
                 </div>
                 <button
                   onClick={() => removeFavorite(listing.listingKey)}
-                  className="absolute right-2 top-2 rounded-full bg-black/50 p-2 transition-colors hover:bg-black/70"
+                  className={`absolute right-2 top-2 rounded-full p-2 transition-colors ${
+                    isLight ? "bg-white/70 hover:bg-white/90" : "bg-black/50 hover:bg-black/70"
+                  }`}
                 >
                   <Heart className="h-5 w-5 fill-red-400 text-red-400" />
                 </button>
@@ -283,28 +296,30 @@ function DesktopFavorites({
 
               {/* Details */}
               <div className="p-4">
-                <p className="mb-2 text-2xl font-bold text-white">
+                <p className={`mb-2 text-2xl font-bold ${textPrimary}`}>
                   ${listing.listPrice?.toLocaleString() || "N/A"}
                 </p>
-                <p className="mb-3 truncate text-sm text-gray-300">
+                <p className={`mb-3 truncate text-sm ${textSecondary}`}>
                   {listing.address || listing.unparsedAddress || "No address"}
                 </p>
 
-                <div className="mb-3 flex gap-4 text-sm text-gray-400">
+                <div className={`mb-3 flex gap-4 text-sm ${textSecondary}`}>
                   <span>{listing.bedsTotal ?? 0} bd</span>
                   <span>{listing.bathroomsTotalInteger ?? 0} ba</span>
                   <span>{listing.livingArea?.toLocaleString() ?? 0} sqft</span>
                 </div>
 
                 {listing.subdivisionName && (
-                  <p className="mb-2 truncate text-xs text-gray-500">
+                  <p className={`mb-2 truncate text-xs ${textSecondary}`}>
                     {listing.subdivisionName}
                   </p>
                 )}
 
                 <Link
                   href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
-                  className="block w-full rounded-lg bg-gray-700 py-2 text-center text-sm text-white transition-colors hover:bg-gray-600"
+                  className={`block w-full rounded-lg py-2 text-center text-sm ${textPrimary} transition-colors ${
+                    isLight ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
                 >
                   View Details
                 </Link>
@@ -480,6 +495,18 @@ export default function DashboardPage() {
   if (!session) return null;
   const user = session.user;
 
+  // ────── Theme ──────
+  const {
+    currentTheme,
+    cardBg,
+    cardBorder,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+    shadow,
+  } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
   // ────── Render ──────
   return (
     <div className="min-h-screen py-12 px-4" data-page="dashboard">
@@ -489,24 +516,12 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mb-6 md:mb-8"
+          className="mb-6 mt-6 md:mb-8 text-center md:text-center"
         >
-          <div className="flex items-center justify-between mb-3 md:mb-0">
-            <h1 className="text-2xl md:text-4xl font-bold text-white">
-              Welcome back, {user.name || "User"}!
-            </h1>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs md:text-sm font-medium"
-              >
-                <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Admin Dashboard</span>
-                <span className="sm:hidden">Admin</span>
-              </Link>
-            )}
-          </div>
-          <p className="text-gray-400 text-sm md:text-base">Your personalized dashboard with favorites and insights</p>
+          <h1 className={`text-2xl sm:text-2xl md:text-4xl font-bold ${textPrimary} mb-2`}>
+            Welcome back, {user.name || "User"}!
+          </h1>
+          <p className={`${textSecondary} text-xs sm:text-sm md:text-base`}>Your personalized dashboard with favorites and insights</p>
         </motion.div>
 
         {/* Statistics Cards */}
@@ -516,14 +531,14 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+              className={`${cardBg} border rounded-xl p-6 shadow-lg`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Total Favorites</p>
-                  <p className="text-3xl font-bold text-white">{analytics.totalLikes}</p>
+                  <p className={`${textSecondary} text-sm mb-1`}>Total Favorites</p>
+                  <p className={`text-3xl font-bold ${textPrimary}`}>{analytics.totalLikes}</p>
                 </div>
-                <div className="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center">
+                <div className={`w-12 h-12 ${isLight ? 'bg-red-50' : 'bg-red-500/10'} rounded-lg flex items-center justify-center`}>
                   <Heart className="w-6 h-6 text-red-400" />
                 </div>
               </div>
@@ -533,17 +548,17 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+              className={`${cardBg} border rounded-xl p-6 shadow-lg`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Top City</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className={`${textSecondary} text-sm mb-1`}>Top City</p>
+                  <p className={`text-2xl font-bold ${textPrimary}`}>
                     {analytics.topCities[0]?.name || "N/A"}
                   </p>
-                  <p className="text-gray-500 text-xs">{analytics.topCities[0]?.count || 0} properties</p>
+                  <p className={`${textTertiary} text-xs`}>{analytics.topCities[0]?.count || 0} properties</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <div className={`w-12 h-12 ${isLight ? 'bg-blue-50' : 'bg-blue-500/10'} rounded-lg flex items-center justify-center`}>
                   <MapPin className="w-6 h-6 text-blue-400" />
                 </div>
               </div>
@@ -553,17 +568,17 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
-              className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6"
+              className={`${cardBg} border rounded-xl p-6 shadow-lg`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Top Subdivision</p>
-                  <p className="text-xl font-bold text-white truncate max-w-[150px]">
+                  <p className={`${textSecondary} text-sm mb-1`}>Top Subdivision</p>
+                  <p className={`text-xl font-bold ${textPrimary} truncate max-w-[150px]`}>
                     {analytics.topSubdivisions[0]?.name || "N/A"}
                   </p>
-                  <p className="text-gray-500 text-xs">{analytics.topSubdivisions[0]?.count || 0} properties</p>
+                  <p className={`${textTertiary} text-xs`}>{analytics.topSubdivisions[0]?.count || 0} properties</p>
                 </div>
-                <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
+                <div className={`w-12 h-12 ${isLight ? 'bg-green-50' : 'bg-green-500/10'} rounded-lg flex items-center justify-center`}>
                   <Building2 className="w-6 h-6 text-green-400" />
                 </div>
               </div>
@@ -582,9 +597,9 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
-            className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8"
+            className={`${cardBg} ${cardBorder} border rounded-2xl p-6 ${shadow} mb-8`}
           >
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+            <h2 className={`text-2xl font-bold ${textPrimary} mb-6 flex items-center`}>
               <TrendingUp className="w-6 h-6 mr-2 text-blue-400" />
               Your Swipe Insights
             </h2>
@@ -592,15 +607,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Top Cities */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-3 flex items-center`}>
                   <MapPin className="w-5 h-5 mr-2 text-blue-400" />
                   Top Cities
                 </h3>
                 <div className="space-y-2">
                   {analytics.topCities.slice(0, 5).map((city, idx) => (
                     <div key={city.name} className="flex items-center justify-between">
-                      <span className="text-gray-300 text-sm">{idx + 1}. {city.name}</span>
-                      <span className="text-gray-500 text-sm">{city.count}</span>
+                      <span className={`${textSecondary} text-sm`}>{idx + 1}. {city.name}</span>
+                      <span className={`${textTertiary} text-sm`}>{city.count}</span>
                     </div>
                   ))}
                 </div>
@@ -608,17 +623,17 @@ export default function DashboardPage() {
 
               {/* Top Subdivisions */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-3 flex items-center`}>
                   <Building2 className="w-5 h-5 mr-2 text-green-400" />
                   Top Subdivisions
                 </h3>
                 <div className="space-y-2">
                   {analytics.topSubdivisions.slice(0, 5).map((sub, idx) => (
                     <div key={sub.name} className="flex items-center justify-between">
-                      <span className="text-gray-300 text-sm truncate max-w-[180px]">
+                      <span className={`${textSecondary} text-sm truncate max-w-[180px]`}>
                         {idx + 1}. {sub.name}
                       </span>
-                      <span className="text-gray-500 text-sm">{sub.count}</span>
+                      <span className={`${textTertiary} text-sm`}>{sub.count}</span>
                     </div>
                   ))}
                 </div>
@@ -626,17 +641,17 @@ export default function DashboardPage() {
 
               {/* Property SubTypes */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-3 flex items-center`}>
                   <Home className="w-5 h-5 mr-2 text-purple-400" />
                   Property SubTypes
                 </h3>
                 <div className="space-y-2">
                   {analytics.topPropertySubTypes.map((type, idx) => (
                     <div key={type.type} className="flex items-center justify-between">
-                      <span className="text-gray-300 text-sm">
+                      <span className={`${textSecondary} text-sm`}>
                         {idx + 1}. {type.type}
                       </span>
-                      <span className="text-gray-500 text-sm">{type.count}</span>
+                      <span className={`${textTertiary} text-sm`}>{type.count}</span>
                     </div>
                   ))}
                 </div>
@@ -650,18 +665,18 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 mb-8"
+          className={`${cardBg} ${cardBorder} border rounded-2xl p-6 ${shadow} mb-8`}
         >
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-            <h2 className="text-2xl font-bold text-white flex items-center">
+            <h2 className={`text-2xl font-bold ${textPrimary} flex items-center`}>
               <Heart className="w-6 h-6 mr-2 text-red-400" />
               Your Favorite Properties
             </h2>
             <div className="flex items-center gap-3">
-              {isSyncing && <span className="text-sm text-gray-400">Syncing...</span>}
+              {isSyncing && <span className={`text-sm ${textSecondary}`}>Syncing...</span>}
               {favorites.length > 0 && (
                 <>
-                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                  <label className={`flex items-center gap-2 text-sm ${textSecondary} cursor-pointer`}>
                     <input
                       type="checkbox"
                       checked={selectedListings.size === favorites.length && favorites.length > 0}
@@ -672,10 +687,10 @@ export default function DashboardPage() {
                   </label>
                   {selectedListings.size > 0 && (
                     <>
-                      <span className="text-sm text-gray-400">{selectedListings.size} selected</span>
+                      <span className={`text-sm ${textSecondary}`}>{selectedListings.size} selected</span>
                       <button
                         onClick={deleteSelected}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                        className={`flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 ${textPrimary} rounded-lg transition-colors text-sm`}
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete Selected
@@ -688,14 +703,16 @@ export default function DashboardPage() {
           </div>
 
           {isLoadingFavorites ? (
-            <div className="text-center py-12 text-gray-400">Loading favorites...</div>
+            <div className={`text-center py-12 ${textSecondary}`}>Loading favorites...</div>
           ) : favorites.length === 0 ? (
             <div className="text-center py-12">
-              <Heart className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-              <p className="text-gray-400 mb-4">No favorites yet</p>
+              <Heart className={`w-16 h-16 mx-auto mb-4 ${textTertiary}`} />
+              <p className={`${textSecondary} mb-4`}>No favorites yet</p>
               <Link
                 href="/mls-listings"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-lg hover:from-gray-800 hover:to-black transition-all"
+                className={`inline-block px-6 py-3 rounded-lg transition-all ${textPrimary} ${
+                  isLight ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black'
+                }`}
               >
                 Browse Listings
               </Link>
@@ -708,6 +725,14 @@ export default function DashboardPage() {
                 selectedListings={selectedListings}
                 toggleSelectListing={toggleSelectListing}
                 removeFavorite={removeFavorite}
+                themeProps={{
+                  currentTheme,
+                  cardBg,
+                  cardBorder,
+                  textPrimary,
+                  textSecondary,
+                  isLight,
+                }}
               />
 
               {/* Mobile Accordion */}
@@ -728,8 +753,8 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={listing.listingKey}
-                            className={`bg-gray-800/50 border rounded-xl overflow-hidden ${
-                              selected ? "border-blue-500 ring-2 ring-blue-500/50" : "border-gray-700"
+                            className={`${cardBg} border rounded-xl overflow-hidden ${
+                              selected ? "border-blue-500 ring-2 ring-blue-500/50" : isLight ? "border-gray-300" : "border-gray-700"
                             }`}
                           >
                             {/* Header */}
@@ -758,12 +783,14 @@ export default function DashboardPage() {
                               </div>
                               <button
                                 onClick={() => setExpandedIndex(expanded ? null : globalIdx)}
-                                className="flex-1 min-w-0 text-left hover:bg-gray-800/70 transition-colors rounded-lg p-2"
+                                className={`flex-1 min-w-0 text-left transition-colors rounded-lg p-2 ${
+                                  isLight ? "hover:bg-gray-100" : "hover:bg-gray-800/70"
+                                }`}
                               >
-                                <p className="text-base font-bold text-white leading-tight">
+                                <p className={`text-base font-bold ${textPrimary} leading-tight`}>
                                   ${listing.listPrice?.toLocaleString() || "N/A"}
                                 </p>
-                                <p className="text-gray-300 text-xs truncate leading-tight mt-0.5">
+                                <p className={`${textSecondary} text-xs truncate leading-tight mt-0.5`}>
                                   {listing.address || listing.unparsedAddress || "No address"}
                                 </p>
                               </button>
@@ -772,14 +799,14 @@ export default function DashboardPage() {
                                 className="flex-shrink-0 p-1.5"
                               >
                                 <ChevronRight
-                                  className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-90" : ""}`}
+                                  className={`w-5 h-5 ${textSecondary} transition-transform ${expanded ? "rotate-90" : ""}`}
                                 />
                               </button>
                             </div>
 
                             {/* Expanded */}
                             {expanded && (
-                              <div className="border-t border-gray-700">
+                              <div className={`border-t ${isLight ? "border-gray-300" : "border-gray-700"}`}>
                                 <div className="relative h-48">
                                   {listing.primaryPhotoUrl ? (
                                     <Image
@@ -798,7 +825,9 @@ export default function DashboardPage() {
                                       e.stopPropagation();
                                       removeFavorite(listing.listingKey);
                                     }}
-                                    className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                                    className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${
+                                      isLight ? "bg-white/70 hover:bg-white/90" : "bg-black/50 hover:bg-black/70"
+                                    }`}
                                   >
                                     <Heart className="w-5 h-5 text-red-400 fill-red-400" />
                                   </button>
@@ -806,17 +835,17 @@ export default function DashboardPage() {
 
                                 <div className="p-4">
                                   {/* Price */}
-                                  <p className="text-2xl font-bold text-white mb-2">
+                                  <p className={`text-2xl font-bold ${textPrimary} mb-2`}>
                                     ${listing.listPrice?.toLocaleString() || "N/A"}
                                   </p>
 
                                   {/* Address */}
-                                  <p className="text-sm text-gray-300 mb-3">
+                                  <p className={`text-sm ${textSecondary} mb-3`}>
                                     {listing.address || listing.unparsedAddress || "No address"}
                                   </p>
 
                                   {/* Bed/Bath/SqFt */}
-                                  <div className="flex items-center gap-4 text-gray-400 text-sm mb-3">
+                                  <div className={`flex items-center gap-4 ${textSecondary} text-sm mb-3`}>
                                     <span>{listing.bedsTotal || 0} bd</span>
                                     <span>{listing.bathroomsTotalInteger || 0} ba</span>
                                     <span>{listing.livingArea?.toLocaleString() || 0} sqft</span>
@@ -824,19 +853,21 @@ export default function DashboardPage() {
 
                                   {/* Subdivision */}
                                   {listing.subdivisionName && (
-                                    <p className="text-gray-500 text-xs mb-3">{listing.subdivisionName}</p>
+                                    <p className={`${textTertiary} text-xs mb-3`}>{listing.subdivisionName}</p>
                                   )}
 
                                   {/* Abbreviated Description */}
                                   {listing.publicRemarks && (
-                                    <p className="text-xs text-gray-400 mb-3 line-clamp-3">
+                                    <p className={`text-xs ${textSecondary} mb-3 line-clamp-3`}>
                                       {listing.publicRemarks}
                                     </p>
                                   )}
 
                                   <Link
                                     href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
-                                    className="block w-full text-center py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                                    className={`block w-full text-center py-2 ${textPrimary} rounded-lg transition-colors text-sm ${
+                                      isLight ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-700 hover:bg-gray-600'
+                                    }`}
                                   >
                                     View Details
                                   </Link>
@@ -859,8 +890,10 @@ export default function DashboardPage() {
                               }}
                               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                                 mobilePage === p
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                                  ? `bg-blue-600 ${textPrimary}`
+                                  : isLight
+                                    ? `bg-gray-200 ${textSecondary} hover:bg-gray-300`
+                                    : `bg-gray-800 ${textSecondary} hover:bg-gray-700`
                               }`}
                             >
                               {p}
@@ -881,21 +914,27 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7 }}
-          className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6"
+          className={`${cardBg} ${cardBorder} border rounded-2xl ${shadow} p-6`}
         >
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${textPrimary} text-2xl font-bold ${
+                isLight ? 'bg-gradient-to-br from-emerald-400 to-cyan-400' : 'bg-gradient-to-br from-gray-700 to-gray-900'
+              }`}>
                 {user.name?.[0]?.toUpperCase() || "U"}
               </div>
               <div>
-                <h2 className="text-2xl font-semibold text-white">{user.name || "User"}</h2>
-                <p className="text-gray-400">{user.email}</p>
+                <h2 className={`text-2xl font-semibold ${textPrimary}`}>{user.name || "User"}</h2>
+                <p className={textSecondary}>{user.email}</p>
               </div>
             </div>
             <Link
               href="/dashboard/settings"
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700"
+              className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors border ${
+                isLight
+                  ? "bg-gray-200 hover:bg-gray-300 border-gray-300"
+                  : "bg-gray-800 hover:bg-gray-700 border-gray-700"
+              }`}
             >
               Settings
             </Link>
@@ -907,12 +946,12 @@ export default function DashboardPage() {
             user.roles?.includes("realEstateAgent") ||
             user.roles?.includes("serviceProvider")) && (
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-3">Your Roles</h3>
+              <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>Your Roles</h3>
               <div className="flex flex-wrap gap-2">
                 {user.roles?.map((role: string) => (
                   <span
                     key={role}
-                    className="px-4 py-2 bg-gray-600/20 border border-gray-500/50 text-gray-300 rounded-full text-sm font-medium"
+                    className={`px-4 py-2 bg-gray-600/20 border border-gray-500/50 ${textSecondary} rounded-full text-sm font-medium`}
                   >
                     {formatRoleName(role)}
                   </span>
@@ -927,15 +966,15 @@ export default function DashboardPage() {
           )}
 
           {/* Security */}
-          <div className="pt-6 border-t border-gray-800">
-            <h3 className="text-lg font-semibold text-white mb-3">Security</h3>
+          <div className={`pt-6 border-t ${isLight ? "border-gray-300" : "border-gray-800"}`}>
+            <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>Security</h3>
             <div className="flex items-center space-x-3">
-              <span className="text-gray-400">Two-Factor Authentication:</span>
+              <span className={textSecondary}>Two-Factor Authentication:</span>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   twoFactorEnabled
                     ? "bg-green-500/20 border border-green-500/50 text-green-300"
-                    : "bg-gray-700/50 border border-gray-600 text-gray-400"
+                    : `bg-gray-700/50 border border-gray-600 ${textSecondary}`
                 }`}
               >
                 {twoFactorEnabled ? "Enabled" : "Disabled"}

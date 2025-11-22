@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import Pagination from "@/components/Pagination";
 import { Post } from "@/types/post";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface InsightsListProps {
   posts: Post[];
@@ -16,6 +19,7 @@ export default function InsightsList({
   currentPage,
   category,
 }: InsightsListProps) {
+  const { textPrimary, textSecondary, textMuted } = useThemeClasses();
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-10">
@@ -41,15 +45,15 @@ export default function InsightsList({
 
               {/* Post Content */}
               <div className="flex-1">
-                <h2 className="text-2xl font-semibold text-white mb-2">
+                <h2 className={`text-2xl font-semibold mb-2 ${textPrimary}`}>
                   <Link href={`/insights/${category}/${slugId}`}>
                     {title}
                   </Link>
                 </h2>
-                <p className="text-sm text-gray-400 mb-4">
+                <p className={`text-sm mb-4 ${textMuted}`}>
                   {new Date(date).toLocaleDateString()}
                 </p>
-                <p className="text-gray-300">{description}</p>
+                <p className={textSecondary}>{description}</p>
               </div>
             </div>
           );

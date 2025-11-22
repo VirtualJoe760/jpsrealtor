@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import { countyBoundaries } from "./countyBoundaries";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 export default function SoCalCountySVGMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -13,6 +14,8 @@ export default function SoCalCountySVGMap() {
   const [selectedCounty, setSelectedCounty] = useState<{name: string, slug: string, listings: string, medianPrice: string, id: number} | null>(null);
   const selectedFeatureIdRef = useRef<number | null>(null);
   const router = useRouter();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -48,9 +51,9 @@ export default function SoCalCountySVGMap() {
     const getResponsivePadding = () => {
       const width = window.innerWidth;
       if (width < 640) { // Mobile
-        return { top: 80, bottom: 100, left: 20, right: 20 };
+        return { top: 120, bottom: 80, left: 20, right: 20 };
       } else if (width < 768) { // Tablet
-        return { top: 120, bottom: 100, left: 40, right: 120 };
+        return { top: 140, bottom: 100, left: 40, right: 120 };
       } else if (width < 1024) { // Small desktop
         return { top: 150, bottom: 110, left: 60, right: 200 };
       } else { // Large desktop
@@ -61,7 +64,9 @@ export default function SoCalCountySVGMap() {
     // Initialize map with locked view and responsive padding
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+      style: isLight
+        ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"  // Light mode
+        : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", // Dark mode
       bounds: bounds,
       fitBoundsOptions: {
         padding: getResponsivePadding()
@@ -303,16 +308,26 @@ export default function SoCalCountySVGMap() {
   }, [router]);
 
   return (
-    <div className="w-full h-[65vh] sm:h-[80vh] md:h-screen relative overflow-hidden bg-gray-900">
+    <div className={`w-full h-[65vh] sm:h-[80vh] md:h-screen relative overflow-hidden ${isLight ? 'bg-gray-100' : 'bg-gray-900'}`}>
       {/* Title Overlay with Background - Responsive */}
-      <div className="absolute top-0 left-0 z-10 bg-gradient-to-br from-gray-900/95 via-gray-900/90 to-transparent backdrop-blur-sm p-3 sm:p-6 md:p-8 rounded-br-2xl md:rounded-br-3xl pointer-events-none max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-3xl">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 md:mb-4 text-white drop-shadow-lg">
+      <div className={`absolute top-0 left-0 right-0 z-10 backdrop-blur-sm p-3 sm:p-6 md:p-8 rounded-br-2xl md:rounded-br-3xl pointer-events-none ${
+        isLight
+          ? 'bg-gradient-to-br from-white/95 via-white/90 to-transparent'
+          : 'bg-gradient-to-br from-gray-900/95 via-gray-900/90 to-transparent'
+      }`}>
+        <h1 className={`text-xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 sm:mb-3 md:mb-4 drop-shadow-lg ${
+          isLight ? 'text-gray-900' : 'text-white'
+        }`}>
           Southern California
         </h1>
-        <p className="text-xs sm:text-sm md:text-base lg:text-xl text-gray-200 leading-relaxed hidden sm:block">
+        <p className={`text-xs sm:text-sm md:text-base lg:text-xl leading-relaxed hidden sm:block ${
+          isLight ? 'text-gray-700' : 'text-gray-200'
+        }`}>
           Explore real estate across Southern California. Hover over a region to see details, click to explore cities and properties.
         </p>
-        <p className="text-xs text-gray-200 leading-relaxed sm:hidden">
+        <p className={`text-xs leading-snug sm:hidden ${
+          isLight ? 'text-gray-700' : 'text-gray-200'
+        }`}>
           Tap a region to explore cities and properties.
         </p>
       </div>
@@ -325,29 +340,35 @@ export default function SoCalCountySVGMap() {
 
       {/* County Info - Below Header - Shows selected or hovered county */}
       {(selectedCounty || hoveredCounty) && (
-        <div className={`absolute top-20 sm:top-24 md:top-44 lg:top-48 left-3 sm:left-6 md:left-8 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 rounded-xl sm:rounded-2xl shadow-2xl z-20 animate-fade-in pointer-events-none backdrop-blur-md border-2 max-w-[90vw] sm:max-w-md ${
+        <div className={`absolute top-[90px] sm:top-24 md:top-44 lg:top-48 left-3 sm:left-6 md:left-8 px-3 sm:px-6 md:px-8 py-2 sm:py-4 md:py-5 rounded-lg sm:rounded-2xl shadow-2xl z-20 animate-fade-in pointer-events-none backdrop-blur-md border-2 max-w-[90vw] sm:max-w-md ${
           selectedCounty
-            ? 'bg-amber-600/95 border-amber-400/50'
-            : 'bg-blue-600/95 border-blue-400/50'
+            ? (isLight ? 'bg-amber-500/95 border-amber-600/50' : 'bg-amber-600/95 border-amber-400/50')
+            : (isLight ? 'bg-blue-500/95 border-blue-600/50' : 'bg-blue-600/95 border-blue-400/50')
         }`}>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-white drop-shadow-lg">
+          <p className={`text-sm sm:text-lg md:text-xl lg:text-2xl font-bold drop-shadow-lg ${
+            isLight ? 'text-white' : 'text-white'
+          }`}>
             {selectedCounty ? selectedCounty.name : hoveredCounty}
           </p>
 
           {selectedCounty && (
             <>
-              <div className="mt-2 space-y-1">
-                <p className="text-xs sm:text-sm text-white/90">
+              <div className="mt-1 sm:mt-2 space-y-0.5 sm:space-y-1">
+                <p className={`text-xs sm:text-sm ${isLight ? 'text-white' : 'text-white/90'}`}>
                   <span className="font-semibold">{selectedCounty.listings}</span> active listings
                 </p>
-                <p className="text-xs sm:text-sm text-white/90">
+                <p className={`text-xs sm:text-sm ${isLight ? 'text-white' : 'text-white/90'}`}>
                   Median: <span className="font-semibold">{selectedCounty.medianPrice}</span>
                 </p>
               </div>
-              <p className="text-xs sm:text-sm mt-2 text-amber-50 hidden sm:block">
+              <p className={`text-xs sm:text-sm mt-1.5 sm:mt-2 hidden sm:block ${
+                isLight ? 'text-white' : 'text-amber-50'
+              }`}>
                 Tap again to explore cities and properties
               </p>
-              <p className="text-xs mt-1.5 text-amber-50 sm:hidden">
+              <p className={`text-[10px] mt-1 sm:hidden leading-tight ${
+                isLight ? 'text-white' : 'text-amber-50'
+              }`}>
                 Tap again to explore
               </p>
             </>
@@ -355,10 +376,14 @@ export default function SoCalCountySVGMap() {
 
           {!selectedCounty && (
             <>
-              <p className="text-xs sm:text-sm mt-1 text-blue-50 hidden sm:block">
+              <p className={`text-xs sm:text-sm mt-1 hidden sm:block ${
+                isLight ? 'text-white' : 'text-blue-50'
+              }`}>
                 Click to select and view details
               </p>
-              <p className="text-xs mt-0.5 text-blue-50 sm:hidden">
+              <p className={`text-[10px] mt-0.5 sm:hidden leading-tight ${
+                isLight ? 'text-white' : 'text-blue-50'
+              }`}>
                 Tap to select
               </p>
             </>

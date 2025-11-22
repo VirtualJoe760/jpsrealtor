@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import ContactInfo from "./ContactInfo";
 import NameInput from "./NameInput";
 import EmailInput from "./EmailInput";
@@ -18,6 +19,8 @@ interface ContactProps {
 
 export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
   const router = useRouter();
+  const { bgPrimary, textPrimary, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [optIn, setOptIn] = useState(false);
@@ -47,7 +50,7 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
       const address = `${street}, ${city}, ${state} ${zip}, ${country}`.trim();
       const message = getFieldValue("message");
 
-      const folderName = `${firstName}_${lastName}`.replace(/\s+/g, "_").toLowerCase();
+      const folderName = `${firstName}_${lastName}`.replace(/s+/g, "_").toLowerCase();
       const uploadedPhotoUrls = await uploadToCloudinary(photos || [], folderName);
 
       const formData = {
@@ -82,7 +85,7 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
   };
 
   return (
-    <div id="contact" className="relative isolate bg-black text-white">
+    <div id="contact" className={`relative isolate ${bgPrimary} ${textPrimary}`}>
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
         <ContactInfo />
 
@@ -106,7 +109,11 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
             <div className="mt-8 flex justify-end">
               <button
                 type="submit"
-                className="rounded-md bg-gray-700 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+                className={`rounded-md px-3.5 py-2.5 text-center text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  isLight
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white focus-visible:outline-emerald-500"
+                    : "bg-gray-700 hover:bg-gray-600 text-white focus-visible:outline-gray-500"
+                }`}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Sending..." : "Send message"}

@@ -6,6 +6,7 @@ import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import { useListings } from "@/app/utils/map/useListings";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 // Default filter state
 const defaultFilterState: Filters = {
@@ -64,7 +65,7 @@ interface MLSContextValue {
   listingCache: React.MutableRefObject<Map<string, IListing>>;
 
   // Actions
-  loadListings: (bounds: any, filters: Filters) => Promise<void>;
+  loadListings: (bounds: any, filters: Filters, merge?: boolean) => Promise<void>;
   selectListing: (listing: MapListing | null, index?: number) => Promise<void>;
   selectListingBySlug: (slug: string) => Promise<void>;
   closeListing: () => void;
@@ -78,6 +79,7 @@ const MLSContext = createContext<MLSContextValue | null>(null);
 export function MLSProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currentTheme } = useTheme();
 
   // Core hooks
   const { allListings, visibleListings, loadListings: loadListingsCore } = useListings();
@@ -130,10 +132,30 @@ export function MLSProvider({ children }: { children: ReactNode }) {
 
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
   const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
-  const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>('dark');
+  const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>(() => {
+    // Initialize based on current theme
+    return currentTheme === "lightgradient" ? 'bright' : 'dark';
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [isLoadingListing, setIsLoadingListing] = useState(false);
+
+  // Sync mapStyle with theme changes (unless user has manually selected satellite/toner)
+  useEffect(() => {
+    console.log('🎨 MLSProvider - Theme changed to:', currentTheme);
+    console.log('🎨 MLSProvider - Current mapStyle:', mapStyle);
+
+    // Only auto-sync if using dark or bright (don't override satellite/toner)
+    if (mapStyle === 'dark' || mapStyle === 'bright') {
+      const newStyle = currentTheme === "lightgradient" ? 'bright' : 'dark';
+      if (newStyle !== mapStyle) {
+        console.log('✅ MLSProvider - Auto-updating mapStyle to:', newStyle);
+        setMapStyle(newStyle);
+      }
+    } else {
+      console.log('ℹ️ MLSProvider - Keeping manual mapStyle:', mapStyle);
+    }
+  }, [currentTheme]);
 
   // Favorites & Dislikes
   const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
@@ -292,12 +314,13 @@ export function MLSProvider({ children }: { children: ReactNode }) {
 
   // Actions
   const loadListings = useCallback(
-    async (bounds: any, filters: Filters) => {
+    async (bounds: any, filters: Filters, merge: boolean = false) => {
       console.log('🔄 MLSProvider.loadListings called with bounds:', bounds);
       console.log('🔄 MLSProvider.loadListings filters:', filters);
+      console.log('🔄 MLSProvider.loadListings merge mode:', merge);
       setIsLoading(true);
       try {
-        await loadListingsCore(bounds, filters);
+        await loadListingsCore(bounds, filters, merge);
         setIsPreloaded(true);
         console.log('✅ MLSProvider.loadListings completed successfully');
       } catch (error) {

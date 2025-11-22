@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface SubdivisionReviewsProps {
   subdivisionName: string;
@@ -11,6 +12,8 @@ export default function SubdivisionReviews({
   subdivisionName,
   subdivisionSlug,
 }: SubdivisionReviewsProps) {
+  const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
   // Placeholder reviews (will be replaced with real data from database)
   const placeholderReviews = [
     {
@@ -30,21 +33,21 @@ export default function SubdivisionReviews({
   ];
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
-      <h2 className="text-2xl font-bold text-white mb-4">
+    <div className={`${cardBg} ${cardBorder} border rounded-2xl ${shadow} p-6 md:p-8`}>
+      <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
         Reviews & Ratings
       </h2>
 
       {/* Summary Stats Placeholder */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+      <div className={`${isLight ? 'bg-gray-100 border-gray-200' : 'bg-gray-800 border-gray-700'} border rounded-xl p-6 mb-6`}>
         <div className="flex items-center gap-4 mb-4">
-          <div className="text-5xl font-bold text-white">--</div>
+          <div className={`text-5xl font-bold ${textPrimary}`}>--</div>
           <div>
             <div className="flex items-center gap-1 mb-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <svg
                   key={star}
-                  className="w-5 h-5 text-gray-600"
+                  className={`w-5 h-5 ${isLight ? 'text-gray-300' : 'text-gray-600'}`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -52,10 +55,10 @@ export default function SubdivisionReviews({
                 </svg>
               ))}
             </div>
-            <div className="text-sm text-gray-400">No reviews yet</div>
+            <div className={`text-sm ${textMuted}`}>No reviews yet</div>
           </div>
         </div>
-        <div className="text-sm text-gray-300 mb-4">
+        <div className={`text-sm ${textSecondary} mb-4`}>
           Be the first to review {subdivisionName}
         </div>
 
@@ -63,21 +66,21 @@ export default function SubdivisionReviews({
         <div className="space-y-2">
           {[5, 4, 3, 2, 1].map((rating) => (
             <div key={rating} className="flex items-center gap-2">
-              <div className="text-sm text-gray-400 w-8">{rating}★</div>
-              <div className="flex-1 bg-gray-700 rounded-full h-2">
-                <div className="bg-gray-600 h-2 rounded-full w-0"></div>
+              <div className={`text-sm ${textMuted} w-8`}>{rating}★</div>
+              <div className={`flex-1 ${isLight ? 'bg-gray-200' : 'bg-gray-700'} rounded-full h-2`}>
+                <div className={`${isLight ? 'bg-gray-300' : 'bg-gray-600'} h-2 rounded-full w-0`}></div>
               </div>
-              <div className="text-sm text-gray-400 w-8">0</div>
+              <div className={`text-sm ${textMuted} w-8`}>0</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Write Review CTA */}
-      <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-4 mb-6">
+      <div className={`${isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/30 border-blue-800'} border rounded-xl p-4 mb-6`}>
         <div className="flex items-start gap-3">
           <svg
-            className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1"
+            className={`w-6 h-6 ${isLight ? 'text-blue-600' : 'text-blue-400'} flex-shrink-0 mt-1`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -90,16 +93,16 @@ export default function SubdivisionReviews({
             />
           </svg>
           <div className="flex-1">
-            <h3 className="font-semibold text-white mb-1">
+            <h3 className={`font-semibold ${textPrimary} mb-1`}>
               Authentication Required
             </h3>
-            <p className="text-sm text-gray-300 mb-3">
+            <p className={`text-sm ${textSecondary} mb-3`}>
               Sign in to leave a review and share your experience living in{" "}
               {subdivisionName}.
             </p>
             <button
               disabled
-              className="px-4 py-2 bg-gray-700 text-gray-400 rounded-md cursor-not-allowed text-sm font-medium"
+              className={`px-4 py-2 ${isLight ? 'bg-gray-200 text-gray-500' : 'bg-gray-700 text-gray-400'} rounded-lg cursor-not-allowed text-sm font-medium`}
             >
               Write a Review (Coming Soon)
             </button>
@@ -109,17 +112,17 @@ export default function SubdivisionReviews({
 
       {/* Placeholder Reviews */}
       <div className="space-y-4">
-        <h3 className="font-semibold text-white">Recent Reviews</h3>
+        <h3 className={`font-semibold ${textPrimary} text-lg`}>Recent Reviews</h3>
         {placeholderReviews.map((review) => (
           <div
             key={review.id}
-            className="border border-gray-700 rounded-lg p-4 bg-gray-800 opacity-60"
+            className={`${isLight ? 'border-gray-200 bg-gray-50' : 'border-gray-700 bg-gray-800'} border rounded-xl p-4 opacity-60`}
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <div className={`w-10 h-10 ${isLight ? 'bg-gray-200' : 'bg-gray-700'} rounded-full flex items-center justify-center`}>
                   <svg
-                    className="w-6 h-6 text-gray-400"
+                    className={`w-6 h-6 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -131,8 +134,8 @@ export default function SubdivisionReviews({
                   </svg>
                 </div>
                 <div>
-                  <div className="font-medium text-gray-300">{review.author}</div>
-                  <div className="text-xs text-gray-500">{review.date}</div>
+                  <div className={`font-medium ${textSecondary}`}>{review.author}</div>
+                  <div className={`text-xs ${textMuted}`}>{review.date}</div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -140,7 +143,7 @@ export default function SubdivisionReviews({
                   <svg
                     key={i}
                     className={`w-4 h-4 ${
-                      i < review.rating ? "text-yellow-400" : "text-gray-600"
+                      i < review.rating ? "text-yellow-400" : isLight ? "text-gray-300" : "text-gray-600"
                     }`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
@@ -150,11 +153,11 @@ export default function SubdivisionReviews({
                 ))}
               </div>
             </div>
-            <p className="text-sm text-gray-400 italic">{review.comment}</p>
+            <p className={`text-sm ${textMuted} italic`}>{review.comment}</p>
           </div>
         ))}
 
-        <div className="text-center text-sm text-gray-400 py-4">
+        <div className={`text-center text-sm ${textMuted} py-4`}>
           Reviews will be available once user authentication is enabled
         </div>
       </div>

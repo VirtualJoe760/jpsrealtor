@@ -3,6 +3,7 @@
 
 import clsx from "clsx";
 import Image from "next/image";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import type { IListing } from "@/models/listings";
 
 /**
@@ -19,6 +20,8 @@ export default function ListingAttribution({
   listing: IListing;
   className?: string;
 }) {
+  const { textMuted, textTertiary, textSecondary } = useThemeClasses();
+
   const officeName = listing.listOfficeName?.trim();
   const officePhone = listing.listOfficePhone?.trim();
   const agentName = listing.listAgentName?.trim();
@@ -55,7 +58,7 @@ export default function ListingAttribution({
       onClick={handleCall}
       onKeyDown={handleKey}
       className={clsx(
-        "text-xs text-zinc-500 leading-snug",
+        `text-xs ${textMuted} leading-snug`,
         "flex flex-wrap items-center gap-x-2 gap-y-1",
         "cursor-pointer select-none",
         className
@@ -75,23 +78,23 @@ export default function ListingAttribution({
         </span>
       ) : null}
 
-      <span className="text-zinc-400">Listed by</span>
+      <span className={textTertiary}>Listed by</span>
 
-      <span className="text-zinc-300">
+      <span className={textSecondary}>
         {officeName || "Listing Brokerage"}
         {agentName ? `, ${agentName}` : ""}
       </span>
 
       {displayPhone ? (
         <>
-          <span className="text-zinc-600">·</span>
+          <span className={textMuted}>·</span>
           <span>{displayPhone}</span>
         </>
       ) : null}
 
       {agentEmail ? (
         <>
-          <span className="text-zinc-600">·</span>
+          <span className={textMuted}>·</span>
           <span className="break-all">{agentEmail}</span>
         </>
       ) : null}

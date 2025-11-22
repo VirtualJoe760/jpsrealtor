@@ -65,6 +65,12 @@ export interface IUser extends Document {
     criteria: Record<string, any>;
     createdAt: Date;
   }>;
+  favoriteCommunities?: Array<{
+    name: string;
+    id: string;
+    type: 'city' | 'subdivision';
+    cityId?: string; // For subdivisions, the parent city ID
+  }>;
 
   // Swipe Sync Tracking
   lastSwipeSync?: Date;
@@ -179,6 +185,12 @@ const UserSchema = new Schema<IUser>(
       name: String,
       criteria: Schema.Types.Mixed,
       createdAt: { type: Date, default: Date.now },
+    }],
+    favoriteCommunities: [{
+      name: { type: String, required: true },
+      id: { type: String, required: true },
+      type: { type: String, enum: ['city', 'subdivision'], required: true },
+      cityId: String, // For subdivisions, the parent city ID
     }],
 
     // Swipe Sync Tracking

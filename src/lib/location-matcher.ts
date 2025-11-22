@@ -361,16 +361,23 @@ export async function searchSubdivisionsWithDisambiguation(query: string): Promi
       else if (subdivisionName === queryLower) {
         confidence = 0.95;
       }
-      // Subdivision name starts with query
+      // Subdivision name starts with query (e.g., "palm desert" matches "Palm Desert Country Club")
       else if (subdivisionName.startsWith(queryLower)) {
         confidence = 0.9;
       }
-      // Contains match
+      // Query starts with subdivision name is weaker (might be city name)
+      else if (queryLower.startsWith(subdivisionName)) {
+        confidence = 0.6;
+      }
+      // Contains match - but penalize if it's just a word in middle
+      // (e.g., "corona" shouldn't strongly match "Corona del Mar North of PCH")
       else if (subdivisionName.includes(queryLower) || cleanSubdivision.includes(cleanQuery)) {
-        confidence = 0.7;
+        // Check if the query is a separate word (not just part of a compound name)
+        const isWholeWord = new RegExp(`\\b${queryLower}\\b`).test(subdivisionName);
+        confidence = isWholeWord ? 0.5 : 0.3; // Lower confidence for partial matches
       }
       else {
-        confidence = 0.4;
+        confidence = 0.2;
       }
 
       return {
@@ -379,8 +386,10 @@ export async function searchSubdivisionsWithDisambiguation(query: string): Promi
       };
     });
 
-    // Filter for reasonable confidence (>0.5)
-    const goodMatches = scoredMatches.filter((m: any) => m.confidence > 0.5);
+    // Filter for reasonable confidence (>=0.8 for high confidence matches)
+    // This ensures we only match subdivisions when there's a strong match
+    // Weak matches (0.5 or below) should fall through to city/county matching
+    const goodMatches = scoredMatches.filter((m: any) => m.confidence >= 0.8);
 
     if (goodMatches.length === 0) {
       return { needsDisambiguation: false, matches: [] };

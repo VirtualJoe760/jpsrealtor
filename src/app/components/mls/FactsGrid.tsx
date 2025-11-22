@@ -1,3 +1,7 @@
+"use client";
+
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
+
 type FactsGridProps = {
     beds?: number
     baths?: number
@@ -5,7 +9,7 @@ type FactsGridProps = {
     sqft?: number
     yearBuilt?: number
   }
-  
+
   export default function FactsGrid({
     beds,
     baths,
@@ -13,39 +17,40 @@ type FactsGridProps = {
     sqft,
     yearBuilt,
   }: FactsGridProps) {
+    const { textSecondary } = useThemeClasses();
+
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-6 text-sm text-gray-300">
+      <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 my-6 text-sm ${textSecondary}`}>
         {beds !== undefined && (
           <div>
-            <span className="font-semibold block text-gray-300">Bedrooms</span>
+            <span className={`font-semibold block ${textSecondary}`}>Bedrooms</span>
             {beds}
           </div>
         )}
         {baths !== undefined && (
           <div>
-            <span className="font-semibold block text-gray-300">Full Baths</span>
+            <span className={`font-semibold block ${textSecondary}`}>Full Baths</span>
             {baths}
           </div>
         )}
         {halfBaths !== undefined && halfBaths > 0 && (
           <div>
-            <span className="font-semibold block text-gray-300">Half Baths</span>
+            <span className={`font-semibold block ${textSecondary}`}>Half Baths</span>
             {halfBaths}
           </div>
         )}
         {sqft !== undefined && (
           <div>
-            <span className="font-semibold block text-gray-300">Square Feet</span>
+            <span className={`font-semibold block ${textSecondary}`}>Square Feet</span>
             {sqft.toLocaleString()}
           </div>
         )}
         {yearBuilt !== undefined && (
           <div>
-            <span className="font-semibold block text-gray-300">Year Built</span>
+            <span className={`font-semibold block ${textSecondary}`}>Year Built</span>
             {yearBuilt}
           </div>
         )}
       </div>
     )
   }
-  

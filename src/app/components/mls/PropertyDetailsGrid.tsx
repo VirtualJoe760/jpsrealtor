@@ -1,4 +1,7 @@
 // src/app/components/mls/PropertyDetailsGrid.tsx
+"use client";
+
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { IListing } from '@/models/listings';
 
 interface Props {
@@ -7,12 +10,12 @@ interface Props {
 }
 
 export default function PropertyDetailsGrid({ listing, className = '' }: Props) {
-
+  const { textPrimary, textSecondary } = useThemeClasses();
 
   return (
     <section className={`mt-10 ${className}`}>
-      <h2 className="text-xl font-semibold mb-4">Property Details</h2>
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-300">
+      <h2 className={`text-xl font-semibold mb-4 ${textPrimary}`}>Property Details</h2>
+      <ul className={`grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm ${textSecondary}`}>
         {listing.apn && <li><strong>APN:</strong> {listing.apn}</li>}
         {listing.subdivisionName && <li><strong>Subdivision:</strong> {listing.subdivisionName}</li>}
         {listing.countyOrParish && <li><strong>County:</strong> {listing.countyOrParish}</li>}

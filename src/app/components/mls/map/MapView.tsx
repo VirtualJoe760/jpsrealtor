@@ -12,6 +12,9 @@ import Map, { Marker, ViewState } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Supercluster from "supercluster";
 import { MapListing } from "@/types/types";
+import AnimatedCluster from "./AnimatedCluster";
+import AnimatedMarker from "./AnimatedMarker";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 export interface MapViewHandles {
   flyToCity: (lat: number, lng: number, zoom?: number) => void;
@@ -136,6 +139,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   },
   ref
 ) {
+  console.log('🗺️ MapView RENDER - mapStyle prop received:', mapStyle);
+  console.log('🗺️ MapView - MAP_STYLES object:', MAP_STYLES);
+  console.log('🗺️ MapView - Resolved URL for', mapStyle, ':', MAP_STYLES[mapStyle]);
+
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clusters, setClusters] = useState<
     Supercluster.PointFeature<Supercluster.AnyProps>[]
@@ -164,6 +173,51 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
+
+  // Watch for mapStyle changes and update the map
+  useEffect(() => {
+    console.log('🎨 MapView useEffect - mapStyle changed to:', mapStyle);
+
+    const map = mapRef.current?.getMap?.();
+    if (!map) {
+      console.log('⚠️ MapView useEffect - No map reference yet');
+      return;
+    }
+
+    if (!map.isStyleLoaded()) {
+      console.log('⚠️ MapView useEffect - Map style not loaded yet');
+      return;
+    }
+
+    const newStyleURL = MAP_STYLES[mapStyle];
+    console.log('🗺️ MapView useEffect - New style URL:', newStyleURL);
+
+    // Get current style URL - need to check the actual style source
+    const currentStyleSpec = map.getStyle();
+    if (!currentStyleSpec) {
+      console.log('⚠️ MapView useEffect - No current style spec');
+      return;
+    }
+
+    console.log('🗺️ MapView useEffect - Current style name:', currentStyleSpec.name);
+
+    // Compare with new style URL - if different, update
+    // We need to check if the current style is already the one we want
+    const needsUpdate = !currentStyleSpec.name ||
+                       (mapStyle === 'dark' && !currentStyleSpec.name.includes('dark')) ||
+                       (mapStyle === 'bright' && !currentStyleSpec.name.includes('voyager') && !currentStyleSpec.name.includes('bright')) ||
+                       (mapStyle === 'satellite' && !currentStyleSpec.name.includes('satellite')) ||
+                       (mapStyle === 'toner' && !currentStyleSpec.name.includes('positron') && !currentStyleSpec.name.includes('toner'));
+
+    console.log('🎨 MapView useEffect - Needs update?', needsUpdate);
+
+    if (needsUpdate) {
+      console.log('✅ MapView useEffect - Updating map style to:', newStyleURL);
+      map.setStyle(newStyleURL);
+    } else {
+      console.log('ℹ️ MapView useEffect - Style is already correct, skipping update');
+    }
+  }, [mapStyle]);
 
   // Keep internal selection in sync with prop (and remember last selected id)
   useEffect(() => {
@@ -410,11 +464,19 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return !!(matchesSelected || matchesInternal);
   };
 
+  const currentMapStyleURL = MAP_STYLES[mapStyle];
+
+  console.log('🎨 MapView JSX RENDER - About to render Map component with:');
+  console.log('  - mapStyle prop:', mapStyle);
+  console.log('  - currentMapStyleURL:', currentMapStyleURL);
+  console.log('  - key:', `map-${mapStyle}`);
+
   return (
     <div ref={wrapperRef} className="relative w-full h-full">
       <Map
         ref={mapRef}
-        mapStyle={MAP_STYLES[mapStyle]}
+        mapStyle={currentMapStyleURL}
+        key={`map-${mapStyle}`}
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}
@@ -439,18 +501,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     anchor="bottom"
                     onClick={() => handleMarkerClick(listing)}
                   >
-                    <div
+                    <AnimatedMarker
+                      price={formatPrice(listing.listPrice)}
+                      propertyType={listing.propertyType}
+                      mlsSource={listing.mlsSource}
+                      isSelected={showSelected}
+                      isHovered={hovered}
                       onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px] ${getMarkerColors(
-                        listing.propertyType,
-                        listing.mlsSource,
-                        hovered,
-                        showSelected
-                      )}`}
-                    >
-                      {formatPrice(listing.listPrice)}
-                    </div>
+                      isLight={isLight}
+                    />
                   </Marker>
                 );
               })
@@ -477,18 +537,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     anchor="bottom"
                     onClick={() => handleMarkerClick(listing)}
                   >
-                    <div
+                    <AnimatedMarker
+                      price={formatPrice(listing.listPrice)}
+                      propertyType={listing.propertyType}
+                      mlsSource={listing.mlsSource}
+                      isSelected={showSelected}
+                      isHovered={hovered}
                       onMouseEnter={() => setHoveredId(listing._id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`rounded-md px-2 py-1 text-xs font-[Raleway] font-semibold transition-all duration-200 cursor-pointer min-w-[40px] min-h-[20px] ${getMarkerColors(
-                        listing.propertyType,
-                        listing.mlsSource,
-                        hovered,
-                        showSelected
-                      )}`}
-                    >
-                      {formatPrice(listing.listPrice)}
-                    </div>
+                      isLight={isLight}
+                    />
                   </Marker>
                 );
               }
@@ -502,18 +560,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                   anchor="center"
                   onClick={() => handleClusterClick(feature)}
                 >
-                  <div
-                    className="rounded-full flex items-center justify-center text-white font-[Raleway] font-semibold transition-all duration-200"
-                    style={{
-                      backgroundColor: "#4B4B4B",
-                      width: `${size}px`,
-                      height: `${size}px`,
-                      border: "2px solid #000000",
-                      boxShadow: "0 0 8px rgba(255, 255, 255, 0.5)",
-                    }}
-                  >
-                    {point_count}
-                  </div>
+                  <AnimatedCluster
+                    count={point_count}
+                    size={size}
+                    onClick={() => handleClusterClick(feature)}
+                    isLight={isLight}
+                  />
                 </Marker>
               );
             })}

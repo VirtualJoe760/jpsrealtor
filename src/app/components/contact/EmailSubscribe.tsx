@@ -1,12 +1,17 @@
 "use client";
 
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
+
 interface EmailSubscribeProps {
   label: string;
-  isChecked: boolean; // This property ensures the component knows its checked state
-  onChange: (checked: boolean) => void; // Callback to handle state changes
+  isChecked: boolean;
+  onChange: (checked: boolean) => void;
 }
 
 export default function EmailSubscribe({ label, isChecked, onChange }: EmailSubscribeProps) {
+  const { textSecondary, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
   return (
     <div className="flex items-center">
       <input
@@ -15,10 +20,12 @@ export default function EmailSubscribe({ label, isChecked, onChange }: EmailSubs
         name="emailOptIn"
         checked={isChecked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        className={`h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 ${
+          isLight ? "border-gray-300" : "border-gray-600"
+        }`}
         required
       />
-      <label htmlFor="email-opt-in" className="ml-2 text-sm text-gray-300">
+      <label htmlFor="email-opt-in" className={`ml-2 text-sm ${textSecondary}`}>
         {label}
       </label>
     </div>

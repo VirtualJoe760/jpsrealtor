@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Heart, X } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface SwipeCompletionModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ export default function SwipeCompletionModal({
   onClose,
 }: SwipeCompletionModalProps) {
   const router = useRouter();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   if (!isOpen) return null;
 
@@ -31,20 +34,28 @@ export default function SwipeCompletionModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
+          isLight ? 'bg-black/40' : 'bg-black/80'
+        }`}
         onClick={onClose}
       >
         {/* Modal */}
         <div
-          className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-gray-700 rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
+          className={`rounded-2xl shadow-2xl max-w-md w-full p-8 relative ${
+            isLight
+              ? 'bg-white border-2 border-gray-300'
+              : 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-gray-700'
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-700/50 transition-colors"
+            className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${
+              isLight ? 'hover:bg-gray-200' : 'hover:bg-gray-700/50'
+            }`}
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className={`w-5 h-5 ${isLight ? 'text-gray-600' : 'text-gray-400'}`} />
           </button>
 
           {/* Success Icon */}
@@ -55,22 +66,30 @@ export default function SwipeCompletionModal({
           </div>
 
           {/* Title */}
-          <h2 className="text-3xl font-bold text-white text-center mb-3">
+          <h2 className={`text-3xl font-bold text-center mb-3 ${
+            isLight ? 'text-gray-900' : 'text-white'
+          }`}>
             Swipe Queue Complete!
           </h2>
 
           {/* Message */}
-          <p className="text-gray-300 text-center mb-2">
+          <p className={`text-center mb-2 ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
             You have finished the swipe queue.
             {favoritesCount > 0 && " Would you like to review your favorites in your dashboard?"}
           </p>
 
           {/* Favorites Count */}
           {favoritesCount > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+            <div className={`rounded-lg p-4 mb-6 ${
+              isLight
+                ? 'bg-pink-100 border border-pink-300'
+                : 'bg-red-500/10 border border-red-500/30'
+            }`}>
               <div className="flex items-center justify-center space-x-2">
-                <Heart className="w-5 h-5 text-red-400 fill-red-400" />
-                <p className="text-white font-semibold">
+                <Heart className={`w-5 h-5 fill-current ${
+                  isLight ? 'text-pink-600' : 'text-red-400'
+                }`} />
+                <p className={`font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>
                   You have {favoritesCount} favorite{favoritesCount !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -82,7 +101,11 @@ export default function SwipeCompletionModal({
             {favoritesCount > 0 && (
               <button
                 onClick={handleViewFavorites}
-                className="w-full py-3 px-4 bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white font-semibold rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 ${
+                  isLight
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                    : 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white'
+                }`}
               >
                 <Heart className="w-5 h-5" />
                 <span>Review Your Favorites</span>
@@ -91,14 +114,18 @@ export default function SwipeCompletionModal({
 
             <button
               onClick={handleContinueBrowsing}
-              className="w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg border border-gray-600 transition-all duration-200"
+              className={`w-full py-3 px-4 font-semibold rounded-lg transition-all duration-200 ${
+                isLight
+                  ? 'bg-gray-200 hover:bg-gray-300 text-gray-900 border border-gray-300'
+                  : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-600'
+              }`}
             >
               Continue Browsing
             </button>
           </div>
 
           {/* Additional info */}
-          <p className="text-gray-500 text-sm text-center mt-4">
+          <p className={`text-sm text-center mt-4 ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>
             Move to a different area on the map to discover more properties
           </p>
         </div>

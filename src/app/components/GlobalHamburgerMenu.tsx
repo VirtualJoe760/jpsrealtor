@@ -1,35 +1,95 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu } from "lucide-react";
 import EnhancedSidebar from "./EnhancedSidebar";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 export default function GlobalHamburgerMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use default (dark) theme colors until mounted to avoid hydration mismatch
+  const effectiveIsLight = mounted ? isLight : false;
 
   return (
     <>
       {/* Hamburger Button - Top Left, Mobile Only */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            key="hamburger"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{
-              duration: 0.15,
-              ease: "easeOut"
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 flex items-center justify-center active:scale-95 transition-transform"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+      >
+        <div className="relative w-7 h-6 flex flex-col justify-center items-center">
+          {/* Top Line */}
+          <motion.span
+            animate={isOpen ? {
+              rotate: 45,
+              y: 0,
+              backgroundColor: "#10b981"
+            } : {
+              rotate: 0,
+              y: -8,
+              backgroundColor: effectiveIsLight ? "#374151" : "#e5e5e5"
             }}
-            onClick={() => setIsOpen(true)}
-            className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-black/90 backdrop-blur-xl border border-neutral-800 flex items-center justify-center hover:bg-neutral-900 hover:border-neutral-700 active:scale-95 transition-all shadow-2xl"
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
-          >
-            <Menu className="w-6 h-6 text-neutral-300" strokeWidth={2} />
-          </motion.button>
-        )}
-      </AnimatePresence>
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="absolute w-7 h-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+            style={{
+              boxShadow: isOpen
+                ? "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                : effectiveIsLight
+                  ? "0 0 8px rgba(55,65,81,0.3)"
+                  : "0 0 8px rgba(229,229,229,0.3)"
+            }}
+            suppressHydrationWarning
+          />
+          {/* Middle Line */}
+          <motion.span
+            animate={isOpen ? {
+              opacity: 0,
+              x: -20
+            } : {
+              opacity: 1,
+              x: 0
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className={`absolute w-7 h-0.5 rounded-full ${effectiveIsLight ? 'bg-gray-700' : 'bg-neutral-200'}`}
+            style={{
+              boxShadow: effectiveIsLight ? "0 0 8px rgba(55,65,81,0.3)" : "0 0 8px rgba(229,229,229,0.3)"
+            }}
+            suppressHydrationWarning
+          />
+          {/* Bottom Line */}
+          <motion.span
+            animate={isOpen ? {
+              rotate: -45,
+              y: 0,
+              backgroundColor: "#10b981"
+            } : {
+              rotate: 0,
+              y: 8,
+              backgroundColor: effectiveIsLight ? "#374151" : "#e5e5e5"
+            }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="absolute w-7 h-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+            style={{
+              boxShadow: isOpen
+                ? "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                : effectiveIsLight
+                  ? "0 0 8px rgba(55,65,81,0.3)"
+                  : "0 0 8px rgba(229,229,229,0.3)"
+            }}
+            suppressHydrationWarning
+          />
+        </div>
+      </motion.button>
 
       {/* Overlay and Sidebar */}
       <AnimatePresence mode="wait">

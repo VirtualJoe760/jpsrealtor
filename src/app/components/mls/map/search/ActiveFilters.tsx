@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { Filters } from "@/types/types";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 type Props = {
   filters: Filters;
@@ -11,6 +12,8 @@ type Props = {
 };
 
 export default function ActiveFilters({ filters, onRemoveFilter, onClearAll, isFiltersOpen }: Props) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
   const activeFilters: Array<{ key: keyof Filters; label: string; value: string }> = [];
 
   // Price filters
@@ -150,9 +153,15 @@ export default function ActiveFilters({ filters, onRemoveFilter, onClearAll, isF
         {activeFilters.map((filter) => (
           <div
             key={filter.key}
-            className="inline-flex items-center gap-1.5 bg-red-800/90 hover:bg-red-700/90 border-2 border-red-600 text-white px-2.5 md:px-3 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-medium transition-all shadow-lg group"
+            className={`inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-medium transition-all shadow-lg group border-2 ${
+              isLight
+                ? 'bg-red-600/90 hover:bg-red-500/90 border-red-500 text-white'
+                : 'bg-red-800/90 hover:bg-red-700/90 border-red-600 text-white'
+            }`}
           >
-            <span className="text-red-100 text-[10px] md:text-xs font-semibold uppercase tracking-wide">
+            <span className={`text-[10px] md:text-xs font-semibold uppercase tracking-wide ${
+              isLight ? 'text-red-50' : 'text-red-100'
+            }`}>
               {filter.label}:
             </span>
             <span className="font-bold">{filter.value}</span>
@@ -170,7 +179,11 @@ export default function ActiveFilters({ filters, onRemoveFilter, onClearAll, isF
         {activeFilters.length > 1 && (
           <button
             onClick={onClearAll}
-            className="inline-flex items-center gap-1 bg-red-950/90 hover:bg-red-900/90 border-2 border-red-500 text-red-100 hover:text-white px-2.5 md:px-3 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-bold uppercase tracking-wide transition-all shadow-lg"
+            className={`inline-flex items-center gap-1 px-2.5 md:px-3 py-1.5 md:py-2 rounded-md text-xs md:text-sm font-bold uppercase tracking-wide transition-all shadow-lg border-2 ${
+              isLight
+                ? 'bg-red-700/90 hover:bg-red-600/90 border-red-500 text-red-50 hover:text-white'
+                : 'bg-red-950/90 hover:bg-red-900/90 border-red-500 text-red-100 hover:text-white'
+            }`}
           >
             Clear All
             <X className="w-3.5 h-3.5 md:w-4 md:h-4" />

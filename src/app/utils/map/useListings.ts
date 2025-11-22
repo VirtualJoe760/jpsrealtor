@@ -6,7 +6,7 @@ export function useListings() {
   const [allListings, setAllListings] = useState<MapListing[]>([]);
   const [visibleListings, setVisibleListings] = useState<MapListing[]>([]);
 
-  const loadListings = useCallback(async (bounds: any, filters: Filters) => {
+  const loadListings = useCallback(async (bounds: any, filters: Filters, merge: boolean = false) => {
     console.log('🔍 useListings.loadListings called with bounds:', bounds);
     console.log('🔍 useListings.loadListings filters:', filters);
 
@@ -80,8 +80,30 @@ export function useListings() {
 
     console.log('✅ Received', data.listings?.length || 0, 'listings from API');
 
-    setAllListings(data.listings || []);
-    setVisibleListings(data.listings || []);
+    if (merge) {
+      // Merge new listings with existing ones, avoiding duplicates
+      setAllListings(prev => {
+        const newListings = data.listings || [];
+        const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+        const uniqueNewListings = newListings.filter(
+          (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+        );
+        console.log('🔀 Merging', uniqueNewListings.length, 'new listings with', prev.length, 'existing');
+        return [...prev, ...uniqueNewListings];
+      });
+      setVisibleListings(prev => {
+        const newListings = data.listings || [];
+        const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+        const uniqueNewListings = newListings.filter(
+          (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+        );
+        return [...prev, ...uniqueNewListings];
+      });
+    } else {
+      // Replace listings entirely (default behavior)
+      setAllListings(data.listings || []);
+      setVisibleListings(data.listings || []);
+    }
   }, []);
 
   return {

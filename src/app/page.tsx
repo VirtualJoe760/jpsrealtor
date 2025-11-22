@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useRef, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { EnhancedChatProvider, useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
@@ -21,13 +21,15 @@ function URLSyncHandler() {
   const { currentView, setCurrentView } = useEnhancedChat();
   const { clearMessages } = useChatContext();
   const searchParams = useSearchParams();
+  const hasProcessedNewParam = useRef(false);
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
     const newParam = searchParams.get('new');
 
-    // If new=true, clear messages for a fresh chat
-    if (newParam === 'true') {
+    // If new=true, clear messages for a fresh chat (only once)
+    if (newParam === 'true' && !hasProcessedNewParam.current) {
+      hasProcessedNewParam.current = true;
       clearMessages();
       // Remove the 'new' param from URL to avoid clearing again on refresh
       const url = new URL(window.location.href);
@@ -125,10 +127,10 @@ function HomePageWrapper() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
+      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-white via-gray-50 to-emerald-50 dark:from-black dark:via-gray-900 dark:to-black">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-neutral-400 text-sm">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     }>

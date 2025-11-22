@@ -20,6 +20,7 @@ import Image from "next/image";
 import PannelCarousel from "./PannelCarousel";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 /* ======================================================
    FIXED PANEL LAYOUT CONSTANTS
@@ -106,6 +107,10 @@ export default function ListingBottomPanel({
 
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Theme awareness
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   // Generate subdivision URL
   const getSubdivisionUrl = () => {
@@ -336,26 +341,40 @@ export default function ListingBottomPanel({
       onDragEnd={handleDragEnd}
       animate={controls}
       exit={{ opacity: 0, y: 36, transition: { duration: 0.15 } }}
-      className="fixed bottom-0 z-[100] rounded-t-2xl shadow-2xl overflow-hidden text-white max-h-[85vh] sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col"
+      className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden max-h-[85vh] sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${
+        isLight ? 'text-gray-900' : 'text-white'
+      }`}
       style={{
         width: layout.width,
         left: layout.left,
-        background: "rgba(22,22,22,0.95)",
-        backdropFilter: "blur(10px)",
+        background: isLight
+          ? "rgba(255, 255, 255, 0.85)"
+          : "rgba(15, 15, 18, 0.95)",
+        backdropFilter: "blur(24px) saturate(200%)",
+        WebkitBackdropFilter: "blur(24px) saturate(200%)",
+        border: isLight
+          ? "1px solid rgba(209, 213, 219, 0.4)"
+          : "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: isLight
+          ? "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(209, 213, 219, 0.1)"
+          : "0 -8px 32px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         transformOrigin: `50% ${PIN.originYpx}px`,
         rotateZ: rotZ,
         rotateX: rotX,
         skewY: skewY,
-        boxShadow: boxShadowMV,
         x: dragX,
       }}
     >
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-3 right-3 z-50 bg-black/70 p-2 rounded-full border border-white/10 hover:bg-black/90 transition-colors"
+        className={`absolute top-4 right-4 z-50 p-2.5 rounded-xl border transition-all backdrop-blur-sm ${
+          isLight
+            ? 'bg-white/90 border-gray-200 hover:bg-white hover:shadow-lg text-gray-700 hover:text-gray-900'
+            : 'bg-black/50 border-white/10 hover:bg-black/70 hover:border-white/20 text-white'
+        }`}
       >
-        <X className="w-6 h-6 text-white" />
+        <X className="w-5 h-5" />
       </button>
 
       {/* Disliked Badge */}
@@ -369,45 +388,65 @@ export default function ListingBottomPanel({
       </div>
 
       {/* Header */}
-      <div className="px-4 py-2.5 bg-zinc-900/95 border-b border-zinc-800 flex-shrink-0">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-xl font-semibold leading-tight">{address}</p>
-            <p className="text-2xl font-bold text-emerald-400">
+      <div className={`px-5 py-4 border-b flex-shrink-0 ${
+        isLight
+          ? 'bg-white/70 border-gray-200/50'
+          : 'bg-white/[0.02] border-white/[0.08]'
+      }`}>
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-medium leading-tight mb-1.5 truncate ${
+              isLight ? 'text-gray-600' : 'text-gray-400'
+            }`}>{address}</p>
+            <p className={`text-3xl font-bold tracking-tight ${
+              isLight ? 'text-blue-600' : 'text-emerald-400'
+            }`}>
               {`$${Number(fullListing.listPrice ?? 0).toLocaleString()}`}
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {/* Share */}
             <button
               onClick={() =>
                 navigator.share?.({ title: address, url: window.location.href })
               }
-              className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-700 flex-shrink-0"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all backdrop-blur-sm ${
+                isLight
+                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20'
+              }`}
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Share2 className="w-4 h-4" />
             </button>
 
             {/* Calendar */}
             <Link
               href="/book-appointment"
-              className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-700 flex-shrink-0"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all backdrop-blur-sm ${
+                isLight
+                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20'
+              }`}
             >
-              <Calendar className="w-3.5 h-3.5 text-white" />
+              <Calendar className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-2.5 custom-scrollbar min-h-0">
-        <div className="flex flex-wrap gap-1.5 text-sm mb-2.5">
+      <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar min-h-0">
+        <div className="flex flex-wrap gap-2 text-sm mb-4">
           {fullListing.subdivisionName && (
             subdivisionUrl ? (
               <Link
                 href={subdivisionUrl}
-                className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/20 hover:bg-emerald-500/30 hover:border-emerald-500/40 transition-all inline-flex items-center gap-1"
+                className={`px-3 py-1.5 rounded-lg border transition-all inline-flex items-center gap-1.5 font-medium ${
+                  isLight
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30'
+                }`}
               >
                 {fullListing.subdivisionName}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,79 +454,127 @@ export default function ListingBottomPanel({
                 </svg>
               </Link>
             ) : (
-              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/20">
+              <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+                isLight
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>
                 {fullListing.subdivisionName}
               </span>
             )
           )}
 
           {(fullListing.bedsTotal != null || fullListing.bedroomsTotal != null) && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               {fullListing.bedsTotal || fullListing.bedroomsTotal} Bed
             </span>
           )}
 
           {fullListing.bathroomsTotalInteger != null && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               {fullListing.bathroomsTotalInteger} Bath
             </span>
           )}
 
           {fullListing.livingArea != null && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               {fullListing.livingArea.toLocaleString()} SqFt
             </span>
           )}
 
           {fullListing.lotSizeArea != null && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
             </span>
           )}
 
           {fullListing.landType && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               {fullListing.landType}
             </span>
           )}
 
           {fullListing.associationFee && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               ${fullListing.associationFee}/mo HOA
             </span>
           )}
 
           {fullListing.yearBuilt && (
-            <span className="bg-zinc-800 px-2 py-1 rounded-full">
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
               Built {fullListing.yearBuilt}
             </span>
           )}
         </div>
 
         {fullListing.publicRemarks && (
-          <p className="text-white/90 text-sm leading-relaxed mb-3 line-clamp-3">{fullListing.publicRemarks}</p>
+          <div className={`p-4 rounded-xl mb-4 ${
+            isLight
+              ? 'bg-gray-50 border border-gray-200'
+              : 'bg-white/[0.03] border border-white/[0.08]'
+          }`}>
+            <p className={`text-sm leading-relaxed line-clamp-4 ${
+              isLight ? 'text-gray-700' : 'text-gray-300'
+            }`}>{fullListing.publicRemarks}</p>
+          </div>
         )}
 
-        <div className="mb-3">
+        <div className="mb-4">
           <ListingAttribution listing={fullListing} />
         </div>
 
         {/* Swipe Buttons */}
-        <div className="flex justify-center gap-8 py-3">
-          <button onClick={() => swipeOut("left")} className="transition-transform hover:scale-110">
-            <Image src="/images/swipe-left.png" alt="" width={60} height={60} />
+        <div className="flex justify-center gap-8 py-4">
+          <button onClick={() => swipeOut("left")} className="transition-transform hover:scale-110 active:scale-95">
+            <Image src="/images/swipe-left.png" alt="Dislike" width={64} height={64} />
           </button>
-          <button onClick={() => swipeOut("right")} className="transition-transform hover:scale-110">
-            <Image src="/images/swipe-right.png" alt="" width={60} height={60} />
+          <button onClick={() => swipeOut("right")} className="transition-transform hover:scale-110 active:scale-95">
+            <Image src="/images/swipe-right.png" alt="Like" width={64} height={64} />
           </button>
         </div>
       </div>
 
       {/* CTA Footer */}
-      <div className="px-4 py-3 bg-zinc-900/95 border-t border-zinc-800 flex-shrink-0">
+      <div className={`px-5 py-4 border-t flex-shrink-0 ${
+        isLight
+          ? 'bg-white/70 border-gray-200/50'
+          : 'bg-white/[0.02] border-white/[0.08]'
+      }`}>
         <Link
           href={`/mls-listings/${fullListing.slugAddress || fullListing.slug}`}
-          className="block w-full text-center bg-emerald-500 text-black font-bold py-2.5 rounded-lg hover:bg-emerald-400 text-base"
+          className={`block w-full text-center font-semibold py-3.5 rounded-xl text-base transition-all ${
+            isLight
+              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+              : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30'
+          }`}
         >
           View Full Listing
         </Link>

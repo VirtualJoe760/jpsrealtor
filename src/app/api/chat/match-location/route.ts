@@ -43,7 +43,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // STEP 1: Check subdivisions FIRST (with disambiguation)
+    // STEP 1: Quick check if this is an exact city match
+    // This prevents "corona" from matching "Corona del Mar" subdivisions
+    const exactCityMatch = await matchLocation(query);
+    if (exactCityMatch && exactCityMatch.type === 'city' && exactCityMatch.confidence === 1.0) {
+      console.log('✅ Exact CITY match found, skipping subdivision search:', exactCityMatch.name);
+
+      const searchParams = locationToSearchParams(exactCityMatch);
+
+      return NextResponse.json({
+        success: true,
+        query,
+        match: {
+          type: exactCityMatch.type,
+          name: exactCityMatch.name,
+          confidence: exactCityMatch.confidence
+        },
+        searchParams
+      });
+    }
+
+    // STEP 2: Check subdivisions (with disambiguation)
     const subdivisionResult = await searchSubdivisionsWithDisambiguation(query);
 
     if (subdivisionResult.needsDisambiguation) {
@@ -102,7 +122,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // STEP 2: No subdivision match - try city or county
+    // STEP 3: No subdivision match - try city or county (partial matches)
     const match = await matchLocation(query);
 
     if (!match) {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface Subdivision {
   name: string;
@@ -26,6 +27,9 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
+  // Theme support
+  const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, bgTertiary } = useThemeClasses();
+
   useEffect(() => {
     async function fetchSubdivisions() {
       try {
@@ -48,9 +52,9 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-700 rounded-lg p-6 animate-pulse">
-        <div className="h-6 bg-gray-800 rounded w-1/3 mb-4"></div>
-        <div className="h-4 bg-gray-800 rounded w-2/3"></div>
+      <div className={`${cardBg} ${cardBorder} border rounded-lg p-6 animate-pulse`}>
+        <div className={`h-6 ${bgTertiary} rounded w-1/3 mb-4`}></div>
+        <div className={`h-4 ${bgTertiary} rounded w-2/3`}></div>
       </div>
     );
   }
@@ -84,11 +88,11 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className={`text-2xl font-bold ${textPrimary}`}>
           Subdivisions & Neighborhoods in {cityName}
         </h2>
         {totalPages > 1 && (
-          <div className="text-sm text-gray-400">
+          <div className={`text-sm ${textMuted}`}>
             Page {currentPage} of {totalPages} ({totalItems} total)
           </div>
         )}
@@ -102,20 +106,20 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
               <Link
                 key="individual-homes"
                 href={`/listings?city=${cityId}`}
-                className="group bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-gray-600 rounded-lg p-6 hover:border-white/70 hover:shadow-2xl transition-all duration-200"
+                className={`group ${cardBg} ${cardBorder} border-2 rounded-lg p-6 ${shadow} hover:shadow-2xl transition-all duration-200`}
               >
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className={`text-xl font-semibold ${textPrimary} mb-2`}>
                   Individual Homes
                 </h3>
-                <div className="space-y-1 text-sm text-gray-400">
+                <div className={`space-y-1 text-sm ${textSecondary}`}>
                   <p>
-                    <span className="font-semibold text-white">{noSubdivisionCount}</span> active listings
+                    <span className={`font-semibold ${textPrimary}`}>{noSubdivisionCount}</span> active listings
                   </p>
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className={`text-xs ${textMuted} mt-2`}>
                     Properties without HOA or subdivision
                   </p>
                 </div>
-                <div className="mt-4 text-gray-300 text-sm font-medium group-hover:text-white group-hover:underline">
+                <div className={`mt-4 ${textSecondary} text-sm font-medium group-hover:${textPrimary} group-hover:underline`}>
                   View All Homes →
                 </div>
               </Link>
@@ -128,23 +132,23 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
             <Link
               key={subdivision.name}
               href={`/neighborhoods/${cityId}/${subdivision.slug}`}
-              className="group bg-gradient-to-br from-gray-900 to-black border border-gray-700 rounded-lg p-6 hover:border-white/50 hover:shadow-2xl transition-all duration-200"
+              className={`group ${cardBg} ${cardBorder} border rounded-lg p-6 ${shadow} hover:shadow-2xl transition-all duration-200`}
             >
-              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-white">
+              <h3 className={`text-xl font-semibold ${textPrimary} mb-2`}>
                 {subdivision.name}
               </h3>
-              <div className="space-y-1 text-sm text-gray-400">
+              <div className={`space-y-1 text-sm ${textSecondary}`}>
                 <p>
-                  <span className="font-semibold text-white">{subdivision.listingCount}</span> active listings
+                  <span className={`font-semibold ${textPrimary}`}>{subdivision.listingCount}</span> active listings
                 </p>
                 <p>
-                  Avg: <span className="font-semibold text-white">{formatPrice(subdivision.avgPrice)}</span>
+                  Avg: <span className={`font-semibold ${textPrimary}`}>{formatPrice(subdivision.avgPrice)}</span>
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className={`text-xs ${textMuted}`}>
                   {formatPrice(subdivision.priceRange.min)} - {formatPrice(subdivision.priceRange.max)}
                 </p>
               </div>
-              <div className="mt-4 text-gray-300 text-sm font-medium group-hover:text-white group-hover:underline">
+              <div className={`mt-4 ${textSecondary} text-sm font-medium group-hover:${textPrimary} group-hover:underline`}>
                 View Listings →
               </div>
             </Link>
@@ -161,8 +165,8 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
             disabled={currentPage === 1}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               currentPage === 1
-                ? "bg-gray-800 text-gray-600 cursor-not-allowed"
-                : "bg-gray-800 text-white hover:bg-gray-700"
+                ? `${bgTertiary} ${textMuted} cursor-not-allowed`
+                : `${cardBg} ${textPrimary} hover:${bgTertiary}`
             }`}
           >
             ← Previous
@@ -180,7 +184,7 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
               // Show ellipsis
               if (page === currentPage - 2 || page === currentPage + 2) {
                 return (
-                  <span key={page} className="px-2 text-gray-600">
+                  <span key={page} className={`px-2 ${textMuted}`}>
                     ...
                   </span>
                 );
@@ -194,8 +198,8 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
                 onClick={() => setCurrentPage(page)}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   currentPage === page
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-white hover:bg-gray-700"
+                    ? "bg-emerald-500 text-black"
+                    : `${cardBg} ${textPrimary} hover:${bgTertiary}`
                 }`}
               >
                 {page}
@@ -209,8 +213,8 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
             disabled={currentPage === totalPages}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               currentPage === totalPages
-                ? "bg-gray-800 text-gray-600 cursor-not-allowed"
-                : "bg-gray-800 text-white hover:bg-gray-700"
+                ? `${bgTertiary} ${textMuted} cursor-not-allowed`
+                : `${cardBg} ${textPrimary} hover:${bgTertiary}`
             }`}
           >
             Next →

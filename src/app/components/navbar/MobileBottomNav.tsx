@@ -3,11 +3,14 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Home, MessageSquare, Map, FileText, User } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const { currentTheme, bgPrimary, border, textSecondary } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   const navItems = [
     {
@@ -38,7 +41,11 @@ export default function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-neutral-800 sm:hidden"
+      className={`fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t sm:hidden ${
+        isLight
+          ? "bg-white/95 border-gray-200"
+          : "bg-black/95 border-neutral-800"
+      }`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-center justify-around px-2 py-2">
@@ -50,8 +57,10 @@ export default function MobileBottomNav() {
               onClick={() => router.push(item.href)}
               className={`flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all ${
                 item.active
-                  ? "text-emerald-400 bg-emerald-500/10"
-                  : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+                  ? "text-emerald-500 bg-emerald-500/10"
+                  : isLight
+                    ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
               <Icon

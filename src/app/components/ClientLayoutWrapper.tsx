@@ -11,6 +11,7 @@ import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 import PageTransition from "./PageTransition";
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -112,10 +113,12 @@ export default function ClientLayoutWrapper({
   }, []);
 
   return (
-    <Providers>
-      <SidebarProvider>
-        <LayoutContent>{children}</LayoutContent>
-      </SidebarProvider>
-    </Providers>
+    <ThemeProvider>
+      <Providers>
+        <SidebarProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </SidebarProvider>
+      </Providers>
+    </ThemeProvider>
   );
 }

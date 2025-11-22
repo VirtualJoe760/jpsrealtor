@@ -35,9 +35,10 @@ import {
   loadConversationMessages,
 } from "./EnhancedSidebar";
 import Image from "next/image";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 // Simple markdown parser for basic formatting
-function parseMarkdown(text: string): React.ReactNode {
+function parseMarkdown(text: string, isLight: boolean = false): React.ReactNode {
   if (!text) return text;
 
   // First, handle links and bold together
@@ -65,7 +66,7 @@ function parseMarkdown(text: string): React.ReactNode {
     if (matched.startsWith("**") && matched.endsWith("**")) {
       const boldText = matched.slice(2, -2);
       elements.push(
-        <strong key={key++} className="font-bold text-white">
+        <strong key={key++} className={`font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
           {boldText}
         </strong>
       );
@@ -81,7 +82,11 @@ function parseMarkdown(text: string): React.ReactNode {
           <a
             key={key++}
             href={linkUrl || "#"}
-            className="text-emerald-400 hover:text-emerald-300 underline transition-colors font-medium"
+            className={`underline transition-colors font-medium ${
+              isLight
+                ? "text-blue-600 hover:text-blue-800"
+                : "text-emerald-400 hover:text-emerald-300"
+            }`}
             target={isInternal ? undefined : "_blank"}
             rel={isInternal ? undefined : "noopener noreferrer"}
           >
@@ -135,6 +140,8 @@ export default function IntegratedChatWidget() {
     currentView,
   } = useEnhancedChat();
   const { data: session } = useSession();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
@@ -938,12 +945,58 @@ FUNCTION CALLING RULES:
 
                   if (cityData) {
                     const subdivisionUrl = `/neighborhoods/${cityData.city.id}/${subdivision.slug}`;
-                    messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${subdivision.name}**. [View ${subdivision.name} Community Page →](${subdivisionUrl})`;
+
+                    // Add encouraging words based on property count
+                    let encouragement = "";
+                    if (actualCount > 10) {
+                      encouragement = " Great selection available! ";
+                    } else if (actualCount > 5) {
+                      encouragement = " Some nice options here! ";
+                    } else if (actualCount > 0) {
+                      encouragement = " Check out these opportunities! ";
+                    }
+
+                    messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${subdivision.name}**.${encouragement}${subdivision.name} is a wonderful community in ${subdivision.city}. [Explore ${subdivision.name} Community →](${subdivisionUrl})`;
                   }
                 }
               }
             } catch (error) {
               console.error("Failed to fetch subdivision data:", error);
+              // Continue with default message
+            }
+          } else if (
+            functionCall.params.cities &&
+            functionCall.params.cities.length > 0
+          ) {
+            // If searching by city, add city link
+            const cityName = functionCall.params.cities[0];
+
+            try {
+              // Import findCityByName to get city data
+              const { findCityByName } = await import(
+                "@/app/constants/counties"
+              );
+              const cityData = findCityByName(cityName);
+
+              if (cityData) {
+                const cityUrl = `/neighborhoods/${cityData.city.id}`;
+
+                // Add encouraging words based on property count
+                let encouragement = "";
+                if (actualCount > 20) {
+                  encouragement = " Excellent selection available! ";
+                } else if (actualCount > 10) {
+                  encouragement = " Great options to explore! ";
+                } else if (actualCount > 5) {
+                  encouragement = " Some nice properties here! ";
+                } else if (actualCount > 0) {
+                  encouragement = " Check these out! ";
+                }
+
+                messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${cityData.city.name}**.${encouragement}Discover more about living in ${cityData.city.name}. [Explore ${cityData.city.name} →](${cityUrl})`;
+              }
+            } catch (error) {
+              console.error("Failed to fetch city data:", error);
               // Continue with default message
             }
           }
@@ -1264,7 +1317,7 @@ FUNCTION CALLING RULES:
       className={`relative h-full w-full flex flex-col overflow-x-hidden ${chatMode === "landing" ? "overflow-y-hidden" : "overflow-y-auto"}`}
       style={{ maxWidth: '100vw' }}
     >
-      {/* ISSUE #2 FIX: Keep stars visible in all modes, just reduce opacity in conversation */}
+      {/* Background: Stars for dark mode, gradient for light mode */}
       <AnimatePresence>
         {currentView === "chat" && (
           <motion.div
@@ -1275,7 +1328,10 @@ FUNCTION CALLING RULES:
             className="absolute inset-0 z-0 pointer-events-none"
             style={{ overflow: "hidden" }}
           >
-            <StarsCanvas />
+            {!isLight && <StarsCanvas />}
+            {isLight && (
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-blue-50/30 to-emerald-50/20 -z-10" />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1334,11 +1390,11 @@ FUNCTION CALLING RULES:
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <Image
-                      src="/images/brand/EXP-white-square.png"
+                      src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
                       alt="eXp Realty"
                       width={96}
                       height={96}
-                      className="object-contain drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                      className={`object-contain ${isLight ? "drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"}`}
                       priority
                     />
                   </motion.div>
@@ -1354,7 +1410,11 @@ FUNCTION CALLING RULES:
                     damping: 15,
                     delay: 0.4,
                   }}
-                  className="h-10 md:h-12 w-px bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                  className={`h-10 md:h-12 w-px ${
+                    isLight
+                      ? "bg-gradient-to-b from-transparent via-gray-400/50 to-transparent"
+                      : "bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                  }`}
                 />
 
                 <motion.h1
@@ -1374,11 +1434,15 @@ FUNCTION CALLING RULES:
                     transformStyle: "preserve-3d",
                     perspective: 1000,
                   }}
-                  className="text-3xl md:text-6xl font-light tracking-wider text-white relative"
+                  className={`text-3xl md:text-6xl font-light tracking-wider ${isLight ? "text-gray-900" : "text-white"} relative`}
                 >
                   <motion.span
                     animate={{
-                      textShadow: [
+                      textShadow: isLight ? [
+                        "0 0 10px rgba(59,130,246,0.2)",
+                        "0 0 20px rgba(59,130,246,0.3)",
+                        "0 0 10px rgba(59,130,246,0.2)",
+                      ] : [
                         "0 0 10px rgba(168,85,247,0.3)",
                         "0 0 20px rgba(168,85,247,0.5)",
                         "0 0 10px rgba(168,85,247,0.3)",
@@ -1448,7 +1512,11 @@ FUNCTION CALLING RULES:
                           boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)",
                         }}
                         whileTap={{ scale: 0.95 }}
-                        className="px-6 py-2.5 bg-neutral-800/50 backdrop-blur-sm border border-neutral-700/50 rounded-full text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50 transition-colors duration-300 shadow-lg cursor-pointer"
+                        className={`px-6 py-2.5 backdrop-blur-md rounded-full text-sm transition-colors duration-300 shadow-lg cursor-pointer ${
+                          isLight
+                            ? "bg-white/80 border border-gray-300 text-gray-700 hover:bg-white hover:text-gray-900"
+                            : "bg-neutral-800/50 border border-neutral-700/50 text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50"
+                        }`}
                       >
                         {action}
                       </motion.button>
@@ -1464,26 +1532,41 @@ FUNCTION CALLING RULES:
       {/* Messages Container (only in conversation mode) */}
       <AnimatePresence>
         {chatMode === "conversation" && (
-          <motion.div
-            ref={messagesContainerRef}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{
-              type: "spring",
-              stiffness: 100,
-              damping: 20,
-              duration: 0.6,
-            }}
-            className="flex-1 overflow-y-auto px-4 py-6 pb-32 space-y-4 relative z-10 max-w-4xl mx-auto w-full [&::-webkit-scrollbar]:hidden"
-            style={{
-              scrollbarWidth: "none",
-            }}
-            onScroll={(e) => {
-              const container = e.currentTarget;
-              setShowScrollTop(container.scrollTop > 300);
-            }}
-          >
+          <div className="flex-1 relative overflow-hidden">
+            {/* Top blur gradient fade */}
+            <div className={`absolute top-0 left-0 right-0 h-24 pointer-events-none z-20 ${
+              isLight
+                ? "bg-gradient-to-b from-gray-50 via-gray-50/80 to-transparent"
+                : "bg-gradient-to-b from-black via-black/80 to-transparent"
+            }`} />
+
+            {/* Bottom blur gradient fade */}
+            <div className={`absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20 ${
+              isLight
+                ? "bg-gradient-to-t from-gray-50 via-gray-50/80 to-transparent"
+                : "bg-gradient-to-t from-black via-black/80 to-transparent"
+            }`} />
+
+            <motion.div
+              ref={messagesContainerRef}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{
+                type: "spring",
+                stiffness: 100,
+                damping: 20,
+                duration: 0.6,
+              }}
+              className="h-full overflow-y-auto px-4 pt-24 pb-36 space-y-4 relative z-10 max-w-4xl mx-auto w-full [&::-webkit-scrollbar]:hidden"
+              style={{
+                scrollbarWidth: "none",
+              }}
+              onScroll={(e) => {
+                const container = e.currentTarget;
+                setShowScrollTop(container.scrollTop > 300);
+              }}
+            >
             {displayMessages.map((message, index) => (
               <motion.div
                 key={message.id || index}
@@ -1519,11 +1602,15 @@ FUNCTION CALLING RULES:
                 <motion.div
                   whileHover={{ scale: 1.02, y: -2 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className={`max-w-xl ${
+                  className={`max-w-xl rounded-2xl px-6 py-4 backdrop-blur-sm ${
                     message.role === "user"
-                      ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-                      : "bg-neutral-800 text-neutral-100 shadow-lg shadow-neutral-900/30"
-                  } rounded-2xl px-6 py-4 backdrop-blur-sm`}
+                      ? isLight
+                        ? "bg-blue-100 text-gray-900 shadow-lg shadow-blue-200/40"
+                        : "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                      : isLight
+                        ? "bg-gray-100 text-gray-900 shadow-lg shadow-gray-200/40"
+                        : "bg-neutral-800 text-neutral-100 shadow-lg shadow-neutral-900/30"
+                  }`}
                 >
                   {/* Loading animation for search */}
                   {(message as any).isLoading ? (
@@ -1569,12 +1656,12 @@ FUNCTION CALLING RULES:
                         />
                       </motion.div>
                       <span className="text-purple-300 leading-relaxed">
-                        {parseMarkdown(message.content)}
+                        {parseMarkdown(message.content, isLight)}
                       </span>
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap leading-relaxed">
-                      {parseMarkdown(message.content)}
+                      {parseMarkdown(message.content, isLight)}
                     </p>
                   )}
 
@@ -1669,12 +1756,16 @@ FUNCTION CALLING RULES:
                   stiffness: 150,
                   damping: 15,
                 }}
-                className="flex items-center gap-3 text-sm text-neutral-400 bg-neutral-800/50 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg"
+                className={`flex items-center gap-3 text-sm backdrop-blur-sm rounded-full px-4 py-2 shadow-lg ${
+                  isLight
+                    ? "text-gray-700 bg-white/80"
+                    : "text-neutral-400 bg-neutral-800/50"
+                }`}
               >
-                <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                <Loader2 className={`w-4 h-4 animate-spin ${isLight ? "text-blue-500" : "text-purple-400"}`} />
                 <span>{loadingProgress}</span>
                 {loadingPercent > 0 && (
-                  <span className="text-purple-400 font-medium">
+                  <span className={`font-medium ${isLight ? "text-blue-500" : "text-purple-400"}`}>
                     ({loadingPercent}%)
                   </span>
                 )}
@@ -1692,7 +1783,11 @@ FUNCTION CALLING RULES:
                   stiffness: 150,
                   damping: 15,
                 }}
-                className="bg-red-900/50 border border-red-700 rounded-lg px-4 py-3 text-red-200 shadow-lg shadow-red-900/30 backdrop-blur-sm"
+                className={`rounded-lg px-4 py-3 shadow-lg backdrop-blur-sm ${
+                  isLight
+                    ? "bg-red-50 border border-red-300 text-red-800 shadow-red-200/30"
+                    : "bg-red-900/50 border border-red-700 text-red-200 shadow-red-900/30"
+                }`}
               >
                 {error}
               </motion.div>
@@ -1700,6 +1795,7 @@ FUNCTION CALLING RULES:
 
             <div ref={messagesEndRef} />
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

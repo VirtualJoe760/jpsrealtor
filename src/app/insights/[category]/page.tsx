@@ -72,7 +72,6 @@ export default async function CategoryPage({
       posts={posts}
       totalPages={totalPages}
       currentPage={page}
-      categoryIcon={selectedCategory?.icon}
     />
   );
 }

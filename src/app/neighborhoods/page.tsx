@@ -2,6 +2,7 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
+import CountyGrid from "@/app/components/neighborhoods/CountyGrid";
 
 const SoCalCountySVGMap = dynamic(
   () => import("@/app/components/neighborhoods/SoCalCountySVGMap"),
@@ -10,9 +11,17 @@ const SoCalCountySVGMap = dynamic(
 
 const NeighborhoodsPage: React.FC = () => {
   return (
-    <div className="w-full h-[65vh] sm:h-[80vh] md:h-screen overflow-hidden" data-page="neighborhoods">
-      <SoCalCountySVGMap />
-    </div>
+    <>
+      {/* Mobile View - Modern Grid */}
+      <div className="block md:hidden" data-page="neighborhoods">
+        <CountyGrid />
+      </div>
+
+      {/* Desktop View - Interactive Map */}
+      <div className="hidden md:block w-full h-screen overflow-hidden" data-page="neighborhoods">
+        <SoCalCountySVGMap />
+      </div>
+    </>
   );
 };
 

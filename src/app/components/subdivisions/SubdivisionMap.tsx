@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface Listing {
   listingId: string;
@@ -48,7 +49,9 @@ export default function SubdivisionMap({
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental">(externalPropertyTypeFilter || "all");
-  const [mapTheme, setMapTheme] = useState<"dark" | "light">("dark");
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const [mapTheme, setMapTheme] = useState<"dark" | "light">(isLight ? "light" : "dark");
 
   // Fetch listings for this subdivision
   useEffect(() => {
@@ -82,16 +85,18 @@ export default function SubdivisionMap({
       center = [-116.5453, 33.8303]; // Default: Palm Springs
     }
 
-    // Use CartoDB basemap (free, no API key required) - default to dark theme
+    // Use CartoDB basemap (free, no API key required) - adapt to theme
     const mapStyle = mapTheme === "dark"
       ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+      : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: mapStyle,
       center,
       zoom: 13,
+      minZoom: 8,  // Prevent zooming out too far (protects against data errors)
+      maxZoom: 18, // Prevent zooming in too close
     });
 
     map.current.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -112,7 +117,7 @@ export default function SubdivisionMap({
 
     const mapStyle = mapTheme === "dark"
       ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+      : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
     map.current.setStyle(mapStyle);
   }, [mapTheme, mapLoaded]);
@@ -284,6 +289,7 @@ export default function SubdivisionMap({
       });
       map.current.fitBounds(bounds, {
         padding: 50,
+        minZoom: 8,  // Prevent zooming out beyond this level
         maxZoom: 15,
       });
     } else if (validListings.length === 1) {
@@ -299,113 +305,120 @@ export default function SubdivisionMap({
 
   return (
     <div className="space-y-4">
-      {/* Controls Row */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        {/* Property Type Toggle */}
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-300">Show on map:</span>
-          <div className="inline-flex rounded-lg border border-gray-700 bg-gray-900 p-1">
-            <button
-              onClick={() => setPropertyTypeFilter("all")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                propertyTypeFilter === "all"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setPropertyTypeFilter("sale")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                propertyTypeFilter === "sale"
-                  ? "bg-green-600 text-white"
-                  : "text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                For Sale
-              </span>
-            </button>
-            <button
-              onClick={() => setPropertyTypeFilter("rental")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                propertyTypeFilter === "rental"
-                  ? "bg-purple-600 text-white"
-                  : "text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                For Rent
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Map Theme Toggle */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-300">Map theme:</span>
-          <div className="inline-flex rounded-lg border border-gray-700 bg-gray-900 p-1">
-            <button
-              onClick={() => setMapTheme("dark")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                mapTheme === "dark"
-                  ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:bg-gray-800"
-              }`}
-              title="Dark theme"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-              Dark
-            </button>
-            <button
-              onClick={() => setMapTheme("light")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                mapTheme === "light"
-                  ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:bg-gray-800"
-              }`}
-              title="Light theme"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-              </svg>
-              Light
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Map Container */}
+      {/* Map Container with Controls */}
       <div className="relative">
         <div
           ref={mapContainer}
           style={{
             width: "100%",
             height,
+            borderRadius: "12px",
+            overflow: "hidden",
             touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
           }}
-          className="rounded-lg overflow-hidden shadow-md"
+          className={`shadow-xl border ${isLight ? 'border-gray-300' : 'border-gray-700'}`}
         />
-      {(!mapLoaded || loading) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-300">
-              {loading ? "Loading listings..." : "Loading map..."}
-            </p>
+
+        {/* Map Style Controls - Right Side (vertically centered) */}
+        <div className={`absolute top-1/2 -translate-y-1/2 right-4 z-10 flex flex-col gap-2 backdrop-blur-md rounded-xl border shadow-lg overflow-hidden ${
+          isLight
+            ? 'bg-white/95 border-gray-300'
+            : 'bg-black/85 border-gray-700'
+        }`}>
+          <button
+            onClick={() => setMapTheme("light")}
+            className={`px-3 py-2.5 text-sm font-semibold transition-all flex items-center justify-center ${
+              mapTheme === "light"
+                ? isLight
+                  ? "bg-yellow-100 text-gray-900 shadow-md border-b border-yellow-300"
+                  : "bg-white text-gray-900 shadow-md"
+                : isLight
+                  ? "bg-transparent text-gray-700 hover:bg-gray-100"
+                  : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+            title="Light Map"
+          >
+            <span className="text-lg">☀️</span>
+          </button>
+          <button
+            onClick={() => setMapTheme("dark")}
+            className={`px-3 py-2.5 text-sm font-semibold transition-all flex items-center justify-center ${
+              mapTheme === "dark"
+                ? isLight
+                  ? "bg-gray-800 text-white shadow-md"
+                  : "bg-gray-700 text-white shadow-md"
+                : isLight
+                  ? "bg-transparent text-gray-700 hover:bg-gray-100"
+                  : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+            title="Dark Map"
+          >
+            <span className="text-lg">🌙</span>
+          </button>
+        </div>
+
+        {/* Property Type Filters - Bottom of Map */}
+        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 backdrop-blur-md rounded-xl border shadow-2xl p-2 ${
+          isLight
+            ? 'bg-white/95 border-gray-300'
+            : 'bg-black/85 border-gray-700'
+        }`}>
+          <button
+            onClick={() => setPropertyTypeFilter("sale")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "sale"
+                ? "bg-emerald-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            For Sale
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("rental")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "rental"
+                ? "bg-purple-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            For Rent
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("all")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "all"
+                ? "bg-blue-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            All
+          </button>
+        </div>
+
+        {/* Loading State */}
+        {(!mapLoaded || loading) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 rounded-lg">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-300">
+                {loading ? "Loading listings..." : "Loading map..."}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-      {mapLoaded && !loading && listings.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-          <p className="text-gray-300">No listings to display on map</p>
-        </div>
-      )}
+        )}
+
+        {/* No Listings State */}
+        {mapLoaded && !loading && listings.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 rounded-lg">
+            <p className="text-gray-300">No listings to display on map</p>
+          </div>
+        )}
       </div>
     </div>
   );

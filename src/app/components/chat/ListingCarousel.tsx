@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Home, Bed, Bath, Maximize2, Heart } from "lucide-react";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import type { MapListing } from "@/types/types";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 export interface Listing {
   id: string;
@@ -36,6 +37,8 @@ interface ListingCarouselProps {
 export default function ListingCarousel({ listings, title }: ListingCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { likedListings, toggleFavorite } = useMLSContext();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   // Helper function to check if a listing is favorited
   const isFavorited = (listing: Listing) => {
@@ -150,8 +153,12 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
 
   if (listings.length === 0) {
     return (
-      <div className="p-4 bg-neutral-800/50 rounded-lg border border-neutral-700">
-        <p className="text-neutral-400 text-sm">No listings found matching your criteria.</p>
+      <div className={`p-4 rounded-lg border ${
+        isLight
+          ? 'bg-gray-100 border-gray-300 text-gray-600'
+          : 'bg-neutral-800/50 border-neutral-700 text-neutral-400'
+      }`}>
+        <p className="text-sm">No listings found matching your criteria.</p>
       </div>
     );
   }
@@ -163,8 +170,8 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
     <div className="my-4">
       {title && (
         <div className="mb-3">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="text-xs text-neutral-400">{listings.length} properties found</p>
+          <p className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{title}</p>
+          <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>{listings.length} properties found</p>
         </div>
       )}
 
@@ -176,7 +183,12 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
         {duplicatedListings.map((listing, index) => (
           <div
             key={`${listing.id}-${index}`}
-            className="flex-shrink-0 w-64 md:w-72 bg-neutral-800/50 border border-neutral-700 rounded-xl overflow-hidden transition-all group hover:border-neutral-600"
+            className={`flex-shrink-0 w-64 md:w-72 rounded-xl overflow-hidden transition-all group ${
+              isLight
+                ? 'bg-white/90 border border-gray-300 hover:border-gray-400 shadow-md'
+                : 'bg-neutral-800/50 border border-neutral-700 hover:border-neutral-600'
+            }`}
+            style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
           >
             {/* Image */}
             <div className="relative h-36 md:h-44">
@@ -212,14 +224,20 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
 
             {/* Details */}
             <div className="p-4">
-              <p className="mb-2 text-2xl font-bold text-emerald-400">
+              <p className={`mb-2 text-2xl font-bold ${
+                isLight ? 'text-blue-600' : 'text-emerald-400'
+              }`}>
                 ${listing.price?.toLocaleString() || "N/A"}
               </p>
-              <p className="mb-3 truncate text-sm text-neutral-300">
+              <p className={`mb-3 truncate text-sm ${
+                isLight ? 'text-gray-700' : 'text-neutral-300'
+              }`}>
                 {listing.address || "No address"}
               </p>
 
-              <div className="mb-3 flex gap-4 text-sm text-neutral-400">
+              <div className={`mb-3 flex gap-4 text-sm ${
+                isLight ? 'text-gray-600' : 'text-neutral-400'
+              }`}>
                 <div className="flex items-center gap-1">
                   <Bed className="w-4 h-4" />
                   <span>{listing.beds ?? 0} bd</span>
@@ -235,7 +253,9 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
               </div>
 
               {listing.subdivision && (
-                <p className="mb-3 truncate text-xs text-neutral-500">
+                <p className={`mb-3 truncate text-xs ${
+                  isLight ? 'text-gray-500' : 'text-neutral-500'
+                }`}>
                   {listing.subdivision}
                 </p>
               )}
@@ -243,7 +263,11 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
               <Link
                 href={listing.url}
                 target="_blank"
-                className="block w-full rounded-lg bg-neutral-700 py-2 text-center text-sm text-white transition-colors hover:bg-neutral-600"
+                className={`block w-full rounded-lg py-2 text-center text-sm transition-colors ${
+                  isLight
+                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                    : 'bg-neutral-700 text-white hover:bg-neutral-600'
+                }`}
               >
                 View Details
               </Link>

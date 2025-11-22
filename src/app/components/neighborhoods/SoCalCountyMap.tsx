@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 // Southern California counties with their center coordinates and slugs
 const soCalCounties = [
@@ -22,6 +23,8 @@ export default function SoCalCountyMap() {
   const map = useRef<maplibregl.Map | null>(null);
   const [hoveredCounty, setHoveredCounty] = useState<string | null>(null);
   const router = useRouter();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -29,7 +32,9 @@ export default function SoCalCountyMap() {
     // Initialize map centered on Southern California
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+      style: isLight
+        ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"  // Light mode
+        : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", // Dark mode
       center: [-117.5, 34.0], // Center of SoCal
       zoom: 6,
       maxZoom: 10,

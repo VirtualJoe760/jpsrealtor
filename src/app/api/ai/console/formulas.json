@@ -1,0 +1,177 @@
+{
+  "investmentFormulas": {
+    "capRate": {
+      "name": "Capitalization Rate (Cap Rate)",
+      "formula": "(annualNetIncome / propertyValue) * 100",
+      "description": "Measures the rate of return on a real estate investment property",
+      "variables": {
+        "annualNetIncome": "Annual rental income minus operating expenses (not including mortgage)",
+        "propertyValue": "Current market value or purchase price"
+      },
+      "goodRange": "4-10% (higher is better for income properties)",
+      "usage": "Compare cap rates across properties to find the best income-producing deals"
+    },
+    "cashOnCashReturn": {
+      "name": "Cash-on-Cash Return",
+      "formula": "(annualPreTaxCashFlow / totalCashInvested) * 100",
+      "description": "Measures the cash income earned on the cash invested",
+      "variables": {
+        "annualPreTaxCashFlow": "Annual rental income minus ALL expenses including mortgage",
+        "totalCashInvested": "Down payment + closing costs + repairs"
+      },
+      "goodRange": "8-12% (varies by market)",
+      "usage": "Evaluate how much cash flow you're getting relative to cash invested"
+    },
+    "onePercentRule": {
+      "name": "1% Rule",
+      "formula": "monthlyRent >= (purchasePrice * 0.01)",
+      "description": "Quick screening tool - monthly rent should be at least 1% of purchase price",
+      "variables": {
+        "monthlyRent": "Expected monthly rental income",
+        "purchasePrice": "Total purchase price"
+      },
+      "goodRange": "Properties meeting or exceeding 1% are worth analyzing further",
+      "usage": "Quick filter to screen potential investment properties"
+    },
+    "grossRentMultiplier": {
+      "name": "Gross Rent Multiplier (GRM)",
+      "formula": "propertyPrice / annualGrossRent",
+      "description": "How many years of gross rent to pay off the property",
+      "variables": {
+        "propertyPrice": "Purchase price",
+        "annualGrossRent": "Annual rental income (before expenses)"
+      },
+      "goodRange": "4-7 (lower is better)",
+      "usage": "Quick comparison tool - lower GRM means faster payback"
+    },
+    "debtServiceCoverageRatio": {
+      "name": "Debt Service Coverage Ratio (DSCR)",
+      "formula": "netOperatingIncome / annualDebtService",
+      "description": "Ability of property to cover mortgage payments",
+      "variables": {
+        "netOperatingIncome": "Annual income minus operating expenses (not mortgage)",
+        "annualDebtService": "Annual mortgage payments (principal + interest)"
+      },
+      "goodRange": "1.25 or higher (lenders often require minimum 1.25)",
+      "usage": "Determine if property generates enough income to safely cover debt"
+    },
+    "breakEvenRatio": {
+      "name": "Break-Even Ratio",
+      "formula": "(operatingExpenses + debtService) / grossOperatingIncome",
+      "description": "Percentage of income needed to cover expenses and debt",
+      "variables": {
+        "operatingExpenses": "Annual operating costs (taxes, insurance, maintenance, HOA, etc.)",
+        "debtService": "Annual mortgage payments",
+        "grossOperatingIncome": "Total annual rental income"
+      },
+      "goodRange": "Below 85% (lower is better, more cushion)",
+      "usage": "Assess risk - higher ratio means less margin for vacancy or unexpected costs"
+    },
+    "pricePerSquareFoot": {
+      "name": "Price Per Square Foot",
+      "formula": "listPrice / livingArea",
+      "description": "Standardized price comparison metric",
+      "variables": {
+        "listPrice": "Property listing price",
+        "livingArea": "Interior square footage"
+      },
+      "usage": "Compare properties of different sizes in the same area for CMA"
+    },
+    "monthlyMortgagePayment": {
+      "name": "Monthly Mortgage Payment",
+      "formula": "P * [r(1+r)^n] / [(1+r)^n - 1]",
+      "description": "Calculate monthly principal and interest payment",
+      "variables": {
+        "P": "Loan principal (price - down payment)",
+        "r": "Monthly interest rate (annual rate / 12)",
+        "n": "Number of payments (years * 12)"
+      },
+      "usage": "Estimate mortgage costs for investment analysis"
+    },
+    "totalMonthlyExpenses": {
+      "name": "Total Monthly Operating Expenses",
+      "formula": "mortgage + (propertyTax/12) + (insurance/12) + (hoaFee) + (maintenance) + (vacancy) + (propertyManagement)",
+      "description": "All monthly costs of owning the property",
+      "variables": {
+        "mortgage": "Monthly P&I payment",
+        "propertyTax": "Annual property tax",
+        "insurance": "Annual insurance premium",
+        "hoaFee": "Monthly HOA fee",
+        "maintenance": "Estimated monthly maintenance (typically 1% of value annually)",
+        "vacancy": "Vacancy reserve (typically 8-10% of rent)",
+        "propertyManagement": "Property management fee (typically 8-10% of rent)"
+      },
+      "usage": "Calculate total monthly ownership costs for cash flow analysis"
+    },
+    "monthlyCashFlow": {
+      "name": "Monthly Cash Flow",
+      "formula": "monthlyRent - totalMonthlyExpenses",
+      "description": "Net monthly income after all expenses",
+      "variables": {
+        "monthlyRent": "Expected monthly rental income",
+        "totalMonthlyExpenses": "All monthly costs (use totalMonthlyExpenses formula)"
+      },
+      "goodRange": "Positive cash flow is essential, $200-500+ per door is strong",
+      "usage": "Determine if property will generate monthly income"
+    },
+    "returnOnInvestment": {
+      "name": "Return on Investment (ROI)",
+      "formula": "((totalGains - totalCosts) / totalCosts) * 100",
+      "description": "Overall return on investment over hold period",
+      "variables": {
+        "totalGains": "Sale price + cumulative rental income + tax benefits + appreciation",
+        "totalCosts": "Purchase price + closing costs + repairs + holding costs"
+      },
+      "usage": "Evaluate long-term investment performance"
+    }
+  },
+  "cmaMetrics": {
+    "medianPricePerSqft": {
+      "description": "Median price per square foot of comparable properties",
+      "calculation": "Calculate price/sqft for each comp, then find median value"
+    },
+    "averageDaysOnMarket": {
+      "description": "Average days properties stay on market",
+      "calculation": "Sum of all DOM / number of properties"
+    },
+    "priceReductions": {
+      "description": "Percentage of listings with price reductions",
+      "calculation": "(Number with reductions / Total listings) * 100"
+    },
+    "absorptionRate": {
+      "description": "How many months to sell all inventory at current sales pace",
+      "calculation": "Total active listings / Average monthly sales",
+      "interpretation": "< 3 months = seller's market, 3-6 = balanced, > 6 = buyer's market"
+    },
+    "salesPriceToListPrice": {
+      "description": "Ratio of final sale price to original list price",
+      "calculation": "Average of (salePrice / originalListPrice) * 100",
+      "interpretation": "Above 100% = bidding wars, below 95% = negotiate down"
+    }
+  },
+  "marketIndicators": {
+    "appreciationRate": {
+      "description": "Annual appreciation rate for area",
+      "calculation": "((Current median price - Previous year median) / Previous year median) * 100"
+    },
+    "inventoryLevel": {
+      "description": "Number of months of available inventory",
+      "levels": {
+        "low": "< 3 months (seller's market)",
+        "balanced": "3-6 months",
+        "high": "> 6 months (buyer's market)"
+      }
+    },
+    "rentToValueRatio": {
+      "description": "Monthly rent as percentage of property value",
+      "calculation": "(monthlyRent / propertyValue) * 100",
+      "goodRange": "0.7-1.0% or higher for good rental markets"
+    }
+  },
+  "notes": {
+    "usage": "Use these formulas when analyzing properties for investors. Always explain assumptions and market context.",
+    "data_sources": "Pull listing data from /api/mls-listings and /api/cities/[cityId]/listings for comparables",
+    "accuracy": "Investment calculations are estimates - recommend users consult financial advisors",
+    "rounding": "Round percentages to 2 decimal places, dollar amounts to nearest dollar"
+  }
+}

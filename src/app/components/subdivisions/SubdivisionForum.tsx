@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface SubdivisionForumProps {
   subdivisionName: string;
@@ -11,6 +12,9 @@ export default function SubdivisionForum({
   subdivisionName,
   subdivisionSlug,
 }: SubdivisionForumProps) {
+  const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
   // Placeholder forum posts (will be replaced with real data from database)
   const placeholderPosts = [
     {
@@ -34,19 +38,19 @@ export default function SubdivisionForum({
   ];
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6">
+    <div className={`${cardBg} ${cardBorder} border rounded-2xl ${shadow} p-6 md:p-8`}>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-1">
+          <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-2`}>
             Community Forum
           </h2>
-          <p className="text-sm text-gray-300">
+          <p className={`text-sm ${textSecondary}`}>
             Connect with residents and share insights about {subdivisionName}
           </p>
         </div>
         <button
           disabled
-          className="px-4 py-2 bg-gray-700 text-gray-400 rounded-md cursor-not-allowed text-sm font-medium flex items-center gap-2"
+          className={`px-4 py-2 ${isLight ? 'bg-gray-200 text-gray-500' : 'bg-gray-700 text-gray-400'} rounded-lg cursor-not-allowed text-sm font-medium flex items-center gap-2`}
         >
           <svg
             className="w-5 h-5"
@@ -66,10 +70,10 @@ export default function SubdivisionForum({
       </div>
 
       {/* Authentication Notice */}
-      <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-4 mb-6">
+      <div className={`${isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/30 border-blue-800'} border rounded-xl p-4 mb-6`}>
         <div className="flex items-start gap-3">
           <svg
-            className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1"
+            className={`w-6 h-6 ${isLight ? 'text-blue-600' : 'text-blue-400'} flex-shrink-0 mt-1`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -82,10 +86,10 @@ export default function SubdivisionForum({
             />
           </svg>
           <div className="flex-1">
-            <h3 className="font-semibold text-white mb-1">
+            <h3 className={`font-semibold ${textPrimary} mb-1`}>
               Authentication Required
             </h3>
-            <p className="text-sm text-gray-300">
+            <p className={`text-sm ${textSecondary}`}>
               Sign in to create posts, reply to discussions, and connect with the{" "}
               {subdivisionName} community.
             </p>
@@ -95,11 +99,11 @@ export default function SubdivisionForum({
 
       {/* Forum Categories */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div className={`${isLight ? 'bg-gray-50 border-gray-200' : 'bg-gray-800 border-gray-700'} border rounded-xl p-4`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-blue-900/50 border border-blue-800 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 ${isLight ? 'bg-blue-100 border-blue-200' : 'bg-blue-900/50 border-blue-800'} border rounded-lg flex items-center justify-center`}>
               <svg
-                className="w-6 h-6 text-blue-400"
+                className={`w-6 h-6 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -113,20 +117,20 @@ export default function SubdivisionForum({
               </svg>
             </div>
             <div>
-              <h3 className="font-semibold text-white">General</h3>
-              <p className="text-xs text-gray-400">0 topics</p>
+              <h3 className={`font-semibold ${textPrimary}`}>General</h3>
+              <p className={`text-xs ${textMuted}`}>0 topics</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300">
+          <p className={`text-sm ${textSecondary}`}>
             General discussions about living in the community
           </p>
         </div>
 
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div className={`${isLight ? 'bg-gray-50 border-gray-200' : 'bg-gray-800 border-gray-700'} border rounded-xl p-4`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-green-900/50 border border-green-800 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 ${isLight ? 'bg-green-100 border-green-200' : 'bg-green-900/50 border-green-800'} border rounded-lg flex items-center justify-center`}>
               <svg
-                className="w-6 h-6 text-green-400"
+                className={`w-6 h-6 ${isLight ? 'text-green-600' : 'text-green-400'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -140,20 +144,20 @@ export default function SubdivisionForum({
               </svg>
             </div>
             <div>
-              <h3 className="font-semibold text-white">For Sale / Rent</h3>
-              <p className="text-xs text-gray-400">0 topics</p>
+              <h3 className={`font-semibold ${textPrimary}`}>For Sale / Rent</h3>
+              <p className={`text-xs ${textMuted}`}>0 topics</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300">
+          <p className={`text-sm ${textSecondary}`}>
             Listings and rental opportunities
           </p>
         </div>
 
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div className={`${isLight ? 'bg-gray-50 border-gray-200' : 'bg-gray-800 border-gray-700'} border rounded-xl p-4`}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-purple-900/50 border border-purple-800 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 ${isLight ? 'bg-purple-100 border-purple-200' : 'bg-purple-900/50 border-purple-800'} border rounded-lg flex items-center justify-center`}>
               <svg
-                className="w-6 h-6 text-purple-400"
+                className={`w-6 h-6 ${isLight ? 'text-purple-600' : 'text-purple-400'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -167,11 +171,11 @@ export default function SubdivisionForum({
               </svg>
             </div>
             <div>
-              <h3 className="font-semibold text-white">Community Events</h3>
-              <p className="text-xs text-gray-400">0 topics</p>
+              <h3 className={`font-semibold ${textPrimary}`}>Community Events</h3>
+              <p className={`text-xs ${textMuted}`}>0 topics</p>
             </div>
           </div>
-          <p className="text-sm text-gray-300">
+          <p className={`text-sm ${textSecondary}`}>
             Local events and social gatherings
           </p>
         </div>
@@ -180,11 +184,11 @@ export default function SubdivisionForum({
       {/* Forum Posts List */}
       <div className="space-y-3">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-white">Recent Discussions</h3>
+          <h3 className={`font-semibold ${textPrimary} text-lg`}>Recent Discussions</h3>
           <div className="flex gap-2">
             <button
               disabled
-              className="text-sm text-gray-500 cursor-not-allowed flex items-center gap-1"
+              className={`text-sm ${textMuted} cursor-not-allowed flex items-center gap-1`}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h7a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z" />
@@ -197,12 +201,12 @@ export default function SubdivisionForum({
         {placeholderPosts.map((post) => (
           <div
             key={post.id}
-            className="border border-gray-700 rounded-lg p-4 hover:bg-gray-800 transition-colors bg-gray-800 opacity-60"
+            className={`${isLight ? 'border-gray-200 bg-gray-50 hover:bg-gray-100' : 'border-gray-700 bg-gray-800 hover:bg-gray-750'} border rounded-xl p-4 transition-colors opacity-60`}
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className={`w-12 h-12 ${isLight ? 'bg-gray-200' : 'bg-gray-700'} rounded-full flex items-center justify-center flex-shrink-0`}>
                 <svg
-                  className="w-7 h-7 text-gray-400"
+                  className={`w-7 h-7 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -214,11 +218,11 @@ export default function SubdivisionForum({
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-white mb-1">{post.title}</h4>
-                <p className="text-sm text-gray-400 mb-2 line-clamp-2">
+                <h4 className={`font-medium ${textPrimary} mb-1`}>{post.title}</h4>
+                <p className={`text-sm ${textMuted} mb-2 line-clamp-2`}>
                   {post.preview}
                 </p>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className={`flex items-center gap-4 text-xs ${textMuted}`}>
                   <span>By {post.author}</span>
                   <span>•</span>
                   <span>{post.date}</span>
@@ -230,7 +234,7 @@ export default function SubdivisionForum({
               </div>
               <div className="flex-shrink-0">
                 <svg
-                  className="w-5 h-5 text-gray-500"
+                  className={`w-5 h-5 ${textMuted}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -247,7 +251,7 @@ export default function SubdivisionForum({
           </div>
         ))}
 
-        <div className="text-center text-sm text-gray-400 py-4">
+        <div className={`text-center text-sm ${textMuted} py-4`}>
           Forum discussions will be available once user authentication is enabled
         </div>
       </div>

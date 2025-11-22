@@ -11,6 +11,7 @@ import {
   PanInfo,
 } from "framer-motion";
 import { X, RotateCcw } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import type { MapListing } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import ListingBottomPanel from "./ListingBottomPanel";
@@ -53,6 +54,9 @@ export default function SwipeableListingStack({
   isSidebarOpen,
   isLeftSidebarCollapsed,
 }: Props) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
   const [listings, setListings] = useState<MapListing[]>(initialListings);
   const [history, setHistory] = useState<SwipeHistoryItem[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -99,6 +103,7 @@ export default function SwipeableListingStack({
     if (history.length === 0) return;
 
     const lastSwipe = history[history.length - 1];
+    if (!lastSwipe) return;
 
     // Remove from history
     setHistory((prev) => prev.slice(0, -1));
@@ -141,7 +146,11 @@ export default function SwipeableListingStack({
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           onClick={undoSwipe}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] bg-gray-900/90 backdrop-blur-md border border-gray-700 px-4 py-2 rounded-full text-white flex items-center gap-2 hover:bg-gray-800/90 transition-colors pointer-events-auto shadow-xl"
+          className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 transition-colors pointer-events-auto shadow-xl ${
+            isLight
+              ? 'bg-white/95 border-2 border-gray-300 text-gray-900 hover:bg-white'
+              : 'bg-gray-900/90 border border-gray-700 text-white hover:bg-gray-800/90'
+          }`}
         >
           <RotateCcw className="w-4 h-4" />
           <span className="text-sm font-medium">Undo</span>
@@ -149,16 +158,24 @@ export default function SwipeableListingStack({
       )}
 
       {/* Stack Counter */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[105] bg-gray-900/90 backdrop-blur-md border border-gray-700 px-4 py-2 rounded-full text-white text-sm font-medium pointer-events-none shadow-xl">
+      <div className={`absolute top-6 left-1/2 -translate-x-1/2 z-[105] backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium pointer-events-none shadow-xl ${
+        isLight
+          ? 'bg-white/95 border-2 border-gray-300 text-gray-900'
+          : 'bg-gray-900/90 border border-gray-700 text-white'
+      }`}>
         {activeIndex + 1} / {initialListings.length}
       </div>
 
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 z-[105] bg-gray-900/90 backdrop-blur-md border border-gray-700 p-2 rounded-full hover:bg-gray-800/90 transition-colors pointer-events-auto shadow-xl"
+        className={`absolute top-6 right-6 z-[105] backdrop-blur-md p-2 rounded-full transition-colors pointer-events-auto shadow-xl ${
+          isLight
+            ? 'bg-white/95 border-2 border-gray-300 hover:bg-white'
+            : 'bg-gray-900/90 border border-gray-700 hover:bg-gray-800/90'
+        }`}
       >
-        <X className="w-6 h-6 text-white" />
+        <X className={`w-6 h-6 ${isLight ? 'text-gray-900' : 'text-white'}`} />
       </button>
 
       {/* Card Stack */}
@@ -192,7 +209,6 @@ export default function SwipeableListingStack({
                   scale: isActive ? 1 : scale,
                   y: isActive ? 0 : yOffset,
                   opacity: 1,
-                  rotate: isActive ? rotate : 0,
                   transition: {
                     type: "spring",
                     stiffness: 300,
@@ -210,6 +226,7 @@ export default function SwipeableListingStack({
                 style={{
                   x: isActive ? dragX : 0,
                   opacity: isActive ? opacity : 1,
+                  rotate: isActive ? rotate : 0,
                 }}
                 className="absolute bottom-0 left-0 right-0"
               >
@@ -245,10 +262,16 @@ export default function SwipeableListingStack({
           animate={{ opacity: 1, scale: 1 }}
           className="absolute bottom-32 left-1/2 -translate-x-1/2 text-center"
         >
-          <p className="text-white text-xl font-semibold mb-4">No more listings</p>
+          <p className={`text-xl font-semibold mb-4 ${
+            isLight ? 'text-gray-900' : 'text-white'
+          }`}>No more listings</p>
           <button
             onClick={onClose}
-            className="px-6 py-3 bg-emerald-500 text-black font-bold rounded-lg hover:bg-emerald-400 transition-colors"
+            className={`px-6 py-3 font-bold rounded-lg transition-colors ${
+              isLight
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'bg-emerald-500 text-black hover:bg-emerald-400'
+            }`}
           >
             Close
           </button>

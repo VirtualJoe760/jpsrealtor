@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface Listing {
   listingKey: string;
@@ -48,7 +49,9 @@ export default function CityMap({
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental">("sale");
-  const [mapStyle, setMapStyle] = useState<"dark" | "light">("dark");
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const [mapStyle, setMapStyle] = useState<"dark" | "light">(isLight ? "light" : "dark");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Filter states
@@ -120,6 +123,8 @@ export default function CityMap({
         : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
       center,
       zoom: 12,
+      minZoom: 8,  // Prevent zooming out too far (protects against data errors)
+      maxZoom: 18, // Prevent zooming in too close
     });
 
     map.current.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -135,6 +140,14 @@ export default function CityMap({
       }
     };
   }, [coordinates, listings]);
+
+  // Sync map style with global theme
+  useEffect(() => {
+    const newMapStyle = isLight ? "light" : "dark";
+    if (newMapStyle !== mapStyle) {
+      setMapStyle(newMapStyle);
+    }
+  }, [isLight, mapStyle]);
 
   // Handle map style changes without recreating the map
   useEffect(() => {
@@ -331,6 +344,7 @@ export default function CityMap({
       });
       map.current.fitBounds(bounds, {
         padding: 50,
+        minZoom: 8,  // Prevent zooming out beyond this level
         maxZoom: 15,
       });
     } else if (validListings.length === 1 && validListings[0]) {
@@ -346,49 +360,25 @@ export default function CityMap({
 
   return (
     <div className="space-y-4">
-      {/* Property Type Filter Bar */}
-      <div className="flex gap-2 bg-gray-800/70 backdrop-blur-sm p-2 rounded-lg border border-gray-700">
-        <button
-          onClick={() => setPropertyTypeFilter("sale")}
-          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-            propertyTypeFilter === "sale"
-              ? "bg-emerald-500 text-black"
-              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
-          }`}
-        >
-          For Sale
-        </button>
-        <button
-          onClick={() => setPropertyTypeFilter("rental")}
-          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-            propertyTypeFilter === "rental"
-              ? "bg-purple-500 text-white"
-              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
-          }`}
-        >
-          For Rent
-        </button>
-        <button
-          onClick={() => setPropertyTypeFilter("all")}
-          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-            propertyTypeFilter === "all"
-              ? "bg-blue-500 text-white"
-              : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70"
-          }`}
-        >
-          All
-        </button>
-      </div>
-
       {/* Filter Accordion */}
-      <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg overflow-hidden border border-gray-700">
+      <div className={`backdrop-blur-sm rounded-lg overflow-hidden border ${
+        isLight
+          ? 'bg-white/90 border-gray-300'
+          : 'bg-gray-800/70 border-gray-700'
+      }`}>
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-700/70 transition-colors"
+          className={`w-full flex items-center justify-between p-4 transition-colors ${
+            isLight
+              ? 'hover:bg-gray-100'
+              : 'hover:bg-gray-700/70'
+          }`}
         >
-          <h3 className="font-semibold text-white">Advanced Filters</h3>
+          <h3 className={`font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>Advanced Filters</h3>
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 transition-transform ${filtersOpen ? 'rotate-180' : ''} ${
+              isLight ? 'text-gray-600' : 'text-gray-400'
+            }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -402,7 +392,11 @@ export default function CityMap({
             <div className="flex gap-2 justify-end">
               <button
                 onClick={handleFilterClear}
-                className="px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  isLight
+                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                    : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
               >
                 Clear Filters
               </button>
@@ -410,65 +404,101 @@ export default function CityMap({
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* Price */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Min Price</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Min Price</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Max Price</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Max Price</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
               {/* Beds */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Min Beds</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Min Beds</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={minBeds}
                   onChange={(e) => setMinBeds(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Max Beds</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Max Beds</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={maxBeds}
                   onChange={(e) => setMaxBeds(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
               {/* Baths */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Min Baths</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Min Baths</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={minBaths}
                   onChange={(e) => setMinBaths(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Max Baths</label>
+                <label className={`block text-xs font-medium mb-1 ${
+                  isLight ? 'text-gray-700' : 'text-gray-400'
+                }`}>Max Baths</label>
                 <input
                   type="number"
                   placeholder="Any"
                   value={maxBaths}
                   onChange={(e) => setMaxBaths(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-2 py-1.5 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    isLight
+                      ? 'bg-white border border-gray-300 text-gray-900'
+                      : 'bg-gray-700 border border-gray-600 text-white'
+                  }`}
                 />
               </div>
             </div>
@@ -476,7 +506,7 @@ export default function CityMap({
         )}
       </div>
 
-      {/* Map Container with Style Tabs */}
+      {/* Map Container with Controls */}
       <div className="relative">
         <div
           ref={mapContainer}
@@ -487,30 +517,88 @@ export default function CityMap({
             overflow: "hidden",
             touchAction: "pan-x pan-y" // Disable pinch-to-zoom on mobile, allow panning
           }}
-          className="shadow-xl border border-gray-700"
+          className={`shadow-xl border ${isLight ? 'border-gray-300' : 'border-gray-700'}`}
         />
 
-        {/* Map Style Tabs - Bottom of Map */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-black/80 backdrop-blur-md p-2 rounded-lg border border-gray-700 shadow-2xl">
-          <button
-            onClick={() => setMapStyle("dark")}
-            className={`px-4 py-2 rounded-md font-medium transition-all flex items-center gap-2 ${
-              mapStyle === "dark"
-                ? "bg-gray-700 text-white shadow-lg"
-                : "bg-transparent text-gray-300 hover:bg-gray-800"
-            }`}
-          >
-            🌙 Dark
-          </button>
+        {/* Map Style Controls - Right Side (vertically centered) */}
+        <div className={`absolute top-1/2 -translate-y-1/2 right-4 z-10 flex flex-col gap-2 backdrop-blur-md rounded-xl border shadow-lg overflow-hidden ${
+          isLight
+            ? 'bg-white/95 border-gray-300'
+            : 'bg-black/85 border-gray-700'
+        }`}>
           <button
             onClick={() => setMapStyle("light")}
-            className={`px-4 py-2 rounded-md font-medium transition-all flex items-center gap-2 ${
+            className={`px-3 py-2.5 text-sm font-semibold transition-all flex items-center justify-center ${
               mapStyle === "light"
-                ? "bg-white text-gray-900 shadow-lg"
-                : "bg-transparent text-gray-300 hover:bg-gray-800"
+                ? isLight
+                  ? "bg-yellow-100 text-gray-900 shadow-md border-b border-yellow-300"
+                  : "bg-white text-gray-900 shadow-md"
+                : isLight
+                  ? "bg-transparent text-gray-700 hover:bg-gray-100"
+                  : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+            title="Light Map"
+          >
+            <span className="text-lg">☀️</span>
+          </button>
+          <button
+            onClick={() => setMapStyle("dark")}
+            className={`px-3 py-2.5 text-sm font-semibold transition-all flex items-center justify-center ${
+              mapStyle === "dark"
+                ? isLight
+                  ? "bg-gray-800 text-white shadow-md"
+                  : "bg-gray-700 text-white shadow-md"
+                : isLight
+                  ? "bg-transparent text-gray-700 hover:bg-gray-100"
+                  : "bg-transparent text-gray-300 hover:bg-gray-800"
+            }`}
+            title="Dark Map"
+          >
+            <span className="text-lg">🌙</span>
+          </button>
+        </div>
+
+        {/* Property Type Filters - Bottom of Map */}
+        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 backdrop-blur-md rounded-xl border shadow-2xl p-2 ${
+          isLight
+            ? 'bg-white/95 border-gray-300'
+            : 'bg-black/85 border-gray-700'
+        }`}>
+          <button
+            onClick={() => setPropertyTypeFilter("sale")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "sale"
+                ? "bg-emerald-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
             }`}
           >
-            ☀️ Light
+            For Sale
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("rental")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "rental"
+                ? "bg-purple-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            For Rent
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("all")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "all"
+                ? "bg-blue-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            All
           </button>
         </div>
 
@@ -524,7 +612,7 @@ export default function CityMap({
 
       {/* Listing Count and View All Button */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-400">
+        <div className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-400'}`}>
           Showing {listings.filter(l => {
             const coords = l.coordinates?.latitude && l.coordinates?.longitude ? l.coordinates : (l.latitude && l.longitude ? l : null);
             return coords !== null;

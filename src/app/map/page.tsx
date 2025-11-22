@@ -8,20 +8,15 @@ import dynamicImport from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import MapGlobeLoader from "@/app/components/mls/map/MapGlobeLoader";
 
 // Dynamic imports for map components (client-side only)
 const MapView = dynamicImport(
   () => import("@/app/components/mls/map/MapView"),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-full w-full flex items-center justify-center bg-black">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-          <p className="text-neutral-400">Loading map...</p>
-        </div>
-      </div>
-    ),
+    loading: () => <MapGlobeLoader />,
   }
 );
 
@@ -35,13 +30,14 @@ const FavoritesPannel = dynamicImport(
   { ssr: false }
 );
 
-// Default bounds for Coachella Valley
+// Default bounds - centered on Southern California (no specific city)
+// Will be overridden by URL params when coming from chat/search
 const DEFAULT_BOUNDS = {
-  north: 33.82,
-  south: 33.62,
-  east: -116.27,
-  west: -116.47,
-  zoom: 11,
+  north: 34.5,
+  south: 33.0,
+  east: -116.5,
+  west: -118.5,
+  zoom: 8,
 };
 
 function MapPageContent() {
@@ -68,10 +64,15 @@ function MapPageContent() {
     swipeQueue,
   } = useMLSContext();
 
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
   const [mounted, setMounted] = useState(false);
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [mapBounds, setMapBounds] = useState(DEFAULT_BOUNDS);
+  const [loadedBounds, setLoadedBounds] = useState<Array<{north: number, south: number, east: number, west: number}>>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -89,6 +90,7 @@ function MapPageContent() {
       try {
         const parsedBounds = JSON.parse(decodeURIComponent(boundsParam));
         initialBounds = parsedBounds;
+        setMapBounds(parsedBounds); // Store the parsed bounds for map centering
         console.log("✅ Successfully parsed bounds from URL:", initialBounds);
         console.log("📍 Bounds details - North:", parsedBounds.north, "South:", parsedBounds.south, "East:", parsedBounds.east, "West:", parsedBounds.west, "Zoom:", parsedBounds.zoom);
       } catch (e) {
@@ -103,6 +105,14 @@ function MapPageContent() {
     if (!isPreloaded && !isLoading) {
       console.log("🚀 Loading MLS listings for map with bounds:", initialBounds);
       loadListings(initialBounds, filters);
+
+      // Track initial bounds as loaded
+      setLoadedBounds([{
+        north: initialBounds.north,
+        south: initialBounds.south,
+        east: initialBounds.east,
+        west: initialBounds.west
+      }]);
     } else {
       console.log("ℹ️ Skipping loadListings - preloaded:", isPreloaded, "isLoading:", isLoading);
     }
@@ -123,10 +133,52 @@ function MapPageContent() {
   }, [visibleListings.length]);
 
   const handleBoundsChange = useCallback(
-    (bounds: any) => {
+    async (bounds: {north: number, south: number, east: number, west: number, zoom: number}) => {
       console.log("🗺️ Map bounds changed:", bounds);
+
+      // Check if these bounds are already loaded
+      const isBoundsLoaded = loadedBounds.some(loaded => {
+        // Check if the new bounds are contained within already loaded bounds
+        return bounds.north <= loaded.north &&
+               bounds.south >= loaded.south &&
+               bounds.east <= loaded.east &&
+               bounds.west >= loaded.west;
+      });
+
+      if (isBoundsLoaded) {
+        console.log("✅ Bounds already loaded, skipping API call");
+        return;
+      }
+
+      // Check if bounds have changed significantly (at least 20% in any direction)
+      const hasSignificantChange = loadedBounds.length === 0 || loadedBounds.some(loaded => {
+        const latDiff = Math.abs(bounds.north - loaded.north) + Math.abs(bounds.south - loaded.south);
+        const lngDiff = Math.abs(bounds.east - loaded.east) + Math.abs(bounds.west - loaded.west);
+        const latRange = Math.abs(loaded.north - loaded.south);
+        const lngRange = Math.abs(loaded.east - loaded.west);
+
+        return (latDiff / latRange > 0.2) || (lngDiff / lngRange > 0.2);
+      });
+
+      if (!hasSignificantChange && loadedBounds.length > 0) {
+        console.log("ℹ️ Bounds change not significant enough, skipping load");
+        return;
+      }
+
+      console.log("🚀 Loading listings for new bounds:", bounds);
+
+      // Add these bounds to loaded bounds array
+      setLoadedBounds(prev => [...prev, {
+        north: bounds.north,
+        south: bounds.south,
+        east: bounds.east,
+        west: bounds.west
+      }]);
+
+      // Load new listings with current filters (merge mode = true to keep existing listings)
+      await loadListings(bounds, filters, true);
     },
-    []
+    [loadedBounds, filters, loadListings]
   );
 
   const handleApplyFilters = useCallback(
@@ -284,26 +336,14 @@ function MapPageContent() {
     : null;
 
   if (!mounted) {
-    return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-          <p className="text-neutral-400">Initializing map...</p>
-        </div>
-      </div>
-    );
+    return <MapGlobeLoader />;
   }
 
   return (
     <div className="h-screen w-screen relative bg-black" data-page="map">
       {isLoading && visibleListings.length === 0 ? (
         // Loading state
-        <div className="h-full w-full flex items-center justify-center bg-black">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-            <p className="text-neutral-400">Loading properties...</p>
-          </div>
-        </div>
+        <MapGlobeLoader />
       ) : visibleListings.length === 0 ? (
         // Empty state
         <div className="h-full w-full flex items-center justify-center bg-black">
@@ -328,9 +368,9 @@ function MapPageContent() {
         <>
           <MapView
             listings={visibleListings}
-            centerLat={DEFAULT_BOUNDS.north - 0.1}
-            centerLng={DEFAULT_BOUNDS.west + 0.1}
-            zoom={DEFAULT_BOUNDS.zoom}
+            centerLat={(mapBounds.north + mapBounds.south) / 2}
+            centerLng={(mapBounds.east + mapBounds.west) / 2}
+            zoom={mapBounds.zoom || 11}
             onSelectListing={handleSelectListing}
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
@@ -413,20 +453,24 @@ function MapPageContent() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setControlsExpanded(true)}
-                className="mx-auto sm:mx-0 sm:w-full bg-black/95 backdrop-blur-xl border-b border-x sm:border border-neutral-800 sm:border-neutral-700 rounded-b-xl sm:rounded-lg px-4 py-2 sm:py-2.5 transition-all hover:bg-neutral-900/95 sm:hover:border-emerald-500 active:bg-neutral-800/95 flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto"
+                className={`mx-auto sm:mx-0 sm:w-full backdrop-blur-xl border-b border-x sm:border rounded-b-xl sm:rounded-lg px-4 py-2 sm:py-2.5 transition-all flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto ${
+                  isLight
+                    ? 'bg-white/95 border-gray-300 hover:bg-blue-50 hover:border-blue-500 active:bg-blue-100'
+                    : 'bg-black/95 border-neutral-800 hover:bg-neutral-900/95 hover:border-emerald-500 active:bg-neutral-800/95'
+                }`}
                 style={{ width: 'fit-content' }}
               >
                 {mapStyle === 'dark' ? (
-                  <MapIcon className="w-5 h-5 text-emerald-400" />
+                  <MapIcon className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
                 ) : mapStyle === 'bright' ? (
-                  <Globe className="w-5 h-5 text-emerald-400" />
+                  <Globe className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
                 ) : mapStyle === 'satellite' ? (
-                  <Satellite className="w-5 h-5 text-emerald-400" />
+                  <Satellite className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
                 ) : (
-                  <MapIcon className="w-5 h-5 text-emerald-400" />
+                  <MapIcon className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
                 )}
-                <span className="text-sm font-medium text-white">Map Controls</span>
-                <ChevronDown className="w-4 h-4 text-neutral-400 ml-1 sm:ml-auto" />
+                <span className={`text-sm font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>Map Controls</span>
+                <ChevronDown className={`w-4 h-4 ml-1 sm:ml-auto ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
               </motion.button>
             )}
 
@@ -442,24 +486,44 @@ function MapPageContent() {
                   stiffness: 300,
                   mass: 0.6
                 }}
-                className="bg-black/95 backdrop-blur-xl sm:rounded-lg border-b sm:border border-neutral-800 sm:border-neutral-700 overflow-hidden max-h-[80vh] overflow-y-auto shadow-2xl pointer-events-auto"
+                className={`backdrop-blur-xl sm:rounded-lg border-b sm:border overflow-hidden max-h-[80vh] overflow-y-auto shadow-2xl pointer-events-auto ${
+                  isLight
+                    ? 'bg-white/95 border-gray-300'
+                    : 'bg-black/95 border-neutral-800'
+                }`}
               >
                 {/* Drag Handle & Close Button - Mobile Only */}
-                <div className="sm:hidden pt-2 pb-1 flex justify-between items-center px-4 bg-black/95">
+                <div className={`sm:hidden pt-2 pb-1 flex justify-between items-center px-4 ${
+                  isLight ? 'bg-white/95' : 'bg-black/95'
+                }`}>
                   <div className="w-8"></div>
-                  <div className="w-12 h-1 bg-neutral-600 rounded-full"></div>
+                  <div className={`w-12 h-1 rounded-full ${isLight ? 'bg-gray-400' : 'bg-neutral-600'}`}></div>
                   <button
                     onClick={() => setControlsExpanded(false)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-800 active:bg-neutral-700 transition-colors"
+                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                      isLight ? 'hover:bg-gray-200 active:bg-gray-300' : 'hover:bg-neutral-800 active:bg-neutral-700'
+                    }`}
                   >
-                    <ChevronUp className="w-5 h-5 text-neutral-400" />
+                    <ChevronUp className={`w-5 h-5 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
                   </button>
                 </div>
 
                   {/* Map Style Options */}
-                  <div className="p-3 sm:p-4 border-b border-neutral-700">
+                  <div className={`p-3 sm:p-4 border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs sm:text-sm text-neutral-400 font-medium">MAP STYLE</span>
+                      <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>MAP STYLE</span>
+                      {/* Desktop-only collapse button */}
+                      <button
+                        onClick={() => setControlsExpanded(false)}
+                        className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                          isLight
+                            ? 'hover:bg-gray-200 text-gray-600'
+                            : 'hover:bg-neutral-800 text-neutral-400'
+                        }`}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        <span className="text-xs">Collapse</span>
+                      </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {(['dark', 'bright', 'satellite', 'toner'] as const).map((style) => (
@@ -470,8 +534,10 @@ function MapPageContent() {
                           }}
                           className={`px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all touch-manipulation ${
                             mapStyle === style
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600'
+                              ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                              : (isLight
+                                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                  : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600')
                           }`}
                         >
                           {style === 'dark' ? 'Dark Matter' : style === 'bright' ? 'Bright' : style === 'satellite' ? 'Satellite' : 'Black & White'}
@@ -481,19 +547,23 @@ function MapPageContent() {
                   </div>
 
                   {/* Filters Section */}
-                  <div className="border-b border-neutral-700">
+                  <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
                     <button
                       onClick={() => setFiltersExpanded(!filtersExpanded)}
-                      className="w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between hover:bg-neutral-800/50 active:bg-neutral-800 transition-colors touch-manipulation"
+                      className={`w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between transition-colors touch-manipulation ${
+                        isLight
+                          ? 'hover:bg-gray-100 active:bg-gray-200'
+                          : 'hover:bg-neutral-800/50 active:bg-neutral-800'
+                      }`}
                     >
                       <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-                        <span className="text-xs sm:text-sm text-neutral-300 font-medium">FILTERS</span>
+                        <SlidersHorizontal className={`w-4 h-4 sm:w-5 sm:h-5 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
+                        <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>FILTERS</span>
                       </div>
                       {filtersExpanded ? (
-                        <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
+                        <ChevronUp className={`w-4 h-4 sm:w-5 sm:h-5 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
                       ) : (
-                        <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
+                        <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
                       )}
                     </button>
 
@@ -505,64 +575,69 @@ function MapPageContent() {
                           exit={{ height: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
+                          <div className={`p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-[60vh] overflow-y-auto ${
+                            isLight ? 'scrollbar-light' : 'scrollbar-dark'
+                          }`}>
                             {/* Listing Type */}
                             <div>
-                              <label className="text-xs sm:text-sm text-neutral-400 mb-2 block">Listing Type</label>
+                              <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                Listing Type
+                              </label>
                               <div className="grid grid-cols-3 gap-2">
-                                <button
-                                  onClick={() => handleApplyFilters({ ...filters, listingType: "sale" })}
-                                  className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation ${
-                                    filters.listingType === "sale"
-                                      ? "bg-emerald-500 text-white"
-                                      : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
-                                  }`}
-                                >
-                                  For Sale
-                                </button>
-                                <button
-                                  onClick={() => handleApplyFilters({ ...filters, listingType: "rent" })}
-                                  className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation ${
-                                    filters.listingType === "rent"
-                                      ? "bg-emerald-500 text-white"
-                                      : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
-                                  }`}
-                                >
-                                  For Rent
-                                </button>
-                                <button
-                                  onClick={() => handleApplyFilters({ ...filters, listingType: "multi" })}
-                                  className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation ${
-                                    filters.listingType === "multi"
-                                      ? "bg-emerald-500 text-white"
-                                      : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600"
-                                  }`}
-                                >
-                                  Multi-Family
-                                </button>
+                                {[
+                                  { value: "sale", label: "For Sale" },
+                                  { value: "rent", label: "For Rent" },
+                                  { value: "multi", label: "Multi-Family" }
+                                ].map((type) => (
+                                  <button
+                                    key={type.value}
+                                    onClick={() => handleApplyFilters({ ...filters, listingType: type.value })}
+                                    className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                      filters.listingType === type.value
+                                        ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                        : (isLight
+                                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                                    }`}
+                                  >
+                                    {type.label}
+                                  </button>
+                                ))}
                               </div>
                             </div>
 
                             {/* Price Range */}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Min Price</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Min Price
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.minPrice}
                                   onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Max Price</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Max Price
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.maxPrice}
                                   onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
                             </div>
@@ -570,23 +645,35 @@ function MapPageContent() {
                             {/* Beds/Baths */}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Min Beds</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Min Beds
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.beds}
                                   onChange={(e) => setFilters({ ...filters, beds: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Min Baths</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Min Baths
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.baths}
                                   onChange={(e) => setFilters({ ...filters, baths: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
                             </div>
@@ -594,38 +681,254 @@ function MapPageContent() {
                             {/* Square Footage */}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Min Sqft</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Min Sqft
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.minSqft}
                                   onChange={(e) => setFilters({ ...filters, minSqft: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
                               <div>
-                                <label className="text-xs sm:text-sm text-neutral-400 mb-1.5 block">Max Sqft</label>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Max Sqft
+                                </label>
                                 <input
                                   type="text"
                                   placeholder="Any"
                                   value={filters.maxSqft}
                                   onChange={(e) => setFilters({ ...filters, maxSqft: e.target.value })}
-                                  className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none touch-manipulation"
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
                                 />
                               </div>
+                            </div>
+
+                            {/* Lot Size */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Min Lot (sqft)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Any"
+                                  value={filters.minLotSize}
+                                  onChange={(e) => setFilters({ ...filters, minLotSize: e.target.value })}
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
+                                />
+                              </div>
+                              <div>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Max Lot (sqft)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Any"
+                                  value={filters.maxLotSize}
+                                  onChange={(e) => setFilters({ ...filters, maxLotSize: e.target.value })}
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Year Built */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Built After
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Any"
+                                  value={filters.minYear}
+                                  onChange={(e) => setFilters({ ...filters, minYear: e.target.value })}
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
+                                />
+                              </div>
+                              <div>
+                                <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                  Built Before
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Any"
+                                  value={filters.maxYear}
+                                  onChange={(e) => setFilters({ ...filters, maxYear: e.target.value })}
+                                  className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                      : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                  }`}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Amenities Section */}
+                            <div className={`border-t pt-3 ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
+                              <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                Amenities
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  isLight ? 'hover:bg-gray-100' : 'hover:bg-neutral-800'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={filters.poolYn === true}
+                                    onChange={(e) => setFilters({ ...filters, poolYn: e.target.checked ? true : undefined })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className={`text-xs sm:text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>Pool</span>
+                                </label>
+                                <label className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  isLight ? 'hover:bg-gray-100' : 'hover:bg-neutral-800'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={filters.spaYn === true}
+                                    onChange={(e) => setFilters({ ...filters, spaYn: e.target.checked ? true : undefined })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className={`text-xs sm:text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>Spa</span>
+                                </label>
+                                <label className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  isLight ? 'hover:bg-gray-100' : 'hover:bg-neutral-800'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={filters.viewYn === true}
+                                    onChange={(e) => setFilters({ ...filters, viewYn: e.target.checked ? true : undefined })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className={`text-xs sm:text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>View</span>
+                                </label>
+                                <label className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  isLight ? 'hover:bg-gray-100' : 'hover:bg-neutral-800'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={filters.gatedCommunity === true}
+                                    onChange={(e) => setFilters({ ...filters, gatedCommunity: e.target.checked ? true : undefined })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className={`text-xs sm:text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>Gated</span>
+                                </label>
+                                <label className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  isLight ? 'hover:bg-gray-100' : 'hover:bg-neutral-800'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={filters.seniorCommunity === true}
+                                    onChange={(e) => setFilters({ ...filters, seniorCommunity: e.target.checked ? true : undefined })}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className={`text-xs sm:text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>55+</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Garage */}
+                            <div>
+                              <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                Min Garage Spaces
+                              </label>
+                              <select
+                                value={filters.minGarages}
+                                onChange={(e) => setFilters({ ...filters, minGarages: e.target.value })}
+                                className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                  isLight
+                                    ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                    : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                }`}
+                              >
+                                <option value="">Any</option>
+                                <option value="1">1+</option>
+                                <option value="2">2+</option>
+                                <option value="3">3+</option>
+                                <option value="4">4+</option>
+                              </select>
+                            </div>
+
+                            {/* HOA */}
+                            <div>
+                              <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                Max HOA Fee ($/mo)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Any"
+                                value={filters.hoa}
+                                onChange={(e) => setFilters({ ...filters, hoa: e.target.value })}
+                                className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                  isLight
+                                    ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                    : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                }`}
+                              />
+                            </div>
+
+                            {/* Land Type */}
+                            <div>
+                              <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                                Land Type
+                              </label>
+                              <select
+                                value={filters.landType}
+                                onChange={(e) => setFilters({ ...filters, landType: e.target.value })}
+                                className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                  isLight
+                                    ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                    : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                                }`}
+                              >
+                                <option value="">Any</option>
+                                <option value="Fee Simple">Fee Simple (Owned)</option>
+                                <option value="Leasehold">Leasehold (Leased)</option>
+                              </select>
                             </div>
 
                             {/* Action Buttons */}
                             <div className="flex gap-2 pt-2">
                               <button
                                 onClick={() => handleApplyFilters(filters)}
-                                className="flex-1 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation"
+                                className={`flex-1 px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                                  isLight
+                                    ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                                    : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white'
+                                }`}
                               >
                                 Apply Filters
                               </button>
                               <button
                                 onClick={handleResetFilters}
-                                className="px-4 py-2.5 sm:py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-300 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation"
+                                className={`px-4 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                                  isLight
+                                    ? 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700'
+                                    : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-300'
+                                }`}
                               >
                                 Reset
                               </button>

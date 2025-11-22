@@ -1,0 +1,134 @@
+{
+  "endpoints": {
+    "listings": {
+      "search": {
+        "path": "/api/mls-listings",
+        "method": "GET",
+        "description": "Search for MLS listings with geographic bounds and filters",
+        "parameters": {
+          "north": { "type": "number", "required": true, "description": "Northern boundary latitude" },
+          "south": { "type": "number", "required": true, "description": "Southern boundary latitude" },
+          "east": { "type": "number", "required": true, "description": "Eastern boundary longitude" },
+          "west": { "type": "number", "required": true, "description": "Western boundary longitude" },
+          "listingType": { "type": "string", "enum": ["sale", "rent", "multi"], "description": "Type of listing" },
+          "minPrice": { "type": "string", "description": "Minimum price" },
+          "maxPrice": { "type": "string", "description": "Maximum price" },
+          "beds": { "type": "string", "description": "Minimum bedrooms" },
+          "baths": { "type": "string", "description": "Minimum bathrooms" },
+          "minSqft": { "type": "string", "description": "Minimum square footage" },
+          "maxSqft": { "type": "string", "description": "Maximum square footage" },
+          "propertyType": { "type": "string", "description": "Property type (A=Residential, B=Lease, C=Multi-Family)" },
+          "city": { "type": "string", "description": "City name" },
+          "subdivision": { "type": "string", "description": "Subdivision name" }
+        },
+        "returns": {
+          "listings": "Array of MapListing objects with coordinates, prices, property details"
+        }
+      },
+      "details": {
+        "path": "/api/mls-listings/[slugAddress]",
+        "method": "GET",
+        "description": "Get detailed information for a specific listing",
+        "parameters": {
+          "slugAddress": { "type": "string", "required": true, "description": "URL-safe listing address slug" }
+        },
+        "returns": {
+          "listing": "Full IListing object with all property details, photos, features, tax info, HOA, etc."
+        }
+      }
+    },
+    "location": {
+      "matchLocation": {
+        "path": "/api/chat/match-location",
+        "method": "POST",
+        "description": "Match user query to city or subdivision with confidence scoring",
+        "parameters": {
+          "query": { "type": "string", "required": true, "description": "User's location query" }
+        },
+        "returns": {
+          "type": "city | subdivision",
+          "name": "Location name",
+          "confidence": "0-1 confidence score",
+          "searchParams": "Ready-to-use search parameters for listings API"
+        }
+      },
+      "cityDetails": {
+        "path": "/api/cities/[cityId]/stats",
+        "method": "GET",
+        "description": "Get city statistics and demographics",
+        "returns": {
+          "city": "City information with population, median income, schools, etc."
+        }
+      },
+      "subdivisionDetails": {
+        "path": "/api/subdivisions/[slug]",
+        "method": "GET",
+        "description": "Get subdivision details and statistics",
+        "returns": {
+          "subdivision": "Subdivision with HOA info, amenities, photos, etc."
+        }
+      }
+    },
+    "analysis": {
+      "cityListings": {
+        "path": "/api/cities/[cityId]/listings",
+        "method": "GET",
+        "description": "Get all active listings for a city (for market analysis)",
+        "returns": {
+          "listings": "All active listings in the city for CMA"
+        }
+      },
+      "subdivisionListings": {
+        "path": "/api/subdivisions/[slug]/listings",
+        "method": "GET",
+        "description": "Get all active listings for a subdivision",
+        "returns": {
+          "listings": "All active listings in subdivision for hyper-local CMA"
+        }
+      },
+      "communityFacts": {
+        "path": "/api/chat/community-facts",
+        "method": "POST",
+        "description": "Get detailed community insights from AI",
+        "parameters": {
+          "cityName": { "type": "string", "description": "City name" },
+          "subdivisionName": { "type": "string", "description": "Subdivision name" }
+        }
+      }
+    },
+    "investment": {
+      "mortgageRates": {
+        "path": "/api/mortgage-rates",
+        "method": "GET",
+        "description": "Get current mortgage rates",
+        "returns": {
+          "rates": "Current mortgage rate information"
+        }
+      }
+    },
+    "user": {
+      "favorites": {
+        "path": "/api/user/favorites",
+        "method": "GET",
+        "description": "Get user's favorite listings",
+        "returns": {
+          "favorites": "Array of favorited listings"
+        }
+      },
+      "saveFavorite": {
+        "path": "/api/user/favorites",
+        "method": "POST",
+        "description": "Save a listing to favorites",
+        "parameters": {
+          "listingKey": { "type": "string", "required": true }
+        }
+      }
+    }
+  },
+  "tips": {
+    "cma": "For CMA, use cityListings or subdivisionListings to get comparable properties, then analyze price per sqft, DOM (days on market), and price trends",
+    "location_matching": "Always use match-location first to resolve user queries like 'Corona' or 'Indian Wells' to get proper search bounds",
+    "investment_analysis": "Combine listing details with mortgage rates and local market data for ROI calculations",
+    "filters": "Use multiple filters together for precise searches - beds, baths, price range, sqft all work together"
+  }
+}

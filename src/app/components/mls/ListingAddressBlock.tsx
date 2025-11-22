@@ -1,4 +1,7 @@
 // src/app/components/mls/ListingAddressBlock.tsx
+"use client";
+
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 type ListingAddressBlockProps = {
     address: string
@@ -8,7 +11,7 @@ type ListingAddressBlockProps = {
     subdivision?: string
     listingId: string
   }
-  
+
   export default function ListingAddressBlock({
     address,
     city,
@@ -17,15 +20,16 @@ type ListingAddressBlockProps = {
     subdivision,
     listingId,
   }: ListingAddressBlockProps) {
+    const { textPrimary, textSecondary, textMuted } = useThemeClasses();
+
     return (
-      <div className="mb-6 text-sm text-gray-600">
-        <p className="font-semibold text-lg text-gray-900">{address}</p>
+      <div className={`mb-6 text-sm ${textSecondary}`}>
+        <p className={`font-semibold text-lg ${textPrimary}`}>{address}</p>
         <p>
           {city}, {state} {zip}
         </p>
         {subdivision && <p>Subdivision: {subdivision}</p>}
-        <p className="text-xs mt-1">MLS#: {listingId}</p>
+        <p className={`text-xs mt-1 ${textMuted}`}>MLS#: {listingId}</p>
       </div>
     )
   }
-  
