@@ -19,24 +19,39 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       subjectProperty, // The property being analyzed (listingKey or address)
+      selectedProperties, // Multiple properties to analyze as a group
       city,
       subdivision,
-      radius = 1, // miles
-      bedroomRange = 1, // +/- bedrooms
-      bathroomRange = 1, // +/- bathrooms
-      sqftRange = 0.2, // +/- 20% sqft
-      maxComps = 10,
+      radius = 1, // miles (default 1 mile radius)
+      bedroomRange = 0, // Exact match on bedrooms
+      bathroomRange = 0, // Exact match on bathrooms
+      sqftRange = 400, // +/- 400 sqft (as flat value, not percentage)
+      maxComps = 20,
+      includeClosedListings = true, // Include closed/sold properties
       includeInvestmentAnalysis = true,
       assumptions = {} // User-provided assumptions for calculations
     } = body;
 
-    console.log("📊 Generating CMA for:", subjectProperty || city || subdivision);
+    console.log("📊 Generating CMA for:", {
+      subjectProperty: subjectProperty || null,
+      selectedPropertiesCount: selectedProperties?.length || 0,
+      city,
+      subdivision
+    });
 
     await connectDB();
 
     // Step 1: Get subject property details if provided
     let subjectListing = null;
-    if (subjectProperty) {
+    let subjectListings: any[] = [];
+
+    if (selectedProperties && selectedProperties.length > 0) {
+      // Use selected properties as the basis for comps
+      subjectListings = selectedProperties;
+      // Use first property as reference for calculations
+      subjectListing = selectedProperties[0];
+      console.log(`📋 Using ${selectedProperties.length} selected properties as basis for CMA`);
+    } else if (subjectProperty) {
       subjectListing = await Listing.findOne({
         $or: [
           { listingKey: subjectProperty },
@@ -50,13 +65,22 @@ export async function POST(req: NextRequest) {
           { status: 404 }
         );
       }
+      subjectListings = [subjectListing];
     }
 
     // Step 2: Build query for comparable properties
     const query: any = {
-      mlsStatus: "Active",
-      propertyType: "A", // Residential
+      propertyType: "A", // Residential only
     };
+
+    // Include both Active and Closed/Sold listings for better comps
+    if (includeClosedListings) {
+      query.standardStatus = {
+        $in: ["Active", "Closed", "Sold", "Pending"]
+      };
+    } else {
+      query.standardStatus = "Active";
+    }
 
     // Location filters
     if (city) {
@@ -68,26 +92,46 @@ export async function POST(req: NextRequest) {
 
     // If we have a subject property, filter by similar characteristics
     if (subjectListing) {
-      const beds = subjectListing.bedroomsTotal || 3;
-      const baths = subjectListing.bathroomsTotalInteger || 2;
-      const sqft = subjectListing.livingArea || 1500;
+      const beds = subjectListing.beds || subjectListing.bedroomsTotal || 3;
+      const baths = subjectListing.baths || subjectListing.bathroomsTotalInteger || 2;
+      const sqft = subjectListing.sqft || subjectListing.livingArea || 1500;
+      const hasPool = subjectListing.poolYn || subjectListing.pool || false;
+      const hasSpa = subjectListing.spaYn || subjectListing.spa || false;
 
-      query.bedroomsTotal = {
-        $gte: Math.max(0, beds - bedroomRange),
-        $lte: beds + bedroomRange
-      };
+      // Exact bed/bath match (bedroomRange = 0 by default)
+      if (bedroomRange === 0) {
+        query.bedroomsTotal = beds;
+      } else {
+        query.bedroomsTotal = {
+          $gte: Math.max(0, beds - bedroomRange),
+          $lte: beds + bedroomRange
+        };
+      }
 
-      query.bathroomsTotalInteger = {
-        $gte: Math.max(0, baths - bathroomRange),
-        $lte: baths + bathroomRange
-      };
+      if (bathroomRange === 0) {
+        query.bathroomsTotalInteger = baths;
+      } else {
+        query.bathroomsTotalInteger = {
+          $gte: Math.max(0, baths - bathroomRange),
+          $lte: baths + bathroomRange
+        };
+      }
 
+      // Sqft range as flat value (+/- 400 sqft by default)
       query.livingArea = {
-        $gte: sqft * (1 - sqftRange),
-        $lte: sqft * (1 + sqftRange)
+        $gte: sqft - sqftRange,
+        $lte: sqft + sqftRange
       };
 
-      // Geographic proximity using coordinates
+      // Pool/Spa filtering - match if subject property has these features
+      if (hasPool) {
+        query.poolYn = true;
+      }
+      if (hasSpa) {
+        query.spaYn = true;
+      }
+
+      // Geographic proximity using coordinates (1 mile radius by default)
       if (subjectListing.latitude && subjectListing.longitude) {
         const lat = subjectListing.latitude;
         const lng = subjectListing.longitude;
@@ -104,50 +148,72 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      // Exclude the subject property itself
-      query.listingKey = { $ne: subjectListing.listingKey };
+      // Exclude the subject properties themselves
+      if (subjectListings.length > 0) {
+        const excludeIds = subjectListings
+          .map(s => s.id || s.listingId || s.listingKey)
+          .filter(Boolean);
+        if (excludeIds.length > 0) {
+          query.listingKey = { $nin: excludeIds };
+        }
+      }
     }
 
     console.log("🔍 CMA Query:", JSON.stringify(query, null, 2));
 
     // Step 3: Fetch comparable properties
     const comparables = await Listing.find(query)
-      .sort({ onMarketDate: -1 }) // Most recent first
+      .sort({
+        standardStatus: -1, // Active first, then Closed
+        onMarketDate: -1 // Most recent first
+      })
       .limit(maxComps)
       .select({
         listingKey: 1,
         slugAddress: 1,
         address: 1,
+        unparsedAddress: 1,
         city: 1,
         postalCode: 1,
         subdivisionName: 1,
         listPrice: 1,
         originalListPrice: 1,
         closePrice: 1,
+        closeDate: 1,
         livingArea: 1,
         bedroomsTotal: 1,
         bathroomsTotalInteger: 1,
+        bathroomsTotalDecimal: 1,
         lotSizeSquareFeet: 1,
         yearBuilt: 1,
         garageSpaces: 1,
-        poolPrivateYN: 1,
+        poolYN: 1,
+        spaYN: 1,
         onMarketDate: 1,
         daysOnMarket: 1,
+        standardStatus: 1,
         mlsStatus: 1,
+        mlsSource: 1,
         latitude: 1,
         longitude: 1,
         taxAnnualAmount: 1,
         associationFee: 1,
         propertySubType: 1,
+        propertyType: 1,
       })
       .lean();
 
     console.log(`✅ Found ${comparables.length} comparable properties`);
+    console.log(`📊 Breakdown: ${comparables.filter(c => c.standardStatus === 'Active').length} Active, ${comparables.filter(c => c.standardStatus === 'Closed' || c.standardStatus === 'Sold').length} Closed`);
 
     // Step 4: Calculate CMA metrics
+    // Use closePrice for closed listings, listPrice for active listings
     const pricesPerSqft = comparables
-      .filter(c => c.listPrice && c.livingArea)
-      .map(c => c.listPrice! / c.livingArea!);
+      .filter(c => c.livingArea && (c.closePrice || c.listPrice))
+      .map(c => {
+        const price = c.closePrice || c.listPrice || 0;
+        return price / c.livingArea!;
+      });
 
     const daysOnMarket = comparables
       .filter(c => c.daysOnMarket)
@@ -157,8 +223,12 @@ export async function POST(req: NextRequest) {
       c.originalListPrice && c.listPrice && c.originalListPrice > c.listPrice
     );
 
+    const allPrices = comparables.map(c => c.closePrice || c.listPrice || 0);
+
     const cmaMetrics = {
       comparablesCount: comparables.length,
+      activeCount: comparables.filter(c => c.standardStatus === 'Active').length,
+      closedCount: comparables.filter(c => c.standardStatus === 'Closed' || c.standardStatus === 'Sold').length,
       medianPricePerSqft: median(pricesPerSqft),
       averagePricePerSqft: average(pricesPerSqft),
       minPricePerSqft: Math.min(...pricesPerSqft),
@@ -172,9 +242,10 @@ export async function POST(req: NextRequest) {
         )
       ),
       priceRange: {
-        min: Math.min(...comparables.map(c => c.listPrice || 0)),
-        max: Math.max(...comparables.map(c => c.listPrice || 0)),
-        median: median(comparables.map(c => c.listPrice || 0))
+        min: Math.min(...allPrices),
+        max: Math.max(...allPrices),
+        median: median(allPrices),
+        average: average(allPrices)
       }
     };
 
@@ -333,25 +404,51 @@ export async function POST(req: NextRequest) {
       success: true,
       timestamp: new Date().toISOString(),
       subjectProperty: subjectListing ? {
-        address: subjectListing.address,
+        address: subjectListing.address || subjectListing.unparsedAddress,
         city: subjectListing.city,
-        listPrice: subjectListing.listPrice,
-        beds: subjectListing.bedroomsTotal,
-        baths: subjectListing.bathroomsTotalInteger,
-        sqft: subjectListing.livingArea,
+        listPrice: subjectListing.price || subjectListing.listPrice,
+        beds: subjectListing.beds || subjectListing.bedroomsTotal,
+        baths: subjectListing.baths || subjectListing.bathroomsTotalInteger,
+        sqft: subjectListing.sqft || subjectListing.livingArea,
         yearBuilt: subjectListing.yearBuilt,
+        pool: subjectListing.poolYn || subjectListing.pool,
+        spa: subjectListing.spaYn || subjectListing.spa,
       } : null,
+      selectedProperties: subjectListings.map(s => ({
+        id: s.id || s.listingId || s.listingKey,
+        address: s.address || s.unparsedAddress,
+        city: s.city,
+        price: s.price || s.listPrice,
+        beds: s.beds || s.bedroomsTotal,
+        baths: s.baths || s.bathroomsTotalInteger,
+        sqft: s.sqft || s.livingArea,
+        subdivision: s.subdivision || s.subdivisionName,
+      })),
       cmaMetrics,
       comparables: comparables.map(c => ({
-        address: c.address,
+        listingKey: c.listingKey,
+        slugAddress: c.slugAddress,
+        address: c.address || c.unparsedAddress,
+        city: c.city,
         listPrice: c.listPrice,
-        pricePerSqft: c.listPrice && c.livingArea ? c.listPrice / c.livingArea : null,
+        closePrice: c.closePrice,
+        finalPrice: c.closePrice || c.listPrice, // Use close price if available
+        pricePerSqft: (c.closePrice || c.listPrice) && c.livingArea
+          ? (c.closePrice || c.listPrice) / c.livingArea
+          : null,
         beds: c.bedroomsTotal,
-        baths: c.bathroomsTotalInteger,
+        baths: c.bathroomsTotalInteger || c.bathroomsTotalDecimal,
         sqft: c.livingArea,
+        lotSize: c.lotSizeSquareFeet,
         daysOnMarket: c.daysOnMarket,
         yearBuilt: c.yearBuilt,
         subdivision: c.subdivisionName,
+        status: c.standardStatus || c.mlsStatus,
+        mlsSource: c.mlsSource,
+        pool: c.poolYN,
+        spa: c.spaYN,
+        garageSpaces: c.garageSpaces,
+        closeDate: c.closeDate,
       })),
       estimatedValue,
       investmentAnalysis,

@@ -435,6 +435,104 @@ export default function TestPage() {
                                     </button>
                                   </div>
                                 )}
+
+                                {/* Generated CMA Results */}
+                                {generatedCMA && (
+                                  <div className="mt-6 flex justify-start">
+                                    <div className="max-w-[80%] px-4 py-3 rounded-lg bg-gray-800 text-gray-100 border border-gray-700">
+                                      <div className="mb-4">
+                                        <h3 className="text-lg font-bold text-emerald-400 mb-2">
+                                          📊 Comparative Market Analysis Generated
+                                        </h3>
+                                        <p className="text-sm text-gray-300 mb-4">
+                                          I've analyzed {generatedCMA.selectedProperties?.length || 0} selected {generatedCMA.selectedProperties?.length === 1 ? 'property' : 'properties'} and found {generatedCMA.comparables?.length || 0} comparable properties within a 1-mile radius.
+                                        </p>
+                                      </div>
+
+                                      {/* CMA Metrics Summary */}
+                                      <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Market Statistics</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <p className="text-xs text-gray-500">Median Price/SqFt</p>
+                                            <p className="text-lg font-bold text-emerald-400">
+                                              ${generatedCMA.cmaMetrics?.medianPricePerSqft?.toFixed(2) || '—'}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Avg Days on Market</p>
+                                            <p className="text-lg font-bold text-emerald-400">
+                                              {Math.round(generatedCMA.cmaMetrics?.averageDaysOnMarket || 0)} days
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Price Range</p>
+                                            <p className="text-sm font-semibold text-gray-300">
+                                              ${(generatedCMA.cmaMetrics?.priceRange?.min || 0).toLocaleString()} - ${(generatedCMA.cmaMetrics?.priceRange?.max || 0).toLocaleString()}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Active/Closed</p>
+                                            <p className="text-sm font-semibold text-gray-300">
+                                              {generatedCMA.cmaMetrics?.activeCount || 0} / {generatedCMA.cmaMetrics?.closedCount || 0}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Comparable Properties Table */}
+                                      <div className="bg-gray-900/50 rounded-lg p-4">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">
+                                          Comparable Properties ({generatedCMA.comparables?.length || 0})
+                                        </h4>
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-xs">
+                                            <thead>
+                                              <tr className="border-b border-gray-700">
+                                                <th className="text-left py-2 px-2 text-gray-400">Address</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Status</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Price</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Beds</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Baths</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">SqFt</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">$/SqFt</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">DOM</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {generatedCMA.comparables?.slice(0, 10).map((comp: any, idx: number) => (
+                                                <tr key={idx} className="border-b border-gray-800 hover:bg-gray-800/50">
+                                                  <td className="py-2 px-2 text-gray-300 truncate max-w-[200px]" title={comp.address}>
+                                                    {comp.address}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right">
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                                      comp.status === 'Active'
+                                                        ? 'bg-green-900/30 text-green-400'
+                                                        : 'bg-gray-700 text-gray-400'
+                                                    }`}>
+                                                      {comp.status}
+                                                    </span>
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-300">
+                                                    ${(comp.finalPrice || 0).toLocaleString()}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.beds}</td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.baths}</td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{(comp.sqft || 0).toLocaleString()}</td>
+                                                  <td className="py-2 px-2 text-right text-emerald-400 font-semibold">
+                                                    ${comp.pricePerSqft?.toFixed(0) || '—'}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.daysOnMarket || '—'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -520,6 +618,104 @@ export default function TestPage() {
                                       <FileText className="w-5 h-5" />
                                       <span>{generatingCMA ? 'Generating...' : 'Generate CMA'}</span>
                                     </button>
+                                  </div>
+                                )}
+
+                                {/* Generated CMA Results */}
+                                {generatedCMA && (
+                                  <div className="mt-6 flex justify-start">
+                                    <div className="max-w-[80%] px-4 py-3 rounded-lg bg-gray-800 text-gray-100 border border-gray-700">
+                                      <div className="mb-4">
+                                        <h3 className="text-lg font-bold text-emerald-400 mb-2">
+                                          📊 Comparative Market Analysis Generated
+                                        </h3>
+                                        <p className="text-sm text-gray-300 mb-4">
+                                          I've analyzed {generatedCMA.selectedProperties?.length || 0} selected {generatedCMA.selectedProperties?.length === 1 ? 'property' : 'properties'} and found {generatedCMA.comparables?.length || 0} comparable properties within a 1-mile radius.
+                                        </p>
+                                      </div>
+
+                                      {/* CMA Metrics Summary */}
+                                      <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Market Statistics</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <p className="text-xs text-gray-500">Median Price/SqFt</p>
+                                            <p className="text-lg font-bold text-emerald-400">
+                                              ${generatedCMA.cmaMetrics?.medianPricePerSqft?.toFixed(2) || '—'}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Avg Days on Market</p>
+                                            <p className="text-lg font-bold text-emerald-400">
+                                              {Math.round(generatedCMA.cmaMetrics?.averageDaysOnMarket || 0)} days
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Price Range</p>
+                                            <p className="text-sm font-semibold text-gray-300">
+                                              ${(generatedCMA.cmaMetrics?.priceRange?.min || 0).toLocaleString()} - ${(generatedCMA.cmaMetrics?.priceRange?.max || 0).toLocaleString()}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-500">Active/Closed</p>
+                                            <p className="text-sm font-semibold text-gray-300">
+                                              {generatedCMA.cmaMetrics?.activeCount || 0} / {generatedCMA.cmaMetrics?.closedCount || 0}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Comparable Properties Table */}
+                                      <div className="bg-gray-900/50 rounded-lg p-4">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">
+                                          Comparable Properties ({generatedCMA.comparables?.length || 0})
+                                        </h4>
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-xs">
+                                            <thead>
+                                              <tr className="border-b border-gray-700">
+                                                <th className="text-left py-2 px-2 text-gray-400">Address</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Status</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Price</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Beds</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">Baths</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">SqFt</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">$/SqFt</th>
+                                                <th className="text-right py-2 px-2 text-gray-400">DOM</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {generatedCMA.comparables?.slice(0, 10).map((comp: any, idx: number) => (
+                                                <tr key={idx} className="border-b border-gray-800 hover:bg-gray-800/50">
+                                                  <td className="py-2 px-2 text-gray-300 truncate max-w-[200px]" title={comp.address}>
+                                                    {comp.address}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right">
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                                      comp.status === 'Active'
+                                                        ? 'bg-green-900/30 text-green-400'
+                                                        : 'bg-gray-700 text-gray-400'
+                                                    }`}>
+                                                      {comp.status}
+                                                    </span>
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-300">
+                                                    ${(comp.finalPrice || 0).toLocaleString()}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.beds}</td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.baths}</td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{(comp.sqft || 0).toLocaleString()}</td>
+                                                  <td className="py-2 px-2 text-right text-emerald-400 font-semibold">
+                                                    ${comp.pricePerSqft?.toFixed(0) || '—'}
+                                                  </td>
+                                                  <td className="py-2 px-2 text-right text-gray-400">{comp.daysOnMarket || '—'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
