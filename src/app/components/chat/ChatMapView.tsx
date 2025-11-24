@@ -98,7 +98,7 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
 
   // Calculate map center from listings
   const mapListings = listings.map(toMapListing);
-  const validListings = mapListings.filter(l => l.latitude && l.longitude);
+  let validListings = mapListings.filter(l => l.latitude && l.longitude);
 
   console.log('🗺️ ChatMapView listings debug:', {
     totalListings: listings.length,
@@ -132,15 +132,57 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
     );
   }
 
-  // Calculate bounds to fit all listings
-  const lats = validListings.map(l => l.latitude);
-  const lngs = validListings.map(l => l.longitude);
+  // Filter out outliers to focus on main cluster (Southern California region)
+  // Calculate median to be resistant to outliers
+  const lats = validListings.map(l => l.latitude).sort((a, b) => a - b);
+  const lngs = validListings.map(l => l.longitude).sort((a, b) => a - b);
+
+  const medianLat = lats[Math.floor(lats.length / 2)];
+  const medianLng = lngs[Math.floor(lngs.length / 2)];
+
+  // Define Southern California bounds (approximate)
+  // Latitude: 32.5 to 35.5 (San Diego to Central Coast)
+  // Longitude: -114.0 to -118.5 (Arizona border to coast)
+  const SOCAL_BOUNDS = {
+    minLat: 32.5,
+    maxLat: 35.5,
+    minLng: -119.0,
+    maxLng: -114.0
+  };
+
+  // Filter listings to only include those in Southern California region
+  const clusteredListings = validListings.filter(l =>
+    l.latitude >= SOCAL_BOUNDS.minLat &&
+    l.latitude <= SOCAL_BOUNDS.maxLat &&
+    l.longitude >= SOCAL_BOUNDS.minLng &&
+    l.longitude <= SOCAL_BOUNDS.maxLng
+  );
+
+  // If we filtered out too many (>50%), use all valid listings (might be a different region)
+  // Otherwise use the clustered listings
+  const filteredListings = clusteredListings.length > validListings.length * 0.5
+    ? clusteredListings
+    : validListings;
+
+  console.log('🗺️ Outlier filtering:', {
+    originalCount: validListings.length,
+    afterFiltering: filteredListings.length,
+    outliers: validListings.length - filteredListings.length,
+    medianCoords: { lat: medianLat, lng: medianLng }
+  });
+
+  // Use filtered listings for bounds calculation
+  validListings = filteredListings;
+
+  // Calculate bounds to fit clustered listings
+  const clusterLats = validListings.map(l => l.latitude);
+  const clusterLngs = validListings.map(l => l.longitude);
 
   const bounds = {
-    north: Math.max(...lats),
-    south: Math.min(...lats),
-    east: Math.max(...lngs),
-    west: Math.min(...lngs)
+    north: Math.max(...clusterLats),
+    south: Math.min(...clusterLats),
+    east: Math.max(...clusterLngs),
+    west: Math.min(...clusterLngs)
   };
 
   // Add 10% padding so markers aren't on the edge
