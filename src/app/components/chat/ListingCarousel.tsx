@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Home, Bed, Bath, Maximize2, Heart } from "lucide-react";
+import { Home, Bed, Bath, Maximize2, Heart, FileText } from "lucide-react";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import type { MapListing } from "@/types/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
@@ -32,18 +32,44 @@ export interface Listing {
 interface ListingCarouselProps {
   listings: Listing[];
   title?: string;
+  onSelectionChange?: (selectedListings: Listing[]) => void;
+  selectedListings?: Listing[];
 }
 
-export default function ListingCarousel({ listings, title }: ListingCarouselProps) {
+export default function ListingCarousel({
+  listings,
+  title,
+  onSelectionChange,
+  selectedListings = []
+}: ListingCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { likedListings, toggleFavorite } = useMLSContext();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const [localSelectedListings, setLocalSelectedListings] = useState<Listing[]>(selectedListings);
 
   // Helper function to check if a listing is favorited
   const isFavorited = (listing: Listing) => {
     const slug = listing.slugAddress || listing.slug || listing.id;
     return likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === slug);
+  };
+
+  // Helper function to check if a listing is selected
+  const isSelected = (listing: Listing) => {
+    return localSelectedListings.some((selected) => selected.id === listing.id);
+  };
+
+  // Handle checkbox toggle
+  const handleCheckboxToggle = (e: React.MouseEvent, listing: Listing) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const newSelection = isSelected(listing)
+      ? localSelectedListings.filter((l) => l.id !== listing.id)
+      : [...localSelectedListings, listing];
+
+    setLocalSelectedListings(newSelection);
+    onSelectionChange?.(newSelection);
   };
 
   // Handle favorite toggle
@@ -206,6 +232,37 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
                   <Home className="h-12 w-12 text-neutral-500" />
                 </div>
               )}
+
+              {/* Checkbox for CMA Selection */}
+              <button
+                onClick={(e) => handleCheckboxToggle(e, listing)}
+                className="absolute left-2 top-2 rounded-md bg-black/50 p-1.5 transition-all hover:bg-black/70 z-10"
+                title={isSelected(listing) ? "Deselect for CMA" : "Select for CMA"}
+              >
+                <div
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    isSelected(listing)
+                      ? isLight
+                        ? "bg-blue-600 border-blue-600"
+                        : "bg-emerald-400 border-emerald-400"
+                      : "bg-transparent border-white"
+                  }`}
+                >
+                  {isSelected(listing) && (
+                    <svg
+                      className="w-3.5 h-3.5 text-white"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  )}
+                </div>
+              </button>
 
               {/* Favorite Heart Icon */}
               <button

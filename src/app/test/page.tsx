@@ -10,6 +10,7 @@ import { ChatProvider } from "@/app/components/chat/ChatProvider";
 import { EnhancedChatProvider } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
+import { FileText } from "lucide-react";
 
 // Chat Components
 import ListingCarousel, { type Listing } from "@/app/components/chat/ListingCarousel";
@@ -33,6 +34,60 @@ export default function TestPage() {
   const [loading, setLoading] = useState(true);
   const [cmaApiLoading, setCmaApiLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(true);
+
+  // State for selected properties for CMA generation
+  const [selectedSubdivisionListings, setSelectedSubdivisionListings] = useState<Listing[]>([]);
+  const [selectedCityListings, setSelectedCityListings] = useState<Listing[]>([]);
+  const [generatingCMA, setGeneratingCMA] = useState(false);
+  const [generatedCMA, setGeneratedCMA] = useState<any>(null);
+
+  // Handle CMA generation for selected properties
+  const handleGenerateCMA = async (selectedListings: Listing[]) => {
+    if (selectedListings.length === 0) {
+      alert("Please select at least one property to generate a CMA.");
+      return;
+    }
+
+    try {
+      setGeneratingCMA(true);
+      setGeneratedCMA(null);
+
+      // Call the CMA API with selected properties
+      const response = await fetch("/api/ai/cma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedProperties: selectedListings.map(l => ({
+            address: l.address,
+            price: l.price,
+            beds: l.beds,
+            baths: l.baths,
+            sqft: l.sqft,
+            city: l.city,
+            subdivision: l.subdivision,
+            listingId: l.id,
+          })),
+          city: selectedListings[0]?.city || "Unknown",
+          subdivision: selectedListings[0]?.subdivision,
+          maxComps: 20,
+          includeInvestmentAnalysis: true,
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`CMA API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setGeneratedCMA(data);
+      console.log("Generated CMA:", data);
+    } catch (error) {
+      console.error("Error generating CMA:", error);
+      alert("Failed to generate CMA. Please try again.");
+    } finally {
+      setGeneratingCMA(false);
+    }
+  };
 
   const tests = [
     {
@@ -355,7 +410,31 @@ export default function TestPage() {
                                 <ListingCarousel
                                   listings={subdivisionListings}
                                   title={`${subdivisionListings.length} properties in Palm Desert Country Club`}
+                                  onSelectionChange={setSelectedSubdivisionListings}
+                                  selectedListings={selectedSubdivisionListings}
                                 />
+
+                                {/* Generate CMA Button */}
+                                {selectedSubdivisionListings.length > 0 && (
+                                  <div className="mt-4 flex items-center justify-between bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-200">
+                                        {selectedSubdivisionListings.length} {selectedSubdivisionListings.length === 1 ? 'property' : 'properties'} selected
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Generate a Comparative Market Analysis for the selected properties
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleGenerateCMA(selectedSubdivisionListings)}
+                                      disabled={generatingCMA}
+                                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <FileText className="w-5 h-5" />
+                                      <span>{generatingCMA ? 'Generating...' : 'Generate CMA'}</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -418,7 +497,31 @@ export default function TestPage() {
                                 <ListingCarousel
                                   listings={cityListings}
                                   title={`${cityListings.length} properties in La Quinta`}
+                                  onSelectionChange={setSelectedCityListings}
+                                  selectedListings={selectedCityListings}
                                 />
+
+                                {/* Generate CMA Button */}
+                                {selectedCityListings.length > 0 && (
+                                  <div className="mt-4 flex items-center justify-between bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-200">
+                                        {selectedCityListings.length} {selectedCityListings.length === 1 ? 'property' : 'properties'} selected
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Generate a Comparative Market Analysis for the selected properties
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleGenerateCMA(selectedCityListings)}
+                                      disabled={generatingCMA}
+                                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <FileText className="w-5 h-5" />
+                                      <span>{generatingCMA ? 'Generating...' : 'Generate CMA'}</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
