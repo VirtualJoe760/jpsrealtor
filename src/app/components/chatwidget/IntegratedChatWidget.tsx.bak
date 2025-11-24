@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChatContext } from "@/app/components/chat/ChatProvider";
 import { useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
+import { streamChatCompletion } from "@/lib/webllm";
 import {
   buildSystemPrompt,
   buildConversationHistory,
@@ -20,6 +21,7 @@ import {
   executeMLSSearch,
   formatSearchResultsForAI,
 } from "@/lib/ai-functions";
+import { InitProgressReport } from "@mlc-ai/web-llm";
 import { User, Bot, Loader2, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import AnimatedChatInput from "./AnimatedChatInput";
@@ -369,6 +371,11 @@ export default function IntegratedChatWidget() {
     llmMessages: any[],
     attemptNumber: number = 0
   ): Promise<string> => {
+    const progressCallback = (report: InitProgressReport) => {
+      setLoadingProgress(report.text);
+      setLoadingPercent(Math.round(report.progress * 100));
+    };
+
     // Always use Groq API for fast, reliable responses
     if (useAPIFallback) {
       try {
@@ -392,6 +399,33 @@ export default function IntegratedChatWidget() {
         console.error("Groq API failed:", error);
         throw error;
       }
+    }
+
+    // Try WebLLM (desktop with WebGPU)
+    let fullResponse = "";
+    let chunkBuffer = "";
+
+    try {
+      for await (const chunk of streamChatCompletion(llmMessages, {
+        temperature: 0.3, // Lower temperature for more consistent, less hallucinatory responses
+        maxTokens: 300, // Reduced to prevent hallucination - function calls + brief response
+        onProgress: progressCallback,
+      })) {
+        chunkBuffer += chunk;
+
+        // Throttle updates for smoother streaming (update every 20ms for faster display)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        fullResponse = chunkBuffer;
+        setStreamingMessage(fullResponse);
+      }
+
+      return fullResponse;
+    } catch (error) {
+      console.error("WebLLM streaming failed:", error);
+      // Clear streaming message on error
+      setStreamingMessage("");
+      throw error;
     }
   };
 

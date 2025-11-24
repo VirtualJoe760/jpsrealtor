@@ -164,7 +164,8 @@ export default function ListingCarousel({ listings, title }: ListingCarouselProp
   }
 
   // Duplicate listings for infinite scroll
-  const duplicatedListings = [...listings, ...listings];
+  // Duplicate listings multiple times for true infinite scroll
+  const duplicatedListings = Array(5).fill(listings).flat();
 
   return (
     <div className="my-4">

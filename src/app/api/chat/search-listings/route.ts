@@ -64,11 +64,11 @@ export async function POST(req: NextRequest) {
 
     // Baths
     if (minBaths && maxBaths) {
-      query.bathroomsTotalInteger = { $gte: minBaths, $lte: maxBaths };
+      query.bathroomsTotalDecimal = { $gte: minBaths, $lte: maxBaths };
     } else if (minBaths) {
-      query.bathroomsTotalInteger = { $gte: minBaths };
+      query.bathroomsTotalDecimal = { $gte: minBaths };
     } else if (maxBaths) {
-      query.bathroomsTotalInteger = { $lte: maxBaths };
+      query.bathroomsTotalDecimal = { $lte: maxBaths };
     }
 
     // Price
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     const listingsQuery = CRMLSListing.find(query)
       .sort({ listPrice: 1 }) // Sort by price ascending
       .select(
-        "listingId listingKey listPrice bedsTotal bathroomsTotalInteger livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertyType propertySubType slugAddress latitude longitude"
+        "listingId listingKey listPrice bedsTotal bathroomsTotalDecimal livingArea city unparsedAddress primaryPhotoUrl subdivisionName propertyType propertySubType slugAddress latitude longitude"
       );
 
     // Only apply limit if provided, otherwise return ALL results
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
         id: listing.listingKey,
         price: listing.listPrice,
         beds: listing.bedsTotal,
-        baths: listing.bathroomsTotalInteger,
+        baths: listing.bathroomsTotalDecimal,
         sqft: listing.livingArea,
         city: listing.city,
         address: listing.unparsedAddress,

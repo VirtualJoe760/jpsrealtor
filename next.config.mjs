@@ -1,11 +1,50 @@
 // next.config.mjs
 import createMDX from "@next/mdx";
-import withPWA from "next-pwa";
+
+const isDev = process.env.NODE_ENV === 'development';
+const isProd = process.env.NODE_ENV === 'production';
+
+// Only import PWA in production to avoid Next.js 16 compatibility issues
+const withPWA = isProd ? (await import("next-pwa")).default : null;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable MDX support
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
+
+  // Disable strict mode in dev for faster HMR
+  reactStrictMode: !isDev,
+
+  // Production only optimizations
+  ...(isProd && {
+    compress: true,
+    poweredByHeader: false,
+  }),
+
+  // Optimize imports for faster builds
+  modularizeImports: {
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+    },
+    '@heroicons/react/24/outline': {
+      transform: '@heroicons/react/24/outline/{{member}}',
+    },
+    '@heroicons/react/24/solid': {
+      transform: '@heroicons/react/24/solid/{{member}}',
+    },
+    'react-icons': {
+      transform: 'react-icons/{{member}}',
+    },
+    // framer-motion removed - causes import issues with AnimatePresence
+  },
+
+  // Optimize package imports
+  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
+
+  // Compiler optimizations
+  compiler: {
+    removeConsole: isProd ? { exclude: ['error', 'warn'] } : false,
+  },
 
   images: {
     remotePatterns: [
@@ -44,11 +83,73 @@ const nextConfig = {
     ],
   },
 
-  webpack(config) {
+  webpack(config, { dev, isServer }) {
+    // SVG handling
     config.module.rules.push({
       test: /\.svg$/,
       use: ["@svgr/webpack"],
     });
+
+    // Performance optimizations for development
+    if (dev) {
+      // Faster source maps in dev
+      config.devtool = 'cheap-module-source-map';
+
+      // Optimize module resolution
+      config.resolve.symlinks = false;
+
+      // Reduce bundle size checks in dev
+      config.performance = {
+        hints: false,
+      };
+    }
+
+    // Production optimizations
+    if (!dev) {
+      // Better minification
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk for stable caching
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            // Common chunk for shared modules
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+            // Heavy libraries get their own chunks
+            three: {
+              test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
+              name: 'three',
+              chunks: 'all',
+              priority: 30,
+            },
+            maps: {
+              test: /[\\/]node_modules[\\/](mapbox-gl|maplibre-gl|react-map-gl)[\\/]/,
+              name: 'maps',
+              chunks: 'all',
+              priority: 30,
+            },
+          },
+        },
+      };
+    }
+
     return config;
   },
 };
@@ -58,8 +159,8 @@ const withMDX = createMDX({
   // Add any MDX options here if needed
 });
 
-// PWA configuration
-const pwaConfig = withPWA({
+// PWA configuration (with proper Higher Order Function) - only in production
+const pwaConfig = withPWA ? withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
@@ -207,7 +308,11 @@ const pwaConfig = withPWA({
       },
     },
   ],
-});
+}) : null;
 
-// Apply PWA and MDX configurations
-export default pwaConfig(withMDX(nextConfig));
+// Apply configurations - skip PWA entirely in development for speed
+const finalConfig = isProd && pwaConfig
+  ? pwaConfig(withMDX(nextConfig))  // Production: Apply both PWA and MDX
+  : withMDX(nextConfig);             // Development: Only apply MDX
+
+export default finalConfig;

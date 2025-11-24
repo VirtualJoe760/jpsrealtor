@@ -136,6 +136,7 @@ export interface IListing extends Document {
   statusChangeTimestamp?: Date;
   onMarketDate?: Date;
   originalOnMarketTimestamp?: Date;
+  daysOnMarket?: number;
 
   // Media & remarks
   publicRemarks?: string;
@@ -288,6 +289,7 @@ const ListingSchema = new Schema<IListing>({
   statusChangeTimestamp: Date,
   onMarketDate: Date,
   originalOnMarketTimestamp: Date,
+  daysOnMarket: Number,
 
   // Media & remarks
   publicRemarks: String,
@@ -403,8 +405,11 @@ ListingSchema.index({ subdivisionName: 1, standardStatus: 1 }, { sparse: true })
 ListingSchema.index({ standardStatus: 1, poolYn: 1, spaYn: 1, associationFee: 1 });
 
 // -----------------------------
-// Model Export (no default)
+// Model Export
 // -----------------------------
 
 export const Listing: Model<IListing> =
   mongoose.models.Listing || mongoose.model<IListing>("Listing", ListingSchema);
+
+// Default export for compatibility with default imports
+export default Listing;

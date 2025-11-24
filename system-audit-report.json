@@ -1,0 +1,826 @@
+{
+  "audit_metadata": {
+    "generated_at": "2025-11-24T00:00:00Z",
+    "repository": "jpsrealtor",
+    "branch": "v2",
+    "auditor": "Claude Code System Auditor",
+    "systems_analyzed": ["chat", "map", "neighborhoods", "insights_cma"]
+  },
+  "chat_system": {
+    "components": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\ChatProvider.tsx",
+        "purpose": "Global chat state management with persistence, history loading, and auto-save",
+        "dependencies": ["next-auth/react", "lib/chat-utils"],
+        "key_features": [
+          "Message persistence to MongoDB via /api/chat/log",
+          "Anonymous user ID generation and tracking",
+          "Session management with exponential backoff retry",
+          "WebLLM model preloading in background",
+          "Context-aware messages (homepage, listing, dashboard)"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\EnhancedChatProvider.tsx",
+        "purpose": "Enhanced chat with view management and animations",
+        "dependencies": ["ChatProvider"],
+        "key_features": [
+          "View switching (chat, map, articles, dashboard, subdivisions)",
+          "Chat mode management (landing, conversation, minimized)",
+          "Sidebar state management",
+          "Search results integration with map view",
+          "Animation triggers for input positioning"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\ChatWidget.tsx",
+        "purpose": "Main chat widget with WebLLM integration for client-side AI",
+        "dependencies": ["ChatProvider", "lib/webllm", "lib/ai-functions"],
+        "key_features": [
+          "Client-side AI using WebLLM (Phi-3-mini)",
+          "Streaming chat completions",
+          "Function calling for MLS searches",
+          "Listing carousel display",
+          "Goal extraction and tracking",
+          "Context-aware welcome messages"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\ListingCarousel.tsx",
+        "purpose": "Display search results in carousel format",
+        "dependencies": []
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\MapView.tsx",
+        "purpose": "Embedded map view for chat interface",
+        "dependencies": []
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\chat\\GoalTracker.tsx",
+        "purpose": "Track user goals extracted from conversations",
+        "dependencies": []
+      }
+    ],
+    "api_routes": [
+      {
+        "path": "/api/chat/stream",
+        "method": "POST",
+        "purpose": "Groq-powered AI chat with investment analysis capabilities",
+        "auth_required": false,
+        "parameters": ["messages", "userId", "userTier"],
+        "features": [
+          "Tiered model selection (free vs premium)",
+          "Enhanced system prompt with API docs and formulas",
+          "Investment analysis formulas (Cap Rate, CoC, DSCR, etc.)",
+          "CMA generation support",
+          "Message logging"
+        ]
+      },
+      {
+        "path": "/api/chat/search-listings",
+        "method": "POST",
+        "purpose": "AI-powered MLS search with flexible filtering",
+        "auth_required": false,
+        "parameters": ["minBeds", "maxBeds", "minPrice", "maxPrice", "cities", "subdivisions", "hasPool", "hasView", "propertyTypes"],
+        "features": [
+          "Subdivision fuzzy matching",
+          "Rental exclusion by default",
+          "Price range filtering (excludes rentals < $50k)",
+          "Photo fetching from Photos collection",
+          "Property type filtering (sale vs rental)"
+        ]
+      },
+      {
+        "path": "/api/chat/match-location",
+        "method": "POST",
+        "purpose": "Intelligent location matching (county, city, subdivision)",
+        "auth_required": false,
+        "parameters": ["query", "returnAll", "specificChoice"],
+        "features": [
+          "Priority matching: Subdivisions → Cities → Counties",
+          "Disambiguation for multiple matches",
+          "Exact city match detection",
+          "Partial matching with confidence scores",
+          "Search parameters generation"
+        ]
+      },
+      {
+        "path": "/api/chat/goals",
+        "method": "POST",
+        "purpose": "Save extracted user goals from conversations",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/history",
+        "method": "GET",
+        "purpose": "Retrieve chat history for user",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/history/messages",
+        "method": "GET",
+        "purpose": "Get messages for specific conversation",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/log",
+        "method": "POST/GET",
+        "purpose": "Log and retrieve chat messages",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/log-local",
+        "method": "POST",
+        "purpose": "Local chat logging",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/save",
+        "method": "POST",
+        "purpose": "Save chat conversation",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/generate-title",
+        "method": "POST",
+        "purpose": "Generate conversation titles",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/community-facts",
+        "method": "POST",
+        "purpose": "Fetch community facts",
+        "auth_required": false
+      },
+      {
+        "path": "/api/chat/research-community",
+        "method": "POST",
+        "purpose": "Research community data",
+        "auth_required": false
+      }
+    ],
+    "providers": [
+      "ChatProvider - Global state",
+      "EnhancedChatProvider - View and animation management"
+    ],
+    "hooks": [],
+    "function_calls": {
+      "implemented": [
+        {
+          "name": "searchListings",
+          "format": "searchListings({minBeds: 3, maxPrice: 800000, cities: ['Palm Desert']})",
+          "parameters": ["minBeds", "maxBeds", "minBaths", "maxBaths", "minPrice", "maxPrice", "minSqft", "maxSqft", "cities", "hasPool", "hasView", "limit"]
+        },
+        {
+          "name": "researchCommunity",
+          "format": "researchCommunity({location: 'Palm Springs'})",
+          "parameters": ["location"]
+        },
+        {
+          "name": "matchLocation",
+          "format": "matchLocation({query: 'Palm Springs'})",
+          "parameters": ["query"]
+        }
+      ],
+      "missing": [
+        "saveProperty - Save property to favorites",
+        "scheduleShowing - Schedule property showing",
+        "contactAgent - Contact listing agent",
+        "getMarketStats - Get market statistics",
+        "calculateMortgage - Calculate mortgage payments"
+      ]
+    },
+    "message_format": {
+      "id": "string - unique identifier",
+      "role": "user | assistant | system",
+      "content": "string - message text",
+      "timestamp": "Date",
+      "context": "homepage | listing | dashboard | general",
+      "listings": "array - optional property listings",
+      "searchFilters": "object - optional search filters",
+      "isLoading": "boolean - temporary loading state",
+      "disambiguationOptions": "array - for subdivision choices"
+    },
+    "streaming_logic": "WebLLM streaming using async generators, chunks accumulated and displayed in real-time",
+    "mls_integration_points": [
+      "/api/chat/search-listings - Primary MLS search",
+      "/api/chat/match-location - Location resolution",
+      "lib/ai-functions.ts - Function call detection and execution"
+    ],
+    "issues": [
+      "WebLLM requires WebGPU - not all browsers supported",
+      "Function call detection relies on regex parsing - brittle",
+      "No error handling for failed MLS searches in chat flow",
+      "Chat history loading has no pagination - could be slow with many messages",
+      "Anonymous user ID stored in localStorage - can be cleared",
+      "No rate limiting on chat endpoints",
+      "Groq API key hardcoded check - should use env validation",
+      "Message logging has retry logic but no persistent queue for offline scenarios"
+    ],
+    "recommendations": [
+      "Add streaming support for server-side AI (Groq)",
+      "Implement structured function calling (not regex-based)",
+      "Add rate limiting per user/session",
+      "Implement chat history pagination",
+      "Add error boundaries for WebLLM failures",
+      "Create fallback for non-WebGPU browsers",
+      "Add message encryption for sensitive data",
+      "Implement conversation branching/editing",
+      "Add chat export functionality",
+      "Create admin dashboard for chat monitoring"
+    ]
+  },
+  "map_system": {
+    "state_flow": {
+      "provider": "MLSProvider - F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\MLSProvider.tsx",
+      "hooks": [
+        "useListings - F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useListings.ts",
+        "useSwipeQueue - F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useSwipeQueue.ts",
+        "useFilters - F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useFilters.ts"
+      ],
+      "flow": "MLSProvider → useListings (fetch) → MapView (display) → ListingBottomPanel (selection) → useSwipeQueue (navigation)"
+    },
+    "components": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\map\\page.tsx",
+        "purpose": "Main map page with filter controls and listing display"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\MapView.tsx",
+        "purpose": "MapLibre GL map with clustering, markers, and bounds management",
+        "features": [
+          "Supercluster for marker clustering",
+          "Multiple map styles (dark, bright, satellite, toner)",
+          "Raw marker display at zoom >= 13",
+          "Marker color coding by property type",
+          "Hover and selection states",
+          "Bounds change detection with debouncing"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\MapPageClient.tsx",
+        "purpose": "Client-side map page with full state management"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\ListingBottomPanel.tsx",
+        "purpose": "Bottom panel for selected listing with swipe controls"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\FavoritesPannel.tsx",
+        "purpose": "Sidebar panel for favorites and disliked listings"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\AnimatedMarker.tsx",
+        "purpose": "Animated map marker with price display"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\AnimatedCluster.tsx",
+        "purpose": "Animated cluster marker"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\search\\FiltersPannel.tsx",
+        "purpose": "Comprehensive filter panel"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\mls\\map\\search\\ActiveFilters.tsx",
+        "purpose": "Display active filters as chips"
+      }
+    ],
+    "api_routes": [
+      {
+        "path": "/api/mls-listings",
+        "method": "GET",
+        "purpose": "Fetch listings by bounds or filters",
+        "parameters": ["north", "south", "east", "west", "city", "subdivision", "beds", "baths", "minPrice", "maxPrice"]
+      },
+      {
+        "path": "/api/mls-listings/[slug]",
+        "method": "GET",
+        "purpose": "Fetch single listing by slug"
+      },
+      {
+        "path": "/api/swipes/batch",
+        "method": "POST",
+        "purpose": "Save swipe actions (like/dislike)"
+      },
+      {
+        "path": "/api/swipes/exclude-keys",
+        "method": "GET",
+        "purpose": "Get list of already swiped listing keys"
+      },
+      {
+        "path": "/api/swipes/user",
+        "method": "GET",
+        "purpose": "Get user's swipe history"
+      }
+    ],
+    "hooks": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useListings.ts",
+        "purpose": "Manage listing state and API fetching",
+        "exports": ["allListings", "visibleListings", "setVisibleListings", "loadListings"],
+        "features": [
+          "Bounds-based fetching",
+          "Filter parameter building",
+          "Merge mode for pagination"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useSwipeQueue.ts",
+        "purpose": "Intelligent swipe queue with priority scoring",
+        "exports": ["initializeQueue", "getNext", "markAsLiked", "markAsDisliked", "isExcluded"],
+        "features": [
+          "Smart priority scoring (7 tiers)",
+          "Haversine distance calculation",
+          "Price bracket compatibility",
+          "Immediate swipe persistence",
+          "Exclude key tracking",
+          "Prefetching next 3 listings"
+        ]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useFilters.ts",
+        "purpose": "Filter state management",
+        "exports": ["filters", "setFilters", "applyFilters", "toggleFilters"]
+      }
+    ],
+    "listing_fetch_logic": "Fetch from /api/mls-listings with bounds (north/south/east/west) + filters → Convert to MapListing format → Store in state → Display on map",
+    "bounds_query_logic": "Map moveend/dragend triggers bounds change → Debounced (300ms) → Check if bounds already loaded → If new area, fetch listings → Merge with existing if merge=true",
+    "cluster_logic": "Supercluster with radius=80, maxZoom=13 → Below zoom 13: show clusters → At zoom 13+: show all raw markers → Cluster click expands to next zoom level",
+    "swipe_queue": {
+      "hook": "useSwipeQueue - F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\utils\\map\\useSwipeQueue.ts",
+      "initialization": "Single API request for all listings within 5-mile radius → Client-side scoring → Sorted by priority score",
+      "batching": "IMMEDIATE mode - no batching, swipes saved instantly to /api/swipes/batch",
+      "exclusion": "Exclude keys loaded on init from /api/swipes/exclude-keys → Updated locally on each swipe → Prevents showing already-swiped properties",
+      "priority_scoring": {
+        "tier_1": "Same subdivision + same subtype + same zipcode (0-5 score)",
+        "tier_2": "Same subdivision + same subtype + diff zipcode (50-55)",
+        "tier_3": "Same subdivision + diff subtype + same zipcode (100-105)",
+        "tier_4": "Same subdivision + diff subtype + diff zipcode (150-155)",
+        "tier_5": "Within 2mi + same subtype + same zipcode (200-202)",
+        "tier_6": "Within 5mi + same subtype + same zipcode (300-305)",
+        "tier_7": "Same city + within 5mi (400-405)"
+      },
+      "issues": [
+        "Single request limited to 100 results",
+        "No server-side pagination for queue",
+        "Price bracket filtering may exclude valid comps",
+        "Pacaso (co-ownership) properties permanently excluded"
+      ]
+    },
+    "filter_system": {
+      "filters": [
+        "listingType (sale/rent/multi)",
+        "price range",
+        "beds/baths",
+        "sqft",
+        "lot size",
+        "year built",
+        "property type/subtype",
+        "amenities (pool, spa, view, garage, gated, 55+)",
+        "HOA max fee",
+        "land type"
+      ],
+      "persistence": "URL query parameters + local state",
+      "application": "Filters applied on loadListings() → Converted to API query params"
+    },
+    "performance_bottlenecks": [
+      "No virtualization for large listing sets (all rendered markers)",
+      "Cluster recalculation on every map move",
+      "No tile-based loading",
+      "Full listing objects stored in memory",
+      "Prefetching limited to 5 visible listings",
+      "No progressive loading of images",
+      "Supercluster recalculates on every bounds change",
+      "No request cancellation for in-flight API calls"
+    ],
+    "issues": [
+      "Map style changes require full remount",
+      "No offline support",
+      "Favorites stored only in localStorage (not synced to server)",
+      "No listing detail caching strategy beyond prefetch",
+      "Swipe queue exhaustion not handled gracefully",
+      "No error recovery for failed API requests",
+      "Bounds change debounce may miss rapid panning",
+      "No loading indicators for background prefetch"
+    ],
+    "recommendations": [
+      "Implement tile-based loading with quad-tree",
+      "Add request cancellation for rapid map movements",
+      "Create server-side favorites sync",
+      "Add service worker for offline map tiles",
+      "Implement progressive image loading",
+      "Add virtual scrolling for large result sets",
+      "Create persistent queue state in IndexedDB",
+      "Add analytics for map interactions",
+      "Implement heatmap layer for price density",
+      "Add draw tools for custom search areas"
+    ]
+  },
+  "neighborhood_system": {
+    "pages": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\neighborhoods\\page.tsx",
+        "purpose": "Root neighborhoods page with county grid/map",
+        "components": ["CountyGrid (mobile)", "SoCalCountySVGMap (desktop)"]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\neighborhoods\\[cityId]\\page.tsx",
+        "purpose": "Dynamic city or county page",
+        "logic": "Checks if cityId is county slug → Shows CountyCityGrid OR city details",
+        "data_source": "MongoDB Cities collection + constants/counties.ts"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\neighborhoods\\[cityId]\\[slug]\\page.tsx",
+        "purpose": "Individual subdivision page"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\neighborhoods\\[cityId]\\CityPageClient.tsx",
+        "purpose": "Client-side city page with stats"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\neighborhoods\\[cityId]\\[slug]\\SubdivisionPageClient.tsx",
+        "purpose": "Client-side subdivision page"
+      }
+    ],
+    "data_sources": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\constants\\cities.ts",
+        "structure": "Array of City objects with name, id, coordinates, population, description, keywords, areas",
+        "cities": [
+          "Coachella Valley",
+          "Palm Springs",
+          "Palm Desert",
+          "La Quinta",
+          "Indio",
+          "Rancho Mirage",
+          "Indian Wells",
+          "Cathedral City",
+          "Desert Hot Springs",
+          "Coachella",
+          "Thousand Palms",
+          "Bermuda Dunes",
+          "Thermal"
+        ]
+      },
+      {
+        "directory": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\constants\\subdivisions",
+        "files": [
+          "palm-springs-neighborhoods.json",
+          "palm-desert-neighborhoods.json",
+          "la-quinta-neighborhoods.json",
+          "indio-neighborhoods.json",
+          "rancho-mirage-neighborhoods.json",
+          "indian-wells-neighborhoods.json",
+          "cathedral-city-neighborhoods.json",
+          "desert-hot-springs-neighborhoods.json",
+          "coachella-neighborhoods.json",
+          "thousand-palms-neighborhoods.json",
+          "bermuda-dunes-neighborhoods.json",
+          "thermal_neighborhoods.json"
+        ],
+        "structure": "JSON arrays with subdivision names and slugs"
+      },
+      {
+        "file": "src/app/constants/counties.ts",
+        "purpose": "County and city mappings",
+        "structure": "soCalCounties array with cities nested"
+      },
+      {
+        "model": "src/models/cities.ts",
+        "purpose": "MongoDB model for city statistics",
+        "fields": ["slug", "listingCount", "avgPrice", "medianPrice", "priceRange"]
+      }
+    ],
+    "components": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\neighborhoods\\CountyGrid.tsx",
+        "purpose": "Mobile grid view of counties"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\neighborhoods\\CountyCityGrid.tsx",
+        "purpose": "Grid view of cities within a county"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\neighborhoods\\SoCalCountySVGMap.tsx",
+        "purpose": "Interactive SVG map of Southern California counties"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\components\\neighborhoods\\countyBoundaries.ts",
+        "purpose": "SVG path data for county boundaries"
+      }
+    ],
+    "slug_logic": "City names converted to lowercase kebab-case (e.g., 'Palm Springs' → 'palm-springs') → Subdivisions also kebab-case",
+    "city_structure": {
+      "name": "string",
+      "id": "string (slug)",
+      "coordinates": {"latitude": "number", "longitude": "number"},
+      "population": "number",
+      "heading": "string",
+      "description": "string",
+      "body": "string",
+      "about": "string (optional, detailed)",
+      "keywords": {"main": "string[]", "secondary": "string[]"},
+      "areas": "string[] (subdivision area slugs)"
+    },
+    "subdivision_structure": {
+      "name": "string",
+      "slug": "string",
+      "city": "string",
+      "additional_fields": "varies by file"
+    },
+    "missing_features": [
+      "No neighborhood photos/galleries",
+      "No school information integration",
+      "No crime statistics",
+      "No walkability scores",
+      "No amenity maps (parks, shopping, etc.)",
+      "No demographic data",
+      "No community events calendar",
+      "No resident reviews/ratings",
+      "No price history charts",
+      "No HOA information database"
+    ],
+    "issues": [
+      "Cities data hardcoded in constants - should be in database",
+      "Subdivision data in static JSON files - no admin UI to manage",
+      "No dynamic stats calculation - relies on pre-computed data",
+      "County boundaries hardcoded in TypeScript",
+      "No API endpoints for neighborhood data",
+      "Metadata generation is basic - missing structured data",
+      "No sitemap generation for neighborhoods",
+      "Image paths hardcoded or missing",
+      "No multilingual support",
+      "About sections are long strings - should be markdown"
+    ],
+    "recommendations": [
+      "Move all city/subdivision data to MongoDB",
+      "Create admin CMS for neighborhood content",
+      "Add API endpoints for neighborhood CRUD",
+      "Implement dynamic stats calculation from listings",
+      "Add neighborhood photo galleries",
+      "Integrate school API (GreatSchools, etc.)",
+      "Add crime statistics from public APIs",
+      "Create neighborhood comparison tool",
+      "Add resident testimonials section",
+      "Implement neighborhood alerts/notifications",
+      "Add markdown support for long-form content",
+      "Generate dynamic OG images for social sharing",
+      "Add structured data (JSON-LD) for SEO"
+    ]
+  },
+  "insights_system": {
+    "cma_route": {
+      "path": "/api/ai/cma",
+      "logic": "POST endpoint that generates Comparative Market Analysis",
+      "auth": "Optional - uses getServerSession",
+      "parameters": [
+        "subjectProperty (listingKey or address)",
+        "city",
+        "subdivision",
+        "radius (default 1 mile)",
+        "bedroomRange (default ±1)",
+        "bathroomRange (default ±1)",
+        "sqftRange (default ±20%)",
+        "maxComps (default 10)",
+        "includeInvestmentAnalysis (default true)",
+        "assumptions (down payment, interest rate, etc.)"
+      ],
+      "workflow": [
+        "1. Fetch subject property from Listing model",
+        "2. Build query for comparables (beds/baths/sqft/location filters)",
+        "3. Fetch up to maxComps comparable properties",
+        "4. Calculate CMA metrics (median $/sqft, DOM, price reductions)",
+        "5. Calculate investment metrics (Cap Rate, CoC, Cash Flow, DSCR, GRM, 1% Rule)",
+        "6. Generate market context (inventory, market type, competitiveness)",
+        "7. Estimate subject property value",
+        "8. Return comprehensive analysis"
+      ]
+    },
+    "metrics_structure": {
+      "cma_metrics": [
+        "comparablesCount",
+        "medianPricePerSqft",
+        "averagePricePerSqft",
+        "minPricePerSqft",
+        "maxPricePerSqft",
+        "averageDaysOnMarket",
+        "medianDaysOnMarket",
+        "priceReductionRate",
+        "averagePriceReduction",
+        "priceRange {min, max, median}"
+      ],
+      "investment_metrics": [
+        {
+          "metric": "cashOnCashReturn",
+          "formula": "(Annual Pre-Tax Cash Flow ÷ Total Cash Invested) × 100",
+          "rating": "excellent >= 8%, good >= 5%"
+        },
+        {
+          "metric": "capRate",
+          "formula": "(Annual NOI ÷ Property Value) × 100",
+          "rating": "excellent >= 7%, good >= 4%"
+        },
+        {
+          "metric": "onePercentRule",
+          "formula": "Monthly Rent ≥ (Purchase Price × 0.01)",
+          "rating": "passes/fails boolean"
+        },
+        {
+          "metric": "grossRentMultiplier",
+          "formula": "Property Price ÷ Annual Gross Rent",
+          "rating": "excellent <= 7, good <= 10"
+        },
+        {
+          "metric": "debtServiceCoverageRatio",
+          "formula": "NOI ÷ Annual Debt Service",
+          "rating": "excellent >= 1.25, acceptable >= 1.0"
+        }
+      ]
+    },
+    "listing_fields_used": [
+      "listingKey",
+      "slugAddress",
+      "address",
+      "city",
+      "postalCode",
+      "subdivisionName",
+      "listPrice",
+      "originalListPrice",
+      "closePrice",
+      "livingArea",
+      "bedroomsTotal",
+      "bathroomsTotalInteger",
+      "lotSizeSquareFeet",
+      "yearBuilt",
+      "garageSpaces",
+      "poolPrivateYN",
+      "onMarketDate",
+      "daysOnMarket",
+      "mlsStatus",
+      "latitude",
+      "longitude",
+      "taxAnnualAmount",
+      "associationFee",
+      "propertySubType"
+    ],
+    "comps_data": {
+      "directory": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\constants\\comps",
+      "structure": "2024/q1, q2, q3, q4 subdirectories",
+      "files_per_quarter": [
+        "bermuda-dunes.json",
+        "cathedral-city-north.json",
+        "coachella.json",
+        "desert-hot-springs.json",
+        "indian-wells.json",
+        "indio-central.json",
+        "indio-north-of-i10.json",
+        "indio-south-of-hwy-111.json",
+        "la-quinta-no-of-hwy-111.json",
+        "la-quinta-south-of-hwy-111.json",
+        "palm-desert-east.json",
+        "palm-desert-ne.json",
+        "palm-desert-north.json",
+        "palm-desert-south.json",
+        "palm-springs-central.json",
+        "palm-springs-north-end.json",
+        "palm-springs-south-end.json",
+        "rancho-mirage.json",
+        "south-cathedral-city.json",
+        "thermal.json",
+        "thousand-palms.json"
+      ],
+      "purpose": "Pre-calculated comparable sales data by area and quarter",
+      "note": "These appear to be static files - CMA route calculates dynamically"
+    },
+    "insights_pages": [
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\insights\\page.tsx",
+        "purpose": "Main insights landing page",
+        "components": ["InsightsCategories"]
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\insights\\[category]\\page.tsx",
+        "purpose": "Category page (buying, selling, investing, etc.)"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\insights\\[category]\\CategoryPageClient.tsx",
+        "purpose": "Client-side category page"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\insights\\[category]\\[slugId]\\page.tsx",
+        "purpose": "Individual article page"
+      },
+      {
+        "file": "F:\\web-clients\\joseph-sardella\\jpsrealtor\\src\\app\\insights\\[category]\\[slugId]\\ArticlePageClient.tsx",
+        "purpose": "Client-side article page"
+      }
+    ],
+    "data_flow": "CMA Request → /api/ai/cma → Fetch subject property → Query comparables from Listing model → Calculate metrics → Return JSON response",
+    "export_issues": [
+      "No export functionality implemented for CMA reports",
+      "No PDF generation",
+      "No email delivery",
+      "No saved reports database",
+      "No report templates",
+      "No branding/customization options"
+    ],
+    "issues": [
+      "Comps JSON files are static - not integrated with CMA route",
+      "No admin UI for managing comps data",
+      "CMA route has no caching - recalculates every time",
+      "Investment analysis assumptions hardcoded - should be configurable per market",
+      "No historical CMA tracking",
+      "No comparison between multiple CMAs",
+      "Median/average helper functions not optimized",
+      "No error handling for missing listing data",
+      "No validation of input parameters",
+      "Distance calculation using basic lat/lng math - not accounting for Earth curvature properly",
+      "No visualization of comparable properties on map",
+      "Insights articles appear to be in code - no CMS integration"
+    ],
+    "recommendations": [
+      "Create admin dashboard for CMA management",
+      "Add PDF export with professional templates",
+      "Implement CMA caching with TTL",
+      "Add email delivery of CMA reports",
+      "Create CMA history tracking",
+      "Add visualization charts (price trends, DOM, etc.)",
+      "Integrate comps JSON files into database",
+      "Add CMA comparison tool",
+      "Implement configurable assumptions per market",
+      "Add support for different property types (commercial, land)",
+      "Create CMA sharing functionality",
+      "Add market reports (quarterly, annual)",
+      "Integrate with insights articles",
+      "Add automated CMA generation on listing updates",
+      "Create CMS for insights articles"
+    ]
+  },
+  "cross_system_integration_opportunities": [
+    "Chat → Map: Seamless transition from search to map view with highlighted results",
+    "Chat → CMA: Generate CMA from chat conversation about specific properties",
+    "Map → Neighborhoods: Show neighborhood info on hover/click",
+    "Map → CMA: Generate CMA for selected property directly from map",
+    "Neighborhoods → Map: Open map centered on neighborhood",
+    "Insights → Chat: Chat assistant suggests relevant articles based on conversation",
+    "CMA → Chat: Discuss CMA results with AI assistant",
+    "Neighborhoods → Insights: Link to relevant neighborhood articles"
+  ],
+  "missing_system_wide_features": [
+    "User authentication and profiles",
+    "Saved searches",
+    "Email alerts for new listings",
+    "Mortgage calculator integration",
+    "Property comparison tool",
+    "Virtual tours integration",
+    "Document management for transactions",
+    "Agent dashboard",
+    "Lead management",
+    "Appointment scheduling",
+    "Multi-language support",
+    "Accessibility compliance (WCAG)",
+    "Analytics dashboard",
+    "A/B testing framework",
+    "Error tracking (Sentry, etc.)",
+    "Performance monitoring"
+  ],
+  "critical_technical_debt": [
+    "Cities and subdivisions in constants - need database migration",
+    "No comprehensive error handling strategy",
+    "No logging/monitoring infrastructure",
+    "No automated testing (unit, integration, e2e)",
+    "No API documentation (OpenAPI/Swagger)",
+    "No CI/CD pipeline documented",
+    "No database migration strategy",
+    "No backup/disaster recovery plan",
+    "Mixed data models (MongoDB + static files)",
+    "No API versioning strategy",
+    "No rate limiting implementation",
+    "No CORS configuration documented"
+  ],
+  "security_concerns": [
+    "No input validation on API routes",
+    "No SQL/NoSQL injection prevention documented",
+    "No CSRF protection visible",
+    "API keys potentially exposed in client-side code",
+    "No rate limiting on expensive operations (CMA, search)",
+    "No authentication on sensitive endpoints",
+    "Anonymous users can perform unlimited operations",
+    "localStorage used for sensitive data (should be httpOnly cookies)",
+    "No Content Security Policy headers visible",
+    "No audit logging for sensitive operations"
+  ],
+  "performance_optimization_priorities": [
+    "Implement Redis caching for listings and CMAs",
+    "Add CDN for static assets",
+    "Optimize MongoDB indexes (already present but needs verification)",
+    "Implement image optimization and lazy loading",
+    "Add service worker for offline support",
+    "Implement database connection pooling",
+    "Add request deduplication for duplicate queries",
+    "Optimize bundle size (code splitting)",
+    "Implement progressive web app features",
+    "Add skeleton screens for loading states"
+  ]
+}

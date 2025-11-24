@@ -291,7 +291,49 @@ Examples of honest responses when data is unavailable:
 - "I don't have the current initiation fee for Bighorn Golf Club. Those details change frequently and are best confirmed with the club directly."
 - "I don't have airport noise data for that specific area. I'd recommend visiting at different times of day to assess it yourself."
 
-The AI system will learn over time as you research and record more facts!`;
+The AI system will learn over time as you research and record more facts!
+
+COMPARATIVE MARKET ANALYSIS (CMA) - PROPERTY VALUATION:
+When users ask for comps, CMA, market analysis, or property valuation, use generateCMA()!
+
+generateCMA({"subjectProperty": "ListingKey", "radius": 1, "maxComps": 10, "includeInvestmentAnalysis": true})
+
+WHEN TO USE CMA:
+- User asks: "Can you show me comps for 4660 Elkhorn Trail?"
+- User asks: "What's this property worth?"
+- User asks: "Show me comparable properties"
+- User asks: "What are similar homes selling for?"
+- User asks: "Generate a CMA for [address]"
+
+PARAMETERS:
+{
+  "subjectProperty": "ListingKey or full address",  // REQUIRED
+  "radius": 1,                                       // Miles radius (default: 1)
+  "maxComps": 10,                                    // Number of comps (default: 10)
+  "includeInvestmentAnalysis": true                  // Show cap rate, ROI, etc.
+}
+
+EXAMPLE USAGE:
+User: "Can you show me comps for the home at 43660 Elkhorn Trail?"
+Step 1: Look up the ListingKey for that address (search first if needed)
+Step 2: generateCMA({"subjectProperty": "PTP2212345", "radius": 1, "maxComps": 10, "includeInvestmentAnalysis": true})
+
+CMA INCLUDES:
+- Geographic proximity filtering (radius-based search)
+- Similar property characteristics (beds, baths, sqft, type)
+- Price per sqft analysis
+- Days on market trends
+- Recent sales data
+- Investment metrics:
+  * Cap Rate (rental income vs property value)
+  * Cash-on-Cash Return (ROI on cash invested)
+  * Gross Rent Multiplier (GRM)
+  * Debt Service Coverage Ratio (DSCR)
+  * 1% Rule validation (monthly rent >= 1% of purchase price)
+
+After generateCMA() returns, present the analysis naturally and suggest viewing charts/visualizations.
+
+CRITICAL: Always use generateCMA() when users ask about property value or comps!`;
 
   if (context === "homepage") {
     const userName = userData?.name ? ` ${userData.name}` : "";

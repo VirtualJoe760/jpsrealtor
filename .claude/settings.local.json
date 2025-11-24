@@ -40,7 +40,17 @@
       "Bash(timeout 10 npm run dev:*)",
       "Bash(echo:*)",
       "Bash(pkill:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(git pull:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(ed -s:*)",
+      "Bash(timeout 20 npm run dev:*)",
+      "Bash(tee:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(sshpass -p \"dstreet280\" ssh -o StrictHostKeyChecking=no root@147.182.236.138 \"mongosh ''mongodb://root:dstreet280@localhost:27017/payload?authSource=admin'' --quiet --eval \"\"db.listings.countDocuments({StandardStatus: ''Closed''})\"\"\")",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

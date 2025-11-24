@@ -5,10 +5,10 @@ import { Listing } from "@/app/components/chat/ListingCarousel";
 
 /**
  * Parse AI response for function calls
- * The AI can request searches or community research by outputting JSON in a specific format
+ * The AI can request searches, community research, or CMA analysis by outputting JSON in a specific format
  */
 export function detectFunctionCall(text: string): {
-  type: "search" | "research" | "matchLocation" | null;
+  type: "search" | "research" | "matchLocation" | "cma" | null;
   params: any;
   cleanedText: string;
 } | null {
@@ -62,7 +62,30 @@ export function detectFunctionCall(text: string): {
     }
   }
 
-  // Pattern 3: searchListings({...}) - Find FIRST occurrence only
+  // Pattern 3: generateCMA({...}) - AI generating Comparative Market Analysis
+  const cmaPattern = /generateCMA\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
+  const cmaMatch = preprocessedText.match(cmaPattern);
+
+  if (cmaMatch && cmaMatch[1]) {
+    try {
+      let jsonString = cmaMatch[1];
+      jsonString = jsonString.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+      const params = JSON.parse(jsonString);
+
+      let cleanedText = preprocessedText.replace(/generateCMA\s*\(\s*\{[\s\S]*?\}\s*\)/gi, '').trim();
+      cleanedText = (cleanedText.split(/\n\s*response\s*=/i)[0] ?? cleanedText).trim();
+
+      return {
+        type: "cma",
+        params,
+        cleanedText,
+      };
+    } catch (e) {
+      console.error("Failed to parse CMA params:", e);
+    }
+  }
+
+  // Pattern 4: searchListings({...}) - Find FIRST occurrence only
   const searchPattern = /searchListings\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
   const match = preprocessedText.match(searchPattern);
 
@@ -257,6 +280,40 @@ export async function executeMLSSearch(params: any): Promise<{
       success: false,
       listings: [],
       count: 0,
+    };
+  }
+}
+
+/**
+ * Execute CMA (Comparative Market Analysis) generation
+ */
+export async function executeCMA(params: any): Promise<{
+  success: boolean;
+  cma: any;
+  error?: string;
+}> {
+  try {
+    const response = await fetch("/api/ai/cma", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      throw new Error(`CMA generation failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      cma: data,
+    };
+  } catch (error: any) {
+    console.error("CMA generation error:", error);
+    return {
+      success: false,
+      cma: null,
+      error: error.message || "Failed to generate CMA",
     };
   }
 }

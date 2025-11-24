@@ -1,11 +1,12 @@
 // src/app/components/chat/ChatWidget.tsx
-// Main chat widget component with Groq integration
+// Main chat widget component with WebLLM integration
 
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { MessageCircle, X, Send, Loader2, AlertCircle } from "lucide-react";
 import { useChatContext } from "./ChatProvider";
+import { streamChatCompletion, isWebLLMReady } from "@/lib/webllm";
 import {
   buildSystemPrompt,
   buildConversationHistory,
@@ -16,6 +17,7 @@ import { getLocationWithCache } from "@/lib/geolocation";
 import ListingCarousel, { type Listing } from "./ListingCarousel";
 import MapView, { type MapLocation } from "./MapView";
 import { detectFunctionCall, executeMLSSearch, formatSearchResultsForAI } from "@/lib/ai-functions";
+import { InitProgressReport } from "@mlc-ai/web-llm";
 
 interface ChatWidgetProps {
   context: "homepage" | "listing" | "dashboard";
@@ -38,6 +40,8 @@ export default function ChatWidget({ context, listingData, className = "" }: Cha
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<string>("");
+  const [loadingProgress, setLoadingProgress] = useState<string>("");
+  const [loadingPercent, setLoadingPercent] = useState<number>(0);
   const [error, setError] = useState<string>("");
   const [userLocation, setUserLocation] = useState<{ city?: string; region?: string } | null>(null);
   const [enrichedMessages, setEnrichedMessages] = useState<ChatMessageWithComponents[]>([]);
@@ -131,29 +135,32 @@ Available parameters:
 
 IMPORTANT: Always call searchListings when users ask about properties!`;
 
-      // Prepare messages for Groq
+      // Prepare messages for WebLLM
       const llmMessages = [
         { role: "system", content: enhancedSystemPrompt },
         ...history,
       ];
 
-      // Call Groq API
-      const response = await fetch("/api/chat/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: llmMessages,
-          userId,
-          userTier: "free",
-        }),
-      });
+      // Stream response from WebLLM
+      let fullResponse = "";
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`);
+      const progressCallback = (report: InitProgressReport) => {
+        setLoadingProgress(report.text);
+        setLoadingPercent(Math.round(report.progress * 100));
+      };
+
+      for await (const chunk of streamChatCompletion(llmMessages, {
+        temperature: 0.7,
+        maxTokens: 500,
+        onProgress: progressCallback,
+      })) {
+        fullResponse += chunk;
+        // Update streaming message in real-time
+        setStreamingMessage(fullResponse);
       }
 
-      const data = await response.json();
-      const fullResponse = data.response;
+      // Clear streaming message
+      setStreamingMessage("");
 
       // Check if AI wants to call a function
       const functionCall = detectFunctionCall(fullResponse);
@@ -229,6 +236,8 @@ IMPORTANT: Always call searchListings when users ask about properties!`;
       setError(err.message || "Failed to generate response. Please try again.");
     } finally {
       setIsLoading(false);
+      setLoadingProgress("");
+      setLoadingPercent(0);
     }
   };
 
@@ -318,7 +327,10 @@ IMPORTANT: Always call searchListings when users ask about properties!`;
             <div className="max-w-[80%] px-4 py-2 rounded-lg bg-gray-800 text-gray-100 border border-gray-700">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
+                <span className="text-sm">
+                  {loadingProgress || "Thinking..."}
+                  {loadingPercent > 0 && ` (${loadingPercent}%)`}
+                </span>
               </div>
             </div>
           </div>
@@ -364,7 +376,7 @@ IMPORTANT: Always call searchListings when users ask about properties!`;
           </button>
         </div>
         <p className="mt-2 text-xs text-gray-500 text-center">
-          Powered by Groq AI
+          Powered by AI • Runs privately in your browser
         </p>
       </div>
     </div>

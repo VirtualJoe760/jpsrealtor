@@ -69,32 +69,6 @@ export function ChatProvider({ children, disableAutoLoad = false }: ChatProvider
     updateUserId();
   }, [session?.user?.email]); // Only depend on email, not whole session object
 
-  // Preload AI model in background on mount
-  useEffect(() => {
-    // Import dynamically to avoid blocking initial render
-    const preloadModel = async () => {
-      try {
-        // Check if WebGPU is supported before attempting to load WebLLM
-        if (typeof navigator !== 'undefined' && !('gpu' in navigator)) {
-          console.log("ℹ️ WebGPU not supported - skipping AI model preload (will use server-side AI)");
-          return;
-        }
-
-        const { initializeWebLLM } = await import("@/lib/webllm");
-        console.log("🚀 Starting background AI model preload...");
-        await initializeWebLLM();
-        console.log("✅ AI model preloaded and ready!");
-      } catch (error) {
-        console.warn("⚠️ AI model preload failed (will use server-side AI):", error);
-        // Fail silently - the app will fall back to server-side AI
-      }
-    };
-
-    // Start preloading after a short delay to not block initial page render
-    const timeoutId = setTimeout(preloadModel, 2000);
-    return () => clearTimeout(timeoutId);
-  }, []);
-
   // Load chat history from server when userId is available (unless disabled)
   useEffect(() => {
     if (!userId || isInitialized) return;
