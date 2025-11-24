@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/app/contexts/ThemeContext";
 
 // Chat Components
 import ListingCarousel, { type Listing } from "@/app/components/chat/ListingCarousel";
+import ChatMapView from "@/app/components/chat/ChatMapView";
 
 // CMA Components
 import PriceComparisonChart, { type ComparableProperty } from "@/app/components/cma/PriceComparisonChart";
@@ -242,17 +243,17 @@ export default function TestPage() {
           const formattedCity = cityData.listings.map((l: any) => ({
             id: l.listingKey || l.listingId,
             price: l.listPrice || 0,
-            beds: l.bedroomsTotal || l.bedsTotal || 0,
-            baths: l.bathroomsTotalDecimal || l.bathroomsTotalInteger || 0,
+            beds: l.beds || l.bedsTotal || l.bedroomsTotal || 0,
+            baths: l.baths || l.bathroomsTotalDecimal || l.bathroomsTotalInteger || 0,
             sqft: l.livingArea || 0,
-            city: l.city || "",
+            city: "La Quinta",
             address: l.address || "",
-            image: l.primaryPhotoUrl || "",
+            image: l.photoUrl || l.primaryPhotoUrl || "",
             subdivision: l.subdivisionName || "",
             type: l.propertySubType || l.propertyType || "",
             url: `/mls-listings/${l.slugAddress || l.slug}`,
-            latitude: l.latitude,
-            longitude: l.longitude,
+            latitude: l.coordinates?.latitude || l.latitude,
+            longitude: l.coordinates?.longitude || l.longitude,
             slug: l.slugAddress || l.slug,
             slugAddress: l.slugAddress || l.slug,
           }));
@@ -357,6 +358,19 @@ export default function TestPage() {
                                 />
                               </div>
                             </div>
+
+                            {/* Map View */}
+                            <div className="mt-6 flex justify-start">
+                              <div className="w-full">
+                                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Map View</h4>
+                                  <p className="text-xs text-gray-500">
+                                    Showing {subdivisionListings.length} properties on the map
+                                  </p>
+                                </div>
+                                <ChatMapView listings={subdivisionListings} />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -405,6 +419,19 @@ export default function TestPage() {
                                   listings={cityListings}
                                   title={`${cityListings.length} properties in La Quinta`}
                                 />
+                              </div>
+                            </div>
+
+                            {/* Map View */}
+                            <div className="mt-6 flex justify-start">
+                              <div className="w-full">
+                                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Map View</h4>
+                                  <p className="text-xs text-gray-500">
+                                    Showing {cityListings.length} properties on the map
+                                  </p>
+                                </div>
+                                <ChatMapView listings={cityListings} />
                               </div>
                             </div>
                           </div>
