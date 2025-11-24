@@ -211,8 +211,8 @@ export default function TestPage() {
       try {
         setChatLoading(true);
 
-        // Fetch subdivision listings (Palm Desert Country Club)
-        const subdivisionResponse = await fetch("/api/subdivisions/palm-desert-country-club/listings?limit=6");
+        // Fetch subdivision listings (Palm Desert Country Club) - Get ALL listings
+        const subdivisionResponse = await fetch("/api/subdivisions/palm-desert-country-club/listings?limit=100");
         if (subdivisionResponse.ok) {
           const subdivisionData = await subdivisionResponse.json();
           const formattedSubdivision = subdivisionData.listings.map((l: any) => ({
@@ -235,8 +235,8 @@ export default function TestPage() {
           setSubdivisionListings(formattedSubdivision);
         }
 
-        // Fetch city listings (La Quinta)
-        const cityResponse = await fetch("/api/cities/la-quinta/listings?limit=6");
+        // Fetch city listings (La Quinta) - Get ALL listings
+        const cityResponse = await fetch("/api/cities/la-quinta/listings?limit=100");
         if (cityResponse.ok) {
           const cityData = await cityResponse.json();
           const formattedCity = cityData.listings.map((l: any) => ({
