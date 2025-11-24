@@ -1,0 +1,175 @@
+{
+  "summary": {
+    "totalTests": 15,
+    "passedTests": 0,
+    "partialTests": 2,
+    "failedTests": 13,
+    "mapReadyCount": 1
+  },
+  "results": [
+    {
+      "city": "Palm Desert",
+      "results": [
+        {
+          "subdivision": "Sun City",
+          "slug": "sun-city",
+          "expected": 50,
+          "actual": 20,
+          "responseTime": 1673,
+          "functionCalls": [
+            "matchLocation",
+            "getSubdivisionListings"
+          ],
+          "mapReady": true,
+          "passed": false,
+          "checks": {
+            "hasResponse": true,
+            "hasListings": true,
+            "hasMetadata": true,
+            "hasFunctionCalls": true,
+            "listingsHaveCoordinates": true,
+            "matchesExpectedCount": false
+          }
+        },
+        {
+          "subdivision": "Palm Desert Country Club",
+          "slug": "palm-desert-country-club",
+          "expected": 22,
+          "actual": 83,
+          "responseTime": 28353,
+          "functionCalls": [
+            "matchLocation",
+            "searchListings"
+          ],
+          "mapReady": false,
+          "passed": false,
+          "checks": {
+            "hasResponse": true,
+            "hasListings": true,
+            "hasMetadata": true,
+            "hasFunctionCalls": true,
+            "listingsHaveCoordinates": false,
+            "matchesExpectedCount": false
+          }
+        },
+        {
+          "subdivision": "Palm Desert Resort Country Club",
+          "slug": "palm-desert-resort-country-club",
+          "expected": 20,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499997, Requested 2503. Please try again in 7m12s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "city": "Palm Springs",
+      "results": [
+        {
+          "subdivision": "Indian Canyons",
+          "slug": "indian-canyons",
+          "expected": 30,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499993, Requested 2502. Please try again in 7m11.135999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "Las Palmas",
+          "slug": "las-palmas",
+          "expected": 25,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499990, Requested 2500. Please try again in 7m10.272s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "Movie Colony",
+          "slug": "movie-colony",
+          "expected": 20,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499986, Requested 2500. Please try again in 7m9.5808s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "city": "La Quinta",
+      "results": [
+        {
+          "subdivision": "PGA West",
+          "slug": "pga-west",
+          "expected": 40,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499983, Requested 2500. Please try again in 7m9.062399999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "The Citrus",
+          "slug": "the-citrus",
+          "expected": 30,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499980, Requested 2501. Please try again in 7m8.7168s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "La Quinta Resort",
+          "slug": "la-quinta-resort",
+          "expected": 25,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499976, Requested 2501. Please try again in 7m8.0256s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "city": "Indian Wells",
+      "results": [
+        {
+          "subdivision": "Indian Wells Country Club",
+          "slug": "indian-wells-country-club",
+          "expected": 35,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499973, Requested 2502. Please try again in 7m7.68s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "Toscana Country Club",
+          "slug": "toscana-country-club",
+          "expected": 30,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499969, Requested 2501. Please try again in 7m6.816s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "Vintage Club",
+          "slug": "vintage-club",
+          "expected": 25,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499966, Requested 2500. Please try again in 7m6.1248s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "city": "Rancho Mirage",
+      "results": [
+        {
+          "subdivision": "Thunderbird Heights",
+          "slug": "thunderbird-heights",
+          "expected": 30,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499962, Requested 2502. Please try again in 7m5.7792s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "The Springs Country Club",
+          "slug": "the-springs-country-club",
+          "expected": 25,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499959, Requested 2503. Please try again in 7m5.4336s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        },
+        {
+          "subdivision": "Mission Hills Country Club",
+          "slug": "mission-hills-country-club",
+          "expected": 20,
+          "error": "HTTP 500: {\"error\":\"Failed to process chat request\",\"details\":\"Groq API error: 429 {\\\"error\\\":{\\\"message\\\":\\\"Rate limit reached for model `meta-llama/llama-4-scout-17b-16e-instruct` in organization `org_01kacd4x99e3vsvtnxnd4g028m` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499955, Requested 2503. Please try again in 7m4.7424s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\\\",\\\"type\\\":\\\"tokens\\\",\\\"code\\\":\\\"rate_limit_exceeded\\\"}}\"}",
+          "passed": false
+        }
+      ]
+    }
+  ],
+  "issuePatterns": {
+    "noCoordinates": 1,
+    "wrongFunction": 0,
+    "typeErrors": 0,
+    "noListings": 0
+  }
+}

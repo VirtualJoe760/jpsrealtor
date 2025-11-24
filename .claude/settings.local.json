@@ -40,7 +40,8 @@
       "Bash(timeout 10 npm run dev:*)",
       "Bash(echo:*)",
       "Bash(pkill:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(F:/web-clients/joseph-sardella/jpsrealtor/.env.local)"
     ],
     "deny": [],
     "ask": []

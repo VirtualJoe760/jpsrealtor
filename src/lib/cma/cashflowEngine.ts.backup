@@ -1,0 +1,144 @@
+// src/lib/cma/cashflowEngine.ts
+// Investment property cashflow analysis
+// Phase 3: Statistical Analysis & Investment Intelligence
+
+import type { CashflowResult } from './cmaTypes';
+
+/**
+ * Input parameters for cashflow calculation
+ */
+export interface CashflowInputs {
+  purchasePrice: number;
+  downPaymentPercent: number;
+  interestRate: number;
+  loanTermYears: number;
+  hoa?: number;
+  taxes?: number;
+  insurance?: number;
+  maintenancePercent?: number; // % of purchase price annually
+  rentEstimate?: number;
+}
+
+/**
+ * Calculate investment property cashflow analysis
+ * 
+ * @param inputs - Loan and property expense parameters
+ * @returns CashflowResult - Monthly expenses, NOI, cap rate, cash-on-cash return
+ * 
+ * TODO: Implement cashflow calculation
+ * - Calculate mortgage payment (P&I) using amortization formula
+ * - Estimate property taxes (annual tax / 12)
+ * - Estimate insurance (typically 0.5-1% of home value annually)
+ * - Calculate maintenance (1-2% of home value annually)
+ * - Estimate rental income (use market rent data or Zillow API)
+ * - Calculate NOI: Rent - (Taxes + Insurance + Maintenance + HOA)
+ * - Calculate Cap Rate: (Annual NOI / Purchase Price) * 100
+ * - Calculate Cash-on-Cash Return: (Annual Cash Flow / Total Cash Invested) * 100
+ * 
+ * TODO: Integration with existing MortgageCalculator component
+ * - Reuse mortgage calculation logic from src/app/components/mls/map/MortgageCalculator.tsx
+ * - Extract calculation into shared utility function
+ * 
+ * Investment Metrics:
+ * - Cap Rate: Good = 4-10% (higher in secondary markets)
+ * - Cash-on-Cash: Good = 8-12%
+ * - 1% Rule: Monthly rent ≥ 1% of purchase price
+ * - DSCR (Debt Service Coverage Ratio): NOI / Annual Debt Service (good ≥ 1.25)
+ */
+export function calculateCashflow(inputs: CashflowInputs): CashflowResult {
+  // Placeholder: Return null results
+  // Real implementation will calculate all cashflow metrics
+  console.log('💰 calculateCashflow called');
+  console.log('💰 Purchase Price:', inputs.purchasePrice);
+  console.log('💰 Down Payment:', inputs.downPaymentPercent + '%');
+  console.log('💰 Interest Rate:', inputs.interestRate + '%');
+  
+  return {
+    mortgage: null, // Monthly P&I payment
+    taxes: null, // Monthly property taxes
+    hoa: null, // Monthly HOA fees
+    insurance: null, // Monthly insurance
+    maintenance: null, // Monthly maintenance estimate
+    rentEstimate: null, // Estimated monthly rent
+    noi: null, // Net Operating Income (monthly)
+    capRate: null, // Capitalization rate (%)
+    cocReturn: null, // Cash-on-cash return (%)
+  };
+}
+
+/**
+ * Calculate monthly mortgage payment (Principal + Interest)
+ * 
+ * Formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
+ * Where:
+ * - M = Monthly payment
+ * - P = Principal (loan amount)
+ * - r = Monthly interest rate (annual rate / 12)
+ * - n = Number of payments (years * 12)
+ * 
+ * @param principal - Loan amount
+ * @param annualRate - Annual interest rate (as percentage, e.g., 6.5)
+ * @param years - Loan term in years
+ * @returns number - Monthly payment
+ */
+export function calculateMortgagePayment(
+  principal: number,
+  annualRate: number,
+  years: number
+): number {
+  // Placeholder: Return 0
+  // Real implementation will use mortgage amortization formula
+  console.log('💰 calculateMortgagePayment called');
+  return 0;
+}
+
+/**
+ * Estimate monthly property taxes
+ * 
+ * @param purchasePrice - Property purchase price
+ * @param taxRate - Annual property tax rate (as percentage, e.g., 1.25)
+ * @returns number - Monthly property tax
+ */
+export function estimatePropertyTaxes(
+  purchasePrice: number,
+  taxRate: number = 1.25
+): number {
+  // Placeholder: Return 0
+  // Real implementation: (purchasePrice * (taxRate / 100)) / 12
+  console.log('💰 estimatePropertyTaxes called');
+  return 0;
+}
+
+/**
+ * Estimate monthly insurance
+ * 
+ * @param purchasePrice - Property purchase price
+ * @param insuranceRate - Annual insurance rate (as percentage, default: 0.5%)
+ * @returns number - Monthly insurance cost
+ */
+export function estimateInsurance(
+  purchasePrice: number,
+  insuranceRate: number = 0.5
+): number {
+  // Placeholder: Return 0
+  // Real implementation: (purchasePrice * (insuranceRate / 100)) / 12
+  console.log('💰 estimateInsurance called');
+  return 0;
+}
+
+/**
+ * Estimate monthly maintenance
+ * 
+ * @param purchasePrice - Property purchase price
+ * @param maintenanceRate - Annual maintenance rate (as percentage, default: 1%)
+ * @returns number - Monthly maintenance estimate
+ */
+export function estimateMaintenance(
+  purchasePrice: number,
+  maintenanceRate: number = 1.0
+): number {
+  // Placeholder: Return 0
+  // Real implementation: (purchasePrice * (maintenanceRate / 100)) / 12
+  console.log('💰 estimateMaintenance called');
+  return 0;
+}

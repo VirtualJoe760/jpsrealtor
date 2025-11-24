@@ -1,0 +1,13 @@
+
+> jpsrealtor-cms@1.0.0 build
+> cross-env NODE_OPTIONS=--no-deprecation next build
+
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbopack'
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 15.2.3
+   - Environments: .env
+   - Experiments (use with caution):
+     ⨯ reactCompiler
+
+   Creating an optimized production build ...

@@ -1,0 +1,646 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-22",
+  "description": "AI Console Configuration - Knowledge base for JPSRealtor AI assistant",
+
+  "searchPriority": {
+    "description": "Search hierarchy from most specific to least specific",
+    "hierarchy": [
+      {
+        "priority": 1,
+        "type": "subdivision",
+        "description": "Most specific - search within a specific community/subdivision",
+        "characteristics": [
+          "Returns all listings in that subdivision (no limit)",
+          "Most relevant for community-specific questions",
+          "Handles disambiguation for duplicate subdivision names",
+          "Examples: 'Palm Desert Country Club', 'Indian Wells Country Club', 'PGA West'"
+        ],
+        "apiRoute": "/api/chat/search-listings",
+        "parameters": {
+          "subdivisions": ["Subdivision Name"],
+          "propertyTypes": ["Single Family Residence", "Detached"],
+          "minBeds": 3,
+          "maxBeds": 5,
+          "minPrice": 200000,
+          "maxPrice": 1000000,
+          "hasPool": true,
+          "hasView": true,
+          "minSqft": 1500,
+          "maxSqft": 5000
+        },
+        "notes": "Use matchLocation() first to get exact subdivision name and handle disambiguation"
+      },
+      {
+        "priority": 2,
+        "type": "city",
+        "description": "Medium specificity - search within a city boundary",
+        "characteristics": [
+          "Returns all listings in that city (no limit)",
+          "Good for city-wide market analysis",
+          "Can combine with property type and other filters",
+          "Examples: 'Palm Desert', 'Indian Wells', 'Corona'"
+        ],
+        "apiRoute": "/api/chat/search-listings",
+        "parameters": {
+          "cities": ["City Name"],
+          "propertyTypes": ["Single Family Residence"],
+          "minBeds": 2,
+          "maxPrice": 800000
+        },
+        "notes": "If user says just a city name, use matchLocation() to confirm and then search"
+      },
+      {
+        "priority": 3,
+        "type": "county",
+        "description": "Lowest specificity - search within county boundaries",
+        "characteristics": [
+          "Limited to 100 results (performance constraint)",
+          "Best for high-level market trends",
+          "Should show 'View on Full Map' option for complete results",
+          "Examples: 'Riverside County', 'San Diego County', 'Orange County'"
+        ],
+        "apiRoute": "/api/chat/search-listings",
+        "parameters": {
+          "cities": ["City1", "City2", "City3"],
+          "limit": 100
+        },
+        "notes": "County searches return top 100 results. Inform user to use map view for complete results"
+      }
+    ],
+    "matchLocationFirst": {
+      "rule": "ALWAYS call matchLocation() BEFORE searchListings() when user mentions a location",
+      "apiRoute": "/api/chat/match-location",
+      "purpose": "Intelligently identifies subdivision vs city vs county and handles disambiguation",
+      "parameters": {
+        "query": "user's location query (e.g., 'palm desert country club')"
+      },
+      "response": {
+        "type": "subdivision | city | county",
+        "name": "Exact matched name from database",
+        "searchParams": "Ready-to-use parameters for searchListings()",
+        "needsDisambiguation": "Boolean - true if multiple matches found",
+        "options": "Array of options if disambiguation needed"
+      }
+    }
+  },
+
+  "apiRoutes": {
+    "description": "Complete mapping of AI functions to API endpoints",
+    "routes": [
+      {
+        "function": "matchLocation({query: '...'})",
+        "endpoint": "/api/chat/match-location",
+        "method": "POST",
+        "purpose": "Match user's location query to subdivision, city, or county",
+        "parameters": {
+          "query": "string - user's location query"
+        },
+        "returns": {
+          "type": "subdivision | city | county | null",
+          "name": "string - matched location name",
+          "searchParams": "object - ready for searchListings()",
+          "needsDisambiguation": "boolean",
+          "options": "array - if disambiguation needed"
+        },
+        "examples": [
+          "matchLocation({query: 'palm desert country club'})",
+          "matchLocation({query: 'sun city'}) // may need disambiguation",
+          "matchLocation({query: 'corona'})"
+        ]
+      },
+      {
+        "function": "searchListings({...})",
+        "endpoint": "/api/chat/search-listings",
+        "method": "POST",
+        "purpose": "Search MLS listings with filters",
+        "parameters": {
+          "cities": "string[] - array of city names",
+          "subdivisions": "string[] - array of subdivision names (exact from matchLocation)",
+          "propertyTypes": "string[] - ['Single Family Residence', 'Condominium', 'Townhouse', etc.]",
+          "minBeds": "number",
+          "maxBeds": "number",
+          "minBaths": "number",
+          "maxBaths": "number",
+          "minPrice": "number",
+          "maxPrice": "number",
+          "minSqft": "number",
+          "maxSqft": "number",
+          "hasPool": "boolean",
+          "hasView": "boolean",
+          "hasSpa": "boolean",
+          "minGarages": "number",
+          "limit": "number - max results (default: no limit, use for county searches)"
+        },
+        "returns": {
+          "success": "boolean",
+          "listings": "array - matched properties",
+          "count": "number",
+          "message": "string"
+        },
+        "examples": [
+          "searchListings({subdivisions: ['Indian Wells Country Club'], propertyTypes: ['Single Family Residence'], minBeds: 3})",
+          "searchListings({cities: ['Palm Desert'], minBeds: 2, maxPrice: 500000})",
+          "searchListings({cities: ['Corona', 'Norco', 'Eastvale'], limit: 100})"
+        ]
+      },
+      {
+        "function": "researchCommunity({...})",
+        "endpoint": "/api/chat/research-community",
+        "method": "POST",
+        "purpose": "Auto-discover and record community facts from current MLS data",
+        "parameters": {
+          "question": "string - user's specific question",
+          "subdivisionName": "string - exact subdivision name",
+          "city": "string - city name (for context)"
+        },
+        "returns": {
+          "success": "boolean",
+          "answer": "string - formatted answer to user's question",
+          "confidence": "high | medium | low",
+          "dataPoints": "number - how many listings analyzed",
+          "recorded": "boolean - whether fact was recorded in database"
+        },
+        "supportedQuestions": [
+          "HOA fee ranges and counts",
+          "Year built ranges",
+          "Price ranges (current market)",
+          "Property type breakdowns",
+          "Square footage ranges",
+          "Total home counts",
+          "Amenity prevalence (pool, spa, etc.)"
+        ],
+        "examples": [
+          "researchCommunity({question: 'How many different HOAs exist in Indian Wells Country Club?', subdivisionName: 'Indian Wells Country Club', city: 'Indian Wells'})",
+          "researchCommunity({question: 'What year were homes built in PGA West?', subdivisionName: 'PGA West', city: 'La Quinta'})"
+        ]
+      },
+      {
+        "function": "generateCMA({listingKey: '...'})",
+        "endpoint": "/api/cma/generate",
+        "method": "POST",
+        "purpose": "Generate Comparative Market Analysis for a property",
+        "parameters": {
+          "listingKey": "string - MLS listing key",
+          "filters": {
+            "radius": "number - search radius in miles (default: 2)",
+            "timeframe": "number - months of data (default: 6)",
+            "minBeds": "number",
+            "maxBeds": "number",
+            "minSqft": "number",
+            "maxSqft": "number",
+            "requirePool": "boolean",
+            "maxComps": "number - max comparables (default: 10)"
+          }
+        },
+        "returns": {
+          "success": "boolean",
+          "data": {
+            "subjectProperty": "object - property being analyzed",
+            "comparableProperties": "array - similar properties",
+            "marketStatistics": "object - market metrics",
+            "estimatedValue": "number",
+            "estimatedValueLow": "number",
+            "estimatedValueHigh": "number"
+          }
+        },
+        "examples": [
+          "generateCMA({listingKey: 'ABC123', filters: {radius: 3, maxComps: 15}})"
+        ]
+      },
+      {
+        "function": "GET /api/subdivisions/[slug]/listings",
+        "endpoint": "/api/subdivisions/[slug]/listings",
+        "method": "GET",
+        "purpose": "Get all listings in a specific subdivision with filtering options",
+        "parameters": {
+          "slug": "string - subdivision slug (URL-safe name)",
+          "limit": "number - results per page (default: 20)",
+          "page": "number - page number (default: 1)",
+          "minPrice": "number - minimum listing price",
+          "maxPrice": "number - maximum listing price",
+          "beds": "number - minimum bedrooms",
+          "baths": "number - minimum bathrooms"
+        },
+        "returns": {
+          "listings": "array - subdivision listings",
+          "pagination": {
+            "total": "number - total listings",
+            "page": "number - current page",
+            "limit": "number - results per page"
+          }
+        },
+        "examples": [
+          "GET /api/subdivisions/indian-wells-country-club/listings?minPrice=500000&beds=3"
+        ],
+        "notes": "Use this to get detailed listings for a specific subdivision. The slug comes from matchLocation() or subdivision database."
+      },
+      {
+        "function": "GET /api/cities/[cityId]/subdivisions",
+        "endpoint": "/api/cities/[cityId]/subdivisions",
+        "method": "GET",
+        "purpose": "Get all subdivisions/communities within a city",
+        "parameters": {
+          "cityId": "string - city slug (e.g., 'palm-desert', 'indian-wells')"
+        },
+        "returns": {
+          "subdivisions": "array - list of subdivisions with name, slug, listingCount, avgPrice, priceRange",
+          "noSubdivisionCount": "number - listings not in any subdivision",
+          "city": "string - city name"
+        },
+        "examples": [
+          "GET /api/cities/palm-desert/subdivisions",
+          "GET /api/cities/corona/subdivisions"
+        ],
+        "notes": "Use this when user asks about communities/subdivisions in a city. Returns comprehensive list."
+      },
+      {
+        "function": "GET /api/cities/[cityId]/listings",
+        "endpoint": "/api/cities/[cityId]/listings",
+        "method": "GET",
+        "purpose": "Get all listings in a specific city",
+        "parameters": {
+          "cityId": "string - city slug",
+          "limit": "number - results limit",
+          "minPrice": "number",
+          "maxPrice": "number",
+          "beds": "number",
+          "baths": "number"
+        },
+        "returns": {
+          "listings": "array - city listings",
+          "count": "number"
+        },
+        "examples": [
+          "GET /api/cities/palm-desert/listings?beds=3&maxPrice=600000"
+        ]
+      },
+      {
+        "function": "GET /api/cities/[cityId]/stats",
+        "endpoint": "/api/cities/[cityId]/stats",
+        "method": "GET",
+        "purpose": "Get market statistics for a city",
+        "parameters": {
+          "cityId": "string - city slug"
+        },
+        "returns": {
+          "medianPrice": "number",
+          "avgPrice": "number",
+          "totalListings": "number",
+          "avgDaysOnMarket": "number",
+          "pricePerSqFt": "number"
+        },
+        "examples": [
+          "GET /api/cities/palm-desert/stats"
+        ],
+        "notes": "Use when user asks about market conditions, average prices, or stats for a city"
+      },
+      {
+        "function": "GET /api/subdivisions/[slug]/stats",
+        "endpoint": "/api/subdivisions/[slug]/stats",
+        "method": "GET",
+        "purpose": "Get market statistics for a subdivision",
+        "parameters": {
+          "slug": "string - subdivision slug"
+        },
+        "returns": {
+          "medianPrice": "number",
+          "avgPrice": "number",
+          "totalListings": "number",
+          "avgDaysOnMarket": "number",
+          "pricePerSqFt": "number",
+          "hoaRange": "object - {min, max, avg}"
+        },
+        "examples": [
+          "GET /api/subdivisions/pga-west/stats"
+        ],
+        "notes": "Use when user asks about market stats for a specific subdivision"
+      },
+      {
+        "function": "GET /api/cities/[cityId]/hoa",
+        "endpoint": "/api/cities/[cityId]/hoa",
+        "method": "GET",
+        "purpose": "Get HOA fee statistics for a city",
+        "parameters": {
+          "cityId": "string - city slug"
+        },
+        "returns": {
+          "avgHOA": "number",
+          "minHOA": "number",
+          "maxHOA": "number",
+          "listingsWithHOA": "number"
+        },
+        "examples": [
+          "GET /api/cities/indian-wells/hoa"
+        ],
+        "notes": "Use when user asks about HOA fees in a city"
+      }
+    ]
+  },
+
+  "cmaCalculations": {
+    "description": "Formulas and methods for Comparative Market Analysis",
+    "scripts": {
+      "generator": "/api/cma/generate",
+      "calculator": "src/utils/cma/calculator.ts",
+      "chartData": "src/utils/cma/chartData.ts"
+    },
+    "formulas": {
+      "pricePerSqFt": {
+        "formula": "price / squareFeet",
+        "description": "Calculate price per square foot",
+        "usage": "Primary metric for property value estimation"
+      },
+      "similarityScore": {
+        "formula": "100 - penalties",
+        "penalties": {
+          "priceDiff": "max -30 points for price variance",
+          "sqftDiff": "max -20 points for square footage variance",
+          "bedDiff": "max -15 points for bedroom count difference",
+          "bathDiff": "max -15 points for bathroom count difference",
+          "yearDiff": "max -10 points for year built difference",
+          "distance": "max -10 points for distance from subject"
+        },
+        "description": "0-100 score indicating how similar a comparable is to subject property"
+      },
+      "haversineDistance": {
+        "formula": "2 * R * arcsin(sqrt(sin²(Δlat/2) + cos(lat1) * cos(lat2) * sin²(Δlon/2)))",
+        "R": "3959 miles (Earth's radius)",
+        "description": "Calculate distance between two coordinates in miles",
+        "usage": "Filter comparables by radius"
+      },
+      "estimatedValue": {
+        "method": "pricePerSqFt",
+        "formula": "avgPricePerSqFt * subjectSqFt",
+        "fallback": "weightedAverage using similarity scores",
+        "description": "Primary method uses price/sqft from comparables, fallback uses weighted average"
+      },
+      "valueLow": {
+        "formula": "min(compPricesPerSqFt) * subjectSqFt",
+        "description": "Conservative estimate using lowest comp price/sqft"
+      },
+      "valueHigh": {
+        "formula": "max(compPricesPerSqFt) * subjectSqFt",
+        "description": "Optimistic estimate using highest comp price/sqft"
+      },
+      "listToSoldRatio": {
+        "formula": "(avgSoldPrice / avgListPrice) * 100",
+        "description": "Percentage showing how close sold prices are to list prices"
+      }
+    },
+    "marketStatistics": {
+      "averageListPrice": "mean of all comparable list prices",
+      "medianListPrice": "median of all comparable list prices",
+      "averageSoldPrice": "mean of sold comparable prices",
+      "medianSoldPrice": "median of sold comparable prices",
+      "averageDaysOnMarket": "mean days properties stayed on market",
+      "averagePricePerSqFt": "mean price per square foot across comparables",
+      "listToSoldRatio": "percentage of list price achieved in sales"
+    },
+    "filteringLogic": {
+      "radius": "2 miles default, uses haversine distance",
+      "timeframe": "6 months default for sold properties",
+      "status": "Active OR Closed (within timeframe)",
+      "beds": "optional min/max filter",
+      "baths": "optional min/max filter",
+      "sqft": "optional min/max filter (typically ±400 sqft from subject)",
+      "pool": "optional boolean match",
+      "maxComps": "10 default, sorted by similarity score"
+    }
+  },
+
+  "marketAppreciation": {
+    "description": "Methods for calculating market appreciation and trends",
+    "calculations": {
+      "annualAppreciation": {
+        "formula": "((currentPrice - priorPrice) / priorPrice) * 100",
+        "description": "Year-over-year price appreciation percentage"
+      },
+      "compoundAnnualGrowthRate": {
+        "formula": "((endValue / beginValue) ^ (1 / years)) - 1) * 100",
+        "description": "CAGR for multi-year appreciation",
+        "usage": "Calculate 5-year or 10-year appreciation trends"
+      },
+      "medianPriceTrend": {
+        "method": "timeSeries",
+        "description": "Track median prices over time periods (monthly, quarterly, annually)",
+        "dataSource": "Historical sold prices from MLS"
+      },
+      "pricePerSqFtTrend": {
+        "method": "timeSeries",
+        "description": "Track $/sqft over time to normalize for property size differences",
+        "usage": "More accurate than raw prices when comparing different property sizes"
+      },
+      "inventoryTrend": {
+        "metric": "monthsOfInventory",
+        "formula": "activeListings / averageMonthlySales",
+        "interpretation": {
+          "lessThan3": "Seller's market (high demand)",
+          "3to6": "Balanced market",
+          "moreThan6": "Buyer's market (high supply)"
+        }
+      },
+      "absorptionRate": {
+        "formula": "(soldListings / activeListings) * 100",
+        "description": "Percentage of inventory sold per period",
+        "usage": "Measure market velocity"
+      }
+    },
+    "dataSources": {
+      "historical": "MLS sold listings with closeDate",
+      "current": "Active MLS listings",
+      "timeframes": ["1 month", "3 months", "6 months", "1 year", "5 years"]
+    },
+    "notes": "Price trends endpoint not yet implemented. Future: /api/market/trends"
+  },
+
+  "investmentCalculations": {
+    "description": "Real estate investment analysis formulas",
+    "formulas": {
+      "capRate": {
+        "formula": "(annualNOI / propertyValue) * 100",
+        "variables": {
+          "annualNOI": "Annual Net Operating Income (rental income - operating expenses)",
+          "propertyValue": "Purchase price or current market value"
+        },
+        "description": "Capitalization Rate - measures property's return on investment",
+        "goodRange": "4-10% depending on market and risk"
+      },
+      "cashOnCashReturn": {
+        "formula": "(annualCashFlow / cashInvested) * 100",
+        "variables": {
+          "annualCashFlow": "Annual income after all expenses and debt service",
+          "cashInvested": "Down payment + closing costs + repairs"
+        },
+        "description": "Return on actual cash invested",
+        "goodRange": "8-12%"
+      },
+      "onePercentRule": {
+        "formula": "monthlyRent >= (purchasePrice * 0.01)",
+        "description": "Quick screening: monthly rent should be ≥ 1% of purchase price",
+        "usage": "Fast way to identify potentially good rental properties"
+      },
+      "grossRentMultiplier": {
+        "formula": "propertyPrice / annualGrossRent",
+        "description": "How many years of rent to recover purchase price",
+        "goodRange": "4-7 (lower is better)"
+      },
+      "debtServiceCoverageRatio": {
+        "formula": "annualNOI / annualDebtService",
+        "description": "DSCR - lender qualification metric",
+        "minimumForLending": "1.25 (125%)"
+      },
+      "breakEvenRatio": {
+        "formula": "(operatingExpenses + debtService) / grossOperatingIncome",
+        "description": "Percentage of income needed to cover expenses",
+        "goodRange": "Below 85%"
+      }
+    },
+    "usage": "AI can calculate these when user asks about investment properties or rental analysis"
+  },
+
+  "propertyTypes": {
+    "description": "Standard property type classifications in MLS",
+    "types": {
+      "singleFamily": ["Single Family Residence", "Detached"],
+      "condo": ["Condominium", "Attached"],
+      "townhouse": ["Townhouse"],
+      "multiFamily": ["Multi-Family", "Duplex", "Triplex", "Fourplex"],
+      "land": ["Land", "Lot"],
+      "commercial": ["Commercial"],
+      "manufactured": ["Manufactured", "Mobile Home"]
+    },
+    "filteringRules": {
+      "userSays": "property type to use in searchListings()",
+      "singleFamily": "propertyTypes: ['Single Family Residence', 'Detached']",
+      "condo": "propertyTypes: ['Condominium', 'Attached']",
+      "townhouse": "propertyTypes: ['Townhouse']",
+      "notSpecified": "include all types (no propertyTypes filter)"
+    }
+  },
+
+  "responseGuidelines": {
+    "description": "How AI should format and present responses",
+    "conversationFirst": {
+      "rule": "Have a CONVERSATION before searching",
+      "whenToTalk": [
+        "User asks about neighborhoods/communities/areas",
+        "User mentions needs (family, budget, lifestyle)",
+        "User is exploring options",
+        "User asks about amenities or features"
+      ],
+      "whenToSearch": [
+        "User explicitly asks to see homes",
+        "User provides specific criteria (beds, price, location)",
+        "User says 'show me', 'find me', 'search for'",
+        "User confirms readiness after conversation"
+      ]
+    },
+    "afterSearch": {
+      "responseLength": "1 sentence maximum",
+      "avoidRedundancy": "DON'T describe what's already in carousel",
+      "example": "Found 10 family-friendly homes in Indian Wells.",
+      "notThis": "I found 4 homes... Note: 3/3 means 3 bedrooms and 3 bathrooms..."
+    },
+    "cmaReports": {
+      "format": "Professional, detailed analysis",
+      "sections": ["Value Estimate", "Market Statistics", "Comparable Properties", "Price Trends"],
+      "tone": "Authoritative but accessible"
+    },
+    "investmentAnalysis": {
+      "showFormulas": true,
+      "explainTerms": true,
+      "includeWarnings": "Real estate investments carry risk, consult with financial advisor",
+      "format": "Clear breakdown of all calculations"
+    },
+    "unknownData": {
+      "rule": "NEVER make up numbers or facts",
+      "response": "I don't have current data on [specific detail] for [Community]. I'd recommend contacting the HOA/city directly.",
+      "thenOffer": "Would you like me to search for available homes in [Community] instead?"
+    }
+  },
+
+  "errorHandling": {
+    "noLocationMatch": {
+      "response": "I couldn't find that location. Could you clarify? Did you mean [similar location]?",
+      "action": "Offer suggestions based on partial matches"
+    },
+    "noListingsFound": {
+      "response": "No listings match those exact criteria. Would you like me to adjust the filters?",
+      "suggestions": [
+        "Expand price range",
+        "Reduce bedroom requirement",
+        "Search nearby cities",
+        "Remove specific filters (pool, view, etc.)"
+      ]
+    },
+    "disambiguation": {
+      "response": "I found [N] communities with that name. Which one?",
+      "format": "Numbered list with city context",
+      "example": "1. Sun City (Palm Desert) - 45 homes\n2. Sun City (Indio) - 23 homes"
+    },
+    "apiError": {
+      "response": "I'm having trouble searching right now. Please try again in a moment.",
+      "logError": true,
+      "fallback": "Offer to help with other questions"
+    }
+  },
+
+  "dataModels": {
+    "description": "Database collections and their purposes",
+    "collections": {
+      "listings": {
+        "description": "GPS MLS listings collection",
+        "mlsSource": "GPS",
+        "count": "~3,313 active listings"
+      },
+      "crmls_listings": {
+        "description": "CRMLS listings collection",
+        "mlsSource": "CRMLS",
+        "count": "~30,760 active listings"
+      },
+      "subdivisions": {
+        "description": "Subdivision/community master data",
+        "fields": ["name", "slug", "city", "county", "description", "amenities", "hoaFees"]
+      },
+      "community_facts": {
+        "description": "Auto-discovered facts about communities",
+        "fields": ["subdivisionName", "city", "factType", "value", "confidence", "sourceCount"]
+      },
+      "cities": {
+        "description": "City master data",
+        "fields": ["name", "county", "population", "medianHomePrice", "description"]
+      }
+    }
+  },
+
+  "performanceOptimizations": {
+    "description": "Performance rules and constraints",
+    "limits": {
+      "subdivisionSearch": "No limit - return all",
+      "citySearch": "No limit - return all",
+      "countySearch": "100 results max (inform user to use map for complete results)"
+    },
+    "caching": {
+      "listingData": "Not cached (real-time MLS data)",
+      "subdivisionList": "Can cache (rarely changes)",
+      "cityList": "Can cache (static data)"
+    },
+    "databaseIndexes": {
+      "required": [
+        "latitude/longitude (for geo queries)",
+        "city (for city searches)",
+        "subdivision (for subdivision searches)",
+        "standardStatus (for active/sold filtering)"
+      ]
+    }
+  },
+
+  "integrationNotes": {
+    "systemPrompt": "This config should be injected into /api/chat/stream system prompt",
+    "usage": "AI checks this config before executing any function calls",
+    "updates": "Update this file when adding new API routes, formulas, or search capabilities",
+    "validation": "AI should validate parameters against this schema before making API calls"
+  }
+}

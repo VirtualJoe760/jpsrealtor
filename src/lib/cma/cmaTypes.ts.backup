@@ -1,0 +1,82 @@
+// src/lib/cma/cmaTypes.ts
+// Type definitions for CMA (Comparative Market Analysis) Engine
+// Phase 3: Statistical Analysis & Investment Intelligence
+
+/**
+ * Input filters for CMA comp selection
+ */
+export interface CMAFilters {
+  subjectPropertyId?: string;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  radiusMiles?: number;
+  maxComps?: number;
+}
+
+/**
+ * Comparable property data structure
+ */
+export interface CMAComp {
+  listingKey: string;
+  price: number;
+  sqft: number;
+  beds: number;
+  baths: number;
+  yearBuilt?: number;
+  lat: number;
+  lng: number;
+  listPrice: number;
+  closePrice?: number;
+  listPriceSqft?: number;
+  closePriceSqft?: number;
+  dom?: number; // Days on market
+  subdivision?: string;
+  unparsedAddress?: string;
+}
+
+/**
+ * CMA valuation summary with statistical confidence
+ */
+export interface CMASummary {
+  estimatedValue: number | null;
+  lowRange: number | null;
+  highRange: number | null;
+  confidenceScore: number | null; // 0-1 confidence level
+  methodology: string[]; // List of methods used (e.g., ["mean", "median", "weighted"])
+}
+
+/**
+ * Historical appreciation analysis results
+ */
+export interface AppreciationResult {
+  cagr5: number | null; // 5-year compound annual growth rate
+  yoy: Record<string, number>; // Year-over-year appreciation by year
+  volatilityIndex: number | null; // Market stability indicator (0-1)
+}
+
+/**
+ * Cashflow analysis for investment properties
+ */
+export interface CashflowResult {
+  mortgage: number | null; // Monthly mortgage payment
+  taxes: number | null; // Monthly property taxes
+  hoa: number | null; // Monthly HOA fees
+  insurance: number | null; // Monthly insurance
+  maintenance: number | null; // Monthly maintenance estimate
+  rentEstimate: number | null; // Estimated monthly rent
+  noi: number | null; // Net Operating Income (monthly)
+  capRate: number | null; // Capitalization rate (%)
+  cocReturn: number | null; // Cash-on-cash return (%)
+}
+
+/**
+ * Complete CMA report structure
+ */
+export interface CMAReport {
+  summary: CMASummary;
+  comps: CMAComp[];
+  appreciation: AppreciationResult;
+  cashflow: CashflowResult;
+  generatedAt: string; // ISO 8601 timestamp
+}

@@ -1,0 +1,278 @@
+// src/app/api/chat/stream/route.ts
+// Groq-powered AI chat with function calling for real estate assistance
+
+import { NextRequest, NextResponse } from "next/server";
+import { logChatMessage } from "@/lib/chat-logger";
+import { createChatCompletion, GROQ_MODELS } from "@/lib/groq";
+import type { GroqChatMessage } from "@/lib/groq";
+import { GROQ_FUNCTIONS } from "@/lib/groq-functions";
+import {
+  executeFunctionCall,
+  formatFunctionResultsForAI,
+} from "@/lib/function-executor";
+
+const MAX_FUNCTION_ITERATIONS = 5; // Prevent infinite loops
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { messages, userId, userTier = "free" } = body;
+
+    if (!messages || !Array.isArray(messages) || !userId) {
+      return NextResponse.json(
+        { error: "Missing required fields: messages (array) and userId" },
+        { status: 400 }
+      );
+    }
+
+    // Check if Groq API key is configured
+    if (
+      !process.env.GROQ_API_KEY ||
+      process.env.GROQ_API_KEY === "your_groq_api_key_here"
+    ) {
+      console.error("⚠️  GROQ_API_KEY is not configured!");
+      return NextResponse.json(
+        {
+          error:
+            "AI service not configured. Please add GROQ_API_KEY to your environment variables.",
+          details: "Get your API key from https://console.groq.com/",
+        },
+        { status: 500 }
+      );
+    }
+
+    const startTime = Date.now();
+
+    // Determine which model to use based on tier
+    const model =
+      userTier === "premium" ? GROQ_MODELS.PREMIUM : GROQ_MODELS.FREE;
+
+    // Log API request
+    await logChatMessage(
+      "system",
+      `Groq chat request with function calling (${model})`,
+      userId,
+      {
+        messageCount: messages.length,
+        userTier,
+        timestamp: new Date().toISOString(),
+      }
+    );
+
+    // Build simplified system prompt (functions handle complexity now)
+    const systemPrompt = buildSystemPrompt();
+
+    // Convert messages to Groq format
+    const groqMessages: GroqChatMessage[] = [];
+
+    // Add system prompt
+    groqMessages.push({
+      role: "system",
+      content: systemPrompt,
+    });
+
+    // Keep only the last 2 messages to reduce latency and token usage
+    // This speeds up API calls while maintaining enough context for single queries
+    const recentMessages = messages.slice(-2);
+
+    // Add user messages
+    groqMessages.push(
+      ...recentMessages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+      }))
+    );
+
+    let iterations = 0;
+    let finalResponse = "";
+    const functionCallsMade: any[] = [];
+
+    // Agent loop: AI → Function Calls → Results → AI → repeat until final answer
+    while (iterations < MAX_FUNCTION_ITERATIONS) {
+      iterations++;
+
+      console.log(`🔄 Function calling iteration ${iterations}/${MAX_FUNCTION_ITERATIONS}`);
+
+      // Get AI response with function calling enabled
+      const completion = await createChatCompletion({
+        messages: groqMessages,
+        model,
+        temperature: 0.3,
+        maxTokens: 500, // Reduced from 1000 for faster responses
+        stream: false,
+        tools: GROQ_FUNCTIONS,
+        tool_choice: "auto",
+      });
+
+      if (!("choices" in completion)) {
+        throw new Error("Invalid response from Groq");
+      }
+
+      const choice = completion.choices[0];
+      const message = choice.message;
+
+      // Check if AI wants to call functions
+      if (message.tool_calls && message.tool_calls.length > 0) {
+        console.log(
+          `🔧 AI requested ${message.tool_calls.length} function call(s)`
+        );
+
+        // Add assistant message with tool calls to history
+        groqMessages.push({
+          role: "assistant",
+          content: message.content,
+          tool_calls: message.tool_calls,
+        });
+
+        // Execute each function call
+        for (const toolCall of message.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = toolCall.function.arguments;
+
+          console.log(`📞 Calling function: ${functionName}`, functionArgs);
+
+          // Execute the function
+          const result = await executeFunctionCall({
+            name: functionName,
+            arguments: functionArgs,
+          });
+
+          // Track function calls for response metadata
+          functionCallsMade.push({
+            function: functionName,
+            arguments: JSON.parse(functionArgs),
+            result: result.success ? "success" : "error",
+            data: result.data,
+          });
+
+          // Format result for AI
+          const formattedResult = formatFunctionResultsForAI(
+            functionName,
+            result
+          );
+
+          // Add function result to conversation
+          groqMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            name: functionName,
+            content: formattedResult,
+          });
+
+          console.log(`✅ Function ${functionName} result added to conversation`);
+        }
+
+        // Continue loop to let AI process the function results
+        continue;
+      }
+
+      // No more function calls - AI has final response
+      finalResponse = message.content || "";
+      console.log(`✅ Final response generated after ${iterations} iteration(s)`);
+      break;
+    }
+
+    if (iterations >= MAX_FUNCTION_ITERATIONS) {
+      console.warn(`⚠️  Max function iterations reached (${MAX_FUNCTION_ITERATIONS})`);
+      finalResponse =
+        finalResponse ||
+        "I apologize, but I encountered an issue processing your request. Please try rephrasing your question.";
+    }
+
+    // Collect all listings from function calls for map view integration
+    const allListings: any[] = [];
+    functionCallsMade.forEach(fc => {
+      // Check if function result contains listings array
+      if (fc.data?.listings && Array.isArray(fc.data.listings)) {
+        allListings.push(...fc.data.listings);
+      }
+    });
+
+    // Log response
+    await logChatMessage("assistant", finalResponse, userId, {
+      model,
+      processingTime: Date.now() - startTime,
+      functionCalls: functionCallsMade.length,
+      iterations,
+    });
+
+    return NextResponse.json({
+      success: true,
+      response: finalResponse,
+      listings: allListings, // Add listings array for map view integration
+      metadata: {
+        model,
+        processingTime: Date.now() - startTime,
+        tier: userTier,
+        functionCalls: functionCallsMade,
+        iterations,
+      },
+    });
+  } catch (error: any) {
+    console.error("Groq API chat error:", error);
+
+    return NextResponse.json(
+      { error: "Failed to process chat request", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Build simplified system prompt - functions handle the complexity now
+ */
+function buildSystemPrompt(): string {
+  const currentDate = new Date().toISOString().split("T")[0];
+
+  return `You are an expert real estate AI assistant for JPSRealtor.com.
+
+# Your Role
+You help users find properties, analyze investments, and provide data-driven real estate insights for Southern California markets.
+
+# Today's Date
+${currentDate}
+
+# How You Work
+You have access to powerful functions that let you:
+1. **matchLocation** - Identify if a location is a subdivision, city, or county
+2. **searchListings** - Search MLS listings with filters
+3. **getSubdivisionListings** - Get listings for a specific subdivision
+4. **getCitySubdivisions** - List all communities in a city
+5. **getCityStats / getSubdivisionStats** - Get market statistics
+6. **getCityHOA** - Get HOA fee information
+7. **researchCommunity** - Answer specific questions about a community
+8. **generateCMA** - Generate Comparative Market Analysis
+
+# Critical Rules
+1. **ALWAYS call matchLocation() FIRST** when user mentions a location
+2. **If matchLocation returns type="subdivision"**: IMMEDIATELY call getSubdivisionListings() with the slug
+   - DO NOT use searchListings() for subdivision queries
+   - getSubdivisionListings() is faster and more accurate
+3. **If matchLocation returns type="city"**: Use searchListings() with city filter
+4. **If matchLocation returns type="county"**: Use searchListings() with limit:100
+5. **Call functions to get data** - don't make up information
+6. **Be conversational** - explain what you're doing while calling functions
+
+# Response Style
+- Be brief and direct (2-3 sentences max)
+- When you find listings, say "Here are X properties" or "Showing X homes"
+- Don't ask follow-up questions unless no results found
+- Let the UI show the details - you just confirm what's being displayed
+- Remind users you're not a licensed advisor for financial/legal questions
+
+# Search Priority
+1. Subdivision (highest priority - most specific)
+2. City (medium priority)
+3. County (lowest priority - limit to 100 results, suggest map view)
+
+# Investment Analysis
+When analyzing investments, calculate:
+- Cap Rate: (Annual NOI ÷ Property Value) × 100 (good: 4-10%)
+- Cash-on-Cash: (Annual Cash Flow ÷ Total Cash Invested) × 100 (good: 8-12%)
+- 1% Rule: Monthly Rent ≥ 1% of Purchase Price
+- DSCR: NOI ÷ Annual Debt Service (good: ≥1.25)
+
+Always state assumptions and remind users to consult professionals.
+
+Remember: Call functions to get real data, then present it in a helpful, conversational way!`;
+}

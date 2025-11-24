@@ -1,0 +1,2036 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useChatContext } from "@/app/components/chat/ChatProvider";
+import { useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
+import { streamChatCompletion } from "@/lib/webllm";
+import {
+  buildSystemPrompt,
+  buildConversationHistory,
+  extractGoalsFromText,
+  UserData,
+} from "@/lib/chat-utils";
+import { getLocationWithCache } from "@/lib/geolocation";
+import ListingCarousel, {
+  type Listing,
+} from "@/app/components/chat/ListingCarousel";
+import ChatMapView from "@/app/components/chat/ChatMapView";
+import {
+  detectFunctionCall,
+  executeMLSSearch,
+  formatSearchResultsForAI,
+} from "@/lib/ai-functions";
+import { InitProgressReport } from "@mlc-ai/web-llm";
+import { User, Bot, Loader2, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
+import AnimatedChatInput from "./AnimatedChatInput";
+import StarsCanvas from "./StarsCanvas";
+import { fadeSlideIn } from "@/app/utils/chat/motion";
+import { useSession } from "next-auth/react";
+import {
+  addToConversationHistory,
+  updateConversationMessageCount,
+  saveConversationMessages,
+  loadConversationMessages,
+} from "./EnhancedSidebar";
+import Image from "next/image";
+import { useTheme } from "@/app/contexts/ThemeContext";
+
+// Simple markdown parser for basic formatting
+function parseMarkdown(text: string, isLight: boolean = false): React.ReactNode {
+  if (!text) return text;
+
+  // First, handle links and bold together
+  const elements: React.ReactNode[] = [];
+  let currentIndex = 0;
+  let key = 0;
+
+  // Combined regex to match both bold (**text**) and links ([text](url))
+  const markdownRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
+  let match;
+
+  while ((match = markdownRegex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > currentIndex) {
+      elements.push(
+        <React.Fragment key={key++}>
+          {text.slice(currentIndex, match.index)}
+        </React.Fragment>
+      );
+    }
+
+    const matched = match[0];
+
+    // Check if it's bold
+    if (matched.startsWith("**") && matched.endsWith("**")) {
+      const boldText = matched.slice(2, -2);
+      elements.push(
+        <strong key={key++} className={`font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+          {boldText}
+        </strong>
+      );
+    }
+    // Check if it's a link
+    else if (matched.startsWith("[")) {
+      const linkMatch = matched.match(/\[(.*?)\]\((.*?)\)/);
+      if (linkMatch) {
+        const [, linkText, linkUrl] = linkMatch;
+        // Check if it's an internal link (starts with /)
+        const isInternal = linkUrl?.startsWith("/") ?? false;
+        elements.push(
+          <a
+            key={key++}
+            href={linkUrl || "#"}
+            className={`underline transition-colors font-medium ${
+              isLight
+                ? "text-blue-600 hover:text-blue-800"
+                : "text-emerald-400 hover:text-emerald-300"
+            }`}
+            target={isInternal ? undefined : "_blank"}
+            rel={isInternal ? undefined : "noopener noreferrer"}
+          >
+            {linkText}
+          </a>
+        );
+      }
+    }
+
+    currentIndex = match.index + matched.length;
+  }
+
+  // Add remaining text
+  if (currentIndex < text.length) {
+    elements.push(
+      <React.Fragment key={key++}>{text.slice(currentIndex)}</React.Fragment>
+    );
+  }
+
+  return elements.length > 0 ? elements : text;
+}
+
+// Helper function to log chat messages via API (non-blocking)
+const logChatMessageAsync = async (
+  role: string,
+  content: string,
+  userId: string,
+  metadata?: any
+) => {
+  try {
+    await fetch("/api/chat/log-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content, userId, metadata }),
+    });
+  } catch (error) {
+    // Silently fail - logging shouldn't break the app
+    console.warn("Failed to log message:", error);
+  }
+};
+
+export default function IntegratedChatWidget() {
+  // Helper function to generate CMA messages
+  const generateCMAMessages = (searchResponse: any) => {
+    const messages: any[] = [];
+
+    if (searchResponse.isCMA) {
+      // Main CMA introduction
+      if (searchResponse.cmaSummary) {
+        messages.push({
+          type: "assistant",
+          content: generateCMASummaryMessage(
+            searchResponse.cmaSummary,
+            searchResponse.targetAddress,
+            searchResponse.listings[0]?.price
+          ),
+        });
+      }
+
+      // Appreciation analysis
+      if (searchResponse.appreciationForecast && searchResponse.appreciationForecast.cagr5 !== null) {
+        messages.push({
+          type: "assistant",
+          content: generateAppreciationMessage(searchResponse.appreciationForecast),
+        });
+      }
+
+      // Cashflow analysis
+      if (searchResponse.cashflowAnalysis && searchResponse.cashflowAnalysis.mortgage !== null) {
+        messages.push({
+          type: "assistant",
+          content: generateCashflowMessage(searchResponse.cashflowAnalysis),
+        });
+      }
+    }
+
+    return messages;
+  };
+
+  const { messages, addMessage, userId, setLastSearch, mlsState } = useChatContext();
+  const {
+    chatMode,
+    setChatMode,
+    searchResults,
+    setSearchResults,
+    animateInputToBottom,
+    expandChat,
+    currentView,
+  } = useEnhancedChat();
+  const { data: session } = useSession();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState("");
+  const [loadingProgress, setLoadingProgress] = useState("");
+  const [loadingPercent, setLoadingPercent] = useState(0);
+  const [error, setError] = useState("");
+  const [userLocation, setUserLocation] = useState<{
+    city?: string;
+    region?: string;
+  } | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [useAPIFallback, setUseAPIFallback] = useState(true); // Always use Groq API for fast, reliable responses
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [conversationId] = useState(() => {
+    // Check if we're loading a previous conversation from URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const loadConversationId = params.get("conversation");
+      if (loadConversationId) {
+        return loadConversationId;
+      }
+    }
+    return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  });
+  const [hasTrackedFirstMessage, setHasTrackedFirstMessage] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const MAX_RETRIES = 2; // ISSUE #3 FIX: Retry up to 2 times before giving up
+  const router = useRouter();
+
+  // ISSUE #5 FIX: Track if user has manually scrolled away from bottom
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  // ISSUE #4 FIX: Single unified message interface with proper TypeScript types
+  interface DisplayMessage {
+    id: string;
+    role: "user" | "assistant" | "system";
+    content: string;
+    timestamp: Date;
+    isLoading?: boolean;
+    listings?: Listing[];
+  }
+
+  // ISSUE #4 FIX: Simplified message state - single source of truth
+  // Filter messages by context and exclude system messages
+  const context = "general";
+  const displayMessages = React.useMemo(() => {
+    // Get base messages from context
+    const baseMessages: DisplayMessage[] = messages
+      .filter((msg) => {
+        const matchesContext = !msg.context || msg.context === context;
+        const isNotSystemMessage = msg.role !== "system";
+        return matchesContext && isNotSystemMessage;
+      })
+      .map((msg) => ({
+        id: msg.id || `msg_${msg.timestamp}`,
+        role: msg.role as "user" | "assistant" | "system",
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        // Safely check if listings exist and is an array
+        listings: Array.isArray((msg as any).listings)
+          ? (msg as any).listings
+          : undefined,
+      }));
+
+    // Add streaming message if present
+    if (streamingMessage) {
+      baseMessages.push({
+        id: "streaming",
+        role: "assistant",
+        content: streamingMessage,
+        timestamp: new Date(),
+      });
+    }
+
+    // Remove duplicate messages by ID (deduplication)
+    const seen = new Set<string>();
+    return baseMessages.filter((msg) => {
+      if (seen.has(msg.id)) return false;
+      seen.add(msg.id);
+      return true;
+    });
+  }, [messages, streamingMessage]);
+
+  // ISSUE #5 FIX: Detect when user scrolls manually
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      // Consider "at bottom" if within 100px of bottom
+      const atBottom = distanceFromBottom < 100;
+      setIsAtBottom(atBottom);
+
+      // User is manually scrolling if not at bottom
+      if (!atBottom) {
+        setIsUserScrolling(true);
+      } else {
+        setIsUserScrolling(false);
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // ISSUE #5 FIX: Auto-scroll only if user is at bottom (not interrupting reading)
+  useEffect(() => {
+    if (isAtBottom && !isUserScrolling) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [displayMessages, streamingMessage, isAtBottom, isUserScrolling]);
+
+  // Load user location
+  useEffect(() => {
+    getLocationWithCache().then(setUserLocation);
+  }, []);
+
+  // Load user data for personalization (profile, goals, favorites)
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!session?.user?.email && !userId) {
+        // No authenticated user or anonymous user - skip personalization
+        return;
+      }
+
+      try {
+        // Fetch user profile if authenticated
+        if (session?.user?.email) {
+          const profileResponse = await fetch("/api/user/profile");
+          if (profileResponse.ok) {
+            const { profile } = await profileResponse.json();
+
+            // Fetch favorites and analytics
+            const favoritesResponse = await fetch("/api/user/favorites");
+            const favoritesData = favoritesResponse.ok
+              ? await favoritesResponse.json()
+              : null;
+
+            // Fetch chat goals
+            const goalsResponse = await fetch(
+              `/api/chat/goals?userId=${userId}`
+            );
+            const goalsData = goalsResponse.ok
+              ? await goalsResponse.json()
+              : null;
+
+            // Build userData object
+            const data: UserData = {
+              name: profile?.name,
+              profileDescription: profile?.profileDescription,
+              realEstateGoals: profile?.realEstateGoals,
+              homeownerStatus: profile?.homeownerStatus,
+              topCities: favoritesData?.analytics?.topCities || [],
+              topSubdivisions: favoritesData?.analytics?.topSubdivisions || [],
+              favoriteCount: favoritesData?.favorites?.length || 0,
+              chatGoals: goalsData?.goals?.goals || undefined,
+            };
+
+            setUserData(data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data for personalization:", error);
+        // Fail gracefully - chat works without personalization
+      }
+    };
+
+    fetchUserData();
+  }, [session, userId]);
+
+  // Load conversation from localStorage if URL parameter is present
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const loadConversationId = params.get("conversation");
+
+      if (loadConversationId && messages.length === 0) {
+        const savedMessages = loadConversationMessages(loadConversationId);
+
+        if (savedMessages.length > 0) {
+          // Restore messages to chat
+          savedMessages.forEach((msg) => {
+            addMessage({
+              role: msg.role as "user" | "assistant" | "system",
+              content: msg.content,
+              context: "general",
+              listings: msg.listings,
+            });
+          });
+
+          // Mark as already tracked to prevent duplicate history entries
+          setHasTrackedFirstMessage(true);
+        }
+      }
+    }
+  }, []); // Only run on mount
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0 && conversationId) {
+      const messagesToSave = messages
+        .filter((msg) => msg.role !== "system") // Don't save system messages
+        .map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp).getTime(),
+          listings: msg.listings,
+        }));
+      saveConversationMessages(conversationId, messagesToSave);
+    }
+  }, [messages, conversationId]);
+
+  // Always use Groq API for fast, reliable responses on both mobile and desktop
+
+  // DO NOT send automatic welcome message - let AI respond naturally to first user message
+
+  // ISSUE #3 FIX: Separate function to get AI response with retry logic and API fallback
+  const getAIResponse = async (
+    llmMessages: any[],
+    attemptNumber: number = 0
+  ): Promise<string> => {
+    const progressCallback = (report: InitProgressReport) => {
+      setLoadingProgress(report.text);
+      setLoadingPercent(Math.round(report.progress * 100));
+    };
+
+    // Always use Groq API for fast, reliable responses
+    if (useAPIFallback) {
+      try {
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: llmMessages,
+            userId,
+            userTier: "free", // TODO: Get from user's subscription status
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Extract listings from response
+        // Check both direct listings array AND function call metadata
+        let extractedListings = null;
+
+        // First, check if listings are in the top-level response (preferred)
+        if (data.listings && Array.isArray(data.listings) && data.listings.length > 0) {
+          extractedListings = data.listings;
+          console.log(`✅ Found ${extractedListings.length} listings in top-level response`);
+        }
+        // Fallback: Check function call metadata
+        else if (data.metadata?.functionCalls) {
+          const listingCalls = data.metadata.functionCalls.filter(
+            (call: any) => call.function === 'getSubdivisionListings' || call.function === 'searchListings'
+          );
+
+          if (listingCalls.length > 0 && listingCalls[0].data?.listings) {
+            extractedListings = listingCalls[0].data.listings;
+            console.log(`✅ Found ${extractedListings.length} listings in function call metadata`);
+          }
+        }
+
+        // Store listings globally if found
+        if (extractedListings) {
+          (window as any).__chatListings = extractedListings;
+        } else {
+          console.log('⚠️ No listings found in API response', {
+            hasTopLevelListings: !!data.listings,
+            hasFunctionCalls: !!data.metadata?.functionCalls,
+            responseKeys: Object.keys(data)
+          });
+        }
+
+        return data.response;
+      } catch (error) {
+        console.error("Groq API failed:", error);
+        throw error;
+      }
+    }
+
+    // Try WebLLM (desktop with WebGPU)
+    let fullResponse = "";
+    let chunkBuffer = "";
+
+    try {
+      for await (const chunk of streamChatCompletion(llmMessages, {
+        temperature: 0.3, // Lower temperature for more consistent, less hallucinatory responses
+        maxTokens: 300, // Reduced to prevent hallucination - function calls + brief response
+        onProgress: progressCallback,
+      })) {
+        chunkBuffer += chunk;
+
+        // Throttle updates for smoother streaming (update every 20ms for faster display)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        fullResponse = chunkBuffer;
+        setStreamingMessage(fullResponse);
+      }
+
+      return fullResponse;
+    } catch (error) {
+      console.error("WebLLM streaming failed:", error);
+      // Clear streaming message on error
+      setStreamingMessage("");
+      throw error;
+    }
+  };
+
+  const handleSend = async (userMessage: string) => {
+    if (!userMessage.trim() || isStreaming || !userId) return;
+
+    setError("");
+    setIsStreaming(true);
+    const startTime = Date.now();
+
+    // Log user message (async, non-blocking)
+    logChatMessageAsync("user", userMessage, userId, {
+      timestamp: new Date().toISOString(),
+    });
+
+    // Check for CMA intent (Comparative Market Analysis)
+    const cmaKeywords = [
+      "run a cma",
+      "run cma",
+      "comparative market analysis",
+      "is this overpriced",
+      "is this underpriced",
+      "market value analysis",
+      "compare to comps",
+      "5-year appreciation",
+      "cashflow analysis",
+      "cash flow analysis",
+      "investment analysis",
+      "what is this worth",
+      "market analysis",
+      // Forecast keywords
+      "forecast",
+      "market forecast",
+      "future value",
+      "price forecast",
+      "value forecast",
+      "price projection",
+      "value projection",
+      "5 year projection",
+      "10 year projection",
+      "appreciation forecast",
+      "projected value",
+      "future appreciation",
+      "growth forecast",
+      "market projection",
+      // Risk keywords
+      "risk",
+      "market risk",
+      "volatility",
+      "is this risky",
+      "investment risk",
+      "risk assessment",
+      "risk analysis",
+      "market volatility",
+      "how risky",
+      "risk score",
+      "risk factors"
+    ];
+
+    const userLower = userMessage.toLowerCase();
+    const isCMARequest = cmaKeywords.some(keyword => userLower.includes(keyword));
+
+    if (isCMARequest) {
+      // Add user message
+      addMessage({
+        role: "user",
+        content: userMessage,
+        context: "general",
+      });
+
+      // Add placeholder response for CMA
+      addMessage({
+        role: "assistant",
+        content: "I can prepare a Comparative Market Analysis (CMA) using your MLS data. The full CMA engine integration with statistical modeling, appreciation forecasting, and cashflow analysis is coming soon in Phase 3. For now, I can help you search for comparable properties and analyze market trends using the available MLS data.",
+        context: "general",
+      });
+
+      setIsStreaming(false);
+      return;
+    }
+
+    // Check if user is responding to a disambiguation prompt
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage &&
+      lastMessage.role === "assistant" &&
+      (lastMessage as any).disambiguationOptions
+    ) {
+      const options = (lastMessage as any).disambiguationOptions;
+
+      // Try to match user's response to one of the options
+      let selectedOption = null;
+
+      // Check if user typed a number (e.g., "1", "2")
+      const numberMatch = userMessage.match(/^\d+$/);
+      if (numberMatch) {
+        const index = parseInt(numberMatch[0]) - 1;
+        if (index >= 0 && index < options.length) {
+          selectedOption = options[index];
+        }
+      }
+
+      // Check if user typed a name or part of a name
+      if (!selectedOption) {
+        const userLower = userMessage.toLowerCase();
+        selectedOption = options.find(
+          (opt: any) =>
+            opt.name.toLowerCase().includes(userLower) ||
+            opt.city.toLowerCase().includes(userLower) ||
+            opt.displayName.toLowerCase().includes(userLower)
+        );
+      }
+
+      if (selectedOption) {
+        // Add user's choice message
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading
+        setStreamingMessage("Searching properties...");
+
+        try {
+          // Re-call match-location API with specific choice
+          const matchResponse = await fetch("/api/chat/match-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: selectedOption.name,
+              specificChoice: selectedOption,
+            }),
+          });
+
+          if (!matchResponse.ok) {
+            throw new Error(
+              `Location match API failed: ${matchResponse.status}`
+            );
+          }
+
+          const matchResult = await matchResponse.json();
+          setStreamingMessage("");
+
+          if (matchResult.success && matchResult.searchParams) {
+            // Execute search with the selected subdivision
+            const searchResponse = await executeMLSSearch(
+              matchResult.searchParams,
+              undefined,
+              mlsState
+            );
+
+            if (searchResponse.success && searchResponse.listings.length > 0) {
+              const actualCount = searchResponse.listings.length;
+              const messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in ${selectedOption.displayName}`;
+
+              // Save search to session memory for conversational refinement
+              const bounds = calculateListingsBounds(searchResponse.listings);
+              setLastSearch({
+                filters: matchResult.searchParams,
+                query: { query: selectedOption.name, type: 'subdivision' } as any, // Basic query object
+                listings: searchResponse.listings,
+                bounds: bounds || undefined,
+              });
+
+              addMessage({
+                role: "assistant",
+                content: messageContent,
+                context: "general",
+                listings: searchResponse.listings,
+                searchFilters: matchResult.searchParams,
+              });
+
+              setSearchResults(searchResponse.listings);
+
+              // Add results to context
+              const resultsContext = formatSearchResultsForAI(
+                searchResponse.listings
+              );
+              addMessage({
+                role: "system",
+                content: `[Search Results] ${resultsContext}`,
+                context: "general",
+              });
+            } else {
+              addMessage({
+                role: "assistant",
+                content: `I couldn't find any properties in ${selectedOption.displayName}.`,
+                context: "general",
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Disambiguation search error:", error);
+          setStreamingMessage("");
+          addMessage({
+            role: "assistant",
+            content:
+              "I encountered an error while searching. Please try again.",
+            context: "general",
+          });
+        } finally {
+          setIsStreaming(false);
+        }
+
+        return; // Don't proceed with normal AI flow
+      }
+    }
+
+    // DON'T add user message yet - wait to see if it triggers a search
+    // We'll add it conditionally based on the AI's response
+
+    let currentAttempt = 0;
+    let fullResponse = "";
+
+    while (currentAttempt <= MAX_RETRIES) {
+      try {
+        // Build conversation history - EXCLUDE system messages (they're internal only)
+        const conversationMessages = messages.filter(
+          (msg) =>
+            (!msg.context || msg.context === context) && msg.role !== "system"
+        );
+        const history = buildConversationHistory(
+          conversationMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          }))
+        );
+
+        history.push({ role: "user", content: userMessage });
+
+        // Build system prompt - MUST BE FIRST MESSAGE (with personalization)
+        const systemPrompt = buildSystemPrompt(
+          "general",
+          null,
+          userLocation,
+          userData
+        );
+
+        const enhancedSystemPrompt = `${systemPrompt}
+
+FUNCTION CALLING RULES:
+- When ready to show properties, use: searchListings({"minBeds": 3, "cities": ["Palm Springs"]})
+- You can respond naturally AND call function - both are fine
+- If calling searchListings, you can add a brief intro like "Let me find some options for you."
+- DON'T echo conversation history ("User: ...", "You: ...")
+- DON'T make multiple search calls in one response`;
+
+        // CRITICAL: System message MUST be first, then conversation history
+        const llmMessages = [
+          { role: "system", content: enhancedSystemPrompt },
+          ...history,
+        ];
+
+        // ISSUE #3 FIX: Get AI response with retry logic
+        fullResponse = await getAIResponse(llmMessages, currentAttempt);
+
+        setStreamingMessage("");
+
+        // Log AI response (async, non-blocking)
+        logChatMessageAsync("assistant", fullResponse, userId, {
+          loadingTime: Date.now() - startTime,
+          attemptNumber: currentAttempt,
+          usedAPIFallback: useAPIFallback,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Success! Break out of retry loop
+        setRetryCount(0);
+        break;
+      } catch (err: any) {
+        currentAttempt++;
+        console.error(
+          `Chat error (attempt ${currentAttempt}/${MAX_RETRIES + 1}):`,
+          err
+        );
+
+        // Clear streaming message on error
+        setStreamingMessage("");
+
+        // ISSUE #3 FIX: If WebLLM fails and we're not already using API fallback, switch to it
+        const isWebGPUError =
+          err.message?.includes("WebGPU") || err.message?.includes("GPU");
+        if (!useAPIFallback && isWebGPUError) {
+          setUseAPIFallback(true);
+          currentAttempt = 0; // Reset attempt counter for API fallback
+          continue; // Retry with API
+        }
+
+        // If we've exhausted retries, throw the error
+        if (currentAttempt > MAX_RETRIES) {
+          throw err;
+        }
+
+        // Wait before retrying (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, currentAttempt - 1), 5000);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+
+    try {
+      // Check for function calls
+      const functionCall = detectFunctionCall(fullResponse);
+
+      if (functionCall && functionCall.type === "matchLocation") {
+        // Track conversation history on first user message
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          updateConversationMessageCount(conversationId);
+        }
+
+        // Log function call (async, non-blocking)
+        logChatMessageAsync(
+          "system",
+          `Function call detected: matchLocation`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        // Add user message so they can see what they asked for
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading state
+        setStreamingMessage("Finding location match...");
+
+        try {
+          const matchResponse = await fetch("/api/chat/match-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(functionCall.params),
+          });
+
+          if (!matchResponse.ok) {
+            throw new Error(
+              `Location match API failed: ${matchResponse.status}`
+            );
+          }
+
+          const matchResult = await matchResponse.json();
+
+          // Clear loading state
+          setStreamingMessage("");
+
+          // Log match results (async, non-blocking)
+          logChatMessageAsync(
+            "system",
+            `Location match completed: ${matchResult.match?.type}`,
+            userId,
+            {
+              matchResults: matchResult,
+              timestamp: new Date().toISOString(),
+            }
+          );
+
+          // Check if disambiguation is needed
+          if (matchResult.needsDisambiguation && matchResult.options) {
+            // Build disambiguation message with clickable options
+            let disambiguationMessage =
+              matchResult.message ||
+              "I found multiple communities with that name. Which one did you mean?\n\n";
+
+            matchResult.options.forEach((option: any, index: number) => {
+              disambiguationMessage += `\n${index + 1}. **${option.displayName}**`;
+            });
+
+            disambiguationMessage +=
+              "\n\nPlease type the number or name to specify which community you're interested in.";
+
+            addMessage({
+              role: "assistant",
+              content: disambiguationMessage,
+              context: "general",
+              disambiguationOptions: matchResult.options, // Store options for handling user's choice
+            });
+
+            return; // Wait for user to choose
+          }
+
+          if (matchResult.success && matchResult.searchParams) {
+            // Found a match! Now execute the search with the correct parameters
+            const locationName = matchResult.match.name;
+            const locationType = matchResult.match.type;
+            const isSubdivision = locationType === "subdivision";
+            const isCounty = locationType === "county";
+            const limitApplied = matchResult.limitApplied || false;
+
+            // Show loading state for search
+            setStreamingMessage("Searching properties...");
+
+            const searchResponse = await executeMLSSearch(
+              matchResult.searchParams,
+              undefined,
+              mlsState
+            );
+
+            // Clear loading state
+            setStreamingMessage("");
+
+            if (searchResponse.success && searchResponse.listings.length > 0) {
+              // ✅ RESULTS FOUND - Show them!
+              const actualCount = searchResponse.listings.length;
+              let messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in ${locationName}`;
+
+              // Add type context for clarity
+              if (isSubdivision) {
+                messageContent += " (subdivision)";
+              } else if (isCounty) {
+                messageContent += " (county";
+                if (limitApplied) {
+                  messageContent +=
+                    " - showing first 100).\n\nClick **Map View** to explore all available listings";
+                } else {
+                  messageContent += ")";
+                }
+              } else if (locationType === "city") {
+                messageContent += " (city)";
+              }
+
+              // Save search to session memory for conversational refinement
+              const bounds = calculateListingsBounds(searchResponse.listings);
+              setLastSearch({
+                filters: matchResult.searchParams,
+                query: { query: locationName, type: locationType } as any, // Basic query object
+                listings: searchResponse.listings,
+                bounds: bounds || undefined,
+              });
+
+              addMessage({
+                role: "assistant",
+                content: messageContent,
+                context: "general",
+                listings: searchResponse.listings,
+                searchFilters: matchResult.searchParams, // Keep filters intact
+              });
+
+              // Update search results for map
+              setSearchResults(searchResponse.listings);
+
+              // Add results to context (system message)
+              const resultsContext = formatSearchResultsForAI(
+                searchResponse.listings
+              );
+              addMessage({
+                role: "system",
+                content: `[Search Results] ${resultsContext}`,
+                context: "general",
+              });
+            } else if (isSubdivision && searchResponse.listings.length === 0) {
+              // ⚠️ SUBDIVISION RETURNED 0 RESULTS - Offer city fallback
+              const cityName =
+                matchResult.match.city || matchResult.searchParams.cities?.[0];
+
+              if (cityName) {
+                addMessage({
+                  role: "assistant",
+                  content: `I couldn't find any properties currently listed in ${locationName} (subdivision). Would you like to see properties in ${cityName} (city) instead?`,
+                  context: "general",
+                });
+              } else {
+                addMessage({
+                  role: "assistant",
+                  content: `I couldn't find any properties in ${locationName}. Would you like to try a different location or adjust your search criteria?`,
+                  context: "general",
+                });
+              }
+            } else {
+              // ❌ NO RESULTS (non-subdivision or generic failure)
+              addMessage({
+                role: "assistant",
+                content: `I couldn't find any properties in ${locationName}. Would you like to try a different location or adjust your search criteria?`,
+                context: "general",
+              });
+            }
+          } else {
+            // No match found - check if there are suggestions
+            let noMatchMessage =
+              matchResult.message ||
+              "I couldn't find that location. Could you provide more details or try a different area?";
+
+            if (matchResult.suggestions && matchResult.suggestions.length > 0) {
+              // Build message with suggestions
+              noMatchMessage += "\n\nDid you mean one of these?\n";
+              matchResult.suggestions.forEach((suggestion: any) => {
+                const typeLabel =
+                  suggestion.type === "subdivision"
+                    ? "(subdivision)"
+                    : suggestion.type === "city"
+                      ? "(city)"
+                      : "(county)";
+                noMatchMessage += `\n• **${suggestion.name}** ${typeLabel}`;
+              });
+              noMatchMessage += "\n\nPlease clarify which location you meant.";
+            }
+
+            addMessage({
+              role: "assistant",
+              content: noMatchMessage,
+              context: "general",
+            });
+          }
+        } catch (error) {
+          console.error("Location match error:", error);
+          setStreamingMessage("");
+
+          addMessage({
+            role: "assistant",
+            content:
+              "I encountered an error while trying to match that location. Please try again.",
+            context: "general",
+          });
+        }
+      } else if (functionCall && functionCall.type === "search") {
+        // Track conversation history on first user message (even for searches)
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          // Update message count for existing conversation
+          updateConversationMessageCount(conversationId);
+        }
+
+        // Log function call (async, non-blocking)
+        logChatMessageAsync(
+          "system",
+          `Function call detected: searchListings`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        // ADD user message so they can see what they asked for
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // ISSUE #4 FIX: Show loading state with temporary streaming message
+        setStreamingMessage("Searching properties...");
+
+        const searchResponse = await executeMLSSearch(
+          functionCall.params,
+          mlsState.lastQuery,
+          mlsState
+        );
+
+        // Clear loading state
+        setStreamingMessage("");
+
+        // Log search results (async, non-blocking)
+        logChatMessageAsync(
+          "system",
+          `Search completed: ${searchResponse.count} listings found`,
+          userId,
+          {
+            searchResults: {
+              count: searchResponse.count,
+              cities: functionCall.params.cities,
+              filters: functionCall.params,
+            },
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        if (searchResponse.success && searchResponse.listings.length > 0) {
+          // Save search to session memory for conversational refinement
+          const bounds = calculateListingsBounds(searchResponse.listings);
+          setLastSearch({
+            filters: functionCall.params,
+            query: searchResponse.parsedQuery || { query: userMessage, filters: functionCall.params } as any,
+            listings: searchResponse.listings,
+            bounds: bounds || undefined,
+          });
+
+          // DON'T show the AI's raw response - it contains function calls
+          // Just show a clean, user-friendly message
+
+          // If searching by subdivision, fetch subdivision data for link
+          // IMPORTANT: Use actual listing count, not AI's hallucinated count
+          const actualCount = searchResponse.listings.length;
+
+          // Add AI explanation if preference intelligence was applied
+          let aiExplanation = "";
+          if (searchResponse.explanation) {
+            const intent = searchResponse.parsedQuery?.intent;
+            if (intent === "similar_listing") {
+              aiExplanation = `These are ${searchResponse.explanation}. `;
+            } else if (intent === "preference_recommendation") {
+              aiExplanation = `Based on your favorites (${searchResponse.explanation}), here are my top recommendations. `;
+            } else if (intent === "more_results") {
+              aiExplanation = `Based on what you've liked (${searchResponse.explanation}), I've personalized these results. `;
+            }
+          }
+
+          let messageContent = aiExplanation + `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} matching your criteria.`;
+
+          if (
+            functionCall.params.subdivisions &&
+            functionCall.params.subdivisions.length > 0
+          ) {
+            const subdivisionName = functionCall.params.subdivisions[0];
+
+            // Fetch subdivision data to get the slug
+            try {
+              const subdivisionResponse = await fetch(
+                `/api/subdivisions?search=${encodeURIComponent(subdivisionName)}&limit=1`
+              );
+              if (subdivisionResponse.ok) {
+                const subdivisionData = await subdivisionResponse.json();
+                if (
+                  subdivisionData.subdivisions &&
+                  subdivisionData.subdivisions.length > 0
+                ) {
+                  const subdivision = subdivisionData.subdivisions[0];
+
+                  // Import findCityByName to get cityId
+                  const { findCityByName } = await import(
+                    "@/app/constants/counties"
+                  );
+                  const cityData = findCityByName(subdivision.city);
+
+                  if (cityData) {
+                    const subdivisionUrl = `/neighborhoods/${cityData.city.id}/${subdivision.slug}`;
+
+                    // Add encouraging words based on property count
+                    let encouragement = "";
+                    if (actualCount > 10) {
+                      encouragement = " Great selection available! ";
+                    } else if (actualCount > 5) {
+                      encouragement = " Some nice options here! ";
+                    } else if (actualCount > 0) {
+                      encouragement = " Check out these opportunities! ";
+                    }
+
+                    messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${subdivision.name}**.${encouragement}${subdivision.name} is a wonderful community in ${subdivision.city}. [Explore ${subdivision.name} Community →](${subdivisionUrl})`;
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Failed to fetch subdivision data:", error);
+              // Continue with default message
+            }
+          } else if (
+            functionCall.params.cities &&
+            functionCall.params.cities.length > 0
+          ) {
+            // If searching by city, add city link
+            const cityName = functionCall.params.cities[0];
+
+            try {
+              // Import findCityByName to get city data
+              const { findCityByName } = await import(
+                "@/app/constants/counties"
+              );
+              const cityData = findCityByName(cityName);
+
+              if (cityData) {
+                const cityUrl = `/neighborhoods/${cityData.city.id}`;
+
+                // Add encouraging words based on property count
+                let encouragement = "";
+                if (actualCount > 20) {
+                  encouragement = " Excellent selection available! ";
+                } else if (actualCount > 10) {
+                  encouragement = " Great options to explore! ";
+                } else if (actualCount > 5) {
+                  encouragement = " Some nice properties here! ";
+                } else if (actualCount > 0) {
+                  encouragement = " Check these out! ";
+                }
+
+                messageContent = `Found ${actualCount} ${actualCount === 1 ? "property" : "properties"} in **${cityData.city.name}**.${encouragement}Discover more about living in ${cityData.city.name}. [Explore ${cityData.city.name} →](${cityUrl})`;
+              }
+            } catch (error) {
+              console.error("Failed to fetch city data:", error);
+              // Continue with default message
+            }
+          }
+
+          addMessage({
+            role: "assistant",
+            content: messageContent,
+            context: "general",
+            listings: searchResponse.listings, // Attach listings to message
+            searchFilters: functionCall.params, // Attach search filters for map navigation
+          });
+
+          // Update search results for map
+          setSearchResults(searchResponse.listings);
+
+          // Add results to context (system message - won't be displayed)
+          const resultsContext = formatSearchResultsForAI(
+            searchResponse.listings
+          );
+          addMessage({
+            role: "system",
+            content: `[Search Results] ${resultsContext}`,
+            context: "general",
+          });
+        } else {
+          addMessage({
+            role: "assistant",
+            content:
+              "I couldn't find any properties matching those criteria. Would you like to adjust your search?",
+            context: "general",
+          });
+        }
+      } else if (functionCall && functionCall.type === "research") {
+        // Track conversation history on first user message
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          updateConversationMessageCount(conversationId);
+        }
+
+        // Log function call (async, non-blocking)
+        logChatMessageAsync(
+          "system",
+          `Function call detected: researchCommunity`,
+          userId,
+          {
+            functionCall: functionCall.params,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        // Add user message so they can see what they asked for
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Show loading state
+        setStreamingMessage("Researching community facts...");
+
+        try {
+          const researchResponse = await fetch("/api/chat/research-community", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "answer",
+              ...functionCall.params,
+            }),
+          });
+
+          if (!researchResponse.ok) {
+            throw new Error(`Research API failed: ${researchResponse.status}`);
+          }
+
+          const result = await researchResponse.json();
+
+          // Clear loading state
+          setStreamingMessage("");
+
+          // Log research results (async, non-blocking)
+          logChatMessageAsync(
+            "system",
+            `Research completed: ${result.factType}`,
+            userId,
+            {
+              researchResults: {
+                factType: result.factType,
+                confidence: result.confidence,
+                recorded: result.recorded,
+                subdivisionName: functionCall.params.subdivisionName,
+              },
+              timestamp: new Date().toISOString(),
+            }
+          );
+
+          if (result.success) {
+            // Display the AI's answer with optional recorded indicator
+            let responseContent = result.answer;
+
+            if (result.recorded) {
+              responseContent +=
+                "\n\n✅ *Fact recorded to database for future reference*";
+            }
+
+            addMessage({
+              role: "assistant",
+              content: responseContent,
+              context: "general",
+            });
+
+            // Add the research result to the conversation context (system message)
+            addMessage({
+              role: "system",
+              content: `[Research Result] ${result.factType}: ${JSON.stringify(result.factValue)} (confidence: ${result.confidence})`,
+              context: "general",
+            });
+          } else {
+            addMessage({
+              role: "assistant",
+              content:
+                result.error ||
+                "I encountered an error while researching that community. Please try again.",
+              context: "general",
+            });
+          }
+        } catch (error) {
+          console.error("Research API error:", error);
+          setStreamingMessage("");
+
+          addMessage({
+            role: "assistant",
+            content:
+              "I encountered an error while researching that community. Please try again.",
+            context: "general",
+          });
+        }
+      } else {
+        // Regular message (no function call) - add user message first
+        addMessage({
+          role: "user",
+          content: userMessage,
+          context: "general",
+        });
+
+        // Clean response to remove any system prompt leakage
+        let cleanResponse = fullResponse;
+        const instructionMarkers = [
+          "Function call:",
+          "For searching in",
+          "For market trends",
+          "Remember to:",
+          "Supported property types",
+          "When suggesting",
+          "If unsure about",
+          "Example response",
+          "FUNCTION CALLING:",
+          "Available parameters:",
+          "CRITICAL:",
+        ];
+
+        for (const marker of instructionMarkers) {
+          const markerIndex = cleanResponse.indexOf(marker);
+          if (markerIndex !== -1) {
+            cleanResponse = cleanResponse.substring(0, markerIndex).trim();
+            break;
+          }
+        }
+
+        addMessage({
+          role: "assistant",
+          content: cleanResponse,
+          context: "general",
+        });
+
+        // Track conversation history on first message exchange
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
+        } else {
+          // Update message count for existing conversation
+          updateConversationMessageCount(conversationId);
+        }
+      }
+
+      // Extract and save goals
+      const goals = extractGoalsFromText(userMessage);
+      if (Object.keys(goals).length > 0 && userId) {
+        // Capture userId at the time of extraction to avoid race conditions
+        const currentUserId = userId;
+        const goalsToSave = { ...goals };
+
+        // Save to server
+        fetch("/api/chat/goals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, goals: goalsToSave }),
+        }).catch(console.error);
+      }
+    } catch (err: any) {
+      console.error("Chat error:", err);
+
+      // Detect mobile WebGPU issues
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const isWebGPUError =
+        err.message?.includes("WebGPU") || err.message?.includes("GPU");
+
+      let errorMessage = "";
+      if (isMobile && isWebGPUError) {
+        errorMessage =
+          "AI chat requires desktop browser with WebGPU support. Please try on desktop or use our contact form.";
+      } else {
+        errorMessage = err.message || "Something went wrong. Please try again.";
+      }
+
+      setError(errorMessage);
+
+      // Log error (async, non-blocking)
+      logChatMessageAsync("system", `Error occurred: ${errorMessage}`, userId, {
+        error: err.message || err.toString(),
+        stack: err.stack,
+        isMobile,
+        isWebGPUError,
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setIsStreaming(false);
+      setLoadingProgress("");
+      setLoadingPercent(0);
+    }
+  };
+
+  const handleMicClick = () => {
+    // TODO: Implement voice input
+    setIsVoiceActive(!isVoiceActive);
+  };
+
+  const handleMinimizedClick = () => {
+    expandChat();
+  };
+
+  // Prevent body scroll when in landing mode (only on mobile)
+  useEffect(() => {
+    if (chatMode === "landing" && typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        // Save scroll position
+        const scrollY = window.scrollY;
+        document.body.style.overflow = "hidden";
+        document.body.style.height = "100vh";
+        document.body.style.touchAction = "none";
+      }
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+      document.body.style.touchAction = "";
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+      document.body.style.touchAction = "";
+    };
+  }, [chatMode]);
+
+  // Calculate bounds from listings for map view
+  const calculateListingsBounds = (listings: Listing[]) => {
+    if (!listings || listings.length === 0) {
+      return null;
+    }
+
+    const validListings = listings.filter((l) => l.latitude && l.longitude);
+
+    if (validListings.length === 0) {
+      return null;
+    }
+
+    const lats = validListings.map((l) => l.latitude!);
+    const lngs = validListings.map((l) => l.longitude!);
+
+    const north = Math.max(...lats);
+    const south = Math.min(...lats);
+    const east = Math.max(...lngs);
+    const west = Math.min(...lngs);
+
+    // Add 10% padding
+    const latPadding = (north - south) * 0.1 || 0.01;
+    const lngPadding = (east - west) * 0.1 || 0.01;
+
+    const bounds = {
+      north: north + latPadding,
+      south: south - latPadding,
+      east: east + lngPadding,
+      west: west - lngPadding,
+      zoom: 13,
+    };
+
+    return bounds;
+  };
+
+  // Handle "View on Full Map" button click
+  const handleViewOnMap = (listings: Listing[]) => {
+    const bounds = calculateListingsBounds(listings);
+
+    if (bounds) {
+      const boundsParam = encodeURIComponent(JSON.stringify(bounds));
+      const mapUrl = `/map?bounds=${boundsParam}`;
+      router.push(mapUrl);
+    } else {
+      router.push("/map");
+    }
+  };
+
+  return (
+    <div
+      className={`relative h-full w-full flex flex-col overflow-x-hidden ${chatMode === "landing" ? "overflow-y-hidden" : "overflow-y-auto"} ${
+        isLight ? 'bg-gradient-to-br from-gray-50 via-blue-50/30 to-emerald-50/20' : 'bg-black'
+      }`}
+      style={{ maxWidth: '100vw' }}
+    >
+      {/* Background: Stars for dark mode, gradient for light mode */}
+      <AnimatePresence>
+        {currentView === "chat" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: chatMode === "landing" ? 1 : 0.3 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{ overflow: "hidden" }}
+          >
+            {!isLight && <StarsCanvas />}
+            {isLight && (
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-blue-50/30 to-emerald-50/20 -z-10" />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Landing Page - Centered Group Container */}
+      <AnimatePresence>
+        {chatMode === "landing" && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pb-48 md:pb-0">
+            <motion.div
+              initial={{ opacity: 0, y: -30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{
+                type: "spring",
+                stiffness: 100,
+                damping: 20,
+                duration: 0.8,
+              }}
+              className="w-full max-w-[90%] md:max-w-4xl flex flex-col items-center gap-6 md:gap-8"
+            >
+              {/* Logo */}
+              <div className="flex items-center justify-center gap-3 md:gap-3">
+                <motion.div
+                  initial={{ scale: 0, rotateY: -180 }}
+                  animate={{
+                    scale: 1,
+                    rotateY: 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 150,
+                    damping: 15,
+                    delay: 0.3,
+                  }}
+                  whileHover={{
+                    scale: 1.1,
+                    rotateY: 15,
+                    rotateX: 5,
+                  }}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    perspective: 1000,
+                  }}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 relative"
+                >
+                  <motion.div
+                    animate={{
+                      rotateY: [0, 5, 0, -5, 0],
+                      rotateX: [0, 2, 0, -2, 0],
+                    }}
+                    transition={{
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    style={{ transformStyle: "preserve-3d" }}
+                  >
+                    <Image
+                      src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
+                      alt="eXp Realty"
+                      width={96}
+                      height={96}
+                      className={`object-contain ${isLight ? "drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"}`}
+                      priority
+                    />
+                  </motion.div>
+                </motion.div>
+
+                {/* Vertical Divider */}
+                <motion.div
+                  initial={{ opacity: 0, scaleY: 0 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 15,
+                    delay: 0.4,
+                  }}
+                  className={`h-10 md:h-12 w-px ${
+                    isLight
+                      ? "bg-gradient-to-b from-transparent via-gray-400/50 to-transparent"
+                      : "bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                  }`}
+                />
+
+                <motion.h1
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 15,
+                    delay: 0.5,
+                  }}
+                  whileHover={{
+                    scale: 1.02,
+                    textShadow: "0 0 20px rgba(168,85,247,0.5)",
+                  }}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    perspective: 1000,
+                  }}
+                  className={`text-3xl md:text-6xl font-light tracking-wider ${isLight ? "text-gray-900" : "text-white"} relative`}
+                >
+                  <motion.span
+                    animate={{
+                      textShadow: isLight ? [
+                        "0 0 10px rgba(59,130,246,0.2)",
+                        "0 0 20px rgba(59,130,246,0.3)",
+                        "0 0 10px rgba(59,130,246,0.2)",
+                      ] : [
+                        "0 0 10px rgba(168,85,247,0.3)",
+                        "0 0 20px rgba(168,85,247,0.5)",
+                        "0 0 10px rgba(168,85,247,0.3)",
+                      ],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    JPSREALTOR
+                  </motion.span>
+                </motion.h1>
+              </div>
+
+              {/* Chat Input - Positioned within the group */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+                className="w-full max-w-[700px]"
+              >
+                <AnimatedChatInput
+                  mode="landing"
+                  onSend={handleSend}
+                  onMicClick={handleMicClick}
+                  onMinimizedClick={handleMinimizedClick}
+                  isStreaming={isStreaming}
+                  streamingText={streamingMessage}
+                />
+              </motion.div>
+
+              {/* Quick Action Pills - Positioned within the group */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+                className="hidden md:flex flex-wrap gap-3 justify-center max-w-2xl"
+              >
+                {["Articles", "Map", "Dashboard", "Neighborhoods"].map(
+                  (action, index) => {
+                    const actionMap: Record<string, () => void> = {
+                      Articles: () => (window.location.href = "/insights"),
+                      Map: () => (window.location.href = "/map"),
+                      Dashboard: () => (window.location.href = "/dashboard"),
+                      Neighborhoods: () =>
+                        (window.location.href = "/neighborhoods"),
+                    };
+
+                    return (
+                      <motion.button
+                        key={action}
+                        onClick={actionMap[action]}
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 120,
+                          damping: 15,
+                          delay: 0.8 + index * 0.1,
+                        }}
+                        whileHover={{
+                          scale: 1.08,
+                          y: -4,
+                          boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)",
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`px-6 py-2.5 backdrop-blur-md rounded-full text-sm transition-colors duration-300 shadow-lg cursor-pointer ${
+                          isLight
+                            ? "bg-white/80 border border-gray-300 text-gray-700 hover:bg-white hover:text-gray-900"
+                            : "bg-neutral-800/50 border border-neutral-700/50 text-neutral-300 hover:text-white hover:bg-neutral-800 hover:border-purple-500/50"
+                        }`}
+                      >
+                        {action}
+                      </motion.button>
+                    );
+                  }
+                )}
+              </motion.div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Messages Container (only in conversation mode) */}
+      <AnimatePresence>
+        {chatMode === "conversation" && (
+          <div className="flex-1 relative overflow-hidden">
+            {/* Top blur gradient fade */}
+            <div className={`absolute top-0 left-0 right-0 h-24 pointer-events-none z-20 ${
+              isLight
+                ? "bg-gradient-to-b from-gray-50 via-gray-50/80 to-transparent"
+                : "bg-gradient-to-b from-black via-black/80 to-transparent"
+            }`} />
+
+            {/* Bottom blur gradient fade */}
+            <div className={`absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20 ${
+              isLight
+                ? "bg-gradient-to-t from-gray-50 via-gray-50/80 to-transparent"
+                : "bg-gradient-to-t from-black via-black/80 to-transparent"
+            }`} />
+
+            <motion.div
+              ref={messagesContainerRef}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{
+                type: "spring",
+                stiffness: 100,
+                damping: 20,
+                duration: 0.6,
+              }}
+              className="h-full overflow-y-auto px-4 pt-24 pb-36 space-y-4 relative z-10 max-w-4xl mx-auto w-full [&::-webkit-scrollbar]:hidden"
+              style={{
+                scrollbarWidth: "none",
+              }}
+              onScroll={(e) => {
+                const container = e.currentTarget;
+                setShowScrollTop(container.scrollTop > 300);
+              }}
+            >
+            {displayMessages.map((message, index) => (
+              <motion.div
+                key={message.id || index}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 120,
+                  damping: 15,
+                  delay: index * 0.08,
+                  duration: 0.5,
+                }}
+                className={`flex gap-4 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                {message.role === "assistant" && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 200,
+                      damping: 15,
+                      delay: index * 0.08 + 0.1,
+                    }}
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0"
+                  >
+                    <Bot className="w-5 h-5 text-white" />
+                  </motion.div>
+                )}
+
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className={`max-w-xl rounded-2xl px-6 py-4 backdrop-blur-sm ${
+                    message.role === "user"
+                      ? isLight
+                        ? "bg-blue-100 text-gray-900 shadow-lg shadow-blue-200/40"
+                        : "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                      : isLight
+                        ? "bg-gray-100 text-gray-900 shadow-lg shadow-gray-200/40"
+                        : "bg-neutral-800 text-neutral-100 shadow-lg shadow-neutral-900/30"
+                  }`}
+                >
+                  {/* Loading animation for search */}
+                  {(message as any).isLoading ? (
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          opacity: [0.5, 1, 0.5],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        className="flex gap-1"
+                      >
+                        <motion.div
+                          animate={{ y: [0, -8, 0] }}
+                          transition={{
+                            duration: 0.6,
+                            repeat: Infinity,
+                            delay: 0,
+                          }}
+                          className="w-2 h-2 bg-purple-400 rounded-full"
+                        />
+                        <motion.div
+                          animate={{ y: [0, -8, 0] }}
+                          transition={{
+                            duration: 0.6,
+                            repeat: Infinity,
+                            delay: 0.2,
+                          }}
+                          className="w-2 h-2 bg-purple-400 rounded-full"
+                        />
+                        <motion.div
+                          animate={{ y: [0, -8, 0] }}
+                          transition={{
+                            duration: 0.6,
+                            repeat: Infinity,
+                            delay: 0.4,
+                          }}
+                          className="w-2 h-2 bg-purple-400 rounded-full"
+                        />
+                      </motion.div>
+                      <span className="text-purple-300 leading-relaxed">
+                        {parseMarkdown(message.content, isLight)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-relaxed">
+                      {parseMarkdown(message.content, isLight)}
+                    </p>
+                  )}
+
+                  {/* Listing Map and Carousel */}
+                  {message.listings && message.listings.length > 0 && (
+                    <>
+                      {/* Map View */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 100,
+                          damping: 15,
+                          delay: 0.2,
+                        }}
+                        className="mt-4"
+                      >
+                        <ChatMapView
+                          listings={message.listings}
+                          searchFilters={(message as any).searchFilters}
+                        />
+                      </motion.div>
+
+                      {/* View on Full Map Button */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 100,
+                          damping: 15,
+                          delay: 0.3,
+                        }}
+                        className="mt-3"
+                      >
+                        <motion.button
+                          onClick={() => handleViewOnMap(message.listings!)}
+                          whileHover={{ scale: 1.02, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 md:py-3 px-3 md:px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
+                        >
+                          <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+                          <span>View on Full Map</span>
+                        </motion.button>
+                      </motion.div>
+
+                      {/* Listing Carousel */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 100,
+                          damping: 15,
+                          delay: 0.4,
+                        }}
+                        className="mt-4"
+                      >
+                        <ListingCarousel listings={message.listings} />
+                      </motion.div>
+                    </>
+                  )}
+                </motion.div>
+
+                {message.role === "user" && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: 180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 200,
+                      damping: 15,
+                      delay: index * 0.08 + 0.1,
+                    }}
+                    className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0 shadow-lg"
+                  >
+                    <User className="w-5 h-5 text-white" />
+                  </motion.div>
+                )}
+              </motion.div>
+            ))}
+
+            {/* Loading indicator */}
+            {loadingProgress && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 150,
+                  damping: 15,
+                }}
+                className={`flex items-center gap-3 text-sm backdrop-blur-sm rounded-full px-4 py-2 shadow-lg ${
+                  isLight
+                    ? "text-gray-700 bg-white/80"
+                    : "text-neutral-400 bg-neutral-800/50"
+                }`}
+              >
+                <Loader2 className={`w-4 h-4 animate-spin ${isLight ? "text-blue-500" : "text-purple-400"}`} />
+                <span>{loadingProgress}</span>
+                {loadingPercent > 0 && (
+                  <span className={`font-medium ${isLight ? "text-blue-500" : "text-purple-400"}`}>
+                    ({loadingPercent}%)
+                  </span>
+                )}
+              </motion.div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 150,
+                  damping: 15,
+                }}
+                className={`rounded-lg px-4 py-3 shadow-lg backdrop-blur-sm ${
+                  isLight
+                    ? "bg-red-50 border border-red-300 text-red-800 shadow-red-200/30"
+                    : "bg-red-900/50 border border-red-700 text-red-200 shadow-red-900/30"
+                }`}
+              >
+                {error}
+              </motion.div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && chatMode === "conversation" && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            whileHover={{ scale: 1.1, y: -2 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              messagesContainerRef.current?.scrollTo({
+                top: 0,
+                behavior: "smooth",
+              });
+            }}
+            className="fixed bottom-24 right-4 md:right-8 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-shadow"
+          >
+            <svg
+              className="w-5 h-5 md:w-6 md:h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 10l7-7m0 0l7 7m-7-7v18"
+              />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Animated Chat Input - Only shown in conversation and minimized modes */}
+      {chatMode !== "landing" && (
+        <AnimatedChatInput
+          mode={chatMode}
+          onSend={handleSend}
+          onMicClick={handleMicClick}
+          onMinimizedClick={handleMinimizedClick}
+          isStreaming={isStreaming}
+          streamingText={streamingMessage}
+        />
+      )}
+    </div>
+  );
+}
