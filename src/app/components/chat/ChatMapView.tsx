@@ -71,7 +71,7 @@ const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ||
                      process.env.NEXT_PUBLIC_MAPTILER_API_KEY ||
                      "";
 
-const MAPTILER_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"; // Dark Matter style
+// Moved inside component for theme-awareness
 
 export default function ChatMapView({ listings, onSelectListing, searchFilters }: ChatMapViewProps) {
   const router = useRouter();
@@ -83,10 +83,17 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   const isLight = currentTheme === "lightgradient";
 
   // Log map configuration
+  // Theme-aware map style
+  const MAPTILER_STYLE = isLight
+    ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json" // Light style
+    : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"; // Dark style
+
   console.log('🗺️ ChatMapView config:', {
     hasMaptilerKey: !!MAPTILER_KEY,
     styleUrl: MAPTILER_STYLE,
-    listingsCount: listings.length
+    listingsCount: listings.length,
+    theme: currentTheme,
+    isLight
   });
 
   // Calculate map center from listings
@@ -96,8 +103,18 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   console.log('🗺️ ChatMapView listings debug:', {
     totalListings: listings.length,
     validListings: validListings.length,
-    sampleListing: listings[0],
-    sampleMappedListing: mapListings[0]
+    first5Listings: listings.slice(0, 5).map(l => ({
+      id: l.id,
+      address: l.address,
+      lat: l.latitude,
+      lng: l.longitude,
+      coords: l.coordinates
+    })),
+    first5Mapped: mapListings.slice(0, 5).map(m => ({
+      id: m.listingId,
+      lat: m.latitude,
+      lng: m.longitude
+    }))
   });
 
   if (validListings.length === 0) {
@@ -324,7 +341,11 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
       <div className="absolute bottom-4 left-4">
         <button
           onClick={handleOpenInMapView}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base"
+          className={`flex items-center gap-2 font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base ${
+            isLight
+              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+          }`}
         >
           <MapPin className="w-4 h-4 md:w-5 md:h-5" />
           <span>Open in Map View</span>
