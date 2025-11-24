@@ -146,6 +146,16 @@ export async function POST(req: NextRequest) {
           $gte: lng - lngDelta,
           $lte: lng + lngDelta
         };
+
+        console.log('🗺️ Geographic filter applied:', {
+          centerLat: lat,
+          centerLng: lng,
+          radiusMiles: radius,
+          latRange: [lat - latDelta, lat + latDelta],
+          lngRange: [lng - lngDelta, lng + lngDelta]
+        });
+      } else {
+        console.log('⚠️ No coordinates available, using city/subdivision filter only');
       }
 
       // Exclude the subject properties themselves

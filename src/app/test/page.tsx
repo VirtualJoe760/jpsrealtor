@@ -66,6 +66,8 @@ export default function TestPage() {
             city: l.city,
             subdivision: l.subdivision,
             listingId: l.id,
+            latitude: l.latitude,
+            longitude: l.longitude,
           })),
           city: selectedListings[0]?.city || "Unknown",
           subdivision: selectedListings[0]?.subdivision,
