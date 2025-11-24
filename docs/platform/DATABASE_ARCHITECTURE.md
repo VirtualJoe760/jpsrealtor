@@ -31,7 +31,7 @@ The ChatRealty ecosystem uses a **single shared MongoDB Atlas database** as the 
 
 **Database Name**: `jpsrealtor`
 
-**Connection String**: `mongodb+srv://username:password@cluster.mongodb.net/jpsrealtor?retryWrites=true&w=majority`
+**Connection String**: `mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/jpsrealtor?retryWrites=true&w=majority`
 
 **Hosting**: DigitalOcean MongoDB Atlas Managed Database
 
@@ -606,7 +606,7 @@ const stats = await Listing.aggregate([
 
 **Manual Backup**:
 ```bash
-mongodump --uri="mongodb+srv://username:password@cluster.mongodb.net/jpsrealtor" --out=/backup/$(date +%Y-%m-%d)
+mongodump --uri="mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/jpsrealtor" --out=/backup/$(date +%Y-%m-%d)
 ```
 
 ---

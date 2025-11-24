@@ -48,7 +48,7 @@ cp .env.example .env.local
 **Edit `.env.local`** with your credentials:
 ```bash
 # Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/jpsrealtor
+MONGODB_URI=mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/jpsrealtor
 
 # AI
 GROQ_API_KEY=your_groq_api_key
@@ -89,7 +89,7 @@ cp .env.example .env
 
 **Edit `.env`** with your credentials:
 ```bash
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/jpsrealtor
+MONGODB_URI=mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/jpsrealtor
 PAYLOAD_SECRET=your_random_32_char_secret
 NEXT_CMS_URL=http://localhost:3002
 
