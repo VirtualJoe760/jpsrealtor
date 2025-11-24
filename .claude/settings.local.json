@@ -40,7 +40,9 @@
       "Bash(timeout 10 npm run dev:*)",
       "Bash(echo:*)",
       "Bash(pkill:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(unzip:*)",
+      "Bash(timeout 30 npm run build)"
     ],
     "deny": [],
     "ask": []

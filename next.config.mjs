@@ -1,6 +1,7 @@
 // next.config.mjs
 import createMDX from "@next/mdx";
 import withPWA from "next-pwa";
+import { withPayload } from '@payloadcms/next/withPayload';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -209,5 +210,5 @@ const pwaConfig = withPWA({
   ],
 });
 
-// Apply PWA and MDX configurations
-export default pwaConfig(withMDX(nextConfig));
+// Apply Payload, PWA and MDX configurations
+export default withPayload(pwaConfig(withMDX(nextConfig)));
