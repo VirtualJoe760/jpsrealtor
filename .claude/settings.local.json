@@ -53,7 +53,14 @@
       "WebSearch",
       "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff src/app/test/page.tsx)",
       "Bash(tasklist:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(git log:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(findstr:*)",
+      "Bash(kill:*)",
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor status --short src/app/test/page.tsx)",
+      "Bash(lsof:*)",
+      "Bash(fuser:*)"
     ],
     "deny": [],
     "ask": []

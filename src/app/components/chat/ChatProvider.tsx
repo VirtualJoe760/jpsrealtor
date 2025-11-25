@@ -17,6 +17,7 @@ export interface ChatMessage {
   searchFilters?: any; // For preserving search filters (e.g., subdivision parameters)
   isLoading?: boolean; // For temporary loading messages
   disambiguationOptions?: any[]; // For subdivision disambiguation choices
+  cmaData?: any; // For CMA (Comparative Market Analysis) results
 }
 
 export interface ChatContextType {
