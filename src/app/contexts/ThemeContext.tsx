@@ -33,7 +33,7 @@ function getInitialTheme(): ThemeName {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Always start with a default theme on both server and client to avoid hydration mismatch
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>('blackspace');
+  const [currentTheme, setCurrentTheme] = useState<ThemeName>('lightgradient');
   const [mounted, setMounted] = useState(false);
 
   // Load saved theme from localStorage after mounting (client-side only)
@@ -42,7 +42,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     // Load theme from localStorage
     const savedTheme = getInitialTheme();
-    if (savedTheme !== 'blackspace') {
+    if (savedTheme !== 'lightgradient') {
       setCurrentTheme(savedTheme);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
