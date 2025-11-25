@@ -15,6 +15,9 @@ export interface DisplayMessage {
   timestamp: Date;
   isLoading?: boolean;
   listings?: Listing[];
+  searchFilters?: any;
+  disambiguationOptions?: any[];
+  cmaData?: any;
 }
 
 interface ChatMessageListProps {

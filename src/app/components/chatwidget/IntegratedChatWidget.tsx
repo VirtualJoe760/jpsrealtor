@@ -68,6 +68,9 @@ export default function IntegratedChatWidget() {
         content: msg.content,
         timestamp: new Date(msg.timestamp),
         listings: Array.isArray((msg as any).listings) ? (msg as any).listings : undefined,
+        searchFilters: (msg as any).searchFilters,
+        disambiguationOptions: (msg as any).disambiguationOptions,
+        cmaData: (msg as any).cmaData,
       }));
 
     if (streamingMessage) {
