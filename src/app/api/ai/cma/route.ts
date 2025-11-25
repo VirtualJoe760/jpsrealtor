@@ -216,6 +216,20 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Found ${comparables.length} comparable properties`);
     console.log(`📊 Breakdown: ${comparables.filter(c => c.standardStatus === 'Active').length} Active, ${comparables.filter(c => c.standardStatus === 'Closed' || c.standardStatus === 'Sold').length} Closed`);
 
+    if (comparables.length > 0) {
+      console.log('📋 First comparable sample:', {
+        address: comparables[0].address,
+        status: comparables[0].standardStatus,
+        listPrice: comparables[0].listPrice,
+        closePrice: comparables[0].closePrice,
+        beds: comparables[0].bedroomsTotal,
+        sqft: comparables[0].livingArea
+      });
+    } else {
+      console.log('⚠️ NO COMPARABLES FOUND - Query might be too restrictive');
+      console.log('🔍 Try relaxing filters or checking if data exists in DB');
+    }
+
     // Step 4: Calculate CMA metrics
     // Use closePrice for closed listings, listPrice for active listings
     const pricesPerSqft = comparables

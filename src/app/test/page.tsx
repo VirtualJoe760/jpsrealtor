@@ -29,6 +29,9 @@ function TestPageContent() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
+  // Debug logging
+  console.log('🎨 Test Page Theme:', { currentTheme, isLight });
+
   const [activeTest, setActiveTest] = useState<string>("chat-subdivision");
   const [cmaData, setCmaData] = useState<any>(null);
   const [cmaApiData, setCmaApiData] = useState<any>(null);
