@@ -22,21 +22,45 @@ export function parseAIResponse(content: string): ParsedMessage {
   let carousel = null;
   let map = null;
 
-  // Safe carousel parsing
-  try {
-    const carouselMatch = content.match(/\[LISTING_CAROUSEL\](.*?)\[\/LISTING_CAROUSEL\]/s);
-    if (carouselMatch) {
-      carousel = JSON.parse(carouselMatch[1]);
-      // Validate structure
-      if (!carousel.listings || !Array.isArray(carousel.listings)) {
-        console.error("Invalid carousel structure - missing or invalid listings array");
-        carousel = null;
+// Safe carousel parsing - handle both formats
+try {
+  // Try format with closing tag first: [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
+  let carouselMatch = content.match(/\[LISTING_CAROUSEL\](.*?)\[\/LISTING_CAROUSEL\]/s);
+
+  // If not found, try format without closing tag: [LISTING_CAROUSEL]\n{...}
+  if (!carouselMatch) {
+    const startMarker = content.indexOf('[LISTING_CAROUSEL]');
+    if (startMarker !== -1) {
+      const jsonStart = content.indexOf('{', startMarker);
+      if (jsonStart !== -1) {
+        // Find the matching closing brace
+        let braceCount = 0;
+        let jsonEnd = jsonStart;
+        for (let i = jsonStart; i < content.length; i++) {
+          if (content[i] === '{') braceCount++;
+          if (content[i] === '}') braceCount--;
+          if (braceCount === 0) {
+            jsonEnd = i + 1;
+            break;
+          }
+        }
+        const jsonStr = content.substring(jsonStart, jsonEnd);
+        carousel = JSON.parse(jsonStr);
       }
     }
-  } catch (e) {
-    console.error("Carousel parse error:", e);
+  } else {
+    carousel = JSON.parse(carouselMatch[1]);
+  }
+
+  // Validate structure
+  if (carousel && (!carousel.listings || !Array.isArray(carousel.listings))) {
+    console.error("Invalid carousel structure - missing or invalid listings array");
     carousel = null;
   }
+} catch (e) {
+  console.error("Carousel parse error:", e);
+  carousel = null;
+}
 
   // Safe map parsing
   try {
