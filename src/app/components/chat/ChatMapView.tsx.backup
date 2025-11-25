@@ -58,10 +58,10 @@ function formatPrice(price?: number): string {
 
 function getMarkerColors(hovered?: boolean, selected?: boolean) {
   if (selected) {
-    return "bg-cyan-400 text-black border-2 border-white scale-110 z-[100] ring-1 ring-black shadow-lg";
+    return "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg";
   }
   if (hovered) {
-    return "bg-emerald-400 text-black scale-105 z-[60] border-2 border-white shadow-md";
+    return "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md";
   }
   return "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm";
 }
@@ -219,15 +219,6 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
     setSelectedListing(listing);
     if (onSelectListing) {
       onSelectListing(listing);
-    }
-
-    // Zoom to street-level view (zoom 16-17) centered on the clicked marker
-    if (mapRef.current && mapListing.latitude && mapListing.longitude) {
-      mapRef.current.flyTo({
-        center: [mapListing.longitude, mapListing.latitude],
-        zoom: 16,
-        duration: 1000, // Smooth 1-second animation
-      });
     }
   }, [onSelectListing]);
 

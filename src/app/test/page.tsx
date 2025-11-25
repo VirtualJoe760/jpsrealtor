@@ -9,7 +9,7 @@ import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidg
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
 import { EnhancedChatProvider } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
-import { ThemeProvider, useTheme } from "@/app/contexts/ThemeContext";
+import { ThemeProvider, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { FileText } from "lucide-react";
 
 // Chat Components
@@ -26,7 +26,19 @@ import InvestmentMetricsDashboard, { type InvestmentMetrics } from "@/app/compon
 export const dynamic = 'force-dynamic';
 
 function TestPageContent() {
-  const { currentTheme } = useTheme();
+  const {
+    currentTheme,
+    bgPrimary,
+    bgSecondary,
+    textPrimary,
+    textSecondary,
+    cardBg,
+    cardBorder,
+    buttonPrimary,
+    buttonSecondary,
+    border,
+    borderDark
+  } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
   const [activeTest, setActiveTest] = useState<string>("chat-subdivision");
   const [cmaData, setCmaData] = useState<any>(null);
@@ -1073,12 +1085,6 @@ function TestPageContent() {
   );
 }
 
-function TestPageWrapper() {
-  const { currentTheme } = useTheme();
-
-  return <TestPageContent key={currentTheme} />;
-}
-
 export default function TestPage() {
   return (
     <SessionProvider>
@@ -1086,7 +1092,7 @@ export default function TestPage() {
         <MLSProvider>
           <ChatProvider>
             <EnhancedChatProvider>
-              <TestPageWrapper />
+              <TestPageContent />
             </EnhancedChatProvider>
           </ChatProvider>
         </MLSProvider>

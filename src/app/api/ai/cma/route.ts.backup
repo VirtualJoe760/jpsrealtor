@@ -233,9 +233,9 @@ export async function POST(req: NextRequest) {
     // Step 4: Calculate CMA metrics
     // Use closePrice for closed listings, listPrice for active listings
     const pricesPerSqft = comparables
-      .filter(c => c.livingArea && ((c as any).closePrice || c.listPrice))
+      .filter(c => c.livingArea && (c.closePrice || c.listPrice))
       .map(c => {
-        const price = (c as any).closePrice || c.listPrice || 0;
+        const price = c.closePrice || c.listPrice || 0;
         return price / c.livingArea!;
       });
 
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
       c.originalListPrice && c.listPrice && c.originalListPrice > c.listPrice
     );
 
-    const allPrices = comparables.map(c => (c as any).closePrice || c.listPrice || 0);
+    const allPrices = comparables.map(c => c.closePrice || c.listPrice || 0);
 
     const cmaMetrics = {
       comparablesCount: comparables.length,
@@ -455,10 +455,10 @@ export async function POST(req: NextRequest) {
         address: c.address || c.unparsedAddress,
         city: c.city,
         listPrice: c.listPrice,
-        closePrice: (c as any).closePrice,
-        finalPrice: (c as any).closePrice || c.listPrice, // Use close price if available
-        pricePerSqft: ((c as any).closePrice || c.listPrice) && c.livingArea
-          ? ((c as any).closePrice || c.listPrice) / c.livingArea
+        closePrice: c.closePrice,
+        finalPrice: c.closePrice || c.listPrice, // Use close price if available
+        pricePerSqft: (c.closePrice || c.listPrice) && c.livingArea
+          ? (c.closePrice || c.listPrice) / c.livingArea
           : null,
         beds: c.bedroomsTotal,
         baths: c.bathroomsTotalInteger || c.bathroomsTotalDecimal,
