@@ -20,10 +20,11 @@ import {
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
-  context: string;
+  context?: "homepage" | "listing" | "dashboard" | "general";
   listings?: Listing[];
   searchFilters?: any;
   disambiguationOptions?: any;
+  cmaData?: any;
 }
 
 interface UseChatHandlerProps {

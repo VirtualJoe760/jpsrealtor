@@ -160,11 +160,7 @@ export default function ChatMessageList({
       </motion.div>
 
       {/* Scroll to Top Button */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <ScrollToBottomButton onClick={scrollToBottom} />
-        )}
-      </AnimatePresence>
+      <ScrollToBottomButton show={showScrollTop} onClick={scrollToBottom} isLight={isLight} />
     </div>
   );
 }
