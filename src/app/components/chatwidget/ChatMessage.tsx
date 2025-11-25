@@ -19,6 +19,9 @@ export interface ChatMessageProps {
     timestamp: Date;
     isLoading?: boolean;
     listings?: Listing[];
+    searchFilters?: any;
+    disambiguationOptions?: any[];
+    cmaData?: any;
   };
   index: number;
   isLight: boolean;
@@ -41,6 +44,17 @@ export default function ChatMessage({
   generatedCMAData,
   generatingCMA = false,
 }: ChatMessageProps) {
+  // Parse AI responses for component markers
+  // DEBUG: Log what we receive
+  console.log("[ChatMessage] Received message:", {
+    id: message.id,
+    role: message.role,
+    hasListings: !!message.listings,
+    listingsCount: message.listings?.length || 0,
+    hasSearchFilters: !!message.searchFilters,
+    hasCmaData: !!message.cmaData,
+  });
+
   // Parse AI responses for component markers
   const parsed = message.role === "assistant"
     ? parseAIResponse(message.content)
