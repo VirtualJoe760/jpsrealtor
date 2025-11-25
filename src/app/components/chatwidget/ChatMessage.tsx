@@ -57,6 +57,16 @@ export default function ChatMessage({
 
   // Parse AI responses for component markers
   const parsed = message.role === "assistant"
+  // DEBUG: Log parsing details
+  console.log("[ChatMessage] Message content length:", message.content?.length || 0);
+  console.log("[ChatMessage] Message content preview:", message.content?.substring(0, 200));
+  console.log("[ChatMessage] Has LISTING_CAROUSEL marker:", message.content?.includes('[LISTING_CAROUSEL]'));
+  console.log("[ChatMessage] Parsed result:", { 
+    hasCarousel: !!parsed.carousel, 
+    carouselListings: parsed.carousel?.listings?.length || 0,
+    hasMap: !!parsed.map,
+    textLength: parsed.text?.length || 0
+  });
     ? parseAIResponse(message.content)
     : { text: message.content, carousel: null, map: null };
 
