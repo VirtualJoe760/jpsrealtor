@@ -9,7 +9,7 @@ import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidg
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
 import { EnhancedChatProvider } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
-import { ThemeProvider } from "@/app/contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "@/app/contexts/ThemeContext";
 import { FileText } from "lucide-react";
 
 // Chat Components
@@ -25,7 +25,10 @@ import InvestmentMetricsDashboard, { type InvestmentMetrics } from "@/app/compon
 
 export const dynamic = 'force-dynamic';
 
-export default function TestPage() {
+function TestPageContent() {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+
   const [activeTest, setActiveTest] = useState<string>("chat-subdivision");
   const [cmaData, setCmaData] = useState<any>(null);
   const [cmaApiData, setCmaApiData] = useState<any>(null);
@@ -327,46 +330,61 @@ export default function TestPage() {
   }, []);
 
   return (
-    <SessionProvider>
-      <ThemeProvider>
-        <MLSProvider>
-          <ChatProvider>
-            <EnhancedChatProvider>
-              <div className="min-h-screen bg-gray-950 text-white">
-                {/* Header */}
-                <div className="border-b border-gray-800 bg-gray-900">
-                  <div className="container mx-auto px-6 py-8">
-                    <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                      Chat Widget Test Page - REAL API
-                    </h1>
-                    <p className="text-gray-400">
-                      Testing chat widgets with live API calls (no mock data)
-                    </p>
-                  </div>
-                </div>
+    <div className={`min-h-screen transition-colors duration-300 ${
+      isLight
+        ? 'bg-gradient-to-br from-blue-50 via-white to-purple-50 text-gray-900'
+        : 'bg-gray-950 text-white'
+    }`}>
+      {/* Header */}
+      <div className={`border-b transition-colors duration-300 ${
+        isLight
+          ? 'border-gray-300 bg-white/80'
+          : 'border-gray-800 bg-gray-900'
+      }`}
+        style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
+      >
+        <div className="container mx-auto px-6 py-8">
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Chat Widget Test Page - REAL API
+          </h1>
+          <p className={isLight ? 'text-gray-600' : 'text-gray-400'}>
+            Testing chat widgets with live API calls (no mock data)
+          </p>
+        </div>
+      </div>
 
-                {/* Test Selector */}
-                <div className="border-b border-gray-800 bg-gray-900/50">
-                  <div className="container mx-auto px-6 py-4">
-                    <div className="flex gap-2 flex-wrap">
-                      {tests.map((test) => (
-                        <button
-                          key={test.id}
-                          onClick={() => setActiveTest(test.id)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            activeTest === test.id
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          }`}
-                        >
-                          {test.name}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-sm text-gray-400">
-                      {tests.find((t) => t.id === activeTest)?.description}
-                    </p>
-                  </div>
+      {/* Test Selector */}
+      <div className={`border-b transition-colors duration-300 ${
+        isLight
+          ? 'border-gray-300 bg-white/50'
+          : 'border-gray-800 bg-gray-900/50'
+      }`}
+        style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
+      >
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex gap-2 flex-wrap">
+            {tests.map((test) => (
+              <button
+                key={test.id}
+                onClick={() => setActiveTest(test.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTest === test.id
+                    ? isLight
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-blue-600 text-white"
+                    : isLight
+                      ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                {test.name}
+              </button>
+            ))}
+          </div>
+          <p className={`mt-3 text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+            {tests.find((t) => t.id === activeTest)?.description}
+          </p>
+        </div>
                 </div>
 
                 {/* Test Content */}
@@ -441,23 +459,37 @@ export default function TestPage() {
                                 {/* Generated CMA Results */}
                                 {generatedCMA && (
                                   <div className="mt-6 flex justify-start">
-                                    <div className="max-w-[80%] px-4 py-3 rounded-lg bg-gray-800 text-gray-100 border border-gray-700">
+                                    <div className={`max-w-[80%] px-4 py-3 rounded-lg border transition-colors duration-300 ${
+                                      isLight
+                                        ? 'bg-white/90 text-gray-900 border-gray-300'
+                                        : 'bg-gray-800 text-gray-100 border-gray-700'
+                                    }`}
+                                      style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
+                                    >
                                       <div className="mb-4">
-                                        <h3 className="text-lg font-bold text-emerald-400 mb-2">
+                                        <h3 className={`text-lg font-bold mb-2 ${
+                                          isLight ? 'text-blue-600' : 'text-emerald-400'
+                                        }`}>
                                           📊 Comparative Market Analysis Generated
                                         </h3>
-                                        <p className="text-sm text-gray-300 mb-4">
+                                        <p className={`text-sm mb-4 ${
+                                          isLight ? 'text-gray-700' : 'text-gray-300'
+                                        }`}>
                                           I've analyzed {generatedCMA.selectedProperties?.length || 0} selected {generatedCMA.selectedProperties?.length === 1 ? 'property' : 'properties'} and found {generatedCMA.comparables?.length || 0} comparable properties within a 1-mile radius.
                                         </p>
                                       </div>
 
                                       {/* CMA Metrics Summary */}
-                                      <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
-                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Market Statistics</h4>
+                                      <div className={`rounded-lg p-4 mb-4 ${
+                                        isLight ? 'bg-gray-100' : 'bg-gray-900/50'
+                                      }`}>
+                                        <h4 className={`text-sm font-semibold mb-3 ${
+                                          isLight ? 'text-gray-700' : 'text-gray-300'
+                                        }`}>Market Statistics</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                           <div>
-                                            <p className="text-xs text-gray-500">Median Price/SqFt</p>
-                                            <p className="text-lg font-bold text-emerald-400">
+                                            <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-gray-500'}`}>Median Price/SqFt</p>
+                                            <p className={`text-lg font-bold ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
                                               ${generatedCMA.cmaMetrics?.medianPricePerSqft?.toFixed(2) || '—'}
                                             </p>
                                           </div>
@@ -626,23 +658,37 @@ export default function TestPage() {
                                 {/* Generated CMA Results */}
                                 {generatedCMA && (
                                   <div className="mt-6 flex justify-start">
-                                    <div className="max-w-[80%] px-4 py-3 rounded-lg bg-gray-800 text-gray-100 border border-gray-700">
+                                    <div className={`max-w-[80%] px-4 py-3 rounded-lg border transition-colors duration-300 ${
+                                      isLight
+                                        ? 'bg-white/90 text-gray-900 border-gray-300'
+                                        : 'bg-gray-800 text-gray-100 border-gray-700'
+                                    }`}
+                                      style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
+                                    >
                                       <div className="mb-4">
-                                        <h3 className="text-lg font-bold text-emerald-400 mb-2">
+                                        <h3 className={`text-lg font-bold mb-2 ${
+                                          isLight ? 'text-blue-600' : 'text-emerald-400'
+                                        }`}>
                                           📊 Comparative Market Analysis Generated
                                         </h3>
-                                        <p className="text-sm text-gray-300 mb-4">
+                                        <p className={`text-sm mb-4 ${
+                                          isLight ? 'text-gray-700' : 'text-gray-300'
+                                        }`}>
                                           I've analyzed {generatedCMA.selectedProperties?.length || 0} selected {generatedCMA.selectedProperties?.length === 1 ? 'property' : 'properties'} and found {generatedCMA.comparables?.length || 0} comparable properties within a 1-mile radius.
                                         </p>
                                       </div>
 
                                       {/* CMA Metrics Summary */}
-                                      <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
-                                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Market Statistics</h4>
+                                      <div className={`rounded-lg p-4 mb-4 ${
+                                        isLight ? 'bg-gray-100' : 'bg-gray-900/50'
+                                      }`}>
+                                        <h4 className={`text-sm font-semibold mb-3 ${
+                                          isLight ? 'text-gray-700' : 'text-gray-300'
+                                        }`}>Market Statistics</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                           <div>
-                                            <p className="text-xs text-gray-500">Median Price/SqFt</p>
-                                            <p className="text-lg font-bold text-emerald-400">
+                                            <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-gray-500'}`}>Median Price/SqFt</p>
+                                            <p className={`text-lg font-bold ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
                                               ${generatedCMA.cmaMetrics?.medianPricePerSqft?.toFixed(2) || '—'}
                                             </p>
                                           </div>
@@ -1003,17 +1049,34 @@ export default function TestPage() {
                   )}
                 </div>
 
-                {/* API Info Footer */}
-                <div className="border-t border-gray-800 bg-gray-900/50">
-                  <div className="container mx-auto px-6 py-4">
-                    <div className="text-sm text-gray-400">
-                      <strong className="text-white">API Routes:</strong> /api/chat (Groq AI) | /api/chat/search-listings (MLS Search)
-                      <span className="mx-2">•</span>
-                      <strong className="text-white">Debug:</strong> Open DevTools → Network tab to see real API calls
-                    </div>
-                  </div>
-                </div>
-              </div>
+      {/* API Info Footer */}
+      <div className={`border-t transition-colors duration-300 ${
+        isLight
+          ? 'border-gray-300 bg-white/50'
+          : 'border-gray-800 bg-gray-900/50'
+      }`}
+        style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
+      >
+        <div className="container mx-auto px-6 py-4">
+          <div className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-400'}`}>
+            <strong className={isLight ? 'text-gray-900' : 'text-white'}>API Routes:</strong> /api/chat (Groq AI) | /api/chat/search-listings (MLS Search)
+            <span className="mx-2">•</span>
+            <strong className={isLight ? 'text-gray-900' : 'text-white'}>Debug:</strong> Open DevTools → Network tab to see real API calls
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function TestPage() {
+  return (
+    <SessionProvider>
+      <ThemeProvider>
+        <MLSProvider>
+          <ChatProvider>
+            <EnhancedChatProvider>
+              <TestPageContent />
             </EnhancedChatProvider>
           </ChatProvider>
         </MLSProvider>
