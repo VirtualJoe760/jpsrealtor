@@ -85,7 +85,8 @@ export function detectFunctionCall(text: string): {
     }
   }
 
-  // Pattern 4: searchListings({...}) - Find FIRST occurrence only
+  // Pattern 4: searchListings({...}) - DEPRECATED - Find FIRST occurrence only
+  // NOTE: This pattern is deprecated. New chat system uses /api/chat/stream with matchLocation/searchCity tools
   const searchPattern = /searchListings\s*\(\s*(\{[\s\S]*?\})\s*\)/i;
   const match = preprocessedText.match(searchPattern);
 
@@ -251,28 +252,21 @@ function extractSearchParamsFromText(text: string): any {
 
 /**
  * Execute MLS search
+ * @deprecated This function is deprecated. Use /api/chat/stream with matchLocation or searchCity tools instead.
  */
 export async function executeMLSSearch(params: any): Promise<{
   success: boolean;
   listings: Listing[];
   count: number;
 }> {
+  console.warn("⚠️ executeMLSSearch is deprecated. Use /api/chat/stream with matchLocation or searchCity tools.");
   try {
-    const response = await fetch("/api/chat/search-listings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Search failed: ${response.status}`);
-    }
-
-    const data = await response.json();
+    // Old endpoint /api/chat/search-listings has been removed
+    console.error("❌ /api/chat/search-listings has been removed. Use matchLocation or searchCity instead.");
     return {
-      success: data.success,
-      listings: data.listings || [],
-      count: data.count || 0,
+      success: false,
+      listings: [],
+      count: 0,
     };
   } catch (error) {
     console.error("MLS search error:", error);

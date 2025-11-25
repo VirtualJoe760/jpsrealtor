@@ -15,10 +15,29 @@ interface PageTransitionProps {
  */
 export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true for initial page load
   const [prevPathname, setPrevPathname] = useState(pathname);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Handle initial page load
   useEffect(() => {
+    if (isInitialLoad) {
+      // Minimum 1.7 seconds for initial load to show full globe rotation
+      const minLoadTime = 1700;
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }, minLoadTime);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad]);
+
+  // Handle route changes
+  useEffect(() => {
+    // Skip if this is the initial load
+    if (isInitialLoad) return;
+
     // Detect route change
     if (pathname !== prevPathname) {
       setIsLoading(true);
@@ -44,7 +63,7 @@ export default function PageTransition({ children }: PageTransitionProps) {
 
       return () => clearTimeout(timer);
     }
-  }, [pathname, prevPathname]);
+  }, [pathname, prevPathname, isInitialLoad]);
 
   return (
     <>

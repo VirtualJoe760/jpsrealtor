@@ -24,8 +24,24 @@ export const GROQ_MODELS = {
 } as const;
 
 export interface GroqChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  tool_calls?: any[];
+  tool_call_id?: string;
+  name?: string;
+}
+
+export interface GroqTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, any>;
+      required?: string[];
+    };
+  };
 }
 
 export interface GroqChatOptions {
@@ -34,6 +50,8 @@ export interface GroqChatOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  tools?: GroqTool[];
+  tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
 }
 
 /**
@@ -48,16 +66,28 @@ export async function createChatCompletion(options: GroqChatOptions) {
     temperature = 0.3,
     maxTokens = 500,
     stream = false,
+    tools,
+    tool_choice,
   } = options;
 
   try {
-    const completion = await groq.chat.completions.create({
+    const params: any = {
       messages,
       model,
       temperature,
       max_tokens: maxTokens,
       stream,
-    });
+    };
+
+    // Add tools if provided
+    if (tools && tools.length > 0) {
+      params.tools = tools;
+      if (tool_choice) {
+        params.tool_choice = tool_choice;
+      }
+    }
+
+    const completion = await groq.chat.completions.create(params);
 
     return completion;
   } catch (error: any) {

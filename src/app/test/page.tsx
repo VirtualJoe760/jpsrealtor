@@ -1075,7 +1075,7 @@ function TestPageContent() {
       >
         <div className="container mx-auto px-6 py-4">
           <div className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-400'}`}>
-            <strong className={isLight ? 'text-gray-900' : 'text-white'}>API Routes:</strong> /api/chat (Groq AI) | /api/chat/search-listings (MLS Search)
+            <strong className={isLight ? 'text-gray-900' : 'text-white'}>API Routes:</strong> /api/chat/stream (Groq AI) | /api/chat/match-location | /api/chat/search-city
             <span className="mx-2">•</span>
             <strong className={isLight ? 'text-gray-900' : 'text-white'}>Debug:</strong> Open DevTools → Network tab to see real API calls
           </div>

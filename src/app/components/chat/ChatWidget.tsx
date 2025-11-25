@@ -15,7 +15,9 @@ import {
 import { getLocationWithCache } from "@/lib/geolocation";
 import ListingCarousel, { type Listing } from "./ListingCarousel";
 import MapView, { type MapLocation } from "./MapView";
+import ChatMapView from "./ChatMapView";
 import { detectFunctionCall, executeMLSSearch, formatSearchResultsForAI } from "@/lib/ai-functions";
+import { parseAIResponse } from "@/lib/message-parser";
 
 interface ChatWidgetProps {
   context: "homepage" | "listing" | "dashboard";
@@ -110,30 +112,13 @@ export default function ChatWidget({ context, listingData, className = "" }: Cha
       history.push({ role: "user", content: userMessage });
 
       // Build system prompt with location awareness
+      // NOTE: This ChatWidget uses the old Groq integration (being phased out)
+      // The new chat uses /api/chat/stream which has matchLocation and searchCity tools
       const systemPrompt = buildSystemPrompt(context, listingData, userLocation);
-
-      // Enhanced system prompt to teach AI about function calling
-      const enhancedSystemPrompt = `${systemPrompt}
-
-FUNCTION CALLING:
-When users ask to see available homes, you MUST call the searchListings function.
-Format: searchListings({"minBeds": 3, "maxPrice": 800000, "cities": ["Palm Desert"]})
-
-Available parameters:
-- minBeds, maxBeds: number
-- minBaths, maxBaths: number
-- minPrice, maxPrice: number
-- minSqft, maxSqft: number
-- cities: string[] (e.g., ["Palm Springs", "Palm Desert"])
-- hasPool: boolean
-- hasView: boolean
-- limit: number (default 10)
-
-IMPORTANT: Always call searchListings when users ask about properties!`;
 
       // Prepare messages for Groq
       const llmMessages = [
-        { role: "system", content: enhancedSystemPrompt },
+        { role: "system", content: systemPrompt },
         ...history,
       ];
 
@@ -275,26 +260,51 @@ IMPORTANT: Always call searchListings when users ask about properties!`;
         {displayMessages.map((message) => {
           const enrichedMsg = message as ChatMessageWithComponents;
 
+          // Parse AI responses for component markers
+          const parsed = message.role === "assistant"
+            ? parseAIResponse(message.content)
+            : { text: message.content, carousel: null, map: null };
+
           return (
             <div key={message.id}>
-              <div
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+              {/* Text content */}
+              {parsed.text && (
                 <div
-                  className={`max-w-[80%] px-4 py-2 rounded-lg ${
-                    message.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : message.role === "system"
-                      ? "hidden" // Hide system messages
-                      : "bg-gray-800 text-gray-100 border border-gray-700"
-                  }`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <div
+                    className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : message.role === "system"
+                        ? "hidden" // Hide system messages
+                        : "bg-gray-800 text-gray-100 border border-gray-700"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{parsed.text}</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Show listing carousel if this message has listings */}
-              {enrichedMsg.listings && enrichedMsg.listings.length > 0 && (
+              {/* Listing Carousel from component markers */}
+              {parsed.carousel && (
+                <div className="mt-4 w-full">
+                  <ListingCarousel
+                    listings={parsed.carousel.listings}
+                    title={parsed.carousel.title}
+                  />
+                </div>
+              )}
+
+              {/* Map View from component markers */}
+              {parsed.map && (
+                <div className="mt-4 w-full rounded-lg overflow-hidden border border-gray-700">
+                  <ChatMapView listings={parsed.map.listings} />
+                </div>
+              )}
+
+              {/* Legacy: Show listing carousel if this message has listings (for backwards compatibility) */}
+              {enrichedMsg.listings && enrichedMsg.listings.length > 0 && !parsed.carousel && (
                 <div className="flex justify-start mt-2">
                   <ListingCarousel
                     listings={enrichedMsg.listings}
@@ -303,8 +313,8 @@ IMPORTANT: Always call searchListings when users ask about properties!`;
                 </div>
               )}
 
-              {/* Show map if this message has map locations */}
-              {enrichedMsg.mapLocations && enrichedMsg.mapLocations.length > 0 && (
+              {/* Legacy: Show map if this message has map locations (for backwards compatibility) */}
+              {enrichedMsg.mapLocations && enrichedMsg.mapLocations.length > 0 && !parsed.map && (
                 <div className="flex justify-start mt-2">
                   <MapView locations={enrichedMsg.mapLocations} />
                 </div>

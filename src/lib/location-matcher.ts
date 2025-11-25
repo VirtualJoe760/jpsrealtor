@@ -308,7 +308,7 @@ export function locationToSearchParams(match: LocationMatch): any {
 
     case 'subdivision':
       params.subdivisions = [match.name];
-      params.city = match.city; // Include city for context
+      // Do NOT include city parameter - it should use ONLY subdivisions
       // No limit for subdivision searches
       break;
   }

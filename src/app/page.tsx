@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { EnhancedChatProvider, useEnhancedChat } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
-import { useChatContext } from "@/app/components/chat/ChatProvider";
+import { ChatProvider, useChatContext } from "@/app/components/chat/ChatProvider";
 import MLSPreloader from "@/app/components/mls/MLSPreloader";
 import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidget";
 import ArticlesView from "@/app/components/chatwidget/ArticlesView";
@@ -116,11 +116,13 @@ function HomePageContent() {
 
 function HomePageWrapper() {
   return (
-    <EnhancedChatProvider>
-      <MLSProvider>
-        <HomePageContent />
-      </MLSProvider>
-    </EnhancedChatProvider>
+    <MLSProvider>
+      <ChatProvider>
+        <EnhancedChatProvider>
+          <HomePageContent />
+        </EnhancedChatProvider>
+      </ChatProvider>
+    </MLSProvider>
   );
 }
 

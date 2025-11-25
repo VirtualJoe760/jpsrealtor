@@ -61,7 +61,10 @@
       "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor status --short src/app/test/page.tsx)",
       "Bash(lsof:*)",
       "Bash(fuser:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "WebFetch(domain:console.groq.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

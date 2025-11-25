@@ -93,15 +93,22 @@ export async function POST(req: NextRequest) {
 
       console.log('✅ Matched to subdivision:', match.name);
 
+      // Build match response without city for subdivisions
+      const matchResponse: any = {
+        type: match.type,
+        name: match.name,
+        confidence: match.confidence
+      };
+
+      // Only include city field for city/county matches, NOT subdivisions
+      if (match.type !== 'subdivision' && match.city) {
+        matchResponse.city = match.city;
+      }
+
       return NextResponse.json({
         success: true,
         query,
-        match: {
-          type: match.type,
-          name: match.name,
-          city: match.city,
-          confidence: match.confidence
-        },
+        match: matchResponse,
         searchParams
       });
     }

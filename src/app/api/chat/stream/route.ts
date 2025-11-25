@@ -4,9 +4,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logChatMessage } from "@/lib/chat-logger";
 import { createChatCompletion, GROQ_MODELS } from "@/lib/groq";
-import type { GroqChatMessage } from "@/lib/groq";
+import type { GroqChatMessage, GroqTool } from "@/lib/groq";
 import endpointsConfig from "@/app/api/ai/console/endpoints.json";
 import formulasConfig from "@/app/api/ai/console/formulas.json";
+
+// Define tools for the AI to use
+// NOTE: searchListings has been REMOVED - auto-search handles all listing fetching
+const CHAT_TOOLS: GroqTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "matchLocation",
+      description: "Resolve a SPECIFIC location query (subdivision/neighborhood/community name) to geographic data. Use this when user asks about a SPECIFIC subdivision like 'Palm Desert Country Club', 'Indian Wells Country Club', etc. Do NOT use for general city queries like 'Palm Desert' or 'La Quinta' - use searchCity instead.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The specific subdivision/community name (e.g., 'Palm Desert Country Club', 'PGA West', 'Indian Wells Country Club')"
+          }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "searchCity",
+      description: "Search ALL properties in an entire city. Use this when user asks for homes in just a city name like 'Palm Desert', 'La Quinta', 'Indian Wells', etc. WITHOUT specifying a subdivision. This returns ALL active listings citywide.",
+      parameters: {
+        type: "object",
+        properties: {
+          city: {
+            type: "string",
+            description: "City name (e.g., 'Palm Desert', 'La Quinta', 'Indian Wells')"
+          }
+        },
+        required: ["city"]
+      }
+    }
+  }
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -64,17 +103,166 @@ export async function POST(req: NextRequest) {
       content: msg.content,
     })));
 
-    // Get AI response from Groq
-    const completion = await createChatCompletion({
+    // Get AI response from Groq with tool support
+    // AI can choose between matchLocation (subdivisions) and searchCity (city-wide)
+    let completion = await createChatCompletion({
       messages: groqMessages,
       model,
       temperature: 0.3,
       maxTokens: 500,
-      stream: false, // Explicitly set to false to get non-streaming response
+      stream: false,
+      tools: CHAT_TOOLS,
+      tool_choice: "auto", // Let AI decide between matchLocation and searchCity
     });
 
-    // Type guard to ensure we have a ChatCompletion, not a Stream
+    // Check if AI wants to use tools
+    const assistantMessage: any = 'choices' in completion ? completion.choices[0]?.message : null;
+
+    if (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0) {
+      console.log("[TOOL CALLS] AI requested:", assistantMessage.tool_calls.map((tc: any) => tc.function.name));
+      console.log("[TOOL CALLS] Full details:", JSON.stringify(assistantMessage.tool_calls, null, 2));
+
+      // Execute all tool calls
+      const toolResults = await Promise.all(
+        assistantMessage.tool_calls.map(async (toolCall: any) => {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+
+          console.log(`[EXECUTING] ${functionName} with args:`, JSON.stringify(functionArgs, null, 2));
+
+          let result: any;
+
+          try {
+            if (functionName === "matchLocation") {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/match-location`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(functionArgs)
+              });
+              result = await response.json();
+            } else if (functionName === "searchCity") {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/search-city`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(functionArgs)
+              });
+              result = await response.json();
+            } else {
+              result = { error: `Unknown function: ${functionName}` };
+            }
+          } catch (error: any) {
+            console.error(`Error executing ${functionName}:`, error);
+            result = { error: error.message };
+          }
+
+          console.log(`[RESULT] ${functionName}:`, JSON.stringify(result).substring(0, 200));
+
+          // AUTOMATIC SEARCH: If matchLocation succeeded, call the WORKING subdivision endpoint
+          // This bypasses the broken search-listings endpoint entirely
+          if (functionName === "matchLocation" && result.success && result.match?.type === "subdivision") {
+            console.log("[AUTO-SEARCH] Subdivision match found, using working /api/subdivisions endpoint");
+
+            try {
+              // Generate slug from subdivision name
+              const subdivisionName = result.match.name;
+              const slug = subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+              console.log("[AUTO-SEARCH] Fetching from /api/subdivisions/" + slug + "/listings");
+
+              // Call the WORKING endpoint that returns 31+ listings
+              const listingsResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/subdivisions/${slug}/listings?limit=100`,
+                { method: "GET" }
+              );
+              const listingsData = await listingsResponse.json();
+
+              const allListings = listingsData.listings || [];
+              const totalCount = listingsData.pagination?.total || allListings.length;
+
+              console.log("[AUTO-SEARCH] Found", totalCount, "listings from working endpoint");
+
+              // Calculate summary stats from ALL listings
+              const prices = allListings.map((l: any) => l.listPrice || 0).filter((p: number) => p > 0);
+              const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+              const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+              const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length) : 0;
+
+              // Calculate center coordinates for map
+              const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
+              const centerLat = validCoords.length > 0
+                ? validCoords.reduce((sum: number, l: any) => sum + parseFloat(l.latitude), 0) / validCoords.length
+                : 33.72;
+              const centerLng = validCoords.length > 0
+                ? validCoords.reduce((sum: number, l: any) => sum + parseFloat(l.longitude), 0) / validCoords.length
+                : -116.37;
+
+              // Return summary + 10 sample listings for AI (formatted for components)
+              result.summary = {
+                count: totalCount,
+                priceRange: { min: minPrice, max: maxPrice },
+                avgPrice: avgPrice,
+                center: { lat: centerLat, lng: centerLng },
+                sampleListings: allListings.slice(0, 10).map((l: any) => ({
+                  id: l.listingId || l.listingKey,
+                  price: l.listPrice,
+                  beds: l.bedroomsTotal || l.bedsTotal,
+                  baths: l.bathroomsTotalDecimal,
+                  sqft: l.livingArea,
+                  address: l.address || l.unparsedAddress,
+                  city: l.city,
+                  subdivision: subdivisionName,
+                  image: l.primaryPhotoUrl || "",
+                  url: `/mls-listings/${l.slugAddress || l.listingId}`,
+                  latitude: parseFloat(l.latitude) || null,
+                  longitude: parseFloat(l.longitude) || null
+                }))
+              };
+
+              console.log("[AUTO-SEARCH] Summary:", JSON.stringify(result.summary, null, 2));
+            } catch (error: any) {
+              console.error("[AUTO-SEARCH] Failed:", error);
+            }
+          }
+
+          return {
+            role: "tool" as const,
+            tool_call_id: toolCall.id,
+            name: functionName,
+            content: JSON.stringify(result)
+          };
+        })
+      );
+
+      // Send tool results back to AI for final response
+      const messagesWithTools: GroqChatMessage[] = [
+        ...groqMessages,
+        assistantMessage,
+        ...toolResults
+      ];
+
+      console.log("[TOOL RESULTS] Sending results back to AI for final response");
+      console.log("[TOOL RESULTS] Message count:", messagesWithTools.length);
+
+      // CRITICAL: NO TOOLS on final call - AI must respond with text, not call tools again
+      completion = await createChatCompletion({
+        messages: messagesWithTools,
+        model,
+        temperature: 0.3,
+        maxTokens: 1000,
+        stream: false,
+        // Intentionally omit tools and tool_choice - AI should present results, not call more tools
+      });
+
+      console.log("[AI RESPONSE] Completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
+    }
+
+    // Extract final response
     const responseText = 'choices' in completion ? (completion.choices[0]?.message?.content || "") : "";
+
+    if (!responseText) {
+      console.error("[AI RESPONSE] WARNING: Empty response from AI");
+      console.error("[AI RESPONSE] Full completion:", JSON.stringify(completion, null, 2).substring(0, 1000));
+    }
 
     // Log response
     await logChatMessage("assistant", responseText, userId, {
@@ -111,6 +299,60 @@ function buildEnhancedSystemPrompt(): string {
 
 # Your Role
 You help users find properties, analyze investments, generate CMAs (Comparative Market Analyses), and provide data-driven real estate insights for Southern California markets.
+
+# CRITICAL: Tool Usage Workflow
+
+When a user asks to "show me homes in [location]":
+
+1. **CALL matchLocation or searchCity** - The system automatically fetches listings
+   - For SPECIFIC subdivisions: matchLocation({"query": "palm desert country club"})
+   - For ENTIRE cities: searchCity({"city": "Palm Desert"})
+   - The backend automatically fetches all listings from the working endpoint
+   - You will receive a summary object with property statistics
+
+2. **AUTOMATIC LISTING FETCH** - No additional tool calls needed
+   - The tool result will include a summary object with:
+     * count: Total number of listings found
+     * priceRange: { min, max } prices
+     * avgPrice: Average listing price
+     * center: { lat, lng } coordinates for map
+     * sampleListings: Array of 10 sample properties with full details
+   - Use this data to build your response
+
+3. **RESPONSE FORMAT** - CRITICAL: Use component markers to trigger rich UI:
+
+   When showing properties, you MUST use this EXACT format:
+
+   I found [count] properties in [location name]!
+
+   [LISTING_CAROUSEL]
+   {
+     "title": "[count] homes in [location]",
+     "listings": [array of 8-10 sample listings from sampleListings]
+   }
+   [/LISTING_CAROUSEL]
+
+   [MAP_VIEW]
+   {
+     "listings": [same sample listings with latitude/longitude],
+     "center": {"lat": [centerLat], "lng": [centerLng]},
+     "zoom": 13
+   }
+   [/MAP_VIEW]
+
+   Here are the top listings with photos, prices, and exact locations on the map.
+
+   Price range: $[min] - $[max]
+   Average: $[avgPrice]
+
+   IMPORTANT: The [LISTING_CAROUSEL] and [MAP_VIEW] markers trigger interactive UI components.
+   Always include them when showing property results. Use the sampleListings data exactly as provided.
+
+4. **CRITICAL RULES**:
+   - ONLY call matchLocation (for subdivisions) or searchCity (for cities)
+   - Backend automatically fetches all listings - no additional tool calls needed
+   - Use data from result.summary object
+   - Present the sampleListings array with full formatting in component markers
 
 # Core Capabilities
 
