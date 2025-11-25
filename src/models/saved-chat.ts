@@ -71,6 +71,7 @@ const SavedChatSchema = new Schema<ISavedChat>(
 // Indexes for efficient queries
 SavedChatSchema.index({ userId: 1, createdAt: -1 });
 SavedChatSchema.index({ userId: 1, isFavorite: 1 });
+SavedChatSchema.index({ userId: 1, updatedAt: -1 }); // For recent conversations query
 SavedChatSchema.index({ userId: 1, tags: 1 });
 
 const SavedChat: Model<ISavedChat> =

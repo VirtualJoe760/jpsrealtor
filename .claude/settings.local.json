@@ -60,7 +60,8 @@
       "Bash(kill:*)",
       "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor status --short src/app/test/page.tsx)",
       "Bash(lsof:*)",
-      "Bash(fuser:*)"
+      "Bash(fuser:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import SavedChat from "@/models/saved-chat";
 
-// GET: Fetch user's chat history with pagination
+// GET: Fetch user's chat history
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,42 +16,22 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Parse pagination parameters
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const skip = (page - 1) * limit;
-
-    // Get user's recent chats with pagination
-    // IMPORTANT: Only select metadata, NOT full messages array
+    // Get user's recent chats (limit to 50)
     const chats = await SavedChat.find({ userId: session.user.email })
       .sort({ updatedAt: -1 })
-      .limit(limit)
-      .skip(skip)
-      .select('conversationId title createdAt updatedAt messages')
+      .limit(50)
+      .select('conversationId title messages createdAt updatedAt')
       .lean();
-
-    // Get total count for pagination
-    const total = await SavedChat.countDocuments({ userId: session.user.email });
 
     // Transform to conversation history format
     const history = chats.map(chat => ({
       id: chat.conversationId,
       title: chat.title,
       timestamp: new Date(chat.updatedAt).getTime(),
-      messageCount: chat.messages?.length || 0,
+      messageCount: chat.messages.length,
     }));
 
-    return NextResponse.json({
-      history,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-        hasMore: page < Math.ceil(total / limit),
-      }
-    });
+    return NextResponse.json({ history });
   } catch (error) {
     console.error("Error fetching chat history:", error);
     return NextResponse.json({ error: "Failed to fetch chat history" }, { status: 500 });

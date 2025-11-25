@@ -1381,7 +1381,7 @@ FUNCTION CALLING RULES:
       {/* Landing Page - Centered Group Container */}
       <AnimatePresence>
         {chatMode === "landing" && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pb-48 md:pb-0">
+          <div className="absolute inset-0 flex items-center justify-center z-10 px-4">
             <motion.div
               initial={{ opacity: 0, y: -30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1392,7 +1392,7 @@ FUNCTION CALLING RULES:
                 damping: 20,
                 duration: 0.8,
               }}
-              className="w-full max-w-[90%] md:max-w-4xl flex flex-col items-center gap-6 md:gap-8"
+              className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-6 md:gap-8"
             >
               {/* Logo */}
               <div className="flex items-center justify-center gap-3 md:gap-3">
