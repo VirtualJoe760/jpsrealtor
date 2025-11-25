@@ -19,7 +19,15 @@ const nextConfig = {
   ...(isProd && {
     compress: true,
     poweredByHeader: false,
+    // Exclude test page from production build
+    async generateBuildId() {
+      return 'build-' + Date.now();
+    },
   }),
+
+  // Skip static generation for test page
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true,
 
   // Optimize imports for faster builds
   modularizeImports: {

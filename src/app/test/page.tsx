@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
 import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidget";
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
@@ -1089,13 +1089,15 @@ export default function TestPage() {
   return (
     <SessionProvider>
       <ThemeProvider>
-        <MLSProvider>
-          <ChatProvider>
-            <EnhancedChatProvider>
-              <TestPageContent />
-            </EnhancedChatProvider>
-          </ChatProvider>
-        </MLSProvider>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+          <MLSProvider>
+            <ChatProvider>
+              <EnhancedChatProvider>
+                <TestPageContent />
+              </EnhancedChatProvider>
+            </ChatProvider>
+          </MLSProvider>
+        </Suspense>
       </ThemeProvider>
     </SessionProvider>
   );

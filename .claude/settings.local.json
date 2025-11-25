@@ -52,7 +52,8 @@
       "Bash(sshpass -p \"dstreet280\" ssh -o StrictHostKeyChecking=no root@147.182.236.138 \"mongosh ''mongodb://root:dstreet280@localhost:27017/payload?authSource=admin'' --quiet --eval \"\"db.listings.countDocuments({StandardStatus: ''Closed''})\"\"\")",
       "WebSearch",
       "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff src/app/test/page.tsx)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(.gitignore)"
     ],
     "deny": [],
     "ask": []
