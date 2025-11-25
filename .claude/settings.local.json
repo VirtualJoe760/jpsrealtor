@@ -64,7 +64,8 @@
       "Bash(gh run list:*)",
       "WebFetch(domain:console.groq.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(node scripts/test-chat.js:*)"
     ],
     "deny": [],
     "ask": []

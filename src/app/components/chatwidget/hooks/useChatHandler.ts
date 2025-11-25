@@ -118,26 +118,18 @@ export function useChatHandler({
         const fullResponse = await getAIResponse(llmMessages);
         setStreamingMessage("");
 
-        // Check for function calls
-        const functionCall = detectFunctionCall(fullResponse);
+        // Add user message
+        addMessage({ role: "user", content: userMessage, context: "general" });
 
-        if (functionCall?.type === "matchLocation") {
-          await handleMatchLocation(userMessage, functionCall.params);
-        } else if (functionCall?.type === "search") {
-          await handleSearch(userMessage, functionCall.params);
-        } else if (functionCall?.type === "research") {
-          await handleResearch(userMessage, functionCall.params);
+        // Add AI response - it already contains [LISTING_CAROUSEL] and [MAP_VIEW] markers
+        addMessage({ role: "assistant", content: fullResponse, context: "general" });
+
+        // Track conversation
+        if (!hasTrackedFirstMessage) {
+          addToConversationHistory(userMessage, conversationId);
+          setHasTrackedFirstMessage(true);
         } else {
-          // Regular message
-          addMessage({ role: "user", content: userMessage, context: "general" });
-          addMessage({ role: "assistant", content: fullResponse, context: "general" });
-
-          if (!hasTrackedFirstMessage) {
-            addToConversationHistory(userMessage, conversationId);
-            setHasTrackedFirstMessage(true);
-          } else {
-            updateConversationMessageCount(conversationId);
-          }
+          updateConversationMessageCount(conversationId);
         }
 
         // Extract and save goals
