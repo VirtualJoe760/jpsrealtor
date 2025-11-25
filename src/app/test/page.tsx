@@ -28,10 +28,6 @@ export const dynamic = 'force-dynamic';
 function TestPageContent() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
-
-  // Debug logging
-  console.log('🎨 Test Page Theme:', { currentTheme, isLight });
-
   const [activeTest, setActiveTest] = useState<string>("chat-subdivision");
   const [cmaData, setCmaData] = useState<any>(null);
   const [cmaApiData, setCmaApiData] = useState<any>(null);
@@ -331,6 +327,11 @@ function TestPageContent() {
 
     fetchChatListings();
   }, []);
+
+  // Track theme changes
+  useEffect(() => {
+    console.log('🎨 Test Page - Theme changed:', { currentTheme, isLight });
+  }, [currentTheme, isLight]);
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -1072,6 +1073,12 @@ function TestPageContent() {
   );
 }
 
+function TestPageWrapper() {
+  const { currentTheme } = useTheme();
+
+  return <TestPageContent key={currentTheme} />;
+}
+
 export default function TestPage() {
   return (
     <SessionProvider>
@@ -1079,7 +1086,7 @@ export default function TestPage() {
         <MLSProvider>
           <ChatProvider>
             <EnhancedChatProvider>
-              <TestPageContent />
+              <TestPageWrapper />
             </EnhancedChatProvider>
           </ChatProvider>
         </MLSProvider>
