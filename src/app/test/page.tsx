@@ -5,9 +5,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
-import IntegratedChatWidget from "@/app/components/chatwidget/IntegratedChatWidget";
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
-import { EnhancedChatProvider } from "@/app/components/chat/EnhancedChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { ThemeProvider, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { FileText } from "lucide-react";
