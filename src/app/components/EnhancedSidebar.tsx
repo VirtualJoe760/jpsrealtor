@@ -68,11 +68,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       initial={false}
       animate={{ width: effectivelyCollapsed ? "80px" : isMobile ? "280px" : "280px" }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className={`relative flex flex-col h-screen border-r ${
+      className={`relative flex flex-col h-full max-h-screen border-r overflow-y-auto ${
         isLight
           ? "bg-white/80 border-gray-300 backdrop-blur-xl"
           : "bg-neutral-900/50 border-neutral-700/50 backdrop-blur-xl"
       }`}
+      style={{ paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 20px)' : undefined }}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4">
@@ -136,7 +137,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       </nav>
 
       {/* Footer - extra padding on mobile for safe area */}
-      <div className={`p-4 border-t border-gray-200 dark:border-neutral-700 ${isMobile ? 'pb-24' : ''}`}>
+      <div className={`p-4 border-t border-gray-200 dark:border-neutral-700 ${isMobile ? 'pb-32' : ''}`}>
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
