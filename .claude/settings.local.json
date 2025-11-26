@@ -73,7 +73,8 @@
       "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/CMADisplay.tsx\")",
       "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/lib/groq.ts\")",
       "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short src/app/map/page.tsx)",
-      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff src/app/map/page.tsx)"
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff src/app/map/page.tsx)",
+      "Bash(rmdir:*)"
     ],
     "deny": [],
     "ask": []

@@ -33,22 +33,30 @@ class ChatLogger {
     if (this.initialized) return;
 
     try {
-      // Create directory if it doesn't exist
-      if (!existsSync(LOG_DIR)) {
-        await mkdir(LOG_DIR, { recursive: true });
+      // Only attempt file logging in development (not in serverless environments)
+      if (process.env.NODE_ENV === 'development') {
+        // Create directory if it doesn't exist
+        if (!existsSync(LOG_DIR)) {
+          await mkdir(LOG_DIR, { recursive: true });
+        }
+
+        // Initialize session file
+        await writeFile(SESSION_FILE, JSON.stringify({
+          sessionId: this.sessionId,
+          startTime: new Date().toISOString(),
+          logs: []
+        }, null, 2));
+
+        console.log('📝 Chat logger initialized:', SESSION_FILE);
+      } else {
+        console.log('📝 Chat logger: Using console-only mode (serverless environment)');
       }
 
-      // Initialize session file
-      await writeFile(SESSION_FILE, JSON.stringify({
-        sessionId: this.sessionId,
-        startTime: new Date().toISOString(),
-        logs: []
-      }, null, 2));
-
       this.initialized = true;
-      console.log('📝 Chat logger initialized:', SESSION_FILE);
     } catch (error) {
-      console.error('Failed to initialize chat logger:', error);
+      // Silently fail in production - logging shouldn't break the app
+      console.warn('Chat logger initialization failed (non-critical):', error instanceof Error ? error.message : 'Unknown error');
+      this.initialized = true; // Mark as initialized anyway to prevent retry loops
     }
   }
 
@@ -66,26 +74,31 @@ class ChatLogger {
     this.logs.push(logEntry);
 
     try {
-      // Write to session file
-      const sessionData = {
-        sessionId: this.sessionId,
-        startTime: this.logs[0]?.timestamp || new Date().toISOString(),
-        messageCount: this.logs.length,
-        logs: this.logs
-      };
+      // Console logging always works (both dev and production)
+      console.log('✅ Chat logged:', logEntry.role, logEntry.content.substring(0, 50));
 
-      await writeFile(SESSION_FILE, JSON.stringify(sessionData, null, 2));
+      // Only attempt file writing in development
+      if (process.env.NODE_ENV === 'development') {
+        // Write to session file
+        const sessionData = {
+          sessionId: this.sessionId,
+          startTime: this.logs[0]?.timestamp || new Date().toISOString(),
+          messageCount: this.logs.length,
+          logs: this.logs
+        };
 
-      // Append to summary file for easy reading
-      const summaryLine = `[${logEntry.timestamp}] ${logEntry.role.toUpperCase()}: ${logEntry.content.substring(0, 100)}${logEntry.content.length > 100 ? '...' : ''}\n`;
-      await appendFile(SUMMARY_FILE, summaryLine).catch(() => {
-        // If file doesn't exist, create it
-        writeFile(SUMMARY_FILE, summaryLine);
-      });
+        await writeFile(SESSION_FILE, JSON.stringify(sessionData, null, 2));
 
-      console.log('✅ Logged:', logEntry.role, logEntry.content.substring(0, 50));
+        // Append to summary file for easy reading
+        const summaryLine = `[${logEntry.timestamp}] ${logEntry.role.toUpperCase()}: ${logEntry.content.substring(0, 100)}${logEntry.content.length > 100 ? '...' : ''}\n`;
+        await appendFile(SUMMARY_FILE, summaryLine).catch(() => {
+          // If file doesn't exist, create it
+          writeFile(SUMMARY_FILE, summaryLine);
+        });
+      }
     } catch (error) {
-      console.error('Failed to write log:', error);
+      // Silently fail - logging shouldn't break the app in production
+      console.warn('Chat log write failed (non-critical):', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
