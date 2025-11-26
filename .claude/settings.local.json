@@ -65,7 +65,9 @@
       "WebFetch(domain:console.groq.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(node scripts/test-chat.js:*)"
+      "Bash(node scripts/test-chat.js:*)",
+      "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/local-logs/chat-records/latest-test.json\")",
+      "Bash(__NEW_LINE__ head -c 3000 \"F:/web-clients/joseph-sardella/jpsrealtor/local-logs/chat-records/latest-test.json\")"
     ],
     "deny": [],
     "ask": []
