@@ -38,8 +38,6 @@ const DEFAULT_BOUNDS = {
 
 function MapPageContent() {
   const {
-    clusters,
-    listings,
     visibleListings,
     selectedListing,
     selectedFullListing,
@@ -331,8 +329,7 @@ function MapPageContent() {
         // Map with listings
         <>
           <MapView
-            clusters={clusters}
-            listings={listings}
+            listings={visibleListings}
             centerLat={(mapBounds.north + mapBounds.south) / 2}
             centerLng={(mapBounds.east + mapBounds.west) / 2}
             zoom={mapBounds.zoom || 11}
@@ -422,18 +419,16 @@ function MapPageContent() {
               </span>
             )}
             {/* Total count */}
-            {!isLoadingViewport && (
+            {totalCount && !isLoadingViewport && (
               <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg ${
                 isLight
                   ? 'bg-white/90 text-gray-700 border border-gray-300'
                   : 'bg-black/80 text-neutral-300 border border-neutral-700'
               }`}>
-                {clusters.length > 0 ? `${clusters.length} clusters` : `${listings.length} listings`}
-                {totalCount && (
-                  <span className={`ml-2 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
-                    of {totalCount.total.toLocaleString()} total
-                  </span>
-                )}
+                {visibleListings.length.toLocaleString()} shown
+                <span className={`ml-2 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
+                  of {totalCount.total.toLocaleString()} total
+                </span>
               </span>
             )}
           </div>

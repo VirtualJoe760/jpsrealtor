@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useRouter } from "next/navigation";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
-import { useListings, TotalCount, ServerCluster } from "@/app/utils/map/useListings";
+import { useListings, TotalCount } from "@/app/utils/map/useListings";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -31,10 +31,7 @@ const defaultFilterState: Filters = {
 };
 
 interface MLSContextValue {
-  // Server-side clustering
-  clusters: ServerCluster[];
-  listings: MapListing[];
-  // Listings State (backwards compatibility)
+  // Listings State
   allListings: MapListing[];
   visibleListings: MapListing[];
   selectedListing: MapListing | null;
@@ -88,7 +85,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const { currentTheme } = useTheme();
 
   // Core hooks
-  const { clusters, listings, allListings, visibleListings, loadListings: loadListingsCore, totalCount, isLoading: isLoadingViewport } = useListings();
+  const { allListings, visibleListings, loadListings: loadListingsCore, totalCount, isLoading: isLoadingViewport } = useListings();
   const swipeQueue = useSwipeQueue();
 
   // Refs for caching
@@ -476,8 +473,6 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   );
 
   const value: MLSContextValue = {
-    clusters,
-    listings,
     allListings,
     visibleListings,
     selectedListing,
