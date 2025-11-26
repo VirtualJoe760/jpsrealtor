@@ -125,6 +125,51 @@ export default function ChatWidget() {
                   JPSREALTOR
                 </h1>
               </div>
+
+              {/* Input Bar in Landing */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="w-full max-w-[700px]"
+              >
+                <div
+                  className={`relative rounded-2xl backdrop-blur-md shadow-lg ${
+                    isLight ? "bg-white/80 border border-gray-300" : "bg-neutral-800/50 border border-neutral-700/50"
+                  }`}
+                  style={{
+                    backdropFilter: "blur(10px) saturate(150%)",
+                    WebkitBackdropFilter: "blur(10px) saturate(150%)",
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask me anything about real estate..."
+                    disabled={isLoading}
+                    className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl ${
+                      isLight ? "text-gray-900 placeholder-gray-500" : "text-white placeholder-gray-400"
+                    }`}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!message.trim() || isLoading}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                      message.trim() && !isLoading
+                        ? isLight
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-purple-600 hover:bg-purple-700 text-white"
+                        : isLight
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-neutral-700 text-neutral-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -244,3 +289,4 @@ export default function ChatWidget() {
     </div>
   );
 }
+      )}

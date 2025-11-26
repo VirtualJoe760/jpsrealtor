@@ -70,7 +70,8 @@
       "Bash(__NEW_LINE__ head -c 3000 \"F:/web-clients/joseph-sardella/jpsrealtor/local-logs/chat-records/latest-test.json\")",
       "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/ListingCarousel.tsx\")",
       "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/ChatMapView.tsx\")",
-      "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/CMADisplay.tsx\")"
+      "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/CMADisplay.tsx\")",
+      "Bash(\"F:/web-clients/joseph-sardella/jpsrealtor/src/lib/groq.ts\")"
     ],
     "deny": [],
     "ask": []
