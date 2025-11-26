@@ -58,6 +58,7 @@ function MapPageContent() {
     removeFavorite,
     clearFavorites,
     swipeQueue,
+    totalCount,
   } = useMLSContext();
 
   const { currentTheme } = useTheme();
@@ -448,6 +449,22 @@ function MapPageContent() {
                 <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
                 <span className="text-sm text-neutral-300">Loading details...</span>
               </div>
+            </div>
+          )}
+
+          {/* Total Listings Count */}
+          {totalCount && (
+            <div className="absolute bottom-20 sm:bottom-auto sm:top-4 left-4 z-30">
+              <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg ${
+                isLight
+                  ? 'bg-white/90 text-gray-700 border border-gray-300'
+                  : 'bg-black/80 text-neutral-300 border border-neutral-700'
+              }`}>
+                {totalCount.total.toLocaleString()} Active Listings
+                <span className={`ml-2 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
+                  (GPS: {totalCount.gps.toLocaleString()} | CRMLS: {totalCount.crmls.toLocaleString()})
+                </span>
+              </span>
             </div>
           )}
 

@@ -119,7 +119,7 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
 
   if (validListings.length === 0) {
     return (
-      <div className={`w-full h-[300px] md:h-[400px] rounded-lg flex items-center justify-center border ${
+      <div className={`w-full h-[200px] md:h-[250px] xl:h-[300px] 2xl:h-[400px] rounded-lg flex items-center justify-center border ${
         isLight
           ? 'bg-gray-100 border-gray-300'
           : 'bg-neutral-800 border-neutral-700'
@@ -270,7 +270,7 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   }, [searchFilters, validListings.length, paddedBounds, router]);
 
   return (
-    <div className={`relative w-full h-[350px] md:h-[500px] rounded-lg overflow-hidden border ${
+    <div className={`relative w-full h-[250px] md:h-[300px] xl:h-[350px] 2xl:h-[450px] rounded-lg overflow-hidden border ${
       isLight ? 'border-gray-300' : 'border-neutral-700'
     }`}>
       {mapError && (

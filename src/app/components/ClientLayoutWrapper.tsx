@@ -45,13 +45,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main content with sidebar spacing on desktop */}
       <div
-        className={`relative z-10 transition-[margin] duration-300 ${
+        className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
-
         {children}
-
       </div>
 
       <MobileBottomNav />

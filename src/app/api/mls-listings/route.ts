@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
   }
 
   const skip = parseInt(query.get("skip") || "0", 10);
-  const limit = Math.min(parseInt(query.get("limit") || "1000", 10), 1000);
+  const limit = Math.min(parseInt(query.get("limit") || "1000", 10), 5000);
 
   const sortBy = query.get("sortBy") || "listPrice";
   const sortOrder: 1 | -1 = query.get("sortOrder") === "desc" ? -1 : 1;
@@ -348,9 +348,22 @@ export async function GET(req: NextRequest) {
     const listings = allListings.slice(0, limit);
 
 
+    // Get total counts from both collections (for display purposes)
+    const [gpsTotal, crmlsTotal] = await Promise.all([
+      Listing.countDocuments({ standardStatus: "Active" }),
+      CRMLSListing.countDocuments({ standardStatus: "Active" }),
+    ]);
+
     // Add cache headers for better performance
     return NextResponse.json(
-      { listings },
+      {
+        listings,
+        totalCount: {
+          gps: gpsTotal,
+          crmls: crmlsTotal,
+          total: gpsTotal + crmlsTotal,
+        }
+      },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',

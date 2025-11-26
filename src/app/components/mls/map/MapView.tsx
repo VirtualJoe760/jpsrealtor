@@ -98,7 +98,7 @@ function getMarkerColors(propertyType?: string, mlsSource?: string, hovered?: bo
     : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm";
 }
 
-const RAW_MARKER_ZOOM = 13; // show ALL markers (no clustering) when zoom >= 13
+const RAW_MARKER_ZOOM = 11; // show ALL markers (no clustering) when zoom >= 11
 
 // MapTiler API Key - Use environment variable or fallback to OSM
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
@@ -379,6 +379,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Force refresh clusters when listings are loaded
+  useEffect(() => {
+    if (listings.length > 0) {
+      // Small delay to ensure map is ready
+      const timer = setTimeout(() => {
+        forceRefresh();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [listings.length]);
 
   const handleMoveEnd = () => {
     if (panelOpen) return;

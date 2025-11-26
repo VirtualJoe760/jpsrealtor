@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
         messages: messagesWithTools,
         model,
         temperature: 0.3,
-        maxTokens: 1000,
+        maxTokens: 4000, // Increased to accommodate full listing JSON response
         stream: false,
         // Intentionally omit tools and tool_choice - AI should present results, not call more tools
       });
@@ -270,9 +270,16 @@ export async function POST(req: NextRequest) {
       processingTime: Date.now() - startTime,
     });
 
+    // Parse component data from response for structured rendering
+    const componentData = parseComponentData(responseText);
+
+    // Clean response text (remove JSON blocks, keep conversational text)
+    const cleanedResponse = cleanResponseText(responseText);
+
     return NextResponse.json({
       success: true,
-      response: responseText,
+      response: cleanedResponse,
+      components: componentData, // Structured data for ListingCarousel and ChatMapView
       metadata: {
         model,
         processingTime: Date.now() - startTime,
@@ -484,6 +491,57 @@ You:
 - Be helpful, accurate, and transparent
 
 Now assist the user with their real estate needs using these tools and knowledge!`;
+}
+
+/**
+ * Parse component markers from AI response and extract structured data
+ */
+function parseComponentData(responseText: string): { carousel?: any; mapView?: any } {
+  const components: { carousel?: any; mapView?: any } = {};
+
+  // Parse [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
+  const carouselMatch = responseText.match(/\[LISTING_CAROUSEL\]\s*([\s\S]*?)\s*\[\/LISTING_CAROUSEL\]/);
+  if (carouselMatch) {
+    try {
+      const jsonStr = carouselMatch[1].trim();
+      components.carousel = JSON.parse(jsonStr);
+      console.log("[PARSE] Found carousel with", components.carousel?.listings?.length || 0, "listings");
+    } catch (e) {
+      console.error("[PARSE] Failed to parse carousel JSON:", e);
+    }
+  }
+
+  // Parse [MAP_VIEW]...[/MAP_VIEW]
+  const mapMatch = responseText.match(/\[MAP_VIEW\]\s*([\s\S]*?)\s*\[\/MAP_VIEW\]/);
+  if (mapMatch) {
+    try {
+      const jsonStr = mapMatch[1].trim();
+      components.mapView = JSON.parse(jsonStr);
+      console.log("[PARSE] Found map view with", components.mapView?.listings?.length || 0, "listings");
+    } catch (e) {
+      console.error("[PARSE] Failed to parse map view JSON:", e);
+    }
+  }
+
+  return components;
+}
+
+/**
+ * Remove component markers and JSON blocks, keeping only conversational text
+ */
+function cleanResponseText(responseText: string): string {
+  let cleaned = responseText;
+
+  // Remove [LISTING_CAROUSEL]...[/LISTING_CAROUSEL] blocks
+  cleaned = cleaned.replace(/\[LISTING_CAROUSEL\]\s*[\s\S]*?\s*\[\/LISTING_CAROUSEL\]/g, '');
+
+  // Remove [MAP_VIEW]...[/MAP_VIEW] blocks
+  cleaned = cleaned.replace(/\[MAP_VIEW\]\s*[\s\S]*?\s*\[\/MAP_VIEW\]/g, '');
+
+  // Clean up extra whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+  return cleaned;
 }
 
 // Example integration with OpenAI (commented out - uncomment and configure when ready):

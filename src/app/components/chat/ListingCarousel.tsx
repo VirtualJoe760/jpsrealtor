@@ -194,7 +194,7 @@ export default function ListingCarousel({
   const duplicatedListings = Array(5).fill(listings).flat();
 
   return (
-    <div className="my-4">
+    <div className="my-4 w-full overflow-hidden">
       {title && (
         <div className="mb-3">
           <p className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{title}</p>
@@ -205,12 +205,12 @@ export default function ListingCarousel({
       <div
         ref={scrollContainerRef}
         className="flex gap-4 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: "none" }}
+        style={{ scrollbarWidth: "none", overscrollBehaviorX: "contain" }}
       >
         {duplicatedListings.map((listing, index) => (
           <div
             key={`${listing.id}-${index}`}
-            className={`flex-shrink-0 w-64 md:w-72 rounded-xl overflow-hidden transition-all group ${
+            className={`flex-shrink-0 w-52 md:w-56 xl:w-64 2xl:w-72 rounded-xl overflow-hidden transition-all group ${
               isLight
                 ? 'bg-white/90 border border-gray-300 hover:border-gray-400 shadow-md'
                 : 'bg-neutral-800/50 border border-neutral-700 hover:border-neutral-600'
@@ -218,7 +218,7 @@ export default function ListingCarousel({
             style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
           >
             {/* Image */}
-            <div className="relative h-36 md:h-44">
+            <div className="relative h-28 md:h-32 xl:h-36 2xl:h-44">
               {listing.image ? (
                 <Image
                   src={listing.image}

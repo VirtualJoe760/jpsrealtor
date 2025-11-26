@@ -4,8 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User } from "lucide-react";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { useChatContext } from "./ChatProvider";
+import { useChatContext, ComponentData } from "./ChatProvider";
+import ListingCarousel from "./ListingCarousel";
+import ChatMapView from "./ChatMapView";
 
 export default function ChatWidget() {
   const { currentTheme } = useTheme();
@@ -51,6 +54,7 @@ export default function ChatWidget() {
         setIsLoading(false);
         setIsStreaming(true);
         const fullText = data.response;
+        const components: ComponentData | undefined = data.components;
         let currentIndex = 0;
 
         const intervalId = setInterval(() => {
@@ -62,7 +66,7 @@ export default function ChatWidget() {
             clearInterval(intervalId);
             setIsStreaming(false);
             setStreamingText("");
-            addMessage(fullText, "assistant");
+            addMessage(fullText, "assistant", undefined, components);
           }
         }, 20); // 20ms per character for smooth reveal
       }
@@ -91,7 +95,7 @@ export default function ChatWidget() {
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
-            className="flex-1 flex items-center justify-center xl:pb-32 2xl:pb-0"
+            className="flex-1 flex items-center justify-center pb-32 md:pb-32 xl:pb-32 2xl:pb-0"
           >
             <div className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-6 md:gap-8 px-4">
               {/* Logo & Brand */}
@@ -174,44 +178,73 @@ export default function ChatWidget() {
 
       {/* Conversation View */}
       {!showLanding && (
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-4xl mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6">
+          <div className="max-w-6xl mx-auto space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className="flex flex-col gap-4"
               >
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-5 h-5 text-white" />
+                {/* Text message row */}
+                <div className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "assistant" && (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+
+                  <div className="max-w-3xl">
+                    <div
+                      className={`rounded-2xl px-6 py-4 select-text ${
+                        msg.role === "user"
+                          ? isLight
+                            ? "bg-blue-100 text-gray-900"
+                            : "bg-purple-600 text-white"
+                          : isLight
+                            ? "bg-gray-100 text-gray-900"
+                            : "bg-neutral-800 text-neutral-100"
+                      }`}
+                    >
+                      <div className={`prose prose-sm max-w-none select-text prose-p:my-1 prose-ul:my-2 prose-li:my-0.5 prose-strong:font-semibold ${
+                        msg.role === "user"
+                          ? isLight
+                            ? "prose-gray"
+                            : "prose-invert"
+                          : isLight
+                            ? "prose-gray"
+                            : "prose-invert"
+                      }`}>
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+
+                  {msg.role === "user" && (
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isLight ? "bg-blue-600" : "bg-purple-600"
+                    }`}>
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Components rendered full-width and centered - MacBook optimized */}
+                {msg.components?.carousel && msg.components.carousel.listings?.length > 0 && (
+                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
+                    <ListingCarousel
+                      listings={msg.components.carousel.listings}
+                      title={msg.components.carousel.title}
+                    />
                   </div>
                 )}
 
-                <div className="max-w-3xl flex flex-col gap-4">
-                  <div
-                    className={`rounded-2xl px-6 py-4 select-text ${
-                      msg.role === "user"
-                        ? isLight
-                          ? "bg-blue-100 text-gray-900"
-                          : "bg-purple-600 text-white"
-                        : isLight
-                          ? "bg-gray-100 text-gray-900"
-                          : "bg-neutral-800 text-neutral-100"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap select-text">{msg.content}</p>
-                  </div>
-                </div>
-
-                {msg.role === "user" && (
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isLight
-                      ? "bg-blue-600"
-                      : "bg-purple-600"
-                  }`}>
-                    <User className="w-5 h-5 text-white" />
+                {msg.components?.mapView && msg.components.mapView.listings?.length > 0 && (
+                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
+                    <ChatMapView
+                      listings={msg.components.carousel?.listings || msg.components.mapView.listings}
+                    />
                   </div>
                 )}
               </motion.div>
@@ -253,7 +286,11 @@ export default function ChatWidget() {
                         : "bg-neutral-800 text-neutral-100"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap select-text">{streamingText}</p>
+                    <div className={`prose prose-sm max-w-none select-text prose-p:my-1 prose-ul:my-2 prose-li:my-0.5 prose-strong:font-semibold ${
+                      isLight ? "prose-gray" : "prose-invert"
+                    }`}>
+                      <ReactMarkdown>{streamingText}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </motion.div>

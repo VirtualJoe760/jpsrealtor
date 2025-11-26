@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
-import { useListings } from "@/app/utils/map/useListings";
+import { useListings, TotalCount } from "@/app/utils/map/useListings";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -72,6 +72,9 @@ interface MLSContextValue {
 
   // Swipe Queue
   swipeQueue: ReturnType<typeof useSwipeQueue>;
+
+  // Total listing counts
+  totalCount: TotalCount | null;
 }
 
 const MLSContext = createContext<MLSContextValue | null>(null);
@@ -82,7 +85,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const { currentTheme } = useTheme();
 
   // Core hooks
-  const { allListings, visibleListings, loadListings: loadListingsCore } = useListings();
+  const { allListings, visibleListings, loadListings: loadListingsCore, totalCount } = useListings();
   const swipeQueue = useSwipeQueue();
 
   // Refs for caching
@@ -496,6 +499,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     selectListingBySlug,
     closeListing,
     swipeQueue,
+    totalCount,
   };
 
   return <MLSContext.Provider value={value}>{children}</MLSContext.Provider>;
