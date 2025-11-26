@@ -2,12 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot } from "lucide-react";
+import { Send, Bot, User } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext } from "./ChatProvider";
-import ListingCarousel from "./ListingCarousel";
-import ChatMapView from "./ChatMapView";
 
 export default function ChatWidget() {
   const { currentTheme } = useTheme();
@@ -47,26 +45,7 @@ export default function ChatWidget() {
       const data = await response.json();
 
       if (data.success && data.response) {
-        // Parse response for listings
-        const listingsMatch = data.response.match(/\[LISTING_CAROUSEL\](.*?)\[\/LISTING_CAROUSEL\]/s);
-        let listings = null;
-
-        if (listingsMatch) {
-          try {
-            const carouselData = JSON.parse(listingsMatch[1]);
-            listings = carouselData.listings;
-          } catch (e) {
-            console.error("Failed to parse listings:", e);
-          }
-        }
-
-        // Clean response text
-        const cleanText = data.response
-          .replace(/\[LISTING_CAROUSEL\].*?\[\/LISTING_CAROUSEL\]/gs, "")
-          .replace(/\[MAP_VIEW\].*?\[\/MAP_VIEW\]/gs, "")
-          .trim();
-
-        addMessage(cleanText, "assistant", listings || undefined);
+        addMessage(data.response, "assistant");
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -177,76 +156,76 @@ export default function ChatWidget() {
 
       {/* Conversation View */}
       {!showLanding && (
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          {messages.map((msg, index) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {messages.map((msg, index) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                )}
+
+                <div className="max-w-3xl flex flex-col gap-4">
+                  <div
+                    className={`rounded-2xl px-6 py-4 select-text ${
+                      msg.role === "user"
+                        ? isLight
+                          ? "bg-blue-100 text-gray-900"
+                          : "bg-purple-600 text-white"
+                        : isLight
+                          ? "bg-gray-100 text-gray-900"
+                          : "bg-neutral-800 text-neutral-100"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap select-text">{msg.content}</p>
+                  </div>
+                </div>
+
+                {msg.role === "user" && (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isLight
+                      ? "bg-blue-600"
+                      : "bg-purple-600"
+                  }`}>
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
-              )}
-
-              <div className="max-w-3xl flex flex-col gap-4">
-                <div
-                  className={`rounded-2xl px-6 py-4 ${
-                    msg.role === "user"
-                      ? isLight
-                        ? "bg-blue-100 text-gray-900"
-                        : "bg-purple-600 text-white"
-                      : isLight
-                        ? "bg-gray-100 text-gray-900"
-                        : "bg-neutral-800 text-neutral-100"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                <div className={`rounded-2xl px-6 py-4 ${isLight ? "bg-gray-100" : "bg-neutral-800"}`}>
+                  <div className="flex gap-2">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                  </div>
                 </div>
+              </motion.div>
+            )}
 
-                {/* Listing Carousel */}
-                {msg.listings && msg.listings.length > 0 && (
-                  <ListingCarousel
-                    listings={msg.listings}
-                    title={`${msg.listings.length} properties found`}
-                  />
-                )}
-
-                {/* Map View */}
-                {msg.listings && msg.listings.length > 0 && (
-                  <ChatMapView listings={msg.listings} />
-                )}
-              </div>
-            </motion.div>
-          ))}
-
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-3"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-              <div className={`rounded-2xl px-6 py-4 ${isLight ? "bg-gray-100" : "bg-neutral-800"}`}>
-                <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       )}
 
-      {/* Chat Input */}
-      <div className="p-4">
+      {/* Chat Input - Only show in conversation mode */}
+      {!showLanding && (
+        <div className="p-4">
         <div className="max-w-4xl mx-auto">
           <div
             className={`relative rounded-2xl backdrop-blur-md shadow-lg ${
@@ -285,8 +264,8 @@ export default function ChatWidget() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-      )}
