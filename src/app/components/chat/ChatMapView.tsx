@@ -30,22 +30,22 @@ interface ChatMapViewProps {
 function toMapListing(listing: any): MapListing {
   return {
     _id: listing._id || listing.id || "",
-    listingId: listing.id || "",
-    listingKey: listing.id || "",
-    latitude: listing.latitude || 0,
-    longitude: listing.longitude || 0,
-    listPrice: listing.price || 0,
+    listingId: listing.id || listing.listingId || "",
+    listingKey: listing.listingKey || listing.id || "",
+    latitude: listing.latitude || listing.coordinates?.latitude || 0,
+    longitude: listing.longitude || listing.coordinates?.longitude || 0,
+    listPrice: listing.price || listing.listPrice || 0,
     address: listing.address || "",
-    primaryPhotoUrl: listing.image || "",
-    bedsTotal: listing.beds || 0,
-    bathroomsTotalInteger: listing.baths || 0,
-    livingArea: listing.sqft || 0,
+    primaryPhotoUrl: listing.image || listing.photoUrl || listing.primaryPhotoUrl || "",
+    bedsTotal: listing.beds || listing.bedsTotal || 0,
+    bathroomsTotalInteger: listing.baths || listing.bathroomsTotalInteger || 0,
+    livingArea: listing.sqft || listing.livingArea || 0,
     city: listing.city || "",
-    unparsedAddress: listing.address || "",
-    subdivisionName: listing.subdivision,
-    propertyType: "A", // Default to residential
-    mlsSource: "GPS",
-    slugAddress: listing.slug || listing.slugAddress || "",
+    unparsedAddress: listing.address || listing.unparsedAddress || "",
+    subdivisionName: listing.subdivision || listing.subdivisionName,
+    propertyType: listing.propertyType || "A", // Default to residential
+    mlsSource: listing.mlsSource || "GPS", // Use actual mlsSource from listing
+    slugAddress: listing.slugAddress || listing.slug || "",
   };
 }
 

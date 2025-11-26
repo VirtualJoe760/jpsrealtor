@@ -53,17 +53,20 @@ export async function POST(req: NextRequest) {
     // Format 10 sample listings for AI
     const sampleListings = allListings.slice(0, 10).map((l: any) => ({
       id: l.listingId || l.listingKey,
+      listingKey: l.listingKey || l.listingId,
       price: l.listPrice,
-      beds: l.bedroomsTotal || l.bedsTotal,
-      baths: l.bathroomsTotalDecimal,
+      beds: l.bedroomsTotal || l.bedsTotal || l.beds,
+      baths: l.bathroomsTotalDecimal || l.bathroomsTotalInteger || l.baths,
       sqft: l.livingArea,
       address: l.address || l.unparsedAddress,
       city: l.city,
       subdivision: l.subdivisionName || "",
-      image: l.primaryPhotoUrl || "",
+      image: l.primaryPhotoUrl || l.photoUrl || "",
       url: `/mls-listings/${l.slugAddress || l.listingId}`,
-      latitude: parseFloat(l.latitude) || null,
-      longitude: parseFloat(l.longitude) || null
+      slugAddress: l.slugAddress || "",
+      latitude: parseFloat(l.latitude) || (l.coordinates?.latitude ? parseFloat(l.coordinates.latitude) : null),
+      longitude: parseFloat(l.longitude) || (l.coordinates?.longitude ? parseFloat(l.coordinates.longitude) : null),
+      mlsSource: l.mlsSource || "GPS", // Include MLS source for proper handling
     }));
 
     return NextResponse.json({

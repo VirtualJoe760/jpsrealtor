@@ -205,9 +205,11 @@ export async function GET(
 
     // Combine listings with photos
     const listingsWithPhotos = listings.map((listing: any) => ({
+      listingId: listing.listingId,
       listingKey: listing.listingKey,
       listPrice: listing.listPrice,
       address: listing.unparsedAddress,
+      unparsedAddress: listing.unparsedAddress,
       slugAddress: listing.slugAddress,
       beds: listing.bedsTotal || listing.bedroomsTotal || 0,
       baths:
@@ -220,11 +222,15 @@ export async function GET(
       lotSize: listing.lotSizeSquareFeet || listing.lotSizeSqft,
       propertyType: listing.propertyType,
       propertySubType: listing.propertySubType,
+      // Include both formats for compatibility
       coordinates: listing.coordinates || {
         latitude: listing.latitude,
         longitude: listing.longitude,
       },
+      latitude: listing.latitude || listing.coordinates?.latitude,
+      longitude: listing.longitude || listing.coordinates?.longitude,
       photoUrl: photoMap.get(listing.listingId) || null,
+      primaryPhotoUrl: photoMap.get(listing.listingId) || null,
       mlsSource: listing.mlsSource,
     }));
 
