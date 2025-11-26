@@ -1,6 +1,31 @@
 import React from 'react'
+import { Metadata } from 'next'
 import VariableHero from '../components/VariableHero'
 import AboutBento from '../components/AboutBento'
+
+export const metadata: Metadata = {
+  title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
+  description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
+  keywords: ['Joseph Sardella', 'Palm Desert realtor', 'Coachella Valley real estate agent', 'Indian Wells', 'eXp Realty'],
+  openGraph: {
+    title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
+    description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
+    images: [
+      {
+        url: '/joey/about.png',
+        width: 1200,
+        height: 630,
+        alt: 'Joseph Sardella - Palm Desert Real Estate Agent',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
+    description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
+    images: ['/joey/about.png'],
+  },
+}
 
 const page = () => {
   return (

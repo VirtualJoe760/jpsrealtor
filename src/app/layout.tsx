@@ -6,18 +6,33 @@ import "@fontsource/raleway";
 import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
+import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
 
 export const metadata: Metadata = {
-  title: "Joseph Sardella | Palm Desert Real Estate Agent | JPS Realtor",
+  title: {
+    default: "Joseph Sardella | Palm Desert Real Estate Agent | JPS Realtor",
+    template: "%s | Joseph Sardella Real Estate",
+  },
   description:
-    "Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley Area...",
+    "Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley. Serving Palm Desert, Indian Wells, La Quinta, Rancho Mirage, and Palm Springs.",
   metadataBase: new URL("https://jpsrealtor.com"),
   keywords: [
-    "Palm Springs Realtor",
-    "Top Agent Palm Springs",
-    "Top Realtor Palm Springs",
-    // truncated for brevity...
+    "Palm Desert Realtor",
+    "Coachella Valley Real Estate",
+    "Palm Springs homes for sale",
+    "Indian Wells real estate",
+    "La Quinta homes",
+    "Rancho Mirage properties",
+    "Desert Hot Springs real estate",
+    "Palm Desert homes for sale",
+    "luxury homes Coachella Valley",
+    "Joseph Sardella realtor",
+    "JPS Realtor",
+    "eXp Realty Palm Desert",
   ],
+  authors: [{ name: "Joseph Sardella", url: "https://jpsrealtor.com" }],
+  creator: "Joseph Sardella",
+  publisher: "JPS Realtor",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -26,19 +41,50 @@ export const metadata: Metadata = {
   },
   applicationName: "JP Realtor",
   formatDetection: {
-    telephone: false,
+    telephone: true,
+    email: true,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   openGraph: {
     type: "website",
-    siteName: "Joey Sardella Real Estate",
-    title: "Joseph Sardella | Southern California Real Estate",
-    description: "Your trusted real estate expert in Southern California",
+    locale: "en_US",
+    url: "https://jpsrealtor.com",
+    siteName: "Joseph Sardella Real Estate",
+    title: "Joseph Sardella | Palm Desert Real Estate Agent",
+    description: "Your trusted real estate expert in the Coachella Valley. Buy, sell, or invest with local expertise.",
+    images: [
+      {
+        url: "/joey/about.png",
+        width: 1200,
+        height: 630,
+        alt: "Joseph Sardella - Palm Desert Real Estate Agent",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Joseph Sardella | Southern California Real Estate",
-    description: "Your trusted real estate expert in Southern California",
+    title: "Joseph Sardella | Palm Desert Real Estate Agent",
+    description: "Your trusted real estate expert in the Coachella Valley.",
+    images: ["/joey/about.png"],
+    creator: "@jpsrealtor",
   },
+  verification: {
+    google: "your-google-verification-code", // Add your Google Search Console verification
+  },
+  alternates: {
+    canonical: "https://jpsrealtor.com",
+  },
+  category: "Real Estate",
 };
 
 export default function RootLayout({
@@ -90,6 +136,11 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        {/* JSON-LD Structured Data for SEO */}
+        <OrganizationJsonLd />
+        <PersonJsonLd />
+        <WebSiteJsonLd />
+
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=G-613BBEB2FS`}
           strategy="afterInteractive"
