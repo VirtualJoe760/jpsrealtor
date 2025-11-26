@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useThemeClasses } from "../contexts/ThemeContext";
+import ScrollPanel from "../components/ScrollPanel";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
 
@@ -102,151 +103,13 @@ function DesktopFavorites({
     isLight: boolean;
   };
 }) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { currentTheme, cardBg, cardBorder, textPrimary, textSecondary, isLight } = themeProps;
+  const { cardBg, textPrimary, textSecondary, isLight } = themeProps;
 
-  // --------------------------------------------------------------
-  // 1. JS‑driven auto‑scroll + user‑interaction pause
-  // --------------------------------------------------------------
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || favorites.length === 0) {
-      console.log('🛑 Auto-scroll not starting:', {
-        hasContainer: !!container,
-        favoritesCount: favorites.length
-      });
-      return;
-    }
-
-    let intervalId: NodeJS.Timeout | null = null;
-    const scrollSpeed = 0.5; // pixels per tick - increased for better visibility
-    const tickInterval = 20; // ms between ticks (50fps)
-    let isUserScrolling = false;
-    let userScrollTimeout: NodeJS.Timeout | null = null;
-    let scrollCount = 0;
-
-    const autoScroll = () => {
-      if (container && !isUserScrolling) {
-        const beforeScroll = container.scrollLeft;
-
-        // Infinite loop: Reset to start when reaching halfway point (BEFORE incrementing)
-        const halfWidth = container.scrollWidth / 2;
-        if (container.scrollLeft >= halfWidth - 10) {
-          console.log('🔄 Loop reset - jumping back to start', {
-            beforeReset: container.scrollLeft,
-            halfWidth,
-            scrollWidth: container.scrollWidth
-          });
-          container.scrollLeft = 0;
-        }
-
-        container.scrollLeft += scrollSpeed;
-        const afterScroll = container.scrollLeft;
-
-        scrollCount++;
-        if (scrollCount % 50 === 0) {
-          console.log('📜 Auto-scroll active:', {
-            scrollCount,
-            beforeScroll,
-            afterScroll,
-            scrollSpeed,
-            tickInterval,
-            pixelsPerSecond: (scrollSpeed / tickInterval) * 1000,
-            currentScroll: container.scrollLeft,
-            maxScroll: container.scrollWidth - container.clientWidth
-          });
-        }
-      }
-    };
-
-    const handleUserInteraction = () => {
-      console.log('👆 User interaction detected - pausing auto-scroll');
-      isUserScrolling = true;
-      if (userScrollTimeout) clearTimeout(userScrollTimeout);
-      userScrollTimeout = setTimeout(() => {
-        console.log('▶️ Resuming auto-scroll after user inactivity');
-        isUserScrolling = false;
-      }, 2000);
-    };
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      container.scrollLeft += e.deltaY;
-      handleUserInteraction();
-
-      // Keep infinite loop while wheeling - same logic as auto-scroll
-      const halfWidth = container.scrollWidth / 2;
-      if (container.scrollLeft >= halfWidth - 10) {
-        console.log('🔄 Wheel scroll reset at halfway point');
-        container.scrollLeft = 0;
-      } else if (container.scrollLeft < 10) {
-        console.log('🔄 Wheel scroll reset - scrolling backwards, jumping to end');
-        container.scrollLeft = halfWidth - container.clientWidth;
-      }
-    };
-
-    const handleMouseEnter = () => {
-      console.log('🖱️ Mouse entered - pausing auto-scroll');
-      isUserScrolling = true;
-    };
-
-    const handleMouseLeave = () => {
-      console.log('🖱️ Mouse left - resuming auto-scroll');
-      isUserScrolling = false;
-    };
-
-    // Start auto-scroll after short delay
-    const startTimer = setTimeout(() => {
-      const canScroll = container.scrollWidth > container.clientWidth;
-      console.log('🚀 Starting auto-scroll:', {
-        scrollWidth: container.scrollWidth,
-        clientWidth: container.clientWidth,
-        canScroll,
-        scrollSpeed,
-        tickInterval,
-        pixelsPerSecond: (scrollSpeed / tickInterval) * 1000
-      });
-
-      if (canScroll) {
-        intervalId = setInterval(autoScroll, tickInterval);
-      } else {
-        console.warn('⚠️ Cannot scroll - all items fit on screen');
-      }
-    }, 500);
-
-    // Only listen for actual user interactions (wheel, mouse hover)
-    // DON'T listen to scroll event as it fires during auto-scroll
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("mouseenter", handleMouseEnter);
-    container.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      console.log('🧹 Cleaning up auto-scroll');
-      clearTimeout(startTimer);
-      if (userScrollTimeout) clearTimeout(userScrollTimeout);
-      if (intervalId !== null) clearInterval(intervalId);
-      container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("mouseenter", handleMouseEnter);
-      container.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [favorites.length]);
-
-  // --------------------------------------------------------------
-  // 2. Duplicate items for true infinite loop
-  // --------------------------------------------------------------
+  // Duplicate items for seamless infinite loop
   const duplicatedFavorites = [...favorites, ...favorites];
 
-  // --------------------------------------------------------------
-  // 3. Render – Tailwind hover pause as a visual safety net
-  // --------------------------------------------------------------
   return (
-    <div className="hidden md:block">
-      <div
-        ref={scrollContainerRef}
-        className="flex gap-6 overflow-x-auto pb-4
-                   [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: "none" }}
-      >
+    <ScrollPanel className="hidden md:block">
         {duplicatedFavorites.map((listing, index) => {
           const isSelected = selectedListings.has(listing.listingKey);
 
@@ -327,8 +190,7 @@ function DesktopFavorites({
             </div>
           );
         })}
-      </div>
-    </div>
+    </ScrollPanel>
   );
 }
 
@@ -352,6 +214,18 @@ export default function DashboardPage() {
 
   // Mass selection
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
+
+  // ────── Theme (must be called before any early returns) ──────
+  const {
+    currentTheme,
+    cardBg,
+    cardBorder,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+    shadow,
+  } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   // ────── Auth & initial data ──────
   useEffect(() => {
@@ -494,18 +368,6 @@ export default function DashboardPage() {
   }
   if (!session) return null;
   const user = session.user;
-
-  // ────── Theme ──────
-  const {
-    currentTheme,
-    cardBg,
-    cardBorder,
-    textPrimary,
-    textSecondary,
-    textTertiary,
-    shadow,
-  } = useThemeClasses();
-  const isLight = currentTheme === "lightgradient";
 
   // ────── Render ──────
   return (

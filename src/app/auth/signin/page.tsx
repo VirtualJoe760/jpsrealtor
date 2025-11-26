@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, FormEvent, Suspense } from "react";
 import Link from "next/link";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 function SignInForm() {
   const searchParams = useSearchParams();
@@ -13,6 +14,15 @@ function SignInForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    currentTheme,
+    cardBg,
+    cardBorder,
+    textPrimary,
+    textSecondary,
+  } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   const callbackUrl = searchParams.get("from") || "/dashboard";
   const errorParam = searchParams.get("error");
@@ -70,19 +80,35 @@ function SignInForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
+        <div
+          className={`${cardBg} ${cardBorder} border rounded-2xl shadow-2xl p-8`}
+          style={
+            isLight
+              ? {
+                  backdropFilter: "blur(10px) saturate(150%)",
+                  WebkitBackdropFilter: "blur(10px) saturate(150%)",
+                }
+              : undefined
+          }
+        >
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-400">Sign in to your account</p>
+            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Welcome Back</h1>
+            <p className={textSecondary}>Sign in to your account</p>
           </div>
 
           {/* Error Messages */}
           {(error || errorParam) && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
-              <p className="text-red-400 text-sm">
+            <div
+              className={`mb-6 p-4 rounded-lg ${
+                isLight
+                  ? "bg-red-50 border border-red-200"
+                  : "bg-red-500/10 border border-red-500/50"
+              }`}
+            >
+              <p className={isLight ? "text-red-600 text-sm" : "text-red-400 text-sm"}>
                 {error || "An error occurred. Please try again."}
               </p>
             </div>
@@ -91,7 +117,12 @@ function SignInForm() {
           {/* Sign In Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="email"
+                className={`block text-sm font-medium mb-2 ${
+                  isLight ? "text-gray-700" : "text-gray-300"
+                }`}
+              >
                 Email Address
               </label>
               <input
@@ -100,13 +131,22 @@ function SignInForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 rounded-lg transition-all focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-transparent"
+                    : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-gray-500 focus:border-transparent"
+                }`}
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="password"
+                className={`block text-sm font-medium mb-2 ${
+                  isLight ? "text-gray-700" : "text-gray-300"
+                }`}
+              >
                 Password
               </label>
               <input
@@ -115,7 +155,11 @@ function SignInForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 rounded-lg transition-all focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-transparent"
+                    : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-gray-500 focus:border-transparent"
+                }`}
                 placeholder="Enter your password"
               />
             </div>
@@ -123,7 +167,11 @@ function SignInForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white font-semibold rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isLight
+                  ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                  : "bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white"
+              }`}
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </button>
@@ -132,10 +180,20 @@ function SignInForm() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+              <div
+                className={`w-full border-t ${
+                  isLight ? "border-gray-300" : "border-gray-700"
+                }`}
+              ></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-900/50 text-gray-400">Or continue with</span>
+              <span
+                className={`px-2 ${
+                  isLight ? "bg-white/80 text-gray-500" : "bg-gray-900/50 text-gray-400"
+                }`}
+              >
+                Or continue with
+              </span>
             </div>
           </div>
 
@@ -145,7 +203,11 @@ function SignInForm() {
             <button
               type="button"
               onClick={() => signIn("google", { callbackUrl: callbackUrl })}
-              className="w-full py-3 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-3"
+              className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-3 ${
+                isLight
+                  ? "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+                  : "bg-white hover:bg-gray-100 text-gray-900"
+              }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -173,7 +235,11 @@ function SignInForm() {
               <button
                 type="button"
                 disabled
-                className="w-full py-3 px-4 bg-gray-600 text-gray-400 font-semibold rounded-lg shadow-lg cursor-not-allowed flex items-center justify-center gap-3 opacity-60"
+                className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg cursor-not-allowed flex items-center justify-center gap-3 opacity-60 ${
+                  isLight
+                    ? "bg-gray-200 text-gray-500"
+                    : "bg-gray-600 text-gray-400"
+                }`}
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -181,7 +247,13 @@ function SignInForm() {
                 Sign in with Facebook
               </button>
               {/* Tooltip */}
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl border border-gray-700">
+              <div
+                className={`absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl ${
+                  isLight
+                    ? "bg-gray-800 text-white border border-gray-700"
+                    : "bg-gray-800 text-white border border-gray-700"
+                }`}
+              >
                 Coming Soon
                 <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
               </div>
@@ -191,17 +263,25 @@ function SignInForm() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+              <div
+                className={`w-full border-t ${
+                  isLight ? "border-gray-300" : "border-gray-700"
+                }`}
+              ></div>
             </div>
           </div>
 
           {/* Sign Up Link */}
           <div className="text-center">
-            <p className="text-gray-400 text-sm">
+            <p className={`text-sm ${textSecondary}`}>
               Don't have an account?{" "}
               <Link
                 href="/auth/signup"
-                className="text-gray-300 hover:text-white font-medium transition-colors"
+                className={`font-medium transition-colors ${
+                  isLight
+                    ? "text-blue-600 hover:text-blue-700"
+                    : "text-gray-300 hover:text-white"
+                }`}
               >
                 Sign up
               </Link>
@@ -213,7 +293,11 @@ function SignInForm() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className={`text-sm transition-colors ${
+              isLight
+                ? "text-gray-600 hover:text-gray-900"
+                : "text-gray-400 hover:text-white"
+            }`}
           >
             Back to Home
           </Link>
@@ -224,10 +308,17 @@ function SignInForm() {
 }
 
 export default function SignInPage() {
+  const { currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
+
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900">
-        <div className="text-white">Loading...</div>
+      <div className={`min-h-screen flex items-center justify-center ${
+        isLight
+          ? "bg-gradient-to-br from-gray-50 via-blue-50/30 to-white"
+          : "bg-gradient-to-br from-black via-gray-900 to-gray-900"
+      }`}>
+        <div className={isLight ? "text-gray-900" : "text-white"}>Loading...</div>
       </div>
     }>
       <SignInForm />

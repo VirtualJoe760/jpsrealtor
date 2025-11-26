@@ -46,7 +46,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Chat", icon: MessageSquare, href: "/" },
     { label: "Map", icon: Map, href: "/map" },
-    { label: "Articles", icon: FileText, href: "/articles" },
+    { label: "Articles", icon: FileText, href: "/insights" },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 

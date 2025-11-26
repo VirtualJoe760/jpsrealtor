@@ -83,7 +83,7 @@ export default function ChatWidget() {
   const showLanding = messages.length === 0;
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-screen w-full flex flex-col">
       {/* Landing View */}
       <AnimatePresence>
         {showLanding && (
@@ -91,7 +91,7 @@ export default function ChatWidget() {
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
-            className="flex-1 flex items-center justify-center"
+            className="flex-1 flex items-center justify-center xl:pb-32 2xl:pb-0"
           >
             <div className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-6 md:gap-8 px-4">
               {/* Logo & Brand */}
