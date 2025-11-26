@@ -98,7 +98,7 @@ function getMarkerColors(propertyType?: string, mlsSource?: string, hovered?: bo
     : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm";
 }
 
-const RAW_MARKER_ZOOM = 11; // show ALL markers (no clustering) when zoom >= 11
+const RAW_MARKER_ZOOM = 12; // show ALL markers (no clustering) when zoom >= 12
 
 // MapTiler API Key - Use environment variable or fallback to OSM
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";

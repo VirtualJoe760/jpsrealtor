@@ -2,8 +2,8 @@
 import { useState, useCallback, useRef } from "react";
 import type { MapListing, Filters } from "@/types/types";
 
-// Viewport-based loading - load fewer listings per request for mobile performance
-const LISTINGS_PER_VIEWPORT = 500;
+// Viewport-based loading - load more listings per request
+const LISTINGS_PER_VIEWPORT = 5000;
 
 // Maximum total listings to keep in memory (prevents memory issues on mobile)
 const MAX_CACHED_LISTINGS = 2000;
