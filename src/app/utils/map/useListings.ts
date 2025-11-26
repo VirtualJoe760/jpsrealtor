@@ -2,11 +2,15 @@
 import { useState, useCallback, useRef } from "react";
 import type { MapListing, Filters } from "@/types/types";
 
-// Viewport-based loading
+// Viewport-based loading - different limits based on zoom level
 const LISTINGS_PER_VIEWPORT = 1000;
+const LISTINGS_AT_HIGH_ZOOM = 5000; // More listings when zoomed in past cluster threshold
 
 // Maximum total listings to keep in memory (prevents memory issues on mobile)
 const MAX_CACHED_LISTINGS = 2000;
+
+// Zoom threshold where we show individual markers (no clustering)
+const HIGH_ZOOM_THRESHOLD = 12;
 
 interface LoadedRegion {
   north: number;
@@ -14,6 +18,8 @@ interface LoadedRegion {
   east: number;
   west: number;
   timestamp: number;
+  zoom: number; // Track zoom level to handle high-zoom requery
+  isHighZoom: boolean; // Whether this was loaded at high zoom (12+)
 }
 
 export interface TotalCount {
@@ -36,13 +42,22 @@ export function useListings() {
 
   /**
    * Check if bounds are already covered by loaded regions
+   * At high zoom (12+), we need high-zoom specific data, not cached low-zoom data
    */
-  const isBoundsCovered = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
+  const isBoundsCovered = useCallback((bounds: { north: number; south: number; east: number; west: number; zoom?: number }) => {
     const margin = 0.01; // Small margin for floating point comparison
+    const isHighZoom = (bounds.zoom ?? 0) >= HIGH_ZOOM_THRESHOLD;
+
     return loadedRegionsRef.current.some(region => {
       const cacheAge = Date.now() - region.timestamp;
       // Cache expires after 5 minutes
       if (cacheAge > 5 * 60 * 1000) return false;
+
+      // If we're at high zoom, only use cached data from high zoom loads
+      // This ensures we requery when zooming in past the cluster threshold
+      if (isHighZoom && !region.isHighZoom) {
+        return false;
+      }
 
       return (
         bounds.north <= region.north + margin &&
@@ -105,7 +120,11 @@ export function useListings() {
       debounceRef.current = setTimeout(async () => {
         loadingRef.current = true;
         setIsLoading(true);
-        console.log('🔍 Loading listings for viewport:', bounds);
+
+        const isHighZoom = (bounds.zoom ?? 0) >= HIGH_ZOOM_THRESHOLD;
+        const limit = isHighZoom ? LISTINGS_AT_HIGH_ZOOM : LISTINGS_PER_VIEWPORT;
+
+        console.log(`🔍 Loading listings for viewport (zoom: ${bounds.zoom}, isHighZoom: ${isHighZoom}, limit: ${limit}):`, bounds);
 
         try {
           const params: Record<string, string> = {
@@ -113,7 +132,7 @@ export function useListings() {
             south: String(bounds.south),
             east: String(bounds.east),
             west: String(bounds.west),
-            limit: String(LISTINGS_PER_VIEWPORT),
+            limit: String(limit),
           };
 
           // Listing Type (sale vs rental)
@@ -191,6 +210,8 @@ export function useListings() {
             east: bounds.east,
             west: bounds.west,
             timestamp: Date.now(),
+            zoom: bounds.zoom ?? 0,
+            isHighZoom,
           });
 
           // Clean up old regions (keep last 10)
@@ -237,6 +258,8 @@ export function useListings() {
               east: bounds.east,
               west: bounds.west,
               timestamp: Date.now(),
+              zoom: bounds.zoom ?? 0,
+              isHighZoom,
             }];
           }
         } catch (error) {
