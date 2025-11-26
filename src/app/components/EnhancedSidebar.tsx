@@ -135,8 +135,8 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-neutral-700">
+      {/* Footer - extra padding on mobile for safe area */}
+      <div className={`p-4 border-t border-gray-200 dark:border-neutral-700 ${isMobile ? 'pb-24' : ''}`}>
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
 import { useListings, TotalCount } from "@/app/utils/map/useListings";
@@ -58,6 +58,7 @@ interface MLSContextValue {
 
   // Loading States
   isLoading: boolean;
+  isLoadingViewport: boolean;
   isPreloaded: boolean;
   isLoadingListing: boolean;
 
@@ -81,11 +82,10 @@ const MLSContext = createContext<MLSContextValue | null>(null);
 
 export function MLSProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentTheme } = useTheme();
 
   // Core hooks
-  const { allListings, visibleListings, loadListings: loadListingsCore, totalCount } = useListings();
+  const { allListings, visibleListings, loadListings: loadListingsCore, totalCount, isLoading: isLoadingViewport } = useListings();
   const swipeQueue = useSwipeQueue();
 
   // Refs for caching
@@ -491,6 +491,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     mapStyle,
     setMapStyle,
     isLoading,
+    isLoadingViewport,
     isPreloaded,
     isLoadingListing,
     listingCache,

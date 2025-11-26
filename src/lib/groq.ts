@@ -111,7 +111,7 @@ export async function createStreamingChatCompletion(options: GroqChatOptions) {
 
   try {
     const stream = await groq.chat.completions.create({
-      messages,
+      messages: messages as any,
       model,
       temperature,
       max_tokens: maxTokens,

@@ -42,6 +42,7 @@ function MapPageContent() {
     selectedListing,
     selectedFullListing,
     isLoading,
+    isLoadingViewport,
     isPreloaded,
     isLoadingListing,
     mapStyle,
@@ -69,7 +70,6 @@ function MapPageContent() {
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [mapBounds, setMapBounds] = useState(DEFAULT_BOUNDS);
-  const [loadedBounds, setLoadedBounds] = useState<Array<{north: number, south: number, east: number, west: number}>>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -102,14 +102,6 @@ function MapPageContent() {
     if (!isPreloaded && !isLoading) {
       console.log("🚀 Loading MLS listings for map with bounds:", initialBounds);
       loadListings(initialBounds, filters);
-
-      // Track initial bounds as loaded
-      setLoadedBounds([{
-        north: initialBounds.north,
-        south: initialBounds.south,
-        east: initialBounds.east,
-        west: initialBounds.west
-      }]);
     } else {
       console.log("ℹ️ Skipping loadListings - preloaded:", isPreloaded, "isLoading:", isLoading);
     }
@@ -132,50 +124,11 @@ function MapPageContent() {
   const handleBoundsChange = useCallback(
     async (bounds: {north: number, south: number, east: number, west: number, zoom: number}) => {
       console.log("🗺️ Map bounds changed:", bounds);
-
-      // Check if these bounds are already loaded
-      const isBoundsLoaded = loadedBounds.some(loaded => {
-        // Check if the new bounds are contained within already loaded bounds
-        return bounds.north <= loaded.north &&
-               bounds.south >= loaded.south &&
-               bounds.east <= loaded.east &&
-               bounds.west >= loaded.west;
-      });
-
-      if (isBoundsLoaded) {
-        console.log("✅ Bounds already loaded, skipping API call");
-        return;
-      }
-
-      // Check if bounds have changed significantly (at least 20% in any direction)
-      const hasSignificantChange = loadedBounds.length === 0 || loadedBounds.some(loaded => {
-        const latDiff = Math.abs(bounds.north - loaded.north) + Math.abs(bounds.south - loaded.south);
-        const lngDiff = Math.abs(bounds.east - loaded.east) + Math.abs(bounds.west - loaded.west);
-        const latRange = Math.abs(loaded.north - loaded.south);
-        const lngRange = Math.abs(loaded.east - loaded.west);
-
-        return (latDiff / latRange > 0.2) || (lngDiff / lngRange > 0.2);
-      });
-
-      if (!hasSignificantChange && loadedBounds.length > 0) {
-        console.log("ℹ️ Bounds change not significant enough, skipping load");
-        return;
-      }
-
-      console.log("🚀 Loading listings for new bounds:", bounds);
-
-      // Add these bounds to loaded bounds array
-      setLoadedBounds(prev => [...prev, {
-        north: bounds.north,
-        south: bounds.south,
-        east: bounds.east,
-        west: bounds.west
-      }]);
-
       // Load new listings with current filters (merge mode = true to keep existing listings)
+      // The useListings hook handles caching and deduplication internally
       await loadListings(bounds, filters, true);
     },
-    [loadedBounds, filters, loadListings]
+    [filters, loadListings]
   );
 
   const handleApplyFilters = useCallback(
@@ -452,21 +405,33 @@ function MapPageContent() {
             </div>
           )}
 
-          {/* Total Listings Count */}
-          {totalCount && (
-            <div className="absolute bottom-20 sm:bottom-auto sm:top-4 left-4 z-30">
+          {/* Total Listings Count + Viewport Loading Indicator */}
+          <div className="absolute bottom-20 sm:bottom-auto sm:top-4 left-4 z-30 flex items-center gap-2">
+            {/* Viewport loading indicator */}
+            {isLoadingViewport && (
+              <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg flex items-center gap-2 ${
+                isLight
+                  ? 'bg-white/90 text-gray-700 border border-gray-300'
+                  : 'bg-black/80 text-neutral-300 border border-neutral-700'
+              }`}>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Loading...
+              </span>
+            )}
+            {/* Total count */}
+            {totalCount && !isLoadingViewport && (
               <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg ${
                 isLight
                   ? 'bg-white/90 text-gray-700 border border-gray-300'
                   : 'bg-black/80 text-neutral-300 border border-neutral-700'
               }`}>
-                {totalCount.total.toLocaleString()} Active Listings
+                {visibleListings.length.toLocaleString()} shown
                 <span className={`ml-2 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
-                  (GPS: {totalCount.gps.toLocaleString()} | CRMLS: {totalCount.crmls.toLocaleString()})
+                  of {totalCount.total.toLocaleString()} total
                 </span>
               </span>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Map Controls - Mobile: Top swipeable tab, Desktop: Bottom left */}
           <div className="fixed top-0 left-0 right-0 sm:absolute sm:top-auto sm:bottom-4 sm:left-4 sm:right-auto z-40 sm:w-80 pointer-events-none">

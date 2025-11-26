@@ -25,7 +25,8 @@ export function parseAIResponse(content: string): ParsedMessage {
 // Safe carousel parsing - handle both formats
 try {
   // Try format with closing tag first: [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
-  let carouselMatch = content.match(/\[LISTING_CAROUSEL\](.*?)\[\/LISTING_CAROUSEL\]/s);
+  // Using [\s\S] instead of . with /s flag for compatibility
+  let carouselMatch = content.match(/\[LISTING_CAROUSEL\]([\s\S]*?)\[\/LISTING_CAROUSEL\]/);
 
   // If not found, try format without closing tag: [LISTING_CAROUSEL]\n{...}
   if (!carouselMatch) {
@@ -64,7 +65,8 @@ try {
 
   // Safe map parsing
   try {
-    const mapMatch = content.match(/\[MAP_VIEW\](.*?)\[\/MAP_VIEW\]/s);
+    // Using [\s\S] instead of . with /s flag for compatibility
+    const mapMatch = content.match(/\[MAP_VIEW\]([\s\S]*?)\[\/MAP_VIEW\]/);
     if (mapMatch) {
       map = JSON.parse(mapMatch[1]);
       // Validate structure
@@ -80,8 +82,8 @@ try {
 
   // Always return clean text even if parsing fails
   const cleanText = content
-    .replace(/\[LISTING_CAROUSEL\].*?\[\/LISTING_CAROUSEL\]/gs, '')
-    .replace(/\[MAP_VIEW\].*?\[\/MAP_VIEW\]/gs, '')
+    .replace(/\[LISTING_CAROUSEL\][\s\S]*?\[\/LISTING_CAROUSEL\]/g, '')
+    .replace(/\[MAP_VIEW\][\s\S]*?\[\/MAP_VIEW\]/g, '')
     .trim();
 
   return { text: cleanText, carousel, map };

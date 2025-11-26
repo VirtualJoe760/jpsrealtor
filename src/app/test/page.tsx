@@ -801,10 +801,10 @@ function TestPageContent() {
                     </div>
                   )}
 
-                  {/* Integrated Chat Widget Test */}
+                  {/* Integrated Chat Widget Test - Component removed */}
                   {activeTest === "integrated" && (
-                    <div className="h-full">
-                      <IntegratedChatWidget />
+                    <div className="h-full flex items-center justify-center">
+                      <p className={textSecondary}>Integrated Chat Widget has been removed</p>
                     </div>
                   )}
 
@@ -1090,9 +1090,7 @@ export default function TestPage() {
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
           <MLSProvider>
             <ChatProvider>
-              <EnhancedChatProvider>
-                <TestPageContent />
-              </EnhancedChatProvider>
+              <TestPageContent />
             </ChatProvider>
           </MLSProvider>
         </Suspense>
