@@ -9,15 +9,11 @@ import { useEffect, useState, useCallback } from "react";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import MapGlobeLoader from "@/app/components/mls/map/MapGlobeLoader";
 
 // Dynamic imports for map components (client-side only)
 const MapView = dynamicImport(
   () => import("@/app/components/mls/map/MapView"),
-  {
-    ssr: false,
-    loading: () => <MapGlobeLoader />,
-  }
+  { ssr: false }
 );
 
 const ListingBottomPanel = dynamicImport(
@@ -336,14 +332,26 @@ function MapPageContent() {
     : null;
 
   if (!mounted) {
-    return <MapGlobeLoader />;
+    return (
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+          <p className="text-neutral-400">Loading map...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="h-screen w-screen relative bg-black" data-page="map">
       {isLoading && visibleListings.length === 0 ? (
         // Loading state
-        <MapGlobeLoader />
+        <div className="h-full w-full flex items-center justify-center bg-black">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+            <p className="text-neutral-400">Loading listings...</p>
+          </div>
+        </div>
       ) : visibleListings.length === 0 ? (
         // Empty state
         <div className="h-full w-full flex items-center justify-center bg-black">

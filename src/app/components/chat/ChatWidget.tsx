@@ -218,6 +218,7 @@ export default function ChatWidget() {
             ))}
 
             {isLoading && (
+
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -235,7 +236,6 @@ export default function ChatWidget() {
                 </div>
               </motion.div>
             )}
-
             {isStreaming && streamingText && (
               <motion.div
                 initial={{ opacity: 0 }}

@@ -9,7 +9,7 @@ import EnhancedSidebar from "./EnhancedSidebar";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
-import PageTransition from "./PageTransition";
+
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import { ThemeProvider } from "../contexts/ThemeContext";
 
@@ -49,9 +49,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
-        <PageTransition>
+
         {children}
-        </PageTransition>
+
       </div>
 
       <MobileBottomNav />
