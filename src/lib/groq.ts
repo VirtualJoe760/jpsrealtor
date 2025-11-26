@@ -20,7 +20,7 @@ export const GROQ_MODELS = {
   FREE: "llama-3.1-8b-instant", // 840 TPS, ~$0.013/month per user
 
   // Premium tier: Smarter and better quality
-  PREMIUM: "llama-3.3-70b-versatile", // 394 TPS, ~$0.15-0.30/month per user
+  PREMIUM: "gpt-oss-120b", // 500 TPS, 131K context, function calling support
 } as const;
 
 export interface GroqChatMessage {

@@ -12,6 +12,8 @@ export default function ChatWidget() {
   const isLight = currentTheme === "lightgradient";
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const { messages, addMessage } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,19 +40,35 @@ export default function ChatWidget() {
             { role: "user", content: userMessage },
           ],
           userId: "demo-user",
-          userTier: "free",
+          userTier: "premium",
         }),
       });
 
       const data = await response.json();
 
       if (data.success && data.response) {
-        addMessage(data.response, "assistant");
+        // Streaming text reveal effect
+        setIsLoading(false);
+        setIsStreaming(true);
+        const fullText = data.response;
+        let currentIndex = 0;
+
+        const intervalId = setInterval(() => {
+          if (currentIndex < fullText.length) {
+            setStreamingText(fullText.substring(0, currentIndex + 1));
+            currentIndex++;
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          } else {
+            clearInterval(intervalId);
+            setIsStreaming(false);
+            setStreamingText("");
+            addMessage(fullText, "assistant");
+          }
+        }, 20); // 20ms per character for smooth reveal
       }
     } catch (error) {
       console.error("Chat error:", error);
       addMessage("Sorry, something went wrong. Please try again.", "assistant");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -213,6 +231,29 @@ export default function ChatWidget() {
                     <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
                     <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
                     <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {isStreaming && streamingText && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div className="max-w-3xl flex flex-col gap-4">
+                  <div
+                    className={`rounded-2xl px-6 py-4 select-text ${
+                      isLight
+                        ? "bg-gray-100 text-gray-900"
+                        : "bg-neutral-800 text-neutral-100"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap select-text">{streamingText}</p>
                   </div>
                 </div>
               </motion.div>
