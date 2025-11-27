@@ -72,6 +72,19 @@ html {
   /* Prevent horizontal overflow */
   overflow-x: hidden;
   max-width: 100vw;
+  /* Default background for PWA status bar area */
+  background-color: #ffffff;
+}
+
+/* Theme-aware backgrounds for PWA Dynamic Island support */
+html.theme-lightgradient,
+html.theme-lightgradient body {
+  background-color: #ffffff;
+}
+
+html.theme-blackspace,
+html.theme-blackspace body {
+  background-color: #000000;
 }
 
 * {
