@@ -780,10 +780,20 @@ export default function DashboardPage() {
         >
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${textPrimary} text-2xl font-bold ${
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center overflow-hidden ${textPrimary} text-2xl font-bold ${
                 isLight ? 'bg-gradient-to-br from-emerald-400 to-cyan-400' : 'bg-gradient-to-br from-gray-700 to-gray-900'
               }`}>
-                {user.name?.[0]?.toUpperCase() || "U"}
+                {user.image ? (
+                  <Image
+                    src={user.image}
+                    alt={user.name || "Profile"}
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user.name?.[0]?.toUpperCase() || "U"
+                )}
               </div>
               <div>
                 <h2 className={`text-2xl font-semibold ${textPrimary}`}>{user.name || "User"}</h2>

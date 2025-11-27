@@ -80,7 +80,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   return (
     <>
       {/* Main Photo Section */}
-      <section className="w-full max-w-7xl mx-auto px-4 pt-6 pb-4">
+      <section className="w-full max-w-7xl mx-auto px-4 pt-20 md:pt-6 pb-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

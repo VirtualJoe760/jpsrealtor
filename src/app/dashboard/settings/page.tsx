@@ -5,11 +5,17 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, Lock, Heart, Upload } from "lucide-react";
+import Image from "next/image";
+import { User, Lock, Heart, Upload, Loader2 } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
+import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
 
   // Security state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -33,6 +39,7 @@ export default function SettingsPage() {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "partner">("profile");
 
@@ -197,16 +204,59 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // TODO: Implement actual image upload to Cloudinary
-    // For now, just show a placeholder
-    setMessage({ type: "error", text: "Image upload not yet implemented. Coming soon!" });
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setMessage({ type: "error", text: "Please select a valid image file." });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Image size must be less than 5MB." });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setMessage(null);
+
+    try {
+      // Upload to Cloudinary
+      const uploadedUrls = await uploadToCloudinary([file], "profile-photos");
+
+      if (uploadedUrls.length > 0) {
+        const imageUrl = uploadedUrls[0];
+
+        // Update profile with new image URL
+        const response = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageUrl }),
+        });
+
+        if (response.ok) {
+          setProfile({ ...profile, image: imageUrl });
+          setMessage({ type: "success", text: "Profile photo updated successfully!" });
+          // Update session to reflect new image
+          await update({ image: imageUrl });
+        } else {
+          setMessage({ type: "error", text: "Failed to save profile photo." });
+        }
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setMessage({ type: "error", text: "Failed to upload image. Please try again." });
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
+      <SpaticalBackground showGradient={true}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className={`text-xl ${isLight ? "text-gray-900" : "text-white"}`}>Loading...</div>
+        </div>
+      </SpaticalBackground>
     );
   }
 
@@ -214,22 +264,28 @@ export default function SettingsPage() {
     return null;
   }
 
+  // Get the display image - prefer uploaded profile image, then session image (Google/Facebook)
+  const displayImage = profile.image || session?.user?.image;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-900 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <SpaticalBackground showGradient={true}>
+      <div className="min-h-screen py-12 px-4 pt-24 md:pt-12">
+        <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/dashboard"
-            className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-4"
+            className={`inline-flex items-center transition-colors mb-4 ${
+              isLight ? "text-gray-500 hover:text-gray-900" : "text-gray-400 hover:text-white"
+            }`}
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
-          <p className="text-gray-400">Manage your profile and account preferences</p>
+          <h1 className={`text-4xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>Settings</h1>
+          <p className={isLight ? "text-gray-600" : "text-gray-400"}>Manage your profile and account preferences</p>
         </div>
 
         {/* Message */}
@@ -237,8 +293,12 @@ export default function SettingsPage() {
           <div
             className={`mb-6 p-4 rounded-lg border ${
               message.type === "success"
-                ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
-                : "bg-red-500/10 border-red-500/50 text-red-400"
+                ? isLight
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                  : "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
+                : isLight
+                  ? "bg-red-50 border-red-300 text-red-700"
+                  : "bg-red-500/10 border-red-500/50 text-red-400"
             }`}
           >
             {message.text}
@@ -246,13 +306,17 @@ export default function SettingsPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-800">
+        <div className={`flex gap-2 mb-6 border-b ${isLight ? "border-gray-200" : "border-gray-800"}`}>
           <button
             onClick={() => setActiveTab("profile")}
             className={`px-6 py-3 font-medium transition-all ${
               activeTab === "profile"
-                ? "text-white border-b-2 border-emerald-500"
-                : "text-gray-400 hover:text-white"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
             }`}
           >
             <User className="w-5 h-5 inline mr-2" />
@@ -262,8 +326,12 @@ export default function SettingsPage() {
             onClick={() => setActiveTab("security")}
             className={`px-6 py-3 font-medium transition-all ${
               activeTab === "security"
-                ? "text-white border-b-2 border-emerald-500"
-                : "text-gray-400 hover:text-white"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
             }`}
           >
             <Lock className="w-5 h-5 inline mr-2" />
@@ -273,8 +341,12 @@ export default function SettingsPage() {
             onClick={() => setActiveTab("partner")}
             className={`px-6 py-3 font-medium transition-all ${
               activeTab === "partner"
-                ? "text-white border-b-2 border-emerald-500"
-                : "text-gray-400 hover:text-white"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
             }`}
           >
             <Heart className="w-5 h-5 inline mr-2" />
@@ -284,81 +356,136 @@ export default function SettingsPage() {
 
         {/* Profile Tab */}
         {activeTab === "profile" && (
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6 space-y-6">
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 space-y-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
             {/* Profile Photo */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+              <label className={`block text-sm font-medium mb-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                 Profile Photo
               </label>
               <div className="flex items-center gap-4">
-                <div className="w-24 h-24 rounded-full bg-gray-800 border-2 border-gray-700 flex items-center justify-center overflow-hidden">
-                  {profile.image ? (
-                    <img src={profile.image} alt="Profile" className="w-full h-full object-cover" />
+                <div className={`relative w-24 h-24 rounded-full border-2 flex items-center justify-center overflow-hidden ${
+                  isLight ? "bg-gray-100 border-gray-300" : "bg-gray-800 border-gray-700"
+                }`}>
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    </div>
+                  )}
+                  {displayImage ? (
+                    <img src={displayImage} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-12 h-12 text-gray-600" />
+                    <User className={`w-12 h-12 ${isLight ? "text-gray-400" : "text-gray-600"}`} />
                   )}
                 </div>
-                <label className="cursor-pointer px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700">
-                  <Upload className="w-4 h-4 inline mr-2" />
-                  Upload Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className={`cursor-pointer px-4 py-2 rounded-lg transition-colors border inline-flex items-center ${
+                    isUploadingImage ? "opacity-50 cursor-not-allowed" : ""
+                  } ${
+                    isLight
+                      ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-300"
+                      : "bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                  }`}>
+                    {isUploadingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Photo
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+                  {displayImage && (
+                    <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                      {session?.user?.image && !profile.image ? "Using Google/Facebook photo" : "Custom photo"}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                   Full Name
                 </label>
                 <input
                   type="text"
                   value={profile.name}
                   onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                      : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                  }`}
                   placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                   Phone Number
                 </label>
                 <input
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                      : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                  }`}
                   placeholder="(555) 123-4567"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                   Birthday
                 </label>
                 <input
                   type="date"
                   value={profile.birthday}
                   onChange={(e) => setProfile({ ...profile, birthday: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? "bg-white border border-gray-300 text-gray-900 focus:ring-blue-500"
+                      : "bg-gray-800/50 border border-gray-700 text-white focus:ring-emerald-500"
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                   Homeowner Status
                 </label>
                 <select
                   value={profile.homeownerStatus}
                   onChange={(e) => setProfile({ ...profile, homeownerStatus: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? "bg-white border border-gray-300 text-gray-900 focus:ring-blue-500"
+                      : "bg-gray-800/50 border border-gray-700 text-white focus:ring-emerald-500"
+                  }`}
                 >
                   <option value="">Select status</option>
                   <option value="own">Own</option>
@@ -370,42 +497,54 @@ export default function SettingsPage() {
 
             {/* Current Address */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                 Current Address
               </label>
               <input
                 type="text"
                 value={profile.currentAddress}
                 onChange={(e) => setProfile({ ...profile, currentAddress: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                    : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                }`}
                 placeholder="123 Main St, City, State, ZIP"
               />
             </div>
 
             {/* Profile Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                 About You
               </label>
               <textarea
                 value={profile.profileDescription}
                 onChange={(e) => setProfile({ ...profile, profileDescription: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                    : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                }`}
                 placeholder="Tell us about yourself, what you love, your hobbies..."
               />
             </div>
 
             {/* Real Estate Goals */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                 Real Estate Goals
               </label>
               <textarea
                 value={profile.realEstateGoals}
                 onChange={(e) => setProfile({ ...profile, realEstateGoals: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                    : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                }`}
                 placeholder="What are you looking for in real estate? Dream home features, location preferences, investment goals..."
               />
             </div>
@@ -415,7 +554,11 @@ export default function SettingsPage() {
               <button
                 onClick={handleProfileSave}
                 disabled={isSaving}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-6 py-3 font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isLight
+                    ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                    : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                }`}
               >
                 {isSaving ? "Saving..." : "Save Profile"}
               </button>
@@ -425,16 +568,25 @@ export default function SettingsPage() {
 
         {/* Security Tab */}
         {activeTab === "security" && (
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6">Security</h2>
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
+            <h2 className={`text-2xl font-semibold mb-6 ${isLight ? "text-gray-900" : "text-white"}`}>Security</h2>
 
             {/* Two-Factor Authentication */}
-            <div className="flex items-center justify-between py-4 border-b border-gray-800">
+            <div className={`flex items-center justify-between py-4 border-b ${isLight ? "border-gray-200" : "border-gray-800"}`}>
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-white mb-1">
+                <h3 className={`text-lg font-medium mb-1 ${isLight ? "text-gray-900" : "text-white"}`}>
                   Two-Factor Authentication
                 </h3>
-                <p className="text-sm text-gray-400">
+                <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
                   Add an extra layer of security with email verification codes
                 </p>
               </div>
@@ -448,8 +600,10 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={isLoading}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                    twoFactorEnabled ? "bg-emerald-600" : "bg-gray-700"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isLight
+                      ? `focus:ring-blue-500 focus:ring-offset-white ${twoFactorEnabled ? "bg-blue-500" : "bg-gray-300"}`
+                      : `focus:ring-emerald-500 focus:ring-offset-gray-900 ${twoFactorEnabled ? "bg-emerald-600" : "bg-gray-700"}`
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <span
@@ -466,8 +620,12 @@ export default function SettingsPage() {
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   twoFactorEnabled
-                    ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300"
-                    : "bg-gray-700/50 border border-gray-600 text-gray-400"
+                    ? isLight
+                      ? "bg-blue-100 border border-blue-300 text-blue-700"
+                      : "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300"
+                    : isLight
+                      ? "bg-gray-100 border border-gray-300 text-gray-600"
+                      : "bg-gray-700/50 border border-gray-600 text-gray-400"
                 }`}
               >
                 {twoFactorEnabled ? "Enabled" : "Disabled"}
@@ -478,19 +636,32 @@ export default function SettingsPage() {
 
         {/* Partner Linking Tab */}
         {activeTab === "partner" && (
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-semibold text-white mb-3">Partner Linking</h2>
-            <p className="text-gray-400 mb-6">
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
+            <h2 className={`text-2xl font-semibold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>Partner Linking</h2>
+            <p className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
               Link your account with a significant other to track joint real estate goals and preferences
             </p>
 
             {linkedPartner ? (
-              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
+              <div className={`rounded-lg p-6 ${
+                isLight
+                  ? "bg-gray-50 border border-gray-200"
+                  : "bg-gray-800/50 border border-gray-700"
+              }`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-1">Linked Partner</h3>
-                    <p className="text-emerald-400">{linkedPartner.name || linkedPartner.email}</p>
-                    <p className="text-sm text-gray-500">{linkedPartner.email}</p>
+                    <h3 className={`text-lg font-medium mb-1 ${isLight ? "text-gray-900" : "text-white"}`}>Linked Partner</h3>
+                    <p className={isLight ? "text-blue-600" : "text-emerald-400"}>{linkedPartner.name || linkedPartner.email}</p>
+                    <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-500"}`}>{linkedPartner.email}</p>
                   </div>
                   <button
                     onClick={handleUnlinkPartner}
@@ -504,7 +675,7 @@ export default function SettingsPage() {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
                     Partner's Email Address
                   </label>
                   <input
@@ -512,13 +683,21 @@ export default function SettingsPage() {
                     value={partnerEmail}
                     onChange={(e) => setPartnerEmail(e.target.value)}
                     placeholder="partner@example.com"
-                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                      isLight
+                        ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                        : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                    }`}
                   />
                 </div>
                 <button
                   onClick={handleLinkPartner}
                   disabled={isLoading || !partnerEmail.trim()}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isLight
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                  }`}
                 >
                   {isLoading ? "Linking..." : "Link Partner"}
                 </button>
@@ -528,5 +707,6 @@ export default function SettingsPage() {
         )}
       </div>
     </div>
+    </SpaticalBackground>
   );
 }

@@ -2,23 +2,58 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Copy, Check, Share } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import { useSession } from "next-auth/react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
 import ListingCarousel from "./ListingCarousel";
 import ChatMapView from "./ChatMapView";
 
 export default function ChatWidget() {
+  const { data: session } = useSession();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { messages, addMessage } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleShare = async (text: string) => {
+    const shareData = {
+      title: "JPS Realtor",
+      text: text,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(text);
+        setCopiedId("share-fallback");
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+    } catch (err) {
+      // User cancelled or error
+      console.error("Share failed:", err);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,8 +121,12 @@ export default function ChatWidget() {
 
   const showLanding = messages.length === 0;
 
+  // Font options - change this to swap fonts easily
+  // Options: 'Plus Jakarta Sans', 'DM Sans', 'Inter'
+  const chatFont = 'DM Sans';
+
   return (
-    <div className="h-screen w-full flex flex-col">
+    <div className="h-screen w-full flex flex-col" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
       {/* Landing View */}
       <AnimatePresence>
         {showLanding && (
@@ -150,8 +189,8 @@ export default function ChatWidget() {
                     onKeyPress={handleKeyPress}
                     placeholder="Ask me anything about real estate..."
                     disabled={isLoading}
-                    className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl ${
-                      isLight ? "text-gray-900 placeholder-gray-500" : "text-white placeholder-gray-400"
+                    className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+                      isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
                     }`}
                   />
                   <button
@@ -178,7 +217,7 @@ export default function ChatWidget() {
 
       {/* Conversation View */}
       {!showLanding && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-36 md:pt-6 pb-6 relative">
           <div className="max-w-6xl mx-auto space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
@@ -190,42 +229,83 @@ export default function ChatWidget() {
                 {/* Text message row */}
                 <div className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   {msg.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isLight
+                        ? "bg-gradient-to-br from-blue-400 to-blue-600"
+                        : "bg-gradient-to-br from-neutral-600 to-neutral-800 border border-neutral-600"
+                    }`}>
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                   )}
 
-                  <div className="max-w-3xl">
+                  <div className="max-w-3xl flex flex-col">
                     <div
-                      className={`rounded-2xl px-6 py-4 select-text ${
+                      className={`rounded-2xl px-5 py-4 select-text ${
                         msg.role === "user"
                           ? isLight
-                            ? "bg-blue-100 text-gray-900"
-                            : "bg-purple-600 text-white"
+                            ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20"
+                            : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25"
                           : isLight
-                            ? "bg-gray-100 text-gray-900"
-                            : "bg-neutral-800 text-neutral-100"
+                            ? "bg-white/90 text-gray-800 shadow-md border border-gray-200/50"
+                            : "bg-neutral-900/80 text-neutral-50 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
                       }`}
                     >
-                      <div className={`prose prose-sm max-w-none select-text prose-p:my-1 prose-ul:my-2 prose-li:my-0.5 prose-strong:font-semibold ${
-                        msg.role === "user"
-                          ? isLight
-                            ? "prose-gray"
-                            : "prose-invert"
-                          : isLight
-                            ? "prose-gray"
-                            : "prose-invert"
+                      <div className={`text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mb-2 [&>h3]:font-semibold [&>h3]:mb-1 ${
+                        msg.role === "user" ? "text-white" : ""
                       }`}>
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     </div>
+                    {/* Copy and Share buttons for assistant messages */}
+                    {msg.role === "assistant" && (
+                      <div className="mt-2 self-start flex items-center gap-2">
+                        <button
+                          onClick={() => handleCopy(msg.content, msg.id)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                            copiedId === msg.id
+                              ? isLight
+                                ? "bg-emerald-100 text-emerald-600"
+                                : "bg-emerald-500/20 text-emerald-400"
+                              : isLight
+                                ? "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                                : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                          }`}
+                        >
+                          {copiedId === msg.id ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleShare(msg.content)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                            isLight
+                              ? "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                              : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                          }`}
+                        >
+                          <Share className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {msg.role === "user" && (
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isLight ? "bg-blue-600" : "bg-purple-600"
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
+                      isLight ? "bg-blue-600" : "bg-emerald-500"
                     }`}>
-                      <User className="w-5 h-5 text-white" />
+                      {session?.user?.image ? (
+                        <Image
+                          src={session.user.image}
+                          alt={session.user.name || "User"}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-5 h-5 text-white" />
+                      )}
                     </div>
                   )}
                 </div>
@@ -251,20 +331,27 @@ export default function ChatWidget() {
             ))}
 
             {isLoading && (
-
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isLight
+                    ? "bg-gradient-to-br from-blue-400 to-blue-600"
+                    : "bg-gradient-to-br from-neutral-600 to-neutral-800 border border-neutral-600"
+                }`}>
                   <Bot className="w-5 h-5 text-white" />
                 </div>
-                <div className={`rounded-2xl px-6 py-4 ${isLight ? "bg-gray-100" : "bg-neutral-800"}`}>
+                <div className={`rounded-2xl px-5 py-4 ${
+                  isLight
+                    ? "bg-white/90 shadow-md border border-gray-200/50"
+                    : "bg-neutral-900/80 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
+                }`}>
                   <div className="flex gap-2">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} />
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} style={{ animationDelay: "0.2s" }} />
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} style={{ animationDelay: "0.4s" }} />
                   </div>
                 </div>
               </motion.div>
@@ -275,20 +362,22 @@ export default function ChatWidget() {
                 animate={{ opacity: 1 }}
                 className="flex gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isLight
+                    ? "bg-gradient-to-br from-blue-400 to-blue-600"
+                    : "bg-gradient-to-br from-neutral-600 to-neutral-800 border border-neutral-600"
+                }`}>
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div className="max-w-3xl flex flex-col gap-4">
                   <div
-                    className={`rounded-2xl px-6 py-4 select-text ${
+                    className={`rounded-2xl px-5 py-4 select-text ${
                       isLight
-                        ? "bg-gray-100 text-gray-900"
-                        : "bg-neutral-800 text-neutral-100"
+                        ? "bg-white/90 text-gray-800 shadow-md border border-gray-200/50"
+                        : "bg-neutral-900/80 text-neutral-50 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
                     }`}
                   >
-                    <div className={`prose prose-sm max-w-none select-text prose-p:my-1 prose-ul:my-2 prose-li:my-0.5 prose-strong:font-semibold ${
-                      isLight ? "prose-gray" : "prose-invert"
-                    }`}>
+                    <div className="text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold">
                       <ReactMarkdown>{streamingText}</ReactMarkdown>
                     </div>
                   </div>
@@ -321,8 +410,8 @@ export default function ChatWidget() {
               onKeyPress={handleKeyPress}
               placeholder="Ask me anything about real estate..."
               disabled={isLoading}
-              className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl ${
-                isLight ? "text-gray-900 placeholder-gray-500" : "text-white placeholder-gray-400"
+              className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+                isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
               }`}
             />
             <button

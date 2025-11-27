@@ -20,6 +20,20 @@ export default function GlobalHamburgerMenu() {
 
   return (
     <>
+      {/* Top blur gradient overlay for mobile - always visible behind hamburger */}
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 h-20 z-40 pointer-events-none"
+        style={{
+          background: effectiveIsLight
+            ? 'linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 30%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 70%, rgba(255,255,255,0) 100%)'
+            : 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0) 100%)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+        }}
+      />
+
       {/* Hamburger Button - Top Left, Mobile Only */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}

@@ -12,6 +12,10 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  Newspaper,
+  Calendar,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
@@ -76,19 +80,16 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       style={{ paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 20px)' : undefined }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-5">
         {!effectivelyCollapsed && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <Image
-              src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
-              alt="eXp Realty"
-              width={40}
-              height={40}
+              src={isLight ? "/images/brand/obsidian-logo-black.png" : "/images/brand/logo-white-obsidian.png"}
+              alt="Obsidian Group"
+              width={220}
+              height={50}
               className="object-contain"
             />
-            <span className={`font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>
-              JPSREALTOR
-            </span>
           </div>
         )}
         {!isMobile && (
@@ -137,38 +138,89 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       </nav>
 
       {/* Footer - extra padding on mobile for safe area */}
-      <div className={`p-4 border-t border-gray-200 dark:border-neutral-700 ${isMobile ? 'pb-32' : ''}`}>
+      <div className={`mt-auto ${isMobile ? 'pb-20' : ''}`}>
         {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-            isLight ? "hover:bg-gray-100 text-gray-700" : "hover:bg-neutral-800 text-neutral-300"
-          }`}
-        >
-          {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          {!effectivelyCollapsed && (
-            <span className="text-sm font-medium">{isLight ? "Dark Mode" : "Light Mode"}</span>
-          )}
-        </button>
+        <div className={`px-3 py-2 border-t overflow-hidden ${effectivelyCollapsed ? '' : 'mx-3'} ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center rounded-lg transition-colors ${
+              effectivelyCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'
+            } ${
+              isLight ? "hover:bg-gray-100 text-gray-700" : "hover:bg-neutral-800 text-neutral-300"
+            }`}
+          >
+            {isLight ? <Moon className="w-5 h-5 flex-shrink-0" /> : <Sun className="w-5 h-5 flex-shrink-0" />}
+            {!effectivelyCollapsed && (
+              <span className="text-sm font-medium whitespace-nowrap">{isLight ? "Dark Mode" : "Light Mode"}</span>
+            )}
+          </button>
+        </div>
 
-        {/* User Profile */}
-        {session?.user && !effectivelyCollapsed && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                isLight ? "bg-blue-100 text-blue-600" : "bg-purple-600/20 text-purple-400"
-              }`}>
-                {session.user.name?.[0] || "U"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${isLight ? "text-gray-900" : "text-white"}`}>
-                  {session.user.name}
-                </p>
-                <p className={`text-xs truncate ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
-                  {session.user.email}
-                </p>
-              </div>
-            </div>
+        {/* Agent Branding - Required Agency Treatment */}
+        {!effectivelyCollapsed && (
+          <div className={`px-4 pt-3 pb-2 mx-3 border-t overflow-hidden ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
+            <p
+              className={`text-xs text-center leading-relaxed whitespace-nowrap ${isLight ? "text-gray-500" : "text-neutral-500"}`}
+              style={{ minWidth: '220px' }}
+            >
+              Joseph Sardella
+              <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+              eXp Realty
+              <br />
+              Obsidian Group
+              <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+              DRE# 02106916
+            </p>
+          </div>
+        )}
+
+        {/* Quick Action Icons */}
+        {!effectivelyCollapsed && (
+          <div className="flex justify-center gap-3 px-4 pb-4 mx-3">
+            <a
+              href="/newsletter-signup"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isLight
+                  ? "bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600"
+                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+              }`}
+              title="Newsletter"
+            >
+              <Newspaper className="w-4 h-4" />
+            </a>
+            <a
+              href="/book-appointment"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isLight
+                  ? "bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600"
+                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+              }`}
+              title="Book Appointment"
+            >
+              <Calendar className="w-4 h-4" />
+            </a>
+            <a
+              href="tel:760-833-6334"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isLight
+                  ? "bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-600"
+                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-emerald-400"
+              }`}
+              title="Call 760-833-6334"
+            >
+              <Phone className="w-4 h-4" />
+            </a>
+            <a
+              href="mailto:josephsardella@gmail.com"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isLight
+                  ? "bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600"
+                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+              }`}
+              title="Email josephsardella@gmail.com"
+            >
+              <Mail className="w-4 h-4" />
+            </a>
           </div>
         )}
       </div>
