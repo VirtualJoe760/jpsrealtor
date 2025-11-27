@@ -129,14 +129,14 @@ export default async function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
-        {/* PWA Meta Tags */}
+        {/* PWA Meta Tags - Theme aware for Dynamic Island support */}
         <meta name="application-name" content="JP Realtor" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content={serverTheme === 'lightgradient' ? 'default' : 'black-translucent'} />
         <meta name="apple-mobile-web-app-title" content="JP Realtor" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#3b82f6" />
+        <meta name="theme-color" content={serverTheme === 'lightgradient' ? '#ffffff' : '#000000'} />
 
         {/* Apple Touch Icons */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

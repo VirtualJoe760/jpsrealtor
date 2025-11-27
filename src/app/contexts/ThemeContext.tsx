@@ -91,6 +91,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
     const theme = themes[currentTheme];
     const root = document.documentElement;
+    const isLight = currentTheme === 'lightgradient';
 
     // Apply CSS variables
     Object.entries(theme.colors).forEach(([key, value]) => {
@@ -105,6 +106,12 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .concat(`theme-${currentTheme}`)
         .join(" ");
     });
+
+    // Update theme-color meta tag for PWA/Dynamic Island
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', isLight ? '#ffffff' : '#000000');
+    }
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
