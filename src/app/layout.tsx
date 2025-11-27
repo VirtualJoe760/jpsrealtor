@@ -25,7 +25,7 @@ const DEFAULT_THEME = 'lightgradient';
 
 type ThemeName = typeof VALID_THEMES[number];
 
-function getServerTheme(cookieStore: ReturnType<typeof cookies>): ThemeName {
+function getServerTheme(cookieStore: Awaited<ReturnType<typeof cookies>>): ThemeName {
   const themeCookie = cookieStore.get(THEME_COOKIE_NAME);
   const theme = themeCookie?.value;
 
