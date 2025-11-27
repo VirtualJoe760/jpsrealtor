@@ -18,6 +18,37 @@
   }
 }
 
+/* Landscape orientation blocker for mobile */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  body > *:not(.landscape-blocker) {
+    display: none !important;
+  }
+
+  body::before {
+    content: "Please rotate your device to portrait mode";
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.25rem;
+    font-weight: 500;
+    z-index: 99999;
+  }
+
+  html.theme-lightgradient body::before {
+    background: #ffffff;
+    color: #111827;
+  }
+
+  html.theme-blackspace body::before {
+    background: #000000;
+    color: #ffffff;
+  }
+}
+
 body {
   font-family: 'Raleway', sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
