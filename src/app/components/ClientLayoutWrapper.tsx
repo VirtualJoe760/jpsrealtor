@@ -11,7 +11,7 @@ import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
-import { ThemeProvider } from "../contexts/ThemeContext";
+import { ThemeProvider, type ThemeName } from "../contexts/ThemeContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -57,11 +57,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface ClientLayoutWrapperProps {
+  children: React.ReactNode;
+  initialTheme?: ThemeName;
+}
+
 export default function ClientLayoutWrapper({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  initialTheme,
+}: ClientLayoutWrapperProps) {
   // Aggressive double-tap zoom and pinch zoom prevention for iOS
   useEffect(() => {
     let lastTouchEnd = 0;
@@ -113,7 +117,7 @@ export default function ClientLayoutWrapper({
   }, []);
 
   return (
-    <ThemeProvider>
+    <ThemeProvider initialTheme={initialTheme}>
       <Providers>
         <SidebarProvider>
           <LayoutContent>{children}</LayoutContent>

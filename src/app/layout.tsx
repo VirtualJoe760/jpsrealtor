@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import Script from "next/script";
+import { cookies } from "next/headers";
 import "./globals.css";
 import "@fontsource/raleway";
 import "@fontsource/plus-jakarta-sans/400.css";
@@ -16,6 +17,23 @@ import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
+
+// Theme constants - must match ThemeContext.tsx
+const THEME_COOKIE_NAME = 'site-theme';
+const VALID_THEMES = ['lightgradient', 'blackspace'] as const;
+const DEFAULT_THEME = 'lightgradient';
+
+type ThemeName = typeof VALID_THEMES[number];
+
+function getServerTheme(cookieStore: ReturnType<typeof cookies>): ThemeName {
+  const themeCookie = cookieStore.get(THEME_COOKIE_NAME);
+  const theme = themeCookie?.value;
+
+  if (theme && VALID_THEMES.includes(theme as ThemeName)) {
+    return theme as ThemeName;
+  }
+  return DEFAULT_THEME;
+}
 
 export const metadata: Metadata = {
   title: {
@@ -96,13 +114,17 @@ export const metadata: Metadata = {
   category: "Real Estate",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read theme from cookie on the server
+  const cookieStore = await cookies();
+  const serverTheme = getServerTheme(cookieStore);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`theme-${serverTheme}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
@@ -126,25 +148,24 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
 
-        {/* Inline script to prevent theme flash - runs before React hydrates */}
+        {/* Inline script for theme - syncs cookie/localStorage and applies immediately */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  const savedTheme = localStorage.getItem('site-theme') || 'lightgradient';
-                  document.documentElement.classList.add('theme-' + savedTheme);
-                  document.body.classList.add('theme-' + savedTheme);
-                } catch (e) {
-                  document.documentElement.classList.add('theme-lightgradient');
-                  document.body.classList.add('theme-lightgradient');
-                }
+                  // Check cookie first (matches server), then localStorage
+                  var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
+                  var theme = cookieMatch ? cookieMatch[2] : localStorage.getItem('site-theme') || 'lightgradient';
+                  if (theme !== 'lightgradient' && theme !== 'blackspace') theme = 'lightgradient';
+                  document.documentElement.className = document.documentElement.className.replace(/theme-\\w+/g, '') + ' theme-' + theme;
+                } catch (e) {}
               })();
             `,
           }}
         />
       </head>
-      <body suppressHydrationWarning>
+      <body className={`theme-${serverTheme}`} suppressHydrationWarning>
         {/* JSON-LD Structured Data for SEO */}
         <OrganizationJsonLd />
         <PersonJsonLd />
@@ -162,7 +183,7 @@ export default function RootLayout({
             gtag('config', 'G-613BBEB2FS');
           `}
         </Script>
-        <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+        <ClientLayoutWrapper initialTheme={serverTheme}>{children}</ClientLayoutWrapper>
       </body>
     </html>
   );
