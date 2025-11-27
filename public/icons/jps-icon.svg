@@ -1,0 +1,9 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@200&amp;display=swap');
+    </style>
+  </defs>
+  <rect width="512" height="512" fill="#000000"/>
+  <text x="256" y="290" font-family="Raleway, sans-serif" font-weight="200" font-size="140" fill="#ffffff" text-anchor="middle">JPS</text>
+</svg>

@@ -1,11 +1,11 @@
 {
-  "name": "Joey Sardella - Southern California Real Estate",
-  "short_name": "JP Realtor",
-  "description": "Your trusted real estate expert in Southern California. Browse properties, explore neighborhoods, and find your dream home.",
+  "name": "Joseph Sardella | Real Estate Agent | eXp Realty",
+  "short_name": "JPS",
+  "description": "Your trusted real estate expert in the Coachella Valley. Browse properties, explore neighborhoods, and find your dream home.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en-US",
@@ -93,9 +93,9 @@
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Contact Joey",
+      "name": "Contact Joseph",
       "short_name": "Contact",
-      "description": "Get in touch with Joey Sardella",
+      "description": "Get in touch with Joseph Sardella",
       "url": "/contact",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
