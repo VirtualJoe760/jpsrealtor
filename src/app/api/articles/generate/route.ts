@@ -74,6 +74,13 @@ export async function POST(request: Request) {
     // Create system prompt with writing guidelines
     const systemPrompt = `You are an expert real estate content writer for jpsrealtor.com, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
 
+CRITICAL FORMATTING RULES:
+- Output ONLY the article content, NO labels or meta-text
+- NO "Hook:", "Introduction:", "Body:", or section labels
+- Start directly with engaging content
+- Use Markdown headings (##) for sections, NOT labels
+- NO placeholder text or instructions in the output
+
 WRITING STYLE:
 - Professional yet conversational tone
 - Action-oriented and opportunity-focused
@@ -82,19 +89,21 @@ WRITING STYLE:
 - Include local market insights
 
 STRUCTURE:
-1. Hook opening paragraph
-2. Clear section headings with ## or ###
-3. Bullet points for readability
-4. Actionable tips marked with ✅
-5. End with strong CTA including contact info
+1. Start with an engaging opening paragraph (NO "Hook:" label)
+2. Use ## for main section headings (e.g., "## Market Trends")
+3. Use ### for subsections
+4. Bullet points for readability (use - not •)
+5. Actionable tips with ✅ emoji
+6. End with contact info
 
 MDX COMPONENTS (use when appropriate):
 - For YouTube videos: <YouTube id="VIDEO_ID" />
-- Example: <YouTube id="dQw4w9WgXcQ" />
-- Links: Use standard Markdown [text](url)
-- Images: Use standard Markdown ![alt](url)
+- Links: [text](url)
+- Images: ![alt](url)
 
 CONTACT INFO (always include at end):
+## Get Expert Guidance
+
 📞 Call or Text: **+1 (760) 833-6334**
 📧 Email: **josephsardella@gmail.com**
 
@@ -102,7 +111,17 @@ KEYWORDS TO INCLUDE:
 Always mention: Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage
 Category-specific: ${category === 'market-insights' ? 'market trends, ROI, investment, property values' : category === 'real-estate-tips' ? 'homebuying tips, financing, negotiation, inspection' : 'real estate market, housing trends, economics'}
 
-FORMAT: Generate content in MDX/Markdown format. Use headings (##, ###), lists (- or 1.), bold (**text**), italic (*text*), and the YouTube component when relevant.
+FORMAT EXAMPLE:
+The Coachella Valley real estate market is experiencing remarkable growth...
+
+## Current Market Trends
+
+- ✅ Inventory levels rising
+- ✅ Strong buyer demand
+
+### Investment Opportunities
+
+Palm Desert offers exceptional ROI...
 
 Use the generate_article_mdx tool to create the article.`;
 

@@ -112,13 +112,14 @@ export default function TipTapEditor({
 
   // Update editor when HTML content changes (from MDX conversion)
   useEffect(() => {
-    if (editor && htmlContent && !isConverting) {
+    if (editor && htmlContent && !isConverting && viewMode === "rich") {
       const currentHtml = editor.getHTML();
-      if (currentHtml !== htmlContent) {
+      // Only update if content is significantly different (avoid cursor position loss)
+      if (currentHtml !== htmlContent && !editor.isFocused) {
         editor.commands.setContent(htmlContent);
       }
     }
-  }, [htmlContent, editor, isConverting]);
+  }, [htmlContent, editor, isConverting, viewMode]);
 
   // Handle MDX source code changes
   const handleMdxChange = async (newMdx: string) => {
@@ -466,6 +467,7 @@ export default function TipTapEditor({
           className={`p-6 min-h-[500px] max-h-[600px] overflow-y-auto ${
             isLight ? "bg-white" : "bg-gray-900"
           }`}
+          style={{ scrollBehavior: 'auto' }}
         >
           <EditorContent editor={editor} />
         </div>
