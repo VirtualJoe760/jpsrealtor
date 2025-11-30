@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
+import AdminNav from "@/app/components/AdminNav";
 
 type Article = {
   _id: string;
@@ -175,8 +176,10 @@ export default function ArticlesAdminPage() {
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-articles">
       <div className="max-w-7xl mx-auto">
+        <AdminNav />
+
         {/* Header */}
-        <div className="mb-8 pt-16 md:pt-0">
+        <div className="mb-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} mb-2 flex items-center gap-2 md:gap-3`}>
