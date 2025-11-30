@@ -1,4 +1,4 @@
-// src/app/admin/cms/page.tsx
+// src/app/admin/articles/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -19,7 +19,6 @@ import {
   Server,
 } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
-import AdminNav from "@/app/components/AdminNav";
 
 type Article = {
   _id: string;
@@ -70,6 +69,8 @@ export default function ArticlesAdminPage() {
   const [showClaudeModal, setShowClaudeModal] = useState(false);
   const [claudePrompt, setClaudePrompt] = useState("");
   const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
+  const [claudeCategory, setClaudeCategory] = useState<"articles" | "market-insights" | "real-estate-tips">("articles");
+  const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString());
   const [stats, setStats] = useState({
     total: 0,
     published: 0,
@@ -92,6 +93,36 @@ export default function ArticlesAdminPage() {
       fetchStats();
     }
   }, [status, page, filterCategory, filterStatus, filterYear, filterMonth]);
+
+  // Poll for new draft articles every 30 seconds
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/articles/check-new-drafts?lastChecked=${lastChecked}`);
+        const data = await response.json();
+
+        if (data.newDrafts && data.newDrafts.length > 0) {
+          data.newDrafts.forEach((draft: any) => {
+            // Show toast notification
+            alert(`✨ New Draft Article Ready!\n\nTitle: ${draft.title}\nCategory: ${draft.category}\n\nClick OK to view it.`);
+          });
+
+          // Update last checked timestamp
+          setLastChecked(new Date().toISOString());
+
+          // Refresh articles list
+          fetchArticles();
+        }
+      } catch (error) {
+        console.error('Error checking for new drafts:', error);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [status, lastChecked]);
+
 
   const fetchArticles = async () => {
     try {
@@ -168,7 +199,7 @@ export default function ArticlesAdminPage() {
     fetchArticles();
   };
 
-  const handleLaunchClaude = async () => {
+    const handleLaunchClaude = async () => {
     if (!claudePrompt.trim()) {
       alert("Please enter instructions for Claude");
       return;
@@ -177,27 +208,28 @@ export default function ArticlesAdminPage() {
     setIsLaunchingClaude(true);
 
     try {
-      const response = await fetch("/api/vps/launch-claude", {
+      const response = await fetch("/api/vps/request-article", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: claudePrompt,
-          mode: "review", // Start with reviewing existing articles to learn style
+          category: claudeCategory,
+          keywords: [],
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        alert(`Claude Code launched on VPS!\n\nSession ID: ${data.sessionId}\n\nClaude is now analyzing your articles and will draft new content based on your style.`);
+        alert(`Article request submitted successfully!\n\nRequest ID: ${data.requestId}\n\nClaude will write the article and push it to GitHub as a draft. You'll get a notification when it's ready (usually 2-5 minutes).`);
         setShowClaudeModal(false);
         setClaudePrompt("");
       } else {
-        alert(`Failed to launch Claude: ${data.error}`);
+        alert(`Failed to submit article request: ${data.error}`);
       }
     } catch (error) {
-      console.error("Launch error:", error);
-      alert("Failed to launch Claude on VPS");
+      console.error("Request error:", error);
+      alert("Failed to submit article request");
     } finally {
       setIsLaunchingClaude(false);
     }
@@ -215,17 +247,15 @@ export default function ArticlesAdminPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" data-page="admin-cms">
+    <div className="min-h-screen py-12 px-4" data-page="admin-articles">
       <div className="max-w-7xl mx-auto">
-        <AdminNav />
-
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 pt-16 md:pt-0">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} mb-2 flex items-center gap-2 md:gap-3`}>
                 <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                Content Management
+                Articles Management
               </h1>
               <p className={textSecondary}>Manage your blog articles and content</p>
             </div>
@@ -239,7 +269,7 @@ export default function ArticlesAdminPage() {
                 <span className="hidden sm:inline">Claude VPS</span>
               </button>
               <button
-                onClick={() => router.push("/admin/cms/new")}
+                onClick={() => router.push("/admin/articles/new")}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
               >
                 <Plus className="w-4 h-4" />
@@ -460,7 +490,7 @@ export default function ArticlesAdminPage() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => router.push(`/admin/cms/${article._id}`)}
+                          onClick={() => router.push(`/admin/articles/${article._id}`)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"}`}
                           title="Edit"
                         >
@@ -527,7 +557,7 @@ export default function ArticlesAdminPage() {
                     View
                   </button>
                   <button
-                    onClick={() => router.push(`/admin/cms/${article._id}`)}
+                    onClick={() => router.push(`/admin/articles/${article._id}`)}
                     className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"
                     } text-sm flex items-center justify-center gap-2`}
@@ -603,6 +633,22 @@ export default function ArticlesAdminPage() {
                 <li>• "Analyze our writing style and create an article about La Quinta market trends"</li>
                 <li>• "Write a buyer's guide for first-time homebuyers in the Coachella Valley"</li>
               </ul>
+            </div>
+
+            
+            <div className="mb-6">
+              <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
+                Category
+              </label>
+              <select
+                value={claudeCategory}
+                onChange={(e) => setClaudeCategory(e.target.value as any)}
+                className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:border-purple-500`}
+              >
+                <option value="articles">Articles</option>
+                <option value="market-insights">Market Insights</option>
+                <option value="real-estate-tips">Real Estate Tips</option>
+              </select>
             </div>
 
             <textarea

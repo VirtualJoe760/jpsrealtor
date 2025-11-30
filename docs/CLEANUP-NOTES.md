@@ -165,7 +165,7 @@
 
 ## Overview
 - Groq SDK 0.8.0
-- Models: llama-3.1-8b-instant (FREE), openai/gpt-oss-120b (PREMIUM)
+- Models: openai/gpt-oss-120b.1-8b-instant (FREE), openai/gpt-oss-120b (PREMIUM)
 
 ## API Routes
 - /api/chat/stream - Main chat endpoint

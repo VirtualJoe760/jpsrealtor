@@ -337,7 +337,7 @@ db.listings.find({
   timestamp: ISODate (indexed),
 
   // AI metadata
-  model: string, // e.g., "llama-3.1-70b-versatile"
+  model: string, // e.g., "openai/gpt-oss-120b.1-70b-versatile"
   tokensUsed: number,
   responseTime: number, // milliseconds
 }

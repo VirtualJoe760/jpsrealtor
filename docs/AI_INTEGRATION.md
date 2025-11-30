@@ -47,7 +47,7 @@ API Endpoint: https://api.groq.com/openai/v1/chat/completions
 
 #### 1. **FREE Tier** (Default)
 ```typescript
-model: "llama-3.1-8b-instant"
+model: "openai/gpt-oss-120b.1-8b-instant"
 
 Specifications:
   - Speed: 840 tokens per second (TPS)
@@ -72,7 +72,7 @@ Specifications:
 ```typescript
 // src/lib/groq.ts
 export const GROQ_MODELS = {
-  FREE: "llama-3.1-8b-instant",
+  FREE: "openai/gpt-oss-120b.1-8b-instant",
   PREMIUM: "openai/gpt-oss-120b",
 };
 
@@ -98,7 +98,7 @@ IntegratedChatWidget.tsx
     ↓
 POST /api/chat/stream
     ↓
-Groq AI (llama-3.1-8b-instant)
+Groq AI (openai/gpt-oss-120b.1-8b-instant)
     ├─ Analyzes intent
     ├─ Decides which tools to call
     └─ Formats response
@@ -342,7 +342,7 @@ AI calls: controlMap({
     role: "user" | "assistant" | "system",
     content: string
   }>,
-  model?: "llama-3.1-8b-instant",  // Optional
+  model?: "openai/gpt-oss-120b.1-8b-instant",  // Optional
   temperature?: number,             // Default: 0.3
   stream?: boolean                  // Default: true
 }
@@ -628,7 +628,7 @@ interface ChapContextType {
 
 ### Cost Analysis (FREE Tier)
 ```
-Model: llama-3.1-8b-instant
+Model: openai/gpt-oss-120b.1-8b-instant
 Cost per 1M tokens:
   - Input: $0.05
   - Output: $0.08

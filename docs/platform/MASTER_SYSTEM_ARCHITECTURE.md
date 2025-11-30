@@ -203,7 +203,7 @@ Caching Strategy:
 ```yaml
 AI Chat: Groq SDK 0.8.0
   Models:
-    - llama-3.1-8b-instant (FREE tier, 840 TPS)
+    - openai/gpt-oss-120b.1-8b-instant (FREE tier, 840 TPS)
     - openai/gpt-oss-120b (PREMIUM, 131K context)
   Features:
     - Function calling (map control)
@@ -268,7 +268,7 @@ User types in chat: "Show me 3-bed homes under $500k in Palm Desert"
     ↓
 IntegratedChatWidget → POST /api/chat/stream
     ↓
-Groq AI (llama-3.1-8b-instant)
+Groq AI (openai/gpt-oss-120b.1-8b-instant)
   - Analyzes intent
   - Decides to call searchProperties tool
     ↓
@@ -649,7 +649,7 @@ Spark API → Python scripts → MongoDB
 **Purpose:** Natural language property search and chat
 
 **Models:**
-- **FREE:** `llama-3.1-8b-instant` (840 TPS, ~$0.013/month/user)
+- **FREE:** `openai/gpt-oss-120b.1-8b-instant` (840 TPS, ~$0.013/month/user)
 - **PREMIUM:** `openai/gpt-oss-120b` (131K context, function calling)
 
 **Function Tools:**

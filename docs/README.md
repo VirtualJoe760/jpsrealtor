@@ -78,7 +78,7 @@ VPS_PASSWORD=YOUR_VPS_PASSWORD
 **jpsrealtor.com** is a Next.js 16 real estate platform for Joseph Sardella, specializing in the Coachella Valley market. The platform features:
 
 - 🏠 **115,000+ MLS listings** from CRMLS
-- 💬 **AI-powered chat** with Groq (Llama 3.3 70B)
+- 💬 **AI-powered chat** with Groq (GPT OSS 120B)
 - 🗺️ **Interactive map** with clustering and filtering
 - 📱 **Swipe discovery** like Tinder for properties
 - 📝 **AI-driven CMS** with Claude Sonnet 4.5
@@ -159,7 +159,7 @@ See `.env.example` for complete list. Key variables:
 - **Mongoose** (ODM)
 
 ### AI
-- **Groq** (Llama 3.3 70B for chat)
+- **Groq** (GPT OSS 120B for chat)
 - **Claude Sonnet 4.5** (article generation)
 - **Function calling** (search, calculations, etc.)
 
