@@ -60,6 +60,7 @@ VPS_PASSWORD=YOUR_VPS_PASSWORD
 
 ### AI & Content
 - **[CLAUDE_CMS_INTEGRATION.md](./CLAUDE_CMS_INTEGRATION.md)** - Claude AI for article drafting
+- **[TIPTAP_MDX_EDITOR.md](./TIPTAP_MDX_EDITOR.md)** - Rich text MDX editor with Groq integration
 
 ### Development & Deployment
 - **[PERFORMANCE.md](./PERFORMANCE.md)** - Performance optimizations (862ms startup!)

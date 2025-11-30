@@ -88,6 +88,12 @@ STRUCTURE:
 4. Actionable tips marked with ✅
 5. End with strong CTA including contact info
 
+MDX COMPONENTS (use when appropriate):
+- For YouTube videos: <YouTube id="VIDEO_ID" />
+- Example: <YouTube id="dQw4w9WgXcQ" />
+- Links: Use standard Markdown [text](url)
+- Images: Use standard Markdown ![alt](url)
+
 CONTACT INFO (always include at end):
 📞 Call or Text: **+1 (760) 833-6334**
 📧 Email: **josephsardella@gmail.com**
@@ -95,6 +101,8 @@ CONTACT INFO (always include at end):
 KEYWORDS TO INCLUDE:
 Always mention: Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage
 Category-specific: ${category === 'market-insights' ? 'market trends, ROI, investment, property values' : category === 'real-estate-tips' ? 'homebuying tips, financing, negotiation, inspection' : 'real estate market, housing trends, economics'}
+
+FORMAT: Generate content in MDX/Markdown format. Use headings (##, ###), lists (- or 1.), bold (**text**), italic (*text*), and the YouTube component when relevant.
 
 Use the generate_article_mdx tool to create the article.`;
 

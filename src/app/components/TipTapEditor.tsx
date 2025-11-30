@@ -7,7 +7,7 @@ import Link from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Bold,
   Italic,
@@ -24,10 +24,11 @@ import {
   Undo,
   Redo,
 } from "lucide-react";
+import { mdxToHtml, htmlToMdx } from "@/lib/mdx-converter";
 
 interface TipTapEditorProps {
-  content: string;
-  onChange: (content: string) => void;
+  content: string; // MDX content
+  onChange: (content: string) => void; // Returns MDX content
   placeholder?: string;
   isLight: boolean;
 }
@@ -38,6 +39,30 @@ export default function TipTapEditor({
   placeholder = "Start writing your article...",
   isLight,
 }: TipTapEditorProps) {
+  const [htmlContent, setHtmlContent] = useState<string>("");
+  const [isConverting, setIsConverting] = useState(false);
+
+  // Convert MDX to HTML when content prop changes
+  useEffect(() => {
+    const convertMdx = async () => {
+      if (!content) {
+        setHtmlContent("");
+        return;
+      }
+      setIsConverting(true);
+      try {
+        const html = await mdxToHtml(content);
+        setHtmlContent(html);
+      } catch (error) {
+        console.error("Error converting MDX to HTML:", error);
+        setHtmlContent(content); // Fallback to original content
+      } finally {
+        setIsConverting(false);
+      }
+    };
+    convertMdx();
+  }, [content]);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -63,10 +88,11 @@ export default function TipTapEditor({
         placeholder,
       }),
     ],
-    content,
+    content: htmlContent,
     onUpdate: ({ editor }) => {
-      const markdown = editor.getHTML();
-      onChange(markdown);
+      const html = editor.getHTML();
+      const mdx = htmlToMdx(html);
+      onChange(mdx); // Return MDX to parent
     },
     editorProps: {
       attributes: {
@@ -77,12 +103,15 @@ export default function TipTapEditor({
     },
   });
 
-  // Update editor content when prop changes (e.g., from Groq generation)
+  // Update editor when HTML content changes (from MDX conversion)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+    if (editor && htmlContent && !isConverting) {
+      const currentHtml = editor.getHTML();
+      if (currentHtml !== htmlContent) {
+        editor.commands.setContent(htmlContent);
+      }
     }
-  }, [content, editor]);
+  }, [htmlContent, editor, isConverting]);
 
   if (!editor) {
     return null;
