@@ -17,12 +17,14 @@ import {
   Heading2,
   Heading3,
   Quote,
-  Code,
+  Code as CodeIcon,
   Link as LinkIcon,
   Youtube as YoutubeIcon,
   Image as ImageIcon,
   Undo,
   Redo,
+  FileCode,
+  Eye,
 } from "lucide-react";
 import { mdxToHtml, htmlToMdx } from "@/lib/mdx-converter";
 
@@ -41,14 +43,18 @@ export default function TipTapEditor({
 }: TipTapEditorProps) {
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [isConverting, setIsConverting] = useState(false);
+  const [viewMode, setViewMode] = useState<"rich" | "mdx">("rich");
+  const [mdxSource, setMdxSource] = useState<string>(content);
 
   // Convert MDX to HTML when content prop changes
   useEffect(() => {
     const convertMdx = async () => {
       if (!content) {
         setHtmlContent("");
+        setMdxSource("");
         return;
       }
+      setMdxSource(content);
       setIsConverting(true);
       try {
         const html = await mdxToHtml(content);
@@ -92,6 +98,7 @@ export default function TipTapEditor({
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       const mdx = htmlToMdx(html);
+      setMdxSource(mdx);
       onChange(mdx); // Return MDX to parent
     },
     editorProps: {
@@ -112,6 +119,52 @@ export default function TipTapEditor({
       }
     }
   }, [htmlContent, editor, isConverting]);
+
+  // Handle MDX source code changes
+  const handleMdxChange = async (newMdx: string) => {
+    setMdxSource(newMdx);
+    onChange(newMdx);
+
+    // Convert to HTML for rich text view
+    if (newMdx) {
+      try {
+        const html = await mdxToHtml(newMdx);
+        setHtmlContent(html);
+        if (editor) {
+          editor.commands.setContent(html);
+        }
+      } catch (error) {
+        console.error("Error converting MDX to HTML:", error);
+      }
+    }
+  };
+
+  // Toggle between views
+  const toggleView = async () => {
+    if (viewMode === "rich") {
+      // Switching to MDX view - ensure MDX is up to date
+      if (editor) {
+        const html = editor.getHTML();
+        const mdx = htmlToMdx(html);
+        setMdxSource(mdx);
+      }
+      setViewMode("mdx");
+    } else {
+      // Switching to rich view - convert MDX to HTML
+      if (mdxSource) {
+        try {
+          const html = await mdxToHtml(mdxSource);
+          setHtmlContent(html);
+          if (editor) {
+            editor.commands.setContent(html);
+          }
+        } catch (error) {
+          console.error("Error converting MDX to HTML:", error);
+        }
+      }
+      setViewMode("rich");
+    }
+  };
 
   if (!editor) {
     return null;
@@ -146,6 +199,49 @@ export default function TipTapEditor({
           isLight ? "bg-gray-50 border-gray-300" : "bg-gray-800 border-gray-700"
         }`}
       >
+        {/* View Mode Toggle */}
+        <div className={`flex items-center gap-1 mr-2 px-2 py-1 rounded ${
+          isLight ? "bg-gray-200" : "bg-gray-700"
+        }`}>
+          <button
+            onClick={toggleView}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              viewMode === "rich"
+                ? isLight
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-emerald-600 text-white"
+                : isLight
+                ? "hover:bg-gray-300 text-gray-700"
+                : "hover:bg-gray-600 text-gray-300"
+            }`}
+            title="Rich Text View"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="text-xs font-medium">Rich</span>
+          </button>
+          <button
+            onClick={toggleView}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              viewMode === "mdx"
+                ? isLight
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-emerald-600 text-white"
+                : isLight
+                ? "hover:bg-gray-300 text-gray-700"
+                : "hover:bg-gray-600 text-gray-300"
+            }`}
+            title="MDX Source View"
+          >
+            <FileCode className="w-4 h-4" />
+            <span className="text-xs font-medium">MDX</span>
+          </button>
+        </div>
+
+        <div className={`w-px h-6 mx-1 ${isLight ? "bg-gray-300" : "bg-gray-600"}`} />
+
+        {/* Rich Text Toolbar (only show in rich mode) */}
+        {viewMode === "rich" && (
+          <>
         {/* Text Formatting */}
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -295,7 +391,7 @@ export default function TipTapEditor({
           }`}
           title="Code Block"
         >
-          <Code className="w-4 h-4" />
+          <CodeIcon className="w-4 h-4" />
         </button>
 
         {/* Divider */}
@@ -360,16 +456,38 @@ export default function TipTapEditor({
         >
           <Redo className="w-4 h-4" />
         </button>
+          </>
+        )}
       </div>
 
       {/* Editor Content */}
-      <div
-        className={`p-6 min-h-[500px] max-h-[600px] overflow-y-auto ${
-          isLight ? "bg-white" : "bg-gray-900"
-        }`}
-      >
-        <EditorContent editor={editor} />
-      </div>
+      {viewMode === "rich" ? (
+        <div
+          className={`p-6 min-h-[500px] max-h-[600px] overflow-y-auto ${
+            isLight ? "bg-white" : "bg-gray-900"
+          }`}
+        >
+          <EditorContent editor={editor} />
+        </div>
+      ) : (
+        <div
+          className={`p-6 min-h-[500px] max-h-[600px] overflow-y-auto ${
+            isLight ? "bg-white" : "bg-gray-900"
+          }`}
+        >
+          <textarea
+            value={mdxSource}
+            onChange={(e) => handleMdxChange(e.target.value)}
+            className={`w-full h-full min-h-[500px] px-4 py-3 font-mono text-sm resize-none focus:outline-none ${
+              isLight
+                ? "bg-white text-gray-900 placeholder-gray-400"
+                : "bg-gray-900 text-gray-100 placeholder-gray-500"
+            }`}
+            placeholder="Write your article in MDX format..."
+            spellCheck={false}
+          />
+        </div>
+      )}
     </div>
   );
 }
