@@ -27,7 +27,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-8"
+          className="mb-8 pt-16 md:pt-0"
         >
           <Link
             href={`/insights/${category}`}

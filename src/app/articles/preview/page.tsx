@@ -42,7 +42,7 @@ function PreviewContent() {
     <div className="min-h-screen py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
-        <div className="mb-8">
+        <div className="mb-8 pt-16 md:pt-0">
           <a href="/insights" className={`inline-flex items-center gap-2 transition-colors ${
             isLight ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'
           }`}>

@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { validateMDX } from './mdx-processor';
+
+const execAsync = promisify(exec);
 
 /**
  * Layer 5: Publishing Pipeline
@@ -20,7 +24,7 @@ export interface ArticleFormData {
   excerpt: string;
   content: string;
   category: string;
-  tags: string[];
+  draft?: boolean;  // Optional draft flag
   featuredImage: {
     url: string;
     publicId: string;
@@ -69,11 +73,6 @@ export async function validateForPublish(
     errors.push('Featured image is required');
   }
 
-  // Tags validation
-  if (!article.tags || article.tags.length === 0) {
-    errors.push('At least one tag is required');
-  }
-
   // SEO validation
   if (!article.seo.title) {
     warnings.push('SEO title is empty (will use article title)');
@@ -83,8 +82,8 @@ export async function validateForPublish(
 
   if (!article.seo.description) {
     warnings.push('SEO description is empty (will use excerpt)');
-  } else if (article.seo.description.length > 160) {
-    errors.push('SEO description must be less than 160 characters');
+  } else if (article.seo.description.length > 300) {
+    warnings.push('SEO description is over 300 characters - consider shortening for better search results');
   }
 
   if (article.seo.keywords.length < 3) {
@@ -110,7 +109,10 @@ export async function validateForPublish(
  */
 export async function publishArticle(
   article: ArticleFormData,
-  slugId: string
+  slugId: string,
+  options: {
+    autoDeploy?: boolean;
+  } = {}
 ): Promise<void> {
   // Validate before publishing
   const validation = await validateForPublish(article);
@@ -122,6 +124,11 @@ export async function publishArticle(
   await writeArticleToFilesystem(article, slugId);
 
   console.log(`✅ Article published: ${slugId}.mdx`);
+
+  // Auto-deploy to production if requested
+  if (options.autoDeploy) {
+    await deployToProduction(article, slugId);
+  }
 }
 
 /**
@@ -181,13 +188,14 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
     `slugId: "${slugId}"`,
     `date: "${date}"`,
     `section: "${article.category}"`, // category → section mapping
+    article.draft ? `draft: true` : null,  // Add draft flag if true
     `image: "${article.featuredImage.url}"`,
     `metaTitle: "${escapeYAML(article.seo.title || article.title)}"`,
     `metaDescription: "${escapeYAML(article.seo.description || article.excerpt)}"`,
     `ogImage: "${article.featuredImage.url}"`,
     `altText: "${escapeYAML(article.featuredImage.alt || article.title)}"`,
     `keywords:`,
-  ];
+  ].filter(line => line !== null);  // Filter out null values
 
   // Add keywords as YAML array
   article.seo.keywords.forEach((keyword) => {
@@ -232,5 +240,88 @@ export async function isArticlePublished(slugId: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Deploy article to production by committing and pushing to GitHub
+ * Vercel will auto-deploy when it detects the push
+ */
+export async function deployToProduction(
+  article: ArticleFormData,
+  slugId: string
+): Promise<{
+  success: boolean;
+  message: string;
+  commitHash?: string;
+}> {
+  try {
+    const fileName = `${slugId}.mdx`;
+    const filePath = `src/posts/${fileName}`;
+
+    // Check if there are changes to commit
+    const { stdout: statusOutput } = await execAsync('git status --porcelain');
+
+    if (!statusOutput.includes(filePath)) {
+      return {
+        success: true,
+        message: 'No changes to deploy (file already up to date)',
+      };
+    }
+
+    // Stage the file
+    console.log(`📝 Staging ${filePath}...`);
+    await execAsync(`git add "${filePath}"`);
+
+    // Create commit message
+    const isDraft = article.draft ? ' [DRAFT]' : '';
+    const commitMessage = `Update article: ${article.title}${isDraft}
+
+- Category: ${article.category}
+- Slug: ${slugId}
+- Auto-deployed via CMS
+
+🤖 Generated with Claude Code CMS`;
+
+    // Commit the changes
+    console.log('💾 Committing changes...');
+    const { stdout: commitOutput } = await execAsync(
+      `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
+    );
+
+    // Extract commit hash
+    const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
+    const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
+
+    // Push to GitHub
+    console.log('🚀 Pushing to GitHub...');
+    await execAsync('git push origin main');
+
+    console.log('✅ Deployed to production!');
+
+    return {
+      success: true,
+      message: `Article deployed to production! Vercel will auto-deploy in ~2 minutes.`,
+      commitHash,
+    };
+
+  } catch (error) {
+    console.error('❌ Deploy failed:', error);
+
+    // Parse git error messages
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('nothing to commit')) {
+      return {
+        success: true,
+        message: 'No changes to deploy (file already up to date)',
+      };
+    }
+
+    if (errorMessage.includes('failed to push')) {
+      throw new Error('Failed to push to GitHub. Check your git credentials and network connection.');
+    }
+
+    throw new Error(`Deploy failed: ${errorMessage}`);
   }
 }

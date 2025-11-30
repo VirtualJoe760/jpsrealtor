@@ -90,7 +90,15 @@
       "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short \"src/app/api/articles/[id]/route.ts\")",
       "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor status --short src/app/admin/articles/page.tsx)",
       "Bash(timeout 120 npm run build:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short src/app/insights/[category]/[slugId]/ArticlePageClient.tsx)",
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff src/app/insights/[category]/[slugId]/ArticlePageClient.tsx)",
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff --stat)",
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor diff --stat src/app/admin/cms/edit/[slugId]/page.tsx src/lib/publishing-pipeline.ts)",
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" branch --show-current)",
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" checkout -b v2)",
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" checkout v2)",
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" add src/app/components/insights/ src/app/api/articles/ai-search/ src/app/api/articles/topics/ src/app/api/articles/list/ src/app/insights/page.tsx src/app/insights/[category]/[slugId]/ArticlePageClient.tsx src/app/insights/[category]/CategoryPageClient.tsx src/app/articles/preview/page.tsx src/lib/publishing-pipeline.ts src/app/api/articles/publish/route.ts src/app/admin/cms/edit/[slugId]/page.tsx docs/CMS_SYSTEM.md docs/INSIGHTS_PAGE_REDESIGN.md .claude/settings.local.json)"
     ],
     "deny": [],
     "ask": []

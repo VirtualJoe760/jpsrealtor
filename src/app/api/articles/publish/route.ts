@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { article, slugId } = body;
+    const { article, slugId, autoDeploy = true } = body; // autoDeploy defaults to true
 
     // Validate request
     if (!article) {
@@ -49,15 +49,20 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Publish article to filesystem
-    await publishArticle(article as ArticleFormData, slugId);
+    // Publish article to filesystem (with optional auto-deploy)
+    await publishArticle(article as ArticleFormData, slugId, { autoDeploy });
+
+    const deployMessage = autoDeploy
+      ? ' and deployed to production! Vercel will rebuild in ~2 minutes.'
+      : '. Remember to commit and push to deploy to production.';
 
     return NextResponse.json({
       success: true,
       slugId,
       url: `/insights/${slugId}`,
       warnings: validation.warnings,
-      message: `Article published successfully to src/posts/${slugId}.mdx`,
+      message: `Article published successfully to src/posts/${slugId}.mdx${deployMessage}`,
+      deployed: autoDeploy,
     });
 
   } catch (error) {

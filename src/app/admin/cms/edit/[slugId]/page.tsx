@@ -7,23 +7,31 @@ import { useRouter, useParams } from "next/navigation";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import {
   Save,
-  ArrowLeft,
-  Globe,
-  Loader2,
-  FileText,
+  Monitor,
+  Eye,
+  Sparkles,
   Upload,
-  X,
-  AlertCircle,
+  Tag,
+  Calendar,
+  FileText,
+  Loader2,
+  Edit3,
+  Wand2,
+  Globe,
+  ArrowLeft,
+  FileEdit,
 } from "lucide-react";
 import AdminNav from "@/app/components/AdminNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 
-export default function EditPublishedArticlePage() {
+type TabType = "edit" | "preview";
+
+export default function EditArticlePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
-  const slugId = params?.slugId as string;
+  const slugId = params.slugId as string;
   const { currentTheme } = useTheme();
   const {
     cardBg,
@@ -36,20 +44,19 @@ export default function EditPublishedArticlePage() {
   } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
-  // Loading states
+  // Mobile tab state
+  const [activeTab, setActiveTab] = useState<TabType>("edit");
+
+  // Loading state
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form state
+  // Article form state
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
     content: "",
     category: "articles",
-    tags: [] as string[],
     featuredImage: {
       url: "",
       publicId: "",
@@ -62,8 +69,11 @@ export default function EditPublishedArticlePage() {
     },
   });
 
-  const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingToDB, setIsSavingToDB] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -71,35 +81,56 @@ export default function EditPublishedArticlePage() {
     }
   }, [status, router]);
 
+  // Load article on mount
   useEffect(() => {
     if (status === "authenticated" && slugId) {
-      loadPublishedArticle();
+      loadArticle();
     }
   }, [status, slugId]);
 
-  const loadPublishedArticle = async () => {
+  const loadArticle = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/articles/load-published?slugId=${slugId}`);
-      const data = await response.json();
+      // First, try to load from MongoDB by slug
+      const dbResponse = await fetch(`/api/articles?search=${slugId}&limit=1`);
+      const dbData = await dbResponse.json();
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to load article');
+      // Check if we found the article in MongoDB (by matching slug)
+      const dbArticle = dbData.articles?.find((a: any) => a.slug === slugId);
+
+      if (dbArticle) {
+        // Article found in MongoDB, use it
+        console.log('Loading article from MongoDB');
+        setFormData({
+          title: dbArticle.title || '',
+          excerpt: dbArticle.excerpt || '',
+          content: dbArticle.content || '',
+          category: dbArticle.category || 'articles',
+          featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
+          seo: dbArticle.seo || { title: '', description: '', keywords: [] },
+        });
+      } else {
+        // Not in MongoDB, try loading from published MDX file
+        console.log('Article not in MongoDB, trying MDX file');
+        const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
+        const mdxData = await mdxResponse.json();
+
+        if (!mdxData.success) {
+          throw new Error(mdxData.error || 'Article not found in MongoDB or MDX files');
+        }
+
+        const article = mdxData.article;
+        setFormData({
+          title: article.title,
+          excerpt: article.excerpt,
+          content: article.content,
+          category: article.category,
+          featuredImage: article.featuredImage,
+          seo: article.seo,
+        });
       }
-
-      const article = data.article;
-
-      setFormData({
-        title: article.title,
-        excerpt: article.excerpt,
-        content: article.content,
-        category: article.category,
-        tags: article.tags || [],
-        featuredImage: article.featuredImage,
-        seo: article.seo,
-      });
 
     } catch (error) {
       console.error("Load error:", error);
@@ -117,13 +148,13 @@ export default function EditPublishedArticlePage() {
     setIsUploading(true);
 
     try {
-      const formDataUpload = new FormData();
-      formDataUpload.append("file", file);
-      formDataUpload.append("type", "featured");
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("type", "featured");
 
       const response = await fetch("/api/upload", {
         method: "POST",
-        body: formDataUpload,
+        body: uploadFormData,
       });
 
       const data = await response.json();
@@ -144,8 +175,18 @@ export default function EditPublishedArticlePage() {
     }
   };
 
-  // Handle republish (save changes back to MDX file)
-  const handleRepublish = async () => {
+  // Handle republish to website (update MDX file)
+  const handleRepublish = async (isDraft: boolean = false) => {
+    if (!slugId) {
+      alert("No slug ID available for republishing");
+      return;
+    }
+
+    if (!formData.title || !formData.content || !formData.featuredImage.url) {
+      alert("Please ensure you have a title, content, and featured image before publishing");
+      return;
+    }
+
     setIsPublishing(true);
 
     try {
@@ -159,7 +200,7 @@ export default function EditPublishedArticlePage() {
             excerpt: formData.excerpt,
             content: formData.content,
             category: formData.category,
-            tags: formData.tags,
+            draft: isDraft,  // Add draft flag
             featuredImage: formData.featuredImage,
             seo: formData.seo,
           },
@@ -169,22 +210,28 @@ export default function EditPublishedArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Article updated successfully!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
+        const draftMsg = isDraft ? ' (saved as draft)' : '';
+        alert(`Article updated on website${draftMsg}!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
       } else {
         const errors = data.errors?.join("\n") || "Unknown error";
         alert(`Failed to update:\n\n${errors}`);
       }
     } catch (error) {
-      console.error("Publish error:", error);
+      console.error("Republish error:", error);
       alert("Network error while updating article");
     } finally {
       setIsPublishing(false);
     }
   };
 
-  // Handle save to database (optional backup)
+  // Handle save as draft
+  const handleSaveAsDraft = async () => {
+    await handleRepublish(true);
+  };
+
+  // Handle save to database
   const handleSaveToDatabase = async () => {
-    setIsSaving(true);
+    setIsSavingToDB(true);
 
     try {
       const articleData = {
@@ -201,23 +248,12 @@ export default function EditPublishedArticlePage() {
 
       if (!response.ok) throw new Error("Failed to save article");
 
-      alert("Article saved to database as backup!");
+      alert("Article saved to database successfully!");
     } catch (error) {
-      console.error("Save error:", error);
-      alert("Failed to save article to database");
+      console.error("Save to DB error:", error);
+      alert("Failed to save to database");
     } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Add tag
-  const handleAddTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()],
-      }));
-      setTagInput("");
+      setIsSavingToDB(false);
     }
   };
 
@@ -255,22 +291,19 @@ export default function EditPublishedArticlePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          <AdminNav />
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-8 text-center mt-8`}>
-            <AlertCircle className={`w-16 h-16 ${isLight ? 'text-red-600' : 'text-red-400'} mx-auto mb-4`} />
-            <h2 className={`text-2xl font-bold ${textPrimary} mb-2`}>Failed to Load Article</h2>
-            <p className={`${textSecondary} mb-6`}>{error}</p>
-            <button
-              onClick={() => router.push('/admin/cms')}
-              className={`px-6 py-3 ${
-                isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
-              } text-white rounded-lg transition-colors`}
-            >
-              Back to CMS
-            </button>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/admin/cms")}
+            className={`px-6 py-3 ${
+              isLight
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            } text-white rounded-lg transition-colors`}
+          >
+            Back to Articles
+          </button>
         </div>
       </div>
     );
@@ -278,7 +311,7 @@ export default function EditPublishedArticlePage() {
 
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-edit-article">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <AdminNav />
 
         {/* Header */}
@@ -286,11 +319,11 @@ export default function EditPublishedArticlePage() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <button
-                onClick={() => router.push('/admin/cms')}
-                className={`flex items-center gap-2 ${textSecondary} hover:${textPrimary} mb-4`}
+                onClick={() => router.push("/admin/cms")}
+                className={`flex items-center gap-2 ${textSecondary} hover:${textPrimary} mb-3 transition-colors`}
               >
-                <ArrowLeft className="w-5 h-5" />
-                Back to CMS
+                <ArrowLeft className="w-4 h-4" />
+                Back to Articles
               </button>
               <h1
                 className={`text-2xl md:text-4xl font-bold ${textPrimary} mb-2 flex items-center gap-2 md:gap-3`}
@@ -300,23 +333,23 @@ export default function EditPublishedArticlePage() {
                     isLight ? "text-blue-500" : "text-emerald-400"
                   }`}
                 />
-                Edit Published Article
+                Edit Article
               </h1>
               <p className={`${textSecondary}`}>
-                Editing: {slugId}
+                Edit and republish your article
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
               <button
                 onClick={handleSaveToDatabase}
-                disabled={isSaving || isPublishing}
+                disabled={isSavingToDB || isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
-                    ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                    : "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                } rounded-lg transition-colors font-semibold disabled:opacity-50`}
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-purple-600 hover:bg-purple-700"
+                } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
               >
-                {isSaving ? (
+                {isSavingToDB ? (
                   <>
                     <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                     Saving...
@@ -329,8 +362,29 @@ export default function EditPublishedArticlePage() {
                 )}
               </button>
               <button
-                onClick={handleRepublish}
-                disabled={isSaving || isPublishing}
+                onClick={handleSaveAsDraft}
+                disabled={isSavingToDB || isPublishing}
+                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
+                  isLight
+                    ? "bg-orange-600 hover:bg-orange-700"
+                    : "bg-orange-600 hover:bg-orange-700"
+                } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FileEdit className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Save as Draft
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => handleRepublish(false)}
+                disabled={isSavingToDB || isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
                     ? "bg-emerald-600 hover:bg-emerald-700"
@@ -353,436 +407,518 @@ export default function EditPublishedArticlePage() {
           </div>
         </div>
 
-        {/* Editor Form */}
-        <div className="space-y-6">
-          {/* Title with Regenerate Button */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-2">
-              <label className={`block text-sm font-semibold ${textSecondary}`}>
-                Title
-              </label>
-              <RegenerateButton
-                field="title"
-                currentValue={formData.title}
-                articleContext={{
-                  title: formData.title,
-                  excerpt: formData.excerpt,
-                  content: formData.content,
-                  category: formData.category,
-                  keywords: formData.seo.keywords,
-                }}
-                onRegenerate={(newValue) =>
-                  setFormData((prev) => ({ ...prev, title: newValue as string }))
-                }
-                isLight={isLight}
-              />
-            </div>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, title: e.target.value }))
-              }
-              placeholder="Enter article title..."
-              className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                isLight ? "blue" : "emerald"
-              }-500 text-xl font-semibold`}
-            />
-          </div>
-
-          {/* Excerpt with Regenerate Button */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-2">
-              <label className={`block text-sm font-semibold ${textSecondary}`}>
-                Excerpt
-              </label>
-              <RegenerateButton
-                field="excerpt"
-                currentValue={formData.excerpt}
-                articleContext={{
-                  title: formData.title,
-                  excerpt: formData.excerpt,
-                  content: formData.content,
-                  category: formData.category,
-                  keywords: formData.seo.keywords,
-                }}
-                onRegenerate={(newValue) =>
-                  setFormData((prev) => ({ ...prev, excerpt: newValue as string }))
-                }
-                isLight={isLight}
-              />
-            </div>
-            <textarea
-              value={formData.excerpt}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  excerpt: e.target.value,
-                }))
-              }
-              placeholder="Brief description (max 300 characters)..."
-              maxLength={300}
-              rows={3}
-              className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                isLight ? "blue" : "emerald"
-              }-500 resize-none`}
-            />
-            <p className={`text-xs ${textMuted} mt-2`}>
-              {formData.excerpt.length}/300 characters
-            </p>
-          </div>
-
-          {/* Content Editor with Regenerate Button */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <label className={`block text-sm font-semibold ${textSecondary}`}>
-                Content
-              </label>
-              <RegenerateButton
-                field="content"
-                currentValue={formData.content}
-                articleContext={{
-                  title: formData.title,
-                  excerpt: formData.excerpt,
-                  content: formData.content,
-                  category: formData.category,
-                  keywords: formData.seo.keywords,
-                }}
-                onRegenerate={(newValue) =>
-                  setFormData((prev) => ({ ...prev, content: newValue as string }))
-                }
-                isLight={isLight}
-              />
-            </div>
-            <TipTapEditor
-              content={formData.content}
-              onChange={(content) =>
-                setFormData((prev) => ({ ...prev, content }))
-              }
-              placeholder="Write your article content..."
-              isLight={isLight}
-            />
-          </div>
-
-          {/* Category */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
-              Category
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  category: e.target.value as any,
-                }))
-              }
-              className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:border-${
-                isLight ? "blue" : "emerald"
-              }-500`}
+        {/* Mobile Tab Navigation */}
+        <div className="lg:hidden mb-6">
+          <div className={`${cardBg} ${cardBorder} rounded-xl p-1 flex gap-1`}>
+            <button
+              onClick={() => setActiveTab("edit")}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === "edit"
+                  ? isLight
+                    ? "bg-blue-600 text-white"
+                    : "bg-emerald-600 text-white"
+                  : `${textSecondary} hover:${textPrimary}`
+              }`}
             >
-              <option value="articles">Articles</option>
-              <option value="market-insights">Market Insights</option>
-              <option value="real-estate-tips">Real Estate Tips</option>
-            </select>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("preview");
+                setPreviewKey((prev) => prev + 1);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === "preview"
+                  ? isLight
+                    ? "bg-blue-600 text-white"
+                    : "bg-emerald-600 text-white"
+                  : `${textSecondary} hover:${textPrimary}`
+              }`}
+            >
+              <Monitor className="w-4 h-4" />
+              Preview
+            </button>
           </div>
+        </div>
 
-          {/* Tags */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
-              Tags
-            </label>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleAddTag()}
-                placeholder="Add tag..."
-                className={`flex-1 px-4 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                  isLight ? "blue" : "emerald"
-                }-500 text-sm`}
-              />
+        {/* Main Content - Side by Side on Desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left Panel - Preview (40%) */}
+          <div className={`lg:col-span-2 ${activeTab !== "edit" ? "hidden lg:block" : ""}`}>
+            <div className={`${cardBg} ${cardBorder} rounded-xl p-6 space-y-6`}>
+              <div>
+                <h2 className={`text-xl font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
+                  <Monitor className={`w-5 h-5 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+                  Live Preview
+                </h2>
+                <p className={`text-sm ${textSecondary}`}>
+                  See your changes in real-time
+                </p>
+              </div>
+
               <button
-                onClick={handleAddTag}
-                className={`px-4 py-2 ${
+                onClick={() => setPreviewKey((prev) => prev + 1)}
+                className={`w-full px-4 py-3 text-sm ${
                   isLight
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-emerald-600 hover:bg-emerald-700"
-                } text-white rounded-lg transition-colors`}
+                } text-white rounded-lg transition-colors font-semibold`}
               >
-                Add
+                Refresh Preview
               </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className={`px-3 py-1 ${
-                    isLight
-                      ? "bg-blue-500/20 text-blue-600"
-                      : "bg-blue-500/20 text-blue-400"
-                  } rounded-full text-sm flex items-center gap-2`}
-                >
-                  {tag}
-                  <button
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        tags: prev.tags.filter((t) => t !== tag),
-                      }))
-                    }
-                    className={`${
-                      isLight
-                        ? "hover:text-blue-800"
-                        : "hover:text-blue-300"
-                    }`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
 
-          {/* Featured Image */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
-              Featured Image
-            </label>
-            {formData.featuredImage.url ? (
-              <div className="relative">
-                <img
-                  src={formData.featuredImage.url}
-                  alt="Featured"
-                  className="w-full rounded-lg mb-2"
+              {/* Preview iframe */}
+              <div className={`${border} rounded-lg overflow-hidden`} style={{ height: "800px" }}>
+                <iframe
+                  key={`sidebar-preview-${previewKey}`}
+                  src={`/articles/preview?${new URLSearchParams({
+                    title: formData.title || "Untitled Article",
+                    excerpt: formData.excerpt || "",
+                    content: formData.content || "",
+                    category: formData.category,
+                    imageUrl: formData.featuredImage.url || "",
+                    theme: currentTheme,
+                  }).toString()}`}
+                  className="w-full h-full"
+                  title="Article Preview"
                 />
-                <button
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      featuredImage: { url: "", publicId: "", alt: "" },
-                    }))
-                  }
-                  className="absolute top-2 right-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
-                >
-                  Remove
-                </button>
               </div>
-            ) : (
-              <label className="block">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <div
-                  className={`border-2 border-dashed ${
-                    isLight ? "border-gray-300" : "border-gray-700"
-                  } rounded-lg p-8 text-center cursor-pointer hover:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500 transition-colors`}
-                >
-                  {isUploading ? (
-                    <Loader2
-                      className={`w-8 h-8 ${
-                        isLight ? "text-blue-400" : "text-emerald-400"
-                      } animate-spin mx-auto mb-2`}
-                    />
-                  ) : (
-                    <Upload
-                      className={`w-8 h-8 ${
-                        isLight ? "text-gray-500" : "text-gray-400"
-                      } mx-auto mb-2`}
-                    />
-                  )}
-                  <p className={`text-sm ${textMuted}`}>
-                    {isUploading ? "Uploading..." : "Click to upload"}
-                  </p>
-                </div>
-              </label>
-            )}
+              <p className={`text-xs ${textMuted}`}>
+                Click refresh to see latest changes • Scroll right to edit →
+              </p>
+            </div>
           </div>
 
-          {/* SEO Section */}
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <h3 className={`text-sm font-semibold ${textSecondary} mb-4`}>
-              SEO
-            </h3>
-            <div className="space-y-4">
-              {/* SEO Title with Regenerate */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className={`block text-xs ${textMuted}`}>
-                    Meta Title
+          {/* Right Panel - Editor (60%) */}
+          <div className={`lg:col-span-3 ${activeTab !== "edit" ? "hidden lg:block" : ""}`}>
+            <div className="space-y-6">
+              {/* Title with Regenerate */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    className={`block text-sm font-semibold ${textSecondary}`}
+                  >
+                    Title
                   </label>
                   <RegenerateButton
-                    field="seoTitle"
-                    currentValue={formData.seo.title}
+                    field="title"
+                    currentValue={formData.title}
+                    onRegenerate={(newValue) =>
+                      setFormData((prev) => ({ ...prev, title: newValue as string }))
+                    }
                     articleContext={{
-                      title: formData.title,
-                      excerpt: formData.excerpt,
-                      content: formData.content,
                       category: formData.category,
+                      excerpt: formData.excerpt,
+                      content: formData.content.substring(0, 500),
                       keywords: formData.seo.keywords,
                     }}
-                    onRegenerate={(newValue) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        seo: { ...prev.seo, title: newValue as string },
-                      }))
-                    }
                     isLight={isLight}
                   />
                 </div>
                 <input
                   type="text"
-                  value={formData.seo.title}
+                  value={formData.title}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      seo: { ...prev.seo, title: e.target.value },
-                    }))
+                    setFormData((prev) => ({ ...prev, title: e.target.value }))
                   }
-                  maxLength={60}
-                  placeholder="SEO title..."
-                  className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
+                  placeholder="Enter article title..."
+                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
                     isLight ? "blue" : "emerald"
-                  }-500 text-sm`}
+                  }-500 text-xl font-semibold`}
                 />
-                <p className={`text-xs ${textMuted} mt-1`}>
-                  {formData.seo.title.length}/60
-                </p>
               </div>
 
-              {/* SEO Description with Regenerate */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className={`block text-xs ${textMuted}`}>
-                    Meta Description
+              {/* Excerpt with Regenerate */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    className={`block text-sm font-semibold ${textSecondary}`}
+                  >
+                    Excerpt
                   </label>
                   <RegenerateButton
-                    field="seoDescription"
-                    currentValue={formData.seo.description}
+                    field="excerpt"
+                    currentValue={formData.excerpt}
+                    onRegenerate={(newValue) =>
+                      setFormData((prev) => ({ ...prev, excerpt: newValue as string }))
+                    }
                     articleContext={{
                       title: formData.title,
-                      excerpt: formData.excerpt,
-                      content: formData.content,
                       category: formData.category,
+                      content: formData.content.substring(0, 500),
                       keywords: formData.seo.keywords,
                     }}
-                    onRegenerate={(newValue) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        seo: { ...prev.seo, description: newValue as string },
-                      }))
-                    }
                     isLight={isLight}
                   />
                 </div>
                 <textarea
-                  value={formData.seo.description}
+                  value={formData.excerpt}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      seo: { ...prev.seo, description: e.target.value },
+                      excerpt: e.target.value,
                     }))
                   }
-                  maxLength={160}
+                  placeholder="Brief description (max 300 characters)..."
+                  maxLength={300}
                   rows={3}
-                  placeholder="SEO description..."
-                  className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
+                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
                     isLight ? "blue" : "emerald"
-                  }-500 text-sm resize-none`}
+                  }-500 resize-none`}
                 />
-                <p className={`text-xs ${textMuted} mt-1`}>
-                  {formData.seo.description.length}/160
+                <p className={`text-xs ${textMuted} mt-2`}>
+                  {formData.excerpt.length}/300 characters
                 </p>
               </div>
 
-              {/* Keywords with Regenerate */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className={`block text-xs ${textMuted}`}>
-                    Keywords
+              {/* Category */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <label
+                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                >
+                  Category
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      category: e.target.value as any,
+                    }))
+                  }
+                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:border-${
+                    isLight ? "blue" : "emerald"
+                  }-500`}
+                >
+                  <option value="articles">Articles</option>
+                  <option value="market-insights">Market Insights</option>
+                  <option value="real-estate-tips">Real Estate Tips</option>
+                </select>
+              </div>
+
+              {/* Content Editor with Regenerate */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <label
+                    className={`block text-sm font-semibold ${textSecondary}`}
+                  >
+                    Content
                   </label>
                   <RegenerateButton
-                    field="keywords"
-                    currentValue={formData.seo.keywords}
+                    field="content"
+                    currentValue={formData.content}
+                    onRegenerate={(newValue) =>
+                      setFormData((prev) => ({ ...prev, content: newValue as string }))
+                    }
                     articleContext={{
                       title: formData.title,
                       excerpt: formData.excerpt,
-                      content: formData.content,
                       category: formData.category,
                       keywords: formData.seo.keywords,
                     }}
-                    onRegenerate={(newValue) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        seo: { ...prev.seo, keywords: newValue as string[] },
-                      }))
-                    }
                     isLight={isLight}
                   />
                 </div>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={keywordInput}
-                    onChange={(e) => setKeywordInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && handleAddKeyword()
-                    }
-                    placeholder="Add keyword..."
-                    className={`flex-1 px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                      isLight ? "blue" : "emerald"
-                    }-500 text-sm`}
-                  />
+                <TipTapEditor
+                  content={formData.content}
+                  onChange={(content) =>
+                    setFormData((prev) => ({ ...prev, content }))
+                  }
+                  placeholder="Write your article content..."
+                  isLight={isLight}
+                />
+                <p className={`text-xs ${textMuted} mt-3`}>
+                  Use the toolbar to format your content
+                </p>
+              </div>
+
+              {/* Featured Image */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <label
+                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                >
+                  Featured Image
+                </label>
+                {formData.featuredImage.url ? (
+                  <div className="relative">
+                    <img
+                      src={formData.featuredImage.url}
+                      alt="Featured"
+                      className="w-full rounded-lg mb-2"
+                    />
+                    <button
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          featuredImage: { url: "", publicId: "", alt: "" },
+                        }))
+                      }
+                      className="absolute top-2 right-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <div
+                      className={`border-2 border-dashed ${
+                        isLight ? "border-gray-300" : "border-gray-700"
+                      } rounded-lg p-8 text-center cursor-pointer hover:border-${
+                        isLight ? "blue" : "emerald"
+                      }-500 transition-colors`}
+                    >
+                      {isUploading ? (
+                        <Loader2
+                          className={`w-8 h-8 ${
+                            isLight ? "text-blue-400" : "text-emerald-400"
+                          } animate-spin mx-auto mb-2`}
+                        />
+                      ) : (
+                        <Upload
+                          className={`w-8 h-8 ${
+                            isLight ? "text-gray-500" : "text-gray-400"
+                          } mx-auto mb-2`}
+                        />
+                      )}
+                      <p className={`text-sm ${textMuted}`}>
+                        {isUploading ? "Uploading..." : "Click to upload"}
+                      </p>
+                    </div>
+                  </label>
+                )}
+              </div>
+
+              {/* SEO with Regenerate buttons */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <h3 className={`text-sm font-semibold ${textSecondary} mb-4`}>
+                  SEO
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`block text-xs ${textMuted}`}>
+                        Meta Title
+                      </label>
+                      <RegenerateButton
+                        field="seoTitle"
+                        currentValue={formData.seo.title}
+                        onRegenerate={(newValue) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            seo: { ...prev.seo, title: newValue as string },
+                          }))
+                        }
+                        articleContext={{
+                          title: formData.title,
+                          category: formData.category,
+                          excerpt: formData.excerpt,
+                          keywords: formData.seo.keywords,
+                        }}
+                        isLight={isLight}
+                        size="sm"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.seo.title}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          seo: { ...prev.seo, title: e.target.value },
+                        }))
+                      }
+                      maxLength={60}
+                      placeholder="SEO title..."
+                      className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
+                        isLight ? "blue" : "emerald"
+                      }-500 text-sm`}
+                    />
+                    <p className={`text-xs ${textMuted} mt-1`}>
+                      {formData.seo.title.length}/60
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`block text-xs ${textMuted}`}>
+                        Meta Description
+                      </label>
+                      <RegenerateButton
+                        field="seoDescription"
+                        currentValue={formData.seo.description}
+                        onRegenerate={(newValue) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            seo: { ...prev.seo, description: newValue as string },
+                          }))
+                        }
+                        articleContext={{
+                          title: formData.title,
+                          excerpt: formData.excerpt,
+                          category: formData.category,
+                          keywords: formData.seo.keywords,
+                        }}
+                        isLight={isLight}
+                        size="sm"
+                      />
+                    </div>
+                    <textarea
+                      value={formData.seo.description}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          seo: { ...prev.seo, description: e.target.value },
+                        }))
+                      }
+                      maxLength={160}
+                      rows={3}
+                      placeholder="SEO description..."
+                      className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
+                        isLight ? "blue" : "emerald"
+                      }-500 text-sm resize-none`}
+                    />
+                    <p className={`text-xs ${textMuted} mt-1`}>
+                      {formData.seo.description.length}/160
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`block text-xs ${textMuted}`}>
+                        Keywords
+                      </label>
+                      <RegenerateButton
+                        field="keywords"
+                        currentValue={formData.seo.keywords}
+                        onRegenerate={(newValue) => {
+                          const keywords = Array.isArray(newValue)
+                            ? newValue
+                            : (newValue as string).split(",").map((k) => k.trim()).filter(Boolean);
+                          setFormData((prev) => ({
+                            ...prev,
+                            seo: { ...prev.seo, keywords },
+                          }));
+                        }}
+                        articleContext={{
+                          title: formData.title,
+                          excerpt: formData.excerpt,
+                          category: formData.category,
+                          keywords: formData.seo.keywords,
+                        }}
+                        isLight={isLight}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={keywordInput}
+                        onChange={(e) => setKeywordInput(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && handleAddKeyword()
+                        }
+                        placeholder="Add keyword..."
+                        className={`flex-1 px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
+                          isLight ? "blue" : "emerald"
+                        }-500 text-sm`}
+                      />
+                      <button
+                        onClick={handleAddKeyword}
+                        className={`px-3 py-2 ${
+                          isLight
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                        } text-white rounded-lg transition-colors text-sm`}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {formData.seo.keywords.map((keyword, idx) => (
+                        <span
+                          key={idx}
+                          className={`px-2 py-1 ${
+                            isLight
+                              ? "bg-gray-200 text-gray-700"
+                              : "bg-gray-700 text-gray-300"
+                          } rounded text-xs flex items-center gap-1`}
+                        >
+                          {keyword}
+                          <button
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                seo: {
+                                  ...prev.seo,
+                                  keywords: prev.seo.keywords.filter(
+                                    (k) => k !== keyword
+                                  ),
+                                },
+                              }))
+                            }
+                            className="hover:text-red-400"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Preview Panel - Mobile Only via Tab */}
+          {activeTab === "preview" && (
+            <div className="lg:hidden col-span-1">
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>
+                    Article Preview
+                  </h3>
                   <button
-                    onClick={handleAddKeyword}
-                    className={`px-3 py-2 ${
+                    onClick={() => setPreviewKey((prev) => prev + 1)}
+                    className={`px-3 py-2 text-sm ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700"
                         : "bg-emerald-600 hover:bg-emerald-700"
-                    } text-white rounded-lg transition-colors text-sm`}
+                    } text-white rounded-lg transition-colors font-semibold`}
                   >
-                    Add
+                    Refresh
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {formData.seo.keywords.map((keyword, idx) => (
-                    <span
-                      key={idx}
-                      className={`px-2 py-1 ${
-                        isLight
-                          ? "bg-gray-200 text-gray-700"
-                          : "bg-gray-700 text-gray-300"
-                      } rounded text-xs flex items-center gap-1`}
-                    >
-                      {keyword}
-                      <button
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            seo: {
-                              ...prev.seo,
-                              keywords: prev.seo.keywords.filter(
-                                (k) => k !== keyword
-                              ),
-                            },
-                          }))
-                        }
-                        className="hover:text-red-400"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+
+                {/* Mobile Preview Frame */}
+                <div className="relative mx-auto max-w-md">
+                  <div
+                    className="w-full rounded-2xl overflow-hidden border-4 border-gray-700 shadow-2xl bg-white"
+                    style={{ minHeight: "600px" }}
+                  >
+                    <iframe
+                      key={previewKey}
+                      src={`/articles/preview?${new URLSearchParams({
+                        title: formData.title || "Untitled Article",
+                        excerpt: formData.excerpt || "",
+                        content: formData.content || "",
+                        category: formData.category,
+                        imageUrl: formData.featuredImage.url || "",
+                        theme: currentTheme,
+                      }).toString()}`}
+                      className="w-full h-screen"
+                      title="Article Preview"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
