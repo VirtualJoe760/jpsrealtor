@@ -222,9 +222,6 @@ export default function ArticlesAdminPage() {
               <p className={textSecondary}>Manage your blog articles and content</p>
             </div>
             <div className="flex flex-row items-center gap-2 sm:gap-3">
-              <button
-                className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 ${isLight ? "bg-emerald-600 hover:bg-emerald-700" : "bg-purple-600 hover:bg-purple-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
-              >
               <ArticleGenerator onArticleGenerated={() => { fetchArticles(); fetchStats(); }} />
               <button
                 onClick={() => router.push("/admin/articles/new")}
