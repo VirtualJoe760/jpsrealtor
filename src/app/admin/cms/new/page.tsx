@@ -17,6 +17,7 @@ import {
   Loader2,
   Edit3,
   Wand2,
+  Globe,
 } from "lucide-react";
 import AdminNav from "@/app/components/AdminNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
@@ -72,8 +73,10 @@ export default function NewArticlePage() {
   const [keywordInput, setKeywordInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const [slugId, setSlugId] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -112,6 +115,11 @@ export default function NewArticlePage() {
 
       if (data.success && data.article) {
         const article = data.article;
+
+        // Capture slugId from AI response
+        if (article.slugId) {
+          setSlugId(article.slugId);
+        }
 
         // Map AI response to form fields
         setFormData((prev) => ({
@@ -189,7 +197,7 @@ export default function NewArticlePage() {
     }
   };
 
-  // Handle save article
+  // Handle save article to MongoDB
   const handleSave = async (publishNow: boolean = false) => {
     setIsSaving(true);
 
@@ -209,13 +217,65 @@ export default function NewArticlePage() {
       if (!response.ok) throw new Error("Failed to save article");
 
       const data = await response.json();
-      alert(publishNow ? "Article published!" : "Article saved as draft!");
-      router.push("/admin/cms");
+      alert(publishNow ? "Article saved to database!" : "Article saved as draft!");
+
+      // Don't redirect if we just saved - stay on page for further editing
+      if (!publishNow) {
+        router.push("/admin/cms");
+      }
     } catch (error) {
       console.error("Save error:", error);
       alert("Failed to save article");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle publish to website (write MDX file to src/posts/)
+  const handlePublishToSite = async () => {
+    if (!slugId) {
+      alert("Please generate an article first to get a slug ID");
+      return;
+    }
+
+    if (!formData.title || !formData.content || !formData.featuredImage.url) {
+      alert("Please ensure you have a title, content, and featured image before publishing");
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const response = await fetch("/api/articles/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slugId,
+          article: {
+            title: formData.title,
+            excerpt: formData.excerpt,
+            content: formData.content,
+            category: formData.category,
+            tags: formData.tags,
+            featuredImage: formData.featuredImage,
+            seo: formData.seo,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Article published to website!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
+      } else {
+        const errors = data.errors?.join("\n") || "Unknown error";
+        alert(`Failed to publish:\n\n${errors}`);
+      }
+    } catch (error) {
+      console.error("Publish error:", error);
+      alert("Network error while publishing article");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -288,7 +348,7 @@ export default function NewArticlePage() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
               <button
                 onClick={() => handleSave(false)}
-                disabled={isSaving}
+                disabled={isSaving || isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${textPrimary} rounded-lg transition-colors font-semibold ${
                   isLight
                     ? "bg-gray-200 hover:bg-gray-300 border border-gray-300"
@@ -300,15 +360,46 @@ export default function NewArticlePage() {
               </button>
               <button
                 onClick={() => handleSave(true)}
-                disabled={isSaving}
+                disabled={isSaving || isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
                     ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-purple-600 hover:bg-purple-700"
                 } text-white rounded-lg transition-colors font-semibold`}
               >
-                <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                Publish Now
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Save to DB
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handlePublishToSite}
+                disabled={isSaving || isPublishing || !slugId}
+                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
+                  isLight
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                } text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to website (writes MDX file to src/posts/)"}
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Publish to Site
+                  </>
+                )}
               </button>
             </div>
           </div>
