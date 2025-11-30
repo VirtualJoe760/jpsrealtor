@@ -4,20 +4,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {
-  FileText,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Calendar,
-  Tag,
-  TrendingUp,
-  Sparkles,
-  Server,
-} from "lucide-react";
+import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
 
@@ -67,6 +54,10 @@ export default function ArticlesAdminPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
+  const [showClaudeModal, setShowClaudeModal] = useState(false);
+  const [claudePrompt, setClaudePrompt] = useState("");
+  const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
+  const [claudeCategory, setClaudeCategory] = useState<"articles" | "market-insights" | "real-estate-tips">("articles");
   const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString());
   const [stats, setStats] = useState({
     total: 0,
@@ -92,34 +83,7 @@ export default function ArticlesAdminPage() {
   }, [status, page, filterCategory, filterStatus, filterYear, filterMonth]);
 
   // Poll for new draft articles every 30 seconds
-  useEffect(() => {
-    if (status !== "authenticated") return;
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/articles/check-new-drafts?lastChecked=${lastChecked}`);
-        const data = await response.json();
-
-        if (data.newDrafts && data.newDrafts.length > 0) {
-          data.newDrafts.forEach((draft: any) => {
-            // Show toast notification
-            alert(`✨ New Draft Article Ready!\n\nTitle: ${draft.title}\nCategory: ${draft.category}\n\nClick OK to view it.`);
-          });
-
-          // Update last checked timestamp
-          setLastChecked(new Date().toISOString());
-
-          // Refresh articles list
-          fetchArticles();
-        }
-      } catch (error) {
-        console.error('Error checking for new drafts:', error);
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [status, lastChecked]);
-
+  
 
   const fetchArticles = async () => {
     try {
@@ -196,7 +160,7 @@ export default function ArticlesAdminPage() {
     fetchArticles();
   };
 
-  
+    
   if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -566,6 +530,6 @@ export default function ArticlesAdminPage() {
         )}
       </div>
 
-    </div>
+          </div>
   );
 }

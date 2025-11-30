@@ -2,7 +2,7 @@
 // AI-powered article search for chat integration
 
 import { NextRequest, NextResponse } from "next/server";
-import connectDB from "@/lib/db/mongodb";
+import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 
 export interface ArticleSearchResult {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Connect to MongoDB
-    await connectDB();
+    await dbConnect();
 
     // Extract keywords from query for better matching
     const keywords = extractKeywords(query);

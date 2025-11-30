@@ -40,7 +40,7 @@ export async function GET(
 
     // Don't increment view count for admin viewing drafts
     if (article.status === "published" && !(session?.user as any)?.isAdmin) {
-      await Article.incrementViews(article._id.toString());
+      await (Article as any).incrementViews(article._id.toString());
     }
 
     return NextResponse.json(article);
