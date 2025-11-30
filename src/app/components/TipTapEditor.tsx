@@ -70,22 +70,9 @@ export default function TipTapEditor({
     },
     editorProps: {
       attributes: {
-        class: `prose prose-lg max-w-none focus:outline-none ${
-          isLight
-            ? `prose-headings:text-gray-900
-               prose-p:text-gray-700
-               prose-a:text-blue-600
-               prose-strong:text-gray-900
-               prose-code:text-blue-600 prose-code:bg-gray-100
-               prose-blockquote:border-blue-500 prose-blockquote:text-gray-600`
-            : `prose-invert
-               prose-headings:text-white
-               prose-p:text-gray-300
-               prose-a:text-emerald-400
-               prose-strong:text-white
-               prose-code:text-emerald-400 prose-code:bg-gray-800
-               prose-blockquote:border-emerald-500 prose-blockquote:text-gray-400`
-        }`,
+        class: isLight
+          ? "prose prose-lg max-w-none focus:outline-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-code:text-blue-600 prose-code:bg-gray-100 prose-blockquote:border-blue-500 prose-blockquote:text-gray-600"
+          : "prose prose-invert prose-lg max-w-none focus:outline-none prose-headings:text-white prose-p:text-gray-300 prose-a:text-emerald-400 prose-strong:text-white prose-code:text-emerald-400 prose-code:bg-gray-800 prose-blockquote:border-emerald-500 prose-blockquote:text-gray-400",
       },
     },
   });
