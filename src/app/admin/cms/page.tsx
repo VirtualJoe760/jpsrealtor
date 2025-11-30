@@ -19,6 +19,7 @@ import {
   Server,
 } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
+import ArticleGenerator from "@/app/components/ArticleGenerator";
 
 type Article = {
   _id: string;
@@ -66,10 +67,6 @@ export default function ArticlesAdminPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
-  const [showClaudeModal, setShowClaudeModal] = useState(false);
-  const [claudePrompt, setClaudePrompt] = useState("");
-  const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
-  const [claudeCategory, setClaudeCategory] = useState<"articles" | "market-insights" | "real-estate-tips">("articles");
   const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString());
   const [stats, setStats] = useState({
     total: 0,
@@ -199,42 +196,7 @@ export default function ArticlesAdminPage() {
     fetchArticles();
   };
 
-    const handleLaunchClaude = async () => {
-    if (!claudePrompt.trim()) {
-      alert("Please enter instructions for Claude");
-      return;
-    }
-
-    setIsLaunchingClaude(true);
-
-    try {
-      const response = await fetch("/api/vps/request-article", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: claudePrompt,
-          category: claudeCategory,
-          keywords: [],
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert(`Article request submitted successfully!\n\nRequest ID: ${data.requestId}\n\nClaude will write the article and push it to GitHub as a draft. You'll get a notification when it's ready (usually 2-5 minutes).`);
-        setShowClaudeModal(false);
-        setClaudePrompt("");
-      } else {
-        alert(`Failed to submit article request: ${data.error}`);
-      }
-    } catch (error) {
-      console.error("Request error:", error);
-      alert("Failed to submit article request");
-    } finally {
-      setIsLaunchingClaude(false);
-    }
-  };
-
+  
   if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -261,13 +223,9 @@ export default function ArticlesAdminPage() {
             </div>
             <div className="flex flex-row items-center gap-2 sm:gap-3">
               <button
-                onClick={() => setShowClaudeModal(true)}
                 className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 ${isLight ? "bg-emerald-600 hover:bg-emerald-700" : "bg-purple-600 hover:bg-purple-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
               >
-                <Server className="w-4 h-4" />
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Claude VPS</span>
-              </button>
+              <ArticleGenerator onArticleGenerated={() => { fetchArticles(); fetchStats(); }} />
               <button
                 onClick={() => router.push("/admin/articles/new")}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
@@ -611,86 +569,6 @@ export default function ArticlesAdminPage() {
         )}
       </div>
 
-      {/* Claude VPS Launch Modal */}
-      {showClaudeModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-8 max-w-2xl w-full`}>
-            <h2 className={`text-2xl font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
-              <Server className="w-6 h-6 text-purple-400" />
-              <Sparkles className="w-6 h-6 text-purple-400" />
-              Launch Claude Code on VPS
-            </h2>
-            <p className={`${textSecondary} mb-6`}>
-              This will SSH into your VPS (147.182.236.138) and launch a Claude Code session.
-              Claude will have direct access to your codebase, database, and can create/edit
-              articles in real-time.
-            </p>
-
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-              <h3 className="text-blue-400 font-semibold mb-2">💡 Example Instructions:</h3>
-              <ul className={`text-sm ${textSecondary} space-y-1`}>
-                <li>• "Review our existing articles and draft a new one about Palm Desert investment properties"</li>
-                <li>• "Analyze our writing style and create an article about La Quinta market trends"</li>
-                <li>• "Write a buyer's guide for first-time homebuyers in the Coachella Valley"</li>
-              </ul>
-            </div>
-
-            
-            <div className="mb-6">
-              <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
-                Category
-              </label>
-              <select
-                value={claudeCategory}
-                onChange={(e) => setClaudeCategory(e.target.value as any)}
-                className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:border-purple-500`}
-              >
-                <option value="articles">Articles</option>
-                <option value="market-insights">Market Insights</option>
-                <option value="real-estate-tips">Real Estate Tips</option>
-              </select>
-            </div>
-
-            <textarea
-              value={claudePrompt}
-              onChange={(e) => setClaudePrompt(e.target.value)}
-              placeholder="Tell Claude what to do... (e.g., 'Review existing articles in /root/jpsrealtor/src/posts/ to learn our writing style, then draft a new article about Indian Wells luxury real estate')"
-              rows={6}
-              className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-purple-500 resize-none mb-6`}
-            />
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowClaudeModal(false);
-                  setClaudePrompt("");
-                }}
-                disabled={isLaunchingClaude}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLaunchClaude}
-                disabled={!claudePrompt.trim() || isLaunchingClaude}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 flex items-center gap-2"
-              >
-                {isLaunchingClaude ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Launching...
-                  </>
-                ) : (
-                  <>
-                    <Server className="w-5 h-5" />
-                    Launch on VPS
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

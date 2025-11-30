@@ -87,7 +87,8 @@
       "Bash(timeout 25 bash:*)",
       "Bash(timeout 15 npm run dev:*)",
       "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short src/app/admin/page.tsx)",
-      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short \"src/app/api/articles/[id]/route.ts\")"
+      "Bash(git -C \"F:/web-clients/joseph-sardella/jpsrealtor\" status --short \"src/app/api/articles/[id]/route.ts\")",
+      "Bash(git -C F:/web-clients/joseph-sardella/jpsrealtor status --short src/app/admin/articles/page.tsx)"
     ],
     "deny": [],
     "ask": []

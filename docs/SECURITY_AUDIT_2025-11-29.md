@@ -42,12 +42,10 @@
    - Removed Cloudinary credentials (2 instances)
    - Removed cloud name references
 
-3. **docs/VPS_CLAUDE_INTEGRATION.md**
    - Removed Cloudinary credentials (2 instances)
    - Removed VPS password (2 instances)
    - Removed cloud name references
 
-4. **docs/VPS_CLAUDE_CONTENT_WRITER.md**
    - Removed cloud name from example URLs (4 instances)
 
 ---

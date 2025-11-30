@@ -19,7 +19,6 @@
 9. [SEO Implementation](#seo-implementation)
 10. [Claude AI Integration](#claude-ai-integration)
 11. [Chat Widget Integration](#chat-widget-integration)
-12. [VPS Claude Content Writer](#vps-claude-content-writer)
 13. [Deployment Guide](#deployment-guide)
 
 ---
@@ -44,7 +43,6 @@ The jpsrealtor.com platform features a **fully custom MongoDB-based CMS** with A
 - SEO optimization built into AI prompts
 - Coachella Valley real estate expertise
 - Cost: ~$0.07 per article
-- VPS Claude Code integration for advanced workflows
 
 **Media Management:**
 - Cloudinary CDN for all images
@@ -960,9 +958,7 @@ Claude is configured as an expert real estate writer with:
 
 **Top-Right Buttons:**
 
-1. **Claude VPS** (purple button)
    - Icon: Server + Sparkles
-   - Launches Claude Code on VPS
    - SSH into 147.182.236.138
    - Modal with prompt textarea
 
@@ -2597,11 +2593,9 @@ Opens in new tab
 
 ---
 
-## VPS Claude Content Writer
 
 ### Overview
 
-**Purpose:** Run Claude Code directly on the VPS to create/manage articles with full codebase and database access.
 
 **VPS Details:**
 - **IP:** 147.182.236.138
@@ -2617,7 +2611,6 @@ Opens in new tab
 **From Admin Panel:**
 
 1. Navigate to `/admin/articles`
-2. Click "Claude VPS" button (purple, with Server + Sparkles icons)
 3. Modal appears with prompt textarea
 4. Enter instructions for Claude
 
@@ -2656,7 +2649,6 @@ Save all as drafts for review.
 
 ---
 
-### What Claude Can Do on VPS
 
 **Direct Access:**
 - **Codebase:** Full read/write access to `/root/jpsrealtor/`
@@ -2703,11 +2695,9 @@ Save all as drafts for review.
 
 ---
 
-### Benefits of VPS Claude
 
 **Vs. Local Claude:**
 
-| Feature | Local Claude (API) | VPS Claude |
 |---------|-------------------|------------|
 | **Database Access** | Indirect (via API) | Direct (MongoDB) |
 | **File System** | No access | Full access |
@@ -3055,7 +3045,6 @@ docs/
 ├── ARTICLES_CMS_COMPLETE.md    # This file
 ├── CLAUDE_CMS_INTEGRATION.md   # Claude AI guide
 ├── TESTING_ARTICLE_SEARCH.md   # Search testing
-└── VPS_CLAUDE_CONTENT_WRITER.md # VPS workflow
 ```
 
 ---
@@ -3108,7 +3097,6 @@ The jpsrealtor.com Articles & CMS system is a **production-ready, AI-powered con
 - Theme support (light/dark)
 
 **✅ VPS Integration**
-- Claude Code on VPS
 - Direct database access
 - Bulk article creation
 - Content analysis

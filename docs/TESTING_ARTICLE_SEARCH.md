@@ -404,7 +404,6 @@ node test-article-search.js
 
 ## Documentation References
 
-- [VPS Claude Content Writer Guide](./VPS_CLAUDE_CONTENT_WRITER.md) - For creating articles
 - [Responsive Design Guide](./RESPONSIVE_DESIGN.md) - For UI patterns
 - [Frontend Architecture](./FRONTEND_ARCHITECTURE.md) - For system overview
 

@@ -60,8 +60,6 @@ VPS_PASSWORD=YOUR_VPS_PASSWORD
 
 ### AI & Content
 - **[CLAUDE_CMS_INTEGRATION.md](./CLAUDE_CMS_INTEGRATION.md)** - Claude AI for article drafting
-- **[VPS_CLAUDE_CONTENT_WRITER.md](./VPS_CLAUDE_CONTENT_WRITER.md)** - VPS Claude workflows
-- **[VPS_CLAUDE_INTEGRATION.md](./VPS_CLAUDE_INTEGRATION.md)** - VPS SSH integration
 
 ### Development & Deployment
 - **[PERFORMANCE.md](./PERFORMANCE.md)** - Performance optimizations (862ms startup!)
@@ -134,7 +132,6 @@ See `.env.example` for complete list. Key variables:
 ### For Content Editors
 1. Read **ARTICLES_CMS_COMPLETE.md** for the CMS system
 2. Review **CLAUDE_CMS_INTEGRATION.md** to learn AI drafting
-3. Check **VPS_CLAUDE_CONTENT_WRITER.md** for advanced workflows
 
 ### For Admins
 1. **AUTHENTICATION.md** - User management and OAuth

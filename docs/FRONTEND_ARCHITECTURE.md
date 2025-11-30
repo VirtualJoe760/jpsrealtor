@@ -815,7 +815,6 @@ This guide includes:
 
 For content creation workflow and article writing guidelines, see:
 
-**[VPS_CLAUDE_CONTENT_WRITER.md](./VPS_CLAUDE_CONTENT_WRITER.md)**
 
 This guide includes:
 - ✍️ Article writing style guide and tone
