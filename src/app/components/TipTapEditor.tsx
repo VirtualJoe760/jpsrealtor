@@ -25,8 +25,19 @@ import {
   Redo,
   FileCode,
   Eye,
+  Loader2,
 } from "lucide-react";
-import { mdxToHtml, htmlToMdx } from "@/lib/mdx-converter";
+import { useEditorState } from "@/hooks/useEditorState";
+
+/**
+ * TipTap Editor Component - REFACTORED
+ *
+ * Uses new Layer 3 (useEditorState) for state management
+ * - No more race conditions
+ * - Working toolbar buttons
+ * - Proper MDX ↔ HTML conversion
+ * - Debounced sync to prevent excessive conversions
+ */
 
 interface TipTapEditorProps {
   content: string; // MDX content
@@ -41,38 +52,23 @@ export default function TipTapEditor({
   placeholder = "Start writing your article...",
   isLight,
 }: TipTapEditorProps) {
-  const [htmlContent, setHtmlContent] = useState<string>("");
-  const [isConverting, setIsConverting] = useState(false);
   const [viewMode, setViewMode] = useState<"rich" | "mdx">("rich");
-  const [mdxSource, setMdxSource] = useState<string>(content);
+  const [mdxInputValue, setMdxInputValue] = useState(content);
 
-  // Convert MDX to HTML when content prop changes
-  useEffect(() => {
-    const convertMdx = async () => {
-      if (!content) {
-        setHtmlContent("");
-        setMdxSource("");
-        return;
-      }
-      setMdxSource(content);
-      setIsConverting(true);
-      try {
-        const html = await mdxToHtml(content);
-        setHtmlContent(html);
-      } catch (error) {
-        console.error("Error converting MDX to HTML:", error);
-        setHtmlContent(content); // Fallback to original content
-      } finally {
-        setIsConverting(false);
-      }
-    };
-    convertMdx();
-  }, [content]);
+  // Use Layer 3: Editor State Manager
+  const { state, initializeEditor, handleEditorChange, setMdx } = useEditorState(
+    content,
+    onChange // Pass onChange callback for debounced MDX updates
+  );
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3], // H1, H2, H3
+        },
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -94,12 +90,8 @@ export default function TipTapEditor({
         placeholder,
       }),
     ],
-    content: htmlContent,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      const mdx = htmlToMdx(html);
-      setMdxSource(mdx);
-      onChange(mdx); // Return MDX to parent
+      handleEditorChange(editor);
     },
     editorProps: {
       attributes: {
@@ -110,87 +102,88 @@ export default function TipTapEditor({
     },
   });
 
-  // Update editor when HTML content changes (from MDX conversion)
+  // Initialize editor once when it's ready
   useEffect(() => {
-    if (editor && htmlContent && !isConverting && viewMode === "rich") {
-      const currentHtml = editor.getHTML();
-      // Only update if content is significantly different (avoid cursor position loss)
-      if (currentHtml !== htmlContent && !editor.isFocused) {
-        editor.commands.setContent(htmlContent);
-      }
+    if (editor) {
+      initializeEditor(editor);
     }
-  }, [htmlContent, editor, isConverting, viewMode]);
+  }, [editor, initializeEditor]);
 
-  // Handle MDX source code changes
-  const handleMdxChange = async (newMdx: string) => {
-    setMdxSource(newMdx);
-    onChange(newMdx);
-
-    // Convert to HTML for rich text view
-    if (newMdx) {
-      try {
-        const html = await mdxToHtml(newMdx);
-        setHtmlContent(html);
-        if (editor) {
-          editor.commands.setContent(html);
-        }
-      } catch (error) {
-        console.error("Error converting MDX to HTML:", error);
-      }
+  // Update MDX input value when switching to MDX view
+  useEffect(() => {
+    if (viewMode === "mdx") {
+      setMdxInputValue(state.mdx);
     }
-  };
+  }, [viewMode, state.mdx]);
 
-  // Toggle between views
-  const toggleView = async () => {
+  // Handle content prop changes from parent
+  useEffect(() => {
+    if (content !== state.mdx && !state.isDirty) {
+      setMdx(content);
+    }
+  }, [content]);
+
+  // Toggle between Rich and MDX views
+  const toggleView = () => {
     if (viewMode === "rich") {
-      // Switching to MDX view - ensure MDX is up to date
-      if (editor) {
-        const html = editor.getHTML();
-        const mdx = htmlToMdx(html);
-        setMdxSource(mdx);
-      }
       setViewMode("mdx");
     } else {
-      // Switching to rich view - convert MDX to HTML
-      if (mdxSource) {
-        try {
-          const html = await mdxToHtml(mdxSource);
-          setHtmlContent(html);
-          if (editor) {
-            editor.commands.setContent(html);
-          }
-        } catch (error) {
-          console.error("Error converting MDX to HTML:", error);
-        }
+      // Switching back to rich - update MDX if user edited it
+      if (mdxInputValue !== state.mdx) {
+        setMdx(mdxInputValue);
       }
       setViewMode("rich");
     }
   };
 
-  if (!editor) {
-    return null;
-  }
+  // Handle MDX textarea changes
+  const handleMdxInput = (newMdx: string) => {
+    setMdxInputValue(newMdx);
+  };
 
+  // Apply MDX changes when user finishes editing (on blur)
+  const handleMdxBlur = () => {
+    if (mdxInputValue !== state.mdx) {
+      setMdx(mdxInputValue);
+    }
+  };
+
+  // Toolbar button helpers
   const addLink = () => {
     const url = window.prompt("Enter URL:");
     if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
+      editor?.chain().focus().setLink({ href: url }).run();
     }
   };
 
   const addYoutube = () => {
     const url = window.prompt("Enter YouTube URL:");
     if (url) {
-      editor.commands.setYoutubeVideo({ src: url });
+      editor?.commands.setYoutubeVideo({ src: url });
     }
   };
 
   const addImage = () => {
     const url = window.prompt("Enter image URL:");
     if (url) {
-      editor.commands.setImage({ src: url });
+      editor?.commands.setImage({ src: url });
     }
   };
+
+  if (!editor) {
+    return (
+      <div className={`rounded-lg border p-12 text-center ${
+        isLight ? "border-gray-300 bg-gray-50" : "border-gray-700 bg-gray-900"
+      }`}>
+        <Loader2 className={`w-8 h-8 animate-spin mx-auto mb-2 ${
+          isLight ? "text-blue-600" : "text-emerald-400"
+        }`} />
+        <p className={isLight ? "text-gray-600" : "text-gray-400"}>
+          Loading editor...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={`rounded-lg border ${isLight ? "border-gray-300" : "border-gray-700"}`}>
@@ -255,7 +248,7 @@ export default function TipTapEditor({
               ? "hover:bg-gray-200 text-gray-700"
               : "hover:bg-gray-700 text-gray-300"
           }`}
-          title="Bold"
+          title="Bold (Ctrl+B)"
         >
           <Bold className="w-4 h-4" />
         </button>
@@ -270,7 +263,7 @@ export default function TipTapEditor({
               ? "hover:bg-gray-200 text-gray-700"
               : "hover:bg-gray-700 text-gray-300"
           }`}
-          title="Italic"
+          title="Italic (Ctrl+I)"
         >
           <Italic className="w-4 h-4" />
         </button>
@@ -440,23 +433,34 @@ export default function TipTapEditor({
         <button
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
-          className={`p-2 rounded transition-colors disabled:opacity-30 ${
+          className={`p-2 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
             isLight ? "hover:bg-gray-200 text-gray-700" : "hover:bg-gray-700 text-gray-300"
           }`}
-          title="Undo"
+          title="Undo (Ctrl+Z)"
         >
           <Undo className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
-          className={`p-2 rounded transition-colors disabled:opacity-30 ${
+          className={`p-2 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
             isLight ? "hover:bg-gray-200 text-gray-700" : "hover:bg-gray-700 text-gray-300"
           }`}
-          title="Redo"
+          title="Redo (Ctrl+Y)"
         >
           <Redo className="w-4 h-4" />
         </button>
+          </>
+        )}
+
+        {/* Status indicator */}
+        {state.isSyncing && (
+          <>
+            <div className={`w-px h-6 mx-1 ${isLight ? "bg-gray-300" : "bg-gray-600"}`} />
+            <div className="flex items-center gap-1 px-2 text-xs text-gray-500">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Syncing...</span>
+            </div>
           </>
         )}
       </div>
@@ -478,8 +482,9 @@ export default function TipTapEditor({
           }`}
         >
           <textarea
-            value={mdxSource}
-            onChange={(e) => handleMdxChange(e.target.value)}
+            value={mdxInputValue}
+            onChange={(e) => handleMdxInput(e.target.value)}
+            onBlur={handleMdxBlur}
             className={`w-full h-full min-h-[500px] px-4 py-3 font-mono text-sm resize-none focus:outline-none ${
               isLight
                 ? "bg-white text-gray-900 placeholder-gray-400"
