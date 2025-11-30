@@ -23,7 +23,7 @@ This system allows you to request blog posts from Claude Code running on your VP
 ### Architecture
 
 ```
-Admin CMS (/admin/articles)
+Admin CMS (/admin/cms)
     ↓ Click "Request Article from Claude"
     ↓ Enter prompt: "Write about Palm Desert golf communities"
     ↓
@@ -59,7 +59,7 @@ Toast Notification
 
 ### Step 1: Request Article
 
-1. Navigate to `/admin/articles`
+1. Navigate to `/admin/cms`
 2. Click **"Request Article from Claude"** button
 3. Modal appears with prompt textarea
 
@@ -154,7 +154,7 @@ When Claude finishes and pushes to GitHub:
 
 ### Frontend: Request Article Button
 
-**Location:** `src/app/admin/articles/page.tsx`
+**Location:** `src/app/admin/cms/page.tsx`
 
 ```tsx
 <button
@@ -438,7 +438,7 @@ useEffect(() => {
           <p className="font-bold">✨ New Draft Article Ready!</p>
           <p>{draft.title}</p>
           <p className="text-sm text-gray-500">Category: {draft.category}</p>
-          <button onClick={() => router.push(`/admin/articles/${draft.slug}`)}>
+          <button onClick={() => router.push(`/admin/cms/${draft.slug}`)}>
             View Article
           </button>
         </div>,
@@ -516,7 +516,7 @@ useEffect(() => {
         <div>
           <p className="font-bold">✨ New Draft Article Ready!</p>
           <p>{data.title}</p>
-          <button onClick={() => router.push(`/admin/articles/edit/${data.slug}`)}>
+          <button onClick={() => router.push(`/admin/cms/edit/${data.slug}`)}>
             View Article
           </button>
         </div>,
