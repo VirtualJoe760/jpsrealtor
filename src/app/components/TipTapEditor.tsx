@@ -39,6 +39,7 @@ export default function TipTapEditor({
   isLight,
 }: TipTapEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Link.configure({
