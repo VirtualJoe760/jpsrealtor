@@ -188,7 +188,7 @@ export default function ArticlesAdminPage() {
             <div className="flex flex-row items-center gap-2 sm:gap-3">
               <ArticleGenerator onArticleGenerated={() => { fetchArticles(); fetchStats(); }} />
               <button
-                onClick={() => router.push("/admin/articles/new")}
+                onClick={() => router.push("/admin/cms/new")}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
               >
                 <Plus className="w-4 h-4" />
