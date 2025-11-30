@@ -487,7 +487,7 @@ export default function NewArticlePage() {
                   </div>
                   <div
                     className={`${border} rounded-lg overflow-hidden`}
-                    style={{ height: "400px" }}
+                    style={{ height: "600px" }}
                   >
                     <iframe
                       key={`generator-preview-${previewKey}`}
