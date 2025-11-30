@@ -39,58 +39,74 @@ function PreviewContent() {
   };
 
   return (
-    <article className={`min-h-screen ${isLight ? "bg-white" : "bg-gray-900"}`}>
-      {/* Hero Image */}
-      {imageUrl && (
-        <div className="relative w-full h-64 bg-gray-200">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
-      {/* Article Content */}
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Category Badge */}
-        <div className="mb-4">
-          <span className={`inline-block px-4 py-1 rounded-full text-sm font-semibold ${
-            isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-400"
+    <div className="min-h-screen py-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Back Button */}
+        <div className="mb-8">
+          <a href="/insights" className={`inline-flex items-center gap-2 transition-colors ${
+            isLight ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'
           }`}>
-            {categoryNames[category]}
-          </span>
+            <span>← Back to articles</span>
+          </a>
         </div>
 
-        {/* Title */}
-        <h1 className={`text-4xl font-bold mb-4 leading-tight ${
-          isLight ? "text-gray-900" : "text-white"
-        }`}>
-          {title}
-        </h1>
-
-        {/* Excerpt */}
-        {excerpt && (
-          <p className={`text-xl mb-6 leading-relaxed ${
-            isLight ? "text-gray-600" : "text-gray-300"
-          }`}>
-            {excerpt}
-          </p>
-        )}
-
-        {/* Meta Info */}
-        <div className={`flex flex-wrap items-center gap-4 text-sm mb-8 pb-8 border-b ${
-          isLight ? "text-gray-500 border-gray-200" : "text-gray-400 border-gray-700"
-        }`}>
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4" />
-            <span>Joseph Sardella</span>
+        {/* Article Header */}
+        <div className="mb-8">
+          <div className={`flex items-center gap-2 mb-4 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+            <Tag className="w-5 h-5" />
+            <span className="text-sm uppercase tracking-wider">ARTICLE</span>
           </div>
-          <div className="flex items-center gap-2">
+          <h1 className={`text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl ${
+            isLight ? 'text-gray-900' : 'text-white'
+          }`}>
+            {title}
+          </h1>
+          <div className={`flex items-center gap-2 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
             <Calendar className="w-4 h-4" />
-            <span>{new Date().toLocaleDateString()}</span>
+            <span className="text-sm">
+              Published on {new Date().toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
           </div>
         </div>
+
+        {/* Featured Image */}
+        <div className={`mb-12 rounded-2xl overflow-hidden border ${
+          isLight ? 'border-gray-300' : 'border-gray-800'
+        }`}>
+          <div className="relative w-full h-[400px]">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center ${
+                isLight ? 'bg-gradient-to-br from-blue-50 to-indigo-100' : 'bg-gradient-to-br from-gray-800 to-gray-900'
+              }`}>
+                <div className="text-center">
+                  <Tag className={`w-16 h-16 mx-auto mb-4 ${
+                    isLight ? 'text-blue-300' : 'text-gray-600'
+                  }`} />
+                  <p className={`text-sm ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>
+                    No featured image
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Article Content */}
+        <article className={`rounded-2xl p-6 md:p-12 mb-12 ${
+          isLight
+            ? 'bg-white/80 backdrop-blur-sm border border-gray-300 shadow-md'
+            : 'bg-gray-900/50 backdrop-blur-sm border border-gray-800'
+        }`}>
 
         {/* Article Content */}
         {content ? (
