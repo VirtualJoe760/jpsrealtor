@@ -107,80 +107,63 @@ function PreviewContent() {
             ? 'bg-white/80 backdrop-blur-sm border border-gray-300 shadow-md'
             : 'bg-gray-900/50 backdrop-blur-sm border border-gray-800'
         }`}>
-
-        {/* Article Content */}
-        {content ? (
-          <div className="prose prose-lg max-w-none">
-            <ReactMarkdown
-              components={{
-                h1: ({ node, ...props }) => (
-                  <h1 className={`text-3xl font-bold mt-8 mb-4 ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
-                ),
-                h2: ({ node, ...props }) => (
-                  <h2 className={`text-2xl font-bold mt-6 mb-3 ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
-                ),
-                h3: ({ node, ...props }) => (
-                  <h3 className={`text-xl font-bold mt-4 mb-2 ${isLight ? "text-gray-900" : "text-gray-100"}`} {...props} />
-                ),
-                p: ({ node, ...props }) => (
-                  <p className={`mb-4 leading-relaxed ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
-                ),
-                ul: ({ node, ...props }) => (
-                  <ul className={`list-disc list-inside mb-4 space-y-2 ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
-                ),
-                ol: ({ node, ...props }) => (
-                  <ol className={`list-decimal list-inside mb-4 space-y-2 ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
-                ),
-                li: ({ node, ...props }) => (
-                  <li className="ml-4" {...props} />
-                ),
-                blockquote: ({ node, ...props }) => (
-                  <blockquote className={`border-l-4 pl-4 italic my-4 ${
-                    isLight ? "border-blue-500 text-gray-600" : "border-emerald-500 text-gray-400"
-                  }`} {...props} />
-                ),
-                code: ({ node, inline, ...props }: any) =>
-                  inline ? (
-                    <code className={`px-2 py-1 rounded text-sm font-mono ${
-                      isLight ? "bg-gray-100 text-gray-800" : "bg-gray-800 text-gray-200"
-                    }`} {...props} />
-                  ) : (
-                    <code className={`block p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4 ${
-                      isLight ? "bg-gray-100 text-gray-800" : "bg-gray-800 text-gray-200"
-                    }`} {...props} />
-                  ),
-                a: ({ node, ...props }) => (
-                  <a className={`underline ${
-                    isLight ? "text-blue-600 hover:text-blue-700" : "text-emerald-400 hover:text-emerald-300"
-                  }`} {...props} />
-                ),
-                strong: ({ node, ...props }) => (
-                  <strong className={`font-bold ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
-                ),
-                em: ({ node, ...props }) => (
-                  <em className="italic" {...props} />
-                ),
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className={`text-lg ${isLight ? "text-gray-400" : "text-gray-500"}`}>
-              Start writing to see your article preview...
-            </p>
-          </div>
-        )}
+          {content ? (
+            <div className={`max-w-none ${
+              isLight
+                ? `prose prose-lg
+                   prose-headings:text-gray-900
+                   prose-h1:text-4xl prose-h1:font-bold prose-h1:mb-6
+                   prose-h2:text-3xl prose-h2:font-bold prose-h2:mb-4 prose-h2:mt-8
+                   prose-h3:text-2xl prose-h3:font-semibold prose-h3:mb-3 prose-h3:mt-6
+                   prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
+                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:text-blue-700 hover:prose-a:underline
+                   prose-strong:text-gray-900 prose-strong:font-semibold
+                   prose-ul:text-gray-700 prose-ul:my-6
+                   prose-ol:text-gray-700 prose-ol:my-6
+                   prose-li:my-2
+                   prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-600
+                   prose-code:text-blue-600 prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                   prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-300 prose-pre:rounded-xl
+                   prose-img:rounded-xl prose-img:border prose-img:border-gray-300
+                   prose-hr:border-gray-300 prose-hr:my-8`
+                : `prose prose-invert prose-lg
+                   prose-headings:text-white
+                   prose-h1:text-4xl prose-h1:font-bold prose-h1:mb-6
+                   prose-h2:text-3xl prose-h2:font-bold prose-h2:mb-4 prose-h2:mt-8
+                   prose-h3:text-2xl prose-h3:font-semibold prose-h3:mb-3 prose-h3:mt-6
+                   prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-4
+                   prose-a:text-emerald-400 prose-a:no-underline hover:prose-a:text-emerald-300 hover:prose-a:underline
+                   prose-strong:text-white prose-strong:font-semibold
+                   prose-ul:text-gray-300 prose-ul:my-6
+                   prose-ol:text-gray-300 prose-ol:my-6
+                   prose-li:my-2
+                   prose-blockquote:border-l-4 prose-blockquote:border-emerald-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400
+                   prose-code:text-emerald-400 prose-code:bg-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                   prose-pre:bg-gray-800 prose-pre:border prose-pre:border-gray-700 prose-pre:rounded-xl
+                   prose-img:rounded-xl prose-img:border prose-img:border-gray-700
+                   prose-hr:border-gray-700 prose-hr:my-8`
+            }`}>
+              <ReactMarkdown>
+                {content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className={`text-lg ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>
+                Start writing to see your article preview...
+              </p>
+            </div>
+          )}
+        </article>
       </div>
-    </article>
+    </div>
   );
 }
 
 export default function ArticlePreviewPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-500">Loading preview...</p>
