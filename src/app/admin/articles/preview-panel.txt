@@ -1,0 +1,46 @@
+
+          {/* Mobile Preview Panel */}
+          {showPreview && (
+            <div className="sticky top-4 h-fit">
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>Mobile Preview</h3>
+                  <button
+                    onClick={() => setPreviewKey(prev => prev + 1)}
+                    className={`px-4 py-2 text-sm ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold`}
+                  >
+                    Refresh Preview
+                  </button>
+                </div>
+
+                {/* iPhone-style Preview Frame */}
+                <div className="relative mx-auto" style={{ width: '375px', height: '812px' }}>
+                  {/* iPhone Notch */}
+                  <div className={`absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 ${isLight ? "bg-gray-200" : "bg-gray-900"} rounded-b-3xl z-10`}></div>
+
+                  {/* Preview iframe */}
+                  <div className="w-full h-full rounded-3xl overflow-hidden border-8 border-gray-800 shadow-2xl bg-white">
+                    <iframe
+                      key={previewKey}
+                      src={`/articles/preview?${new URLSearchParams({
+                        title: formData.title || 'Untitled Article',
+                        excerpt: formData.excerpt || '',
+                        content: formData.content || '',
+                        category: formData.category,
+                        imageUrl: formData.featuredImage.url || ''
+                      }).toString()}`}
+                      className="w-full h-full"
+                      title="Article Preview"
+                    />
+                  </div>
+
+                  {/* Home Indicator */}
+                  <div className={`absolute bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 ${isLight ? "bg-gray-300" : "bg-gray-700"} rounded-full z-10`}></div>
+                </div>
+
+                <p className={`text-xs ${textMuted} text-center mt-4`}>
+                  Preview updates when you click "Refresh Preview"
+                </p>
+              </div>
+            </div>
+          )}

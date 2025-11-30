@@ -16,6 +16,10 @@ import {
   Calendar,
   Phone,
   Mail,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  Shield,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
@@ -36,6 +40,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const isLight = currentTheme === "lightgradient";
 
   const [isMobile, setIsMobile] = useState(false);
+  const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -47,18 +52,36 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
 
   const menuItems = [
-    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Chat", icon: MessageSquare, href: "/" },
     { label: "Map", icon: Map, href: "/map" },
     { label: "Articles", icon: FileText, href: "/insights" },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 
-  const handleNavigate = (href: string, label: string) => {
-    if (label === "Dashboard" && !session) {
+  const dashboardItems = [
+    { label: "Settings", icon: Settings, href: "/dashboard/settings" },
+    ...((session?.user as any)?.isAdmin ? [{ label: "Admin", icon: Shield, href: "/admin" }] : []),
+  ];
+
+  const handleNavigate = (href: string, label?: string) => {
+    router.push(href);
+    if (onClose) onClose();
+    // Close dropdown after navigation
+    setDashboardDropdownOpen(false);
+  };
+
+  const handleDashboardClick = () => {
+    if (!session) {
       router.push("/auth/signin");
     } else {
-      router.push(href);
+      // If dropdown is closed, navigate to dashboard and open dropdown
+      // If dropdown is open, just close it
+      if (!dashboardDropdownOpen) {
+        router.push("/dashboard");
+        setDashboardDropdownOpen(true);
+      } else {
+        setDashboardDropdownOpen(false);
+      }
     }
     if (onClose) onClose();
   };
@@ -110,6 +133,74 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
+        {/* Dashboard Dropdown */}
+        <div>
+          <motion.button
+            onClick={handleDashboardClick}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              pathname.startsWith("/dashboard")
+                ? isLight
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-purple-600/20 text-purple-400"
+                : isLight
+                  ? "text-gray-700 hover:bg-gray-100"
+                  : "text-neutral-300 hover:bg-neutral-800"
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
+            {!effectivelyCollapsed && (
+              <>
+                <span className="text-sm font-medium flex-1 text-left">Dashboard</span>
+                {dashboardDropdownOpen ? (
+                  <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                )}
+              </>
+            )}
+          </motion.button>
+
+          {/* Dropdown Items */}
+          {!effectivelyCollapsed && dashboardDropdownOpen && session && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-1 ml-4 space-y-1"
+            >
+              {dashboardItems.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+
+                return (
+                  <motion.button
+                    key={item.label}
+                    onClick={() => handleNavigate(item.href)}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                      isActive
+                        ? isLight
+                          ? "bg-blue-50 text-blue-600"
+                          : "bg-purple-600/10 text-purple-400"
+                        : isLight
+                          ? "text-gray-600 hover:bg-gray-50"
+                          : "text-neutral-400 hover:bg-neutral-800/50"
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium">{item.label}</span>
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
+
+        {/* Regular Menu Items */}
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -117,7 +208,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           return (
             <motion.button
               key={item.label}
-              onClick={() => handleNavigate(item.href, item.label)}
+              onClick={() => handleNavigate(item.href)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 isActive
                   ? isLight

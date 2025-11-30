@@ -36,8 +36,8 @@ export default function ThreeStars() {
     setCanvasSize();
     window.addEventListener("resize", setCanvasSize);
 
-    // Generate 5000 stars in spherical distribution
-    const sphere = generateSphere(5000, 1.2);
+    // Generate 2500 stars in spherical distribution
+    const sphere = generateSphere(2500, 1.2);
 
     // Group rotation: [0, 0, Math.PI / 4] = 45° Z-axis tilt
     const groupRotationZ = Math.PI / 4;
@@ -72,7 +72,7 @@ export default function ThreeStars() {
       const sinX = Math.sin(rotationX);
 
       // Render each star
-      for (let i = 0; i < 5000; i++) {
+      for (let i = 0; i < 2500; i++) {
         let x = sphere[i * 3] ?? 0;
         let y = sphere[i * 3 + 1] ?? 0;
         let z = sphere[i * 3 + 2] ?? 0;

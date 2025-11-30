@@ -14,6 +14,23 @@ const CHAT_TOOLS: GroqTool[] = [
   {
     type: "function",
     function: {
+      name: "searchArticles",
+      description: "Search our real estate blog articles and guides for information. Use this FIRST when user asks questions about real estate topics, market insights, tips, or general information (e.g., 'energy costs', 'hidden costs', 'buying tips', 'HOA fees', etc.). This provides authoritative content we've written with citations and sources.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query based on user's question (e.g., 'energy costs coachella valley', 'hidden costs homeownership', 'first time buyer tips')"
+          }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "matchLocation",
       description: "Resolve a SPECIFIC location query (subdivision/neighborhood/community name) to geographic data. Use this when user asks about a SPECIFIC subdivision like 'Palm Desert Country Club', 'Indian Wells Country Club', etc. Do NOT use for general city queries like 'Palm Desert' or 'La Quinta' - use searchCity instead.",
       parameters: {
@@ -135,6 +152,13 @@ export async function POST(req: NextRequest) {
           try {
             if (functionName === "matchLocation") {
               const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/match-location`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(functionArgs)
+              });
+              result = await response.json();
+            } else if (functionName === "searchArticles") {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/search`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(functionArgs)
@@ -308,6 +332,45 @@ function buildEnhancedSystemPrompt(): string {
 You help users find properties, analyze investments, generate CMAs (Comparative Market Analyses), and provide data-driven real estate insights for Southern California markets.
 
 # CRITICAL: Tool Usage Workflow
+
+**PRIORITY 1: Search Articles First for Information Questions**
+
+When a user asks a QUESTION about real estate topics (not property searches):
+- "What are energy costs like?"
+- "Tell me about hidden costs of homeownership"
+- "What should I know about HOAs?"
+- "Tips for first-time buyers"
+
+1. **CALL searchArticles FIRST** - Check our authoritative content
+   - Use searchArticles({"query": "user question keywords"})
+   - We have comprehensive guides on:
+     * Energy costs (SCE vs IID rates in Coachella Valley)
+     * Hidden costs of homeownership
+     * Buying/selling tips and guides
+     * Market insights and trends
+     * HOA and community information
+     * Local market analysis
+
+2. **ARTICLE RESPONSE FORMAT** - Use this when articles are found:
+
+   [ARTICLE_RESULTS]
+   {
+     "results": [array of article objects from API],
+     "query": "user's original question"
+   }
+   [/ARTICLE_RESULTS]
+
+   Based on our article "[Article Title]", here's what you need to know...
+
+   [Provide answer using article content, cite the source]
+
+   **Source:** [Article Title] - Read more: /articles/[slug]
+
+3. **If no articles found** - Provide general answer and suggest we can write about it
+
+4. **For property searches** - Skip to matchLocation/searchCity below
+
+---
 
 When a user asks to "show me homes in [location]":
 
@@ -496,8 +559,8 @@ Now assist the user with their real estate needs using these tools and knowledge
 /**
  * Parse component markers from AI response and extract structured data
  */
-function parseComponentData(responseText: string): { carousel?: any; mapView?: any } {
-  const components: { carousel?: any; mapView?: any } = {};
+function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any } {
+  const components: { carousel?: any; mapView?: any; articles?: any } = {};
 
   // Parse [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
   const carouselMatch = responseText.match(/\[LISTING_CAROUSEL\]\s*([\s\S]*?)\s*\[\/LISTING_CAROUSEL\]/);

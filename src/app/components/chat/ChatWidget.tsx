@@ -10,6 +10,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
 import ListingCarousel from "./ListingCarousel";
 import ChatMapView from "./ChatMapView";
+import { ArticleResults } from "./ArticleCard";
 
 export default function ChatWidget() {
   const { data: session } = useSession();

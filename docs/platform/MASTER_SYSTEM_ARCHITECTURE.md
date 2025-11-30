@@ -1,7 +1,7 @@
 # 🏗️ MASTER SYSTEM ARCHITECTURE
-**ChatRealty.io Ecosystem - Complete Technical Specification**
-**Last Updated:** November 23, 2025
-**Version:** 2.0.0 (Unified Architecture)
+**JPSRealtor.com & ChatRealty.io Ecosystem**
+**Last Updated:** January 2025
+**Version:** 3.0.0 (NextAuth + Custom CRM)
 
 ---
 
@@ -11,43 +11,41 @@
 2. [System Overview](#system-overview)
 3. [Architecture Principles](#architecture-principles)
 4. [Technology Stack](#technology-stack)
-5. [Repository Structure](#repository-structure)
-6. [Data Flow Architecture](#data-flow-architecture)
-7. [Authentication & Authorization](#authentication--authorization)
-8. [Multi-Tenant Strategy](#multi-tenant-strategy)
-9. [Deployment Architecture](#deployment-architecture)
-10. [External Integrations](#external-integrations)
+5. [Data Flow Architecture](#data-flow-architecture)
+6. [Authentication & Authorization](#authentication--authorization)
+7. [Future: Custom CRM/CMS](#future-custom-crmcms)
+8. [Deployment Architecture](#deployment-architecture)
+9. [External Integrations](#external-integrations)
 
 ---
 
 ## 🎯 EXECUTIVE SUMMARY
 
-**ChatRealty.io** is a white-label real estate platform ecosystem enabling:
-- **Multi-agent network**: Independent real estate agents deploy branded websites
-- **Centralized data**: Single PayloadCMS backend serves all tenants
-- **Shared MLS pool**: 42,000+ listings from GPS + CRMLS
-- **AI-powered chat**: Groq LLM with function calling
+**JPSRealtor.com** is an AI-powered real estate platform with plans to scale into **ChatRealty.io**, a white-label network enabling:
+- **AI-driven property discovery**: Groq LLM with natural language search
+- **Unified "Chap" experience**: Chat + Map integrated interface
+- **Dual MLS integration**: 32,000+ listings from GPS + CRMLS
 - **Swipe discovery**: Tinder-style property matching
-- **CMA engine**: Automated market analysis
-- **Role-based access**: Clients, Investors, Agents, Admins
+- **Smart recommendations**: ML-powered property suggestions
+- **Custom CRM/CMS**: Building proprietary agent/client management (future)
 
 ### Current Deployment
 
 **Primary Site:** JPSRealtor.com (Joseph Sardella, Palm Springs)
-- Frontend: https://jpsrealtor.com
-- Backend CMS: https://cms.chatrealty.io
-- Database: MongoDB Atlas (DigitalOcean)
+- Frontend: https://jpsrealtor.com (Vercel)
+- Database: MongoDB Atlas (DigitalOcean NYC3)
+- VPS: 147.182.236.138 (DigitalOcean)
 
-**Future Sites:** ChatRealty.io agent network
-- Multiple branded frontends
-- Shared backend infrastructure
-- Tenant-isolated data where needed
+**Future Vision:** ChatRealty.io agent network
+- Multi-tenant branded frontends
+- Shared MLS data pool
+- Custom CRM for agent/client management
 
 ---
 
 ## 🌐 SYSTEM OVERVIEW
 
-### Three-Tier Architecture
+### Two-Tier Architecture (Current)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -55,57 +53,39 @@
 │                  (Next.js 16 - App Router)                      │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ JPSRealtor  │  │   Agent #2  │  │   Agent #N  │  (Future)  │
-│  │   .com      │  │ ChatRealty  │  │ ChatRealty  │            │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │
-│         │                │                │                     │
-│         └────────────────┴────────────────┘                     │
+│  ┌─────────────────────────────────────┐                       │
+│  │        JPSRealtor.com               │                       │
+│  │  ┌──────────────────────────────┐   │                       │
+│  │  │ NextAuth.js (Auth)           │   │                       │
+│  │  │ Next.js API Routes           │   │                       │
+│  │  │ Groq AI Chat Integration     │   │                       │
+│  │  │ MapLibre + Supercluster      │   │                       │
+│  │  └──────────────────────────────┘   │                       │
+│  └─────────────────────────────────────┘                       │
 │                          │                                      │
-│                   All consume same APIs                         │
+│              Direct MongoDB Access (no CMS layer)               │
 └──────────────────────────┼──────────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   TIER 2: API/CMS LAYER                         │
-│              (PayloadCMS 3.x + Next.js APIs)                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  PayloadCMS Backend (cms.chatrealty.io)                       │
-│  ├─ Authentication (JWT + OAuth)                               │
-│  ├─ User Management (Roles, Tiers, Subscriptions)              │
-│  ├─ Content Management (Cities, Neighborhoods, Blog)           │
-│  ├─ Tenant Configuration (Branding, Settings)                  │
-│  ├─ Admin Panel (Role-based dashboards)                        │
-│  └─ Media Management (Cloudinary integration)                  │
-│                                                                 │
-│  Next.js API Routes (Frontend proxy layer)                     │
-│  ├─ /api/chat/* → Groq AI + Function Calling                   │
-│  ├─ /api/mls-listings/* → Direct MongoDB queries               │
-│  ├─ /api/user/* → Payload CMS proxy                            │
-│  ├─ /api/swipes/* → MongoDB swipe tracking                     │
-│  └─ /api/auth/oauth/* → OAuth → Payload bridge                 │
-└──────────────────────────┼──────────────────────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    TIER 3: DATA LAYER                           │
+│                    TIER 2: DATA LAYER                           │
 │              (MongoDB Atlas - DigitalOcean)                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Database: chatrealty                                           │
-│  ├─ users                    (~500 docs) ← Payload managed     │
-│  ├─ payload-preferences      (Payload internal)                │
-│  ├─ payload-migrations       (Payload internal)                │
+│  Database: jpsrealtor                                           │
+│  ├─ users                    (~500 docs) ← NextAuth managed    │
+│  ├─ sessions                 (NextAuth sessions)               │
+│  ├─ accounts                 (OAuth providers)                 │
 │  ├─ listings                 (11,592 GPS active)               │
 │  ├─ crmlsListings            (20,406 CRMLS active)             │
 │  ├─ gpsClosedListings        (11,592 GPS sold)                 │
 │  ├─ crmlsClosedListings      (30,409 CRMLS sold)               │
 │  ├─ photos                   (~40,000 cached photos)           │
-│  ├─ cities                   (~50 docs) ← Payload managed      │
-│  ├─ neighborhoods            (~500 docs) ← Payload managed     │
-│  ├─ schools                  (~200 docs) ← Payload managed     │
+│  ├─ cities                   (~50 cities)                      │
+│  ├─ subdivisions             (~500 communities)                │
+│  ├─ schools                  (~200 schools)                    │
 │  ├─ chatMessages             (~10,000 saved messages)          │
 │  ├─ savedChats               (~2,000 chat sessions)            │
-│  └─ blogposts                ← Payload managed                 │
+│  └─ swipes                   (User swipe history)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,37 +93,36 @@
 
 ## 📐 ARCHITECTURE PRINCIPLES
 
-### 1. **Single Source of Truth**
-- **MongoDB Atlas** is the only database
-- **PayloadCMS** manages structured content and users
-- **Direct queries** for performance-critical MLS data
-- **No data duplication** between systems
+### 1. **Direct Database Access**
+- **Next.js API routes** query MongoDB directly
+- **No CMS overhead** - maximum performance
+- **Custom business logic** in API routes
+- **Building custom CRM/CMS** for agent management (future)
 
-### 2. **Authentication Unification**
-- **PayloadCMS** is the ONLY auth system
-- **No NextAuth.js** - removed entirely
-- **OAuth flows** bridge through Next.js → Payload
-- **JWT tokens** issued by Payload, validated everywhere
-- **Session management** via Payload's built-in system
+### 2. **Lightweight Authentication**
+- **NextAuth.js v4** for authentication
+- **OAuth providers**: Google, Facebook
+- **JWT tokens** stored in HTTP-only cookies
+- **Session management** via MongoDB adapter
 
-### 3. **Multi-Tenant Ready**
-- **Shared backend** (PayloadCMS) serves all agents
-- **Tenant isolation** via branding/config collections
-- **Shared MLS pool** with optional per-agent filters
-- **User scoping** - users belong to specific agents/brands
+### 3. **AI-First Design**
+- **Groq LLM** as primary interface
+- **Natural language** property search
+- **Function calling** for map control
+- **"Chap" experience** - Chat controls Map
 
 ### 4. **Performance First**
-- **Direct MongoDB** access for listings (no Payload overhead)
-- **Payload CMS** for content that benefits from admin UI
-- **Edge caching** for static content
-- **Lazy loading** for large datasets
+- **Direct MongoDB queries** (no ORM overhead)
+- **Redis caching** (planned for VPS)
+- **Edge deployment** on Vercel
+- **Cloudinary CDN** for images
+- **Service Worker** for offline support
 
-### 5. **Developer Experience**
-- **TypeScript everywhere** - full type safety
-- **Monorepo structure** (future chatRealty umbrella)
-- **Shared types** across frontend/backend
-- **Hot reload** in development
-- **Automatic API generation** via Payload
+### 5. **Multi-Tenant Ready (Future)**
+- **Shared MLS data** across all agents
+- **Tenant-scoped** user/content data
+- **Custom CRM** for agent branding
+- **White-label** frontend deployments
 
 ---
 
@@ -153,547 +132,485 @@
 
 ```yaml
 Framework: Next.js 16.0.3
-  - App Router (not Pages Router)
-  - React Server Components
-  - Turbopack (dev mode)
+  - App Router (React Server Components)
+  - Turbopack (dev mode, 862ms startup!)
   - Server Actions
+  - API Routes
 
 UI Layer: React 19.0.0
   - Client Components ("use client")
   - Server Components (default)
   - Suspense boundaries
-  - Error boundaries
+
+Authentication: NextAuth.js 4.24.13
+  - Google OAuth
+  - Facebook OAuth
+  - JWT strategy
+  - MongoDB session adapter
 
 Styling: Tailwind CSS 3.4.17
   - Custom theme (lightgradient/blackspace)
   - JIT compiler
-  - Custom plugins
-  - PostCSS
-
-Animations: Framer Motion 11.15.0
-  - Page transitions
-  - Swipe gestures
-  - Loading states
-
-State Management:
-  - React Context (ThemeContext, ChatProvider)
-  - URL state (useSearchParams)
-  - Local storage (favorites, preferences)
+  - Framer Motion animations
 
 Maps: MapLibre GL 4.7.1
-  - Vector tiles (MapTiler)
+  - @vis.gl/react-maplibre
   - Supercluster (marker clustering)
+  - Vector tiles (MapTiler)
   - Custom controls
-  - GeoJSON overlays
+
+State Management:
+  - React Context (ThemeContext, ChatProvider, MLSProvider)
+  - URL state (useSearchParams)
+  - localStorage (favorites, preferences)
+  - Cookies (auth, theme)
 
 Icons: Lucide React 0.468.0
   - Tree-shakeable
-  - Consistent sizing
-  - Custom variants
+  - Modular imports optimized
 ```
 
-### Backend (PayloadCMS + Next.js APIs)
+### Backend (Next.js API Routes + MongoDB)
 
 ```yaml
-CMS: PayloadCMS 3.64.0
-  - MongoDB adapter (@payloadcms/db-mongodb)
-  - Lexical editor (@payloadcms/richtext-lexical)
-  - Nodemailer email (@payloadcms/email-nodemailer)
-  - Cloud storage plugin (Cloudinary)
-  - Built-in auth (JWT)
-  - Admin panel (React)
-  - REST + GraphQL APIs
-
 Runtime: Node.js 20.x
-  - ES Modules (type: "module")
+  - ES Modules
   - Native fetch
-  - WebSocket support
-
-Database Driver: Mongoose 8.9.3
-  - Connection pooling
-  - Schema validation
-  - Middleware hooks
-  - Transactions
-
-API Framework: Next.js API Routes
-  - Route handlers (App Router)
-  - Middleware
-  - Edge runtime (select routes)
   - Streaming responses (chat)
 
-Email: Nodemailer 7.0.10
-  - SMTP transport
-  - HTML templates
-  - Attachment support
-```
+Database: MongoDB 6.x
+  - DigitalOcean Managed MongoDB
+  - 80GB SSD, 4GB RAM
+  - Connection pooling via Mongoose 8.9.3
+  - Geospatial indexes (2dsphere)
 
-### Database (MongoDB Atlas)
+API Routes: Next.js App Router
+  - /api/mls-listings/* - Dual MLS queries
+  - /api/chat/* - Groq AI streaming
+  - /api/swipes/* - User preferences
+  - /api/auth/* - NextAuth handlers
+  - /api/photos/* - Photo fetching
 
-```yaml
-Provider: DigitalOcean Managed MongoDB
-Version: MongoDB 6.x
-Cluster: jpsrealtor-mongodb-911080c1
-Region: NYC3 (New York)
-Storage: 80GB SSD
-RAM: 4GB dedicated
-
-Configuration:
-  - Replica set (3 nodes)
-  - Automatic backups (daily)
-  - Point-in-time recovery
-  - SSL/TLS enforced
-  - IP whitelisting
-
-Connection:
-  URI: mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@jpsrealtor-mongodb-911080c1.mongo.ondigitalocean.com/admin
-  Database: chatrealty
-  Max pool size: 50
-  Timeout: 30s
+Caching Strategy:
+  - HTTP Cache-Control: 60s server cache
+  - Stale-while-revalidate: 120s
+  - Redis (planned): 5-min tile cache
+  - Service Worker: 24hr asset cache
 ```
 
 ### AI & External Services
 
 ```yaml
 AI Chat: Groq SDK 0.8.0
-  Model: llama-3.1-70b-versatile
+  Models:
+    - llama-3.1-8b-instant (FREE tier, 840 TPS)
+    - openai/gpt-oss-120b (PREMIUM, 131K context)
   Features:
-    - Function calling
+    - Function calling (map control)
     - Streaming responses
     - Tool use
-    - Context window: 32k tokens
+    - Context: 32k-131k tokens
 
 MLS Data: Spark API (GPS + CRMLS)
   - Replication API
   - OAuth 2.0
   - Batch fetching (500/request)
-  - Webhook support (future)
+  - Dual collection architecture
 
 Image CDN: Cloudinary
-  - Media library
-  - Transformations
-  - Optimization
-  - Lazy loading
+  - Transform on-the-fly
+  - Auto-optimization (WebP)
+  - Lazy loading support
+  - 40-60% bandwidth savings (with optimization)
 
-Geocoding: OpenCage
-  - Address → Lat/Lon
-  - Reverse geocoding
-  - Batch processing
+Maps: MapTiler
+  - Vector tiles
+  - 4 style variants (dark, bright, satellite, toner)
+  - Free tier: 100k tiles/month
 
-Business Data: Yelp Fusion API
-  - Local amenities
-  - Reviews
-  - Photos
-
-Email: SMTP (Google)
-  - App passwords
-  - Rate limiting
-  - Bounce handling
-
-Payments: Stripe (future)
-  - Subscriptions
-  - Webhooks
-  - Customer portal
-```
-
----
-
-## 📁 REPOSITORY STRUCTURE
-
-### Three Repository Model
-
-```
-F:/web-clients/joseph-sardella/
-├── chatRealty/                    # Master meta-repository (this)
-│   ├── memory-files/              # Unified architecture docs
-│   │   ├── MASTER_SYSTEM_ARCHITECTURE.md
-│   │   ├── FRONTEND_ARCHITECTURE.md
-│   │   ├── BACKEND_ARCHITECTURE.md
-│   │   ├── AUTH_ARCHITECTURE.md
-│   │   ├── DATABASE_ARCHITECTURE.md
-│   │   ├── MULTI_TENANT_ARCHITECTURE.md
-│   │   ├── COLLECTIONS_REFERENCE.md
-│   │   ├── DEPLOYMENT_PIPELINE.md
-│   │   ├── INTEGRATION_NOTES.md
-│   │   ├── DEVELOPER_ONBOARDING.md
-│   │   └── README.md
-│   └── (future: shared packages, types, configs)
-│
-├── jpsrealtor/                    # Frontend Next.js app
-│   ├── src/
-│   │   ├── app/                   # Next.js App Router
-│   │   │   ├── api/               # API routes
-│   │   │   ├── components/        # React components
-│   │   │   ├── contexts/          # React contexts
-│   │   │   └── (other routes)
-│   │   ├── lib/                   # Backend utilities
-│   │   │   ├── groq.ts            # AI chat
-│   │   │   ├── mongoose.ts        # DB connection
-│   │   │   └── cms-client.ts      # Payload SDK (future)
-│   │   ├── models/                # Mongoose models
-│   │   ├── scripts/               # Build/deployment scripts
-│   │   └── types/                 # TypeScript types
-│   ├── public/                    # Static assets
-│   ├── memory-files/              # Copy of master architecture
-│   │   └── master-architecture/   # (identical to chatRealty)
-│   ├── .env.local                 # Environment variables
-│   ├── next.config.mjs            # Next.js config
-│   ├── tailwind.config.ts         # Tailwind config
-│   └── package.json
-│
-└── chatrealty-cms/                # PayloadCMS backend
-    ├── src/
-    │   ├── collections/           # Payload collections
-    │   │   ├── Users.ts
-    │   │   ├── Cities.ts
-    │   │   ├── Neighborhoods.ts
-    │   │   ├── Schools.ts
-    │   │   ├── BlogPosts.ts
-    │   │   ├── Contacts.ts
-    │   │   └── Media.ts
-    │   ├── hooks/                 # Payload hooks
-    │   ├── routes/                # Custom endpoints
-    │   └── utils/                 # Helper functions
-    ├── memory-files/              # Copy of master architecture
-    │   └── master-architecture/   # (identical to chatRealty)
-    ├── .env                       # Environment variables
-    ├── payload.config.ts          # Payload configuration
-    └── package.json
+Email: Nodemailer 7.0.10
+  - SMTP (Google Workspace)
+  - Contact forms
+  - User notifications
 ```
 
 ---
 
 ## 🔄 DATA FLOW ARCHITECTURE
 
-### User Authentication Flow
+### User Authentication Flow (NextAuth)
 
 ```
-┌──────────┐
-│  User    │
-│  Browser │
-└────┬─────┘
-     │
-     │ 1. Click "Sign in with Google"
-     ▼
-┌─────────────────────┐
-│  Frontend           │
-│  /api/auth/google   │  ← Next.js API route
-└────┬────────────────┘
-     │
-     │ 2. Redirect to Google OAuth
-     ▼
-┌─────────────────────┐
-│  Google OAuth       │
-│  consent screen     │
-└────┬────────────────┘
-     │
-     │ 3. User authorizes → callback with code
-     ▼
-┌─────────────────────┐
-│  Frontend           │
-│  /api/auth/callback │
-└────┬────────────────┘
-     │
-     │ 4. POST code to Payload
-     ▼
-┌─────────────────────┐
-│  PayloadCMS         │
-│  /api/users/login   │  ← Exchange code for user
-└────┬────────────────┘
-     │
-     │ 5. Create/update user, issue JWT
-     ▼
-┌─────────────────────┐
-│  MongoDB            │
-│  users collection   │
-└────┬────────────────┘
-     │
-     │ 6. Return JWT token + user data
-     ▼
-┌─────────────────────┐
-│  Frontend           │
-│  Store in cookies   │
-│  Update UI          │
-└─────────────────────┘
+User clicks "Sign in with Google"
+    ↓
+/api/auth/signin/google (NextAuth handler)
+    ↓
+Redirect to Google OAuth consent
+    ↓
+Google callback → /api/auth/callback/google
+    ↓
+NextAuth:
+  1. Validates OAuth code
+  2. Creates/updates user in MongoDB (users collection)
+  3. Creates session in MongoDB (sessions collection)
+  4. Issues JWT token
+  5. Sets HTTP-only cookie
+    ↓
+Frontend: User authenticated
+    ↓
+useSession() hook provides user data
 ```
 
 ### MLS Listing Search Flow
 
 ```
-┌──────────┐
-│  User    │
-│  Types   │  "Show me homes in Palm Desert"
-└────┬─────┘
-     │
-     ▼
-┌─────────────────────┐
-│  IntegratedChatWidget│  ← React component
-│  sends message      │
-└────┬────────────────┘
-     │
-     │ POST /api/chat/stream
-     ▼
-┌─────────────────────┐
-│  Groq AI            │  ← llama-3.1-70b-versatile
-│  analyzes intent    │
-└────┬────────────────┘
-     │
-     │ AI decides: call matchLocation()
-     ▼
-┌─────────────────────┐
-│  /api/chat/         │
-│  match-location     │  ← Function executor
-└────┬────────────────┘
-     │
-     │ Query subdivisions collection
-     ▼
-┌─────────────────────┐
-│  MongoDB            │
-│  subdivisions       │  ← Returns: "palm-desert-country-club"
-└────┬────────────────┘
-     │
-     │ Result back to AI
-     ▼
-┌─────────────────────┐
-│  Groq AI            │
-│  decides next:      │  ← Call getSubdivisionListings()
-└────┬────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│  /api/subdivisions/ │
-│  [slug]/listings    │  ← Next.js API route
-└────┬────────────────┘
-     │
-     │ db.listings.find({ subdivisionName: "..." })
-     ▼
-┌─────────────────────┐
-│  MongoDB            │
-│  listings + photos  │  ← Returns 20 sorted results
-└────┬────────────────┘
-     │
-     │ Format for display
-     ▼
-┌─────────────────────┐
-│  Frontend           │
-│  ListingCarousel    │  ← Renders results
-└─────────────────────┘
+User types in chat: "Show me 3-bed homes under $500k in Palm Desert"
+    ↓
+IntegratedChatWidget → POST /api/chat/stream
+    ↓
+Groq AI (llama-3.1-8b-instant)
+  - Analyzes intent
+  - Decides to call searchProperties tool
+    ↓
+Function Executor: searchProperties()
+  - Resolves "Palm Desert" to coordinates
+  - Builds filter: { beds: 3, maxPrice: 500000 }
+  - Queries MongoDB
+    ↓
+Parallel Fetch:
+  ├─ GPS listings:  db.listings.find({ city: "Palm Desert", ... })
+  └─ CRMLS listings: db.crmlsListings.find({ city: "Palm Desert", ... })
+    ↓
+Merge results with mlsSource tag (GPS | CRMLS)
+    ↓
+AI formats response:
+  {
+    mapControl: { action: "panTo", location: {...}, zoom: 12 },
+    message: "Found 47 homes in Palm Desert...",
+    listings: [...]
+  }
+    ↓
+Frontend (Chap experience):
+  1. Map animates to Palm Desert
+  2. Applies filters
+  3. Displays listing carousel in chat
+  4. Shows markers on map
 ```
 
-### Swipe Mode Flow
+### Swipe Queue Flow (Tinder-style Discovery)
 
 ```
-User clicks "Swipe Through All"
-  ↓
-IntegratedChatWidget.handleViewListingsInSwipeMode()
-  ↓
-Create SwipeSession {
-  batchId: crypto.randomUUID()
-  subdivision: "Palm Desert Country Club"
-  listings: [20 properties]
-  currentIndex: 0
-}
-  ↓
-Open ListingBottomPanel with first listing
-  ↓
+User opens listing → Initialize swipe queue
+    ↓
+useSwipeQueue hook:
+  1. Fetch listings within 5-mile radius
+  2. Exclude already-swiped (GET /api/swipes/exclude-keys)
+  3. Score by proximity tiers (7 tiers, 0-405 points):
+     - Same subdivision + type + zip: 0-5
+     - Same subdivision + type, diff zip: 50-55
+     - Same city, within 5mi: 400-405
+  4. Sort by score (lower = better match)
+  5. Limit to 100 listings
+    ↓
 User swipes left/right
-  ↓
-handleSwipeLeft() / handleSwipeRight()
-  ↓
-If right swipe → Save to favorites (future: POST to Payload)
-  ↓
-Increment currentIndex
-  ↓
-If currentIndex < total:
-  Show next listing
-Else:
-  Show SwipeCompletionModal
-  ↓
-Save favorites to user profile (MongoDB)
+    ↓
+Immediate persistence: POST /api/swipes/batch
+  - Saves to MongoDB (swipes collection)
+  - Updates user analytics (top subdivisions, cities)
+  - Links anonymous sessions to accounts on login
+    ↓
+Advance to next listing in queue
 ```
 
 ---
 
 ## 🔐 AUTHENTICATION & AUTHORIZATION
 
-### Authentication Architecture
+### NextAuth.js Architecture
 
-**System:** PayloadCMS Built-in Auth (JWT-based)
+**Providers:**
+- Google OAuth 2.0
+- Facebook OAuth
+- Email/Password (future)
 
-**Flows:**
-1. **Email/Password**: Payload native
-2. **Google OAuth**: Next.js bridge → Payload
-3. **Facebook OAuth**: Next.js bridge → Payload
-
-**Token Management:**
-- **Access Token**: JWT, 7-day expiry
-- **Refresh Token**: MongoDB-stored, 30-day expiry
-- **Storage**: HTTP-only cookies (secure, sameSite)
+**Session Strategy:**
+- **JWT** tokens (7-day expiry)
+- **Database sessions** (MongoDB sessions collection)
+- **HTTP-only cookies** (secure, sameSite: lax)
 
 **User Roles:**
 ```typescript
 type UserRole =
-  | 'admin'           // Full system access
-  | 'agent'           // Agent account (can manage own brand)
-  | 'broker'          // Team leader (manages agents)
-  | 'client'          // End user (free tier)
-  | 'investor'        // Paid tier (enhanced features)
-  | 'provider'        // Service providers (title, lender)
-  | 'host'            // Vacation rental hosts
+  | 'user'      // Default end user
+  | 'investor'  // Premium tier (future subscriptions)
+  | 'agent'     // Real estate agent (future multi-tenant)
+  | 'admin'     // System administrator
 ```
 
 **Access Control:**
-- **Field-level**: Payload collections enforce per-role
-- **Route-level**: Next.js middleware checks JWT
-- **Data-level**: MongoDB queries filter by user scope
+```typescript
+// API route protection
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-See [AUTH_ARCHITECTURE.md](./AUTH_ARCHITECTURE.md) for complete details.
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Role-based access
+  if (session.user.role !== 'admin') {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // ... protected logic
+}
+```
+
+**MongoDB Collections:**
+- `users` - User profiles
+- `accounts` - OAuth provider links
+- `sessions` - Active sessions
+- `verification_tokens` - Email verification (future)
 
 ---
 
-## 🏢 MULTI-TENANT STRATEGY
+## 🏢 FUTURE: CUSTOM CRM/CMS
 
-### Tenant Model
+### Vision: ChatRealty.io Agent Management Platform
 
-**Primary Tenant:** JPSRealtor.com (Joseph Sardella)
-**Future Tenants:** Other real estate agents via ChatRealty.io
+**Goals:**
+- Build proprietary CRM for agent/client relationships
+- Replace need for external CMS platforms
+- Tight integration with MLS data and AI features
+- White-label deployments for agents
 
-### Shared vs Isolated Data
+**Planned Features:**
 
-**Shared (Global):**
-- MLS listings (all agents see same pool)
-- Cities, Neighborhoods, Schools
-- Photos cache
-- AI models/prompts
-
-**Isolated (Per-Tenant):**
-- User accounts (scoped to agent)
-- Saved searches
-- Favorites
-- Chat history
-- CMA reports
-- Branding/theme
-
-### Tenant Configuration
-
-**Payload Collection:** `websiteForks` (future)
-
+#### 1. Agent Management
 ```typescript
+// Collection: agents
 {
-  tenantId: "jps-realtor",
-  agentName: "Joseph Sardella",
-  agentEmail: "joseph@jpsrealtor.com",
-  domain: "jpsrealtor.com",
+  agentId: string,
+  name: string,
+  email: string,
+  phone: string,
+  mlsLicenseNumber: string,
+  brokerageName: string,
+
+  // Branding
   branding: {
-    logo: "https://...",
-    primaryColor: "#1e40af",
-    secondaryColor: "#10b981",
-    theme: "lightgradient"
+    logo: string (Cloudinary URL),
+    primaryColor: string,
+    secondaryColor: string,
+    customDomain: string, // e.g., "agent-name.chatrealty.io"
+    theme: "lightgradient" | "blackspace"
   },
+
+  // MLS Access
   mlsAccess: {
     sources: ["GPS", "CRMLS"],
-    regions: ["Coachella Valley"]
+    regions: ["Coachella Valley"],
+    apiKeys: { /* encrypted */ }
   },
+
+  // Features
   features: {
-    chat: true,
-    cma: true,
-    swipe: true,
-    investorTiers: true
+    aiChat: boolean,
+    cmaGeneration: boolean,
+    swipeMode: boolean,
+    investorTools: boolean
+  },
+
+  // Analytics
+  stats: {
+    totalClients: number,
+    activeLeads: number,
+    closedDeals: number,
+    revenue: number
   }
 }
 ```
 
-### Frontend Routing Strategy
+#### 2. Client Management (CRM Core)
+```typescript
+// Collection: clients
+{
+  clientId: string,
+  agentId: string, // Links to agent
+  name: string,
+  email: string,
+  phone: string,
 
-**Option A (Current):** Separate deployments
-- jpsrealtor.com → jpsrealtor repo
-- agent2.chatrealty.io → agent2 repo (fork)
+  // Lead Status
+  status: "new" | "active" | "nurture" | "closed" | "lost",
+  source: "website" | "referral" | "social" | "direct",
 
-**Option B (Future):** Dynamic routing
-- *.chatrealty.io → single Next.js app
-- Tenant resolved from subdomain
-- Branding loaded from Payload
+  // Preferences (from AI/swipes)
+  preferences: {
+    priceRange: { min: number, max: number },
+    beds: number,
+    baths: number,
+    cities: string[],
+    subdivisions: string[],
+    propertyTypes: ["A", "B", "C"],
+    amenities: string[]
+  },
 
-See [MULTI_TENANT_ARCHITECTURE.md](./MULTI_TENANT_ARCHITECTURE.md) for complete strategy.
+  // Activity Tracking
+  activity: {
+    lastActive: Date,
+    viewedListings: string[], // listing keys
+    favoritedListings: string[],
+    scheduledTours: ObjectId[], // ref: tours
+    chatHistory: ObjectId[] // ref: chatSessions
+  },
+
+  // Communication
+  communications: [
+    {
+      date: Date,
+      type: "email" | "call" | "text" | "meeting",
+      notes: string,
+      outcome: string
+    }
+  ]
+}
+```
+
+#### 3. Content Management
+```typescript
+// Collection: cms_pages
+{
+  pageId: string,
+  tenantId: string, // Which agent's site
+  type: "landing" | "about" | "blog" | "neighborhood" | "custom",
+
+  slug: string,
+  title: string,
+  metaDescription: string,
+
+  // Flexible content blocks
+  blocks: [
+    {
+      type: "hero" | "text" | "listings" | "testimonials" | "cta",
+      data: { /* block-specific data */ }
+    }
+  ],
+
+  published: boolean,
+  publishDate: Date
+}
+```
+
+#### 4. Lead Capture & Automation
+- Contact form submissions → Auto-create client record
+- AI chat leads → Flag high-intent conversations
+- Automated email follow-ups
+- Tour scheduling integration
+- CMA report generation triggers
+
+#### 5. Analytics Dashboard
+- Client funnel visualization
+- AI chat effectiveness metrics
+- Top-performing listings
+- Revenue tracking
+- Lead source attribution
+
+### Implementation Timeline
+
+**Phase 1 (Q1 2025):** Foundation
+- Design CRM schema
+- Build agent onboarding flow
+- Create admin panel UI
+
+**Phase 2 (Q2 2025):** Core CRM
+- Client management interface
+- Communication tracking
+- Lead scoring
+
+**Phase 3 (Q3 2025):** Multi-Tenant
+- White-label deployments
+- Custom domain support
+- Branding customization
+
+**Phase 4 (Q4 2025):** Automation
+- Email workflows
+- AI-powered lead nurture
+- Automated CMA generation
 
 ---
 
 ## 🚀 DEPLOYMENT ARCHITECTURE
 
-### Current Deployment
+### Current Production Setup
 
-**Frontend (jpsrealtor):**
-- Platform: Vercel (recommended) or DigitalOcean App Platform
-- Domain: jpsrealtor.com
-- Build: `npm run build`
-- Runtime: Node.js 20.x serverless
-- Regions: Auto (edge globally)
-
-**Backend CMS (chatrealty-cms):**
-- Platform: DigitalOcean VPS (Droplet)
-- Domain: cms.chatrealty.io
-- Server: Ubuntu 22.04 LTS
-- Process Manager: PM2
-- Web Server: Nginx (reverse proxy)
-- Port: 3002 → Nginx → 443 (SSL)
+**Frontend:**
+- **Platform:** Vercel
+- **Domain:** jpsrealtor.com
+- **Runtime:** Node.js 20.x serverless functions
+- **Edge Network:** Global CDN
+- **Build:** `npm run build` (optimized with SWC)
+- **Performance:** 862ms dev startup, <3s production load
 
 **Database:**
-- Platform: DigitalOcean Managed MongoDB
-- Region: NYC3
-- Endpoint: jpsrealtor-mongodb-911080c1.mongo.ondigitalocean.com
+- **Platform:** DigitalOcean Managed MongoDB
+- **Cluster:** jpsrealtor-mongodb-911080c1
+- **Region:** NYC3 (New York)
+- **Storage:** 80GB SSD
+- **RAM:** 4GB dedicated
+- **Replica Set:** 3 nodes
+- **Backups:** Daily automatic backups
+- **Connection:** `mongodb+srv://...mongo.ondigitalocean.com/jpsrealtor`
+
+**VPS (Future Redis/Services):**
+- **Provider:** DigitalOcean Droplet
+- **IP:** 147.182.236.138
+- **OS:** Ubuntu 22.04 LTS
+- **Planned Services:**
+  - Redis caching (listing tiles, API responses)
+  - Static JSON cache (popular listings)
+  - Cron jobs (MLS sync, analytics)
 
 **DNS:**
-- Provider: (your DNS provider)
-- Records:
-  - `jpsrealtor.com` → Vercel A/CNAME
-  - `cms.chatrealty.io` → VPS IP
-  - `www.jpsrealtor.com` → Vercel redirect
+- jpsrealtor.com → Vercel
+- www.jpsrealtor.com → Redirect to jpsrealtor.com
 
 ### Environment Variables
 
 **Frontend (.env.local):**
 ```bash
-# Payload CMS
-NEXT_PUBLIC_CMS_URL=https://cms.chatrealty.io
-
 # Database
 MONGODB_URI=mongodb+srv://...
 
-# AI
-GROQ_API_KEY=...
-
-# Maps
-NEXT_PUBLIC_MAPTILER_API_KEY=...
-
-# OAuth
+# NextAuth
+NEXTAUTH_URL=https://jpsrealtor.com
+NEXTAUTH_SECRET=...
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 FACEBOOK_APP_ID=...
 FACEBOOK_APP_SECRET=...
 
-# Media
+# Groq AI
+GROQ_API_KEY=...
+
+# Maps
+NEXT_PUBLIC_MAPTILER_API_KEY=...
+
+# Cloudinary
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_SECRET=...
+
+# MLS APIs
+GPS_MLS_KEY=...
+CRMLS_API_KEY=...
+
+# Redis (future)
+REDIS_URL=redis://147.182.236.138:6379
 ```
-
-**Backend CMS (.env):**
-```bash
-# Payload
-PAYLOAD_SECRET=...
-NEXT_CMS_URL=https://cms.chatrealty.io
-
-# Database
-MONGODB_URI=mongodb+srv://...
-
-# Email
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=...
-SMTP_PASS=...
-EMAIL_FROM=noreply@jpsrealtor.com
-```
-
-See [DEPLOYMENT_PIPELINE.md](./DEPLOYMENT_PIPELINE.md) for complete deployment steps.
 
 ---
 
@@ -701,142 +618,185 @@ See [DEPLOYMENT_PIPELINE.md](./DEPLOYMENT_PIPELINE.md) for complete deployment s
 
 ### Spark API (MLS Data)
 
-**Purpose:** Fetch MLS listings from GPS and CRMLS
+**Purpose:** Fetch listings from GPS and CRMLS MLSs
 
 **Endpoints:**
 - Replication API: `https://replication.sparkapi.com/v1/listings`
 - OAuth: `https://api.sparkapi.com/v1/oauth2/token`
 
-**Authentication:** OAuth 2.0
-- Client ID: (in .env)
-- Client Secret: (in .env)
-- Token refresh: Automatic
-
 **Data Pipeline:**
 ```
-Spark API → fetch.py → flatten.py → seed.py → MongoDB
-                                       ↓
-                                cache_photos.py
+Spark API → Python scripts → MongoDB
+  ├─ fetch.py (pulls raw MLS data)
+  ├─ flatten.py (normalizes RESO fields)
+  ├─ seed.py (upserts to MongoDB)
+  └─ cache_photos.py (downloads primary photos)
 ```
 
-**Schedule:**
-- Active listings: Every 12 hours (6 AM, 6 PM)
-- Closed listings: Daily at 10 AM
-- Photos: On-demand + daily sync
+**Collections:**
+- `listings` (GPS active)
+- `crmlsListings` (CRMLS active)
+- `gpsClosedListings` (GPS sold/expired)
+- `crmlsClosedListings` (CRMLS sold/expired)
+
+**Sync Schedule:**
+- Active listings: Every 12 hours (6 AM, 6 PM PST)
+- Closed listings: Daily at 10 AM PST
+- Photos: On-demand + nightly sync
 
 ### Groq AI
 
-**Purpose:** AI chat with function calling
+**Purpose:** Natural language property search and chat
 
-**Model:** llama-3.1-70b-versatile
-- Context window: 32k tokens
-- Streaming: Yes
-- Function calling: Yes (tools)
-- Cost: Free tier (10k requests/day)
+**Models:**
+- **FREE:** `llama-3.1-8b-instant` (840 TPS, ~$0.013/month/user)
+- **PREMIUM:** `openai/gpt-oss-120b` (131K context, function calling)
 
-**Functions Registered:**
-1. `matchLocation` - Resolve city/subdivision from query
-2. `getSubdivisionListings` - Fetch listings by subdivision
-3. `searchListings` - General MLS search with filters
-4. `getCommunityFacts` - Get schools, demographics, amenities
+**Function Tools:**
+1. **matchLocation** - Resolve city/subdivision from natural language
+2. **searchProperties** - Fetch listings with filters
+3. **getCommunityFacts** - Get schools, demographics, amenities
+4. **controlMap** - Pan/zoom map, apply filters (Chap feature)
+
+**System Prompt:** Includes:
+- Investment formulas (Cap Rate, CoC, DSCR)
+- CMA generation guidance
+- API documentation
+- Listing data schema
 
 ### Cloudinary
 
-**Purpose:** Image CDN and transformations
+**Purpose:** Image CDN and optimization
 
-**Features:**
-- Upload from URLs
-- Auto-optimize (WebP, compression)
-- Lazy loading support
-- Transformations (resize, crop, format)
+**Current Usage:**
+- Direct URLs from MLS CDNs (Spark Platform, CRMLS)
+- No transformation yet
+
+**Planned Optimization:**
+- Fetch API: Transform external MLS photos
+- Auto-format: WebP for modern browsers
+- Quality optimization: 70-80 (down from 100)
+- Responsive sizing: 640/1024/1280px variants
+- **Expected savings:** 40-60% bandwidth reduction
 
 **Integration:**
-- PayloadCMS plugin: @payloadcms/plugin-cloud-storage
-- Upload handler: Automatic on media uploads
-- URL format: `https://res.cloudinary.com/duqgao9h8/image/upload/...`
+```typescript
+// src/lib/cloudinary.ts
+export function getOptimizedMlsPhoto(url: string, width: number, quality: number) {
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/fetch/w_${width},q_${quality},f_auto/${encodeURIComponent(url)}`;
+}
+```
 
-### Email (SMTP)
+### MapTiler
 
-**Provider:** Google Workspace / Gmail
+**Purpose:** Vector map tiles
 
-**Use Cases:**
-- User verification emails
-- Password reset
-- Contact form submissions
-- Admin notifications
+**Styles Available:**
+- Dark (default)
+- Bright (light mode)
+- Satellite (aerial imagery)
+- Toner (high contrast B&W)
 
-**Configuration:**
-- Host: smtp.gmail.com
-- Port: 587 (STARTTLS)
-- Auth: App password
+**API Key:** Stored in `NEXT_PUBLIC_MAPTILER_API_KEY`
+
+**Usage:** MapLibre GL consumes vector tiles
 
 ---
 
 ## 📊 SYSTEM METRICS
 
-### Database Size
-- **Total documents**: ~115,000
-- **Total size**: ~8GB
-- **Indexes**: 25 indexes across collections
-- **Queries/day**: ~50,000
+### Database Statistics
+- **Total Documents:** ~115,000
+- **Active Listings:** 32,000 (GPS + CRMLS)
+- **Closed Listings:** 42,000
+- **Photos Cached:** 40,000
+- **Total Size:** ~8GB
+- **Indexes:** 25+ (geospatial, compound, unique)
+- **Queries/day:** ~50,000
 
 ### Frontend Performance
-- **First Contentful Paint**: <1.5s
-- **Time to Interactive**: <3s
-- **Lighthouse Score**: 85+ (mobile)
-- **Bundle size**: ~350KB (gzipped)
+- **Dev Server Startup:** 862ms (95% improvement from optimizations)
+- **Production Build:** ~60s
+- **First Contentful Paint:** <1.5s
+- **Time to Interactive:** <3s
+- **Lighthouse Score:** 85+ (mobile)
+- **Bundle Size:** ~350KB gzipped
 
 ### API Performance
-- **Chat streaming**: <500ms first token
-- **Listing search**: <200ms average
-- **Map tile load**: <100ms (cached)
+- **Chat Streaming:** <500ms first token
+- **Listing Search:** <200ms average (no cache), <20ms (with Redis - planned)
+- **Map Tile Load:** <100ms (cached)
+- **Photo Fetch:** 200ms (without optimization), <50ms (with Cloudinary - planned)
 
-### Costs (Monthly)
-- MongoDB Atlas: $30
-- DigitalOcean VPS: $12
-- Cloudinary: $0 (free tier)
-- Groq: $0 (free tier)
-- Domain: $12/year
-- **Total**: ~$42/month
+### Monthly Costs
+- **MongoDB Atlas:** $30 (DigitalOcean Managed)
+- **Vercel:** $0 (Hobby tier, may upgrade to Pro $20)
+- **DigitalOcean VPS:** $12 (for future Redis)
+- **Cloudinary:** $0 (free tier)
+- **Groq AI:** $0 (free tier)
+- **MapTiler:** $0 (free tier)
+- **Domain:** $12/year
+- **Total:** ~$42/month ($54 if Vercel Pro)
 
 ---
 
 ## 🔮 FUTURE ROADMAP
 
-### Phase 1: Multi-Tenant Foundation (Q1 2026)
-- [ ] Create `websiteForks` collection in Payload
-- [ ] Implement tenant-scoped queries
-- [ ] Build branding configuration system
-- [ ] Deploy second agent site (proof of concept)
+### Q1 2025: Performance & CDN
+- [ ] Deploy Redis on VPS for API caching
+- [ ] Implement Cloudinary image optimization
+- [ ] Build tile-based map caching
+- [ ] Add pagination to photo carousel
+- [ ] Optimize bundle size (remove unused deps)
 
-### Phase 2: Enhanced Features (Q2 2026)
-- [ ] Stripe integration (subscriptions)
-- [ ] Advanced CMA with PDF generation
-- [ ] Mobile apps (React Native)
-- [ ] Real-time chat (WebSocket)
+### Q2 2025: "Chap" Experience
+- [ ] Create unified /chap route (Chat + Map)
+- [ ] Build AI map control functions
+- [ ] Desktop split-screen layout
+- [ ] Mobile overlay with swipe gestures
+- [ ] Synchronized selection state
 
-### Phase 3: ChatRealty.io Launch (Q3 2026)
-- [ ] Agent onboarding portal
-- [ ] Marketplace for service providers
-- [ ] Centralized analytics dashboard
-- [ ] Multi-agent collaboration tools
+### Q3 2025: Custom CRM Foundation
+- [ ] Design CRM schema (agents, clients, communications)
+- [ ] Build agent onboarding flow
+- [ ] Create admin panel UI
+- [ ] Lead capture and tracking
+
+### Q4 2025: Multi-Tenant Launch
+- [ ] White-label deployment system
+- [ ] Custom domain support
+- [ ] Branding customization per agent
+- [ ] Launch ChatRealty.io marketplace
 
 ---
 
 ## 📚 RELATED DOCUMENTATION
 
-- [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md) - Next.js app structure
-- [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md) - PayloadCMS details
-- [AUTH_ARCHITECTURE.md](./AUTH_ARCHITECTURE.md) - Authentication flows
-- [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md) - MongoDB schema
-- [MULTI_TENANT_ARCHITECTURE.md](./MULTI_TENANT_ARCHITECTURE.md) - Tenant strategy
-- [COLLECTIONS_REFERENCE.md](./COLLECTIONS_REFERENCE.md) - All collections
-- [DEPLOYMENT_PIPELINE.md](./DEPLOYMENT_PIPELINE.md) - Deployment guide
-- [INTEGRATION_NOTES.md](./INTEGRATION_NOTES.md) - Integration patterns
-- [DEVELOPER_ONBOARDING.md](./DEVELOPER_ONBOARDING.md) - Getting started
+- [master-plan.md](../../master-plan.md) - "Chap" (Chat + Map) Implementation Plan
+- [MLS_DATA_ARCHITECTURE.md](./MLS_DATA_ARCHITECTURE.md) - Multi-tenant MLS strategy
+- [DEEP_DIVE_OPTIMIZATIONS.md](../../DEEP_DIVE_OPTIMIZATIONS.md) - Performance improvements
 
 ---
 
-**END OF MASTER SYSTEM ARCHITECTURE**
+## 🎯 KEY DIFFERENCES FROM PREVIOUS VERSIONS
 
-This document is the authoritative source for the ChatRealty.io ecosystem architecture. All other documentation files are derived from or complementary to this master specification.
+### What Changed (v3.0.0):
+- ❌ **Removed:** PayloadCMS (never used)
+- ✅ **Added:** NextAuth.js (actual auth system)
+- ✅ **Clarified:** Direct MongoDB access (no CMS overhead)
+- ✅ **Added:** Custom CRM/CMS vision (future)
+- ✅ **Updated:** Actual deployment architecture
+- ✅ **Added:** "Chap" experience roadmap
+- ✅ **Realistic:** Current costs and metrics
+
+### Architecture Philosophy:
+**Old (v2.0):** PayloadCMS-centric, heavy CMS layer
+**New (v3.0):** Lightweight Next.js + NextAuth, building custom CRM
+
+This architecture reflects **what is actually deployed** and **where we're headed**.
+
+---
+
+**END OF MASTER SYSTEM ARCHITECTURE v3.0.0**
+
+This document is the authoritative source for the JPSRealtor.com and ChatRealty.io ecosystem architecture.

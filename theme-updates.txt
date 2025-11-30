@@ -1,0 +1,28 @@
+Theme class replacements for /admin/articles page:
+
+FILTERS SECTION:
+- bg-gray-900/50 backdrop-blur-sm border border-gray-800 → ${cardBg} ${cardBorder}
+- bg-gray-800 border border-gray-700 → ${bgSecondary} ${border}
+- text-white → ${textPrimary}
+- text-gray-400 → ${textSecondary}
+- placeholder-gray-400 → placeholder-${textMuted}
+- focus:border-blue-500 → focus:border-${isLight ? 'blue-500' : 'emerald-500'}
+- bg-blue-600 hover:bg-blue-700 → ${buttonPrimary}
+
+TABLE SECTION:
+- bg-gray-900/50 backdrop-blur-sm border border-gray-800 → ${cardBg} ${cardBorder}
+- bg-gray-800/50 → ${bgSecondary}/50
+- text-gray-400 → ${textSecondary}
+- text-white → ${textPrimary}
+- border-gray-800 → ${border}
+- hover:bg-gray-800/30 → ${cardHover}
+- bg-green-500/20 text-green-400 → (keep green for published status)
+- bg-yellow-500/20 text-yellow-400 → (keep yellow for draft status)
+- hover:bg-gray-700 → hover:bg-${isLight ? 'gray-100' : 'gray-700'}
+
+MODAL:
+- bg-gray-900 border border-gray-800 → ${cardBg} ${cardBorder}
+- bg-gray-800 border border-gray-700 → ${bgSecondary} ${border}
+- text-white → ${textPrimary}
+- text-gray-400 → ${textSecondary}
+- bg-gray-700 hover:bg-gray-600 → ${buttonSecondary}

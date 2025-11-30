@@ -16,6 +16,7 @@ import {
   Building2,
   Calendar,
 } from "lucide-react";
+import AdminNav from "@/app/components/AdminNav";
 
 type AdminAnalytics = {
   userSignups: {
@@ -157,10 +158,12 @@ export default function AdminDashboard() {
   if (!analytics) return null;
 
   return (
-    <div className="min-h-screen" data-page="admin">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="min-h-screen py-12 px-4" data-page="admin">
+      <div className="max-w-7xl mx-auto">
+        <AdminNav />
+
         {/* Header */}
-        <div className="mb-8 pt-16 md:pt-0">
+        <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
             <BarChart3 className="w-10 h-10 text-blue-400" />
             Admin Dashboard
