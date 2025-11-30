@@ -21,6 +21,16 @@ function PreviewContent() {
   const content = searchParams.get("content") || "";
   const category = searchParams.get("category") || "articles";
   const imageUrl = searchParams.get("imageUrl") || "";
+  const theme = searchParams.get("theme") || "lightgradient";
+
+  // Apply theme to HTML element
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.className = `theme-${theme}`;
+    }
+  }, [theme]);
+
+  const isLight = theme === "lightgradient";
 
   const categoryNames: Record<string, string> = {
     articles: "Articles",
@@ -29,7 +39,7 @@ function PreviewContent() {
   };
 
   return (
-    <article className="min-h-screen bg-white">
+    <article className={`min-h-screen ${isLight ? "bg-white" : "bg-gray-900"}`}>
       {/* Hero Image */}
       {imageUrl && (
         <div className="relative w-full h-64 bg-gray-200">
@@ -45,25 +55,33 @@ function PreviewContent() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Category Badge */}
         <div className="mb-4">
-          <span className="inline-block px-4 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+          <span className={`inline-block px-4 py-1 rounded-full text-sm font-semibold ${
+            isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-400"
+          }`}>
             {categoryNames[category]}
           </span>
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
+        <h1 className={`text-4xl font-bold mb-4 leading-tight ${
+          isLight ? "text-gray-900" : "text-white"
+        }`}>
           {title}
         </h1>
 
         {/* Excerpt */}
         {excerpt && (
-          <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+          <p className={`text-xl mb-6 leading-relaxed ${
+            isLight ? "text-gray-600" : "text-gray-300"
+          }`}>
             {excerpt}
           </p>
         )}
 
         {/* Meta Info */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-8 pb-8 border-b border-gray-200">
+        <div className={`flex flex-wrap items-center gap-4 text-sm mb-8 pb-8 border-b ${
+          isLight ? "text-gray-500 border-gray-200" : "text-gray-400 border-gray-700"
+        }`}>
           <div className="flex items-center gap-2">
             <User className="w-4 h-4" />
             <span>Joseph Sardella</span>
@@ -80,40 +98,48 @@ function PreviewContent() {
             <ReactMarkdown
               components={{
                 h1: ({ node, ...props }) => (
-                  <h1 className="text-3xl font-bold text-gray-900 mt-8 mb-4" {...props} />
+                  <h1 className={`text-3xl font-bold mt-8 mb-4 ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
                 ),
                 h2: ({ node, ...props }) => (
-                  <h2 className="text-2xl font-bold text-gray-900 mt-6 mb-3" {...props} />
+                  <h2 className={`text-2xl font-bold mt-6 mb-3 ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
                 ),
                 h3: ({ node, ...props }) => (
-                  <h3 className="text-xl font-bold text-gray-900 mt-4 mb-2" {...props} />
+                  <h3 className={`text-xl font-bold mt-4 mb-2 ${isLight ? "text-gray-900" : "text-gray-100"}`} {...props} />
                 ),
                 p: ({ node, ...props }) => (
-                  <p className="text-gray-700 mb-4 leading-relaxed" {...props} />
+                  <p className={`mb-4 leading-relaxed ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
                 ),
                 ul: ({ node, ...props }) => (
-                  <ul className="list-disc list-inside mb-4 space-y-2 text-gray-700" {...props} />
+                  <ul className={`list-disc list-inside mb-4 space-y-2 ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
                 ),
                 ol: ({ node, ...props }) => (
-                  <ol className="list-decimal list-inside mb-4 space-y-2 text-gray-700" {...props} />
+                  <ol className={`list-decimal list-inside mb-4 space-y-2 ${isLight ? "text-gray-700" : "text-gray-300"}`} {...props} />
                 ),
                 li: ({ node, ...props }) => (
                   <li className="ml-4" {...props} />
                 ),
                 blockquote: ({ node, ...props }) => (
-                  <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 my-4" {...props} />
+                  <blockquote className={`border-l-4 pl-4 italic my-4 ${
+                    isLight ? "border-blue-500 text-gray-600" : "border-emerald-500 text-gray-400"
+                  }`} {...props} />
                 ),
                 code: ({ node, inline, ...props }: any) =>
                   inline ? (
-                    <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono" {...props} />
+                    <code className={`px-2 py-1 rounded text-sm font-mono ${
+                      isLight ? "bg-gray-100 text-gray-800" : "bg-gray-800 text-gray-200"
+                    }`} {...props} />
                   ) : (
-                    <code className="block bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" {...props} />
+                    <code className={`block p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4 ${
+                      isLight ? "bg-gray-100 text-gray-800" : "bg-gray-800 text-gray-200"
+                    }`} {...props} />
                   ),
                 a: ({ node, ...props }) => (
-                  <a className="text-blue-600 hover:text-blue-700 underline" {...props} />
+                  <a className={`underline ${
+                    isLight ? "text-blue-600 hover:text-blue-700" : "text-emerald-400 hover:text-emerald-300"
+                  }`} {...props} />
                 ),
                 strong: ({ node, ...props }) => (
-                  <strong className="font-bold text-gray-900" {...props} />
+                  <strong className={`font-bold ${isLight ? "text-gray-900" : "text-white"}`} {...props} />
                 ),
                 em: ({ node, ...props }) => (
                   <em className="italic" {...props} />
@@ -125,7 +151,7 @@ function PreviewContent() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">
+            <p className={`text-lg ${isLight ? "text-gray-400" : "text-gray-500"}`}>
               Start writing to see your article preview...
             </p>
           </div>

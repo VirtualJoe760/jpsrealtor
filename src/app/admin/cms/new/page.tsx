@@ -497,8 +497,9 @@ export default function NewArticlePage() {
                         content: formData.content || "",
                         category: formData.category,
                         imageUrl: formData.featuredImage.url || "",
+                        theme: currentTheme,
                       }).toString()}`}
-                      className="w-full h-full bg-white"
+                      className="w-full h-full"
                       title="Generated Article Preview"
                     />
                   </div>
@@ -859,6 +860,7 @@ export default function NewArticlePage() {
                         content: formData.content || "",
                         category: formData.category,
                         imageUrl: formData.featuredImage.url || "",
+                        theme: currentTheme,
                       }).toString()}`}
                       className="w-full h-screen"
                       title="Article Preview"
