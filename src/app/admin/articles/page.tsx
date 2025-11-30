@@ -154,6 +154,12 @@ export default function ArticlesAdminPage() {
     }
   };
 
+  const handleEdit = (article: Article) => {
+    // Always use slug-based route for editing
+    // This works for both MongoDB articles and MDX-only articles
+    router.push(`/admin/cms/edit/${article.slug}`);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -409,7 +415,7 @@ export default function ArticlesAdminPage() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => router.push(`/admin/articles/${article._id}`)}
+                          onClick={() => handleEdit(article)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"}`}
                           title="Edit"
                         >
@@ -476,7 +482,7 @@ export default function ArticlesAdminPage() {
                     View
                   </button>
                   <button
-                    onClick={() => router.push(`/admin/articles/${article._id}`)}
+                    onClick={() => handleEdit(article)}
                     className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"
                     } text-sm flex items-center justify-center gap-2`}

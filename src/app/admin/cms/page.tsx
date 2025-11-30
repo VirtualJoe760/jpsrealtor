@@ -436,14 +436,7 @@ export default function ArticlesAdminPage() {
                         <button
                           onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"}`}
-                          title="Edit Published Article"
-                        >
-                          <Globe className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/admin/articles/${article._id}`)}
-                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"}`}
-                          title="Edit in Database"
+                          title="Edit Article"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -520,17 +513,8 @@ export default function ArticlesAdminPage() {
                       isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
-                    <Globe className="w-4 h-4" />
-                    Edit Site
-                  </button>
-                  <button
-                    onClick={() => router.push(`/admin/articles/${article._id}`)}
-                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
-                      isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"
-                    } text-sm flex items-center justify-center gap-2`}
-                  >
                     <Edit className="w-4 h-4" />
-                    Edit DB
+                    Edit
                   </button>
                   <button
                     onClick={() => handleUnpublish(article.slug)}

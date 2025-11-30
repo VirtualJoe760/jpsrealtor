@@ -90,6 +90,14 @@ export default function EditArticlePage() {
       const response = await fetch(`/api/articles/${articleId}`);
 
       if (!response.ok) {
+        if (response.status === 404) {
+          alert(
+            "Article not found in database.\n\n" +
+            "This article may only exist as a published MDX file.\n" +
+            "Please use the 'Edit Site' (Globe icon) button instead to edit published articles.\n\n" +
+            "Redirecting to articles list..."
+          );
+        }
         throw new Error("Article not found");
       }
 
