@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, } from "lucide-react";
+import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, Globe, EyeOff } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
 import AdminNav from "@/app/components/AdminNav";
@@ -152,6 +152,28 @@ export default function ArticlesAdminPage() {
       fetchArticles();
     } catch (error) {
       console.error("Failed to delete article:", error);
+    }
+  };
+
+  const handleUnpublish = async (slug: string) => {
+    if (!confirm("This will remove the article from the website. Are you sure?")) return;
+
+    try {
+      const response = await fetch(`/api/articles/unpublish?slugId=${slug}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Article unpublished successfully!\n\nThe MDX file has been removed from src/posts/`);
+        fetchArticles();
+      } else {
+        alert(`Failed to unpublish:\n\n${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Failed to unpublish article:", error);
+      alert("Network error while unpublishing article");
     }
   };
 
@@ -405,23 +427,37 @@ export default function ArticlesAdminPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => router.push(`/articles/${article.category}/${article.slug}`)}
+                          onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"}`}
-                          title="View"
+                          title="View on Website"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
+                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"}`}
+                          title="Edit Published Article"
+                        >
+                          <Globe className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => router.push(`/admin/articles/${article._id}`)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"}`}
-                          title="Edit"
+                          title="Edit in Database"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => handleUnpublish(article.slug)}
+                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"}`}
+                          title="Unpublish from Website"
+                        >
+                          <EyeOff className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleDelete(article._id)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
-                          title="Delete"
+                          title="Delete from Database"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -468,10 +504,10 @@ export default function ArticlesAdminPage() {
                   <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => router.push(`/articles/${article.category}/${article.slug}`)}
-                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                    onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
+                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"
                     } text-sm flex items-center justify-center gap-2`}
                   >
@@ -479,17 +515,35 @@ export default function ArticlesAdminPage() {
                     View
                   </button>
                   <button
+                    onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
+                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <Globe className="w-4 h-4" />
+                    Edit Site
+                  </button>
+                  <button
                     onClick={() => router.push(`/admin/articles/${article._id}`)}
-                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-blue-600" : "hover:bg-gray-700 hover:text-blue-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
                     <Edit className="w-4 h-4" />
-                    Edit
+                    Edit DB
+                  </button>
+                  <button
+                    onClick={() => handleUnpublish(article.slug)}
+                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <EyeOff className="w-4 h-4" />
+                    Unpublish
                   </button>
                   <button
                     onClick={() => handleDelete(article._id)}
-                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`col-span-2 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
