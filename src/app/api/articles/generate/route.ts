@@ -49,7 +49,7 @@ export async function POST(request: Request) {
               tags: {
                 type: "array",
                 items: { type: "string" },
-                description: "3-6 relevant tags for categorization"
+                description: "3-6 relevant search tags. Include: location tags (Palm Desert, La Quinta, Indian Wells, Rancho Mirage, Coachella Valley), topic tags (investment, luxury homes, first-time buyers, market trends, real estate tips, etc.), and category-specific keywords"
               },
               seoTitle: {
                 type: "string",
@@ -78,8 +78,11 @@ CRITICAL FORMATTING RULES:
 - Output ONLY the article content, NO labels or meta-text
 - NO "Hook:", "Introduction:", "Body:", or section labels
 - Start directly with engaging content
-- Use Markdown headings (##) for sections, NOT labels
+- Use Markdown headings (##, ###) for sections ONLY, NOT labels
 - NO placeholder text or instructions in the output
+- Use regular paragraphs (NOT bold) for body text
+- Use bold (**text**) SPARINGLY for emphasis only
+- Each paragraph should be 2-4 sentences
 
 WRITING STYLE:
 - Professional yet conversational tone
@@ -88,13 +91,30 @@ WRITING STYLE:
 - Transparent and empowering
 - Include local market insights
 
+PARAGRAPH FORMATTING:
+- Opening paragraph: Regular text, engaging hook
+- Body paragraphs: Regular text with occasional bold for key terms
+- Bullet points: Start with ✅ emoji, regular text (NOT all bold)
+- Headings: Use ## for main sections, ### for subsections
+- DO NOT make entire bullet points bold
+- DO NOT make entire paragraphs bold
+
+CORRECT BULLET FORMAT:
+- ✅ Inventory levels rising in Palm Desert
+- ✅ Strong buyer demand across Coachella Valley
+
+INCORRECT BULLET FORMAT (DON'T DO THIS):
+- ✅ **Inventory levels rising** – after a historic low...
+- ✅ **Strong buyer demand** – properties selling fast...
+
 STRUCTURE:
-1. Start with an engaging opening paragraph (NO "Hook:" label)
-2. Use ## for main section headings (e.g., "## Market Trends")
-3. Use ### for subsections
-4. Bullet points for readability (use - not •)
-5. Actionable tips with ✅ emoji
-6. End with contact info
+1. Opening paragraph (2-3 sentences, regular text)
+2. ## Main Section Heading
+3. Regular paragraphs explaining the topic
+4. Bullet points with ✅ for key takeaways
+5. ### Subsection if needed
+6. More regular paragraphs
+7. End with contact section
 
 MDX COMPONENTS (use when appropriate):
 - For YouTube videos: <YouTube id="VIDEO_ID" />
@@ -104,6 +124,8 @@ MDX COMPONENTS (use when appropriate):
 CONTACT INFO (always include at end):
 ## Get Expert Guidance
 
+Ready to make your move in the Coachella Valley? Contact Joseph Sardella for personalized real estate guidance.
+
 📞 Call or Text: **+1 (760) 833-6334**
 📧 Email: **josephsardella@gmail.com**
 
@@ -111,17 +133,24 @@ KEYWORDS TO INCLUDE:
 Always mention: Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage
 Category-specific: ${category === 'market-insights' ? 'market trends, ROI, investment, property values' : category === 'real-estate-tips' ? 'homebuying tips, financing, negotiation, inspection' : 'real estate market, housing trends, economics'}
 
-FORMAT EXAMPLE:
-The Coachella Valley real estate market is experiencing remarkable growth...
+COMPLETE FORMAT EXAMPLE:
+
+The Coachella Valley real estate market is experiencing remarkable growth this year. With rising inventory levels and strong buyer demand, both investors and homebuyers have excellent opportunities across Palm Desert, La Quinta, Indian Wells, and Rancho Mirage.
 
 ## Current Market Trends
 
-- ✅ Inventory levels rising
-- ✅ Strong buyer demand
+The market has shifted significantly in recent months. Properties are moving faster than anticipated, and pricing has stabilized after the post-pandemic surge.
+
+Key indicators show:
+
+- ✅ Inventory levels rising by 12% year-over-year
+- ✅ Median prices stabilizing around $785,000 in La Quinta
+- ✅ Average days on market down to 21 days in Indian Wells
+- ✅ New construction permits up 15% in Rancho Mirage
 
 ### Investment Opportunities
 
-Palm Desert offers exceptional ROI...
+Palm Desert offers exceptional ROI potential for savvy investors. The combination of tourism demand and limited luxury inventory creates a perfect storm for appreciation. Short-term rental properties can achieve 8-10% cap rates in well-located areas.
 
 Use the generate_article_mdx tool to create the article.`;
 
