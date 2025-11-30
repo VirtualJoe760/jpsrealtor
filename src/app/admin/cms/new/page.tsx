@@ -468,22 +468,42 @@ export default function NewArticlePage() {
               {/* Generation Preview */}
               {generatedPreview && (
                 <div className="mt-6">
-                  <h3
-                    className={`text-sm font-semibold ${textSecondary} mb-3`}
-                  >
-                    Generated Content Preview
-                  </h3>
-                  <div
-                    className={`${bgSecondary} ${border} rounded-lg p-4 max-h-64 overflow-y-auto`}
-                  >
-                    <pre
-                      className={`text-xs ${textPrimary} whitespace-pre-wrap font-mono`}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3
+                      className={`text-sm font-semibold ${textSecondary}`}
                     >
-                      {generatedPreview.substring(0, 500)}...
-                    </pre>
+                      Live Preview
+                    </h3>
+                    <button
+                      onClick={() => setPreviewKey((prev) => prev + 1)}
+                      className={`px-3 py-1 text-xs ${
+                        isLight
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      } text-white rounded-lg transition-colors font-semibold`}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  <div
+                    className={`${border} rounded-lg overflow-hidden`}
+                    style={{ height: "400px" }}
+                  >
+                    <iframe
+                      key={`generator-preview-${previewKey}`}
+                      src={`/articles/preview?${new URLSearchParams({
+                        title: formData.title || "Untitled Article",
+                        excerpt: formData.excerpt || "",
+                        content: formData.content || "",
+                        category: formData.category,
+                        imageUrl: formData.featuredImage.url || "",
+                      }).toString()}`}
+                      className="w-full h-full bg-white"
+                      title="Generated Article Preview"
+                    />
                   </div>
                   <p className={`text-xs ${textMuted} mt-2`}>
-                    Full content is loaded in the editor →
+                    Click refresh to see latest changes • Full content in editor →
                   </p>
                 </div>
               )}
