@@ -18,13 +18,14 @@
   }
 }
 
-/* Landscape orientation blocker for mobile */
+/* Landscape orientation blocker for mobile (disabled in iframes) */
 @media screen and (max-height: 500px) and (orientation: landscape) {
-  body > *:not(.landscape-blocker) {
+  /* Only apply if not in an iframe */
+  body:not(.in-iframe) > *:not(.landscape-blocker) {
     display: none !important;
   }
 
-  body::before {
+  body:not(.in-iframe)::before {
     content: "Please rotate your device to portrait mode";
     position: fixed;
     inset: 0;
@@ -38,12 +39,12 @@
     z-index: 99999;
   }
 
-  html.theme-lightgradient body::before {
+  html.theme-lightgradient body:not(.in-iframe)::before {
     background: #ffffff;
     color: #111827;
   }
 
-  html.theme-blackspace body::before {
+  html.theme-blackspace body:not(.in-iframe)::before {
     background: #000000;
     color: #ffffff;
   }

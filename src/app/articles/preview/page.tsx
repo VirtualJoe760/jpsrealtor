@@ -1,13 +1,20 @@
 // src/app/articles/preview/page.tsx
 "use client";
 
-import { use, Suspense } from "react";
+import { use, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Calendar, Tag, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 function PreviewContent() {
   const searchParams = useSearchParams();
+
+  // Detect if we're in an iframe and add class to body
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.self !== window.top) {
+      document.body.classList.add("in-iframe");
+    }
+  }, []);
 
   const title = searchParams.get("title") || "Untitled Article";
   const excerpt = searchParams.get("excerpt") || "";
