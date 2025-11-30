@@ -44,28 +44,27 @@ export async function POST(request: Request) {
               },
               content: {
                 type: "string",
-                description: "Full article content in MDX/Markdown format with proper headings, lists, and formatting"
+                description: "Full article content in MDX/Markdown format. Use regular paragraphs (NOT bold). Use bold (**text**) ONLY for critical emphasis (1-2 times per section max). Use ## for main headings, ### for subheadings. Use bullet points with ✅ emoji in regular text."
               },
-              tags: {
-                type: "array",
-                items: { type: "string" },
-                description: "3-6 relevant search tags. Include: location tags (Palm Desert, La Quinta, Indian Wells, Rancho Mirage, Coachella Valley), topic tags (investment, luxury homes, first-time buyers, market trends, real estate tips, etc.), and category-specific keywords"
+              altText: {
+                type: "string",
+                description: "Alt text for featured image describing the article topic"
               },
-              seoTitle: {
+              metaTitle: {
                 type: "string",
                 description: "SEO meta title (max 60 chars)"
               },
-              seoDescription: {
+              metaDescription: {
                 type: "string",
                 description: "SEO meta description (max 160 chars)"
               },
-              seoKeywords: {
+              keywords: {
                 type: "array",
                 items: { type: "string" },
-                description: "5-10 SEO keywords"
+                description: "5-10 SEO keywords including location (Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage) and topic-specific terms"
               }
             },
-            required: ["title", "excerpt", "content", "tags", "seoTitle", "seoDescription", "seoKeywords"]
+            required: ["title", "excerpt", "content", "altText", "metaTitle", "metaDescription", "keywords"]
           }
         }
       }
@@ -80,9 +79,14 @@ CRITICAL FORMATTING RULES:
 - Start directly with engaging content
 - Use Markdown headings (##, ###) for sections ONLY, NOT labels
 - NO placeholder text or instructions in the output
-- Use regular paragraphs (NOT bold) for body text
-- Use bold (**text**) SPARINGLY for emphasis only
-- Each paragraph should be 2-4 sentences
+
+BOLD TEXT USAGE - EXTREMELY IMPORTANT:
+- Use bold (**text**) MAXIMUM 1-2 times per major section
+- NEVER use bold for entire sentences or bullet points
+- NEVER use bold for contact information (phone/email already shown)
+- Body paragraphs should be 95% regular text
+- Only use bold for critical emphasis of single words or short phrases
+- If in doubt, DO NOT use bold
 
 WRITING STYLE:
 - Professional yet conversational tone
@@ -92,20 +96,21 @@ WRITING STYLE:
 - Include local market insights
 
 PARAGRAPH FORMATTING:
-- Opening paragraph: Regular text, engaging hook
-- Body paragraphs: Regular text with occasional bold for key terms
-- Bullet points: Start with ✅ emoji, regular text (NOT all bold)
+- Opening paragraph: Regular text ONLY, no bold
+- Body paragraphs: Regular text, max 1 bold phrase if critical
+- Bullet points: ✅ emoji + regular text (ZERO bold allowed)
 - Headings: Use ## for main sections, ### for subsections
-- DO NOT make entire bullet points bold
-- DO NOT make entire paragraphs bold
+- Contact section: Regular text for context, bold ONLY for phone/email values
 
-CORRECT BULLET FORMAT:
+CORRECT BULLET FORMAT (NO BOLD):
 - ✅ Inventory levels rising in Palm Desert
 - ✅ Strong buyer demand across Coachella Valley
+- ✅ Median home prices stabilizing around $785,000
 
-INCORRECT BULLET FORMAT (DON'T DO THIS):
+INCORRECT BULLET FORMAT (NEVER DO THIS):
 - ✅ **Inventory levels rising** – after a historic low...
 - ✅ **Strong buyer demand** – properties selling fast...
+- ✅ **Median prices** stabilizing around $785,000
 
 STRUCTURE:
 1. Opening paragraph (2-3 sentences, regular text)
@@ -187,42 +192,34 @@ Create a complete, engaging article following all guidelines. Make it actionable
     const toolCall = message.tool_calls[0];
     const articleData = JSON.parse(toolCall.function.arguments);
 
-    // Create complete MDX with frontmatter
-    const mdx = `---
-title: "${articleData.title}"
-excerpt: "${articleData.excerpt}"
-date: "${new Date().toISOString().split('T')[0]}"
-category: "${category}"
-tags: ${JSON.stringify(articleData.tags)}
-status: "draft"
-featured: false
-featuredImage:
-  url: "/images/articles/placeholder.jpg"
-  alt: "${articleData.title}"
-seo:
-  title: "${articleData.seoTitle}"
-  description: "${articleData.seoDescription}"
-  keywords: ${JSON.stringify(articleData.seoKeywords)}
-author:
-  name: "Joseph Sardella"
-  email: "josephsardella@gmail.com"
----
+    // Generate slug from title
+    const slugId = articleData.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
 
-${articleData.content}
-`;
+    // Category becomes the primary tag
+    const tags = [category];
 
+    // Return structured response matching CMS form fields
     return NextResponse.json({
       success: true,
       article: {
         title: articleData.title,
+        slugId: slugId,
         excerpt: articleData.excerpt,
         content: articleData.content,
-        mdx,
-        tags: articleData.tags,
+        category: category, // Maps to "section" in frontmatter
+        tags: tags, // Primary tag is the category
+        featuredImage: {
+          url: "",
+          publicId: "",
+          alt: articleData.altText || articleData.title,
+        },
         seo: {
-          title: articleData.seoTitle,
-          description: articleData.seoDescription,
-          keywords: articleData.seoKeywords
+          title: articleData.metaTitle,
+          description: articleData.metaDescription,
+          keywords: articleData.keywords
         }
       }
     });

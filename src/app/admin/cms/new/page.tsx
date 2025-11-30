@@ -113,18 +113,23 @@ export default function NewArticlePage() {
       if (data.success && data.article) {
         const article = data.article;
 
-        // Update form with generated content
+        // Map AI response to form fields
         setFormData((prev) => ({
           ...prev,
-          title: article.title || prev.title,
-          excerpt: article.excerpt || prev.excerpt,
-          content: article.content || prev.content,
-          tags: article.tags || prev.tags,
+          title: article.title,
+          excerpt: article.excerpt,
+          content: article.content,
+          category: article.category, // This is "section" in frontmatter
+          tags: article.tags, // Includes category as primary tag
+          featuredImage: {
+            url: article.featuredImage?.url || prev.featuredImage.url,
+            publicId: article.featuredImage?.publicId || prev.featuredImage.publicId,
+            alt: article.featuredImage?.alt || article.title,
+          },
           seo: {
-            title: article.seo?.title || article.title || prev.seo.title,
-            description:
-              article.seo?.description || article.excerpt || prev.seo.description,
-            keywords: article.seo?.keywords || article.tags || prev.seo.keywords,
+            title: article.seo.title,
+            description: article.seo.description,
+            keywords: article.seo.keywords,
           },
         }));
 
