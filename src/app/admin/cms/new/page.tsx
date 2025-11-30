@@ -19,6 +19,7 @@ import {
   Wand2,
 } from "lucide-react";
 import AdminNav from "@/app/components/AdminNav";
+import TipTapEditor from "@/app/components/TipTapEditor";
 
 type TabType = "generate" | "edit" | "preview";
 
@@ -568,24 +569,21 @@ export default function NewArticlePage() {
               {/* Content Editor */}
               <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
                 <label
-                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                  className={`block text-sm font-semibold ${textSecondary} mb-4`}
                 >
-                  Content (MDX)
+                  Content
                 </label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      content: e.target.value,
-                    }))
+                <TipTapEditor
+                  content={formData.content}
+                  onChange={(content) =>
+                    setFormData((prev) => ({ ...prev, content }))
                   }
-                  placeholder="Write your article content in MDX format..."
-                  rows={20}
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500 font-mono text-sm resize-none`}
+                  placeholder="Write your article content..."
+                  isLight={isLight}
                 />
+                <p className={`text-xs ${textMuted} mt-3`}>
+                  Use the toolbar to format your content. Supports headings, lists, links, images, and YouTube videos.
+                </p>
               </div>
 
               {/* Tags */}
