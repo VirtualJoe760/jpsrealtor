@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, Globe, EyeOff } from "lucide-react";
+import {FileText, Plus, Search, Eye, Edit, Trash2, TrendingUp, EyeOff } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
 import AdminNav from "@/app/components/AdminNav";
@@ -81,7 +81,7 @@ export default function ArticlesAdminPage() {
       fetchArticles();
       fetchStats();
     }
-  }, [status, page, filterCategory, filterStatus, filterYear, filterMonth]);
+  }, [status, page, filterCategory, searchTerm]);
 
   // Poll for new draft articles every 30 seconds
   
@@ -293,7 +293,10 @@ export default function ArticlesAdminPage() {
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Search..."
                   className={`w-full pl-10 pr-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
                 />
