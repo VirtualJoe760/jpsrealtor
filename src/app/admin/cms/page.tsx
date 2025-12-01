@@ -1,23 +1,31 @@
 // src/app/admin/articles/page.tsx
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {FileText, Plus, Search, Filter, Eye, Edit, Trash2, Calendar, Tag, TrendingUp, Globe, EyeOff } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
-import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
+import ArticleGenerator from "@/app/components/ArticleGenerator";
 import AdminNav from "@/app/components/AdminNav";
 
 type Article = {
+  _id: string;
   title: string;
-  excerpt: string;
-  image: string;
-  category: string;
-  date: string;
   slug: string;
-  topics?: string[];
+  excerpt: string;
+  category: string;
+  tags: string[];
+  status: "draft" | "published" | "archived";
+  featured: boolean;
+  publishedAt: string;
+  metadata: {
+    views: number;
+    readTime: number;
+  };
+  author: {
+    name: string;
+  };
 };
 
 export default function ArticlesAdminPage() {
@@ -41,9 +49,17 @@ export default function ArticlesAdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
+  const [filterMonth, setFilterMonth] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
+  const [showClaudeModal, setShowClaudeModal] = useState(false);
+  const [claudePrompt, setClaudePrompt] = useState("");
+  const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
+  const [claudeCategory, setClaudeCategory] = useState<"articles" | "market-insights" | "real-estate-tips">("articles");
+  const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString());
   const [stats, setStats] = useState({
     total: 0,
     published: 0,
@@ -53,9 +69,6 @@ export default function ArticlesAdminPage() {
     marketInsights: 0,
     realEstateTips: 0,
   });
-  const [activeStatIndex, setActiveStatIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const statIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -68,31 +81,10 @@ export default function ArticlesAdminPage() {
       fetchArticles();
       fetchStats();
     }
-  }, [status, page, filterCategory]);
-
-  // Auto-carousel for mobile stats
-  useEffect(() => {
-    if (isPaused) {
-      if (statIntervalRef.current) {
-        clearInterval(statIntervalRef.current);
-        statIntervalRef.current = null;
-      }
-      return;
-    }
-
-    statIntervalRef.current = setInterval(() => {
-      setActiveStatIndex((current) => (current + 1) % 7);
-    }, 3000);
-
-    return () => {
-      if (statIntervalRef.current) {
-        clearInterval(statIntervalRef.current);
-      }
-    };
-  }, [isPaused, stats, isLight]);
+  }, [status, page, filterCategory, filterStatus, filterYear, filterMonth]);
 
   // Poll for new draft articles every 30 seconds
-
+  
 
   const fetchArticles = async () => {
     try {
@@ -121,6 +113,19 @@ export default function ArticlesAdminPage() {
       const total = filteredArticles.length;
       const limit = 50;
       const totalPagesCalc = Math.ceil(total / limit);
+      const start = (page - 1) * limit;
+      const paginatedArticles = filteredArticles.slice(start, start + limit);
+
+      setArticles(paginatedArticles);
+      setTotalPages(totalPagesCalc);
+      setTotalArticles(total);
+    } catch (error) {
+      console.error("Failed to fetch articles:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchStats = async () => {
     try {
       // Fetch all articles from MDX files (source of truth)
@@ -130,22 +135,9 @@ export default function ArticlesAdminPage() {
 
       setStats({
         total: allArticles.length,
-        published: allArticles.length,
-        draft: 0,
-        views: 0,
-        articles: allArticles.filter((a: Article) => a.category === "articles").length,
-        marketInsights: allArticles.filter((a: Article) => a.category === "market-insights").length,
-        realEstateTips: allArticles.filter((a: Article) => a.category === "real-estate-tips").length,
-      });
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
-  };
-      setStats({
-        total: allArticles.length,
-        published: publishedArticles.length,
-        draft: draftArticles.length,
-        views: allArticles.reduce((sum: number, a: Article) => sum + a.metadata.views, 0),
+        published: allArticles.length, // All MDX files are published
+        draft: 0, // Drafts are filtered out by /api/articles/list
+        views: 0, // MDX files don't track views
         articles: allArticles.filter((a: Article) => a.category === "articles").length,
         marketInsights: allArticles.filter((a: Article) => a.category === "market-insights").length,
         realEstateTips: allArticles.filter((a: Article) => a.category === "real-estate-tips").length,
@@ -223,19 +215,21 @@ export default function ArticlesAdminPage() {
               </h1>
               <p className={textSecondary}>Manage your blog articles and content</p>
             </div>
-            <button
+            <div className="flex flex-row items-center gap-2 sm:gap-3">
+              <ArticleGenerator onArticleGenerated={() => { fetchArticles(); fetchStats(); }} />
+              <button
                 onClick={() => router.push("/admin/cms/new")}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
               >
                 <Plus className="w-4 h-4" />
                 New Article
               </button>
+            </div>
           </div>
         </div>
 
         {/* Stats - Top Row */}
-                {/* Desktop Stats */}
-        <div className="hidden md:grid md:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
             <div className="flex items-center justify-between mb-4">
               <FileText className={`w-8 h-8 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
@@ -269,169 +263,40 @@ export default function ArticlesAdminPage() {
           </div>
         </div>
 
-        {/* Mobile Stats Carousel */}
-        <div className="md:hidden mb-6 relative h-[140px]">
-          <div
-            className="absolute inset-0"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onTouchStart={() => setIsPaused(true)}
-            onTouchEnd={() => setIsPaused(false)}
-          >
-            <AnimatePresence mode="wait">
-              {activeStatIndex === 0 && (
-                <motion.div
-                  key="total"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <FileText className={`w-8 h-8 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                  </div>
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Total Articles</h3>
-                  <p className={`text-3xl font-bold ${textPrimary}`}>{stats.total}</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 1 && (
-                <motion.div
-                  key="published"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <Eye className="w-8 h-8 text-green-500" />
-                  </div>
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Published</h3>
-                  <p className={`text-3xl font-bold ${textPrimary}`}>{stats.published}</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 2 && (
-                <motion.div
-                  key="draft"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <Edit className="w-8 h-8 text-yellow-500" />
-                  </div>
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Drafts</h3>
-                  <p className={`text-3xl font-bold ${textPrimary}`}>{stats.draft}</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 3 && (
-                <motion.div
-                  key="views"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <TrendingUp className="w-8 h-8 text-purple-500" />
-                  </div>
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Total Views</h3>
-                  <p className={`text-3xl font-bold ${textPrimary}`}>{stats.views.toLocaleString()}</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 4 && (
-                <motion.div
-                  key="articles"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Articles</h3>
-                  <p className={`text-3xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
-                  <p className={`text-xs ${textMuted} mt-1`}>Economics, trends, broader topics</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 5 && (
-                <motion.div
-                  key="market-insights"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Market Insights</h3>
-                  <p className={`text-3xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
-                  <p className={`text-xs ${textMuted} mt-1`}>Coachella Valley specific</p>
-                </motion.div>
-              )}
-              {activeStatIndex === 6 && (
-                <motion.div
-                  key="real-estate-tips"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3 }}
-                  className={`${cardBg} ${cardBorder} rounded-xl p-6 h-full`}
-                >
-                  <h3 className={`${textSecondary} text-sm mb-1`}>Real Estate Tips</h3>
-                  <p className={`text-3xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
-                  <p className={`text-xs ${textMuted} mt-1`}>Buying/selling advice</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {/* Category Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+            <h3 className={`${textSecondary} text-sm mb-1`}>Articles</h3>
+            <p className={`text-2xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
+            <p className={`text-xs ${textMuted} mt-1`}>Economics, trends, broader topics</p>
           </div>
-          {/* Carousel indicators */}
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-              <button
-                key={index}
-                onClick={() => setActiveStatIndex(index)}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  activeStatIndex === index
-                    ? (isLight ? "bg-blue-500 w-4" : "bg-emerald-500 w-4")
-                    : (isLight ? "bg-gray-300" : "bg-gray-600")
-                }`}
-              />
-            ))}
+
+          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+            <h3 className={`${textSecondary} text-sm mb-1`}>Market Insights</h3>
+            <p className={`text-2xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
+            <p className={`text-xs ${textMuted} mt-1`}>Coachella Valley specific</p>
+          </div>
+
+          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+            <h3 className={`${textSecondary} text-sm mb-1`}>Real Estate Tips</h3>
+            <p className={`text-2xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
+            <p className={`text-xs ${textMuted} mt-1`}>Buying/selling advice</p>
           </div>
         </div>
-
 
         {/* Filters */}
         <div className={`${cardBg} ${cardBorder} rounded-xl p-6 mb-6`}>
           <form onSubmit={handleSearch} className="flex flex-col gap-3">
             <div className="flex-1">
-              <div className={`relative ${bgSecondary} ${border} rounded-2xl transition-all`}>
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <Search className={`w-5 h-5 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                </div>
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${textMuted}`} />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSearch(e);
-                    }
-                  }}
-                  placeholder="Search articles..."
-                  className={`w-full pl-12 pr-24 py-4 ${bgSecondary} ${textPrimary} placeholder:${textSecondary} rounded-2xl outline-none text-base focus:ring-2 ${isLight ? "focus:ring-blue-500" : "focus:ring-emerald-500"}`}
+                  placeholder="Search..."
+                  className={`w-full pl-10 pr-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
                 />
-                <button
-                  onClick={handleSearch}
-                  type="button"
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2.5 rounded-xl font-semibold transition-all ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
-                >
-                  <Search className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -449,6 +314,65 @@ export default function ArticlesAdminPage() {
               <option value="market-insights">Market Insights</option>
               <option value="real-estate-tips">Real Estate Tips</option>
             </select>
+
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPage(1);
+              }}
+              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+
+            <select
+              value={filterYear}
+              onChange={(e) => {
+                setFilterYear(e.target.value);
+                setPage(1);
+              }}
+              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
+            >
+              <option value="all">All Years</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+            </select>
+
+            <select
+              value={filterMonth}
+              onChange={(e) => {
+                setFilterMonth(e.target.value);
+                setPage(1);
+              }}
+              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
+            >
+              <option value="all">All Months</option>
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+            </div>
+
+            <button
+              type="submit"
+              className={`w-full lg:w-auto flex items-center justify-center gap-2 px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold`}
+            >
+              Search
+            </button>
           </form>
         </div>
 
@@ -459,36 +383,20 @@ export default function ArticlesAdminPage() {
             <table className="w-full">
               <thead className={`${bgSecondary}/50`}>
                 <tr>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Image</th>
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Title</th>
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Category</th>
-                  
-                  
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Date</th>
+                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Status</th>
+                  <th className={`text-center text-sm font-semibold ${textSecondary} px-6 py-4`}>Views</th>
+                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Published</th>
                   <th className={`text-right text-sm font-semibold ${textSecondary} px-6 py-4`}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {articles.map((article) => (
                   <tr
-                    key={article.slug}
+                    key={article._id}
                     className={`border-t ${border} ${cardHover} transition-colors`}
                   >
-                    <td className="px-6 py-4">
-                      <div className={`w-16 h-16 ${bgSecondary} ${border} rounded-lg overflow-hidden flex items-center justify-center`}>
-                        {article.image ? (
-                          <Image
-                            src={article.image}
-                            alt={article.title}
-                            width={64}
-                            height={64}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <FileText className={`w-6 h-6 ${textMuted}`} />
-                        )}
-                      </div>
-                    </td>
                     <td className="px-6 py-4">
                       <div>
                         <p className={`${textPrimary} font-medium`}>{article.title}</p>
@@ -503,13 +411,22 @@ export default function ArticlesAdminPage() {
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          article.status === "published"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : article.status === "draft"
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-gray-500/20 text-gray-400"
+                        }`}
+                      >
+                        {article.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
+                      <span className={`${textPrimary} font-semibold`}>{article.metadata.views}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-sm ${textSecondary}`}>
-                        {article.date}
+                        {new Date(article.publishedAt).toLocaleDateString()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -536,7 +453,7 @@ export default function ArticlesAdminPage() {
                           <EyeOff className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(article.slug)}
+                          onClick={() => handleDelete(article._id)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
                           title="Delete from Database"
                         >
@@ -554,41 +471,35 @@ export default function ArticlesAdminPage() {
           {/* Mobile Card View */}
           <div className="lg:hidden divide-y divide-gray-700">
             {articles.map((article) => (
-              <div key={article.slug} className={`p-4 ${cardHover} transition-colors`}>
-                <div className="flex gap-3 mb-3">
-                  <div className={`w-20 h-20 flex-shrink-0 ${bgSecondary} ${border} rounded-lg overflow-hidden flex items-center justify-center`}>
-                    {article.image ? (
-                      <Image
-                        src={article.image}
-                        alt={article.title}
-                        width={80}
-                        height={80}
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <FileText className={`w-8 h-8 ${textMuted}`} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
+              <div key={article._id} className={`p-4 ${cardHover} transition-colors`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
                     <h3 className={`${textPrimary} font-semibold text-base mb-1 line-clamp-2`}>
                       {article.title}
                     </h3>
-                    <p className={`text-sm ${textSecondary} line-clamp-1`}>
-                        {article.excerpt}
-                      </p>
-                    </div>
-                    <span
-                      className={`self-start px-2 py-1 rounded-full text-xs font-semibold ${
-                    </span>
+                    <p className={`text-sm ${textSecondary} mb-2 line-clamp-2`}>
+                      {article.excerpt}
+                    </p>
                   </div>
+                  <span
+                    className={`ml-3 flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold ${
+                      article.status === "published"
+                        ? "bg-blue-500/20 text-blue-400"
+                        : article.status === "draft"
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-gray-500/20 text-gray-400"
+                    }`}
+                  >
+                    {article.status}
+                  </span>
                 </div>
 
                 <div className={`flex items-center gap-4 text-xs ${textMuted} mb-3`}>
                   <span className="capitalize">{article.category.replace("-", " ")}</span>
                   <span>•</span>
+                  <span>{article.metadata.views} views</span>
                   <span>•</span>
-                  <span>{article.date}</span>
+                  <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -620,7 +531,7 @@ export default function ArticlesAdminPage() {
                     Unpublish
                   </button>
                   <button
-                    onClick={() => handleDelete(article.slug)}
+                    onClick={() => handleDelete(article._id)}
                     className={`col-span-2 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
                     } text-sm flex items-center justify-center gap-2`}
@@ -664,6 +575,7 @@ export default function ArticlesAdminPage() {
           </div>
         )}
       </div>
-    </div>
+
+          </div>
   );
 }
