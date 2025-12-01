@@ -450,9 +450,14 @@ export default function NewArticlePage() {
               <div className="w-full h-full overflow-auto">
                 <iframe
                   key={previewKey}
-                  src={`/insights/preview?title=${encodeURIComponent(
-                    formData.title
-                  )}&content=${encodeURIComponent(formData.content)}`}
+                  src={`/articles/preview?${new URLSearchParams({
+                    title: formData.title || "Untitled Article",
+                    excerpt: formData.excerpt || "",
+                    content: formData.content || "",
+                    category: formData.category,
+                    imageUrl: formData.featuredImage.url || "",
+                    theme: currentTheme,
+                  }).toString()}`}
                   className="w-full h-full border-0"
                   title="Article Preview"
                 />
