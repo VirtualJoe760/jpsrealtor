@@ -5,27 +5,20 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {FileText, Plus, Search, Eye, Edit, Trash2, TrendingUp, EyeOff } from "lucide-react";
+import Image from "next/image";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
 import AdminNav from "@/app/components/AdminNav";
 
 type Article = {
-  _id: string;
   title: string;
   slug: string;
   excerpt: string;
   category: string;
-  tags: string[];
-  status: "draft" | "published" | "archived";
-  featured: boolean;
-  publishedAt: string;
-  metadata: {
-    views: number;
-    readTime: number;
-  };
-  author: {
-    name: string;
-  };
+  date: string;
+  draft?: boolean;
+  image?: string;
+  keywords?: string[];
 };
 
 export default function ArticlesAdminPage() {
@@ -49,9 +42,6 @@ export default function ArticlesAdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterYear, setFilterYear] = useState("all");
-  const [filterMonth, setFilterMonth] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
@@ -182,12 +172,6 @@ export default function ArticlesAdminPage() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    fetchArticles();
-  };
-
     
   if (status === "loading" || isLoading) {
     return (
@@ -286,7 +270,7 @@ export default function ArticlesAdminPage() {
 
         {/* Filters */}
         <div className={`${cardBg} ${cardBorder} rounded-xl p-6 mb-6`}>
-          <form onSubmit={handleSearch} className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <div className="relative">
                 <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${textMuted}`} />
@@ -297,13 +281,12 @@ export default function ArticlesAdminPage() {
                     setSearchTerm(e.target.value);
                     setPage(1);
                   }}
-                  placeholder="Search..."
+                  placeholder="Search articles..."
                   className={`w-full pl-10 pr-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <select
               value={filterCategory}
               onChange={(e) => {
@@ -317,66 +300,7 @@ export default function ArticlesAdminPage() {
               <option value="market-insights">Market Insights</option>
               <option value="real-estate-tips">Real Estate Tips</option>
             </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value);
-                setPage(1);
-              }}
-              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
-            >
-              <option value="all">All Status</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
-            </select>
-
-            <select
-              value={filterYear}
-              onChange={(e) => {
-                setFilterYear(e.target.value);
-                setPage(1);
-              }}
-              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
-            >
-              <option value="all">All Years</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-            </select>
-
-            <select
-              value={filterMonth}
-              onChange={(e) => {
-                setFilterMonth(e.target.value);
-                setPage(1);
-              }}
-              className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
-            >
-              <option value="all">All Months</option>
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
-            </div>
-
-            <button
-              type="submit"
-              className={`w-full lg:w-auto flex items-center justify-center gap-2 px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold`}
-            >
-              Search
-            </button>
-          </form>
+          </div>
         </div>
 
         {/* Articles Table */}
@@ -386,10 +310,8 @@ export default function ArticlesAdminPage() {
             <table className="w-full">
               <thead className={`${bgSecondary}/50`}>
                 <tr>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Title</th>
+                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Article</th>
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Category</th>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Status</th>
-                  <th className={`text-center text-sm font-semibold ${textSecondary} px-6 py-4`}>Views</th>
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Date</th>
                   <th className={`text-right text-sm font-semibold ${textSecondary} px-6 py-4`}>Actions</th>
                 </tr>
@@ -401,8 +323,38 @@ export default function ArticlesAdminPage() {
                     className={`border-t ${border} ${cardHover} transition-colors`}
                   >
                     <td className="px-6 py-4">
+                      <div className="flex gap-4 items-center">
+                        {/* Thumbnail */}
+                        {article.image && (
+                          <div className="flex-shrink-0">
+                            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                              <Image
+                                src={article.image}
+                                alt={article.title}
+                                fill
+                                className="object-cover"
+                                sizes="64px"
+                                quality={100}
+                                unoptimized={true}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {/* Title and Excerpt */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`${textPrimary} font-medium`}>{article.title}</p>
+                          <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>{article.excerpt}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-sm ${textSecondary} capitalize`}>
+                        {article.category.replace("-", " ")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <span className={`text-sm ${textSecondary}`}>
-                        {new Date(article.date).toLocaleDateString()}
+                        {article.date}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -448,26 +400,44 @@ export default function ArticlesAdminPage() {
           <div className="lg:hidden divide-y divide-gray-700">
             {articles.map((article) => (
               <div key={article.slug} className={`p-4 ${cardHover} transition-colors`}>
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex gap-3 mb-3">
+                  {/* Thumbnail */}
+                  {article.image && (
+                    <div className="flex-shrink-0">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+                        <Image
+                          src={article.image}
+                          alt={article.title}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                          quality={100}
+                          unoptimized={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Title and Excerpt */}
                   <div className="flex-1 min-w-0">
                     <h3 className={`${textPrimary} font-semibold text-base mb-1 line-clamp-2`}>
                       {article.title}
                     </h3>
-                    <p className={`text-sm ${textSecondary} mb-2 line-clamp-2`}>
+                    <p className={`text-sm ${textSecondary} line-clamp-2`}>
                       {article.excerpt}
                     </p>
                   </div>
+                </div>
 
                 <div className={`flex items-center gap-4 text-xs ${textMuted} mb-3`}>
                   <span className="capitalize">{article.category.replace("-", " ")}</span>
                   <span>•</span>
-                  <span>{new Date(article.date).toLocaleDateString()}</span>
+                  <span>{article.date}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
-                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"
                     } text-sm flex items-center justify-center gap-2`}
                   >
@@ -476,7 +446,7 @@ export default function ArticlesAdminPage() {
                   </button>
                   <button
                     onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
-                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
@@ -485,7 +455,7 @@ export default function ArticlesAdminPage() {
                   </button>
                   <button
                     onClick={() => handleUnpublish(article.slug)}
-                    className={`p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
@@ -494,7 +464,7 @@ export default function ArticlesAdminPage() {
                   </button>
                   <button
                     onClick={() => handleUnpublish(article.slug)}
-                    className={`col-span-2 p-2 rounded-lg transition-colors ${textSecondary} ${
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
                     } text-sm flex items-center justify-center gap-2`}
                   >
