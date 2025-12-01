@@ -503,9 +503,11 @@ export default function NewArticlePage() {
                   onChange={(e) => setGenerationTopic(e.target.value)}
                   placeholder="Example: Benefits of investing in Palm Desert golf communities, focusing on ROI and lifestyle amenities..."
                   rows={4}
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500 resize-none`}
+                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none resize-none transition-all ${
+                    isLight
+                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                  }`}
                 />
               </div>
 
@@ -642,9 +644,11 @@ export default function NewArticlePage() {
                     setFormData((prev) => ({ ...prev, title: e.target.value }))
                   }
                   placeholder="Enter article title..."
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500 text-xl font-semibold`}
+                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none text-xl font-semibold transition-all ${
+                    isLight
+                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                  }`}
                 />
               </div>
 
@@ -666,9 +670,11 @@ export default function NewArticlePage() {
                   placeholder="Brief description (max 300 characters)..."
                   maxLength={300}
                   rows={3}
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500 resize-none`}
+                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none resize-none transition-all ${
+                    isLight
+                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                  }`}
                 />
                 <p className={`text-xs ${textMuted} mt-2`}>
                   {formData.excerpt.length}/300 characters
@@ -709,9 +715,11 @@ export default function NewArticlePage() {
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleAddTag()}
                     placeholder="Add tag..."
-                    className={`flex-1 px-4 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                      isLight ? "blue" : "emerald"
-                    }-500 text-sm`}
+                    className={`flex-1 px-4 py-2 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none text-sm transition-all ${
+                      isLight
+                        ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                        : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    }`}
                   />
                   <button
                     onClick={handleAddTag}
@@ -838,9 +846,11 @@ export default function NewArticlePage() {
                       }
                       maxLength={60}
                       placeholder="SEO title..."
-                      className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                        isLight ? "blue" : "emerald"
-                      }-500 text-sm`}
+                      className={`w-full px-3 py-2 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none text-sm transition-all ${
+                      isLight
+                        ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                        : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    }`}
                     />
                     <p className={`text-xs ${textMuted} mt-1`}>
                       {formData.seo.title.length}/60
@@ -861,9 +871,11 @@ export default function NewArticlePage() {
                       maxLength={160}
                       rows={3}
                       placeholder="SEO description..."
-                      className={`w-full px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                        isLight ? "blue" : "emerald"
-                      }-500 text-sm resize-none`}
+                      className={`w-full px-3 py-2 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none text-sm resize-none transition-all ${
+                        isLight
+                          ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                          : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                      }`}
                     />
                     <p className={`text-xs ${textMuted} mt-1`}>
                       {formData.seo.description.length}/160
@@ -882,9 +894,11 @@ export default function NewArticlePage() {
                           e.key === "Enter" && handleAddKeyword()
                         }
                         placeholder="Add keyword..."
-                        className={`flex-1 px-3 py-2 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                          isLight ? "blue" : "emerald"
-                        }-500 text-sm`}
+                        className={`flex-1 px-3 py-2 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none text-sm transition-all ${
+                      isLight
+                        ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                        : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    }`}
                       />
                       <button
                         onClick={handleAddKeyword}
