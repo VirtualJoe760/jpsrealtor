@@ -201,20 +201,18 @@ export default function ArticlesAdminPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2 md:gap-3`}>
-                <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                Articles Management
-              </h1>
-              <button
-                onClick={() => router.push("/admin/cms/new")}
-                className={`p-2 rounded-lg transition-colors ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
-                aria-label="New Article"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
+          <div className="flex items-center justify-between">
+            <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2 md:gap-3`}>
+              <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+              Articles Management
+            </h1>
+            <button
+              onClick={() => router.push("/admin/cms/new")}
+              className={`p-2 rounded-lg transition-colors ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
+              aria-label="New Article"
+            >
+              <Plus className={`w-6 h-6 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
+            </button>
           </div>
           <p className={`${textSecondary} mt-2`}>Manage your blog articles and content</p>
         </div>
@@ -288,7 +286,7 @@ export default function ArticlesAdminPage() {
         </div>
 
         {/* Filters */}
-        <div className={`${cardBg} ${cardBorder} rounded-xl p-6 mb-6`}>
+        <div className="mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <div className="relative">
@@ -322,103 +320,95 @@ export default function ArticlesAdminPage() {
           </div>
         </div>
 
-        {/* Articles Table */}
-        <div className={`${cardBg} ${cardBorder} rounded-xl overflow-hidden`}>
-          {/* Desktop Table */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead className={`${bgSecondary}/50`}>
-                <tr>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Article</th>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Category</th>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Date</th>
-                  <th className={`text-right text-sm font-semibold ${textSecondary} px-6 py-4`}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {articles.map((article) => (
-                  <tr
-                    key={article.slug}
-                    className={`border-t ${border} ${cardHover} transition-colors`}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex gap-4 items-center">
-                        {/* Thumbnail */}
-                        {article.image && (
-                          <div className="flex-shrink-0">
-                            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                              <Image
-                                src={article.image}
-                                alt={article.title}
-                                fill
-                                className="object-cover"
-                                sizes="64px"
-                                quality={100}
-                                unoptimized={true}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {/* Title and Excerpt */}
-                        <div className="flex-1 min-w-0">
-                          <p className={`${textPrimary} font-medium`}>{article.title}</p>
-                          <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>{article.excerpt}</p>
+        {/* Articles List */}
+        <div>
+          {/* Desktop View */}
+          <div className="hidden lg:block">
+            {articles.map((article, index) => (
+              <div key={article.slug}>
+                {index > 0 && <hr className={`${border}`} />}
+                <div className="flex items-center px-6 py-6">
+                  {/* Article Column (with thumbnail) */}
+                  <div className="flex-1 flex gap-4 items-center">
+                    {/* Thumbnail */}
+                    {article.image && (
+                      <div className="flex-shrink-0">
+                        <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                          <Image
+                            src={article.image}
+                            alt={article.title}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                            quality={100}
+                            unoptimized={true}
+                          />
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm ${textSecondary} capitalize`}>
-                        {article.category.replace("-", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm ${textSecondary}`}>
-                        {article.date}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
-                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"}`}
-                          title="View on Website"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
-                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"}`}
-                          title="Edit Article"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleUnpublish(article.slug)}
-                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"}`}
-                          title="Unpublish from Website"
-                        >
-                          <EyeOff className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleUnpublish(article.slug)}
-                          className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
-                          title="Delete from Database"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    {/* Title and Excerpt */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`${textPrimary} font-medium`}>{article.title}</p>
+                      <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>{article.excerpt}</p>
+                    </div>
+                  </div>
+
+                  {/* Category Column */}
+                  <div className="w-48">
+                    <span className={`text-sm ${textSecondary} capitalize`}>
+                      {article.category.replace("-", " ")}
+                    </span>
+                  </div>
+
+                  {/* Date Column */}
+                  <div className="w-32">
+                    <span className={`text-sm ${textSecondary}`}>
+                      {article.date}
+                    </span>
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="w-48 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"}`}
+                      title="View on Website"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"}`}
+                      title="Edit Article"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleUnpublish(article.slug)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"}`}
+                      title="Unpublish from Website"
+                    >
+                      <EyeOff className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleUnpublish(article.slug)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
+                      title="Delete from Database"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          
-          {/* Mobile Card View */}
-          <div className="lg:hidden divide-y divide-gray-700">
-            {articles.map((article) => (
-              <div key={article.slug} className={`p-4 ${cardHover} transition-colors`}>
+          {/* Mobile View */}
+          <div className="lg:hidden">
+            {articles.map((article, index) => (
+              <div key={article.slug}>
+                {index > 0 && <hr className={`${border}`} />}
+                <div className="py-4">
                 <div className="flex gap-3 mb-3">
                   {/* Thumbnail */}
                   {article.image && (
@@ -490,6 +480,7 @@ export default function ArticlesAdminPage() {
                     <Trash2 className="w-4 h-4" />
                     Delete
                   </button>
+                </div>
                 </div>
               </div>
             ))}
