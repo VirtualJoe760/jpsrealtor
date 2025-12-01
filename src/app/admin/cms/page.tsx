@@ -147,21 +147,8 @@ export default function ArticlesAdminPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this article?")) return;
-
-    try {
-      await fetch(`/api/articles/${id}`, {
-        method: "DELETE",
-      });
-      fetchArticles();
-    } catch (error) {
-      console.error("Failed to delete article:", error);
-    }
-  };
-
-  const handleUnpublish = async (slug: string) => {
-    if (!confirm("This will remove the article from the website. Are you sure?")) return;
+  const handleDelete = async (slug: string) => {
+    if (!confirm("⚠️ PERMANENT DELETE\n\nThis will completely remove the article MDX file from GitHub.\nThis action cannot be undone.\n\nAre you absolutely sure?")) return;
 
     try {
       const response = await fetch(`/api/articles/unpublish?slugId=${slug}`, {
@@ -171,14 +158,40 @@ export default function ArticlesAdminPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Article unpublished successfully!\n\nThe MDX file has been removed from src/posts/`);
+        alert(`Article deleted permanently!\n\nThe MDX file has been removed from src/posts/ and will be pushed to GitHub.`);
         fetchArticles();
       } else {
-        alert(`Failed to unpublish:\n\n${data.error || 'Unknown error'}`);
+        alert(`Failed to delete:\n\n${data.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("Failed to unpublish article:", error);
-      alert("Network error while unpublishing article");
+      console.error("Failed to delete article:", error);
+      alert("Network error while deleting article");
+    }
+  };
+
+  const handleUnpublish = async (slug: string) => {
+    if (!confirm("This will set the article to DRAFT mode (draft: true).\n\nThe article will remain in the system but won't appear on the website.\n\nContinue?")) return;
+
+    try {
+      const response = await fetch(`/api/articles/set-draft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ slugId: slug, draft: true }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Article set to draft mode!\n\nIt will no longer appear on the website but can be re-published later.`);
+        fetchArticles();
+      } else {
+        alert(`Failed to set draft mode:\n\n${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Failed to set draft mode:", error);
+      alert("Network error while setting draft mode");
     }
   };
 
@@ -327,7 +340,7 @@ export default function ArticlesAdminPage() {
             {articles.map((article, index) => (
               <div key={article.slug}>
                 {index > 0 && <hr className={`${border}`} />}
-                <div className="flex items-center px-6 py-6">
+                <div className={`flex items-center px-6 py-6 ${isLight ? "bg-white/40 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm"}`}>
                   {/* Article Column (with thumbnail) */}
                   <div className="flex-1 flex gap-4 items-center">
                     {/* Thumbnail */}
@@ -391,9 +404,9 @@ export default function ArticlesAdminPage() {
                       <EyeOff className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleUnpublish(article.slug)}
+                      onClick={() => handleDelete(article.slug)}
                       className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
-                      title="Delete from Database"
+                      title="Permanently Delete from GitHub"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -408,7 +421,7 @@ export default function ArticlesAdminPage() {
             {articles.map((article, index) => (
               <div key={article.slug}>
                 {index > 0 && <hr className={`${border}`} />}
-                <div className="py-4">
+                <div className={`py-4 px-4 ${isLight ? "bg-white/40 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm"}`}>
                 <div className="flex gap-3 mb-3">
                   {/* Thumbnail */}
                   {article.image && (
@@ -472,7 +485,7 @@ export default function ArticlesAdminPage() {
                     Unpublish
                   </button>
                   <button
-                    onClick={() => handleUnpublish(article.slug)}
+                    onClick={() => handleDelete(article.slug)}
                     className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
                     } text-sm flex items-center justify-center gap-2`}
