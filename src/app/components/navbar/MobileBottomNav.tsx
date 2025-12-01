@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Map, FileText, User } from "lucide-react";
+import { Home, MessageSquare, Map, Lightbulb, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -26,8 +26,8 @@ export default function MobileBottomNav() {
       active: pathname?.startsWith("/map"),
     },
     {
-      name: "Articles",
-      icon: FileText,
+      name: "Insights",
+      icon: Lightbulb,
       href: "/insights",
       active: pathname?.startsWith("/insights"),
     },
@@ -57,7 +57,9 @@ export default function MobileBottomNav() {
               onClick={() => router.push(item.href)}
               className={`flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all ${
                 item.active
-                  ? "text-emerald-500 bg-emerald-500/10"
+                  ? isLight
+                    ? "text-blue-600 bg-blue-600/10"
+                    : "text-emerald-500 bg-emerald-500/10"
                   : isLight
                     ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                     : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"

@@ -8,7 +8,7 @@ import {
   MessageSquare,
   Map,
   MapPin,
-  FileText,
+  Lightbulb,
   LayoutDashboard,
   Sun,
   Moon,
@@ -54,7 +54,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const menuItems = [
     { label: "Chat", icon: MessageSquare, href: "/" },
     { label: "Map", icon: Map, href: "/map" },
-    { label: "Articles", icon: FileText, href: "/insights" },
+    { label: "Insights", icon: Lightbulb, href: "/insights" },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 
