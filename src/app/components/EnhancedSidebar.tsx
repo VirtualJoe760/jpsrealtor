@@ -75,16 +75,14 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       router.push("/auth/signin");
       if (onClose) onClose();
     } else {
-      // If dropdown is closed, navigate to dashboard and open dropdown
-      // If dropdown is open, just close it
-      if (!dashboardDropdownOpen) {
-        router.push("/dashboard");
-        setDashboardDropdownOpen(true);
-        // Don't close sidebar on mobile when opening dropdown
-      } else {
-        setDashboardDropdownOpen(false);
-      }
+      router.push("/dashboard");
+      if (onClose) onClose();
     }
+  };
+
+  const handleDropdownToggle = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the dashboard click from firing
+    setDashboardDropdownOpen(!dashboardDropdownOpen);
   };
 
   const toggleTheme = () => {
@@ -154,11 +152,13 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             {!effectivelyCollapsed && (
               <>
                 <span className="text-sm font-medium flex-1 text-left">Dashboard</span>
-                {dashboardDropdownOpen ? (
-                  <ChevronUp className="w-4 h-4 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
-                )}
+                <div onClick={handleDropdownToggle} className="p-1 -m-1">
+                  {dashboardDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                  )}
+                </div>
               </>
             )}
           </motion.button>
