@@ -722,7 +722,6 @@ export default function EditArticlePage() {
                           keywords: formData.seo.keywords,
                         }}
                         isLight={isLight}
-                        size="sm"
                       />
                     </div>
                     <input
@@ -765,7 +764,6 @@ export default function EditArticlePage() {
                           keywords: formData.seo.keywords,
                         }}
                         isLight={isLight}
-                        size="sm"
                       />
                     </div>
                     <textarea
@@ -811,7 +809,6 @@ export default function EditArticlePage() {
                           keywords: formData.seo.keywords,
                         }}
                         isLight={isLight}
-                        size="sm"
                       />
                     </div>
                     <div className="flex gap-2 mb-2">
