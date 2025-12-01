@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Sparkles, TrendingUp } from "lucide-react";
+import { BookOpen, MessageCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import AISearchBar from "@/app/components/insights/AISearchBar";
 import FilterTabs from "@/app/components/insights/FilterTabs";
 import ArticleAccordion from "@/app/components/insights/ArticleAccordion";
 import CategoryFilter from "@/app/components/insights/CategoryFilter";
-import DateFilter from "@/app/components/insights/DateFilter";
 import TopicCloud from "@/app/components/insights/TopicCloud";
+import MarketStats from "@/app/components/insights/MarketStats";
 
 interface Article {
   title: string;
@@ -34,6 +35,7 @@ interface Topic {
 }
 
 const InsightsPage = () => {
+  const router = useRouter();
   const {
     cardBg,
     cardBorder,
@@ -47,7 +49,7 @@ const InsightsPage = () => {
 
   // State
   const [activeTab, setActiveTab] = useState<
-    "ai-suggestions" | "categories" | "date" | "topics"
+    "ai-suggestions" | "categories" | "topics"
   >("categories");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -57,10 +59,6 @@ const InsightsPage = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [dateFilter, setDateFilter] = useState<{
-    year?: number;
-    month?: number;
-  }>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   // Load all articles on mount
@@ -72,7 +70,7 @@ const InsightsPage = () => {
   // Filter articles when filters change
   useEffect(() => {
     filterArticles();
-  }, [selectedCategory, selectedTopics, dateFilter, allArticles]);
+  }, [selectedCategory, selectedTopics, allArticles]);
 
   const loadAllArticles = async () => {
     try {
@@ -145,28 +143,18 @@ const InsightsPage = () => {
       );
     }
 
-    // Date filter
-    if (dateFilter.year) {
-      filtered = filtered.filter((a) => {
-        const articleDate = new Date(a.date);
-        const articleYear = articleDate.getFullYear();
-        if (dateFilter.month) {
-          const articleMonth = articleDate.getMonth() + 1;
-          return (
-            articleYear === dateFilter.year && articleMonth === dateFilter.month
-          );
-        }
-        return articleYear === dateFilter.year;
-      });
-    }
-
     setDisplayedArticles(filtered);
   };
 
   const handleTopicSelect = (topic: string) => {
-    setSelectedTopics((prev) =>
-      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
-    );
+    const newSelectedTopics = selectedTopics.includes(topic)
+      ? selectedTopics.filter((t) => t !== topic)
+      : [...selectedTopics, topic];
+
+    setSelectedTopics(newSelectedTopics);
+
+    // Automatically switch to topics tab and filter
+    setActiveTab("topics");
   };
 
   const handleCategorySelect = (category: string | null) => {
@@ -174,12 +162,9 @@ const InsightsPage = () => {
     setActiveTab("categories");
   };
 
-  const handleDateFilterChange = (filter: {
-    year?: number;
-    month?: number;
-  }) => {
-    setDateFilter(filter);
-    setActiveTab("date");
+  const handleAskChat = () => {
+    // Redirect to chat with the search query pre-filled
+    router.push(`/?chat=${encodeURIComponent(searchQuery)}`);
   };
 
   // Get category counts
@@ -192,116 +177,45 @@ const InsightsPage = () => {
     ).length,
   };
 
-  // Get available years
-  const availableYears = Array.from(
-    new Set(
-      allArticles.map((a) => new Date(a.date).getFullYear())
-    )
-  ).sort((a, b) => b - a);
-
   return (
-    <div className="min-h-screen py-12 px-4">
+    <div className="min-h-screen pt-12 md:pt-16 pb-6 md:pb-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mb-8 text-center"
+          className="mb-6 md:mb-8 text-center"
         >
           <div
-            className={`flex items-center justify-center gap-2 mb-4 ${textSecondary}`}
+            className={`flex items-center justify-center gap-1.5 md:gap-2 mb-3 md:mb-4 ${textSecondary}`}
           >
-            <BookOpen className="w-5 h-5" />
-            <span className="text-sm uppercase tracking-wider">
+            <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-xs md:text-sm uppercase tracking-wider">
               Expert Knowledge
             </span>
           </div>
           <h1
-            className={`text-4xl md:text-6xl font-bold mb-6 drop-shadow-2xl ${textPrimary}`}
+            className={`text-3xl md:text-6xl font-bold mb-4 md:mb-6 drop-shadow-2xl ${textPrimary}`}
           >
             Real Estate Insights
           </h1>
           <p
-            className={`text-lg md:text-xl max-w-3xl mx-auto leading-relaxed mb-8 ${textSecondary}`}
+            className={`text-base md:text-xl max-w-3xl mx-auto leading-relaxed ${textSecondary}`}
           >
             Discover expert advice, market insights, and tips for buying,
             selling, and investing in Coachella Valley real estate.
           </p>
-
-          {/* AI Search Bar */}
-          <AISearchBar
-            onSearch={handleSearch}
-            placeholder="Ask me anything about Coachella Valley real estate..."
-            suggestions={suggestions}
-            isLoading={isSearching}
-            initialValue={searchQuery}
-          />
         </motion.div>
 
-        {/* Stats Cards */}
+        {/* Market Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div
-            className={`${cardBg} ${cardBorder} border rounded-xl p-4 md:p-6 ${shadow}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-6 md:w-8 h-6 md:h-8 text-emerald-400" />
-              <Sparkles
-                className={`w-5 h-5 ${
-                  isLight ? "text-gray-300" : "text-gray-600"
-                }`}
-              />
-            </div>
-            <h3 className={`text-xl md:text-2xl font-bold mb-1 ${textPrimary}`}>
-              {categoryCounts["market-insights"]} Insights
-            </h3>
-            <p className={`text-xs md:text-sm ${textSecondary}`}>
-              Market trends & analysis
-            </p>
-          </div>
-
-          <div
-            className={`${cardBg} ${cardBorder} border rounded-xl p-4 md:p-6 ${shadow}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <BookOpen className="w-6 md:w-8 h-6 md:h-8 text-blue-400" />
-              <Sparkles
-                className={`w-5 h-5 ${
-                  isLight ? "text-gray-300" : "text-gray-600"
-                }`}
-              />
-            </div>
-            <h3 className={`text-xl md:text-2xl font-bold mb-1 ${textPrimary}`}>
-              {categoryCounts["real-estate-tips"]} Tips
-            </h3>
-            <p className={`text-xs md:text-sm ${textSecondary}`}>
-              Expert guides & advice
-            </p>
-          </div>
-
-          <div
-            className={`${cardBg} ${cardBorder} border rounded-xl p-4 md:p-6 ${shadow}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Sparkles className="w-6 md:w-8 h-6 md:h-8 text-purple-400" />
-              <Sparkles
-                className={`w-5 h-5 ${
-                  isLight ? "text-gray-300" : "text-gray-600"
-                }`}
-              />
-            </div>
-            <h3 className={`text-xl md:text-2xl font-bold mb-1 ${textPrimary}`}>
-              {allArticles.length} Articles
-            </h3>
-            <p className={`text-xs md:text-sm ${textSecondary}`}>
-              Total knowledge base
-            </p>
-          </div>
+          <MarketStats />
         </motion.div>
 
         {/* Filter Tabs */}
@@ -309,60 +223,90 @@ const InsightsPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mb-8"
+          className="mb-6"
         >
           <FilterTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
             aiSuggestionsCount={searchResults.length}
+          />
+        </motion.div>
+
+        {/* Search Bar - Below Tabs, Only Shown on AI Suggestions Tab */}
+        {activeTab === "ai-suggestions" && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
           >
-            {/* AI Suggestions Tab Content */}
-            {activeTab === "ai-suggestions" && (
-              <div className={`p-4 rounded-xl ${cardBg} ${cardBorder} border`}>
-                {searchQuery ? (
-                  <div>
-                    <p className={`text-sm mb-2 ${textSecondary}`}>
-                      Based on your search: <strong>&quot;{searchQuery}&quot;</strong>
+            <AISearchBar
+              onSearch={handleSearch}
+              placeholder="Ask me anything about Coachella Valley real estate..."
+              suggestions={suggestions}
+              isLoading={isSearching}
+              initialValue={searchQuery}
+            />
+
+            {/* Search Results Info */}
+            {searchQuery && (
+              <div className={`mt-4 p-4 rounded-xl ${cardBg} ${cardBorder} border`}>
+                <p className={`text-sm mb-2 ${textSecondary}`}>
+                  Based on your search:{" "}
+                  <strong className={textPrimary}>&quot;{searchQuery}&quot;</strong>
+                </p>
+                <p className={`text-sm mb-3 ${textMuted}`}>
+                  Showing {searchResults.length} AI-ranked results
+                </p>
+                {searchResults.length === 0 && (
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm ${textSecondary}`}>
+                      Can&apos;t find what you want?
                     </p>
-                    <p className={`text-xs ${textMuted}`}>
-                      Showing {searchResults.length} AI-ranked results
-                    </p>
+                    <button
+                      onClick={handleAskChat}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
+                        isLight
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Ask our AI Chat
+                    </button>
                   </div>
-                ) : (
-                  <p className={`text-sm ${textSecondary}`}>
-                    Use the search bar above to get AI-powered article
-                    suggestions
-                  </p>
                 )}
               </div>
             )}
+          </motion.div>
+        )}
 
-            {/* Categories Tab Content */}
-            {activeTab === "categories" && (
-              <CategoryFilter
-                selectedCategory={selectedCategory}
-                onCategorySelect={handleCategorySelect}
-                categoryCounts={categoryCounts}
-              />
-            )}
+        {/* Tab Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-8"
+        >
+          {/* Categories Tab Content */}
+          {activeTab === "categories" && (
+            <CategoryFilter
+              selectedCategory={selectedCategory}
+              onCategorySelect={handleCategorySelect}
+              categoryCounts={categoryCounts}
+            />
+          )}
 
-            {/* Date Tab Content */}
-            {activeTab === "date" && (
-              <DateFilter
-                onFilterChange={handleDateFilterChange}
-                availableYears={availableYears}
-              />
-            )}
-
-            {/* Topics Tab Content */}
-            {activeTab === "topics" && (
-              <TopicCloud
-                topics={topics}
-                selectedTopics={selectedTopics}
-                onTopicSelect={handleTopicSelect}
-              />
-            )}
-          </FilterTabs>
+          {/* Topics Tab Content */}
+          {activeTab === "topics" && (
+            <TopicCloud
+              topics={topics}
+              selectedTopics={selectedTopics}
+              onTopicSelect={handleTopicSelect}
+              maxTopics={30}
+            />
+          )}
         </motion.div>
 
         {/* Articles Display */}

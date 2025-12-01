@@ -23,9 +23,18 @@ export default function AISearchBar({
   const [query, setQuery] = useState(initialValue);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { bgSecondary, border, textPrimary, textSecondary, currentTheme } =
     useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+
+  // Detect mobile on mount
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Debounced search
   const handleSearch = useCallback(() => {
@@ -59,10 +68,15 @@ export default function AISearchBar({
             : ""
         }`}
       >
-        {/* AI Sparkle Icon */}
-        <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none">
+        {/* Search Icon (Mobile) / AI Sparkle Icon (Desktop) */}
+        <div className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 pointer-events-none">
+          <Search
+            className={`w-5 h-5 md:hidden ${
+              isLight ? "text-blue-500" : "text-emerald-400"
+            }`}
+          />
           <Sparkles
-            className={`w-6 h-6 ${
+            className={`hidden md:block w-6 h-6 ${
               isLight ? "text-blue-500" : "text-emerald-400"
             }`}
           />
@@ -76,8 +90,8 @@ export default function AISearchBar({
           onKeyPress={handleKeyPress}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          placeholder={placeholder}
-          className={`w-full pl-16 pr-32 py-5 ${bgSecondary} ${textPrimary} placeholder:${textSecondary} rounded-2xl outline-none text-lg`}
+          placeholder={isMobile ? "Search articles..." : placeholder}
+          className={`w-full pl-12 md:pl-16 pr-24 md:pr-32 py-4 md:py-5 ${bgSecondary} ${textPrimary} placeholder:${textSecondary} rounded-2xl outline-none text-base md:text-lg`}
           disabled={isLoading}
         />
 

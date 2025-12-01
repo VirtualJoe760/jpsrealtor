@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, FolderOpen, Calendar, Tag } from "lucide-react";
+import { Sparkles, FolderOpen, Tag, Search } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface FilterTabsProps {
-  activeTab: "ai-suggestions" | "categories" | "date" | "topics";
-  onTabChange: (tab: "ai-suggestions" | "categories" | "date" | "topics") => void;
+  activeTab: "ai-suggestions" | "categories" | "topics";
+  onTabChange: (tab: "ai-suggestions" | "categories" | "topics") => void;
   aiSuggestionsCount?: number;
   children?: React.ReactNode;
 }
@@ -18,7 +17,7 @@ export default function FilterTabs({
   aiSuggestionsCount,
   children,
 }: FilterTabsProps) {
-  const { bgSecondary, border, textPrimary, textSecondary, currentTheme } =
+  const { border, textSecondary, currentTheme } =
     useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
@@ -26,78 +25,53 @@ export default function FilterTabs({
     {
       id: "ai-suggestions" as const,
       label: "AI Suggestions",
+      mobileLabel: "Search",
       icon: Sparkles,
-      badge: aiSuggestionsCount,
+      mobileIcon: Search,
     },
     {
       id: "categories" as const,
       label: "Categories",
+      mobileLabel: "Categories",
       icon: FolderOpen,
-    },
-    {
-      id: "date" as const,
-      label: "Date",
-      icon: Calendar,
+      mobileIcon: FolderOpen,
     },
     {
       id: "topics" as const,
       label: "Topics",
+      mobileLabel: "Topics",
       icon: Tag,
+      mobileIcon: Tag,
     },
   ];
 
   return (
     <div className="w-full">
-      {/* Tab Navigation */}
-      <div
-        className={`flex gap-2 p-2 ${bgSecondary} ${border} border rounded-xl overflow-x-auto`}
-      >
+      {/* Tab Navigation - Admin Style */}
+      <div className={`flex items-center gap-2 border-b ${border} overflow-x-auto`}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const MobileIcon = tab.mobileIcon;
           const isActive = activeTab === tab.id;
 
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all whitespace-nowrap ${
                 isActive
                   ? isLight
-                    ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
-                  : isLight
-                  ? "bg-transparent text-gray-700 hover:bg-blue-50"
-                  : "bg-transparent text-gray-300 hover:bg-gray-800"
+                    ? "border-blue-600 text-blue-600 font-semibold"
+                    : "border-emerald-500 text-emerald-400 font-semibold"
+                  : `border-transparent ${textSecondary} ${
+                      isLight ? "hover:text-gray-900 hover:border-gray-300" : "hover:text-white hover:border-gray-700"
+                    }`
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
-
-              {/* Badge for AI suggestions count */}
-              {tab.badge && tab.badge > 0 && (
-                <span
-                  className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                    isActive
-                      ? "bg-white text-blue-600"
-                      : isLight
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-emerald-900/30 text-emerald-400"
-                  }`}
-                >
-                  {tab.badge}
-                </span>
-              )}
-
-              {/* Active indicator */}
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-white rounded-t-full"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
+              <Icon className="hidden md:block w-4 h-4" />
+              <MobileIcon className="md:hidden w-4 h-4" />
+              <span className="hidden md:inline text-sm md:text-base">{tab.label}</span>
+              <span className="md:hidden text-sm">{tab.mobileLabel}</span>
             </button>
           );
         })}

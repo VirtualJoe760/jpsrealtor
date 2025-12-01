@@ -217,18 +217,26 @@ async function rankArticles(
       category: a.category,
     }));
 
-    const prompt = `You are a search relevance expert for real estate articles.
+    const prompt = `You are a search relevance expert for real estate articles. You must be STRICT about matching the user's specific intent.
 
 User query: "${query}"
 Search intent: ${JSON.stringify(intent)}
 
+IMPORTANT INSTRUCTIONS:
+- If the query mentions specific terms like "airbnb", "vacation rental", "short-term rental", ONLY rank articles that explicitly discuss these topics
+- Do NOT give high scores to articles that only mention related words (like "air" or "bnb" separately)
+- Prioritize EXACT semantic match over loose keyword matching
+- If an article doesn't address the core intent, give it a score below 5
+
 Articles to rank:
 ${articleSummaries.map((a, i) => `${i + 1}. ${a.title}\n   Excerpt: ${a.excerpt}\n   Topics: ${a.topics}`).join('\n\n')}
 
-For each article, assign a relevance score (0-10) based on:
-- Keyword match in title/excerpt (40%)
-- Semantic similarity to query (30%)
-- Match with search intent (30%)
+Scoring criteria (be STRICT):
+- Exact topic/intent match (50%) - Does the article specifically address what the user is asking about?
+- Semantic similarity (30%) - Does the article discuss concepts closely related to the query?
+- Keyword match (20%) - Are the exact keywords present?
+
+ONLY return articles with score >= 5. Exclude low-relevance articles entirely.
 
 Respond in JSON format:
 {
@@ -236,7 +244,7 @@ Respond in JSON format:
     {
       "index": 0,
       "score": 9.5,
-      "reasons": ["Contains exact keyword match in title", "Highly relevant to buying intent"]
+      "reasons": ["Article specifically discusses Airbnb investments", "Directly addresses vacation rental market"]
     }
   ]
 }`;
