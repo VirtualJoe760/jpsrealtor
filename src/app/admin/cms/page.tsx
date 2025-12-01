@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {FileText, Plus, Search, Eye, Edit, Trash2, TrendingUp, EyeOff } from "lucide-react";
+import {FileText, Plus, Search, Eye, Edit, Trash2, TrendingUp, EyeOff, ChevronLeft, ChevronRight, FolderOpen, Newspaper, Lightbulb } from "lucide-react";
 import Image from "next/image";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
@@ -43,6 +43,7 @@ export default function ArticlesAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [page, setPage] = useState(1);
+  const [currentStatIndex, setCurrentStatIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
   const [showClaudeModal, setShowClaudeModal] = useState(false);
@@ -212,59 +213,103 @@ export default function ArticlesAdminPage() {
           </div>
         </div>
 
-        {/* Stats - Top Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <FileText className={`w-8 h-8 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+        {/* Stats Carousel */}
+        <div className="mb-8">
+          <div className={`${cardBg} ${cardBorder} rounded-xl p-6 relative overflow-hidden`}>
+            <div className="flex items-center justify-between">
+              {/* Previous Button */}
+              <button
+                onClick={() => setCurrentStatIndex((prev) => (prev - 1 + 6) % 6)}
+                className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-700"}`}
+                aria-label="Previous stat"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              {/* Stat Display */}
+              <div className="flex-1 flex items-center justify-center gap-4">
+                {/* Icon, Label, and Data on same line */}
+                {currentStatIndex === 0 && (
+                  <>
+                    <FileText className={`w-10 h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Total Articles</h3>
+                      <p className={`text-4xl font-bold ${textPrimary}`}>{stats.total}</p>
+                    </div>
+                  </>
+                )}
+                {currentStatIndex === 1 && (
+                  <>
+                    <Eye className="w-10 h-10 text-green-500" />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Published</h3>
+                      <p className={`text-4xl font-bold ${textPrimary}`}>{stats.published}</p>
+                    </div>
+                  </>
+                )}
+                {currentStatIndex === 2 && (
+                  <>
+                    <Edit className="w-10 h-10 text-yellow-500" />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Drafts</h3>
+                      <p className={`text-4xl font-bold ${textPrimary}`}>{stats.draft}</p>
+                    </div>
+                  </>
+                )}
+                {currentStatIndex === 3 && (
+                  <>
+                    <Newspaper className={`w-10 h-10 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Articles</h3>
+                      <p className={`text-4xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
+                    </div>
+                  </>
+                )}
+                {currentStatIndex === 4 && (
+                  <>
+                    <TrendingUp className={`w-10 h-10 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Market Insights</h3>
+                      <p className={`text-4xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
+                    </div>
+                  </>
+                )}
+                {currentStatIndex === 5 && (
+                  <>
+                    <Lightbulb className={`w-10 h-10 ${isLight ? "text-purple-600" : "text-purple-400"}`} />
+                    <div className="flex items-baseline gap-3">
+                      <h3 className={`${textSecondary} text-lg font-medium`}>Real Estate Tips</h3>
+                      <p className={`text-4xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Next Button */}
+              <button
+                onClick={() => setCurrentStatIndex((prev) => (prev + 1) % 6)}
+                className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-700"}`}
+                aria-label="Next stat"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Total Articles</h3>
-            <p className={`text-3xl font-bold ${textPrimary}`}>{stats.total}</p>
-          </div>
 
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <Eye className="w-8 h-8 text-green-500" />
+            {/* Indicator Dots */}
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentStatIndex(index)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    currentStatIndex === index
+                      ? isLight ? "bg-blue-500 w-6" : "bg-emerald-400 w-6"
+                      : isLight ? "bg-gray-300" : "bg-gray-600"
+                  }`}
+                  aria-label={`Go to stat ${index + 1}`}
+                />
+              ))}
             </div>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Published</h3>
-            <p className={`text-3xl font-bold ${textPrimary}`}>{stats.published}</p>
-          </div>
-
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <Edit className="w-8 h-8 text-yellow-500" />
-            </div>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Drafts</h3>
-            <p className={`text-3xl font-bold ${textPrimary}`}>{stats.draft}</p>
-          </div>
-
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="w-8 h-8 text-purple-500" />
-            </div>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Total Views</h3>
-            <p className={`text-3xl font-bold ${textPrimary}`}>{stats.views.toLocaleString()}</p>
-          </div>
-        </div>
-
-        {/* Category Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Articles</h3>
-            <p className={`text-2xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
-            <p className={`text-xs ${textMuted} mt-1`}>Economics, trends, broader topics</p>
-          </div>
-
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Market Insights</h3>
-            <p className={`text-2xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
-            <p className={`text-xs ${textMuted} mt-1`}>Coachella Valley specific</p>
-          </div>
-
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
-            <h3 className={`${textSecondary} text-sm mb-1`}>Real Estate Tips</h3>
-            <p className={`text-2xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
-            <p className={`text-xs ${textMuted} mt-1`}>Buying/selling advice</p>
           </div>
         </div>
 
