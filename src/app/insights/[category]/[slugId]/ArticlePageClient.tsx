@@ -38,7 +38,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
             }`}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to articles</span>
+            <span>Back to insights</span>
           </Link>
         </motion.div>
 
