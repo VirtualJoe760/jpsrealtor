@@ -60,17 +60,30 @@ Click "Update on Site"
 
 ### 2. Article List (`/admin/cms`)
 
+**Modern Minimal Design:**
+- Clean interface with auto-scrolling stats carousel
+- Icon-only "New Article" button (+ icon) in header
+- No card backgrounds - content-focused layout
+- HR dividers between articles for visual separation
+- Thumbnails displayed for all articles (64x64 desktop, 80x80 mobile)
+
+**Stats Carousel:**
+- Auto-scrolls every 3 seconds through 6 metrics
+- Icon, label, and data on same horizontal line
+- Clickable indicator dots for manual navigation
+- Metrics: Total Articles, Published, Drafts, General Articles, Market Insights, Real Estate Tips
+
 **Features:**
-- View all articles (MongoDB + MDX combined)
-- Search by title/content
-- Filter by category
-- Sort by date
+- View all published MDX articles
+- Search by title/content (auto-filters on input)
+- Filter by category (Articles, Market Insights, Real Estate Tips)
+- Responsive layout (desktop list view, mobile card view)
 
 **Actions per article:**
 - **View** - Opens article on live site
 - **Edit** - Opens in modern editor
-- **Unpublish** - Removes MDX file (stays in MongoDB)
-- **Delete** - Removes from MongoDB only
+- **Unpublish** - Removes MDX file from site
+- **Delete** - Removes article completely
 
 ### 3. AI Field Regeneration
 
