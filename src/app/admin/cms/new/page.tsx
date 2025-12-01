@@ -751,7 +751,7 @@ export default function NewArticlePage() {
               </div>
 
               {/* Featured Image */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <label
                   className={`block text-sm font-semibold ${textSecondary} mb-2`}
                 >
@@ -813,7 +813,7 @@ export default function NewArticlePage() {
               </div>
 
               {/* SEO */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <h3 className={`text-sm font-semibold ${textSecondary} mb-4`}>
                   SEO
                 </h3>

@@ -107,26 +107,26 @@ export const themes: Record<ThemeName, Theme> = {
     name: "lightgradient",
     displayName: "Light Gradient",
     colors: {
-      // Backgrounds - Clean white
-      bgPrimary: "#ffffff",
-      bgSecondary: "#f9fafb",
-      bgTertiary: "#f3f4f6",
+      // Backgrounds - Clean white with opacity for gradient visibility
+      bgPrimary: "rgba(255, 255, 255, 0.95)",
+      bgSecondary: "rgba(255, 255, 255, 0.85)",
+      bgTertiary: "rgba(255, 255, 255, 0.75)",
 
       // Spatial backgrounds - Soft blue/purple gradients
       spatialGradient: "radial-gradient(ellipse at top, rgba(59, 130, 246, 0.1), rgba(255, 255, 255, 1) 50%)",
       gridOverlay: "url('/grid-light.svg')",
       gradientOverlay: "linear-gradient(to top, rgba(255, 255, 255, 0.9), transparent, transparent)",
 
-      // Surfaces - Light glass morphism
-      surfaceGlass: "rgba(255, 255, 255, 0.8)",
-      surfaceCard: "rgba(249, 250, 251, 0.9)",
-      surfaceBorder: "rgba(209, 213, 219, 0.5)",
+      // Surfaces - More opaque for better contrast
+      surfaceGlass: "rgba(255, 255, 255, 0.95)",
+      surfaceCard: "rgba(255, 255, 255, 0.9)",
+      surfaceBorder: "rgba(100, 116, 139, 0.3)",
 
-      // Text - High contrast dark
-      textPrimary: "#111827",
-      textSecondary: "#374151",
-      textTertiary: "#4b5563",
-      textMuted: "#6b7280",
+      // Text - Higher contrast
+      textPrimary: "#0f172a",
+      textSecondary: "#1e293b",
+      textTertiary: "#334155",
+      textMuted: "#475569",
 
       // Accents - Same vibrant colors (brand consistency)
       accentPrimary: "#10b981", // emerald
@@ -169,29 +169,29 @@ export function getThemeClasses(themeName: ThemeName) {
 
   return {
     // Backgrounds
-    bgPrimary: isLight ? "bg-white" : "bg-black",
-    bgSecondary: isLight ? "bg-gray-50" : "bg-gray-950",
-    bgTertiary: isLight ? "bg-gray-100" : "bg-gray-900",
+    bgPrimary: isLight ? "bg-white/95" : "bg-black",
+    bgSecondary: isLight ? "bg-white/85" : "bg-gray-950",
+    bgTertiary: isLight ? "bg-white/75" : "bg-gray-900",
 
     // Text colors
-    textPrimary: isLight ? "text-gray-900" : "text-white",
-    textSecondary: isLight ? "text-gray-600" : "text-gray-300",
-    textTertiary: isLight ? "text-gray-500" : "text-gray-400",
-    textMuted: isLight ? "text-gray-400" : "text-gray-500",
+    textPrimary: isLight ? "text-slate-900" : "text-white",
+    textSecondary: isLight ? "text-slate-800" : "text-gray-300",
+    textTertiary: isLight ? "text-slate-700" : "text-gray-400",
+    textMuted: isLight ? "text-slate-600" : "text-gray-500",
 
     // Cards and surfaces
     cardBg: isLight
-      ? "bg-white/80 backdrop-blur-sm"
+      ? "bg-white/95 backdrop-blur-md"
       : "bg-gray-900/50 backdrop-blur-sm",
-    cardBorder: isLight ? "border-gray-200" : "border-gray-800",
+    cardBorder: isLight ? "border-slate-300" : "border-gray-800",
     cardHover: isLight
-      ? "hover:bg-white/90 hover:border-gray-300"
+      ? "hover:bg-white hover:border-slate-400"
       : "hover:bg-gray-800/60 hover:border-gray-700",
 
     // Borders
-    border: isLight ? "border-gray-200" : "border-gray-800",
-    borderLight: isLight ? "border-gray-100" : "border-gray-900",
-    borderDark: isLight ? "border-gray-300" : "border-gray-700",
+    border: isLight ? "border-slate-300" : "border-gray-800",
+    borderLight: isLight ? "border-slate-200" : "border-gray-900",
+    borderDark: isLight ? "border-slate-400" : "border-gray-700",
 
     // Buttons
     buttonPrimary: "bg-emerald-500 hover:bg-emerald-400 text-black",
