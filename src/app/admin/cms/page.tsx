@@ -390,14 +390,14 @@ export default function ArticlesAdminPage() {
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Category</th>
                   <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Status</th>
                   <th className={`text-center text-sm font-semibold ${textSecondary} px-6 py-4`}>Views</th>
-                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Published</th>
+                  <th className={`text-left text-sm font-semibold ${textSecondary} px-6 py-4`}>Date</th>
                   <th className={`text-right text-sm font-semibold ${textSecondary} px-6 py-4`}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {articles.map((article) => (
                   <tr
-                    key={article._id}
+                    key={article.slug}
                     className={`border-t ${border} ${cardHover} transition-colors`}
                   >
                     <td className="px-6 py-4">
