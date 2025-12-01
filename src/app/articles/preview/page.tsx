@@ -3,8 +3,9 @@
 
 import { use, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Tag, User } from "lucide-react";
+import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { motion } from "framer-motion";
 
 function PreviewContent() {
   const searchParams = useSearchParams();
@@ -41,19 +42,24 @@ function PreviewContent() {
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <div className="mb-8 pt-16 md:pt-0">
+        {/* Back Button - Matches ArticlePageClient */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8 pt-16 md:pt-0"
+        >
           <a href="/insights" className={`inline-flex items-center gap-2 transition-colors ${
             isLight ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'
           }`}>
             <span>← Back to articles</span>
           </a>
-        </div>
+        </motion.div>
 
         {/* Article Header */}
         <div className="mb-8">
           <div className={`flex items-center gap-2 mb-4 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-            <Tag className="w-5 h-5" />
+            <BookOpen className="w-5 h-5" />
             <span className="text-sm uppercase tracking-wider">ARTICLE</span>
           </div>
           <h1 className={`text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl ${
@@ -89,7 +95,7 @@ function PreviewContent() {
                 isLight ? 'bg-gradient-to-br from-blue-50 to-indigo-100' : 'bg-gradient-to-br from-gray-800 to-gray-900'
               }`}>
                 <div className="text-center">
-                  <Tag className={`w-16 h-16 mx-auto mb-4 ${
+                  <BookOpen className={`w-16 h-16 mx-auto mb-4 ${
                     isLight ? 'text-blue-300' : 'text-gray-600'
                   }`} />
                   <p className={`text-sm ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>
