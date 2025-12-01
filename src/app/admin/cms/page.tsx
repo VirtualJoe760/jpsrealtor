@@ -401,35 +401,8 @@ export default function ArticlesAdminPage() {
                     className={`border-t ${border} ${cardHover} transition-colors`}
                   >
                     <td className="px-6 py-4">
-                      <div>
-                        <p className={`${textPrimary} font-medium`}>{article.title}</p>
-                        <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>{article.excerpt}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm ${textSecondary} capitalize`}>
-                        {article.category.replace("-", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          article.status === "published"
-                            ? "bg-blue-500/20 text-blue-400"
-                            : article.status === "draft"
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-gray-500/20 text-gray-400"
-                        }`}
-                      >
-                        {article.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`${textPrimary} font-semibold`}>{article.metadata.views}</span>
-                    </td>
-                    <td className="px-6 py-4">
                       <span className={`text-sm ${textSecondary}`}>
-                        {new Date(article.publishedAt).toLocaleDateString()}
+                        {new Date(article.date).toLocaleDateString()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -484,25 +457,11 @@ export default function ArticlesAdminPage() {
                       {article.excerpt}
                     </p>
                   </div>
-                  <span
-                    className={`ml-3 flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold ${
-                      article.status === "published"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : article.status === "draft"
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-gray-500/20 text-gray-400"
-                    }`}
-                  >
-                    {article.status}
-                  </span>
-                </div>
 
                 <div className={`flex items-center gap-4 text-xs ${textMuted} mb-3`}>
                   <span className="capitalize">{article.category.replace("-", " ")}</span>
                   <span>•</span>
-                  <span>{article.metadata.views} views</span>
-                  <span>•</span>
-                  <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+                  <span>{new Date(article.date).toLocaleDateString()}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
