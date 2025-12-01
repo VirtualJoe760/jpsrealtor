@@ -50,7 +50,7 @@ export default function CategoryFilter({
   ];
 
   return (
-    <div className="flex items-center justify-center gap-4 flex-wrap pb-6">
+    <div className="flex items-center justify-evenly flex-wrap pb-6">
       {categories.map((category) => {
         const Icon = category.icon;
         const isSelected = selectedCategory === category.id;
