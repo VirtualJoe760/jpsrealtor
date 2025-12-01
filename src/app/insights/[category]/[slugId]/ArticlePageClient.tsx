@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Contact from "@/app/components/contact/Contact";
 import { Post } from "@/types/post";
 import { ArrowLeft, Calendar, BookOpen } from "lucide-react";
 import Link from "next/link";
@@ -149,15 +148,6 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
             {mdxContent}
           </div>
         </motion.article>
-
-        {/* Call-to-Action */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <Contact />
-        </motion.div>
       </div>
     </div>
   );
