@@ -201,30 +201,27 @@ export default function ArticlesAdminPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} mb-2 flex items-center gap-2 md:gap-3`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2 md:gap-3`}>
                 <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
                 Articles Management
               </h1>
-              <p className={textSecondary}>Manage your blog articles and content</p>
-            </div>
-            <div className="flex flex-row items-center gap-2 sm:gap-3">
-              <ArticleGenerator onArticleGenerated={() => { fetchArticles(); fetchStats(); }} />
               <button
                 onClick={() => router.push("/admin/cms/new")}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white rounded-lg transition-colors font-semibold text-sm`}
+                className={`p-2 rounded-lg transition-colors ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
+                aria-label="New Article"
               >
-                <Plus className="w-4 h-4" />
-                New Article
+                <Plus className="w-5 h-5" />
               </button>
             </div>
           </div>
+          <p className={`${textSecondary} mt-2`}>Manage your blog articles and content</p>
         </div>
 
         {/* Stats Carousel */}
         <div className="mb-8">
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-8 relative overflow-hidden`}>
+          <div className="py-6">
             {/* Stat Display - Centered */}
             <div className="flex items-center justify-center gap-6">
               {/* Icon, Label, and Data on same line */}
