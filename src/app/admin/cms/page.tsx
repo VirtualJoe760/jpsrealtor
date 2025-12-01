@@ -456,7 +456,7 @@ export default function ArticlesAdminPage() {
                           <EyeOff className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(article._id)}
+                          onClick={() => handleUnpublish(article.slug)}
                           className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
                           title="Delete from Database"
                         >
@@ -474,7 +474,7 @@ export default function ArticlesAdminPage() {
           {/* Mobile Card View */}
           <div className="lg:hidden divide-y divide-gray-700">
             {articles.map((article) => (
-              <div key={article._id} className={`p-4 ${cardHover} transition-colors`}>
+              <div key={article.slug} className={`p-4 ${cardHover} transition-colors`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 className={`${textPrimary} font-semibold text-base mb-1 line-clamp-2`}>
@@ -534,7 +534,7 @@ export default function ArticlesAdminPage() {
                     Unpublish
                   </button>
                   <button
-                    onClick={() => handleDelete(article._id)}
+                    onClick={() => handleUnpublish(article.slug)}
                     className={`col-span-2 p-2 rounded-lg transition-colors ${textSecondary} ${
                       isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
                     } text-sm flex items-center justify-center gap-2`}
