@@ -575,9 +575,9 @@ export default function NewArticlePage() {
                 )}
               </button>
 
-              {/* Generation Preview */}
+              {/* Generation Preview - Hidden on mobile */}
               {generatedPreview && (
-                <div className="mt-6">
+                <div className="mt-6 hidden lg:block">
                   <div className="flex items-center justify-between mb-3">
                     <h3
                       className={`text-sm font-semibold ${textSecondary}`}
