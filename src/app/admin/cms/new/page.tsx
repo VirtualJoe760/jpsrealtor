@@ -18,6 +18,7 @@ import {
   Edit3,
   Wand2,
   Globe,
+  X,
 } from "lucide-react";
 import AdminNav from "@/app/components/AdminNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
@@ -75,6 +76,7 @@ export default function NewArticlePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [slugId, setSlugId] = useState("");
 
@@ -359,27 +361,6 @@ export default function NewArticlePage() {
                 Save Draft
               </button>
               <button
-                onClick={() => handleSave(true)}
-                disabled={isSaving || isPublishing}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
-                  isLight
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-purple-600 hover:bg-purple-700"
-                } text-white rounded-lg transition-colors font-semibold`}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Save to DB
-                  </>
-                )}
-              </button>
-              <button
                 onClick={handlePublishToSite}
                 disabled={isSaving || isPublishing || !slugId}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
@@ -405,53 +386,80 @@ export default function NewArticlePage() {
           </div>
         </div>
 
-        {/* Mobile Tab Navigation */}
-        <div className="lg:hidden mb-6">
-          <div className={`${cardBg} ${cardBorder} rounded-xl p-1 flex gap-1`}>
+        {/* Tab Navigation - Styled like AdminNav */}
+        <div className="mb-6">
+          <div className="flex items-center gap-1 border-b border-gray-700">
             <button
               onClick={() => setActiveTab("generate")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-3 font-medium transition-all relative ${
                 activeTab === "generate"
                   ? isLight
-                    ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
-                  : `${textSecondary} hover:${textPrimary}`
+                    ? "text-blue-600"
+                    : "text-emerald-400"
+                  : textSecondary
               }`}
             >
               <Wand2 className="w-4 h-4" />
-              Generate
+              <span>Generate</span>
+              {activeTab === "generate" && (
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-emerald-400"}`} />
+              )}
             </button>
             <button
               onClick={() => setActiveTab("edit")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-3 font-medium transition-all relative ${
                 activeTab === "edit"
                   ? isLight
-                    ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
-                  : `${textSecondary} hover:${textPrimary}`
+                    ? "text-blue-600"
+                    : "text-emerald-400"
+                  : textSecondary
               }`}
             >
               <Edit3 className="w-4 h-4" />
-              Edit
+              <span>Edit</span>
+              {activeTab === "edit" && (
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-emerald-400"}`} />
+              )}
             </button>
             <button
               onClick={() => {
-                setActiveTab("preview");
+                setShowPreviewModal(true);
                 setPreviewKey((prev) => prev + 1);
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === "preview"
-                  ? isLight
-                    ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
-                  : `${textSecondary} hover:${textPrimary}`
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${textSecondary} hover:${textPrimary}`}
             >
               <Monitor className="w-4 h-4" />
-              Preview
+              <span>Preview</span>
             </button>
           </div>
         </div>
+
+        {/* Preview Modal */}
+        {showPreviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
+            <div className={`relative w-full max-w-6xl h-[90vh] ${cardBg} rounded-xl overflow-hidden`}>
+              {/* Close Button */}
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className={`absolute top-4 right-4 z-10 p-2 rounded-lg ${cardBg} ${border} ${textPrimary} hover:bg-opacity-80 transition-colors`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {/* Preview Content */}
+              <div className="w-full h-full overflow-auto">
+                <iframe
+                  key={previewKey}
+                  src={`/insights/preview?title=${encodeURIComponent(
+                    formData.title
+                  )}&content=${encodeURIComponent(formData.content)}`}
+                  className="w-full h-full border-0"
+                  title="Article Preview"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content - Side by Side on Desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
