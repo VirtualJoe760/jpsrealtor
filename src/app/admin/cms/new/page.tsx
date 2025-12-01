@@ -347,23 +347,23 @@ export default function NewArticlePage() {
                 Generate and edit articles with Groq AI
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => handleSave(false)}
                 disabled={isSaving || isPublishing}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${textPrimary} rounded-lg transition-colors font-semibold ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 ${textPrimary} rounded-lg transition-colors font-semibold ${
                   isLight
                     ? "bg-gray-200 hover:bg-gray-300 border border-gray-300"
                     : "bg-gray-700 hover:bg-gray-600 border border-gray-700"
                 }`}
               >
-                <Save className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Save className="w-5 h-5" />
                 Save Draft
               </button>
               <button
                 onClick={handlePublishToSite}
                 disabled={isSaving || isPublishing || !slugId}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 ${
                   isLight
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : "bg-emerald-600 hover:bg-emerald-700"
@@ -372,12 +372,12 @@ export default function NewArticlePage() {
               >
                 {isPublishing ? (
                   <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     Publishing...
                   </>
                 ) : (
                   <>
-                    <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Globe className="w-5 h-5" />
                     Publish to Site
                   </>
                 )}
@@ -469,7 +469,7 @@ export default function NewArticlePage() {
               activeTab !== "generate" ? "hidden lg:block" : ""
             }`}
           >
-            <div className={`${cardBg} ${cardBorder} rounded-xl p-6 space-y-6`}>
+            <div className="space-y-6">
               <div>
                 <h2
                   className={`text-xl font-bold ${textPrimary} mb-2 flex items-center gap-2`}
@@ -624,7 +624,7 @@ export default function NewArticlePage() {
           >
             <div className="space-y-6">
               {/* Title */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <label
                   className={`block text-sm font-semibold ${textSecondary} mb-2`}
                 >
@@ -644,7 +644,7 @@ export default function NewArticlePage() {
               </div>
 
               {/* Excerpt */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <label
                   className={`block text-sm font-semibold ${textSecondary} mb-2`}
                 >
@@ -671,7 +671,7 @@ export default function NewArticlePage() {
               </div>
 
               {/* Content Editor */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <label
                   className={`block text-sm font-semibold ${textSecondary} mb-4`}
                 >
@@ -691,7 +691,7 @@ export default function NewArticlePage() {
               </div>
 
               {/* Tags */}
-              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+              <div>
                 <label
                   className={`block text-sm font-semibold ${textSecondary} mb-2`}
                 >
