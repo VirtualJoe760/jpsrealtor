@@ -30,7 +30,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
           className="mb-8 pt-16 md:pt-0"
         >
           <Link
-            href={`/insights/${category}`}
+            href="/insights"
             className={`inline-flex items-center gap-2 transition-colors ${
               isLight
                 ? 'text-gray-600 hover:text-gray-900'
@@ -38,7 +38,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
             }`}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to {category.replace("-", " ")}</span>
+            <span>Back to articles</span>
           </Link>
         </motion.div>
 
