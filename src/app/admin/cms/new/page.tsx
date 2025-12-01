@@ -526,9 +526,11 @@ export default function NewArticlePage() {
                       category: e.target.value as any,
                     }))
                   }
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500`}
+                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} focus:outline-none transition-all ${
+                    isLight
+                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                  }`}
                 >
                   <option value="articles">Articles</option>
                   <option value="market-insights">Market Insights</option>
@@ -548,9 +550,11 @@ export default function NewArticlePage() {
                   value={generationKeywords}
                   onChange={(e) => setGenerationKeywords(e.target.value)}
                   placeholder="golf, palm desert, investment, luxury homes"
-                  className={`w-full px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:border-${
-                    isLight ? "blue" : "emerald"
-                  }-500`}
+                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none transition-all ${
+                    isLight
+                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                  }`}
                 />
               </div>
 
