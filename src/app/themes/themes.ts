@@ -86,8 +86,8 @@ export const themes: Record<ThemeName, Theme> = {
       textMuted: "#9ca3af",
 
       // Accents - Vibrant colors
-      accentPrimary: "#10b981", // emerald
-      accentSecondary: "#3b82f6", // blue
+      accentPrimary: "#3b82f6", // blue
+      accentSecondary: "#10b981", // emerald
       accentSuccess: "#22c55e",
       accentWarning: "#f59e0b",
       accentError: "#ef4444",
@@ -129,8 +129,8 @@ export const themes: Record<ThemeName, Theme> = {
       textMuted: "#475569",
 
       // Accents - Same vibrant colors (brand consistency)
-      accentPrimary: "#10b981", // emerald
-      accentSecondary: "#3b82f6", // blue
+      accentPrimary: "#3b82f6", // blue
+      accentSecondary: "#10b981", // emerald
       accentSuccess: "#22c55e",
       accentWarning: "#f59e0b",
       accentError: "#ef4444",
@@ -194,7 +194,7 @@ export function getThemeClasses(themeName: ThemeName) {
     borderDark: isLight ? "border-slate-400" : "border-gray-700",
 
     // Buttons
-    buttonPrimary: "bg-emerald-500 hover:bg-emerald-400 text-black",
+    buttonPrimary: "bg-blue-500 hover:bg-blue-400 text-white",
     buttonSecondary: isLight
       ? "bg-gray-200 hover:bg-gray-300 text-gray-900"
       : "bg-gray-800/70 hover:bg-gray-700/70 text-white border border-gray-700",

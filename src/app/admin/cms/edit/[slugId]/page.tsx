@@ -299,7 +299,7 @@ export default function EditArticlePage() {
             className={`px-6 py-3 ${
               isLight
                 ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-blue-600 hover:bg-blue-700"
             } text-white rounded-lg transition-colors`}
           >
             Back to Articles
@@ -387,8 +387,8 @@ export default function EditArticlePage() {
                 disabled={isSavingToDB || isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-blue-600 hover:bg-blue-700"
                 } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
               >
                 {isPublishing ? (
@@ -416,7 +416,7 @@ export default function EditArticlePage() {
                 activeTab === "edit"
                   ? isLight
                     ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
+                    : "bg-blue-600 text-white"
                   : `${textSecondary} hover:${textPrimary}`
               }`}
             >
@@ -432,7 +432,7 @@ export default function EditArticlePage() {
                 activeTab === "preview"
                   ? isLight
                     ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
+                    : "bg-blue-600 text-white"
                   : `${textSecondary} hover:${textPrimary}`
               }`}
             >
@@ -462,7 +462,7 @@ export default function EditArticlePage() {
                 className={`w-full px-4 py-3 text-sm ${
                   isLight
                     ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-blue-600 hover:bg-blue-700"
                 } text-white rounded-lg transition-colors font-semibold`}
               >
                 Refresh Preview
@@ -832,7 +832,7 @@ export default function EditArticlePage() {
                         className={`px-3 py-2 ${
                           isLight
                             ? "bg-blue-600 hover:bg-blue-700"
-                            : "bg-emerald-600 hover:bg-emerald-700"
+                            : "bg-blue-600 hover:bg-blue-700"
                         } text-white rounded-lg transition-colors text-sm`}
                       >
                         Add
@@ -888,7 +888,7 @@ export default function EditArticlePage() {
                     className={`px-3 py-2 text-sm ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-blue-600 hover:bg-blue-700"
                     } text-white rounded-lg transition-colors font-semibold`}
                   >
                     Refresh

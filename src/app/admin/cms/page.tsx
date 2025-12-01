@@ -202,7 +202,7 @@ export default function ArticlesAdminPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2 md:gap-3`}>
+            <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center space-between`}>
               <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
               Articles Management
             </h1>
@@ -211,7 +211,7 @@ export default function ArticlesAdminPage() {
               className={`p-2 rounded-lg transition-colors ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
               aria-label="New Article"
             >
-              <Plus className={`w-6 h-6 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
+              <Plus className={`w-10 h-10 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
             </button>
           </div>
           <p className={`${textSecondary} mt-2`}>Manage your blog articles and content</p>
@@ -275,7 +275,7 @@ export default function ArticlesAdminPage() {
                   onClick={() => setCurrentStatIndex(index)}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     currentStatIndex === index
-                      ? isLight ? "bg-blue-500 w-8" : "bg-emerald-400 w-8"
+                      ? isLight ? "bg-blue-500 w-8" : "bg-blue-400 w-8"
                       : isLight ? "bg-gray-300 w-2" : "bg-gray-600 w-2"
                   }`}
                   aria-label={`Go to stat ${index + 1}`}

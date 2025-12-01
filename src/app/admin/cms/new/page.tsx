@@ -365,8 +365,8 @@ export default function NewArticlePage() {
                 disabled={isSaving || isPublishing || !slugId}
                 className={`flex items-center justify-center gap-2 px-6 py-3 ${
                   isLight
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-blue-600 hover:bg-blue-700"
                 } text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed`}
                 title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to website (writes MDX file to src/posts/)"}
               >
@@ -402,7 +402,7 @@ export default function NewArticlePage() {
               <Wand2 className="w-4 h-4" />
               <span>Generate</span>
               {activeTab === "generate" && (
-                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-emerald-400"}`} />
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-blue-400"}`} />
               )}
             </button>
             <button
@@ -418,7 +418,7 @@ export default function NewArticlePage() {
               <Edit3 className="w-4 h-4" />
               <span>Edit</span>
               {activeTab === "edit" && (
-                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-emerald-400"}`} />
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${isLight ? "bg-blue-600" : "bg-blue-400"}`} />
               )}
             </button>
             <button
@@ -553,7 +553,7 @@ export default function NewArticlePage() {
                 disabled={isGenerating || !generationTopic.trim()}
                 className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-base ${
                   isLight
-                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-purple-600 hover:bg-purple-700"
                 } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
               >
@@ -584,7 +584,7 @@ export default function NewArticlePage() {
                       className={`px-3 py-1 text-xs ${
                         isLight
                           ? "bg-blue-600 hover:bg-blue-700"
-                          : "bg-emerald-600 hover:bg-emerald-700"
+                          : "bg-blue-600 hover:bg-blue-700"
                       } text-white rounded-lg transition-colors font-semibold`}
                     >
                       Refresh
@@ -713,7 +713,7 @@ export default function NewArticlePage() {
                     className={`px-4 py-2 ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-blue-600 hover:bg-blue-700"
                     } text-white rounded-lg transition-colors`}
                   >
                     Add
@@ -886,7 +886,7 @@ export default function NewArticlePage() {
                         className={`px-3 py-2 ${
                           isLight
                             ? "bg-blue-600 hover:bg-blue-700"
-                            : "bg-emerald-600 hover:bg-emerald-700"
+                            : "bg-blue-600 hover:bg-blue-700"
                         } text-white rounded-lg transition-colors text-sm`}
                       >
                         Add
@@ -941,7 +941,7 @@ export default function NewArticlePage() {
                     className={`px-3 py-2 text-sm ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-blue-600 hover:bg-blue-700"
                     } text-white rounded-lg transition-colors font-semibold`}
                   >
                     Refresh
