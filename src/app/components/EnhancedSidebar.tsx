@@ -73,17 +73,18 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const handleDashboardClick = () => {
     if (!session) {
       router.push("/auth/signin");
+      if (onClose) onClose();
     } else {
       // If dropdown is closed, navigate to dashboard and open dropdown
       // If dropdown is open, just close it
       if (!dashboardDropdownOpen) {
         router.push("/dashboard");
         setDashboardDropdownOpen(true);
+        // Don't close sidebar on mobile when opening dropdown
       } else {
         setDashboardDropdownOpen(false);
       }
     }
-    if (onClose) onClose();
   };
 
   const toggleTheme = () => {
