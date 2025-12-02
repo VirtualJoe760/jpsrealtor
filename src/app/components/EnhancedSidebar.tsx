@@ -20,8 +20,9 @@ import {
   ChevronUp,
   Settings,
   Shield,
+  LogOut,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -83,6 +84,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const handleDropdownToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the dashboard click from firing
     setDashboardDropdownOpen(!dashboardDropdownOpen);
+  };
+
+  const handleSignOut = async () => {
+    setDashboardDropdownOpen(false);
+    if (onClose) onClose();
+    await signOut({ callbackUrl: "/" });
   };
 
   const toggleTheme = () => {

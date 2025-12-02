@@ -800,16 +800,28 @@ export default function DashboardPage() {
                 <p className={textSecondary}>{user.email}</p>
               </div>
             </div>
-            <Link
-              href="/dashboard/settings"
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard/settings"
+                className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors border ${
+                  isLight
+                    ? "bg-gray-200 hover:bg-gray-300 border-gray-300"
+                    : "bg-gray-800 hover:bg-gray-700 border-gray-700"
+                }`}
+              >
+                Settings
+              </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
               className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors border ${
                 isLight
-                  ? "bg-gray-200 hover:bg-gray-300 border-gray-300"
-                  : "bg-gray-800 hover:bg-gray-700 border-gray-700"
+                  ? "bg-red-50 hover:bg-red-100 border-red-300 text-red-600"
+                  : "bg-red-500/10 hover:bg-red-500/20 border-red-500/50 text-red-400"
               }`}
             >
-              Settings
-            </Link>
+              Sign Out
+            </button>
+            </div>
           </div>
 
           {/* Roles */}
