@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Check, Loader2, FileText, X } from 'lucide-react';
 import { useTheme } from '@/app/contexts/ThemeContext';
 import { STATES } from '@/app/constants/states';
-import VariableHero from '@/components/VariableHero';
+import CenterHero from '@/components/CenterHero';
 import SpaticalBackground from '@/app/components/backgrounds/SpaticalBackground';
 
 export default function MarketingConsentPage() {
@@ -370,15 +370,16 @@ export default function MarketingConsentPage() {
 
       <div className="min-h-screen flex flex-col">
         {/* Hero Section */}
-        <VariableHero
+        <CenterHero
           backgroundImage="/joey/about.png"
+          maxWidth="max-w-4xl"
           heroContext="Stay Connected with Me"
           description="Get the latest real estate insights & property listings!"
         />
 
         {/* Content Section - No top padding, form butts up against hero */}
-        <div className="flex flex-col items-center justify-center flex-grow px-6 pb-12">
-          <div className={`max-w-4xl w-full shadow-2xl p-8 md:p-12 ${
+        <div className="flex flex-col items-center justify-center flex-grow px-6 pb-12 -mt-8">
+          <div className={`max-w-4xl w-full shadow-2xl p-8 md:p-12 rounded-2xl ${
             isLight ? 'bg-white' : 'bg-gray-800'
           }`}>
             {/* Header */}
