@@ -116,7 +116,7 @@ export default function MarketingConsentPage() {
   const PrivacyModal = () => (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`max-w-4xl w-full rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col ${
-        isLight ? 'bg-white' : 'bg-gray-800'
+        isLight ? 'bg-white/95 backdrop-blur-sm border-gray-200' : 'bg-gray-800/95 backdrop-blur-sm border-gray-700'
       }`}>
         {/* Modal Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${
@@ -325,7 +325,7 @@ export default function MarketingConsentPage() {
       <SpaticalBackground showGradient={true}>
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className={`max-w-2xl w-full rounded-2xl shadow-2xl p-8 md:p-12 ${
-            isLight ? 'bg-white' : 'bg-gray-800'
+            isLight ? 'bg-white/95 backdrop-blur-sm border-gray-200' : 'bg-gray-800/95 backdrop-blur-sm border-gray-700'
           }`}>
             <div className="text-center">
               <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-6 ${
@@ -368,7 +368,7 @@ export default function MarketingConsentPage() {
     <SpaticalBackground showGradient={true}>
       {showPrivacyModal && <PrivacyModal />}
 
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col py-8">
         {/* Hero Section */}
         <CenterHero
           backgroundImage="/joey/about.png"
@@ -378,9 +378,9 @@ export default function MarketingConsentPage() {
         />
 
         {/* Content Section - No top padding, form butts up against hero */}
-        <div className="flex flex-col items-center justify-center flex-grow px-6 pb-12 -mt-8">
-          <div className={`max-w-4xl w-full shadow-2xl p-8 md:p-12 rounded-2xl ${
-            isLight ? 'bg-white' : 'bg-gray-800'
+        <div className="flex flex-col items-center justify-center flex-grow px-6 pb-12 mt-8">
+          <div className={`max-w-4xl w-full shadow-2xl p-8 md:p-12 rounded-2xl border ${
+            isLight ? 'bg-white/95 backdrop-blur-sm border-gray-200' : 'bg-gray-800/95 backdrop-blur-sm border-gray-700'
           }`}>
             {/* Header */}
             <div className="text-center mb-8">

@@ -19,10 +19,10 @@ const CenterHero: React.FC<CenterHeroProps> = ({
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   return (
-    <div className="w-full flex justify-center px-6 pt-12">
+    <div className="w-full flex justify-center px-6">
       <div className={`${maxWidth} w-full`}>
         <div
-          className="relative bg-cover bg-center h-[60vh] flex justify-center items-center text-white rounded-2xl overflow-hidden shadow-2xl"
+          className="relative bg-cover bg-center h-[60vh] flex justify-center items-center text-white rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10"
           aria-label={`Background hero image for ${heroContext || "hero section"}`}
         >
           {/* Optimized Background Image with Blur Effect */}
