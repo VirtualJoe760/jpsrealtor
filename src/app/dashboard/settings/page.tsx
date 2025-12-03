@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Lock, Heart, Upload, Loader2 } from "lucide-react";
+import { User, Lock, Heart, Upload, Loader2, Mail } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "partner">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "partner" | "marketing">("profile");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -351,6 +351,21 @@ export default function SettingsPage() {
           >
             <Heart className="w-5 h-5 inline mr-2" />
             Partner Linking
+          </button>
+          <button
+            onClick={() => setActiveTab("marketing")}
+            className={`px-6 py-3 font-medium transition-all ${
+              activeTab === "marketing"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Mail className="w-5 h-5 inline mr-2" />
+            Marketing Consent
           </button>
         </div>
 
@@ -703,6 +718,109 @@ export default function SettingsPage() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Marketing Consent Tab */}
+        {activeTab === "marketing" && (
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
+            <h2 className={`text-2xl font-semibold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>Marketing Consent</h2>
+            <p className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+              Manage your communication preferences and marketing consent
+            </p>
+
+            <div className="space-y-6">
+              {/* Info Card */}
+              <div className={`rounded-lg p-6 ${
+                isLight
+                  ? "bg-blue-50 border border-blue-200"
+                  : "bg-blue-900/20 border border-blue-700"
+              }`}>
+                <div className="flex items-start gap-4">
+                  <Mail className={`w-6 h-6 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                  <div>
+                    <h3 className={`text-lg font-medium mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+                      Update Your Marketing Preferences
+                    </h3>
+                    <p className={`text-sm mb-4 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                      Visit our marketing consent page to update your preferences for SMS text messages and email newsletters.
+                      You can also provide additional information about your real estate goals and preferences.
+                    </p>
+                    <Link
+                      href="/marketing-consent"
+                      className={`inline-flex items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 ${
+                        isLight
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                          : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                      }`}
+                    >
+                      <Mail className="w-5 h-5 mr-2" />
+                      Go to Marketing Consent Page
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* What You Can Update */}
+              <div>
+                <h3 className={`text-lg font-medium mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
+                  What You Can Update:
+                </h3>
+                <ul className={`space-y-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                  <li className="flex items-start gap-3">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      isLight ? "bg-blue-500" : "bg-emerald-500"
+                    }`}></span>
+                    <span><strong>SMS Text Messaging:</strong> Consent to receive both automated and person-to-person text messages</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      isLight ? "bg-blue-500" : "bg-emerald-500"
+                    }`}></span>
+                    <span><strong>Email Newsletter:</strong> Subscribe to our newsletter via SendFox</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      isLight ? "bg-blue-500" : "bg-emerald-500"
+                    }`}></span>
+                    <span><strong>Contact Information:</strong> Phone number, address, and location details</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      isLight ? "bg-blue-500" : "bg-emerald-500"
+                    }`}></span>
+                    <span><strong>Real Estate Info:</strong> Current ownership status and buying/selling timeframe</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      isLight ? "bg-blue-500" : "bg-emerald-500"
+                    }`}></span>
+                    <span><strong>Goals & Preferences:</strong> Share your real estate goals and preferences</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Privacy Notice */}
+              <div className={`rounded-lg p-4 border ${
+                isLight
+                  ? "bg-gray-50 border-gray-200"
+                  : "bg-gray-800/50 border-gray-700"
+              }`}>
+                <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                  <strong>Privacy & Control:</strong> You can opt out of SMS messages anytime by replying STOP,
+                  and unsubscribe from emails using the link in any newsletter. Your information is never sold to third parties.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

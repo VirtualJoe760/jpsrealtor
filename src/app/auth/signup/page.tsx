@@ -5,6 +5,8 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { STATES } from "@/app/constants/states";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -16,6 +18,29 @@ export default function SignUpPage() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Marketing consent fields (optional)
+  const [showMarketingConsent, setShowMarketingConsent] = useState(false);
+  const [marketingData, setMarketingData] = useState({
+    phone: "",
+    address: "",
+    city: "",
+    state: "California",
+    zipCode: "",
+    ownsRealEstate: "",
+    timeframe: "",
+    realEstateGoals: "",
+    smsConsent: false,
+    newsletterConsent: false,
+  });
+
+  const timeframeOptions = [
+    { value: 'asap', label: 'ASAP' },
+    { value: '0-3', label: '0-3 months' },
+    { value: '3-6', label: '3-6 months' },
+    { value: '6-12', label: '6 months - 1 year' },
+    { value: '1+', label: '+1 Year' },
+  ];
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,6 +61,13 @@ export default function SignUpPage() {
       return;
     }
 
+    // If marketing consent section is expanded, validate phone number if SMS consent is checked
+    if (showMarketingConsent && marketingData.smsConsent && !marketingData.phone) {
+      setError("Phone number is required for SMS consent");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -46,6 +78,19 @@ export default function SignUpPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          // Include marketing consent data if the section was filled out
+          ...(showMarketingConsent && {
+            phone: marketingData.phone,
+            address: marketingData.address,
+            city: marketingData.city,
+            state: marketingData.state,
+            zipCode: marketingData.zipCode,
+            ownsRealEstate: marketingData.ownsRealEstate,
+            timeframe: marketingData.timeframe,
+            realEstateGoals: marketingData.realEstateGoals,
+            smsConsent: marketingData.smsConsent,
+            newsletterConsent: marketingData.newsletterConsent,
+          }),
         }),
       });
 
@@ -67,7 +112,7 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900 px-4 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -144,6 +189,168 @@ export default function SignUpPage() {
                 className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                 placeholder="Re-enter password"
               />
+            </div>
+
+            {/* Marketing Consent Section (Optional) */}
+            <div className="border-t border-gray-700 pt-5">
+              <button
+                type="button"
+                onClick={() => setShowMarketingConsent(!showMarketingConsent)}
+                className="w-full flex items-center justify-between text-left text-gray-300 hover:text-white transition-colors mb-4"
+              >
+                <div>
+                  <h3 className="text-lg font-medium text-white">Marketing Preferences (Optional)</h3>
+                  <p className="text-sm text-gray-400">Complete now or update later in your settings</p>
+                </div>
+                {showMarketingConsent ? (
+                  <ChevronUp className="w-5 h-5 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 flex-shrink-0" />
+                )}
+              </button>
+
+              {showMarketingConsent && (
+                <div className="space-y-4 pt-4">
+                  {/* Phone Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Phone Number {marketingData.smsConsent && <span className="text-red-400">*</span>}
+                    </label>
+                    <input
+                      type="tel"
+                      value={marketingData.phone}
+                      onChange={(e) => setMarketingData({ ...marketingData, phone: e.target.value })}
+                      placeholder="(123) 456-7890"
+                      className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Street Address
+                    </label>
+                    <input
+                      type="text"
+                      value={marketingData.address}
+                      onChange={(e) => setMarketingData({ ...marketingData, address: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* City, State, ZIP */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
+                      <input
+                        type="text"
+                        value={marketingData.city}
+                        onChange={(e) => setMarketingData({ ...marketingData, city: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">State</label>
+                      <select
+                        value={marketingData.state}
+                        onChange={(e) => setMarketingData({ ...marketingData, state: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      >
+                        {STATES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">ZIP Code</label>
+                      <input
+                        type="text"
+                        value={marketingData.zipCode}
+                        onChange={(e) => setMarketingData({ ...marketingData, zipCode: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Real Estate Questions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Do you currently own real estate?
+                      </label>
+                      <select
+                        value={marketingData.ownsRealEstate}
+                        onChange={(e) => setMarketingData({ ...marketingData, ownsRealEstate: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      >
+                        <option value="">Select...</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        When do you plan to buy/sell?
+                      </label>
+                      <select
+                        value={marketingData.timeframe}
+                        onChange={(e) => setMarketingData({ ...marketingData, timeframe: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      >
+                        <option value="">Select timeframe...</option>
+                        {timeframeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Real Estate Goals */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      What are your real estate goals?
+                    </label>
+                    <textarea
+                      value={marketingData.realEstateGoals}
+                      onChange={(e) => setMarketingData({ ...marketingData, realEstateGoals: e.target.value })}
+                      rows={3}
+                      placeholder="Tell us about your real estate goals, preferences, or any specific needs..."
+                      className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Consent Checkboxes */}
+                  <div className="space-y-3">
+                    {/* SMS Consent */}
+                    <div className="flex items-start gap-3 p-4 rounded-lg border-2 bg-blue-900/20 border-blue-700">
+                      <input
+                        id="smsConsent"
+                        type="checkbox"
+                        checked={marketingData.smsConsent}
+                        onChange={(e) => setMarketingData({ ...marketingData, smsConsent: e.target.checked })}
+                        className="mt-1 w-5 h-5 rounded border-gray-600 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor="smsConsent" className="text-sm text-gray-200">
+                        <strong className="text-blue-300">SMS Text Messaging:</strong> I agree to receive <strong>both automated and person-to-person</strong> text messages from Joseph Sardella / JPS & Company LLC. I understand that I can opt out at any time by replying STOP. Message and data rates may apply.
+                      </label>
+                    </div>
+
+                    {/* Newsletter Consent */}
+                    <div className="flex items-start gap-3 p-4 rounded-lg border-2 bg-emerald-900/20 border-emerald-700">
+                      <input
+                        id="newsletterConsent"
+                        type="checkbox"
+                        checked={marketingData.newsletterConsent}
+                        onChange={(e) => setMarketingData({ ...marketingData, newsletterConsent: e.target.checked })}
+                        className="mt-1 w-5 h-5 rounded border-gray-600 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <label htmlFor="newsletterConsent" className="text-sm text-gray-200">
+                        <strong className="text-emerald-300">Email Newsletter:</strong> I agree to receive email newsletters from Joseph Sardella / JPS & Company LLC. I can unsubscribe at any time using the link in the emails.
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
