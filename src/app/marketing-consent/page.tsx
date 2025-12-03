@@ -662,6 +662,20 @@ export default function MarketingConsentPage() {
                 </div>
               )}
 
+              {/* Privacy Policy Link */}
+              <div className="text-center">
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`text-sm underline ${
+                    isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'
+                  }`}
+                >
+                  View Privacy Policy
+                </a>
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
