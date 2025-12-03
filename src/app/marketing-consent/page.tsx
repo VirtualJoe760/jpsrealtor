@@ -614,14 +614,21 @@ export default function MarketingConsentPage() {
                     onChange={(e) => setSmsConsent(e.target.checked)}
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <label htmlFor="smsConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'}`}>
-                    <strong className={isLight ? 'text-blue-900' : 'text-blue-300'}>
-                      SMS Text Messaging:
-                    </strong> I agree to receive <strong>both automated and person-to-person</strong> text messages from Joseph Sardella / JPS & Company LLC.
-                    I understand that I can opt out at any time by replying STOP. Message and data rates may apply.
+                  <label htmlFor="smsConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'} space-y-3`}>
+                    <div>
+                      <strong className={isLight ? 'text-blue-900' : 'text-blue-300'}>
+                        SMS Text Messaging:
+                      </strong>
+                    </div>
+                    <p>
+                      I agree to receive non-marketing SMS messages regarding customer care, service updates, reminders, notifications, scheduling links, booking confirmations, and follow-ups. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the Privacy Policy.
+                    </p>
+                    <p>
+                      I also agree to receive marketing SMS messages regarding promotional offers. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the Privacy Policy.
+                    </p>
                   </label>
-                </div>
 
+                </div>
                 {/* Newsletter Consent */}
                 <div className={`flex items-start gap-3 p-4 rounded-lg border-2 ${
                   isLight
