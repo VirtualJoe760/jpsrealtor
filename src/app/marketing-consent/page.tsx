@@ -327,7 +327,7 @@ export default function MarketingConsentPage() {
           <div className={`max-w-2xl w-full rounded-2xl shadow-2xl p-8 md:p-12 ${
             isLight ? 'bg-white/95 backdrop-blur-sm border-gray-200' : 'bg-gray-800/95 backdrop-blur-sm border-gray-700'
           }`}>
-            <div className="text-center">
+            <div className="text-left">
               <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-6 ${
                 isLight ? 'bg-green-100' : 'bg-green-900/30'
               }`}>
@@ -663,12 +663,12 @@ export default function MarketingConsentPage() {
               )}
 
               {/* Privacy Policy Link */}
-              <div className="text-center">
+              <div className="text-left">
                 <a
                   href="/privacy-policy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`text-sm underline ${
+                  className={`text-sm underline flex-start ${
                     isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'
                   }`}
                 >
