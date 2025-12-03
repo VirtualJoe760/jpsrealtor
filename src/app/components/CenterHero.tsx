@@ -8,6 +8,7 @@ interface CenterHeroProps {
   heroContext?: string;
   description?: string;
   maxWidth?: string; // e.g., "max-w-4xl", "max-w-6xl"
+  showBusinessCard?: boolean; // Show contact info like a business card
 }
 
 const CenterHero: React.FC<CenterHeroProps> = ({
@@ -15,6 +16,7 @@ const CenterHero: React.FC<CenterHeroProps> = ({
   heroContext,
   description,
   maxWidth = "max-w-4xl",
+  showBusinessCard = false,
 }) => {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
@@ -43,16 +45,36 @@ const CenterHero: React.FC<CenterHeroProps> = ({
           <div className="absolute inset-0 bg-black opacity-30"></div>
 
           {/* Content */}
-          <div className="relative z-10 px-4 flex flex-col justify-center items-center text-center h-full">
-            <h1 className="text-5xl font-bold sm:text-6xl lg:text-7xl drop-shadow-2xl">
-              {heroContext || "Hero Section"}
-            </h1>
-            {description && (
-              <p className="mt-4 pt-2 text-2xl sm:text-3xl lg:text-4xl drop-shadow-lg">
-                {description}
-              </p>
-            )}
-          </div>
+          {showBusinessCard ? (
+            // Business Card Style - Bottom Left
+            <div className="relative z-10 px-8 pb-8 flex flex-col justify-end items-start h-full w-full">
+              <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-2xl max-w-md">
+                <h2 className="text-2xl font-bold mb-2 drop-shadow-lg">
+                  Joseph Sardella
+                </h2>
+                <p className="text-lg mb-3 drop-shadow-md">
+                  Real Estate Agent
+                </p>
+                <div className="space-y-1 text-sm drop-shadow-md">
+                  <p>DRE# 02106916</p>
+                  <p>760-333-2674</p>
+                  <p>josephsardella@gmail.com</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Original Center Style
+            <div className="relative z-10 px-4 flex flex-col justify-center items-center text-center h-full">
+              <h1 className="text-5xl font-bold sm:text-6xl lg:text-7xl drop-shadow-2xl">
+                {heroContext || "Hero Section"}
+              </h1>
+              {description && (
+                <p className="mt-4 pt-2 text-2xl sm:text-3xl lg:text-4xl drop-shadow-lg">
+                  {description}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

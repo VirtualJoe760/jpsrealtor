@@ -373,8 +373,7 @@ export default function MarketingConsentPage() {
         <CenterHero
           backgroundImage="/joey/about.png"
           maxWidth="max-w-4xl"
-          heroContext="Stay Connected with Me"
-          description="Get the latest real estate insights & property listings!"
+          showBusinessCard={true}
         />
 
         {/* Content Section - No top padding, form butts up against hero */}
