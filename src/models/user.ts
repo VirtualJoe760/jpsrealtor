@@ -104,6 +104,26 @@ export interface IUser extends Document {
   twoFactorEnabled: boolean;
   twoFactorEmail?: string; // Email for 2FA (usually same as login email)
 
+  // Marketing Consent (TCPA Compliant)
+  smsConsent?: {
+    agreed: boolean;
+    agreedAt?: Date;
+    phoneNumber?: string;
+    ipAddress?: string;
+  };
+  newsletterConsent?: {
+    agreed: boolean;
+    agreedAt?: Date;
+    email?: string;
+    ipAddress?: string;
+  };
+
+  // Email Signature
+  emailSignature?: {
+    html: string;
+    photo: string | null;
+  };
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -233,6 +253,26 @@ const UserSchema = new Schema<IUser>(
     // Two-Factor Authentication
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorEmail: String,
+
+    // Marketing Consent (TCPA Compliant)
+    smsConsent: {
+      agreed: { type: Boolean, default: false },
+      agreedAt: Date,
+      phoneNumber: String,
+      ipAddress: String,
+    },
+    newsletterConsent: {
+      agreed: { type: Boolean, default: false },
+      agreedAt: Date,
+      email: String,
+      ipAddress: String,
+    },
+
+    // Email Signature
+    emailSignature: {
+      html: { type: String, default: '' },
+      photo: { type: String, default: null },
+    },
 
     // Metadata
     lastLoginAt: Date,
