@@ -352,6 +352,10 @@ export default function SignUpPage() {
                 </div>
               )}
             </div>
+            <p className="text-xs text-center text-gray-400 mb-4">
+              By creating an account, you agree to our <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">Privacy Policy</a>.
+            </p>
+
 
             <button
               type="submit"

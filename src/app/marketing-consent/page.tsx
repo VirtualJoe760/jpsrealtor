@@ -621,10 +621,10 @@ export default function MarketingConsentPage() {
                       </strong>
                     </div>
                     <p>
-                      I agree to receive non-marketing SMS messages regarding customer care, service updates, reminders, notifications, scheduling links, booking confirmations, and follow-ups. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the Privacy Policy.
+                      I agree to receive non-marketing SMS messages regarding customer care, service updates, reminders, notifications, scheduling links, booking confirmations, and follow-ups. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>Privacy Policy</a>.
                     </p>
                     <p>
-                      I also agree to receive marketing SMS messages regarding promotional offers. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the Privacy Policy.
+                      I also agree to receive marketing SMS messages regarding promotional offers. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>Privacy Policy</a>.
                     </p>
                   </label>
 
