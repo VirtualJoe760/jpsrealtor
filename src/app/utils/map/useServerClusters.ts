@@ -187,8 +187,11 @@ export function useServerClusters() {
           if (filters.mlsSource) params.mlsSource = filters.mlsSource;
         }
 
-        // Determine if streaming should be used (zoom >= 12 for individual listings)
-        const useStreaming = bounds.zoom >= 12;
+        // Determine if streaming should be used
+        // Enable streaming for:
+        // 1. Zoom 12+ (individual listings)
+        // 2. Zoom 7-11 (smart display with boundaries + listings when <600)
+        const useStreaming = bounds.zoom >= 7;
 
         if (useStreaming) {
           params.stream = 'true';
@@ -253,7 +256,8 @@ export function useServerClusters() {
                       console.log('📊 Stream metadata:', {
                         zoom: message.zoom,
                         totalCount: message.totalCount,
-                        batchSize: message.batchSize
+                        batchSize: message.batchSize,
+                        hasBoundaries: message.clusters?.length > 0
                       });
 
                       // Set total count immediately
@@ -263,6 +267,12 @@ export function useServerClusters() {
                           byMLS: message.mlsDistribution,
                         });
                       }
+
+                      // Display boundaries immediately if included (smart display scenario)
+                      if (message.clusters && message.clusters.length > 0) {
+                        console.log(`🗺️ Displaying ${message.clusters.length} boundaries immediately`);
+                        setMarkers(message.clusters);
+                      }
                       break;
 
                     case 'listings':
@@ -271,31 +281,22 @@ export function useServerClusters() {
 
                       console.log(`📦 Received batch: ${listings.length} listings (total: ${totalReceived})`);
 
-                      // Progressively add listings to map
-                      if (merge) {
-                        setMarkers(prev => {
-                          const existingKeys = new Set(
-                            prev
-                              .filter((m): m is MapListing => !isServerCluster(m))
-                              .map(l => l.listingKey || l._id)
-                          );
-                          const uniqueNew = listings.filter(
-                            l => !existingKeys.has(l.listingKey || l._id)
-                          );
-                          return [...prev, ...uniqueNew];
-                        });
-                      } else {
-                        // For first batch, replace; subsequent batches append
-                        setMarkers(prev => {
-                          if (totalReceived === listings.length) {
-                            // First batch replaces all
-                            return listings;
-                          } else {
-                            // Subsequent batches append
-                            return [...prev, ...listings];
-                          }
-                        });
-                      }
+                      // Progressively add listings to map, preserving any boundaries from metadata
+                      setMarkers(prev => {
+                        // Separate boundaries (clusters) from listings
+                        const boundaries = prev.filter(isServerCluster);
+                        const existingListings = prev.filter((m): m is MapListing => !isServerCluster(m));
+
+                        if (merge) {
+                          // Merge mode: add only new unique listings
+                          const existingKeys = new Set(existingListings.map(l => l.listingKey || l._id));
+                          const uniqueNew = listings.filter(l => !existingKeys.has(l.listingKey || l._id));
+                          return [...boundaries, ...existingListings, ...uniqueNew];
+                        } else {
+                          // Replace mode: keep boundaries, append listings
+                          return [...boundaries, ...existingListings, ...listings];
+                        }
+                      });
                       break;
 
                     case 'complete':

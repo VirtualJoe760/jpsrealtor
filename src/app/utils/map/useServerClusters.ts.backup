@@ -48,6 +48,7 @@ export function useServerClusters() {
   const loadingRef = useRef<boolean>(false);
   const filtersHashRef = useRef<string>("");
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * Check if bounds are already covered by loaded regions
@@ -105,6 +106,15 @@ export function useServerClusters() {
         force,
         merge
       });
+
+      // Cancel previous request if it exists
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        console.log('⏭️ Cancelled previous request');
+      }
+
+      // Create new AbortController for this request
+      abortControllerRef.current = new AbortController();
 
       // Serialize filters for change detection
       const currentFiltersHash = JSON.stringify(filters || {});
@@ -190,7 +200,9 @@ export function useServerClusters() {
         console.log('🌐 Fetching clusters/listings from:', apiUrl);
         console.log('🔍 Zoom:', bounds.zoom, '| Streaming:', useStreaming);
 
-        const res = await fetch(apiUrl);
+        const res = await fetch(apiUrl, {
+          signal: abortControllerRef.current.signal
+        });
 
         console.log('📡 Response status:', res.status, res.statusText);
 
@@ -443,7 +455,12 @@ export function useServerClusters() {
           loadedRegionsRef.current = loadedRegionsRef.current.slice(-10);
         }
 
-      } catch (error) {
+      } catch (error: any) {
+        // Handle AbortError gracefully - don't set error states
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled');
+          return;
+        }
         console.error('❌ Error fetching clusters/listings:', error);
       } finally {
         loadingRef.current = false;

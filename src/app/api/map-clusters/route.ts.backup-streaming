@@ -387,168 +387,43 @@ export async function GET(req: NextRequest) {
         // Calculate total listing count
         listingCount = clusters.reduce((sum: number, county: any) => sum + (county.count || 0), 0);
 
-
         console.log(`📍 Showing ${clusters.length} counties in viewport (including ${clusters.filter((c: any) => c.count === 0).length} with zero listings)`);
 
         // Set clusterPipeline to null to skip additional aggregation
         clusterPipeline = null;
 
-        // If listing count < 600, also fetch/stream individual listings to show WITH county boundaries
+        // If listing count < 600, also fetch and include individual listings
+        let listings = [];
         if (listingCount > 0 && listingCount < 600) {
-          console.log(`✨ Smart display: ${listingCount} listings to show WITH county boundaries`);
-
-          if (useStreaming) {
-            // ==================== STREAM SMART DISPLAY ====================
-            console.log(`📡 Streaming ${listingCount} listings WITH boundaries`);
-
-            const BATCH_SIZE = 50;
-            const encoder = new TextEncoder();
-
-            const stream = new ReadableStream({
-              async start(controller) {
-                try {
-                  // Send metadata with boundaries immediately
-                  const metadata = {
-                    type: "metadata",
-                    zoom,
-                    totalCount: listingCount,
-                    batchSize: BATCH_SIZE,
-                    clusters, // Include boundaries in metadata for instant display
-                  };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`));
-
-                  // Stream listings in batches
-                  const cursor = UnifiedListing.find(matchStage)
-                    .select({
-                      listingId: 1,
-                      listingKey: 1,
-                      slug: 1,
-                      slugAddress: 1,
-                      latitude: 1,
-                      longitude: 1,
-                      listPrice: 1,
-                      bedroomsTotal: 1,
-                      bedsTotal: 1,
-                      bathroomsTotalDecimal: 1,
-                      livingArea: 1,
-                      address: 1,
-                      unparsedAddress: 1,
-                      city: 1,
-                      propertyType: 1,
-                      propertySubType: 1,
-                      mlsSource: 1,
-                      poolYn: 1,
-                      spaYn: 1,
-                      primaryPhotoUrl: 1,
-                    })
-                    .limit(600)
-                    .lean()
-                    .cursor();
-
-                  let batch: any[] = [];
-                  let sentCount = 0;
-
-                  for await (const listing of cursor) {
-                    batch.push(listing);
-
-                    if (batch.length >= BATCH_SIZE) {
-                      const chunk = {
-                        type: "listings",
-                        listings: batch,
-                        count: batch.length,
-                        totalSent: sentCount + batch.length,
-                      };
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-                      sentCount += batch.length;
-                      batch = [];
-                    }
-                  }
-
-                  // Send remaining listings
-                  if (batch.length > 0) {
-                    const chunk = {
-                      type: "listings",
-                      listings: batch,
-                      count: batch.length,
-                      totalSent: sentCount + batch.length,
-                    };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-                    sentCount += batch.length;
-                  }
-
-                  // Send completion
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete", totalSent: sentCount, totalCount: listingCount })}\n\n`));
-                  controller.close();
-                } catch (error) {
-                  console.error('❌ Streaming error:', error);
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", error: String(error) })}\n\n`));
-                  controller.close();
-                }
-              }
-            });
-
-            return new Response(stream, {
-              headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-              }
-            });
-          } else {
-            // Standard JSON response for non-streaming clients
-            const listings = await UnifiedListing.find(matchStage)
-              .select({
-                listingId: 1,
-                listingKey: 1,
-                slug: 1,
-                slugAddress: 1,
-                latitude: 1,
-                longitude: 1,
-                listPrice: 1,
-                bedroomsTotal: 1,
-                bedsTotal: 1,
-                bathroomsTotalDecimal: 1,
-                livingArea: 1,
-                address: 1,
-                unparsedAddress: 1,
-                city: 1,
-                propertyType: 1,
-                propertySubType: 1,
-                mlsSource: 1,
-                poolYn: 1,
-                spaYn: 1,
-                primaryPhotoUrl: 1,
-              })
-              .limit(600)
-              .lean();
-            console.log(`✅ Fetched ${listings.length} listings to display alongside boundaries`);
-
-            return NextResponse.json(
-              {
-                type: "clusters",
-                zoom,
-                gridSize,
-                clusteringMethod: 'county-based',
-                clusters,
-                listings,
-                totalCount: listingCount,
-                clusterCount: clusters.length,
-                listingsIncluded: listings.length > 0,
-                context,
-              },
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400',
-                  'CDN-Cache-Control': 'max-age=1800',
-                  'Vary': 'Accept-Encoding',
-                }
-              }
-            );
-          }
+          console.log(`✨ Smart display: Fetching ${listingCount} listings to show WITH county boundaries`);
+          listings = await UnifiedListing.find(matchStage)
+            .select({
+              listingId: 1,
+              listingKey: 1,
+              slug: 1,
+              slugAddress: 1,
+              latitude: 1,
+              longitude: 1,
+              listPrice: 1,
+              bedroomsTotal: 1,
+              bedsTotal: 1,
+              bathroomsTotalDecimal: 1,
+              livingArea: 1,
+              address: 1,
+              unparsedAddress: 1,
+              city: 1,
+              propertyType: 1,
+              propertySubType: 1,
+              mlsSource: 1,
+              poolYn: 1,
+              spaYn: 1,
+              primaryPhotoUrl: 1,
+            })
+            .limit(600)
+            .lean();
+          console.log(`✅ Fetched ${listings.length} listings to display alongside boundaries`);
         }
 
-        // No listings to fetch, just return boundaries
         return NextResponse.json(
           {
             type: "clusters",
@@ -556,10 +431,10 @@ export async function GET(req: NextRequest) {
             gridSize,
             clusteringMethod: 'county-based',
             clusters,
-            listings: [],
+            listings, // Include listings when <600 for smart display
             totalCount: listingCount,
             clusterCount: clusters.length,
-            listingsIncluded: false,
+            listingsIncluded: listings.length > 0,
             context,
           },
           {
@@ -679,148 +554,38 @@ export async function GET(req: NextRequest) {
         console.log(`🏙️ Cities: ${clusters.slice(0, 5).map((c: any) => c.cityName || 'Unknown').join(', ')}...`);
       }
 
-      // If listing count < 600 AND we're showing city boundaries, fetch/stream listings too
+      // If listing count < 600 AND we're showing city boundaries, fetch listings too
+      let listings = [];
       if (useCityBasedClustering && listingCount > 0 && listingCount < 600) {
-        console.log(`✨ Smart display: ${listingCount} listings to show WITH city boundaries`);
-
-        if (useStreaming) {
-          // ==================== STREAM SMART DISPLAY (CITY) ====================
-          console.log(`📡 Streaming ${listingCount} listings WITH city boundaries`);
-
-          const BATCH_SIZE = 50;
-          const encoder = new TextEncoder();
-
-          const stream = new ReadableStream({
-            async start(controller) {
-              try {
-                // Send metadata with city boundaries immediately
-                const metadata = {
-                  type: "metadata",
-                  zoom,
-                  totalCount: listingCount,
-                  batchSize: BATCH_SIZE,
-                  clusters: clusters || [], // Include city boundaries
-                };
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`));
-
-                // Stream listings
-                const cursor = UnifiedListing.find(matchStage)
-                  .select({
-                    listingId: 1,
-                    listingKey: 1,
-                    slug: 1,
-                    slugAddress: 1,
-                    latitude: 1,
-                    longitude: 1,
-                    listPrice: 1,
-                    bedroomsTotal: 1,
-                    bedsTotal: 1,
-                    bathroomsTotalDecimal: 1,
-                    livingArea: 1,
-                    address: 1,
-                    unparsedAddress: 1,
-                    city: 1,
-                    propertyType: 1,
-                    propertySubType: 1,
-                    mlsSource: 1,
-                    poolYn: 1,
-                    spaYn: 1,
-                    primaryPhotoUrl: 1,
-                  })
-                  .limit(600)
-                  .lean()
-                  .cursor();
-
-                let batch: any[] = [];
-                let sentCount = 0;
-
-                for await (const listing of cursor) {
-                  batch.push(listing);
-
-                  if (batch.length >= BATCH_SIZE) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "listings", listings: batch, count: batch.length, totalSent: sentCount + batch.length })}\n\n`));
-                    sentCount += batch.length;
-                    batch = [];
-                  }
-                }
-
-                if (batch.length > 0) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "listings", listings: batch, count: batch.length, totalSent: sentCount + batch.length })}\n\n`));
-                  sentCount += batch.length;
-                }
-
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete", totalSent: sentCount, totalCount: listingCount })}\n\n`));
-                controller.close();
-              } catch (error) {
-                console.error('❌ Streaming error:', error);
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", error: String(error) })}\n\n`));
-                controller.close();
-              }
-            }
-          });
-
-          return new Response(stream, {
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
-            }
-          });
-        } else {
-          // Standard JSON for non-streaming
-          const listings = await UnifiedListing.find(matchStage)
-            .select({
-              listingId: 1,
-              listingKey: 1,
-              slug: 1,
-              slugAddress: 1,
-              latitude: 1,
-              longitude: 1,
-              listPrice: 1,
-              bedroomsTotal: 1,
-              bedsTotal: 1,
-              bathroomsTotalDecimal: 1,
-              livingArea: 1,
-              address: 1,
-              unparsedAddress: 1,
-              city: 1,
-              propertyType: 1,
-              propertySubType: 1,
-              mlsSource: 1,
-              poolYn: 1,
-              spaYn: 1,
-              primaryPhotoUrl: 1,
-            })
-            .limit(600)
-            .lean();
-          console.log(`✅ Fetched ${listings.length} listings alongside city boundaries`);
-
-          return NextResponse.json(
-            {
-              type: "clusters",
-              zoom,
-              gridSize,
-              clusteringMethod: 'city-based',
-              clusters: clusters || [],
-              listings,
-              totalCount: listingCount,
-              clusterCount: clusters?.length || 0,
-              listingsIncluded: listings.length > 0,
-              context,
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400',
-                'CDN-Cache-Control': 'max-age=1800',
-                'Vary': 'Accept-Encoding',
-              }
-            }
-          );
-        }
+        console.log(`✨ Smart display: Fetching ${listingCount} listings to show WITH city boundaries`);
+        listings = await UnifiedListing.find(matchStage)
+          .select({
+            listingId: 1,
+            listingKey: 1,
+            slug: 1,
+            slugAddress: 1,
+            latitude: 1,
+            longitude: 1,
+            listPrice: 1,
+            bedroomsTotal: 1,
+            bedsTotal: 1,
+            bathroomsTotalDecimal: 1,
+            livingArea: 1,
+            address: 1,
+            unparsedAddress: 1,
+            city: 1,
+            propertyType: 1,
+            propertySubType: 1,
+            mlsSource: 1,
+            poolYn: 1,
+            spaYn: 1,
+            primaryPhotoUrl: 1,
+          })
+          .limit(600)
+          .lean();
+        console.log(`✅ Fetched ${listings.length} listings to display alongside city boundaries`);
       }
 
-      // No smart display, just return boundaries
       return NextResponse.json(
         {
           type: "clusters",
@@ -828,11 +593,11 @@ export async function GET(req: NextRequest) {
           gridSize,
           clusteringMethod: useCountyClustering ? 'county-based' : useCityBasedClustering ? 'city-based' : 'grid-based',
           clusters: clusters || [],
-          listings: [],
+          listings, // Include listings when <600 for smart display
           totalCount: listingCount,
           clusterCount: clusters?.length || 0,
-          listingsIncluded: false,
-          context,
+          listingsIncluded: listings.length > 0,
+          context, // Include context for debugging
         },
         {
           headers: {

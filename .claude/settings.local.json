@@ -81,7 +81,9 @@
       "Bash(netstat:*)",
       "Bash(BashOutput 844758)",
       "Bash(timeout 120 npm run build:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(/tmp/mapview_part1.txt)",
+      "Bash(/tmp/mapview_part2.txt)"
     ],
     "deny": [],
     "ask": []
