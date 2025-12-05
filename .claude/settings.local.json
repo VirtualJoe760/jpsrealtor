@@ -77,7 +77,11 @@
       "Bash(npm install:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(netstat:*)",
+      "Bash(BashOutput 844758)",
+      "Bash(timeout 120 npm run build:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

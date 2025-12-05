@@ -1019,8 +1019,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         )}
 
 
-        {/* Render city polygon overlays for zoom >= 9 (prevents blocking counties at lower zoom) */}
-        {dataToRender && dataToRender.length > 0 && currentZoom >= 9 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
+        {/* Render city polygon overlays for zoom >= 8 (prevents blocking counties at lower zoom) */}
+        {dataToRender && dataToRender.length > 0 && currentZoom >= 8 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
           <>
             {(() => {
               // Calculate all city counts for color percentiles
