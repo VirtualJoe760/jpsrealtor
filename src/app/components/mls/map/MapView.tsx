@@ -453,6 +453,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
           // Clear previous hover state before setting new one
           if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
+            console.log(`   ⏸️  Clearing previous: ${hoveredFeatureRef.current.source}`);
             map.setFeatureState(
               hoveredFeatureRef.current,
               { hover: false }
@@ -461,10 +462,19 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
           if (e.features && e.features[0]) {
             const featureRef = { source: sourceName, id: e.features[0].id };
-            map.setFeatureState(featureRef, { hover: true });
-            hoveredFeatureRef.current = featureRef;
+            console.log(`   ✅ Setting feature-state: source="${sourceName}", id=${e.features[0].id}, hover=true`);
+
+            // Verify source exists before setting state
+            if (map.getSource(sourceName)) {
+              map.setFeatureState(featureRef, { hover: true });
+              hoveredFeatureRef.current = featureRef;
+              console.log(`   ✨ Feature-state updated successfully`);
+            } else {
+              console.error(`   ❌ Source "${sourceName}" not found! Cannot set feature-state.`);
+            }
           }
 
+          console.log(`   📊 Updating UI: "${polygon.name}" (${polygon.count} listings)`);
           setHoveredPolygon({
             name: polygon.name,
             count: polygon.count,
@@ -477,10 +487,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
         // Mouseleave handler
         const onMouseLeave = () => {
+          console.log(`👋 Hover LEAVE: ${polygon.type} - ${polygon.name}`);
           map.getCanvas().style.cursor = 'default';
 
           // Clear hover state for the specific feature
           if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
+            console.log(`   ⏸️  Clearing hover state: ${hoveredFeatureRef.current.source}`);
             map.setFeatureState(
               hoveredFeatureRef.current,
               { hover: false }
@@ -488,6 +500,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
             hoveredFeatureRef.current = null;
           }
 
+          console.log(`   📊 Clearing UI (back to default)`);
           setHoveredPolygon(null);
         };
 

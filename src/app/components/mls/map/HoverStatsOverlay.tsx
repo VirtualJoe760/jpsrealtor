@@ -37,7 +37,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
 
   return (
     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <motion.div
           key={displayData.name}
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
