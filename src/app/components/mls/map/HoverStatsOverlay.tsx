@@ -37,16 +37,15 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
 
   return (
     <div className="fixed md:top-6 md:bottom-auto bottom-6 top-auto left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         <motion.div
           key={displayData.name}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{
-              type: 'spring',
-              stiffness: 300,
-              damping: 30
+              duration: 0.15,
+              ease: 'easeInOut'
             }}
             className={`
               px-6 py-4 rounded-2xl backdrop-blur-md

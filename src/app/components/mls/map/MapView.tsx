@@ -538,13 +538,14 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     // Register handlers immediately if style is loaded, otherwise wait for it
     if (map.isStyleLoaded()) {
-      console.log('✅ Style already loaded, registering handlers immediately');
-      registerHandlers();
+      console.log('✅ Style already loaded, registering handlers after small delay');
+      // Small delay to ensure all layers are fully added to the map
+      setTimeout(() => registerHandlers(), 50);
     } else {
       console.log('⏳ Waiting for style to load before registering handlers...');
       const onStyleLoad = () => {
-        console.log('✅ Style loaded, registering handlers now');
-        registerHandlers();
+        console.log('✅ Style loaded, registering handlers after small delay');
+        setTimeout(() => registerHandlers(), 50);
       };
       map.once('style.load', onStyleLoad);
     }
