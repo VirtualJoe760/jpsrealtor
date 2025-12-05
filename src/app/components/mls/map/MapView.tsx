@@ -448,6 +448,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         }
         // Mouseenter handler
         const onMouseEnter = (e: any) => {
+          console.log(`🎯 Hover ENTER: ${polygon.type} - ${polygon.name} (layer: ${layerId})`);
           map.getCanvas().style.cursor = 'pointer';
 
           // Clear previous hover state before setting new one
