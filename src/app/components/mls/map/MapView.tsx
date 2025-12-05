@@ -636,6 +636,25 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Use markers if provided, otherwise fall back to listings
   const dataToRender = (markers && markers.length > 0) ? markers : listings;
 
+  // Enhanced logging for debugging zoom-based rendering
+  useEffect(() => {
+    const regionCount = dataToRender.filter((m: any) => m.clusterType === 'region' && m.polygon).length;
+    const countyCount = dataToRender.filter((m: any) => m.clusterType === 'county' && m.polygon).length;
+    const cityCount = dataToRender.filter((m: any) => m.clusterType === 'city' && m.polygon).length;
+    const listingCount = dataToRender.filter((m: any) => !isServerCluster(m)).length;
+    const clusterCount = dataToRender.filter((m: any) => isServerCluster(m) && !['region', 'county', 'city'].includes((m as any).clusterType)).length;
+
+    console.log(`📊 MapView Render Data at Zoom ${Math.floor(currentZoom)}:`, {
+      zoom: Math.floor(currentZoom),
+      regions: regionCount,
+      counties: countyCount,
+      cities: cityCount,
+      listings: listingCount,
+      otherClusters: clusterCount,
+      total: dataToRender.length
+    });
+  }, [dataToRender, currentZoom]);
+
   // Handle polygon (region/county/city) clicks
   const handleMapClick = useCallback((event: any) => {
     if (panelOpen) return;

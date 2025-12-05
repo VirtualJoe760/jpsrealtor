@@ -228,14 +228,15 @@ export async function GET(req: NextRequest) {
       const gridSize = getClusterGridSize(zoom);
 
       // ==================== HIERARCHICAL ZOOM STRATEGY ====================
-      // Zoom < 9: County-level clustering
-      // Zoom 9-10: Major city clustering (1000+ listings)
-      // Zoom 11: Smaller city clustering (100+ listings)
-      // Zoom 12+: Individual listing markers
+      // Zoom 5-6: Region-level clustering (Northern CA, Central CA, Southern CA)
+      // Zoom 7-9: County-level clustering
+      // Zoom 10-11: City-level clustering
+      // Zoom 12: Individual listings (capped at 500)
+      // Zoom 13+: All individual listings in viewport
 
-      const useRegionClustering = zoom <= 6;
-      const useCountyClustering = zoom >= 7 && zoom < 9;
-      const useCityBasedClustering = zoom >= 9 && zoom < 12;
+      const useRegionClustering = zoom >= 5 && zoom <= 6;
+      const useCountyClustering = zoom >= 7 && zoom <= 9;
+      const useCityBasedClustering = zoom >= 10 && zoom <= 11;
 
       let clusterPipeline;
       let clusters; // Declare outside to be accessible throughout
