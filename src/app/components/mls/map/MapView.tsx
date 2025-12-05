@@ -922,8 +922,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.15,  // hover - very subtle for zero listings
-                              0.08   // base - barely visible
+                              0.12,  // hover - very subtle for zero listings
+                              0.05   // base - very faint to indicate "no data"
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
@@ -932,19 +932,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                             ]
                       }}
                     />
-                    {/* Diagonal stripe overlay for zero-listing counties */}
-                    {marker.count === 0 && (
-                      <Layer
-                        id={`county-stripes-${marker.countyName}`}
-                        type="line"
-                        paint={{
-                          'line-color': isLight ? '#9ca3af' : '#6b7280',
-                          'line-width': 1,
-                          'line-opacity': 0.3,
-                          'line-dasharray': [2, 4]
-                        }}
-                      />
-                    )}
                     <Layer
                       id={`county-outline-${marker.countyName}`}
                       type="line"
@@ -1014,8 +1001,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
                 return (
                   <Source
-                    key={`city-source-${marker.cityName}`}
-                    id={`city-source-${marker.cityName}`}
+                    key={`city-source-${marker.cityName}-${i}`}
+                    id={`city-source-${marker.cityName}-${i}`}
                     type="geojson"
                     data={{
                       type: 'Feature',
