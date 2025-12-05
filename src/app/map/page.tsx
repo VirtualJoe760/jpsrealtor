@@ -6,6 +6,7 @@ import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import dynamicImport from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
@@ -65,6 +66,8 @@ function MapPageContent() {
 
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [mounted, setMounted] = useState(false);
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
@@ -128,8 +131,20 @@ function MapPageContent() {
       // Load new listings with current filters (merge mode = true to keep existing listings)
       // The useListings hook handles caching and deduplication internally
       await loadListings(bounds, filters, true);
+
+      // Update URL with current map position for browser history and sharing
+      const params = new URLSearchParams(searchParams.toString());
+      const centerLat = (bounds.north + bounds.south) / 2;
+      const centerLng = (bounds.east + bounds.west) / 2;
+
+      params.set("lat", centerLat.toFixed(6));
+      params.set("lng", centerLng.toFixed(6));
+      params.set("zoom", bounds.zoom.toString());
+
+      console.log("🔗 Updating URL to:", `/map?${params.toString()}`);
+      router.replace(`?${params.toString()}`, { scroll: false });
     },
-    [filters, loadListings]
+    [filters, loadListings, router, searchParams]
   );
 
   const handleApplyFilters = useCallback(
