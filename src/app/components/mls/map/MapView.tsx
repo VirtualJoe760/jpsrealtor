@@ -714,13 +714,23 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     flattenCoords(coords);
 
-    // Fit map to polygon bounds with zoom 12
+    // Determine target zoom level based on boundary type
+    let targetZoom = 12; // Default for cities
+    if (polygonData.clusterType === 'region') {
+      targetZoom = 7; // Region → zoom to county view
+    } else if (polygonData.clusterType === 'county') {
+      targetZoom = 10; // County → zoom to city view
+    } else if (polygonData.clusterType === 'city') {
+      targetZoom = 12; // City → zoom to listing view
+    }
+
+    // Fit map to polygon bounds with appropriate zoom level
     map.fitBounds(
       [[minLng, minLat], [maxLng, maxLat]],
       {
         padding: 50,
         duration: 1000,
-        maxZoom: 12
+        maxZoom: targetZoom
       }
     );
 
@@ -785,8 +795,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Hover Stats Overlay */}
         <HoverStatsOverlay data={hoveredPolygon} totalListings={totalListingsCount} />
 
-        {/* Render region polygon overlays for zoom <= 6 AND zoom < 12 */}
-        {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'region' && m.polygon) && (
+        {/* Render region polygon overlays for zoom 5-6 ONLY */}
+        {dataToRender && dataToRender.length > 0 && currentZoom >= 5 && currentZoom <= 6 && dataToRender.some((m: any) => m.clusterType === 'region' && m.polygon) && (
           <>
             {(() => {
               // Calculate all region counts for color percentiles
@@ -908,8 +918,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           </>
         )}
 
-        {/* Render county polygon overlays for zoom 7-8 AND zoom < 12 */}
-        {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'county' && m.polygon) && (
+        {/* Render county polygon overlays for zoom 7-9 ONLY */}
+        {dataToRender && dataToRender.length > 0 && currentZoom >= 7 && currentZoom <= 9 && dataToRender.some((m: any) => m.clusterType === 'county' && m.polygon) && (
           <>
             {(() => {
               // Calculate all county counts for color percentiles
@@ -1034,8 +1044,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         )}
 
 
-        {/* Render city polygon overlays for zoom >= 8 (prevents blocking counties at lower zoom) */}
-        {dataToRender && dataToRender.length > 0 && currentZoom >= 8 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
+        {/* Render city polygon overlays for zoom 10-11 ONLY */}
+        {dataToRender && dataToRender.length > 0 && currentZoom >= 10 && currentZoom <= 11 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
           <>
             {(() => {
               // Calculate all city counts for color percentiles
@@ -1149,7 +1159,20 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         )}
         {/* Render all markers */}
         {dataToRender && dataToRender.length > 0 ? (
-          dataToRender.map((marker, i) => {
+          dataToRender
+            .filter((marker, i) => {
+              // At zoom 12, cap at 500 listings (not clusters)
+              if (currentZoom >= 12 && currentZoom < 13) {
+                // Always render clusters
+                if (isServerCluster(marker)) return true;
+                // For individual listings, only show first 500
+                const listingIndex = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m)).length;
+                return listingIndex <= 500;
+              }
+              // At zoom 13+, show all listings
+              return true;
+            })
+            .map((marker, i) => {
             if (isServerCluster(marker)) {
               // Skip rendering markers for region, county, and city clusters (they have polygon overlays instead)
               if ((marker as any).clusterType === 'region' || (marker as any).clusterType === 'county' || (marker as any).clusterType === 'city') {
