@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
 import { City } from "@/models/cities";
+import { Region } from "@/models/regions";
 import { County } from "@/models/counties";
 import { REGION_BOUNDARIES } from "@/data/region-boundaries";
 import { COUNTY_BOUNDARIES } from "@/data/county-boundaries";
@@ -248,103 +249,35 @@ export async function GET(req: NextRequest) {
       let clusters; // Declare outside to be accessible throughout
 
       if (useRegionClustering) {
-        // ==================== REGION-LEVEL CLUSTERING (ZOOM 6 AND BELOW) ====================
-        // Group counties into 3 main California regions: Northern, Central, Southern
+        // ==================== REGION-LEVEL CLUSTERING (ZOOM 5-6) ====================
+        // Query pre-aggregated regions directly from database
         console.log(`📊 Using region-level clustering for zoom ${zoom}`);
 
-        // Helper function to map detailed regions to main regions
-        const getMainRegion = (region: string): string => {
-          if (region.includes('Northern') || region === 'Northern California') {
-            return 'Northern California';
-          }
-          if (region.includes('Bay Area') || region.includes('Sacramento') ||
-              region.includes('Central Valley') || region.includes('Central Coast') ||
-              region.includes('Sierra')) {
-            return 'Central California';
-          }
-          // Everything else is Southern California (LA, OC, SD, Inland Empire, etc.)
-          return 'Southern California';
-        };
+        // Query regions directly from database (no aggregation needed!)
+        const regions = await Region.find({})
+          .select('name slug coordinates listingCount countyCount cityCount avgPrice priceRange mlsSources')
+          .lean();
 
-        // Aggregate all counties by main region
-        const counties = await County.find({
-          isOcean: { $ne: true }
-          // Removed listingCount filter to show all county boundaries
-        })
-        .select('name region listingCount cityCount coordinates avgPrice priceRange mlsSources')
-        .lean();
+        console.log(`✅ Found ${regions.length} regions with ${regions.reduce((sum, r: any) => sum + r.countyCount, 0)} counties total`);
 
-        console.log(`📍 Found ${counties.length} counties, aggregating into 3 regions...`);
-
-        // Group by main region
-        const regionMap = new Map<string, {
-          listingCount: number;
-          countyCount: number;
-          cityCount: number;
-          avgPrices: number[];
-          minPrice: number;
-          maxPrice: number;
-          latitudes: number[];
-          longitudes: number[];
-          mlsSources: Set<string>;
-        }>();
-
-        counties.forEach((county: any) => {
-          const mainRegion = getMainRegion(county.region);
-
-          if (!regionMap.has(mainRegion)) {
-            regionMap.set(mainRegion, {
-              listingCount: 0,
-              countyCount: 0,
-              cityCount: 0,
-              avgPrices: [],
-              minPrice: Infinity,
-              maxPrice: 0,
-              latitudes: [],
-              longitudes: [],
-              mlsSources: new Set()
-            });
-          }
-
-          const region = regionMap.get(mainRegion)!;
-          region.listingCount += county.listingCount;
-          region.countyCount++;
-          region.cityCount += county.cityCount || 0;
-          region.avgPrices.push(county.avgPrice);
-          region.minPrice = Math.min(region.minPrice, county.priceRange?.min || Infinity);
-          region.maxPrice = Math.max(region.maxPrice, county.priceRange?.max || 0);
-
-          if (county.coordinates?.latitude && county.coordinates?.longitude) {
-            region.latitudes.push(county.coordinates.latitude);
-            region.longitudes.push(county.coordinates.longitude);
-          }
-
-          (county.mlsSources || []).forEach((mls: string) => region.mlsSources.add(mls));
-        });
-
-        // Use accurate county-based region boundaries from GeoJSON data
-        // Generated from official California county boundaries
+        // Use accurate region boundaries from GeoJSON data
         const regionBoundaries = REGION_BOUNDARIES;
 
         // Transform to cluster format with polygon boundaries
-        clusters = Array.from(regionMap.entries()).map(([regionName, data]) => ({
-          latitude: data.latitudes.length > 0
-            ? data.latitudes.reduce((a, b) => a + b, 0) / data.latitudes.length
-            : 37.0, // Fallback to central CA
-          longitude: data.longitudes.length > 0
-            ? data.longitudes.reduce((a, b) => a + b, 0) / data.longitudes.length
-            : -119.0,
-          count: data.listingCount,
-          regionName,
-          countyCount: data.countyCount,
-          cityCount: data.cityCount,
-          avgPrice: Math.round(data.avgPrices.reduce((a, b) => a + b, 0) / data.avgPrices.length),
-          minPrice: data.minPrice === Infinity ? 0 : data.minPrice,
-          maxPrice: data.maxPrice,
-          mlsSources: Array.from(data.mlsSources),
+        clusters = regions.map((region: any) => ({
+          latitude: region.coordinates.latitude,
+          longitude: region.coordinates.longitude,
+          count: region.listingCount,
+          regionName: region.name,
+          countyCount: region.countyCount,
+          cityCount: region.cityCount,
+          avgPrice: region.avgPrice,
+          minPrice: region.priceRange?.min || 0,
+          maxPrice: region.priceRange?.max || 0,
+          mlsSources: region.mlsSources || [],
           isCluster: true,
           clusterType: 'region',
-          polygon: regionBoundaries[regionName] || null
+          polygon: regionBoundaries[region.name] || null
         }));
 
         console.log(`✅ Created ${clusters.length} region clusters:`,
@@ -455,6 +388,38 @@ export async function GET(req: NextRequest) {
         // Set clusterPipeline to null to skip additional aggregation
         clusterPipeline = null;
 
+        // If listing count < 600, also fetch and include individual listings
+        let listings = [];
+        if (listingCount > 0 && listingCount < 600) {
+          console.log(`✨ Smart display: Fetching ${listingCount} listings to show WITH county boundaries`);
+          listings = await UnifiedListing.find(matchStage)
+            .select({
+              listingId: 1,
+              listingKey: 1,
+              slug: 1,
+              slugAddress: 1,
+              latitude: 1,
+              longitude: 1,
+              listPrice: 1,
+              bedroomsTotal: 1,
+              bedsTotal: 1,
+              bathroomsTotalDecimal: 1,
+              livingArea: 1,
+              address: 1,
+              unparsedAddress: 1,
+              city: 1,
+              propertyType: 1,
+              propertySubType: 1,
+              mlsSource: 1,
+              poolYn: 1,
+              spaYn: 1,
+              primaryPhotoUrl: 1,
+            })
+            .limit(600)
+            .lean();
+          console.log(`✅ Fetched ${listings.length} listings to display alongside boundaries`);
+        }
+
         return NextResponse.json(
           {
             type: "clusters",
@@ -462,8 +427,10 @@ export async function GET(req: NextRequest) {
             gridSize,
             clusteringMethod: 'county-based',
             clusters,
+            listings, // Include listings when <600 for smart display
             totalCount: listingCount,
             clusterCount: clusters.length,
+            listingsIncluded: listings.length > 0,
             context,
           },
           {
@@ -583,6 +550,38 @@ export async function GET(req: NextRequest) {
         console.log(`🏙️ Cities: ${clusters.slice(0, 5).map((c: any) => c.cityName || 'Unknown').join(', ')}...`);
       }
 
+      // If listing count < 600 AND we're showing city boundaries, fetch listings too
+      let listings = [];
+      if (useCityBasedClustering && listingCount > 0 && listingCount < 600) {
+        console.log(`✨ Smart display: Fetching ${listingCount} listings to show WITH city boundaries`);
+        listings = await UnifiedListing.find(matchStage)
+          .select({
+            listingId: 1,
+            listingKey: 1,
+            slug: 1,
+            slugAddress: 1,
+            latitude: 1,
+            longitude: 1,
+            listPrice: 1,
+            bedroomsTotal: 1,
+            bedsTotal: 1,
+            bathroomsTotalDecimal: 1,
+            livingArea: 1,
+            address: 1,
+            unparsedAddress: 1,
+            city: 1,
+            propertyType: 1,
+            propertySubType: 1,
+            mlsSource: 1,
+            poolYn: 1,
+            spaYn: 1,
+            primaryPhotoUrl: 1,
+          })
+          .limit(600)
+          .lean();
+        console.log(`✅ Fetched ${listings.length} listings to display alongside city boundaries`);
+      }
+
       return NextResponse.json(
         {
           type: "clusters",
@@ -590,8 +589,10 @@ export async function GET(req: NextRequest) {
           gridSize,
           clusteringMethod: useCountyClustering ? 'county-based' : useCityBasedClustering ? 'city-based' : 'grid-based',
           clusters: clusters || [],
+          listings, // Include listings when <600 for smart display
           totalCount: listingCount,
           clusterCount: clusters?.length || 0,
+          listingsIncluded: listings.length > 0,
           context, // Include context for debugging
         },
         {

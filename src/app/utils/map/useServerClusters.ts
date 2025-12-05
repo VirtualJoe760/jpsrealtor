@@ -345,8 +345,22 @@ export function useServerClusters() {
         if (data.type === 'clusters') {
           // Server-side clusters
           const clusters: ServerCluster[] = data.clusters || [];
+          const listings: MapListing[] = data.listings || [];
+          const listingsIncluded = data.listingsIncluded === true;
+
           console.log(`✅ Received ${clusters.length} server-side clusters`);
+          if (listingsIncluded) {
+            console.log(`✨ Smart display: Also received ${listings.length} individual listings to show WITH boundaries`);
+          }
           console.log('🔢 Largest cluster:', clusters[0]?.count || 0, 'listings');
+
+          // When we have both clusters (boundaries) and listings (<600 scenario)
+          // Combine them into a single markers array
+          const combinedMarkers: MapMarker[] = listingsIncluded
+            ? [...clusters, ...listings]
+            : clusters;
+
+          console.log(`📍 Total markers to display: ${combinedMarkers.length} (${clusters.length} boundaries + ${listings.length} listings)`);
 
           // Incremental loading for city clusters (zoom 9-10 with 20 cities)
           const BATCH_SIZE = 5; // Show 5 clusters at a time
@@ -376,8 +390,8 @@ export function useServerClusters() {
                   // For first load, replace entirely but still incrementally
                   setMarkers(prev => {
                     if (i === 0) {
-                      // First batch replaces all
-                      return batch;
+                      // First batch replaces all (including listings if present)
+                      return listingsIncluded ? [...batch, ...listings] : batch;
                     } else {
                       // Subsequent batches append
                       return [...prev, ...batch];
@@ -400,18 +414,34 @@ export function useServerClusters() {
             // Load all at once for other scenarios
             if (merge) {
               setMarkers(prev => {
-                const existingIds = new Set(
+                // Merge clusters
+                const existingClusterIds = new Set(
                   prev
                     .filter(isServerCluster)
                     .map(c => `${c.latitude},${c.longitude}`)
                 );
-                const uniqueNew = clusters.filter(
-                  c => !existingIds.has(`${c.latitude},${c.longitude}`)
+                const uniqueNewClusters = clusters.filter(
+                  c => !existingClusterIds.has(`${c.latitude},${c.longitude}`)
                 );
-                return [...prev, ...uniqueNew];
+
+                // Merge listings if included
+                let uniqueNewListings: MapListing[] = [];
+                if (listingsIncluded) {
+                  const existingListingKeys = new Set(
+                    prev
+                      .filter((m): m is MapListing => !isServerCluster(m))
+                      .map(l => l.listingKey || l._id)
+                  );
+                  uniqueNewListings = listings.filter(
+                    l => !existingListingKeys.has(l.listingKey || l._id)
+                  );
+                }
+
+                return [...prev, ...uniqueNewClusters, ...uniqueNewListings];
               });
             } else {
-              setMarkers(clusters);
+              // Replace with combined markers (boundaries + listings)
+              setMarkers(combinedMarkers);
             }
           }
         } else if (data.type === 'listings') {

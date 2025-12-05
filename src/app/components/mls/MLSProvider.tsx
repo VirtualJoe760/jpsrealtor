@@ -176,7 +176,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const [dislikedListings, setDislikedListings] = useState<any[]>([]);
 
   // Derive listings from markers (filter out clusters for visibleListings)
-  const allListings = React.useMemo(() => markers, [markers]);
+  const allListings = React.useMemo(() => markers.filter((m): m is MapListing => !isServerCluster(m)), [markers]);
   const visibleListings = React.useMemo(() => {
     // Filter out server-side clusters - only keep actual listings
     const listings = markers.filter((m): m is MapListing => !isServerCluster(m));
@@ -508,7 +508,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     selectListingBySlug,
     closeListing,
     swipeQueue,
-    totalCount,
+    totalCount: totalCount?.total ?? 0,
   };
 
   return <MLSContext.Provider value={value}>{children}</MLSContext.Provider>;
