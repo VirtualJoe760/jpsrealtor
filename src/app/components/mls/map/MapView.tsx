@@ -1180,13 +1180,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {dataToRender && dataToRender.length > 0 ? (
           dataToRender
             .filter((marker, i) => {
-              // At zoom 12, cap at 500 listings (not clusters)
+              // At zoom 12, cap at 600 listings (not clusters)
               if (currentZoom >= 12 && currentZoom < 13) {
                 // Always render clusters
                 if (isServerCluster(marker)) return true;
-                // For individual listings, only show first 500
+                // For individual listings, only show first 600
                 const listingIndex = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m)).length;
-                return listingIndex <= 500;
+                return listingIndex <= 600;
               }
               // At zoom 13+, show all listings
               return true;

@@ -82,11 +82,15 @@ function determineClusteringStrategy(
   // Rule 3: Manual exploration (user browsing map)
   if (context.source === 'manual') {
     // Hierarchical zoom strategy:
-    // Zoom < 9: Counties
-    // Zoom 9-11: Cities
-    // Zoom 12+: Individual listings
+    // Zoom 5-6: Regions (boundaries only)
+    // Zoom 7-9: Counties (boundaries, hoverable)
+    // Zoom 10-11: Cities (boundaries, hoverable)
+    // Zoom 12+: Individual listings (capped at 600)
+    //
+    // Note: At zoom 7-11, if <600 listings, boundaries are still shown (for hovering),
+    // but frontend can decide to also fetch/show listings for better UX
     const shouldCluster = zoom < 12;
-    console.log(`🖱️ Manual exploration at zoom ${zoom} → ${shouldCluster ? 'CLUSTERS' : 'LISTINGS'}`);
+    console.log(`🖱️ Manual exploration at zoom ${zoom} with ${actualListingCount} listings → ${shouldCluster ? 'BOUNDARIES' : 'LISTINGS'}`);
     return shouldCluster;
   }
 
@@ -211,13 +215,15 @@ export async function GET(req: NextRequest) {
   const includePolygons = query.get('includePolygons') === 'true';
 
   try {
-    // Skip expensive listing count for clustering levels - use pre-calculated counts from County/City models
-    // Only count when we actually need individual listings (zoom 12+)
+    // Count listings in viewport to determine if we should show individual listings or boundaries
+    // At zoom 7-11, if <600 listings, show them instead of boundaries (cost optimization)
+    // At zoom 12+, always count to cap at 600
     let listingCount = 0;
 
-    if (zoom >= 12) {
-      // Only count listings when we're actually going to return them
+    if (zoom >= 7) {
+      // Count listings when we might need to decide between boundaries and individual listings
       listingCount = await UnifiedListing.countDocuments(matchStage);
+      console.log(`📊 Listing count at zoom ${zoom}: ${listingCount} listings in viewport`);
     }
 
     // Decide: clusters or individual listings using context-aware logic
