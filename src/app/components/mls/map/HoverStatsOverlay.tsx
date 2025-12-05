@@ -70,16 +70,20 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
             {/* Stats Grid */}
             {displayData.count === 0 ? (
               /* No listings message or default message */
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-center py-2"
-              >
-                <div className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  {data ? 'No listings in this area' : 'Hover over regions to explore'}
-                </div>
-              </motion.div>
+              <div className="text-center py-2">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={data ? 'zero-listings' : 'default'}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, ease: 'easeInOut' }}
+                    className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}
+                  >
+                    {data ? 'Scroll to zoom in and reveal listings' : 'Hover over regions to explore'}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             ) : (
               <div className="flex items-center gap-6">
                 {/* Listing Count */}
