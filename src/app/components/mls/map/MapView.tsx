@@ -425,20 +425,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     console.log('🎨 Registering polygon hover handlers for', polygonData.length, 'polygons');
 
-    // Wait for map to be fully loaded
-    if (!map.isStyleLoaded()) {
-      const onStyleLoad = () => {
-        console.log('⏳ Style loaded, waiting to register handlers...');
-      };
-      map.once('styledata', onStyleLoad);
-      return;
-    }
-
-    // Small delay to ensure layers are fully rendered before registering handlers
-    const timeoutId = setTimeout(() => {
-      registerHandlers();
-    }, 100);
-
     const handlers: Array<{ layerId: string; type: string; handler: any }> = [];
 
     const registerHandlers = () => {
@@ -507,13 +493,25 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         );
       });
 
-      console.log(`✅ Registered ${handlers.length} event handlers`);
+      console.log(`✅ Registered ${handlers.length} event handlers for polygons`);
     }; // End of registerHandlers function
+
+    // Register handlers immediately if style is loaded, otherwise wait for it
+    if (map.isStyleLoaded()) {
+      console.log('✅ Style already loaded, registering handlers immediately');
+      registerHandlers();
+    } else {
+      console.log('⏳ Waiting for style to load before registering handlers...');
+      const onStyleLoad = () => {
+        console.log('✅ Style loaded, registering handlers now');
+        registerHandlers();
+      };
+      map.once('style.load', onStyleLoad);
+    }
 
     // Cleanup function
     return () => {
       console.log('🧹 Cleaning up polygon hover handlers');
-      clearTimeout(timeoutId);
       handlers.forEach(({ layerId, type, handler }) => {
         try {
           map.off(type, layerId, handler);
@@ -922,8 +920,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.12,  // hover - very subtle for zero listings
-                              0.05   // base - very faint to indicate "no data"
+                              0.35,  // hover - more visible for zero listings
+                              0.20   // base - visible enough to see boundaries
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
@@ -1048,8 +1046,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.15,  // hover - very subtle for zero listings
-                              0.08   // base - barely visible
+                              0.30,  // hover - more visible for zero listings
+                              0.15   // base - visible enough to see boundaries
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
