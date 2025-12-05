@@ -426,6 +426,20 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return polygonData.map(p => `${p.type}-${p.id}`).sort().join('|');
   }, [polygonData]);
 
+  // Calculate total listings count for default state
+  const totalListingsCount = useMemo(() => {
+    const dataToRender = (markers && markers.length > 0) ? markers : listings;
+    if (!dataToRender || dataToRender.length === 0) return 0;
+
+    // Sum all listings from all markers/clusters
+    return dataToRender.reduce((total: number, marker: any) => {
+      if (isServerCluster(marker)) {
+        return total + (marker.count || 0);
+      }
+      return total + 1; // Individual listing
+    }, 0);
+  }, [markers, listings]);
+
   // Register hover event handlers for polygon layers (only when polygon set changes)
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
@@ -769,7 +783,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         interactiveLayerIds={interactiveLayerIds}
       >
         {/* Hover Stats Overlay */}
-        <HoverStatsOverlay data={hoveredPolygon} />
+        <HoverStatsOverlay data={hoveredPolygon} totalListings={totalListingsCount} />
 
         {/* Render region polygon overlays for zoom <= 6 AND zoom < 12 */}
         {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'region' && m.polygon) && (

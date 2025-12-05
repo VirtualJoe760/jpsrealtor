@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
+import { useState, useEffect } from 'react';
 
 interface HoverStatsOverlayProps {
   data: {
@@ -12,11 +13,33 @@ interface HoverStatsOverlayProps {
     maxPrice: number;
     type: 'county' | 'city' | 'region';
   } | null;
+  totalListings?: number;
 }
 
-export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
+export default function HoverStatsOverlay({ data, totalListings = 0 }: HoverStatsOverlayProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  // Rotating messages for default state (no hover)
+  const defaultMessages = [
+    'Hover over regions to explore',
+    'Scroll to zoom in and reveal listings'
+  ];
+
+  // Auto-rotate messages every 3 seconds when not hovering
+  useEffect(() => {
+    if (!data) {
+      const interval = setInterval(() => {
+        setMessageIndex((prev) => (prev + 1) % defaultMessages.length);
+      }, 3000);
+
+      return () => clearInterval(interval);
+    } else {
+      // Reset to first message when hovering
+      setMessageIndex(0);
+    }
+  }, [data]);
 
   const formatPrice = (price: number) => {
     if (price >= 1000000) {
@@ -28,7 +51,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
   // Always show card with default message when no data
   const displayData = data || {
     name: 'Explore California',
-    count: 0,
+    count: totalListings,
     avgPrice: 0,
     minPrice: 0,
     maxPrice: 0,
@@ -67,22 +90,29 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
               {displayData.name}
             </motion.h1>
 
-            {/* Stats Grid */}
-            {displayData.count === 0 ? (
-              /* No listings message or default message */
-              <div className="text-center py-2">
+            {/* Stats Grid - Fixed height container to prevent box resize */}
+            {displayData.count === 0 && !data ? (
+              /* Default state with rotating messages */
+              <div className="text-center py-2 min-h-[3.5rem] flex items-center justify-center">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={data ? 'zero-listings' : 'default'}
+                    key={messageIndex}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15, ease: 'easeInOut' }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
                     className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}
                   >
-                    {data ? 'Scroll to zoom in and reveal listings' : 'Hover over regions to explore'}
+                    {defaultMessages[messageIndex]}
                   </motion.div>
                 </AnimatePresence>
+              </div>
+            ) : displayData.count === 0 ? (
+              /* Zero listings on hover */
+              <div className="text-center py-2 min-h-[3.5rem] flex items-center justify-center">
+                <div className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                  Scroll to zoom in and reveal listings
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-6">
