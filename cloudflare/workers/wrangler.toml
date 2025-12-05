@@ -1,0 +1,50 @@
+# Cloudflare Workers Configuration
+# Documentation: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "jpsrealtor-listings-api"
+main = "listings-api.js"
+compatibility_date = "2024-12-03"
+account_id = "cd0533e7f970b37ee8c80d293389e169"
+workers_dev = false
+
+# Routes - deploy to actual domain
+routes = [
+  { pattern = "jpsrealtor.com/api/*", zone_id = "507fb990b30c9f287498ab566ba6d390" }
+]
+
+# Environment variables - set for top-level (default) environment
+[vars]
+ORIGIN_URL = "https://jpsrealtor.vercel.app"
+
+# R2 bucket bindings
+[[r2_buckets]]
+binding = "LISTINGS_CACHE"
+bucket_name = "listings-cache"
+preview_bucket_name = "listings-cache-preview"
+
+# Routes - will be configured via API
+# Route pattern: jpsrealtor.com/api/*
+# Worker: listings-api
+
+# KV Namespaces (if needed for analytics)
+# [[kv_namespaces]]
+# binding = "ANALYTICS"
+# id = "" # Will be created via API
+
+# Durable Objects (future use for real-time features)
+# [[durable_objects.bindings]]
+# name = "CHAT_SESSIONS"
+# class_name = "ChatSession"
+# script_name = "chat-worker"
+
+# Limits - commented out for free tier
+# [limits]
+# cpu_ms = 50 # Max CPU time per request (free tier: 10ms, paid: 50ms)
+
+# Image transformation worker config
+[env.images]
+name = "jpsrealtor-images"
+main = "images-transform.js"
+routes = [
+  { pattern = "jpsrealtor.com/images/*", zone_name = "jpsrealtor.com" }
+]

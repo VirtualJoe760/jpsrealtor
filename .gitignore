@@ -62,3 +62,6 @@ next-env.d.ts
 
 # Test page (exclude from build)
 /src/app/test
+
+# California county GeoJSON data (intermediate build file)
+ca_counties.json

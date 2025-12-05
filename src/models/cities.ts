@@ -47,6 +47,9 @@ export interface ICity extends Document {
   // Data sources
   mlsSources: string[]; // ["GPS", "CRMLS"]
 
+  // Coordinate validation
+  isOcean?: boolean; // Flag for cities with coordinates in ocean (to filter from map)
+
   // Metadata
   lastUpdated: Date;
   createdAt: Date;
@@ -97,6 +100,9 @@ const CitySchema = new Schema<ICity>(
     // Data sources
     mlsSources: { type: [String], default: [] },
 
+    // Coordinate validation
+    isOcean: { type: Boolean, default: false },
+
     // Metadata
     lastUpdated: { type: Date, default: Date.now },
   },
@@ -110,6 +116,7 @@ const CitySchema = new Schema<ICity>(
 CitySchema.index({ slug: 1 });
 CitySchema.index({ county: 1, region: 1 });
 CitySchema.index({ normalizedName: 1 });
+CitySchema.index({ isOcean: 1, listingCount: -1 }); // For filtering ocean cities and sorting by count
 
 export const City: Model<ICity> =
   mongoose.models.City || mongoose.model<ICity>("City", CitySchema);

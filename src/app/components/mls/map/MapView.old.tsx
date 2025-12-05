@@ -1,0 +1,717 @@
+// src/app/components/mls/map/MapView.tsx
+"use client";
+
+import {
+  useEffect,
+  useState,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
+import Map, { Marker, ViewState } from "@vis.gl/react-maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { MapListing } from "@/types/types";
+import { MapMarker, isServerCluster } from "@/app/utils/map/useMapClusters";
+import AnimatedCluster from "./AnimatedCluster";
+import AnimatedMarker from "./AnimatedMarker";
+import { useTheme } from "@/app/contexts/ThemeContext";
+
+export interface MapViewHandles {
+  flyToCity: (lat: number, lng: number, zoom?: number) => void;
+}
+
+interface MapViewProps {
+  listings: MapListing[]; // For backward compatibility (fallback)
+  markers?: MapMarker[]; // NEW: Server-side clusters or listings
+  centerLat?: number;
+  centerLng?: number;
+  zoom?: number;
+  onSelectListing: (listing: MapListing) => void;
+  selectedListing?: MapListing | null;
+  onBoundsChange?: (bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+    zoom: number;
+  }) => void;
+  onSelectListingByIndex?: (index: number) => void;
+
+  /** freeze map interactions & background updates while bottom panel is open */
+  panelOpen?: boolean;
+
+  /** map style: toner (black & white), dark (dark matter), satellite, or bright (OSM) */
+  mapStyle?: 'toner' | 'dark' | 'satellite' | 'bright';
+}
+
+function formatPrice(price?: number): string {
+  if (!price) return "—";
+  if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(1)}m`;
+  if (price >= 1_000) return `$${(price / 1_000).toFixed(0)}k`;
+  return `$${price}`;
+}
+
+// Get marker colors based on property type (sale = green, rental = purple, multi-family = yellow)
+// CRMLS uses slightly different shades than GPS
+function getMarkerColors(propertyType?: string, mlsSource?: string, hovered?: boolean, selected?: boolean) {
+  const isRental = propertyType === "B"; // B = Residential Lease
+  const isMultiFamily = propertyType === "C"; // C = Residential Income/Multi-Family
+  const isCRMLS = mlsSource === "CRMLS";
+
+  if (selected) {
+    return "bg-cyan-400 text-black border-2 border-white scale-125 z-[100] ring-2 ring-black shadow-lg";
+  }
+
+  if (hovered) {
+    if (isRental) {
+      // GPS: purple, CRMLS: violet
+      return isCRMLS
+        ? "bg-violet-400 text-white scale-110 z-40 border-2 border-white shadow-md"
+        : "bg-purple-400 text-white scale-110 z-40 border-2 border-white shadow-md";
+    }
+    if (isMultiFamily) {
+      // GPS: yellow, CRMLS: pastel light yellow
+      return isCRMLS
+        ? "bg-yellow-200 text-black scale-110 z-40 border-2 border-white shadow-md"
+        : "bg-yellow-400 text-black scale-110 z-40 border-2 border-white shadow-md";
+    }
+    // GPS: emerald, CRMLS: lighter emerald
+    return isCRMLS
+      ? "bg-emerald-300 text-black scale-110 z-40 border-2 border-white shadow-md"
+      : "bg-emerald-400 text-black scale-110 z-40 border-2 border-white shadow-md";
+  }
+
+  if (isRental) {
+    // GPS: purple, CRMLS: violet
+    return isCRMLS
+      ? "bg-violet-600 text-white scale-100 z-30 border border-violet-700 shadow-sm"
+      : "bg-purple-600 text-white scale-100 z-30 border border-purple-700 shadow-sm";
+  }
+  if (isMultiFamily) {
+    // GPS: yellow, CRMLS: pastel light yellow
+    return isCRMLS
+      ? "bg-yellow-400 text-black scale-100 z-30 border border-yellow-500 shadow-sm"
+      : "bg-yellow-600 text-black scale-100 z-30 border border-yellow-700 shadow-sm";
+  }
+  // GPS: emerald, CRMLS: lighter emerald
+  return isCRMLS
+    ? "bg-emerald-500 text-white scale-100 z-30 border border-emerald-600 shadow-sm"
+    : "bg-emerald-600 text-white scale-100 z-30 border border-emerald-700 shadow-sm";
+}
+
+const RAW_MARKER_ZOOM = 16; // Show individual markers only at street level (zoom 16+) // show ALL markers (no clustering) when zoom >= 12
+// Get dynamic cluster radius based on zoom level
+function getClusterRadius(zoom: number): number {
+  if (zoom < 8) return 120;   // Very wide clusters (regions)
+  if (zoom < 11) return 80;   // Wide clusters (counties) 
+  if (zoom < 13) return 50;   // Medium clusters (cities)
+  if (zoom < 15) return 30;   // Smaller clusters (neighborhoods)
+  return 15;                  // Tight clusters (streets)
+}
+
+// MapTiler API Key - Use environment variable or fallback to OSM
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
+
+// Debug: Log API key status
+if (typeof window !== 'undefined') {
+  if (MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here") {
+  } else {
+  }
+}
+
+// Map style URLs - 4 different map styles
+const MAP_STYLES = {
+  toner: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/toner-v2/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json", // Black & White
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", // Dark Matter
+  satellite: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", // Satellite
+  bright: MAPTILER_KEY && MAPTILER_KEY !== "get_your_maptiler_key_here"
+    ? `https://api.maptiler.com/maps/bright/style.json?key=${MAPTILER_KEY}`
+    : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", // OSM Bright/Normal
+};
+
+const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
+  {
+    listings,
+    markers,
+    centerLat,
+    centerLng,
+    zoom,
+    onSelectListing,
+    selectedListing,
+    onBoundsChange,
+    onSelectListingByIndex,
+    panelOpen = false,
+    mapStyle = 'toner',
+  },
+  ref
+) {
+  console.log('🗺️ MapView RENDER - mapStyle prop received:', mapStyle);
+  console.log('🗺️ MapView - MAP_STYLES object:', MAP_STYLES);
+  console.log('🗺️ MapView - Resolved URL for', mapStyle, ':', MAP_STYLES[mapStyle]);
+
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [clusters, setClusters] = useState<
+    Supercluster.PointFeature<Supercluster.AnyProps>[]
+  >([]);
+  const [currentZoom, setCurrentZoom] = useState<number>(zoom ?? 11);
+  const [viewBounds, setViewBounds] = useState<{
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+  } | null>(null);
+
+  /** Internal selection fallback so highlight persists even if parent lags */
+  const [internalSelected, setInternalSelected] = useState<MapListing | null>(
+    selectedListing ?? null
+  );
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const lastSelectedIdRef = useRef<string | null>(selectedListing?._id ?? null);
+  const clusterRef = useRef<Supercluster | null>(null);
+  const lastBoundsKeyRef = useRef<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const panelOpenRef = useRef<boolean>(panelOpen);
+
+  // Determine which data source to use
+  // If markers are provided and contain data, use them; otherwise fall back to listings
+  const dataToRender = (markers && markers.length > 0) ? markers : listings;
+  const hasServerClusters = markers && markers.some(m => isServerCluster(m));
+
+  // Extract listings from markers for backward compatibility
+  const listingsFromMarkers = hasServerClusters
+    ? markers!.filter((m): m is MapListing => !isServerCluster(m))
+    : dataToRender as MapListing[];
+
+  console.log('🗺️ MapView - Data source:', {
+    markersProvided: !!markers,
+    markersCount: markers?.length ?? 0,
+    listingsCount: listings.length,
+    hasServerClusters,
+    dataToRenderCount: dataToRender.length,
+    listingsFromMarkersCount: listingsFromMarkers.length
+  });
+
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
+
+  // Watch for mapStyle changes and update the map
+  useEffect(() => {
+    console.log('🎨 MapView useEffect - mapStyle changed to:', mapStyle);
+
+    const map = mapRef.current?.getMap?.();
+    if (!map) {
+      console.log('⚠️ MapView useEffect - No map reference yet');
+      return;
+    }
+
+    if (!map.isStyleLoaded()) {
+      console.log('⚠️ MapView useEffect - Map style not loaded yet');
+      return;
+    }
+
+    const newStyleURL = MAP_STYLES[mapStyle];
+    console.log('🗺️ MapView useEffect - New style URL:', newStyleURL);
+
+    // Get current style URL - need to check the actual style source
+    const currentStyleSpec = map.getStyle();
+    if (!currentStyleSpec) {
+      console.log('⚠️ MapView useEffect - No current style spec');
+      return;
+    }
+
+    console.log('🗺️ MapView useEffect - Current style name:', currentStyleSpec.name);
+
+    // Compare with new style URL - if different, update
+    // We need to check if the current style is already the one we want
+    const needsUpdate = !currentStyleSpec.name ||
+                       (mapStyle === 'dark' && !currentStyleSpec.name.includes('dark')) ||
+                       (mapStyle === 'bright' && !currentStyleSpec.name.includes('voyager') && !currentStyleSpec.name.includes('bright')) ||
+                       (mapStyle === 'satellite' && !currentStyleSpec.name.includes('satellite')) ||
+                       (mapStyle === 'toner' && !currentStyleSpec.name.includes('positron') && !currentStyleSpec.name.includes('toner'));
+
+    console.log('🎨 MapView useEffect - Needs update?', needsUpdate);
+
+    if (needsUpdate) {
+      console.log('✅ MapView useEffect - Updating map style to:', newStyleURL);
+      map.setStyle(newStyleURL);
+    } else {
+      console.log('ℹ️ MapView useEffect - Style is already correct, skipping update');
+    }
+  }, [mapStyle]);
+
+  // Keep internal selection in sync with prop (and remember last selected id)
+  useEffect(() => {
+    if (selectedListing) {
+      setInternalSelected((prev) =>
+        prev?._id === selectedListing._id ? prev : selectedListing
+      );
+      lastSelectedIdRef.current = selectedListing._id;
+    } else {
+      // Clear internal selection when selectedListing becomes null
+      setInternalSelected(null);
+      lastSelectedIdRef.current = null;
+    }
+  }, [selectedListing]);
+
+  const hydratedInitialViewState: ViewState = {
+    latitude: centerLat ?? 33.72,
+    longitude: centerLng ?? -116.37,
+    zoom: zoom ?? 11,
+    bearing: 0,
+    pitch: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
+  };
+
+  // Log initial view state for debugging
+  useEffect(() => {
+    console.log('🗺️ MapView initial viewState:', hydratedInitialViewState);
+    console.log('📍 MapView props - centerLat:', centerLat, 'centerLng:', centerLng, 'zoom:', zoom);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  // Enable/disable gestures when panel is open
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+    const handlers = [
+      map.dragPan,
+      map.dragRotate,
+      map.scrollZoom,
+      map.boxZoom,
+      map.keyboard,
+      map.doubleClickZoom,
+      map.touchZoomRotate,
+    ].filter(Boolean);
+    if (panelOpen) handlers.forEach((h: any) => h.disable());
+    else handlers.forEach((h: any) => h.enable());
+  }, [panelOpen]);
+
+  // Initialize supercluster with all listings
+  // Skip if we have server-side clusters
+  useEffect(() => {
+    if (hasServerClusters) {
+      console.log('🎯 Skipping Supercluster - using server-side clusters');
+      return;
+    }
+
+    clusterRef.current = new Supercluster({
+      radius: getClusterRadius(currentZoom), // Dynamic radius based on zoom
+      maxZoom: RAW_MARKER_ZOOM, // cluster only below 13
+      minPoints: 3, // Need at least 3 points to form cluster
+    });
+
+    const points: Supercluster.PointFeature<{
+      cluster: boolean;
+      listing: MapListing;
+    }>[] = listingsFromMarkers
+      .filter((l) => l.longitude != null && l.latitude != null)
+      .map((listing) => ({
+        type: "Feature" as const,
+        properties: { cluster: false, listing },
+        geometry: {
+          type: "Point" as const,
+          coordinates: [listing.longitude!, listing.latitude!],
+        },
+      }));
+
+    clusterRef.current.load(points);
+    forceRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingsFromMarkers, hasServerClusters]);
+
+  const updateClusters = () => {
+    if (panelOpenRef.current) {
+      console.log('⏸️ MapView.updateClusters: Panel is open, skipping update');
+      return;
+    }
+
+    const map = mapRef.current?.getMap?.();
+    if (!map) {
+      console.log('⏸️ MapView.updateClusters: Map not ready, skipping update');
+      return;
+    }
+
+    const bounds = map.getBounds();
+    const zoomVal = map.getZoom();
+
+    console.log('🔄 MapView.updateClusters called - Zoom:', Math.floor(zoomVal), 'HasServerClusters:', hasServerClusters);
+
+    setCurrentZoom(zoomVal);
+    setViewBounds({
+      west: bounds.getWest(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      north: bounds.getNorth(),
+    });
+
+    const key = `${bounds.getNorth().toFixed(6)}-${bounds
+      .getSouth()
+      .toFixed(6)}-${bounds.getEast().toFixed(6)}-${bounds
+      .getWest()
+      .toFixed(6)}-${zoomVal.toFixed(2)}`;
+
+    if (key === lastBoundsKeyRef.current) {
+      console.log('⏭️ MapView.updateClusters: Same bounds key, skipping');
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (panelOpenRef.current) return;
+      lastBoundsKeyRef.current = key;
+
+      console.log('✅ MapView.updateClusters: Executing bounds change callback');
+      console.log('📍 Bounds:', {
+        north: bounds.getNorth().toFixed(4),
+        south: bounds.getSouth().toFixed(4),
+        east: bounds.getEast().toFixed(4),
+        west: bounds.getWest().toFixed(4),
+        zoom: Math.floor(zoomVal)
+      });
+
+      // Only update client-side clusters if we're not using server-side clusters
+      if (!hasServerClusters && clusterRef.current) {
+        console.log('🔵 Using client-side Supercluster');
+        const bbox: [number, number, number, number] = [
+          bounds.getWest(),
+          bounds.getSouth(),
+          bounds.getEast(),
+          bounds.getNorth(),
+        ];
+        const newClusters = clusterRef.current.getClusters(bbox, Math.floor(zoomVal));
+        setClusters(newClusters);
+      } else {
+        console.log('🟢 Using server-side clusters, notifying parent');
+      }
+
+      // Always notify parent of bounds change (for server-side data loading)
+      onBoundsChange?.({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+        zoom: Math.floor(zoomVal),
+      });
+    }, 250);
+  };
+
+  const forceRefresh = () => {
+    lastBoundsKeyRef.current = null;
+    try {
+      mapRef.current?.getMap?.()?.resize();
+    } catch {}
+    updateClusters();
+  };
+
+  // Map lifecycle: recompute on load/resize/zoom changes
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+
+    const onLoad = () => forceRefresh();
+    if (map.isStyleLoaded()) onLoad();
+    else map.once("load", onLoad);
+
+    const onResize = () => forceRefresh();
+    const onZoomEnd = () => updateClusters();
+    map.on("resize", onResize);
+    map.on("zoomend", onZoomEnd);
+
+    const ro = new ResizeObserver(() => forceRefresh());
+    if (wrapperRef.current) ro.observe(wrapperRef.current);
+
+    return () => {
+      try {
+        map.off("resize", onResize);
+        map.off("zoomend", onZoomEnd);
+      } catch {}
+      ro.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Force refresh clusters when listings are loaded
+  useEffect(() => {
+    if (listings.length > 0) {
+      // Small delay to ensure map is ready
+      const timer = setTimeout(() => {
+        forceRefresh();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [listings.length]);
+
+  const handleMoveEnd = () => {
+    if (panelOpen) return;
+    updateClusters();
+  };
+  const handleDragEnd = () => {
+    if (panelOpen) return;
+    updateClusters();
+  };
+
+  /** ✅ Handle marker clicks - allow switching between listings even when panel is open */
+  const handleMarkerClick = (listing: MapListing) => {
+    // Clear hover state when selecting
+    setHoveredId(null);
+
+    // Update internal and external selection
+    lastSelectedIdRef.current = listing._id;
+    setInternalSelected(listing);
+    onSelectListing(listing);
+
+    if (onSelectListingByIndex) {
+      const index = listings.findIndex((l) => l._id === listing._id);
+      onSelectListingByIndex(index >= 0 ? index : 0);
+    }
+  };
+
+  const handleClusterClick = (
+    cluster: Supercluster.PointFeature<Supercluster.AnyProps>
+  ) => {
+    if (panelOpen) return;
+    const map = mapRef.current?.getMap?.();
+    if (!map || !clusterRef.current) return;
+
+    const expansionZoom = clusterRef.current!.getClusterExpansionZoom(
+      cluster.properties.cluster_id
+    );
+    map.easeTo({
+      center: cluster.geometry.coordinates,
+      zoom: Math.min(expansionZoom, 14),
+      duration: 700,
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    flyToCity(lat: number, lng: number, zoomLevel = 12) {
+      console.log('🚁 flyToCity called - lat:', lat, 'lng:', lng, 'zoom:', zoomLevel);
+      const map = mapRef.current?.getMap?.();
+      if (!map) {
+        console.error('❌ flyToCity: map ref not available');
+        return;
+      }
+      console.log('✅ flyToCity: executing easeTo animation');
+      map.easeTo({
+        center: [lng, lat],
+        zoom: zoomLevel,
+        duration: 1000,
+        offset: [0, -250],
+      });
+    },
+  }));
+
+  // In-bounds filter for raw markers at high zoom
+  const inView = (l: MapListing) => {
+    if (!viewBounds) return true;
+    const { west, south, east, north } = viewBounds;
+    const x = l.longitude;
+    const y = l.latitude;
+    if (x == null || y == null) return false;
+    return x >= west && x <= east && y >= south && y <= north;
+  };
+
+  // Helper to test if a listing should render "selected"
+  // ✅ Fixed: Ensure only ONE marker can be selected, with strict ID matching
+  const isSelected = (l: MapListing) => {
+    const id = l._id;
+    // Require valid IDs to prevent accidental multi-selection
+    if (!id) return false;
+
+    // Check both prop and internal state with strict equality
+    const matchesSelected = selectedListing && selectedListing._id && selectedListing._id === id;
+    const matchesInternal = internalSelected && internalSelected._id && internalSelected._id === id;
+
+    return !!(matchesSelected || matchesInternal);
+  };
+
+  const currentMapStyleURL = MAP_STYLES[mapStyle];
+
+  console.log('🎨 MapView JSX RENDER - About to render Map component with:');
+  console.log('  - mapStyle prop:', mapStyle);
+  console.log('  - currentMapStyleURL:', currentMapStyleURL);
+  console.log('  - key:', `map-${mapStyle}`);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full h-full">
+      <Map
+        ref={mapRef}
+        mapStyle={currentMapStyleURL}
+        key={`map-${mapStyle}`}
+        initialViewState={hydratedInitialViewState}
+        onMoveEnd={handleMoveEnd}
+        onDragEnd={handleDragEnd}
+        interactive={!panelOpen}
+      >
+        {/* Render markers based on data source */}
+        {hasServerClusters ? (
+          // Server-side clusters: render markers directly
+          dataToRender.map((marker, i) => {
+            if (isServerCluster(marker)) {
+              // Render server-side cluster
+              const size = Math.min(40 + marker.count * 0.01, 80);
+              return (
+                <Marker
+                  key={`server-cluster-${marker.latitude}-${marker.longitude}`}
+                  longitude={marker.longitude}
+                  latitude={marker.latitude}
+                  anchor="center"
+                  onClick={() => {
+                    // Zoom into cluster
+                    const map = mapRef.current?.getMap?.();
+                    if (!map || panelOpen) return;
+                    map.flyTo({
+                      center: [marker.longitude, marker.latitude],
+                      zoom: map.getZoom() + 2,
+                      duration: 1000
+                    });
+                  }}
+                >
+                  <AnimatedCluster
+                    count={marker.count}
+                    size={size}
+                    onClick={() => {}}
+                    isLight={isLight}
+                  />
+                </Marker>
+              );
+            } else {
+              // Render individual listing from markers
+              const listing = marker as MapListing;
+              if (!listing.longitude || !listing.latitude || !listing._id) return null;
+
+              const selected = isSelected(listing);
+              const hovered = hoveredId === listing._id;
+              const showSelected = selected && !panelOpen;
+
+              return (
+                <Marker
+                  key={listing._id || `marker-${i}`}
+                  longitude={listing.longitude}
+                  latitude={listing.latitude}
+                  anchor="bottom"
+                  onClick={() => handleMarkerClick(listing)}
+                >
+                  <AnimatedMarker
+                    price={formatPrice(listing.listPrice)}
+                    propertyType={listing.propertyType}
+                    mlsSource={listing.mlsSource}
+                    isSelected={showSelected}
+                    isHovered={hovered}
+                    onMouseEnter={() => setHoveredId(listing._id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    isLight={isLight}
+                  />
+                </Marker>
+              );
+            }
+          })
+        ) : (
+          // Client-side clustering: use existing Supercluster logic
+          currentZoom >= RAW_MARKER_ZOOM
+          ? listingsFromMarkers
+              .filter((l) => l.longitude != null && l.latitude != null && l._id) // ✅ Require valid ID
+              .filter(inView)
+              .map((listing, i) => {
+                const selected = isSelected(listing);
+                const hovered = hoveredId === listing._id;
+                // Only show selected styling when panel is CLOSED
+                const showSelected = selected && !panelOpen;
+
+                return (
+                  <Marker
+                    key={listing._id || `raw-marker-${i}`}
+                    longitude={listing.longitude!}
+                    latitude={listing.latitude!}
+                    anchor="bottom"
+                    onClick={() => handleMarkerClick(listing)}
+                  >
+                    <AnimatedMarker
+                      price={formatPrice(listing.listPrice)}
+                      propertyType={listing.propertyType}
+                      mlsSource={listing.mlsSource}
+                      isSelected={showSelected}
+                      isHovered={hovered}
+                      onMouseEnter={() => setHoveredId(listing._id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      isLight={isLight}
+                    />
+                  </Marker>
+                );
+              })
+          : // Clusters below 13
+            clusters.map((feature, i) => {
+              const [longitude, latitude] = feature.geometry.coordinates;
+              const { cluster, point_count, listing } = feature.properties;
+
+              if (longitude == null || latitude == null) return null;
+
+              if (!cluster) {
+                if (!listing || !listing._id) return null; // ✅ Require valid listing with ID
+
+                const selected = isSelected(listing);
+                const hovered = hoveredId === listing._id;
+                // Only show selected styling when panel is CLOSED
+                const showSelected = selected && !panelOpen;
+
+                return (
+                  <Marker
+                    key={listing._id || `marker-${i}`}
+                    longitude={longitude}
+                    latitude={latitude}
+                    anchor="bottom"
+                    onClick={() => handleMarkerClick(listing)}
+                  >
+                    <AnimatedMarker
+                      price={formatPrice(listing.listPrice)}
+                      propertyType={listing.propertyType}
+                      mlsSource={listing.mlsSource}
+                      isSelected={showSelected}
+                      isHovered={hovered}
+                      onMouseEnter={() => setHoveredId(listing._id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      isLight={isLight}
+                    />
+                  </Marker>
+                );
+              }
+
+              const size = Math.min(40 + (point_count ?? 0) * 2, 60);
+              return (
+                <Marker
+                  key={`cluster-${feature.properties.cluster_id}`}
+                  longitude={longitude}
+                  latitude={latitude}
+                  anchor="center"
+                  onClick={() => handleClusterClick(feature)}
+                >
+                  <AnimatedCluster
+                    count={point_count}
+                    size={size}
+                    onClick={() => handleClusterClick(feature)}
+                    isLight={isLight}
+                  />
+                </Marker>
+              );
+            })
+        )}
+      </Map>
+    </div>
+  );
+});
+
+export default MapView;

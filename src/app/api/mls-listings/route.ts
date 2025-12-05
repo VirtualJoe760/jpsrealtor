@@ -1,11 +1,11 @@
 // src/app/api/mls-listings/route.ts
+// Unified MLS Listings API - All 8 MLS Associations
 
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing, IListing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 import Photo from "@/models/photos";
 import OpenHouse from "@/models/openHouses";
 
@@ -152,11 +152,21 @@ export async function GET(req: NextRequest) {
     matchStage.subdivisionName = { $regex: new RegExp(subdivision, "i") };
   }
 
+  // ==================== MLS SOURCE FILTER ====================
+  const mlsSource = query.get("mlsSource");
+  if (mlsSource) {
+    const mlsSources = mlsSource.split(",");
+    matchStage.mlsSource = { $in: mlsSources };
+  }
+
   // ==================== EXCLUDE KEYS (for swipe functionality) ====================
   const excludeKeys = query.get("excludeKeys");
   let excludeKeysArray: string[] = [];
   if (excludeKeys) {
     excludeKeysArray = excludeKeys.split(",").filter(k => k.trim());
+    if (excludeKeysArray.length > 0) {
+      matchStage.listingKey = { $nin: excludeKeysArray };
+    }
   }
 
   // ==================== RADIUS SEARCH ====================
@@ -198,7 +208,7 @@ export async function GET(req: NextRequest) {
   const sortField = validSortFields.includes(sortBy) ? sortBy : "listPrice";
 
   try {
-    // Build aggregation pipeline (same for both GPS and CRMLS)
+    // Build aggregation pipeline for unified_listings
     const pipeline = [
       // Stage 1: Filter listings
       { $match: matchStage },
@@ -240,7 +250,7 @@ export async function GET(req: NextRequest) {
         $project: {
           _id: 1,
           listingId: 1,
-          listingKey: 1, // GPS has listingKey, CRMLS will use listingId below
+          listingKey: 1,
           slug: 1,
           slugAddress: 1,
           listPrice: 1,
@@ -248,6 +258,7 @@ export async function GET(req: NextRequest) {
           bedsTotal: 1,
           bathroomsFull: 1,
           bathroomsTotalInteger: 1,
+          bathroomsTotalDecimal: 1,
           livingArea: 1,
           lotSizeArea: 1,
           lotSizeSqft: 1,
@@ -270,7 +281,9 @@ export async function GET(req: NextRequest) {
           viewYn: 1,
           gatedCommunity: 1,
           seniorCommunityYn: 1,
-          mlsSource: 1, // Include MLS source
+          mlsSource: 1,
+          mlsId: 1,
+          propertyTypeName: 1,
           pool: { $eq: ["$poolYn", true] },
           spa: { $eq: ["$spaYn", true] },
           hasHOA: { $gt: [{ $ifNull: ["$associationFee", 0] }, 0] },
@@ -297,76 +310,38 @@ export async function GET(req: NextRequest) {
       }
     ];
 
-    // 🚀 Fetch from both GPS and CRMLS collections in parallel
-    // GPS uses "listingKey", CRMLS uses "listingId"
-    const gpsMatchStage = { ...matchStage };
-    const crmlsMatchStage = { ...matchStage };
+    // Execute single query on unified collection
+    const listings = await UnifiedListing.aggregate(pipeline as any);
 
-    // Apply exclude keys with the correct field name for each MLS
-    if (excludeKeysArray.length > 0) {
-      gpsMatchStage.listingKey = { $nin: excludeKeysArray };
-      crmlsMatchStage.listingId = { $nin: excludeKeysArray };
-    }
+    // Get total count for pagination (more efficient with countDocuments)
+    const total = await UnifiedListing.countDocuments(matchStage);
 
-    // Create separate pipelines for GPS and CRMLS
-    const gpsPipeline = [
-      { $match: gpsMatchStage },
-      ...pipeline.slice(1) // Use the rest of the pipeline stages
-    ];
-
-    const crmlsPipeline = [
-      { $match: crmlsMatchStage },
-      ...pipeline.slice(1) // Use the rest of the pipeline stages
-    ];
-
-    const [gpsListings, crmlsListings] = await Promise.all([
-      Listing.aggregate(gpsPipeline as any),
-      CRMLSListing.aggregate(crmlsPipeline as any),
+    // Get MLS distribution for debugging/analytics
+    const mlsDistribution = await UnifiedListing.aggregate([
+      { $match: matchStage },
+      { $group: { _id: "$mlsSource", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
     ]);
 
-    // Add mlsSource identifier if not present
-    const gpsWithSource = gpsListings.map(listing => ({
-      ...listing,
-      mlsSource: listing.mlsSource || "GPS"
-    }));
-
-    const crmlsWithSource = crmlsListings.map(listing => ({
-      ...listing,
-      mlsSource: listing.mlsSource || "CRMLS",
-      listingKey: listing.listingKey || listing.listingId // CRMLS uses listingId as the unique key
-    }));
-
-    // Merge and sort the results
-    const allListings = [...gpsWithSource, ...crmlsWithSource];
-    allListings.sort((a, b) => {
-      const aValue = a[sortField] || 0;
-      const bValue = b[sortField] || 0;
-      return sortOrder * (aValue - bValue);
-    });
-
-    // Apply pagination to merged results
-    const listings = allListings.slice(0, limit);
-
-
-    // Get total counts from both collections (for display purposes)
-    const [gpsTotal, crmlsTotal] = await Promise.all([
-      Listing.countDocuments({ standardStatus: "Active" }),
-      CRMLSListing.countDocuments({ standardStatus: "Active" }),
-    ]);
+    const totalByMLS = mlsDistribution.reduce((acc, item) => {
+      acc[item._id || "UNKNOWN"] = item.count;
+      return acc;
+    }, {} as Record<string, number>);
 
     // Add cache headers for better performance
     return NextResponse.json(
       {
         listings,
         totalCount: {
-          gps: gpsTotal,
-          crmls: crmlsTotal,
-          total: gpsTotal + crmlsTotal,
+          total,
+          byMLS: totalByMLS,
         }
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+          'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=604800',
+          'CDN-Cache-Control': 'max-age=3600',
+          'Vary': 'Accept-Encoding',
         }
       }
     );

@@ -1,25 +1,9 @@
-// src/app/api/mls-listings/[listingKey]/photos/route.ts
+// src/app/api/listing/[listingKey]/photos/route.ts
+// Updated for unified MLS system - supports all 8 MLS associations
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 import Photo from "@/models/photos";
-import { fetchListingPhotos } from "@/app/utils/spark/photos";
-
-interface RawPhoto {
-  Id: string;
-  Caption?: string;
-  UriThumb?: string;
-  Uri300?: string;
-  Uri640?: string;
-  Uri800?: string;
-  Uri1024?: string;
-  Uri1280?: string;
-  Uri1600?: string;
-  Uri2048?: string;
-  UriLarge?: string;
-  Primary?: boolean;
-}
 
 export async function GET(
   req: Request,
@@ -29,100 +13,68 @@ export async function GET(
   const { listingKey } = await params;
 
   try {
-    // 🔍 Try to find listing in GPS MLS first, then CRMLS
-    // GPS: uses "listingKey" field
-    // CRMLS: uses "listingKey" if populated, otherwise try "slug" or "listingId"
-    let listing: any = await Listing.findOne({ listingKey }).lean();
-    let mlsSource = "GPS";
+    // 🔍 Find listing in unified collection (all 8 MLSs)
+    // Try multiple fields: listingKey, slug, slugAddress, listingId
+    const listing = await UnifiedListing.findOne({
+      $or: [
+        { listingKey },
+        { slug: listingKey },
+        { slugAddress: listingKey },
+        { listingId: listingKey }
+      ]
+    }).lean();
 
     if (!listing) {
-      // Try CRMLS collection - try listingKey, slug, or listingId
-      listing = await CRMLSListing.findOne({
-        $or: [
-          { listingKey },
-          { slug: listingKey },
-          { listingId: listingKey }
-        ]
-      }).lean();
-      mlsSource = "CRMLS";
-    }
-
-    if (!listing) {
+      console.log(`⚠️  Listing not found in unified collection: ${listingKey}`);
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    
-    let safePhotos: any[] = [];
+    // 📸 Fetch photos from photos collection (MongoDB)
+    // Photos are indexed by listingId (not listingKey)
+    const photos = await Photo.find({ listingId: listing.listingId })
+      .sort({ primary: -1, Order: 1 }) // Primary photo first, then by order
+      .select({
+        uri2048: 1,
+        uri1600: 1,
+        uri1280: 1,
+        uri1024: 1,
+        uri800: 1,
+        uri640: 1,
+        uri300: 1,
+        uriThumb: 1,
+        uriLarge: 1,
+        caption: 1,
+        primary: 1,
+        _id: 1
+      })
+      .lean();
 
-    if (mlsSource === "CRMLS") {
-      // 📸 CRMLS: Fetch photos from Spark API using the listing's slug or listingId
-      const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug || listing.listingId);
-
-      if (!Array.isArray(rawPhotos)) {
-        return NextResponse.json({ photos: [] }, { status: 200 });
-      }
-
-      safePhotos = rawPhotos
-        .map((p: RawPhoto) => {
-          const src =
-            p.Uri2048 ||
-            p.Uri1600 ||
-            p.Uri1280 ||
-            p.Uri1024 ||
-            p.Uri800 ||
-            p.Uri640 ||
-            p.Uri300 ||
-            p.UriThumb ||
-            p.UriLarge ||
-            "";
-
-          if (!src) {
-                      }
-
-          return {
-            id: p.Id,
-            caption: p.Caption || "",
-            src,
-            primary: p.Primary ?? false,
-          };
-        })
-        .filter((p) => p.src);
-
-    } else {
-      // 📸 GPS: Fetch photos from Spark API
-      const rawPhotos: RawPhoto[] = await fetchListingPhotos(listing.slug);
-
-      if (!Array.isArray(rawPhotos)) {
-        return NextResponse.json({ photos: [] }, { status: 200 });
-      }
-
-      safePhotos = rawPhotos
-        .map((p: RawPhoto) => {
-          const src =
-            p.Uri2048 ||
-            p.Uri1600 ||
-            p.Uri1280 ||
-            p.Uri1024 ||
-            p.Uri800 ||
-            p.Uri640 ||
-            p.Uri300 ||
-            p.UriThumb ||
-            p.UriLarge ||
-            "";
-
-          if (!src) {
-                      }
-
-          return {
-            id: p.Id,
-            caption: p.Caption || "",
-            src,
-            primary: p.Primary ?? false,
-          };
-        })
-        .filter((p) => p.src);
-
+    if (!photos || photos.length === 0) {
+      console.log(`⚠️  No photos found for listing ${listing.listingId} (key: ${listingKey})`);
+      return NextResponse.json({ photos: [] }, { status: 200 });
     }
+
+    // Map to consistent format for frontend
+    const safePhotos = photos.map((p: any) => {
+      const src =
+        p.uri2048 ||
+        p.uri1600 ||
+        p.uri1280 ||
+        p.uri1024 ||
+        p.uri800 ||
+        p.uri640 ||
+        p.uri300 ||
+        p.uriThumb ||
+        p.uriLarge ||
+        "";
+
+      return {
+        id: p._id?.toString() || "",
+        caption: p.caption || "",
+        src,
+        primary: p.primary ?? false,
+      };
+    }).filter((p) => p.src); // Only include photos with valid URLs
 
     return NextResponse.json({ photos: safePhotos });
   } catch (error) {

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useRouter } from "next/navigation";
 import type { MapListing, Filters } from "@/types/types";
 import type { IListing } from "@/models/listings";
-import { useListings, TotalCount } from "@/app/utils/map/useListings";
+import { useServerClusters, isServerCluster, MapMarker } from "@/app/utils/map/useServerClusters";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -34,6 +34,7 @@ interface MLSContextValue {
   // Listings State
   allListings: MapListing[];
   visibleListings: MapListing[];
+  markers: MapMarker[]; // Can include both clusters and listings
   selectedListing: MapListing | null;
   selectedFullListing: IListing | null;
   visibleIndex: number | null;
@@ -75,7 +76,7 @@ interface MLSContextValue {
   swipeQueue: ReturnType<typeof useSwipeQueue>;
 
   // Total listing counts
-  totalCount: TotalCount | null;
+  totalCount: number;
 }
 
 const MLSContext = createContext<MLSContextValue | null>(null);
@@ -85,14 +86,13 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const { currentTheme } = useTheme();
 
   // Core hooks
-  const { allListings, visibleListings, loadListings: loadListingsCore, totalCount, isLoading: isLoadingViewport } = useListings();
+  const { markers, loadMarkers, totalCount, isLoading: isLoadingViewport } = useServerClusters();
   const swipeQueue = useSwipeQueue();
 
   // Refs for caching
   const listingCache = useRef<Map<string, IListing>>(new Map());
   const fetchingRef = useRef<Set<string>>(new Set());
 
-  // State
   const [filters, setFiltersState] = useState<Filters>(() => {
     if (typeof window === "undefined") return defaultFilterState;
 
@@ -174,6 +174,16 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   });
 
   const [dislikedListings, setDislikedListings] = useState<any[]>([]);
+
+  // Derive listings from markers (filter out clusters for visibleListings)
+  const allListings = React.useMemo(() => markers, [markers]);
+  const visibleListings = React.useMemo(() => {
+    // Filter out server-side clusters - only keep actual listings
+    const listings = markers.filter((m): m is MapListing => !isServerCluster(m));
+    const clusterCount = markers.length - listings.length;
+    console.log(`🔍 MLSProvider - Total markers: ${markers.length}, Clusters: ${clusterCount}, Listings: ${listings.length}`);
+    return listings;
+  }, [markers]);
 
   // Selected listing (computed from visibleIndex)
   const selectedListing = React.useMemo((): MapListing | null => {
@@ -318,21 +328,18 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   // Actions
   const loadListings = useCallback(
     async (bounds: any, filters: Filters, merge: boolean = false) => {
-      console.log('🔄 MLSProvider.loadListings called with bounds:', bounds);
-      console.log('🔄 MLSProvider.loadListings filters:', filters);
-      console.log('🔄 MLSProvider.loadListings merge mode:', merge);
+      // Note: merge parameter is ignored - new hook always replaces
       setIsLoading(true);
       try {
-        await loadListingsCore(bounds, filters, merge);
+        await loadMarkers(bounds, filters);
         setIsPreloaded(true);
-        console.log('✅ MLSProvider.loadListings completed successfully');
       } catch (error) {
         console.error("❌ Failed to load listings:", error);
       } finally {
         setIsLoading(false);
       }
     },
-    [loadListingsCore]
+    [loadMarkers]
   );
 
   const selectListing = useCallback(
@@ -475,6 +482,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const value: MLSContextValue = {
     allListings,
     visibleListings,
+    markers,
     selectedListing,
     selectedFullListing,
     visibleIndex,

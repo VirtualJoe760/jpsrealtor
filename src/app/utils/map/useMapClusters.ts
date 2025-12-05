@@ -1,0 +1,165 @@
+// src/app/utils/map/useMapClusters.ts
+// Simplified hook for fetching server-side clusters
+// No complex caching - let Cloudflare CDN handle it
+
+import { useState, useRef, useCallback } from "react";
+import type { MapListing, Filters } from "@/types/types";
+
+// Server-side cluster type
+export interface ServerCluster {
+  latitude: number;
+  longitude: number;
+  count: number;
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  propertyTypes: string[];
+  mlsSources: string[];
+  sampleListingIds: string[];
+  isCluster: true;
+  cityName?: string;
+  subdivisionName?: string;
+}
+
+// Combined type for map markers
+export type MapMarker = MapListing | ServerCluster;
+
+// Type guard
+export function isServerCluster(marker: MapMarker): marker is ServerCluster {
+  return 'isCluster' in marker && marker.isCluster === true;
+}
+
+// AI Context for intent-aware clustering
+export interface MapRequestContext {
+  source?: 'ai' | 'manual' | 'initial';
+  intent?: 'explore' | 'specific_location' | 'filtered_search';
+  expectedListingCount?: number;
+  locationName?: string;
+  locationType?: 'subdivision' | 'city' | 'county' | 'custom';
+}
+
+interface UsMapClustersReturn {
+  markers: MapMarker[];
+  totalCount: number;
+  isLoading: boolean;
+  fetchClusters: (bounds: MapBounds, filters: Filters, context?: MapRequestContext) => Promise<void>;
+}
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+  zoom: number;
+}
+
+export function useMapClusters(): UsMapClustersReturn {
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // AbortController to cancel previous requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchClusters = useCallback(async (bounds: MapBounds, filters: Filters, context?: MapRequestContext) => {
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+
+    setIsLoading(true);
+
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        north: String(bounds.north),
+        south: String(bounds.south),
+        east: String(bounds.east),
+        west: String(bounds.west),
+        zoom: String(Math.floor(bounds.zoom)),
+      });
+
+      // Add filters
+      if (filters.listingType) params.append('listingType', filters.listingType);
+      if (filters.minPrice) params.append('minPrice', String(filters.minPrice));
+      if (filters.maxPrice) params.append('maxPrice', String(filters.maxPrice));
+      if (filters.beds) params.append('beds', String(filters.beds));
+      if (filters.baths) params.append('baths', String(filters.baths));
+      if (filters.minSqft) params.append('minSqft', String(filters.minSqft));
+      if (filters.maxSqft) params.append('maxSqft', String(filters.maxSqft));
+      if (filters.propertyType) params.append('propertyType', filters.propertyType);
+      if (filters.propertySubType) params.append('propertySubType', filters.propertySubType);
+      if (filters.poolYn !== undefined) params.append('pool', String(filters.poolYn));
+      if (filters.spaYn !== undefined) params.append('spa', String(filters.spaYn));
+      if (filters.city) params.append('city', filters.city);
+      if (filters.mlsSource) params.append('mlsSource', filters.mlsSource);
+
+      // Add context parameters for AI-driven clustering
+      if (context) {
+        if (context.source) params.append('source', context.source);
+        if (context.intent) params.append('intent', context.intent);
+        if (context.expectedListingCount) params.append('expectedCount', String(context.expectedListingCount));
+        if (context.locationName) params.append('locationName', context.locationName);
+        if (context.locationType) params.append('locationType', context.locationType);
+      }
+
+      const apiUrl = `/api/map-clusters?${params.toString()}`;
+
+      console.log('🌐 Fetching:', apiUrl);
+      if (context) {
+        console.log('🤖 AI Context:', context);
+      }
+
+      // Fetch with abort signal
+      const response = await fetch(apiUrl, {
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log(`✅ Received ${data.type}:`, data.type === 'clusters' ? `${data.clusters?.length || 0} clusters` : `${data.listings?.length || 0} listings`);
+      if (data.context) {
+        console.log('🎯 Server clustering decision:', data.context);
+      }
+      console.log('📦 Full API response:', JSON.stringify(data, null, 2).slice(0, 500));
+
+      // Replace markers (not merge)
+      if (data.type === 'clusters') {
+        const clustersData = data.clusters || [];
+        console.log(`🎯 Setting ${clustersData.length} clusters as markers`);
+        setMarkers(clustersData);
+      } else if (data.type === 'listings') {
+        const listingsData = data.listings || [];
+        console.log(`🎯 Setting ${listingsData.length} listings as markers`);
+        setMarkers(listingsData);
+      }
+
+      setTotalCount(data.totalCount || 0);
+      console.log(`📊 Total count: ${data.totalCount || 0}, Markers set: ${data.type === 'clusters' ? (data.clusters?.length || 0) : (data.listings?.length || 0)}`);
+
+    } catch (error: any) {
+      // Ignore abort errors (user zoomed/panned again)
+      if (error.name === 'AbortError') {
+        console.log('⏭️ Request cancelled (new request started)');
+        return;
+      }
+      console.error('❌ Fetch error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    markers,
+    totalCount,
+    isLoading,
+    fetchClusters,
+  };
+}

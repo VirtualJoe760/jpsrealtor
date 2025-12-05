@@ -1,11 +1,10 @@
 // src/app/api/subdivisions/[slug]/listings/route.ts
-// API route for getting listings in a subdivision
+// API route for getting listings in a subdivision - UNIFIED
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 import Photo from "@/models/photos";
 
 export async function GET(
@@ -35,7 +34,7 @@ export async function GET(
       );
     }
 
-    // Build query for listings
+    // Build query for listings - unified collection
     const baseQuery: any = {
       standardStatus: "Active",
     };
@@ -48,7 +47,7 @@ export async function GET(
         { subdivisionName: { $exists: false } },
         { subdivisionName: null },
         { subdivisionName: "" },
-        { subdivisionName: { $regex: /^(not applicable|n\/?a|none)$/i } },
+        { subdivisionName: { $regex: /^(not applicable|n\/?\s*a|none)$/i } },
       ];
     } else {
       baseQuery.subdivisionName = subdivision.name;
@@ -76,91 +75,41 @@ export async function GET(
       ];
     }
 
-    // Query both GPS and CRMLS
+    // Query unified_listings (all 8 MLSs)
     const skip = (page - 1) * limit;
 
-    let listings: any[] = [];
-    let total = 0;
-
-    if (subdivision.mlsSources.includes("GPS")) {
-      const [gpsListings, gpsCount] = await Promise.all([
-        Listing.find(baseQuery)
-          .sort({ listPrice: -1 })
-          .skip(skip)
-          .limit(limit)
-          .select({
-            listingId: 1,
-            listingKey: 1,
-            slug: 1,
-            slugAddress: 1,
-            unparsedAddress: 1,
-            address: 1,
-            city: 1,
-            stateOrProvince: 1,
-            postalCode: 1,
-            listPrice: 1,
-            bedsTotal: 1,
-            bedroomsTotal: 1,
-            bathroomsTotalDecimal: 1,
-            livingArea: 1,
-            yearBuilt: 1,
-            primaryPhotoUrl: 1,
-            latitude: 1,
-            longitude: 1,
-            standardStatus: 1,
-            propertyType: 1,
-            propertySubType: 1,
-            mlsSource: 1,
-          })
-          .lean(),
-        Listing.countDocuments(baseQuery),
-      ]);
-      listings = listings.concat(gpsListings);
-      total += gpsCount;
-    }
-
-    if (subdivision.mlsSources.includes("CRMLS")) {
-      const [cmlsListings, crmlsCount] = await Promise.all([
-        CRMLSListing.find(baseQuery)
-          .sort({ listPrice: -1 })
-          .skip(skip)
-          .limit(limit)
-          .select({
-            listingId: 1,
-            listingKey: 1,
-            slug: 1,
-            slugAddress: 1,
-            unparsedAddress: 1,
-            address: 1,
-            city: 1,
-            stateOrProvince: 1,
-            postalCode: 1,
-            listPrice: 1,
-            bedsTotal: 1,
-            bedroomsTotal: 1,
-            bathroomsTotalDecimal: 1,
-            livingArea: 1,
-            yearBuilt: 1,
-            primaryPhotoUrl: 1,
-            latitude: 1,
-            longitude: 1,
-            standardStatus: 1,
-            propertyType: 1,
-            propertySubType: 1,
-            mlsSource: 1,
-          })
-          .lean(),
-        CRMLSListing.countDocuments(baseQuery),
-      ]);
-      listings = listings.concat(cmlsListings);
-      total += crmlsCount;
-    }
-
-    // Sort combined results by price
-    listings.sort((a, b) => (b.listPrice || 0) - (a.listPrice || 0));
-
-    // Apply limit to combined results
-    listings = listings.slice(0, limit);
+    const [listings, total] = await Promise.all([
+      UnifiedListing.find(baseQuery)
+        .sort({ listPrice: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select({
+          listingId: 1,
+          listingKey: 1,
+          slug: 1,
+          slugAddress: 1,
+          unparsedAddress: 1,
+          address: 1,
+          city: 1,
+          stateOrProvince: 1,
+          postalCode: 1,
+          listPrice: 1,
+          bedsTotal: 1,
+          bedroomsTotal: 1,
+          bathroomsTotalDecimal: 1,
+          livingArea: 1,
+          yearBuilt: 1,
+          primaryPhotoUrl: 1,
+          latitude: 1,
+          longitude: 1,
+          standardStatus: 1,
+          propertyType: 1,
+          propertySubType: 1,
+          mlsSource: 1,
+        })
+        .lean(),
+      UnifiedListing.countDocuments(baseQuery),
+    ]);
 
     // Fetch primary photos for all listings
     const listingIds = listings.map((l) => l.listingId);
@@ -228,7 +177,7 @@ export async function GET(
     });
 
     // Attach photos to listings and build full address
-    listings = listings.map((listing) => {
+    const finalListings = listings.map((listing) => {
       // Use unparsedAddress or address for the street address
       const streetAddress = listing.unparsedAddress || listing.address;
       const fullAddress = streetAddress || "";
@@ -244,11 +193,12 @@ export async function GET(
         slug: listing.slugAddress || listing.slug, // Use slugAddress for routing
         bedroomsTotal: bedrooms, // Normalize to bedroomsTotal
         primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
+        mlsSource: listing.mlsSource || "UNKNOWN",
       };
     });
 
     return NextResponse.json({
-      listings,
+      listings: finalListings,
       subdivision: {
         name: subdivision.name,
         city: subdivision.city,

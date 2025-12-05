@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, FileText, Home } from "lucide-react";
+import { BarChart3, FileText, Phone } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 
 export default function AdminNav() {
@@ -25,10 +25,10 @@ export default function AdminNav() {
       exact: false,
     },
     {
-      href: "/",
-      label: "Back to Site",
-      icon: Home,
-      exact: true,
+      href: "/admin/crm",
+      label: "CRM",
+      icon: Phone,
+      exact: false,
     },
   ];
 

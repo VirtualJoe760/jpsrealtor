@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 import Photo from "@/models/photos";
 
 export async function GET(
@@ -32,7 +31,7 @@ export async function GET(
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
-    // Base query for the city
+    // Base query for the city - using unified_listings
     const baseQuery: any = {
       city: { $regex: new RegExp(`^${cityName}$`, "i") },
       listPrice: { $exists: true, $ne: null, $gt: 0 },
@@ -96,39 +95,14 @@ export async function GET(
       baseQuery.$and = andConditions;
     }
 
-    // Fetch listings from both GPS MLS and CRMLS
-    const [gpsListings, crmlsListings] = await Promise.all([
-      Listing.find(baseQuery)
-        .select(
-          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathsTotal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet propertyType propertySubType coordinates latitude longitude"
-        )
-        .limit(limit)
-        .lean()
-        .exec(),
-      CRMLSListing.find(baseQuery)
-        .select(
-          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSqft propertyType propertySubType latitude longitude"
-        )
-        .limit(limit)
-        .lean()
-        .exec(),
-    ]);
-
-    // Combine and normalize listings from both sources
-    const listings = [
-      ...gpsListings.map((l: any) => ({
-        ...l,
-        listingId: l.listingId,
-        listingKey: l.listingKey,
-        mlsSource: "GPS",
-      })),
-      ...crmlsListings.map((l: any) => ({
-        ...l,
-        listingId: l.listingId,
-        listingKey: l.listingKey || l.listingId,
-        mlsSource: "CRMLS",
-      })),
-    ];
+    // Fetch listings from unified_listings (all 8 MLSs)
+    const listings = await UnifiedListing.find(baseQuery)
+      .select(
+        "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathsTotal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource"
+      )
+      .limit(limit)
+      .lean()
+      .exec();
 
     if (listings.length === 0) {
       return NextResponse.json({ listings: [] });
@@ -231,7 +205,7 @@ export async function GET(
       longitude: listing.longitude || listing.coordinates?.longitude,
       photoUrl: photoMap.get(listing.listingId) || null,
       primaryPhotoUrl: photoMap.get(listing.listingId) || null,
-      mlsSource: listing.mlsSource,
+      mlsSource: listing.mlsSource || "UNKNOWN",
     }));
 
     return NextResponse.json({ listings: listingsWithPhotos });

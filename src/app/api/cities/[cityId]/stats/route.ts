@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +21,7 @@ export async function GET(
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
-    // Base query for the city
+    // Base query for the city - using unified_listings (all 8 MLSs)
     const baseQuery: any = {
       city: { $regex: new RegExp(`^${cityName}$`, "i") },
       listPrice: { $exists: true, $ne: null, $gt: 0 },
@@ -41,14 +40,11 @@ export async function GET(
       baseQuery.propertyType = "B";
     }
 
-    // Get all matching listings from both GPS MLS and CRMLS
-    const [gpsListings, crmlsListings] = await Promise.all([
-      Listing.find(baseQuery).select("listPrice").lean().exec(),
-      CRMLSListing.find(baseQuery).select("listPrice").lean().exec(),
-    ]);
-
-    // Combine listings from both sources
-    const allListings = [...gpsListings, ...crmlsListings];
+    // Get all matching listings from unified collection (all 8 MLSs)
+    const allListings = await UnifiedListing.find(baseQuery)
+      .select("listPrice")
+      .lean()
+      .exec();
 
     if (allListings.length === 0) {
       return NextResponse.json({

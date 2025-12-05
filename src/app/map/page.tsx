@@ -26,19 +26,20 @@ const FavoritesPannel = dynamicImport(
   { ssr: false }
 );
 
-// Default bounds - centered on Southern California (no specific city)
+// Default bounds - show entire California state with all regions visible
 // Will be overridden by URL params when coming from chat/search
 const DEFAULT_BOUNDS = {
-  north: 34.5,
-  south: 33.0,
-  east: -116.5,
-  west: -118.5,
-  zoom: 8,
+  north: 42.0,
+  south: 32.5,
+  east: -114.0,
+  west: -124.5,
+  zoom: 5.5,
 };
 
 function MapPageContent() {
   const {
     visibleListings,
+    markers,
     selectedListing,
     selectedFullListing,
     isLoading,
@@ -298,7 +299,7 @@ function MapPageContent() {
 
   return (
     <div className="h-screen w-screen relative bg-black" data-page="map">
-      {isLoading && visibleListings.length === 0 ? (
+      {isLoading && markers.length === 0 ? (
         // Loading state
         <div className="h-full w-full flex items-center justify-center bg-black">
           <div className="flex flex-col items-center gap-4">
@@ -306,7 +307,7 @@ function MapPageContent() {
             <p className="text-neutral-400">Loading listings...</p>
           </div>
         </div>
-      ) : visibleListings.length === 0 ? (
+      ) : markers.length === 0 ? (
         // Empty state
         <div className="h-full w-full flex items-center justify-center bg-black">
           <motion.div
@@ -330,9 +331,10 @@ function MapPageContent() {
         <>
           <MapView
             listings={visibleListings}
+            markers={markers}
             centerLat={(mapBounds.north + mapBounds.south) / 2}
             centerLng={(mapBounds.east + mapBounds.west) / 2}
-            zoom={mapBounds.zoom || 11}
+            zoom={mapBounds.zoom || 5.5}
             onSelectListing={handleSelectListing}
             selectedListing={selectedListing}
             onBoundsChange={handleBoundsChange}
@@ -404,34 +406,6 @@ function MapPageContent() {
               </div>
             </div>
           )}
-
-          {/* Total Listings Count + Viewport Loading Indicator */}
-          <div className="absolute bottom-20 sm:bottom-auto sm:top-4 left-4 z-30 flex items-center gap-2">
-            {/* Viewport loading indicator */}
-            {isLoadingViewport && (
-              <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg flex items-center gap-2 ${
-                isLight
-                  ? 'bg-white/90 text-gray-700 border border-gray-300'
-                  : 'bg-black/80 text-neutral-300 border border-neutral-700'
-              }`}>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Loading...
-              </span>
-            )}
-            {/* Total count */}
-            {totalCount && !isLoadingViewport && (
-              <span className={`text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-lg ${
-                isLight
-                  ? 'bg-white/90 text-gray-700 border border-gray-300'
-                  : 'bg-black/80 text-neutral-300 border border-neutral-700'
-              }`}>
-                {visibleListings.length.toLocaleString()} shown
-                <span className={`ml-2 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
-                  of {totalCount.total.toLocaleString()} total
-                </span>
-              </span>
-            )}
-          </div>
 
           {/* Map Controls - Mobile: Top swipeable tab, Desktop: Bottom left */}
           <div className="fixed top-0 left-0 right-0 sm:absolute sm:top-auto sm:bottom-4 sm:left-4 sm:right-auto z-40 sm:w-80 pointer-events-none">

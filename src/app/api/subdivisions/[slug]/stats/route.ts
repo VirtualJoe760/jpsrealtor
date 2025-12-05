@@ -1,11 +1,10 @@
 // src/app/api/subdivisions/[slug]/stats/route.ts
-// API route for getting filtered subdivision stats
+// API route for getting filtered subdivision stats - UNIFIED
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET(
   req: NextRequest,
@@ -28,7 +27,7 @@ export async function GET(
       );
     }
 
-    // Build base query
+    // Build base query - unified collection handles all 8 MLSs
     const baseQuery: any = {
       standardStatus: "Active",
     };
@@ -55,29 +54,17 @@ export async function GET(
         { subdivisionName: { $exists: false } },
         { subdivisionName: null },
         { subdivisionName: "" },
-        { subdivisionName: { $regex: /^(not applicable|n\/?a|none)$/i } },
+        { subdivisionName: { $regex: /^(not applicable|n\/\/?a|none)$/i } },
       ];
     } else {
       baseQuery.subdivisionName = subdivision.name;
       baseQuery.city = subdivision.city;
     }
 
-    // Collect listings from both GPS and CRMLS
-    let allListings: any[] = [];
-
-    if (subdivision.mlsSources.includes("GPS")) {
-      const gpsListings = await Listing.find(baseQuery)
-        .select({ listPrice: 1 })
-        .lean();
-      allListings = allListings.concat(gpsListings);
-    }
-
-    if (subdivision.mlsSources.includes("CRMLS")) {
-      const crmlsListings = await CRMLSListing.find(baseQuery)
-        .select({ listPrice: 1 })
-        .lean();
-      allListings = allListings.concat(crmlsListings);
-    }
+    // Query unified_listings (all 8 MLSs automatically included)
+    const allListings = await UnifiedListing.find(baseQuery)
+      .select({ listPrice: 1 })
+      .lean();
 
     // Calculate stats
     const listingCount = allListings.length;

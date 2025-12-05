@@ -3,14 +3,14 @@ import { useState, useCallback, useRef } from "react";
 import type { MapListing, Filters } from "@/types/types";
 
 // Viewport-based loading - different limits based on zoom level
-const LISTINGS_PER_VIEWPORT = 1000;
-const LISTINGS_AT_HIGH_ZOOM = 5000; // More listings when zoomed in past cluster threshold
+const LISTINGS_PER_VIEWPORT = 250; // Reduced from 1000 for faster initial load
+const LISTINGS_AT_HIGH_ZOOM = 1000; // Reduced from 5000 - let clustering handle display
 
 // Maximum total listings to keep in memory (prevents memory issues on mobile)
 const MAX_CACHED_LISTINGS = 2000;
 
 // Zoom threshold where we show individual markers (no clustering)
-const HIGH_ZOOM_THRESHOLD = 12;
+const HIGH_ZOOM_THRESHOLD = 14; // Increased from 12 - rely on clustering longer
 
 interface LoadedRegion {
   north: number;
@@ -101,20 +101,29 @@ export function useListings() {
       return;
     }
 
-    // Prevent duplicate requests
-    if (loadingRef.current) {
-      console.log('⏳ Already loading, skipping...');
+    const isHighZoom = (bounds.zoom ?? 0) >= 12; // Zoom 12-13 should finish loading
+
+    // At high zoom (12-13), don't cancel ongoing requests - let them finish
+    if (loadingRef.current && isHighZoom) {
+      console.log('⏳ High zoom - allowing current load to complete');
+      return;
+    }
+
+    // At lower zooms, prevent duplicate requests
+    if (loadingRef.current && !isHighZoom) {
+      console.log('⏳ Already loading (low zoom), skipping...');
       return;
     }
 
     // Debounce rapid viewport changes (e.g., during fast panning)
+    // BUT: At high zoom (12-13), use longer debounce to ensure query completes
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
     // For initial load (not merge), load immediately
-    // For panning (merge), debounce to avoid API spam
-    const delay = merge ? 300 : 0;
+    // For panning (merge), debounce longer at high zoom
+    const delay = merge ? (isHighZoom ? 800 : 300) : 0;
 
     return new Promise<void>((resolve) => {
       debounceRef.current = setTimeout(async () => {
@@ -203,6 +212,10 @@ export function useListings() {
             console.log(`📊 Total listings - GPS: ${data.totalCount.gps}, CRMLS: ${data.totalCount.crmls}, Total: ${data.totalCount.total}`);
           }
 
+          // Incremental loading - show listings in batches for faster perceived load time
+          const BATCH_SIZE = 50; // Show 50 listings at a time
+          const shouldBatch = newListings.length > BATCH_SIZE && isHighZoom;
+
           // Track this region as loaded
           loadedRegionsRef.current.push({
             north: bounds.north,
@@ -219,38 +232,81 @@ export function useListings() {
             loadedRegionsRef.current = loadedRegionsRef.current.slice(-10);
           }
 
-          if (merge) {
-            // Merge with existing listings, avoiding duplicates
-            setAllListings(prev => {
-              const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
-              const uniqueNew = newListings.filter(
-                (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
-              );
-              console.log(`🔀 Merging ${uniqueNew.length} new listings with ${prev.length} existing`);
+          // Helper function to add listings incrementally in batches
+          const addListingsInBatches = async (listings: MapListing[], merge: boolean) => {
+            if (!shouldBatch) {
+              // Add all at once if not batching
+              if (merge) {
+                setAllListings(prev => {
+                  const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+                  const uniqueNew = listings.filter(
+                    (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+                  );
+                  const merged = [...prev, ...uniqueNew];
+                  if (merged.length > MAX_CACHED_LISTINGS) {
+                    return merged.slice(-MAX_CACHED_LISTINGS);
+                  }
+                  return merged;
+                });
+                setVisibleListings(prev => {
+                  const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+                  const uniqueNew = listings.filter(
+                    (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+                  );
+                  const merged = [...prev, ...uniqueNew];
+                  if (merged.length > MAX_CACHED_LISTINGS) {
+                    return merged.slice(-MAX_CACHED_LISTINGS);
+                  }
+                  return merged;
+                });
+              } else {
+                setAllListings(listings);
+                setVisibleListings(listings);
+              }
+              return;
+            }
 
-              // Limit total cached listings to prevent memory issues on mobile
-              const merged = [...prev, ...uniqueNew];
-              if (merged.length > MAX_CACHED_LISTINGS) {
-                console.log(`⚠️ Trimming cache from ${merged.length} to ${MAX_CACHED_LISTINGS}`);
-                return merged.slice(-MAX_CACHED_LISTINGS);
+            // Batch loading for better UX
+            console.log(`📦 Loading ${listings.length} listings in batches of ${BATCH_SIZE}`);
+            for (let i = 0; i < listings.length; i += BATCH_SIZE) {
+              const batch = listings.slice(i, i + BATCH_SIZE);
+
+              setAllListings(prev => {
+                const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+                const uniqueNew = batch.filter(
+                  (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+                );
+                const merged = [...prev, ...uniqueNew];
+                if (merged.length > MAX_CACHED_LISTINGS) {
+                  return merged.slice(-MAX_CACHED_LISTINGS);
+                }
+                return merged;
+              });
+              setVisibleListings(prev => {
+                const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
+                const uniqueNew = batch.filter(
+                  (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
+                );
+                const merged = [...prev, ...uniqueNew];
+                if (merged.length > MAX_CACHED_LISTINGS) {
+                  return merged.slice(-MAX_CACHED_LISTINGS);
+                }
+                return merged;
+              });
+
+              // Small delay between batches for smooth rendering
+              if (i + BATCH_SIZE < listings.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
               }
-              return merged;
-            });
-            setVisibleListings(prev => {
-              const existingKeys = new Set(prev.map(l => l.listingKey || l._id));
-              const uniqueNew = newListings.filter(
-                (l: MapListing) => !existingKeys.has(l.listingKey || l._id)
-              );
-              const merged = [...prev, ...uniqueNew];
-              if (merged.length > MAX_CACHED_LISTINGS) {
-                return merged.slice(-MAX_CACHED_LISTINGS);
-              }
-              return merged;
-            });
+            }
+          };
+
+          // Add listings with or without batching
+          if (merge) {
+            await addListingsInBatches(newListings, true);
           } else {
             // Replace listings entirely (initial load)
-            setAllListings(newListings);
-            setVisibleListings(newListings);
+            await addListingsInBatches(newListings, false);
             // Clear loaded regions on fresh load
             loadedRegionsRef.current = [{
               north: bounds.north,

@@ -1,8 +1,7 @@
 // src/app/api/mls-listings/[slugAddress]/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing, IListing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 import Photo from "@/models/photos";
 import OpenHouse from "@/models/openHouses";
 
@@ -15,24 +14,15 @@ export async function GET(
   const { slugAddress } = await params;
 
   try {
-    // 🔍 Try to find listing in GPS MLS first, then CRMLS
-    let listing: any = await Listing.findOne({ slugAddress }).lean();
-    let mlsSource = "GPS";
-
-    if (!listing) {
-      // Try CRMLS collection
-      listing = await CRMLSListing.findOne({ slugAddress }).lean();
-      mlsSource = "CRMLS";
-    }
+    // 🔍 Find listing in unified_listings (all 8 MLSs)
+    const listing: any = await UnifiedListing.findOne({ slugAddress }).lean();
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found in database" }, { status: 404 });
     }
 
     // 📸 Fetch primary photo
-    // GPS uses numeric listingId, CRMLS uses format like "CV-25236883"
-    const photoQuery = mlsSource === "CRMLS" ? { listingId: listing.listingId } : { listingId: listing.listingId };
-    const photo = await Photo.findOne(photoQuery)
+    const photo = await Photo.findOne({ listingId: listing.listingId })
       .sort({ primary: -1, Order: 1 })
       .lean();
 
@@ -41,7 +31,7 @@ export async function GET(
 
     const enrichedListing = {
       ...listing,
-      mlsSource, // Add MLS source identifier
+      mlsSource: listing.mlsSource || "UNKNOWN", // Already in unified schema
       primaryPhotoUrl: photo?.uri800 || photo?.uri640 || "/images/no-photo.png",
       openHouses,
     };
