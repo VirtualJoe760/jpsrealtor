@@ -507,6 +507,17 @@ export default function MapPageClient() {
     debounceRef.current = setTimeout(() => {
       lastBoundsRef.current = key;
       loadMarkers(bounds, filters);
+
+      // Update URL with current map position for browser history and sharing
+      const params = new URLSearchParams(searchParams.toString());
+      const centerLat = (bounds.north + bounds.south) / 2;
+      const centerLng = (bounds.east + bounds.west) / 2;
+
+      params.set('lat', centerLat.toFixed(6));
+      params.set('lng', centerLng.toFixed(6));
+      params.set('zoom', bounds.zoom.toString());
+
+      router.replace(`?${params.toString()}`, { scroll: false });
     }, 300);
   };
 
