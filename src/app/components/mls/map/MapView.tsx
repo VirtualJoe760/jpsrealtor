@@ -735,13 +735,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Render region polygon overlays for zoom <= 6 AND zoom < 12 */}
         {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'region' && m.polygon) && (
           <>
-            {dataToRender
-              .filter((m: any) => m.clusterType === 'region' && m.polygon)
-              .map((marker: any, i: number) => {
-                const regionColor =
-                  marker.regionName === 'Northern California' ? '#3b82f6' : // Blue
-                  marker.regionName === 'Central California' ? '#10b981' : // Emerald
-                  '#f59e0b'; // Amber for Southern California
+            {(() => {
+              // Calculate all region counts for color percentiles
+              const regionCounts = dataToRender
+                .filter((m: any) => m.clusterType === 'region' && m.polygon)
+                .map((m: any) => m.count || 0);
+
+              return dataToRender
+                .filter((m: any) => m.clusterType === 'region' && m.polygon)
+                .map((marker: any, i: number) => {
+                  const regionColor = getActivityColor(marker.count || 0, regionCounts, isLight);
 
                 // Determine geometry type from polygon structure
                 // If polygon is array of arrays (MultiPolygon format), use MultiPolygon
@@ -847,7 +850,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     */}
                   </Source>
                 );
-              })}
+              });
+            })()}
           </>
         )}
 
