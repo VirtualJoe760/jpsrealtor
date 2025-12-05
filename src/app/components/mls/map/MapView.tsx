@@ -371,7 +371,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     // Extract only polygon markers (regions, counties, cities)
     // Track city indices for unique IDs (cities can have duplicate names)
-    const cityIndexMap = new Map<string, number>();
+    const cityIndexTracker: Record<string, number> = {};
 
     return dataToRender
       .filter((marker: any) =>
@@ -404,8 +404,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         } else {
           // Cities need index to handle duplicate names across counties
           const cityName = marker.cityName;
-          const currentIndex = cityIndexMap.get(cityName) || 0;
-          cityIndexMap.set(cityName, currentIndex + 1);
+          const currentIndex = cityIndexTracker[cityName] || 0;
+          cityIndexTracker[cityName] = currentIndex + 1;
 
           return {
             type: 'city' as const,
