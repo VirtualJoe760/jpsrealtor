@@ -261,8 +261,8 @@ export async function GET(req: NextRequest) {
 
         // Aggregate all counties by main region
         const counties = await County.find({
-          isOcean: { $ne: true },
-          listingCount: { $gt: 0 }
+          isOcean: { $ne: true }
+          // Removed listingCount filter to show all county boundaries
         })
         .select('name region listingCount cityCount coordinates avgPrice priceRange mlsSources')
         .lean();
@@ -375,7 +375,7 @@ export async function GET(req: NextRequest) {
         // Query County model - ONLY load counties in viewport (viewport filtering for performance)
         const countyQuery = County.find({
           isOcean: { $ne: true }, // Filter out ocean counties
-          listingCount: { $gt: 0 }, // Only counties with active listings
+          // Removed listingCount filter to show all county boundaries
           'coordinates.latitude': { $gte: south, $lte: north }, // Viewport filtering
           'coordinates.longitude': { $gte: west, $lte: east }   // Viewport filtering
         })

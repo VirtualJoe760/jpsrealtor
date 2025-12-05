@@ -60,56 +60,70 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
             </motion.h1>
 
             {/* Stats Grid */}
-            <div className="flex items-center gap-6">
-              {/* Listing Count */}
+            {data.count === 0 ? (
+              /* No listings message */
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-center"
+                className="text-center py-2"
               >
-                <div className={`text-3xl font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                  {data.count.toLocaleString()}
-                </div>
-                <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Listings
+                <div className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                  No listings in this area
                 </div>
               </motion.div>
+            ) : (
+              <div className="flex items-center gap-6">
+                {/* Listing Count */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-center"
+                >
+                  <div className={`text-3xl font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                    {data.count.toLocaleString()}
+                  </div>
+                  <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Listings
+                  </div>
+                </motion.div>
 
-              <div className={`w-px h-12 ${isLight ? 'bg-gray-300' : 'bg-gray-700'}`} />
+                <div className={`w-px h-12 ${isLight ? 'bg-gray-300' : 'bg-gray-700'}`} />
 
-              {/* Average Price */}
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15 }}
-                className="text-center"
-              >
-                <div className={`text-2xl font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
-                  {formatPrice(data.avgPrice)}
-                </div>
-                <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Avg Price
-                </div>
-              </motion.div>
+                {/* Average Price */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="text-center"
+                >
+                  <div className={`text-2xl font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                    {formatPrice(data.avgPrice)}
+                  </div>
+                  <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Avg Price
+                  </div>
+                </motion.div>
 
-              <div className={`w-px h-12 ${isLight ? 'bg-gray-300' : 'bg-gray-700'}`} />
+                <div className={`w-px h-12 ${isLight ? 'bg-gray-300' : 'bg-gray-700'}`} />
 
-              {/* Price Range */}
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-center"
-              >
-                <div className={`text-lg font-semibold ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
-                  {formatPrice(data.minPrice)} - {formatPrice(data.maxPrice)}
-                </div>
-                <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Price Range
-                </div>
-              </motion.div>
-            </div>
+                {/* Price Range */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-center"
+                >
+                  <div className={`text-lg font-semibold ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
+                    {formatPrice(data.minPrice)} - {formatPrice(data.maxPrice)}
+                  </div>
+                  <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Price Range
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* Area Type Badge */}
             <motion.div

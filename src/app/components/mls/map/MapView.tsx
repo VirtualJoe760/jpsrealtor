@@ -67,6 +67,43 @@ function formatPrice(price?: number): string {
   return `$${price}`;
 }
 
+// Calculate color based on listing activity
+// Light mode: High = Red, Medium = Yellow, Low = Blue, Zero = Gray
+// Dark mode: High = Red, Medium = Yellow, Low = Green, Zero = Gray
+function getActivityColor(
+  count: number,
+  allCounts: number[],
+  isLight: boolean
+): string {
+  // Zero listings = gray
+  if (count === 0) {
+    return isLight ? '#9ca3af' : '#6b7280';
+  }
+
+  // Filter out zeros for percentile calculation
+  const nonZeroCounts = allCounts.filter(c => c > 0);
+  if (nonZeroCounts.length === 0) {
+    return isLight ? '#9ca3af' : '#6b7280';
+  }
+
+  // Sort to find percentiles
+  const sorted = [...nonZeroCounts].sort((a, b) => a - b);
+  const percentile33 = sorted[Math.floor(sorted.length * 0.33)];
+  const percentile66 = sorted[Math.floor(sorted.length * 0.66)];
+
+  // Assign colors based on percentile
+  if (count >= percentile66) {
+    // High activity - RED
+    return isLight ? '#ef4444' : '#f87171';
+  } else if (count >= percentile33) {
+    // Medium activity - YELLOW
+    return isLight ? '#eab308' : '#fbbf24';
+  } else {
+    // Low activity - BLUE (light) or GREEN (dark)
+    return isLight ? '#3b82f6' : '#22c55e';
+  }
+}
+
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   {
     listings,
@@ -572,6 +609,18 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       return;
     }
 
+    // Prevent clicks on polygons with zero listings
+    if (polygonData.count === 0) {
+      console.log("⚠️ Polygon has no listings, ignoring click:", polygonData.regionName || polygonData.countyName || polygonData.cityName);
+      return;
+    }
+
+    
+    // Prevent clicks on polygons with zero listings
+    if (polygonData.count === 0) {
+      console.log("⚠️ Polygon has no listings, ignoring click:", polygonData.regionName || polygonData.countyName || polygonData.cityName);
+      return;
+    }
     console.log('🎯 Polygon clicked:', polygonData.regionName || polygonData.countyName || polygonData.cityName);
 
     // Calculate bounds from polygon coordinates
@@ -791,10 +840,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Render county polygon overlays for zoom 7-8 AND zoom < 12 */}
         {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'county' && m.polygon) && (
           <>
-            {dataToRender
-              .filter((m: any) => m.clusterType === 'county' && m.polygon)
-              .map((marker: any, i: number) => {
-                const countyColor = isLight ? '#6366f1' : '#8b5cf6';
+            {(() => {
+              // Calculate all county counts for color percentiles
+              const countyCounts = dataToRender
+                .filter((m: any) => m.clusterType === 'county' && m.polygon)
+                .map((m: any) => m.count || 0);
+
+              return dataToRender
+                .filter((m: any) => m.clusterType === 'county' && m.polygon)
+                .map((marker: any, i: number) => {
+                  const countyColor = getActivityColor(marker.count || 0, countyCounts, isLight);
                 const isMultiPolygon = Array.isArray(marker.polygon[0]) &&
                                       Array.isArray(marker.polygon[0][0]) &&
                                       Array.isArray(marker.polygon[0][0][0]);
@@ -845,7 +900,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                       id={`county-fill-${marker.countyName}`}
                       type="fill"
                       paint={{
-                        'fill-color': isLight ? '#4f46e5' : '#6366f1',
+                        'fill-color': countyColor,
                         'fill-opacity': ['case',
                           ['boolean', ['feature-state', 'hover'], false],
                           0.55,  // hover - more dramatic
@@ -896,7 +951,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     /> */}
                   </Source>
                 );
-              })}
+              });
+            })()}
           </>
         )}
 
@@ -904,10 +960,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Render city polygon overlays for zoom 9-10 AND zoom < 12 */}
         {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
           <>
-            {dataToRender
-              .filter((m: any) => m.clusterType === 'city' && m.polygon)
-              .map((marker: any, i: number) => {
-                const cityColor = isLight ? '#10b981' : '#34d399';
+            {(() => {
+              // Calculate all city counts for color percentiles
+              const cityCounts = dataToRender
+                .filter((m: any) => m.clusterType === 'city' && m.polygon)
+                .map((m: any) => m.count || 0);
+
+              return dataToRender
+                .filter((m: any) => m.clusterType === 'city' && m.polygon)
+                .map((marker: any, i: number) => {
+                  const cityColor = getActivityColor(marker.count || 0, cityCounts, isLight);
                 const isMultiPolygon = Array.isArray(marker.polygon[0]) &&
                                       Array.isArray(marker.polygon[0][0]) &&
                                       Array.isArray(marker.polygon[0][0][0]);
@@ -958,7 +1020,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                       id={`city-fill-${marker.cityName}-${i}`}
                       type="fill"
                       paint={{
-                        'fill-color': isLight ? '#10b981' : '#34d399',
+                        'fill-color': cityColor,
                         'fill-opacity': ['case',
                           ['boolean', ['feature-state', 'hover'], false],
                           0.55,  // hover - more dramatic
@@ -985,7 +1047,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     />
                   </Source>
                 );
-              })}
+              });
+            })()}
           </>
         )}
         {/* Render all markers */}
