@@ -135,6 +135,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     type: 'county' | 'city' | 'region';
   } | null>(null);
 
+  // Track the currently hovered feature for proper state cleanup
+  const hoveredFeatureRef = useRef<{ source: string; id: number } | null>(null);
+
   const mapRef = useRef<any>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -449,16 +452,22 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           console.warn(`⚠️ Layer ${layerId} not found, skipping`);
           return;
         }
-
         // Mouseenter handler
         const onMouseEnter = (e: any) => {
           map.getCanvas().style.cursor = 'pointer';
 
-          if (e.features && e.features[0]) {
+          // Clear previous hover state before setting new one
+          if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
             map.setFeatureState(
-              { source: sourceName, id: e.features[0].id },
-              { hover: true }
+              hoveredFeatureRef.current,
+              { hover: false }
             );
+          }
+
+          if (e.features && e.features[0]) {
+            const featureRef = { source: sourceName, id: e.features[0].id };
+            map.setFeatureState(featureRef, { hover: true });
+            hoveredFeatureRef.current = featureRef;
           }
 
           setHoveredPolygon({
@@ -475,8 +484,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         const onMouseLeave = () => {
           map.getCanvas().style.cursor = 'default';
 
-          if (map.getSource(sourceName)) {
-            map.removeFeatureState({ source: sourceName });
+          // Clear hover state for the specific feature
+          if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
+            map.setFeatureState(
+              hoveredFeatureRef.current,
+              { hover: false }
+            );
+            hoveredFeatureRef.current = null;
           }
 
           setHoveredPolygon(null);
