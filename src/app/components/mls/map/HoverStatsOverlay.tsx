@@ -25,12 +25,21 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
     return `$${(price / 1000).toLocaleString()}`;
   };
 
+  // Always show card with default message when no data
+  const displayData = data || {
+    name: 'Explore California',
+    count: 0,
+    avgPrice: 0,
+    minPrice: 0,
+    maxPrice: 0,
+    type: 'region' as const
+  };
+
   return (
     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
       <AnimatePresence mode="wait">
-        {data && (
-          <motion.div
-            key={data.name}
+        <motion.div
+          key={displayData.name}
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -56,12 +65,12 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                 ${isLight ? 'text-gray-900' : 'text-white'}
               `}
             >
-              {data.name}
+              {displayData.name}
             </motion.h1>
 
             {/* Stats Grid */}
-            {data.count === 0 ? (
-              /* No listings message */
+            {displayData.count === 0 ? (
+              /* No listings message or default message */
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -69,7 +78,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                 className="text-center py-2"
               >
                 <div className={`text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  No listings in this area
+                  {data ? 'No listings in this area' : 'Hover over regions to explore'}
                 </div>
               </motion.div>
             ) : (
@@ -82,7 +91,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                   className="text-center"
                 >
                   <div className={`text-3xl font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                    {data.count.toLocaleString()}
+                    {displayData.count.toLocaleString()}
                   </div>
                   <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
                     Listings
@@ -99,7 +108,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                   className="text-center"
                 >
                   <div className={`text-2xl font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
-                    {formatPrice(data.avgPrice)}
+                    {formatPrice(displayData.avgPrice)}
                   </div>
                   <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
                     Avg Price
@@ -116,7 +125,7 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                   className="text-center"
                 >
                   <div className={`text-lg font-semibold ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
-                    {formatPrice(data.minPrice)} - {formatPrice(data.maxPrice)}
+                    {formatPrice(displayData.minPrice)} - {formatPrice(displayData.maxPrice)}
                   </div>
                   <div className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
                     Price Range
@@ -135,10 +144,9 @@ export default function HoverStatsOverlay({ data }: HoverStatsOverlayProps) {
                 ${isLight ? 'text-indigo-600/70' : 'text-indigo-400/70'}
               `}
             >
-              {data.type}
+              {displayData.type}
             </motion.div>
           </motion.div>
-        )}
       </AnimatePresence>
     </div>
   );

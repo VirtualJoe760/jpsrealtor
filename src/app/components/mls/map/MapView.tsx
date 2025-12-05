@@ -370,6 +370,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     if (!dataToRender) return [];
 
     // Extract only polygon markers (regions, counties, cities)
+    // Track city indices for unique IDs (cities can have duplicate names)
+    const cityIndexMap = new Map<string, number>();
+
     return dataToRender
       .filter((marker: any) =>
         (marker.clusterType === 'region' || marker.clusterType === 'county' || marker.clusterType === 'city')
@@ -399,10 +402,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
             polygon: marker.polygon, // Include polygon coordinates for click handler
           };
         } else {
+          // Cities need index to handle duplicate names across counties
+          const cityName = marker.cityName;
+          const currentIndex = cityIndexMap.get(cityName) || 0;
+          cityIndexMap.set(cityName, currentIndex + 1);
+
           return {
             type: 'city' as const,
-            id: marker.cityName,
-            name: marker.cityName,
+            id: `${cityName}-${currentIndex}`, // Include index in ID
+            name: cityName,
             count: marker.count,
             avgPrice: marker.avgPrice,
             minPrice: marker.minPrice,
