@@ -436,10 +436,28 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     const handlers: Array<{ layerId: string; type: string; handler: any }> = [];
 
     const registerHandlers = () => {
+      // Track city indices to match rendering (cities can have duplicate names)
+      const cityIndexTracker: Record<string, number> = {};
+
       // Register handlers for each polygon
       polygonData.forEach((polygon) => {
-        const layerId = `${polygon.type}-fill-${polygon.id}`;
-        const sourceName = `${polygon.type}-source-${polygon.id}`;
+        let layerId: string;
+        let sourceName: string;
+
+        // Cities need special handling to match indexed IDs from rendering
+        if (polygon.type === 'city') {
+          const cityName = polygon.name;
+          const currentIndex = cityIndexTracker[cityName] || 0;
+          cityIndexTracker[cityName] = currentIndex + 1;
+          const indexedId = `${cityName}-${currentIndex}`;
+
+          layerId = `city-fill-${indexedId}`;
+          sourceName = `city-source-${indexedId}`;
+        } else {
+          // Regions and counties use simple IDs
+          layerId = `${polygon.type}-fill-${polygon.id}`;
+          sourceName = `${polygon.type}-source-${polygon.id}`;
+        }
 
         // Check if layer exists before registering
         if (!map.getLayer(layerId)) {
@@ -1001,8 +1019,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         )}
 
 
-        {/* Render city polygon overlays for zoom 9-10 AND zoom < 12 */}
-        {dataToRender && dataToRender.length > 0 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
+        {/* Render city polygon overlays for zoom >= 9 (prevents blocking counties at lower zoom) */}
+        {dataToRender && dataToRender.length > 0 && currentZoom >= 9 && currentZoom < 12 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
           <>
             {(() => {
               // Calculate all city counts for color percentiles
