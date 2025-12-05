@@ -901,13 +901,32 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                       type="fill"
                       paint={{
                         'fill-color': countyColor,
-                        'fill-opacity': ['case',
-                          ['boolean', ['feature-state', 'hover'], false],
-                          0.55,  // hover - more dramatic
-                          0.35   // base - more visible
-                        ]
+                        'fill-opacity': marker.count === 0
+                          ? ['case',
+                              ['boolean', ['feature-state', 'hover'], false],
+                              0.15,  // hover - very subtle for zero listings
+                              0.08   // base - barely visible
+                            ]
+                          : ['case',
+                              ['boolean', ['feature-state', 'hover'], false],
+                              0.55,  // hover - more dramatic
+                              0.35   // base - more visible
+                            ]
                       }}
                     />
+                    {/* Diagonal stripe overlay for zero-listing counties */}
+                    {marker.count === 0 && (
+                      <Layer
+                        id={`county-stripes-${marker.countyName}`}
+                        type="line"
+                        paint={{
+                          'line-color': isLight ? '#9ca3af' : '#6b7280',
+                          'line-width': 1,
+                          'line-opacity': 0.3,
+                          'line-dasharray': [2, 4]
+                        }}
+                      />
+                    )}
                     <Layer
                       id={`county-outline-${marker.countyName}`}
                       type="line"
@@ -1021,13 +1040,32 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                       type="fill"
                       paint={{
                         'fill-color': cityColor,
-                        'fill-opacity': ['case',
-                          ['boolean', ['feature-state', 'hover'], false],
-                          0.55,  // hover - more dramatic
-                          0.35   // base - more visible
-                        ]
+                        'fill-opacity': marker.count === 0
+                          ? ['case',
+                              ['boolean', ['feature-state', 'hover'], false],
+                              0.15,  // hover - very subtle for zero listings
+                              0.08   // base - barely visible
+                            ]
+                          : ['case',
+                              ['boolean', ['feature-state', 'hover'], false],
+                              0.55,  // hover - more dramatic
+                              0.35   // base - more visible
+                            ]
                       }}
                     />
+                    {/* Diagonal stripe overlay for zero-listing cities */}
+                    {marker.count === 0 && (
+                      <Layer
+                        id={`city-stripes-${marker.cityName}-${i}`}
+                        type="line"
+                        paint={{
+                          'line-color': isLight ? '#9ca3af' : '#6b7280',
+                          'line-width': 1,
+                          'line-opacity': 0.3,
+                          'line-dasharray': [2, 4]
+                        }}
+                      />
+                    )}
                     <Layer
                       id={`city-outline-${marker.cityName}-${i}`}
                       type="line"

@@ -369,42 +369,81 @@ export async function GET(req: NextRequest) {
 
       } else if (useCountyClustering) {
         // ==================== COUNTY-LEVEL CLUSTERING (FAST) ====================
-        // Use pre-computed County model for instant lookups
+        // Use static county boundaries as source of truth, enrich with MongoDB data
         console.log(`📊 Using county-level clustering for zoom ${zoom}`);
 
-        // Query County model - ONLY load counties in viewport (viewport filtering for performance)
-        const countyQuery = County.find({
-          isOcean: { $ne: true }, // Filter out ocean counties
-          // Removed listingCount filter to show all county boundaries
-          'coordinates.latitude': { $gte: south, $lte: north }, // Viewport filtering
-          'coordinates.longitude': { $gte: west, $lte: east }   // Viewport filtering
+        // Get ALL counties from static boundaries
+        const allCountyNames = Object.keys(COUNTY_BOUNDARIES);
+
+        // Query County model for listing data (may not have all counties)
+        const mongoCounties = await County.find({
+          isOcean: { $ne: true } // Filter out ocean counties
         })
         .select('name listingCount cityCount coordinates avgPrice priceRange mlsSources')
-        .sort({ listingCount: -1 })
         .lean();
 
-        const counties = await countyQuery;
+        // Create lookup map for quick access
+        const countyDataMap = new Map(
+          mongoCounties.map((c: any) => [c.name, c])
+        );
 
-        console.log(`📍 Found ${counties.length} counties in viewport (zoom ${zoom})`);
+        console.log(`📍 Found ${allCountyNames.length} static counties, ${mongoCounties.length} in MongoDB`);
 
-        // Calculate total listing count from counties (avoid expensive UnifiedListing count)
-        listingCount = counties.reduce((sum, county: any) => sum + (county.listingCount || 0), 0);
+        // Calculate centroid for each county polygon for marker placement
+        const calculateCentroid = (coords: any): { lat: number; lng: number } => {
+          let totalLat = 0, totalLng = 0, pointCount = 0;
 
-        // Transform County documents to cluster format with polygon boundaries
-        clusters = counties.map((county: any) => ({
-          latitude: county.coordinates?.latitude || 0,
-          longitude: county.coordinates?.longitude || 0,
-          count: county.listingCount,
-          countyName: county.name,
-          cityCount: county.cityCount,
-          avgPrice: Math.round(county.avgPrice || 0),
-          minPrice: county.priceRange?.min || 0,
-          maxPrice: county.priceRange?.max || 0,
-          mlsSources: county.mlsSources || [],
-          isCluster: true,
-          clusterType: 'county',
-          polygon: COUNTY_BOUNDARIES[county.name]?.coordinates || null
-        }));
+          const processCoords = (coordArray: any[]): void => {
+            coordArray.forEach((item: any) => {
+              if (Array.isArray(item) && typeof item[0] === 'number' && typeof item[1] === 'number') {
+                totalLng += item[0];
+                totalLat += item[1];
+                pointCount++;
+              } else if (Array.isArray(item)) {
+                processCoords(item);
+              }
+            });
+          };
+
+          processCoords(coords);
+          return {
+            lat: pointCount > 0 ? totalLat / pointCount : 0,
+            lng: pointCount > 0 ? totalLng / pointCount : 0
+          };
+        };
+
+        // Build clusters from ALL counties
+        clusters = allCountyNames.map((countyName: string) => {
+          const mongoData = countyDataMap.get(countyName);
+          const boundary = COUNTY_BOUNDARIES[countyName];
+          const centroid = calculateCentroid(boundary.coordinates);
+
+          return {
+            latitude: mongoData?.coordinates?.latitude || centroid.lat,
+            longitude: mongoData?.coordinates?.longitude || centroid.lng,
+            count: mongoData?.listingCount || 0,
+            countyName,
+            cityCount: mongoData?.cityCount || 0,
+            avgPrice: Math.round(mongoData?.avgPrice || 0),
+            minPrice: mongoData?.priceRange?.min || 0,
+            maxPrice: mongoData?.priceRange?.max || 0,
+            mlsSources: mongoData?.mlsSources || [],
+            isCluster: true,
+            clusterType: 'county',
+            polygon: boundary.coordinates
+          };
+        });
+
+        // Filter to viewport
+        clusters = clusters.filter((cluster: any) => {
+          return cluster.latitude >= south && cluster.latitude <= north &&
+                 cluster.longitude >= west && cluster.longitude <= east;
+        });
+
+        // Calculate total listing count
+        listingCount = clusters.reduce((sum: number, county: any) => sum + (county.count || 0), 0);
+
+        console.log(`📍 Showing ${clusters.length} counties in viewport (including ${clusters.filter((c: any) => c.count === 0).length} with zero listings)`);
 
         // Set clusterPipeline to null to skip additional aggregation
         clusterPipeline = null;
