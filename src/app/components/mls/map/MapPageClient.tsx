@@ -12,7 +12,7 @@ import ActiveFilters from "./search/ActiveFilters";
 import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 import SwipeCompletionModal from "@/app/components/mls/map/SwipeCompletionModal";
-import { useServerClusters } from "@/app/utils/map/useServerClusters";
+import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -143,7 +143,8 @@ export default function MapPageClient() {
   const [isInSwipeSession, setIsInSwipeSession] = useState(false);
 
   // Use server clusters hook for cluster/count data only
-  const { markers, totalCount, isLoading, loadMarkers, clearMarkers } = useServerClusters();
+  // Get markers from MLSProvider context (single source of truth)
+  const { markers, totalCount, loadListings } = useMLSContext();
 
   // Swipe queue system
   const swipeQueue = useSwipeQueue();
@@ -173,7 +174,7 @@ export default function MapPageClient() {
       west: initialLng - 0.1,
       zoom: initialZoom,
     };
-    loadMarkers(initialBounds, filters);
+    loadListings(initialBounds, filters);
   }, [initialLat, initialLng, filters, loadMarkers, initialZoom]);
 
   // Close filters when selecting a listing
@@ -506,7 +507,7 @@ export default function MapPageClient() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       lastBoundsRef.current = key;
-      loadMarkers(bounds, filters);
+      loadListings(bounds, filters);
 
       // Update URL with current map position for browser history and sharing
       const params = new URLSearchParams(searchParams.toString());
