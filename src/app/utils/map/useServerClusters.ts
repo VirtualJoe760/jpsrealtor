@@ -193,7 +193,7 @@ export function useServerClusters() {
         // Zoom 7-9: County boundaries (+ listings if <600)
         // Zoom 10-11: City boundaries (+ listings if <600)
         // Zoom 12+: Individual listings
-        const useStreaming = bounds.zoom >= 5;
+        const useStreaming = false; // TEMP DISABLED for debugging - was: bounds.zoom >= 5
 
         if (useStreaming) {
           params.stream = 'true';
@@ -220,11 +220,18 @@ export function useServerClusters() {
         // Handle streaming response for high zoom (individual listings)
         if (useStreaming) {
           console.log('📡 Processing streaming response...');
+          console.log('📡 Response headers:', {
+            contentType: res.headers.get('content-type'),
+            status: res.status,
+            statusText: res.statusText
+          });
 
           const reader = res.body?.getReader();
           if (!reader) {
+            console.error('❌ Response body is not readable!');
             throw new Error('Response body is not readable');
           }
+          console.log('✅ Got readable stream, starting to read...');
 
           const decoder = new TextDecoder();
           let buffer = '';
