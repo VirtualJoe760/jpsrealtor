@@ -188,10 +188,12 @@ export function useServerClusters() {
         }
 
         // Determine if streaming should be used
-        // Enable streaming for:
-        // 1. Zoom 12+ (individual listings)
-        // 2. Zoom 7-11 (smart display with boundaries + listings when <600)
-        const useStreaming = bounds.zoom >= 7;
+        // Enable streaming for ALL zoom levels (5+) for consistent progressive loading
+        // Zoom 5-6: Region boundaries
+        // Zoom 7-9: County boundaries (+ listings if <600)
+        // Zoom 10-11: City boundaries (+ listings if <600)
+        // Zoom 12+: Individual listings
+        const useStreaming = bounds.zoom >= 5;
 
         if (useStreaming) {
           params.stream = 'true';

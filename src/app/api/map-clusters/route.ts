@@ -294,6 +294,45 @@ export async function GET(req: NextRequest) {
         // Set clusterPipeline to null to skip additional aggregation
         clusterPipeline = null;
 
+        // If streaming is requested, send region boundaries via streaming metadata
+        if (useStreaming) {
+          console.log(`📡 Streaming ${clusters.length} region boundaries`);
+          const encoder = new TextEncoder();
+
+          const stream = new ReadableStream({
+            start(controller) {
+              // Send metadata with region boundaries
+              const metadata = {
+                type: "metadata",
+                zoom,
+                totalCount: listingCount,
+                batchSize: 0,
+                clusters,
+                mlsDistribution: clusters.reduce((acc: any, c: any) => {
+                  c.mlsSources?.forEach((mls: string) => {
+                    acc[mls] = (acc[mls] || 0) + Math.floor(c.count / c.mlsSources.length);
+                  });
+                  return acc;
+                }, {})
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`));
+
+              // Send completion (no listings for regions)
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete", totalSent: 0, totalCount: listingCount })}\n\n`));
+              controller.close();
+            }
+          });
+
+          return new Response(stream, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            }
+          });
+        }
+
+        // Non-streaming fallback
         return NextResponse.json(
           {
             type: "clusters",
