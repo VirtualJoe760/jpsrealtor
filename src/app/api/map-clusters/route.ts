@@ -233,10 +233,12 @@ export async function GET(req: NextRequest) {
 
     // Decide: clusters or individual listings using context-aware logic
     const returnClusters = determineClusteringStrategy(zoom, context, listingCount);
+    console.log(`🎯 returnClusters decision: ${returnClusters}`);
 
     if (returnClusters) {
       // ==================== SERVER-SIDE CLUSTERING ====================
       const gridSize = getClusterGridSize(zoom);
+      console.log(`📏 Grid size: ${gridSize}`);
 
       // ==================== HIERARCHICAL ZOOM STRATEGY ====================
       // Zoom 5-6: Region-level clustering (Northern CA, Central CA, Southern CA)
@@ -248,6 +250,8 @@ export async function GET(req: NextRequest) {
       const useRegionClustering = zoom >= 5 && zoom <= 6;
       const useCountyClustering = zoom >= 7 && zoom <= 9;
       const useCityBasedClustering = zoom >= 10 && zoom <= 11;
+
+      console.log(`🔀 Clustering routing: region=${useRegionClustering}, county=${useCountyClustering}, city=${useCityBasedClustering}`);
 
       let clusterPipeline;
       let clusters; // Declare outside to be accessible throughout
@@ -549,6 +553,47 @@ export async function GET(req: NextRequest) {
         }
 
         // No listings to fetch, just return boundaries
+        console.log(`✅ Returning ${clusters.length} county boundaries (no individual listings, count=${listingCount})`);
+
+        // If streaming is requested, send boundaries via streaming metadata
+        if (useStreaming) {
+          console.log(`📡 Streaming ${clusters.length} county boundaries (no listings to stream)`);
+          const encoder = new TextEncoder();
+
+          const stream = new ReadableStream({
+            start(controller) {
+              // Send metadata with boundaries
+              const metadata = {
+                type: "metadata",
+                zoom,
+                totalCount: listingCount,
+                batchSize: 0,
+                clusters, // Include boundaries for instant display
+                mlsDistribution: clusters.reduce((acc: any, c: any) => {
+                  c.mlsSources?.forEach((mls: string) => {
+                    acc[mls] = (acc[mls] || 0) + Math.floor(c.count / c.mlsSources.length);
+                  });
+                  return acc;
+                }, {})
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`));
+
+              // Send completion (no listings to stream)
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete", totalSent: 0, totalCount: listingCount })}\n\n`));
+              controller.close();
+            }
+          });
+
+          return new Response(stream, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            }
+          });
+        }
+
+        // Non-streaming fallback
         return NextResponse.json(
           {
             type: "clusters",
@@ -821,6 +866,47 @@ export async function GET(req: NextRequest) {
       }
 
       // No smart display, just return boundaries
+      console.log(`✅ Returning ${clusters?.length || 0} boundaries (${useCityBasedClustering ? 'city' : useCountyClustering ? 'county' : 'grid'}-based, no listings)`);
+
+      // If streaming is requested, send boundaries via streaming metadata
+      if (useStreaming) {
+        console.log(`📡 Streaming ${clusters?.length || 0} boundaries (no listings to stream)`);
+        const encoder = new TextEncoder();
+
+        const stream = new ReadableStream({
+          start(controller) {
+            // Send metadata with boundaries
+            const metadata = {
+              type: "metadata",
+              zoom,
+              totalCount: listingCount,
+              batchSize: 0,
+              clusters: clusters || [],
+              mlsDistribution: (clusters || []).reduce((acc: any, c: any) => {
+                c.mlsSources?.forEach((mls: string) => {
+                  acc[mls] = (acc[mls] || 0) + Math.floor(c.count / c.mlsSources.length);
+                });
+                return acc;
+              }, {})
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`));
+
+            // Send completion (no listings to stream)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete", totalSent: 0, totalCount: listingCount })}\n\n`));
+            controller.close();
+          }
+        });
+
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          }
+        });
+      }
+
+      // Non-streaming fallback
       return NextResponse.json(
         {
           type: "clusters",
