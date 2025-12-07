@@ -273,15 +273,15 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                     />
 
                     {/* Star */}
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         // Add star logic here
                       }}
-                      className={isLight ? 'text-slate-400 hover:text-yellow-500' : 'text-gray-500 hover:text-yellow-400'}
+                      className={`cursor-pointer ${isLight ? 'text-slate-400 hover:text-yellow-500' : 'text-gray-500 hover:text-yellow-400'}`}
                     >
                       <Star className="w-4 h-4" />
-                    </button>
+                    </span>
 
                     {/* From */}
                     <div className="w-48 flex-shrink-0">
