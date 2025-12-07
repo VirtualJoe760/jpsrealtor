@@ -14,11 +14,11 @@ import {
   animate,
 } from "framer-motion";
 import type { MapListing } from "@/types/types";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 import Link from "next/link";
 import Image from "next/image";
 import PannelCarousel from "./PannelCarousel";
-import ListingAttribution from "@/app/components/mls/ListingAttribution";
+import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -79,7 +79,7 @@ const PIN = {
 
 type Props = {
   listing: MapListing;
-  fullListing: IListing;
+  fullListing: IUnifiedListing;
   onClose: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
@@ -548,7 +548,7 @@ export default function ListingBottomPanel({
         )}
 
         <div className="mb-4">
-          <ListingAttribution listing={fullListing} />
+          <UnifiedListingAttribution listing={fullListing} />
         </div>
 
         {/* Swipe Buttons */}

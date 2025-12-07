@@ -13,8 +13,8 @@ import {
 import { X, RotateCcw } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import type { MapListing } from "@/types/types";
-import type { IListing } from "@/models/listings";
-import ListingBottomPanel from "./ListingBottomPanel";
+import type { IUnifiedListing } from "@/models/unified-listing";
+import UnifiedListingBottomPanel from "./ListingBottomPanel";
 
 /* ======================================================
    CONSTANTS
@@ -31,13 +31,13 @@ type SwipeDirection = "left" | "right";
 
 interface SwipeHistoryItem {
   listing: MapListing;
-  fullListing: IListing;
+  fullListing: IUnifiedListing;
   direction: SwipeDirection;
 }
 
 interface Props {
   listings: MapListing[]; // Array of listings to swipe through
-  fullListings: Map<string, IListing>; // Map of listingKey -> full listing data
+  fullListings: Map<string, IUnifiedListing>; // Map of listingKey -> full listing data
   onClose: () => void;
   onSwipeLeft?: (listing: MapListing) => void;
   onSwipeRight?: (listing: MapListing) => void;
@@ -230,7 +230,7 @@ export default function SwipeableListingStack({
                 }}
                 className="absolute bottom-0 left-0 right-0"
               >
-                <ListingBottomPanel
+                <UnifiedListingBottomPanel
                   listing={listing}
                   fullListing={fullListing}
                   onClose={onClose}

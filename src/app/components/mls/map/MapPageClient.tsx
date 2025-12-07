@@ -2,19 +2,30 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Cookies from "js-cookie";
 import { Satellite, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 import MapView, { MapViewHandles } from "@/app/components/mls/map/MapView";
 import FiltersPanel from "./search/FiltersPannel";
 import ActiveFilters from "./search/ActiveFilters";
-import ListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
+import UnifiedListingBottomPanel from "@/app/components/mls/map/ListingBottomPanel";
 import FavoritesPannel from "@/app/components/mls/map/FavoritesPannel";
 import SwipeCompletionModal from "@/app/components/mls/map/SwipeCompletionModal";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import useFavorites from "@/app/utils/map/useFavorites";
+import {
+  parseFiltersFromURL,
+  serializeFiltersToURL,
+  removeFilterFromURL,
+  clearFiltersFromURL,
+  updateMapPositionInURL,
+  updateSelectedListingInURL,
+  clearSelectedListingFromURL,
+  parseMapPositionFromURL
+} from "@/app/utils/map/url-sync";
+import { boundsToKey, createBoundsFromCenter } from "@/app/utils/map/bounds";
 
 const defaultFilterState: Filters = {
   // Listing Type (default to 'sale' for residential properties)
@@ -63,7 +74,7 @@ export default function MapPageClient() {
   const router = useRouter();
   const mapRef = useRef<MapViewHandles>(null);
   const selectedSlugRef = useRef<string | null>(null);
-  const listingCache = useRef<Map<string, IListing>>(new Map());
+  const listingCache = useRef<Map<string, IUnifiedListing>>(new Map());
   const fetchingRef = useRef<Set<string>>(new Set());
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -84,63 +95,22 @@ export default function MapPageClient() {
     console.log('🎨 MapPageClient useEffect - Theme:', currentTheme, '| isLight:', isLight, '| Map style will be:', isSatelliteView ? 'satellite' : (isLight ? 'bright' : 'dark'));
   }, [currentTheme, isLight, isSatelliteView]);
 
-  const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
+  const [selectedFullListing, setSelectedFullListing] = useState<IUnifiedListing | null>(null);
 
   // Initialize filters from URL params or defaults
   const [filters, setFilters] = useState<Filters>(() => {
     if (typeof window === "undefined") return defaultFilterState;
 
     const params = new URLSearchParams(window.location.search);
-    const urlFilters: Partial<Filters> = {};
-
-    // Restore filter values from URL
-    if (params.get("listingType")) urlFilters.listingType = params.get("listingType")!;
-    if (params.get("minPrice")) urlFilters.minPrice = params.get("minPrice")!;
-    if (params.get("maxPrice")) urlFilters.maxPrice = params.get("maxPrice")!;
-    if (params.get("beds")) urlFilters.beds = params.get("beds")!;
-    if (params.get("baths")) urlFilters.baths = params.get("baths")!;
-    if (params.get("minSqft")) urlFilters.minSqft = params.get("minSqft")!;
-    if (params.get("maxSqft")) urlFilters.maxSqft = params.get("maxSqft")!;
-    if (params.get("minLotSize")) urlFilters.minLotSize = params.get("minLotSize")!;
-    if (params.get("maxLotSize")) urlFilters.maxLotSize = params.get("maxLotSize")!;
-    if (params.get("minYear")) urlFilters.minYear = params.get("minYear")!;
-    if (params.get("maxYear")) urlFilters.maxYear = params.get("maxYear")!;
-    if (params.get("propertyType")) urlFilters.propertyType = params.get("propertyType")!;
-    if (params.get("propertySubType")) urlFilters.propertySubType = params.get("propertySubType")!;
-    if (params.get("minGarages")) urlFilters.minGarages = params.get("minGarages")!;
-    if (params.get("hoa")) urlFilters.hoa = params.get("hoa")!;
-    if (params.get("landType")) urlFilters.landType = params.get("landType")!;
-    if (params.get("city")) urlFilters.city = params.get("city")!;
-    if (params.get("subdivision")) urlFilters.subdivision = params.get("subdivision")!;
-
-    // Boolean filters
-    if (params.get("poolYn") === "true") urlFilters.poolYn = true;
-    if (params.get("spaYn") === "true") urlFilters.spaYn = true;
-    if (params.get("viewYn") === "true") urlFilters.viewYn = true;
-    if (params.get("garageYn") === "true") urlFilters.garageYn = true;
-    if (params.get("associationYN") === "true") urlFilters.associationYN = true;
-    if (params.get("gatedCommunity") === "true") urlFilters.gatedCommunity = true;
-    if (params.get("seniorCommunity") === "true") urlFilters.seniorCommunity = true;
-
-    return Object.keys(urlFilters).length > 0
-      ? { ...defaultFilterState, ...urlFilters }
-      : defaultFilterState;
+    return parseFiltersFromURL(params, defaultFilterState);
   });
 
   const [isLoadingListing, setIsLoadingListing] = useState(false);
-  const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("likedListings");
-        return saved ? JSON.parse(saved) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
   const [dislikedListings, setDislikedListings] = useState<any[]>([]);
   const [isInSwipeSession, setIsInSwipeSession] = useState(false);
+
+  // Use favorites hook for liked listings management
+  const { favorites: likedListings, addFavorite, removeFavorite, clearFavorites } = useFavorites();
 
   // Use server clusters hook for cluster/count data only
   // Get markers from MLSProvider context (single source of truth)
@@ -150,51 +120,32 @@ export default function MapPageClient() {
   const swipeQueue = useSwipeQueue();
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-  const initialLat = useMemo(() => {
-    const val = parseFloat(searchParams.get("lat") || "");
-    return !isNaN(val) ? val : 33.72;
-  }, [searchParams]);
-
-  const initialLng = useMemo(() => {
-    const val = parseFloat(searchParams.get("lng") || "");
-    return !isNaN(val) ? val : -116.37;
-  }, [searchParams]);
-
-  const initialZoom = useMemo(() => {
-    const val = parseFloat(searchParams.get("zoom") || "");
-    return !isNaN(val) ? val : 7; // Start at zoom 7 to show all counties
+  // Parse initial map position from URL
+  const { lat: initialLat, lng: initialLng, zoom: initialZoom } = useMemo(() => {
+    return parseMapPositionFromURL(searchParams, {
+      lat: 33.72,
+      lng: -116.37,
+      zoom: 7 // Start at zoom 7 to show all counties
+    });
   }, [searchParams]);
 
   // Initial load - load markers (clusters/counts) instead of full listings
   useEffect(() => {
-    const initialBounds = {
-      north: initialLat + 0.1,
-      south: initialLat - 0.1,
-      east: initialLng + 0.1,
-      west: initialLng - 0.1,
-      zoom: initialZoom,
-    };
+    console.log('[MapPageClient] Initial load - creating bounds from center');
+    const initialBounds = createBoundsFromCenter(
+      { lat: initialLat, lng: initialLng },
+      initialZoom
+    );
     loadListings(initialBounds, filters);
-  }, [initialLat, initialLng, filters, loadMarkers, initialZoom]);
+  }, [initialLat, initialLng, filters, loadListings, initialZoom]);
 
   // Close filters when selecting a listing
   useEffect(() => {
     if (selectedFullListing && isSidebarOpen && isFiltersOpen) {
+      console.log('[MapPageClient] Listing selected - closing filters panel');
       setFiltersOpen(false);
     }
   }, [selectedFullListing, isSidebarOpen, isFiltersOpen]);
-
-  // Save liked listings
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("likedListings", JSON.stringify(likedListings));
-      } catch (e) {
-        console.error("❌ Failed to save favorites:", e);
-      }
-    }
-    Cookies.set("favorites", JSON.stringify(likedListings), { expires: 7 });
-  }, [likedListings]);
 
   // Fetch disliked listings from API
   useEffect(() => {
@@ -254,25 +205,17 @@ export default function MapPageClient() {
   }, [isSidebarOpen]);
 
   const handleApplyFilters = (newFilters: Filters) => {
+    console.log('[MapPageClient] Applying filters');
     setFilters(newFilters);
     setFiltersOpen(false);
 
-    // Persist filters to URL
-    const params = new URLSearchParams(searchParams.toString());
-
-    // Add/update filter params
-    Object.entries(newFilters).forEach(([key, value]) => {
-      if (value === true || (value && value !== "")) {
-        params.set(key, String(value));
-      } else {
-        params.delete(key);
-      }
-    });
-
+    // Persist filters to URL using utility
+    const params = serializeFiltersToURL(newFilters, searchParams);
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const handleRemoveFilter = (filterKey: keyof Filters) => {
+    console.log(`[MapPageClient] Removing filter: ${filterKey}`);
     setFilters((prev) => {
       const newFilters = { ...prev };
 
@@ -283,9 +226,8 @@ export default function MapPageClient() {
         (newFilters as any)[filterKey] = "";
       }
 
-      // Remove from URL
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete(filterKey);
+      // Remove from URL using utility
+      const params = removeFilterFromURL(filterKey, searchParams);
       router.replace(`?${params.toString()}`, { scroll: false });
 
       return newFilters;
@@ -293,19 +235,11 @@ export default function MapPageClient() {
   };
 
   const handleClearAllFilters = () => {
+    console.log('[MapPageClient] Clearing all filters');
     setFilters(defaultFilterState);
 
-    // Clear all filter params from URL (keep map position and selected listing)
-    const params = new URLSearchParams(searchParams.toString());
-    const keysToKeep = ["lat", "lng", "zoom", "selected"];
-
-    // Remove all filter keys
-    Array.from(params.keys()).forEach(key => {
-      if (!keysToKeep.includes(key)) {
-        params.delete(key);
-      }
-    });
-
+    // Clear all filter params from URL using utility
+    const params = clearFiltersFromURL(searchParams);
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
@@ -390,26 +324,29 @@ export default function MapPageClient() {
       fetchFullListing(slug);
     }
 
-    // Update URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("selected", listing.slugAddress!);
-    if (listing.latitude && listing.longitude) {
-      params.set("lat", listing.latitude.toFixed(6));
-      params.set("lng", listing.longitude.toFixed(6));
-    }
+    // Update URL using utility
+    const params = updateSelectedListingInURL(
+      listing.slugAddress!,
+      listing.latitude && listing.longitude
+        ? { latitude: listing.latitude, longitude: listing.longitude }
+        : undefined,
+      searchParams
+    );
 
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const handleCloseListing = () => {
+    console.log('[MapPageClient] Closing listing and resetting session');
     swipeQueue.flushSwipes();
     setSelectedFullListing(null);
     selectedSlugRef.current = null;
     setIsInSwipeSession(false);
     swipeQueue.reset();
     setShowCompletionModal(false);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("selected");
+
+    // Clear selected listing from URL using utility
+    const params = clearSelectedListingFromURL(searchParams);
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
@@ -442,13 +379,14 @@ export default function MapPageClient() {
         fetchFullListing(nextSlug);
       }
 
-      // Update URL
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("selected", nextSlug);
-      if (nextListing.latitude && nextListing.longitude) {
-        params.set("lat", nextListing.latitude.toFixed(6));
-        params.set("lng", nextListing.longitude.toFixed(6));
-      }
+      // Update URL using utility
+      const params = updateSelectedListingInURL(
+        nextSlug,
+        nextListing.latitude && nextListing.longitude
+          ? { latitude: nextListing.latitude, longitude: nextListing.longitude }
+          : undefined,
+        searchParams
+      );
       router.replace(`?${params.toString()}`, { scroll: false });
 
       return;
@@ -466,16 +404,11 @@ export default function MapPageClient() {
     handleCloseListing();
   };
 
-  const handleRemoveFavorite = (listing: MapListing) => {
-    const slug = listing.slugAddress ?? listing.slug;
-    setLikedListings((prev) =>
-      prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== slug)
-    );
-  };
+  // Use removeFavorite from useFavorites hook
+  const handleRemoveFavorite = removeFavorite;
 
-  const handleClearFavorites = () => {
-    setLikedListings([]);
-  };
+  // Use clearFavorites from useFavorites hook
+  const handleClearFavorites = clearFavorites;
 
   const handleRemoveDislike = (listing: MapListing) => {
     console.log("Remove dislike:", listing.listingKey);
@@ -497,27 +430,21 @@ export default function MapPageClient() {
     west: number;
     zoom: number;
   }) => {
-    const key = `${bounds.north.toFixed(6)}-${bounds.south.toFixed(
-      6
-    )}-${bounds.east.toFixed(6)}-${bounds.west.toFixed(6)}-${bounds.zoom.toFixed(
-      2
-    )}`;
-    if (key === lastBoundsRef.current) return;
+    // Use bounds utility for comparison
+    const key = boundsToKey(bounds);
+    if (key === lastBoundsRef.current) {
+      console.log('[MapPageClient] Bounds unchanged - skipping load');
+      return;
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      console.log('[MapPageClient] Bounds changed - loading listings');
       lastBoundsRef.current = key;
       loadListings(bounds, filters);
 
-      // Update URL with current map position for browser history and sharing
-      const params = new URLSearchParams(searchParams.toString());
-      const centerLat = (bounds.north + bounds.south) / 2;
-      const centerLng = (bounds.east + bounds.west) / 2;
-
-      params.set('lat', centerLat.toFixed(6));
-      params.set('lng', centerLng.toFixed(6));
-      params.set('zoom', bounds.zoom.toString());
-
+      // Update URL with current map position using utility
+      const params = updateMapPositionInURL(bounds, searchParams);
       router.replace(`?${params.toString()}`, { scroll: false });
     }, 300);
   };
@@ -589,7 +516,7 @@ export default function MapPageClient() {
       </div>
 
       {selectedFullListing && (
-        <ListingBottomPanel
+        <UnifiedListingBottomPanel
           key={selectedFullListing.listingKey}
           listing={selectedFullListing as unknown as MapListing}
           fullListing={selectedFullListing}
@@ -621,12 +548,10 @@ export default function MapPageClient() {
               ]);
             }
 
-            // Remove from favorites
+            // Remove from favorites using hook
             const currentSlug = selectedFullListing.slugAddress ?? selectedFullListing.slug;
             if (likedListings.some(fav => (fav.slugAddress ?? fav.slug) === currentSlug)) {
-              setLikedListings(prev =>
-                prev.filter(fav => (fav.slugAddress ?? fav.slug) !== currentSlug)
-              );
+              removeFavorite(selectedFullListing as unknown as MapListing);
             }
 
             advanceToNextListing();
@@ -640,10 +565,10 @@ export default function MapPageClient() {
             swipeQueue.markAsLiked(selectedFullListing.listingKey, selectedFullListing);
             console.log(`❤️ Liked: ${selectedFullListing.listingKey}`);
 
-            // Add to liked state
+            // Add to liked state using hook
             const currentSlug = selectedFullListing.slugAddress ?? selectedFullListing.slug;
             if (!likedListings.some(fav => (fav.slugAddress ?? fav.slug) === currentSlug)) {
-              setLikedListings(prev => [...prev, selectedFullListing as unknown as MapListing]);
+              addFavorite(selectedFullListing as unknown as MapListing);
             }
 
             advanceToNextListing();

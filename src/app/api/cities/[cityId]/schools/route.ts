@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET(
   request: Request,
@@ -18,7 +18,7 @@ export async function GET(
       .join(" ");
 
     // Get school district information
-    const schoolDistricts = await Listing.aggregate([
+    const schoolDistricts = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },
@@ -43,7 +43,7 @@ export async function GET(
     ]);
 
     // Get elementary schools
-    const elementarySchools = await Listing.aggregate([
+    const elementarySchools = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },
@@ -71,7 +71,7 @@ export async function GET(
     ]);
 
     // Get middle schools
-    const middleSchools = await Listing.aggregate([
+    const middleSchools = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },
@@ -99,7 +99,7 @@ export async function GET(
     ]);
 
     // Get high schools
-    const highSchools = await Listing.aggregate([
+    const highSchools = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },

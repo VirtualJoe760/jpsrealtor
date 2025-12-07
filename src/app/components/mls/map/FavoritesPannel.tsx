@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { X, Heart, ThumbsDown, MapPin } from "lucide-react";
+import { X, Heart, ThumbsDown } from "lucide-react";
 import type { MapListing } from "@/types/types";
 import {
   groupListingsBySubdivision,
@@ -39,7 +39,7 @@ export default function FavoritesPannel({
   onRemoveDislike,
   onClearDislikes,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"visible" | "favorites" | "disliked">("visible");
+  const [activeTab, setActiveTab] = useState<"favorites" | "disliked">("favorites");
   const router = useRouter();
   const asideRef = useRef<HTMLElement>(null);
   const { currentTheme } = useTheme();
@@ -68,12 +68,8 @@ export default function FavoritesPannel({
 
   // Memoize listings to prevent unnecessary re-renders
   const listingsToShow = useMemo(() => {
-    return activeTab === "visible"
-      ? visibleListings
-      : activeTab === "favorites"
-      ? favorites
-      : dislikedListings;
-  }, [activeTab, visibleListings, favorites, dislikedListings]);
+    return activeTab === "favorites" ? favorites : dislikedListings;
+  }, [activeTab, favorites, dislikedListings]);
 
   // Prevent double-tap zoom on iPad and handle swipe-to-close
   useEffect(() => {
@@ -179,7 +175,7 @@ export default function FavoritesPannel({
         }}
         className={`fixed top-0 right-0 h-screen
         w-[95%] sm:w-[90%] md:w-[35%] lg:w-[28%] xl:w-[26%] 2xl:w-[24%]
-        backdrop-blur-xl transform transition-transform duration-300 z-50
+        backdrop-blur-xl transform transition-transform duration-300 z-[70]
         shadow-2xl overflow-hidden flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
         ${isLight
@@ -195,13 +191,13 @@ export default function FavoritesPannel({
         }`}>
           {/* Title row with close button */}
           <div className="px-5 pt-5 pb-3 flex justify-between items-center">
-            <h2 className={`text-xl md:text-2xl font-bold ${themeClasses.title}`}>
-              {activeTab === "visible"
-                ? "Properties in View"
-                : activeTab === "favorites"
-                ? "Your Favorites"
-                : "Disliked Properties"}
-            </h2>
+            <div className="flex-1">
+              <h2 className={`text-xl md:text-2xl font-bold ${themeClasses.title}`}>
+                {activeTab === "favorites"
+                  ? "Your Favorites"
+                  : "Disliked Properties"}
+              </h2>
+            </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -218,28 +214,6 @@ export default function FavoritesPannel({
           {/* Tabs row */}
           <div className="px-5 pb-4">
             <div className="flex gap-2">
-                <button
-                  className={clsx(
-                    "flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                    activeTab === "visible"
-                      ? isLight
-                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-                        : "bg-gradient-to-r from-emerald-500 to-cyan-500 text-black shadow-lg shadow-emerald-500/30"
-                      : themeClasses.tabInactive
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab("visible");
-                  }}
-                  type="button"
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <MapPin className="w-4 h-4" />
-                    <span>In View</span>
-                    <span className="text-xs opacity-80">({visibleListings.length})</span>
-                  </div>
-                </button>
-
                 <button
                   className={clsx(
                     "flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all",
@@ -317,15 +291,7 @@ export default function FavoritesPannel({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-3 pb-2">
-          {activeTab === "visible" && visibleListings.length === 0 ? (
-            <div className="text-center py-20">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${themeClasses.emptyStateBg}`}>
-                <MapPin className={`w-10 h-10 ${themeClasses.emptyStateIcon}`} />
-              </div>
-              <p className={`text-lg font-medium mb-2 ${themeClasses.text}`}>No properties in view</p>
-              <p className={`text-sm ${themeClasses.textTertiary}`}>Pan the map to see nearby listings</p>
-            </div>
-          ) : activeTab === "favorites" && favorites.length === 0 ? (
+          {activeTab === "favorites" && favorites.length === 0 ? (
             <div className="text-center py-20">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${themeClasses.emptyStateBg}`}>
                 <Heart className={`w-10 h-10 ${themeClasses.emptyStateIcon}`} />
@@ -386,8 +352,8 @@ export default function FavoritesPannel({
 
                       {/* Listings - Improved Cards */}
                       <ul className="space-y-4">
-                        {group.listings.map((listing) => (
-                          <li key={listing.listingId || listing._id || listing.listingKey} className="relative group">
+                        {group.listings.map((listing, index) => (
+                          <li key={listing.listingKey || listing.listingId || listing._id || `listing-${index}`} className="relative group">
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();

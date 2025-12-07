@@ -2,10 +2,10 @@
 
 import React from "react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 
 type Props = Pick<
-  IListing,
+  IUnifiedListing,
   | "furnished"
   | "associationFee"
   | "associationFeeFrequency"

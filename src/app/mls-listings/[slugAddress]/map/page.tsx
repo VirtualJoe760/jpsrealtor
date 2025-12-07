@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 
 // Dynamic import for map component (client-side only)
 const MapView = dynamic(
@@ -24,7 +24,7 @@ const MapView = dynamic(
   }
 );
 
-async function getEnrichedListing(slugAddress: string): Promise<IListing | null> {
+async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings/${slugAddress}`,
@@ -46,7 +46,7 @@ export default function ListingMapPage({
 }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const [listing, setListing] = useState<IListing | null>(null);
+  const [listing, setListing] = useState<IUnifiedListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 

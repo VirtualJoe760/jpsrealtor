@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectDB from "@/lib/mongodb";
-import Listing from "@/models/listings";
+import UnifiedListing from "@/models/unified-listing";
 
 /**
  * AI-Powered Comparative Market Analysis (CMA) Generator
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       subjectListing = selectedProperties[0];
       console.log(`📋 Using ${selectedProperties.length} selected properties as basis for CMA`);
     } else if (subjectProperty) {
-      subjectListing = await Listing.findOne({
+      subjectListing = await UnifiedListing.findOne({
         $or: [
           { listingKey: subjectProperty },
           { slugAddress: subjectProperty }
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
     console.log("🔍 CMA Query:", JSON.stringify(query, null, 2));
 
     // Step 3: Fetch comparable properties
-    const comparables = await Listing.find(query)
+    const comparables = await UnifiedListing.find(query)
       .sort({
         standardStatus: -1, // Active first, then Closed
         onMarketDate: -1 // Most recent first

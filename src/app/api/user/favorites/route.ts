@@ -162,3 +162,48 @@ function calculateAnalytics(favorites: any[]) {
     topPropertySubTypes,
   };
 }
+
+// DELETE - Clear all favorites
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Clear all favorites
+    user.likedListings = [];
+
+    // Update analytics
+    if (user.swipeAnalytics) {
+      user.swipeAnalytics.totalLikes = 0;
+      user.swipeAnalytics.lastUpdated = new Date();
+    }
+
+    await user.save();
+
+    return NextResponse.json({
+      success: true,
+      message: "All favorites cleared"
+    });
+  } catch (error) {
+    console.error("Error clearing favorites:", error);
+    return NextResponse.json(
+      { error: "Failed to clear favorites" },
+      { status: 500 }
+    );
+  }
+}

@@ -446,7 +446,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           totalCount += clusterCount;
 
           // For median calculation, use the cluster's representative price
-          const representativePrice = marker.medianPrice || marker.avgPrice;
+          const representativePrice = marker.avgPrice;
           if (representativePrice && representativePrice > 0) {
             allPrices.push(representativePrice);
           }
@@ -815,16 +815,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
             map.getCanvas().style.cursor = 'pointer';
 
             // Update hover state only if it changed
-            const currentName = polygon.regionName || polygon.countyName || polygon.cityName;
+            const currentName = (polygon as any).regionName || (polygon as any).countyName || (polygon as any).cityName;
             if (!hoveredPolygon || hoveredPolygon.name !== currentName) {
               setHoveredPolygon({
                 name: currentName,
-                count: polygon.count,
-                medianPrice: polygon.medianPrice,
-                avgPrice: polygon.avgPrice,
-                minPrice: polygon.minPrice,
-                maxPrice: polygon.maxPrice,
-                type: polygonType,
+                count: (polygon as any).count,
+                medianPrice: (polygon as any).medianPrice,
+                avgPrice: (polygon as any).avgPrice,
+                minPrice: (polygon as any).minPrice,
+                maxPrice: (polygon as any).maxPrice,
+                type: polygonType as 'city' | 'region' | 'county',
               });
             }
 
@@ -950,12 +950,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       );
       if (city) {
         return {
-          name: city.cityName,
-          count: city.count || 0,
-          medianPrice: city.medianPrice,
-          avgPrice: city.avgPrice,
-          minPrice: city.minPrice || 0,
-          maxPrice: city.maxPrice || 0,
+          name: (city as any).cityName,
+          count: (city as any).count || 0,
+          medianPrice: (city as any).medianPrice,
+          avgPrice: (city as any).avgPrice,
+          minPrice: (city as any).minPrice || 0,
+          maxPrice: (city as any).maxPrice || 0,
           type: 'city' as const
         };
       }
@@ -968,12 +968,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       );
       if (county) {
         return {
-          name: county.countyName,
-          count: county.count || 0,
-          medianPrice: county.medianPrice,
-          avgPrice: county.avgPrice,
-          minPrice: county.minPrice || 0,
-          maxPrice: county.maxPrice || 0,
+          name: (county as any).countyName,
+          count: (county as any).count || 0,
+          medianPrice: (county as any).medianPrice,
+          avgPrice: (county as any).avgPrice,
+          minPrice: (county as any).minPrice || 0,
+          maxPrice: (county as any).maxPrice || 0,
           type: 'county' as const
         };
       }
@@ -985,14 +985,14 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         m.clusterType === 'region' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
       );
       if (region) {
-        console.log('[contextualBoundary] Found region:', region.regionName, 'count:', region.count);
+        console.log('[contextualBoundary] Found region:', (region as any).regionName, 'count:', (region as any).count);
         return {
-          name: region.regionName,
-          count: region.count || 0,
-          medianPrice: region.medianPrice,
-          avgPrice: region.avgPrice,
-          minPrice: region.minPrice || 0,
-          maxPrice: region.maxPrice || 0,
+          name: (region as any).regionName,
+          count: (region as any).count || 0,
+          medianPrice: (region as any).medianPrice,
+          avgPrice: (region as any).avgPrice,
+          minPrice: (region as any).minPrice || 0,
+          maxPrice: (region as any).maxPrice || 0,
           type: 'region' as const
         };
       } else {

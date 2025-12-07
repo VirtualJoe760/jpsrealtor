@@ -9,9 +9,9 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 
 import CollageHero from "@/app/components/mls/CollageHero";
 import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
-import ListingAttribution from "@/app/components/mls/ListingAttribution";
+import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 
 function calculateDaysOnMarket(dateString?: string | Date) {
   if (!dateString) return null;
@@ -69,7 +69,7 @@ export default function ListingClient({
   media,
   address,
 }: {
-  listing: IListing;
+  listing: IUnifiedListing;
   media: {
     type: "photo";
     src: string;
@@ -638,7 +638,7 @@ export default function ListingClient({
                   WebkitBackdropFilter: "blur(20px) saturate(180%)",
                 } : undefined}
               >
-                <ListingAttribution
+                <UnifiedListingAttribution
                   listing={listing}
                   className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}
                 />

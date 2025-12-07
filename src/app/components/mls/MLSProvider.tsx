@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { MapListing, Filters } from "@/types/types";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 import { useServerClusters, isServerCluster, MapMarker } from "@/app/utils/map/useServerClusters";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import useFavorites from "@/app/utils/map/useFavorites";
+import useDislikes from "@/app/utils/map/useDislikes";
 
 // Default filter state
 const defaultFilterState: Filters = {
@@ -36,7 +38,7 @@ interface MLSContextValue {
   visibleListings: MapListing[];
   markers: MapMarker[]; // Can include both clusters and listings
   selectedListing: MapListing | null;
-  selectedFullListing: IListing | null;
+  selectedFullListing: IUnifiedListing | null;
   visibleIndex: number | null;
 
   // Filters
@@ -51,7 +53,9 @@ interface MLSContextValue {
   toggleFavorite: (listing: MapListing) => void;
   removeFavorite: (listing: MapListing) => void;
   clearFavorites: () => void;
-  swipeLeft: (listing: IListing) => void;
+  swipeLeft: (listing: IUnifiedListing) => void;
+  removeDislike: (listing: MapListing) => void;
+  clearDislikes: () => void;
 
   // Map Controls
   mapStyle: 'toner' | 'dark' | 'satellite' | 'bright';
@@ -64,7 +68,7 @@ interface MLSContextValue {
   isLoadingListing: boolean;
 
   // Cache
-  listingCache: React.MutableRefObject<Map<string, IListing>>;
+  listingCache: React.MutableRefObject<Map<string, IUnifiedListing>>;
 
   // Actions
   loadListings: (bounds: any, filters: Filters, merge?: boolean) => Promise<void>;
@@ -90,8 +94,10 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   const swipeQueue = useSwipeQueue();
 
   // Refs for caching
-  const listingCache = useRef<Map<string, IListing>>(new Map());
+  const listingCache = useRef<Map<string, IUnifiedListing>>(new Map());
   const fetchingRef = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const activeFetchesRef = useRef<number>(0);
 
   const [filters, setFiltersState] = useState<Filters>(() => {
     if (typeof window === "undefined") return defaultFilterState;
@@ -134,7 +140,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
   });
 
   const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
-  const [selectedFullListing, setSelectedFullListing] = useState<IListing | null>(null);
+  const [selectedFullListing, setSelectedFullListing] = useState<IUnifiedListing | null>(null);
   const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>(() => {
     // Initialize based on current theme
     return currentTheme === "lightgradient" ? 'bright' : 'dark';
@@ -160,20 +166,22 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     }
   }, [currentTheme]);
 
-  // Favorites & Dislikes
-  const [likedListings, setLikedListings] = useState<MapListing[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("likedListings");
-        return saved ? JSON.parse(saved) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // Favorites & Dislikes - Using database-backed hooks
+  const {
+    favorites: likedListings,
+    addFavorite,
+    removeFavorite: removeFavoriteFromHook,
+    clearFavorites: clearFavoritesFromHook,
+    isLoading: isLoadingFavorites
+  } = useFavorites();
 
-  const [dislikedListings, setDislikedListings] = useState<any[]>([]);
+  const {
+    dislikes: dislikedListings,
+    addDislike,
+    removeDislike,
+    clearDislikes,
+    isLoading: isLoadingDislikes
+  } = useDislikes();
 
   // Derive listings from markers (filter out clusters for visibleListings)
   const allListings = React.useMemo(() => markers.filter((m): m is MapListing => !isServerCluster(m)), [markers]);
@@ -193,86 +201,87 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     return visibleListings[visibleIndex] ?? null;
   }, [visibleIndex, visibleListings]);
 
-  // Save favorites to localStorage
+  // Note: Favorites and dislikes are now managed by useFavorites and useDislikes hooks
+  // which handle both database sync (for authenticated users) and localStorage (for guests)
+
+  // Prefetch full listings (INTELLIGENT: debounced, limited concurrency, reduced count)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("likedListings", JSON.stringify(likedListings));
-      } catch (e) {
-        console.error("❌ Failed to save favorites:", e);
-      }
-    }
-  }, [likedListings]);
-
-  // Fetch disliked listings from API
-  useEffect(() => {
-    async function fetchDislikedListings() {
-      if (!swipeQueue.isReady) return;
-
-      try {
-        const response = await fetch("/api/swipes/user");
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const disliked = data.dislikedListings || [];
-
-        const dislikedData = disliked
-          .map((item: any) => ({
-            ...item.listingData,
-            listingKey: item.listingKey,
-            listingId: item.listingData?.listingId || item.listingKey,
-            _id: item.listingData?._id || item._id,
-            swipedAt: item.swipedAt,
-            expiresAt: item.expiresAt,
-          }))
-          .filter((item: any) => item && Object.keys(item).length > 4);
-
-        setDislikedListings(dislikedData);
-      } catch (error) {
-        console.error("Error fetching disliked listings:", error);
-      }
+    // Cancel any in-flight prefetch from previous effect
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    fetchDislikedListings();
-  }, [swipeQueue.isReady]);
+    // Create new abort controller for this effect
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-  // Prefetch full listings (first 5 visible)
-  useEffect(() => {
-    const prefetchListings = async () => {
+    // Debounce: Wait 500ms after visibleListings stabilizes before prefetching
+    const timer = setTimeout(async () => {
+      if (controller.signal.aborted) return;
+
+      const MAX_CONCURRENT = 3;  // Limit concurrent fetches to prevent server overload
+      const PREFETCH_COUNT = 3;   // Reduced from 5 to minimize database load
+
       const slugsToFetch = visibleListings
-        .slice(0, 5)
+        .slice(0, PREFETCH_COUNT)  // Only first 3 listings (center of viewport)
         .map((listing) => listing.slugAddress ?? listing.slug)
         .filter(
           (slug): slug is string =>
             !!slug && !listingCache.current.has(slug) && !fetchingRef.current.has(slug)
         );
 
-      for (const slug of slugsToFetch) {
-        fetchingRef.current.add(slug);
-        try {
-          const res = await fetch(`/api/mls-listings/${slug}`);
-          if (!res.ok) {
-            // Silently skip 404s - listing might not be in DB yet
-            if (res.status === 404) {
-              console.warn(`⚠️ Listing ${slug} not found in database`);
-            } else {
-              console.error(`❌ HTTP ${res.status} fetching listing ${slug}`);
-            }
-            continue;
-          }
-          const json = await res.json();
-          if (json?.listing && json.listing.listingKey) {
-            listingCache.current.set(slug, json.listing);
-          }
-        } catch (err) {
-          console.error(`❌ Error prefetching listing ${slug}:`, err);
-        } finally {
-          fetchingRef.current.delete(slug);
-        }
-      }
-    };
+      console.log(`🔄 Prefetching ${slugsToFetch.length} listings (max concurrent: ${MAX_CONCURRENT})`);
 
-    prefetchListings();
+      // Fetch with concurrency limiting
+      for (const slug of slugsToFetch) {
+        if (controller.signal.aborted) break;
+
+        // Wait if we've hit the concurrent request limit
+        while (activeFetchesRef.current >= MAX_CONCURRENT) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          if (controller.signal.aborted) break;
+        }
+
+        if (controller.signal.aborted) break;
+
+        // Mark as fetching
+        fetchingRef.current.add(slug);
+        activeFetchesRef.current++;
+
+        // Fetch in background (don't await - allows concurrent requests up to limit)
+        fetch(`/api/mls-listings/${slug}`, { signal: controller.signal })
+          .then(async (res) => {
+            if (!res.ok) {
+              if (res.status === 404) {
+                console.warn(`⚠️ Listing ${slug} not found in database`);
+              } else {
+                console.error(`❌ HTTP ${res.status} fetching listing ${slug}`);
+              }
+              return;
+            }
+            const json = await res.json();
+            if (json?.listing && json.listing.listingKey) {
+              listingCache.current.set(slug, json.listing);
+              console.log(`✅ Prefetched listing ${slug}`);
+            }
+          })
+          .catch((err) => {
+            // Ignore abort errors - they're expected when viewport changes
+            if (err.name !== 'AbortError') {
+              console.error(`❌ Error prefetching listing ${slug}:`, err);
+            }
+          })
+          .finally(() => {
+            fetchingRef.current.delete(slug);
+            activeFetchesRef.current--;
+          });
+      }
+    }, 500);  // 500ms debounce - waits for streaming to finish
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();  // Cancel all in-flight requests when effect re-runs
+    };
   }, [visibleListings]);
 
   // Prefetch next swipe queue items
@@ -315,13 +324,20 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     prefetchSwipeQueue();
   }, [swipeQueue.queueLength, swipeQueue.isReady, selectedFullListing]);
 
-  // Clear stale cache
+  // Smart cache management (LRU - keep last 100 listings)
   useEffect(() => {
-    const validSlugs = new Set(visibleListings.map((l) => l.slugAddress ?? l.slug));
-    for (const slug of listingCache.current.keys()) {
-      if (!validSlugs.has(slug)) {
+    const MAX_CACHE_SIZE = 100;  // Keep up to 100 listings cached (prevents memory bloat)
+
+    if (listingCache.current.size > MAX_CACHE_SIZE) {
+      // Map maintains insertion order, so oldest entries are first
+      const entries = Array.from(listingCache.current.entries());
+      const toRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
+
+      console.log(`🗑️ Cache cleanup: Removing ${toRemove.length} oldest entries (keeping ${MAX_CACHE_SIZE})`);
+
+      toRemove.forEach(([slug]) => {
         listingCache.current.delete(slug);
-      }
+      });
     }
   }, [visibleListings]);
 
@@ -427,31 +443,37 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     setFiltersState(defaultFilterState);
   }, []);
 
+  // Toggle favorite - using the hook
   const toggleFavorite = useCallback(
     (listing: MapListing) => {
       const slug = listing.slugAddress ?? listing.slug;
       const isFavorited = likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === slug);
 
       if (isFavorited) {
-        setLikedListings((prev) => prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== slug));
+        removeFavoriteFromHook(listing);
       } else {
-        setLikedListings((prev) => [...prev, listing]);
+        addFavorite(listing);
       }
     },
-    [likedListings]
+    [likedListings, addFavorite, removeFavoriteFromHook]
   );
 
-  const removeFavorite = useCallback((listing: MapListing) => {
-    const slug = listing.slugAddress ?? listing.slug;
-    setLikedListings((prev) => prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== slug));
-  }, []);
+  // Remove favorite - using the hook
+  const removeFavorite = useCallback(
+    (listing: MapListing) => {
+      removeFavoriteFromHook(listing);
+    },
+    [removeFavoriteFromHook]
+  );
 
+  // Clear all favorites - using the hook
   const clearFavorites = useCallback(() => {
-    setLikedListings([]);
-  }, []);
+    clearFavoritesFromHook();
+  }, [clearFavoritesFromHook]);
 
+  // Swipe left (dislike) - using the hook
   const swipeLeft = useCallback(
-    (listing: IListing) => {
+    (listing: IUnifiedListing) => {
       if (!swipeQueue.isReady) {
         console.warn("⚠️ Swipe system not ready yet");
         return;
@@ -459,24 +481,17 @@ export function MLSProvider({ children }: { children: ReactNode }) {
 
       swipeQueue.markAsDisliked(listing.listingKey, listing);
 
-      // Optimistically add to disliked state
-      setDislikedListings((prev) => {
-        if (prev.some((d) => d.listingKey === listing.listingKey)) return prev;
-        return [
-          ...prev,
-          {
-            ...listing,
-            swipedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          },
-        ];
-      });
+      // Add to disliked listings using hook
+      addDislike(listing as unknown as MapListing);
 
       // Remove from favorites if present
       const slug = listing.slugAddress ?? listing.listingKey;
-      setLikedListings((prev) => prev.filter((fav) => (fav.slugAddress ?? fav.slug) !== slug));
+      const isFavorited = likedListings.some((fav) => (fav.slugAddress ?? fav.slug) === slug);
+      if (isFavorited) {
+        removeFavoriteFromHook(listing as unknown as MapListing);
+      }
     },
-    [swipeQueue]
+    [swipeQueue, addDislike, likedListings, removeFavoriteFromHook]
   );
 
   const value: MLSContextValue = {
@@ -496,6 +511,8 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     removeFavorite,
     clearFavorites,
     swipeLeft,
+    removeDislike,
+    clearDislikes,
     mapStyle,
     setMapStyle,
     isLoading,

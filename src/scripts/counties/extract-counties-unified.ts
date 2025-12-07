@@ -195,7 +195,7 @@ async function extractCountiesFromCities() {
       .limit(10)
       .lean();
 
-      countyDoc.topCities = topCities.map((city: any) => ({
+      (countyDoc as any).topCities = topCities.map((city: any) => ({
         name: city.name,
         listingCount: city.listingCount,
         coordinates: {

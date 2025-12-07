@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
 import UnifiedListing from "@/models/unified-listing";
-import Photo from "@/models/photos";
 
 export async function GET(
   req: NextRequest,
@@ -84,9 +83,7 @@ export async function GET(
         .skip(skip)
         .limit(limit)
         .select({
-          listingId: 1,
           listingKey: 1,
-          slug: 1,
           slugAddress: 1,
           unparsedAddress: 1,
           address: 1,
@@ -94,105 +91,43 @@ export async function GET(
           stateOrProvince: 1,
           postalCode: 1,
           listPrice: 1,
-          bedsTotal: 1,
           bedroomsTotal: 1,
           bathroomsTotalDecimal: 1,
           livingArea: 1,
           yearBuilt: 1,
-          primaryPhotoUrl: 1,
           latitude: 1,
           longitude: 1,
           standardStatus: 1,
           propertyType: 1,
           propertySubType: 1,
           mlsSource: 1,
+          media: 1,
         })
         .lean(),
       UnifiedListing.countDocuments(baseQuery),
     ]);
 
-    // Fetch primary photos for all listings
-    const listingIds = listings.map((l) => l.listingId);
-
-    // First try to get primary photos
-    let photos = await Photo.find({
-      listingId: { $in: listingIds },
-      primary: true,
-    })
-      .select({
-        listingId: 1,
-        uri1600: 1,
-        uri1280: 1,
-        uri1024: 1,
-        uri800: 1,
-        uri640: 1,
-        uri300: 1,
-        uriLarge: 1,
-      })
-      .lean();
-
-    // For listings without primary photos, get the first available photo
-    const listingsWithPhotos = new Set(photos.map(p => p.listingId));
-    const listingsWithoutPhotos = listingIds.filter(id => !listingsWithPhotos.has(id));
-
-    if (listingsWithoutPhotos.length > 0) {
-      const firstPhotos = await Photo.aggregate([
-        { $match: { listingId: { $in: listingsWithoutPhotos } } },
-        { $sort: { order: 1, _id: 1 } },
-        {
-          $group: {
-            _id: "$listingId",
-            photo: { $first: "$$ROOT" }
-          }
-        },
-        {
-          $project: {
-            listingId: "$_id",
-            uri1600: "$photo.uri1600",
-            uri1280: "$photo.uri1280",
-            uri1024: "$photo.uri1024",
-            uri800: "$photo.uri800",
-            uri640: "$photo.uri640",
-            uri300: "$photo.uri300",
-            uriLarge: "$photo.uriLarge",
-          }
-        }
-      ]);
-      photos = [...photos, ...firstPhotos];
-    }
-
-    // Create a map of listingId to photo URL
-    const photoMap = new Map();
-    photos.forEach((photo) => {
-      const photoUrl =
-        photo.uri1600 ||
-        photo.uri1280 ||
-        photo.uri1024 ||
-        photo.uri800 ||
-        photo.uri640 ||
-        photo.uri300 ||
-        photo.uriLarge ||
-        "";
-      photoMap.set(photo.listingId, photoUrl);
-    });
-
     // Attach photos to listings and build full address
-    const finalListings = listings.map((listing) => {
+    const finalListings = listings.map((listing: any) => {
+      // Get primary photo from media array
+      const media = listing.media || [];
+      const primaryPhoto = media.find(
+        (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+      ) || media[0];
+
+      const photoUrl = primaryPhoto
+        ? primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640
+        : null;
+
       // Use unparsedAddress or address for the street address
       const streetAddress = listing.unparsedAddress || listing.address;
       const fullAddress = streetAddress || "";
 
-      // Use bedroomsTotal or bedsTotal, whichever has a value
-      const bedrooms = listing.bedroomsTotal !== undefined && listing.bedroomsTotal !== null
-        ? listing.bedroomsTotal
-        : listing.bedsTotal;
-
       return {
         ...listing,
-        address: fullAddress, // Use unparsedAddress as the primary address field
-        slug: listing.slugAddress || listing.slug, // Use slugAddress for routing
-        bedroomsTotal: bedrooms, // Normalize to bedroomsTotal
-        primaryPhotoUrl: photoMap.get(listing.listingId) || listing.primaryPhotoUrl || null,
+        address: fullAddress,
+        slug: listing.slugAddress,
+        primaryPhotoUrl: photoUrl,
         mlsSource: listing.mlsSource || "UNKNOWN",
       };
     });

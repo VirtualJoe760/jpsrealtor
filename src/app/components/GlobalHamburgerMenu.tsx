@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import EnhancedSidebar from "./EnhancedSidebar";
-import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 export default function GlobalHamburgerMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { currentTheme } = useThemeClasses();
+  const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const pathname = usePathname();
+  const isMapPage = pathname === "/map";
 
   useEffect(() => {
     setMounted(true);
@@ -20,47 +23,50 @@ export default function GlobalHamburgerMenu() {
 
   return (
     <>
-      {/* Top blur gradient overlay for mobile - always visible behind hamburger */}
-      <div
-        className="md:hidden fixed top-0 left-0 right-0 h-20 z-40 pointer-events-none"
-        style={{
-          background: effectiveIsLight
-            ? 'linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 30%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 70%, rgba(255,255,255,0) 100%)'
-            : 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0) 100%)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
-        }}
-      />
+      {/* Top blur gradient overlay for mobile - hidden on map page */}
+      {!isMapPage && (
+        <div
+          className={`md:hidden fixed top-0 left-0 right-0 h-20 z-40 pointer-events-none backdrop-blur-lg ${
+            effectiveIsLight
+              ? 'bg-gradient-to-b from-white/80 via-white/40 to-transparent'
+              : 'bg-gradient-to-b from-black/60 via-black/30 to-transparent'
+          }`}
+          style={{
+            maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+          }}
+        />
+      )}
 
       {/* Hamburger Button - Top Left, Mobile Only */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 flex items-center justify-center active:scale-95 transition-transform"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        className="md:hidden fixed top-4 left-4 z-50 w-16 h-16 flex items-center justify-center active:scale-95 transition-transform rounded-xl"
         aria-label={isOpen ? "Close menu" : "Open menu"}
       >
-        <div className="relative w-7 h-6 flex flex-col justify-center items-center">
+        <div className="relative w-9 h-8 flex flex-col justify-center items-center">
           {/* Top Line */}
           <motion.span
+            initial={{
+              backgroundColor: effectiveIsLight ? "#1e40af" : "#10b981"
+            }}
             animate={isOpen ? {
               rotate: 45,
               y: 0,
-              backgroundColor: "#10b981"
+              backgroundColor: "#10b981" // emerald-500
             } : {
               rotate: 0,
-              y: -8,
-              backgroundColor: effectiveIsLight ? "#374151" : "#e5e5e5"
+              y: -10,
+              backgroundColor: effectiveIsLight ? "#1e40af" : "#10b981" // blue-800 for light, emerald-500 for dark
             }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="absolute w-7 h-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+            className="absolute w-9 h-[3px] rounded-full"
             style={{
               boxShadow: isOpen
-                ? "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                ? "0 0 14px rgba(16,185,129,0.9), 0 0 24px rgba(16,185,129,0.5)" // emerald glow when open
                 : effectiveIsLight
-                  ? "0 0 8px rgba(55,65,81,0.3)"
-                  : "0 0 8px rgba(229,229,229,0.3)"
+                  ? "0 0 10px rgba(30,64,175,0.5)" // blue glow for light mode
+                  : "0 0 10px rgba(16,185,129,0.5)" // emerald glow for dark mode
             }}
             suppressHydrationWarning
           />
@@ -74,31 +80,36 @@ export default function GlobalHamburgerMenu() {
               x: 0
             }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className={`absolute w-7 h-0.5 rounded-full ${effectiveIsLight ? 'bg-gray-700' : 'bg-neutral-200'}`}
+            className={`absolute w-9 h-[3px] rounded-full ${effectiveIsLight ? 'bg-blue-800' : 'bg-emerald-500'}`}
             style={{
-              boxShadow: effectiveIsLight ? "0 0 8px rgba(55,65,81,0.3)" : "0 0 8px rgba(229,229,229,0.3)"
+              boxShadow: effectiveIsLight
+                ? "0 0 10px rgba(30,64,175,0.5)" // blue glow for light mode
+                : "0 0 10px rgba(16,185,129,0.5)" // emerald glow for dark mode
             }}
             suppressHydrationWarning
           />
           {/* Bottom Line */}
           <motion.span
+            initial={{
+              backgroundColor: effectiveIsLight ? "#1e40af" : "#10b981"
+            }}
             animate={isOpen ? {
               rotate: -45,
               y: 0,
-              backgroundColor: "#10b981"
+              backgroundColor: "#10b981" // emerald-500
             } : {
               rotate: 0,
-              y: 8,
-              backgroundColor: effectiveIsLight ? "#374151" : "#e5e5e5"
+              y: 10,
+              backgroundColor: effectiveIsLight ? "#1e40af" : "#10b981" // blue-800 for light, emerald-500 for dark
             }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="absolute w-7 h-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+            className="absolute w-9 h-[3px] rounded-full"
             style={{
               boxShadow: isOpen
-                ? "0 0 12px rgba(16,185,129,0.8), 0 0 20px rgba(16,185,129,0.4)"
+                ? "0 0 14px rgba(16,185,129,0.9), 0 0 24px rgba(16,185,129,0.5)" // emerald glow when open
                 : effectiveIsLight
-                  ? "0 0 8px rgba(55,65,81,0.3)"
-                  : "0 0 8px rgba(229,229,229,0.3)"
+                  ? "0 0 10px rgba(30,64,175,0.5)" // blue glow for light mode
+                  : "0 0 10px rgba(16,185,129,0.5)" // emerald glow for dark mode
             }}
             suppressHydrationWarning
           />
@@ -116,7 +127,9 @@ export default function GlobalHamburgerMenu() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setIsOpen(false)}
-              className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-40"
+              className={`md:hidden fixed inset-0 backdrop-blur-md z-40 ${
+                effectiveIsLight ? 'bg-white/80' : 'bg-black/80'
+              }`}
             />
 
             {/* Enhanced Sidebar - Mobile Only */}

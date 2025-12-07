@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
-import Photo from "@/models/photos";
+import UnifiedListing from "@/models/unified-listing";
 
 const OPENCAGE_API_KEY = process.env.OPENCAGE_API_KEY;
 const OPENCAGE_URL = "https://api.opencagedata.com/geocode/v1/json";
@@ -14,7 +13,7 @@ export async function GET(req: Request) {
 
   await dbConnect();
 
-  const listings = await Listing.find(
+  const listings = await UnifiedListing.find(
     {
       $or: [
         { address: { $regex: q, $options: "i" } },
@@ -23,8 +22,7 @@ export async function GET(req: Request) {
       ],
     },
     {
-      listingId: 1,
-      slug: 1,
+      listingKey: 1,
       slugAddress: 1,
       unparsedAddress: 1,
       listPrice: 1,
@@ -33,41 +31,42 @@ export async function GET(req: Request) {
       bathroomsFull: 1,
       bathroomsHalf: 1,
       bathroomsTotalDecimal: 1,
+      bathroomsTotalInteger: 1,
       livingArea: 1,
       latitude: 1,
       longitude: 1,
+      media: 1,
     }
   )
     .limit(10)
     .lean();
 
-  const listingResults = await Promise.all(
-    listings.map(async (l) => {
-      const bedrooms = l.bedroomsTotal ?? l.bedsTotal ?? 0;
-      const bathrooms =
-        l.bathroomsFull != null
-          ? l.bathroomsFull + (l.bathroomsHalf ? 0.5 : 0)
-          : l.bathroomsTotalDecimal ?? 0;
+  const listingResults = listings.map((l: any) => {
+    const bedrooms = l.bedroomsTotal ?? l.bedsTotal ?? 0;
+    const bathrooms =
+      l.bathroomsFull != null
+        ? l.bathroomsFull + (l.bathroomsHalf ? 0.5 : 0)
+        : l.bathroomsTotalDecimal ?? 0;
 
-      const photoDoc = await Photo.findOne(
-        { listingId: l.listingId, primary: true },
-        { uri640: 1 }
-      );
+    // Get primary photo from media array
+    const media = l.media || [];
+    const primaryPhoto = media.find(
+      (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+    ) || media[0];
 
-      return {
-        type: "listing" as const,
-        slug: l.slugAddress,
-        label: l.unparsedAddress ?? l.slugAddress,
-        photo: photoDoc?.uri640,
-        listPrice: l.listPrice,
-        bedrooms,
-        bathrooms,
-        sqft: l.livingArea,
-        latitude: l.latitude,
-        longitude: l.longitude,
-      };
-    })
-  );
+    return {
+      type: "listing" as const,
+      slug: l.slugAddress,
+      label: l.unparsedAddress ?? l.slugAddress,
+      photo: primaryPhoto?.Uri640 || primaryPhoto?.Uri800,
+      listPrice: l.listPrice,
+      bedrooms,
+      bathrooms,
+      sqft: l.livingArea,
+      latitude: l.latitude,
+      longitude: l.longitude,
+    };
+  });
 
   const listingLabels = new Set(
     listingResults.map((l) => l.label?.toLowerCase())

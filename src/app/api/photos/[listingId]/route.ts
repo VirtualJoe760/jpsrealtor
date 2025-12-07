@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import Photo from "@/models/photos";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET(
   req: Request,
@@ -13,13 +13,31 @@ export async function GET(
   const { listingId } = await params;
 
   try {
-    const photos = await Photo.find({ listingId })
-      .sort({ primary: -1, Order: 1 }) // Primary first, then ordered
+    // Find listing by listingKey in unified collection
+    const listing = await UnifiedListing.findOne({ listingKey: listingId })
+      .select("media")
       .lean();
 
-    const result = photos.map((p) => ({
-      Id: p.photoId,
-      Url: p.uri1024 || p.uri800 || p.uri640 || "/images/no-photo.png",
+    if (!listing) {
+      return NextResponse.json([]);
+    }
+
+    const media = listing.media || [];
+
+    // Sort: Primary photo first, then by Order
+    const sortedMedia = media
+      .filter((m: any) => m.MediaKey)
+      .sort((a: any, b: any) => {
+        // Primary photos first
+        if (a.MediaCategory === "Primary Photo") return -1;
+        if (b.MediaCategory === "Primary Photo") return 1;
+        // Then sort by Order
+        return (a.Order ?? 999) - (b.Order ?? 999);
+      });
+
+    const result = sortedMedia.map((m: any) => ({
+      Id: m.MediaKey,
+      Url: m.Uri1024 || m.Uri800 || m.Uri640 || "/images/no-photo.png",
     }));
 
     return NextResponse.json(result);

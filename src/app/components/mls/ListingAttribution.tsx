@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import Image from "next/image";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 
 /**
  * IDX Listing Attribution (subtle, blends in, whole block clickable)
@@ -17,7 +17,7 @@ export default function ListingAttribution({
   listing,
   className,
 }: {
-  listing: IListing;
+  listing: IUnifiedListing;
   className?: string;
 }) {
   const { textMuted, textTertiary, textSecondary } = useThemeClasses();

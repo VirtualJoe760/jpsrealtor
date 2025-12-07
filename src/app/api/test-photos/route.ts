@@ -1,40 +1,42 @@
-// Test API to check Photo collection
+// Test API to check photos in unified_listings collection
 import { NextResponse } from "next/server";
-import connectDB from "@/lib/db";
-import Photo from "@/models/photos";
+import dbConnect from "@/lib/mongoose";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET() {
   try {
-    await connectDB();
+    await dbConnect();
 
-    // Count total photos
-    const totalPhotos = await Photo.countDocuments();
+    // Count total listings with photos
+    const totalListingsWithPhotos = await UnifiedListing.countDocuments({
+      "media.0": { $exists: true }
+    });
 
-    // Get sample primary photos
-    const samplePhotos = await Photo.find({ primary: true }).limit(5).lean();
+    // Get sample listings with photos
+    const sampleListings = await UnifiedListing.find({
+      "media.0": { $exists: true }
+    })
+      .select("listingKey media")
+      .limit(5)
+      .lean();
 
-    // Test with a specific listing
-    const testListingId = "20250729070314620355000000";
-    const photosForListing = await Photo.find({
-      listingId: testListingId,
-      primary: true
-    }).lean();
+    const samplePhotos = sampleListings.map((listing: any) => {
+      const media = listing.media || [];
+      const primaryPhoto = media.find(
+        (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+      ) || media[0];
+
+      return {
+        listingKey: listing.listingKey,
+        photoCount: media.length,
+        primaryUrl: primaryPhoto?.Uri1280 || primaryPhoto?.Uri1024 || primaryPhoto?.Uri800 || primaryPhoto?.Uri640
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      totalPhotos,
-      samplePhotos: samplePhotos.map(p => ({
-        listingId: p.listingId,
-        primary: p.primary,
-        url: p.uri1280 || p.uri1024 || p.uri800 || p.uri640 || p.uriThumb
-      })),
-      testListing: {
-        listingId: testListingId,
-        photosFound: photosForListing.length,
-        photoUrl: photosForListing[0] ?
-          (photosForListing[0].uri1280 || photosForListing[0].uri1024 || photosForListing[0].uri800) :
-          null
-      }
+      totalListingsWithPhotos,
+      samplePhotos,
     });
   } catch (error: any) {
     return NextResponse.json({

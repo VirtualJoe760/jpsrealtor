@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
-import { CRMLSListing } from "@/models/crmls-listings";
+import UnifiedListing from "@/models/unified-listing";
 
 export async function GET(
   req: Request,
@@ -12,13 +11,10 @@ export async function GET(
   const { slugAddress } = await params;
 
   try {
-    // 🔍 Try to find listing in GPS MLS first, then CRMLS
-    let listing: any = await Listing.findOne({ slugAddress }).lean();
-
-    if (!listing) {
-      // Try CRMLS collection
-      listing = await CRMLSListing.findOne({ slugAddress }).lean();
-    }
+    // Find listing in unified collection
+    const listing = await UnifiedListing.findOne({ slugAddress })
+      .select("Documents")
+      .lean();
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });

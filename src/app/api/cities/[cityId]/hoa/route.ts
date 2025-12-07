@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
+import UnifiedListing from "@/models/unified-listing";
 import Subdivision from "@/models/subdivisions";
 
 export async function GET(
@@ -19,7 +19,7 @@ export async function GET(
       .join(" ");
 
     // Get HOA statistics
-    const hoaStats = await Listing.aggregate([
+    const hoaStats = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },
@@ -53,7 +53,7 @@ export async function GET(
     ]);
 
     // Get communities with HOA
-    const communities = await Listing.aggregate([
+    const communities = await UnifiedListing.aggregate([
       {
         $match: {
           city: { $regex: new RegExp(`^${cityName}$`, "i") },

@@ -1,5 +1,5 @@
-// src/app/api/user/favorites/[listingKey]/route.ts
-// Add or remove a specific favorite
+// src/app/api/user/dislikes/[listingKey]/route.ts
+// Add or remove a specific dislike
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/user";
 
-// POST - Add a single favorite
+// POST - Add a single dislike
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ listingKey: string }> }
@@ -42,26 +42,27 @@ export async function POST(
       );
     }
 
-    // Check if already favorited
-    const exists = user.likedListings.some(
-      (fav: any) => fav.listingKey === listingKey
+    // Check if already disliked
+    const exists = user.dislikedListings.some(
+      (dislike: any) => dislike.listingKey === listingKey
     );
 
     if (exists) {
       return NextResponse.json(
-        { success: true, message: "Already favorited", alreadyExists: true },
+        { success: true, message: "Already disliked", alreadyExists: true },
         { status: 200 }
       );
     }
 
-    // Add the favorite
-    user.likedListings.push({
+    // Add the dislike with 30-minute TTL
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+
+    user.dislikedListings.push({
       listingKey,
       listingData,
       swipedAt: new Date(),
-      subdivision: listingData.subdivisionName,
-      city: listingData.city,
-      propertySubType: listingData.propertySubType,
+      expiresAt,
     });
 
     // Update analytics
@@ -76,26 +77,27 @@ export async function POST(
       };
     }
 
-    user.swipeAnalytics.totalLikes = user.likedListings.length;
+    user.swipeAnalytics.totalDislikes = user.dislikedListings.length;
     user.swipeAnalytics.lastUpdated = new Date();
 
     await user.save();
 
     return NextResponse.json({
       success: true,
-      message: "Favorite added successfully",
-      totalCount: user.likedListings.length,
+      message: "Dislike added successfully",
+      totalCount: user.dislikedListings.length,
+      expiresAt,
     });
   } catch (error) {
-    console.error("Error adding favorite:", error);
+    console.error("Error adding dislike:", error);
     return NextResponse.json(
-      { error: "Failed to add favorite" },
+      { error: "Failed to add dislike" },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Remove a specific favorite
+// DELETE - Remove a specific dislike
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ listingKey: string }> }
@@ -121,22 +123,22 @@ export async function DELETE(
       );
     }
 
-    // Remove the favorite
-    const initialCount = user.likedListings.length;
-    user.likedListings = user.likedListings.filter(
-      (fav: any) => fav.listingKey !== listingKey
+    // Remove the dislike
+    const initialCount = user.dislikedListings.length;
+    user.dislikedListings = user.dislikedListings.filter(
+      (dislike: any) => dislike.listingKey !== listingKey
     );
 
-    if (user.likedListings.length === initialCount) {
+    if (user.dislikedListings.length === initialCount) {
       return NextResponse.json(
-        { error: "Favorite not found" },
+        { error: "Dislike not found" },
         { status: 404 }
       );
     }
 
     // Update analytics
     if (user.swipeAnalytics) {
-      user.swipeAnalytics.totalLikes = user.likedListings.length;
+      user.swipeAnalytics.totalDislikes = user.dislikedListings.length;
       user.swipeAnalytics.lastUpdated = new Date();
     }
 
@@ -144,13 +146,13 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "Favorite removed successfully",
-      remainingCount: user.likedListings.length,
+      message: "Dislike removed successfully",
+      remainingCount: user.dislikedListings.length,
     });
   } catch (error) {
-    console.error("Error removing favorite:", error);
+    console.error("Error removing dislike:", error);
     return NextResponse.json(
-      { error: "Failed to remove favorite" },
+      { error: "Failed to remove dislike" },
       { status: 500 }
     );
   }
