@@ -84,8 +84,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const isLight = currentTheme === "lightgradient";
 
   // Cache city/county data for contextual boundary lookups at higher zoom levels
-  const cityStatsCache = useRef<Map<string, any>>(new Map());
-  const countyStatsCache = useRef<Map<string, any>>(new Map());
+  const cityStatsCache = useRef(new Map<string, any>());
+  const countyStatsCache = useRef(new Map<string, any>());
 
   // Detect mobile for lighter boundary colors
   const [isMobile, setIsMobile] = useState(false);
