@@ -337,7 +337,7 @@ export async function GET(req: NextRequest) {
       // Zoom 12: Individual listings (capped at 500)
       // Zoom 13+: All individual listings in viewport
 
-      const useRegionClustering = zoom >= 5 && zoom <= 6;
+      const useRegionClustering = zoom < 7; // Zoom 0-6.99 uses regions
       const useCountyClustering = zoom >= 7 && zoom <= 9;
       const useCityBasedClustering = zoom >= 10 && zoom <= 11;
 

@@ -19,6 +19,9 @@ import AnimatedMarker from "./AnimatedMarker";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import HoverStatsOverlay from './HoverStatsOverlay';
 import { formatPrice, getActivityColor } from "@/app/utils/map/colors";
+import { CITY_BOUNDARIES } from "@/data/city-boundaries";
+import { COUNTY_BOUNDARIES } from "@/data/county-boundaries";
+import { REGION_BOUNDARIES } from "@/data/region-boundaries";
 
 export interface MapViewHandles {
   flyToCity: (lat: number, lng: number, zoom?: number) => void;
@@ -79,6 +82,10 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 ) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Cache city/county data for contextual boundary lookups at higher zoom levels
+  const cityStatsCache = useRef<Map<string, any>>(new Map());
+  const countyStatsCache = useRef<Map<string, any>>(new Map());
 
   // Detect mobile for lighter boundary colors
   const [isMobile, setIsMobile] = useState(false);
@@ -559,6 +566,29 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Use markers if provided, otherwise fall back to listings
   const dataToRender = (markers && markers.length > 0) ? markers : listings;
 
+  // Cache city and county stats for use at higher zoom levels
+  useEffect(() => {
+    dataToRender.forEach((item: any) => {
+      if (item.clusterType === 'city' && item.cityName) {
+        cityStatsCache.current.set(item.cityName, {
+          count: item.count || 0,
+          medianPrice: item.medianPrice,
+          avgPrice: item.avgPrice,
+          minPrice: item.minPrice || 0,
+          maxPrice: item.maxPrice || 0,
+        });
+      } else if (item.clusterType === 'county' && item.countyName) {
+        countyStatsCache.current.set(item.countyName, {
+          count: item.count || 0,
+          medianPrice: item.medianPrice,
+          avgPrice: item.avgPrice,
+          minPrice: item.minPrice || 0,
+          maxPrice: item.maxPrice || 0,
+        });
+      }
+    });
+  }, [dataToRender]);
+
   console.log('🗺️ [MapView] dataToRender updated:', {
     markersLength: markers?.length || 0,
     listingsLength: listings.length,
@@ -566,7 +596,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     dataToRenderLength: dataToRender.length,
     regionCount: dataToRender.filter((m: any) => m.clusterType === 'region').length,
     countyCount: dataToRender.filter((m: any) => m.clusterType === 'county').length,
-    currentZoom: currentZoom.toFixed(2)
+    currentZoom: currentZoom.toFixed(2),
+    cachedCities: cityStatsCache.current.size,
+    cachedCounties: countyStatsCache.current.size
   });
 
   // Enhanced logging for debugging zoom-based rendering
@@ -942,12 +974,39 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       return inside;
     };
 
-    // Priority order: City (zoom 10-11) > County (zoom 7-9) > Region (zoom 4-6)
-    if (flooredZoom >= 10 && flooredZoom <= 11) {
-      // Check if center is in a city boundary
-      const city = dataToRender.find((m: any) =>
+    // Hierarchical boundary detection with proper fallbacks
+    // Priority: Try city first, then county, then region based on zoom level
+
+    if (flooredZoom >= 10) {
+      // Zoom 10-11: City zoom with clusters
+      // Zoom 12+: Individual listings (use static boundaries)
+
+      // Try to find city boundary
+      let city = dataToRender.find((m: any) =>
         m.clusterType === 'city' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
       );
+
+      // At zoom 12+, city clusters aren't rendered - check static boundaries
+      if (!city && flooredZoom >= 12) {
+        const cityEntry = Object.entries(CITY_BOUNDARIES).find(([_, boundary]) =>
+          pointInPolygon([center.lng, center.lat], boundary.coordinates)
+        );
+        if (cityEntry) {
+          const [cityName] = cityEntry;
+          const cachedStats = cityStatsCache.current.get(cityName);
+          console.log('[contextualBoundary] Found city from static boundaries:', cityName, 'cached stats:', cachedStats);
+          return {
+            name: cityName,
+            count: cachedStats?.count || 0,
+            medianPrice: cachedStats?.medianPrice || 0,
+            avgPrice: cachedStats?.avgPrice || 0,
+            minPrice: cachedStats?.minPrice || 0,
+            maxPrice: cachedStats?.maxPrice || 0,
+            type: 'city' as const
+          };
+        }
+      }
+
       if (city) {
         return {
           name: (city as any).cityName,
@@ -958,6 +1017,45 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           maxPrice: (city as any).maxPrice || 0,
           type: 'city' as const
         };
+      }
+
+      // No city found - fall back to county
+      // At zoom 10-11, county data isn't in dataToRender, use static boundaries
+      const countyEntry = Object.entries(COUNTY_BOUNDARIES).find(([_, boundary]) =>
+        pointInPolygon([center.lng, center.lat], boundary.coordinates)
+      );
+      if (countyEntry) {
+        const [countyName] = countyEntry;
+
+        // Try to find county stats from rendered data (won't exist at zoom 10+)
+        const countyData = dataToRender.find((m: any) =>
+          m.clusterType === 'county' && (m as any).countyName === countyName
+        );
+
+        if (countyData) {
+          return {
+            name: (countyData as any).countyName,
+            count: (countyData as any).count || 0,
+            medianPrice: (countyData as any).medianPrice,
+            avgPrice: (countyData as any).avgPrice,
+            minPrice: (countyData as any).minPrice || 0,
+            maxPrice: (countyData as any).maxPrice || 0,
+            type: 'county' as const
+          };
+        } else {
+          // County found but no stats in rendered data - check cache
+          const cachedStats = countyStatsCache.current.get(countyName);
+          console.log('[contextualBoundary] Found county from static boundaries:', countyName, 'cached stats:', cachedStats);
+          return {
+            name: countyName,
+            count: cachedStats?.count || 0,
+            medianPrice: cachedStats?.medianPrice || 0,
+            avgPrice: cachedStats?.avgPrice || 0,
+            minPrice: cachedStats?.minPrice || 0,
+            maxPrice: cachedStats?.maxPrice || 0,
+            type: 'county' as const
+          };
+        }
       }
     }
 
@@ -975,6 +1073,22 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           minPrice: (county as any).minPrice || 0,
           maxPrice: (county as any).maxPrice || 0,
           type: 'county' as const
+        };
+      }
+
+      // No county found - fall back to region
+      const region = dataToRender.find((m: any) =>
+        m.clusterType === 'region' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
+      );
+      if (region) {
+        return {
+          name: (region as any).regionName,
+          count: (region as any).count || 0,
+          medianPrice: (region as any).medianPrice,
+          avgPrice: (region as any).avgPrice,
+          minPrice: (region as any).minPrice || 0,
+          maxPrice: (region as any).maxPrice || 0,
+          type: 'region' as const
         };
       }
     }

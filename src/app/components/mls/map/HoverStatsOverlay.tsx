@@ -166,11 +166,18 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                   </motion.div>
                 </AnimatePresence>
               </div>
-            ) : displayData && displayData.count === 0 ? (
-              /* Zero listings on hover */
+            ) : displayData && displayData.count === 0 && data ? (
+              /* Zero listings on hover - only show when actively hovering */
               <div className="text-center py-2 min-h-[3.5rem] flex items-center justify-center">
                 <div className={`text-base md:text-lg font-semibold ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
                   Scroll to zoom in and reveal listings
+                </div>
+              </div>
+            ) : displayData && displayData.count === 0 && contextualBoundary && !data ? (
+              /* Contextual boundary with stats not yet cached - just show name */
+              <div className="text-center py-2 min-h-[3.5rem] flex items-center justify-center">
+                <div className={`text-sm md:text-base font-medium ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                  Zoom out to see {displayData.type} statistics
                 </div>
               </div>
             ) : displayData ? (
