@@ -1,7 +1,11 @@
 // CLEAN VERSION - Starting from scratch with robust logging
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { MapListing, Filters } from "@/types/types";
+import { applyCenterFocusedClustering, type RadialCluster } from "./center-focused-clustering";
+
+// Re-export RadialCluster for external use
+export type { RadialCluster };
 
 export interface ServerCluster {
   latitude: number;
@@ -16,10 +20,14 @@ export interface ServerCluster {
   isCluster: true;
 }
 
-export type MapMarker = MapListing | ServerCluster;
+export type MapMarker = MapListing | ServerCluster | RadialCluster;
 
 export function isServerCluster(marker: MapMarker): marker is ServerCluster {
-  return 'isCluster' in marker && marker.isCluster === true;
+  return 'isCluster' in marker && marker.isCluster === true && !('clusterType' in marker);
+}
+
+export function isRadialCluster(marker: MapMarker): marker is RadialCluster {
+  return 'isCluster' in marker && marker.isCluster === true && 'clusterType' in marker && marker.clusterType === 'radial';
 }
 
 export interface TotalCount {
@@ -33,6 +41,18 @@ export function useServerClusters() {
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   const [totalCount, setTotalCount] = useState<TotalCount | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const boundsRef = useRef<{ north: number; south: number; east: number; west: number; zoom: number } | null>(null);
+
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const loadMarkers = useCallback(
     async (
@@ -48,6 +68,9 @@ export function useServerClusters() {
       console.log('[loadMarkers] ========== START ==========');
       console.log('[loadMarkers] Bounds:', bounds);
       console.log('[loadMarkers] Filters:', filters);
+
+      // Store bounds for center-focused clustering
+      boundsRef.current = bounds;
 
       setIsLoading(true);
 
@@ -103,9 +126,24 @@ export function useServerClusters() {
         } else if (data.type === 'listings') {
           const listings: MapListing[] = data.listings || [];
 
-          console.log('[loadMarkers] Setting listings:', listings.length);
+          console.log('[loadMarkers] Applying center-focused clustering to', listings.length, 'listings', isMobile ? '(MOBILE)' : '(DESKTOP)');
 
-          setMarkers(listings);
+          // Apply center-focused clustering with mobile awareness
+          const { centerMarkers, peripheryClusters } = applyCenterFocusedClustering(
+            listings,
+            bounds,
+            0.75, // 75% of viewport shows as individual markers (with 1.8x multiplier = ~135% effective coverage)
+            isMobile // Pass mobile flag for adjusted clustering behavior
+          );
+
+          console.log('[loadMarkers] Center-focused clustering results:', {
+            centerMarkers: centerMarkers.length,
+            peripheryClusters: peripheryClusters.length,
+            total: centerMarkers.length + peripheryClusters.length,
+            isMobile
+          });
+
+          setMarkers([...centerMarkers, ...peripheryClusters]);
           setTotalCount({ total: data.totalCount || 0 });
         }
 
@@ -117,7 +155,7 @@ export function useServerClusters() {
         setIsLoading(false);
       }
     },
-    []
+    [isMobile]
   );
 
   const clearMarkers = useCallback(() => {
