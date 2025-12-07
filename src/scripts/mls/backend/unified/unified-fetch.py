@@ -429,7 +429,7 @@ def main():
                     statuses=args.status,
                     incremental=args.incremental,
                     batch_size=args.batch_size,
-                    expansions=["OpenHouses", "VirtualTours"]
+                    expansions=["Media", "OpenHouses", "VirtualTours"]
                 )
 
                 if not listings:

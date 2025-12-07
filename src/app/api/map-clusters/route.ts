@@ -182,17 +182,107 @@ export async function GET(req: NextRequest) {
     matchStage.bathroomsTotalDecimal = { $gte: baths };
   }
 
+  // Square footage
+  const minSqft = Number(query.get("minSqft") || "0");
+  const maxSqft = Number(query.get("maxSqft") || "999999");
+  if (minSqft > 0 || maxSqft < 999999) {
+    matchStage.livingArea = {
+      $gte: minSqft,
+      $lte: maxSqft
+    };
+  }
+
+  // Lot size
+  const minLotSize = Number(query.get("minLotSize") || "0");
+  const maxLotSize = Number(query.get("maxLotSize") || "9999999");
+  if (minLotSize > 0 || maxLotSize < 9999999) {
+    matchStage.lotSizeArea = {
+      $gte: minLotSize,
+      $lte: maxLotSize
+    };
+  }
+
+  // Year built
+  const minYear = Number(query.get("minYear") || "0");
+  const maxYear = Number(query.get("maxYear") || "9999");
+  if (minYear > 0 || maxYear < 9999) {
+    matchStage.yearBuilt = {
+      $gte: minYear,
+      $lte: maxYear
+    };
+  }
+
+  // Garages
+  const minGarages = Number(query.get("minGarages") || "0");
+  if (minGarages > 0) {
+    matchStage.$or = [
+      ...(matchStage.$or || []),
+      { garageSpaces: { $gte: minGarages } },
+      { parkingTotal: { $gte: minGarages } }
+    ];
+  }
+
   // Amenities
-  const hasPool = query.get("pool");
+  const hasPool = query.get("poolYn");
   if (hasPool === "true") matchStage.poolYn = true;
 
-  const hasSpa = query.get("spa");
+  const hasSpa = query.get("spaYn");
   if (hasSpa === "true") matchStage.spaYn = true;
+
+  const hasView = query.get("viewYn");
+  if (hasView === "true") matchStage.viewYn = true;
+
+  const hasGarage = query.get("garageYn");
+  if (hasGarage === "true") {
+    matchStage.$or = [
+      ...(matchStage.$or || []),
+      { garageSpaces: { $gt: 0 } },
+      { parkingTotal: { $gt: 0 } }
+    ];
+  }
+
+  // Community features
+  const gatedCommunityParam = query.get("gatedCommunity");
+  if (gatedCommunityParam === "true") matchStage.gatedCommunity = true;
+
+  const seniorCommunityParam = query.get("seniorCommunity");
+  if (seniorCommunityParam === "true") matchStage.seniorCommunityYn = true;
+
+  // HOA
+  const associationYN = query.get("associationYN");
+  if (associationYN === "true") {
+    matchStage.associationFee = { $gt: 0 };
+  } else if (associationYN === "false") {
+    matchStage.$or = [
+      ...(matchStage.$or || []),
+      { associationFee: { $exists: false } },
+      { associationFee: 0 }
+    ];
+  }
+
+  const hoa = query.get("hoa");
+  if (hoa && hoa !== "any") {
+    const hoaAmount = Number(hoa);
+    if (!isNaN(hoaAmount)) {
+      matchStage.associationFee = { $lte: hoaAmount };
+    }
+  }
 
   // Location filters
   const city = query.get("city");
   if (city && city !== "all") {
     matchStage.city = { $regex: new RegExp(city, "i") };
+  }
+
+  const subdivision = query.get("subdivision");
+  if (subdivision && subdivision !== "all") {
+    matchStage.subdivisionName = { $regex: new RegExp(subdivision, "i") };
+  }
+
+  // Land type (for land listings)
+  const landType = query.get("landType");
+  if (landType && landType !== "all") {
+    matchStage.landType = { $regex: new RegExp(landType, "i") };
   }
 
   const mlsSource = query.get("mlsSource");
@@ -258,38 +348,56 @@ export async function GET(req: NextRequest) {
 
       if (useRegionClustering) {
         // ==================== REGION-LEVEL CLUSTERING (ZOOM 5-6) ====================
-        // Query pre-aggregated regions directly from database
+        // Use static region boundaries as source of truth, enrich with MongoDB data if available
         console.log(`📊 Using region-level clustering for zoom ${zoom}`);
 
-        // Query regions directly from database (no aggregation needed!)
-        const regions = await Region.find({})
+        // Get ALL regions from static boundaries
+        const allRegionNames = Object.keys(REGION_BOUNDARIES);
+        console.log(`📍 Static region boundaries available: ${allRegionNames.join(', ')}`);
+
+        // Try to query regions from database for enriched data (may be empty)
+        const mongoRegions = await Region.find({})
           .select('name slug coordinates listingCount countyCount cityCount avgPrice priceRange mlsSources')
           .lean();
 
-        console.log(`✅ Found ${regions.length} regions with ${regions.reduce((sum, r: any) => sum + r.countyCount, 0)} counties total`);
+        console.log(`💾 Found ${mongoRegions.length} regions in database`);
 
-        // Use accurate region boundaries from GeoJSON data
-        const regionBoundaries = REGION_BOUNDARIES;
+        // Create lookup map for quick access to MongoDB data
+        const regionDataMap = new Map(
+          mongoRegions.map((r: any) => [r.name, r])
+        );
+
+        // Fallback coordinates and stats for each region (if no database data)
+        const regionDefaults: Record<string, { latitude: number; longitude: number }> = {
+          'Northern California': { latitude: 40.5, longitude: -122.0 },
+          'Central California': { latitude: 36.8, longitude: -119.4 },
+          'Southern California': { latitude: 34.0, longitude: -118.2 }
+        };
 
         // Transform to cluster format with polygon boundaries
-        clusters = regions.map((region: any) => ({
-          latitude: region.coordinates.latitude,
-          longitude: region.coordinates.longitude,
-          count: region.listingCount,
-          regionName: region.name,
-          countyCount: region.countyCount,
-          cityCount: region.cityCount,
-          avgPrice: region.avgPrice,
-          minPrice: region.priceRange?.min || 0,
-          maxPrice: region.priceRange?.max || 0,
-          mlsSources: region.mlsSources || [],
-          isCluster: true,
-          clusterType: 'region',
-          polygon: regionBoundaries[region.name] || null
-        }));
+        clusters = allRegionNames.map((regionName: string) => {
+          const dbRegion = regionDataMap.get(regionName);
+          const defaults = regionDefaults[regionName] || { latitude: 37.0, longitude: -119.0 };
+
+          return {
+            latitude: dbRegion?.coordinates?.latitude || defaults.latitude,
+            longitude: dbRegion?.coordinates?.longitude || defaults.longitude,
+            count: dbRegion?.listingCount || 0,
+            regionName: regionName,
+            countyCount: dbRegion?.countyCount || 0,
+            cityCount: dbRegion?.cityCount || 0,
+            avgPrice: dbRegion?.avgPrice || 0,
+            minPrice: dbRegion?.priceRange?.min || 0,
+            maxPrice: dbRegion?.priceRange?.max || 0,
+            mlsSources: dbRegion?.mlsSources || [],
+            isCluster: true,
+            clusterType: 'region',
+            polygon: REGION_BOUNDARIES[regionName] || null
+          };
+        });
 
         console.log(`✅ Created ${clusters.length} region clusters:`,
-          clusters.map(c => `${c.regionName}: ${c.count} listings, ${c.countyCount} counties`));
+          clusters.map(c => `${c.regionName}: ${c.count} listings (${c.polygon ? 'with polygon' : 'no polygon'})`));
 
         // Set clusterPipeline to null to skip additional aggregation
         clusterPipeline = null;

@@ -26,7 +26,7 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
     const fetchPhotosFromRoute = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/listing/${listingKey}/photos`, {
+        const res = await fetch(`/api/listings/${listingKey}/photos`, {
           headers: { Accept: "application/json" },
           cache: "no-store",
         });
@@ -47,7 +47,15 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
           return;
         }
 
-        setPhotos(data.photos);
+        // Transform API photos to carousel format
+        const transformedPhotos = data.photos.map((photo: any) => ({
+          id: photo.mediaKey,
+          caption: photo.caption || '',
+          src: photo.uri1280 || photo.uri1024 || photo.uri800 || photo.uri640 || '',
+          primary: photo.primary || false
+        }));
+
+        setPhotos(transformedPhotos);
       } catch (err) {
         console.error("❌ Error fetching photos from API route:", err);
         setPhotos([]);

@@ -1,41 +1,32 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+/**
+ * Photo Model - DEPRECATED
+ *
+ * Photos are now stored directly in unified_listings.media field.
+ * Use /api/listings/[listingKey]/photos endpoint instead.
+ *
+ * This model is kept for backward compatibility only.
+ */
 export interface IPhoto extends Document {
-  listingId: string; // foreign key to listing
-  photoId: string;
-  caption?: string;
-  uriThumb?: string;
-  uri300?: string;
-  uri640?: string;
+  listingKey: string;
+  mediaKey: string;
+  order?: number;
   uri800?: string;
   uri1024?: string;
-  uri1280?: string;
-  uri1600?: string;
-  uri2048?: string;
-  uriLarge?: string;
   primary?: boolean;
-  Order?: number; // Photo display order
 }
 
 const PhotoSchema: Schema<IPhoto> = new Schema({
-  listingId: { type: String, required: true, index: true },
-  photoId: { type: String, required: true, unique: true },
-  caption: String,
-  uriThumb: String,
-  uri300: String,
-  uri640: String,
+  listingKey: { type: String, required: true, index: true },
+  mediaKey: { type: String, required: true },
+  order: Number,
   uri800: String,
   uri1024: String,
-  uri1280: String,
-  uri1600: String,
-  uri2048: String,
-  uriLarge: String,
   primary: Boolean,
-  Order: Number,
 });
 
-// Compound index for optimized photo lookups
-PhotoSchema.index({ listingId: 1, primary: -1, Order: 1 });
+PhotoSchema.index({ listingKey: 1, order: 1 });
 
 // ✅ Avoid model recompilation in development
 const Photo: Model<IPhoto> = mongoose.models.Photo || mongoose.model<IPhoto>('Photo', PhotoSchema);

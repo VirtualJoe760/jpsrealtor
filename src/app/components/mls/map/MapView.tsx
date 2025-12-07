@@ -13,11 +13,12 @@ import {
 import Map, { Marker, Source, Layer, ViewState, Popup } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapListing } from "@/types/types";
-import { MapMarker, isServerCluster } from "@/app/utils/map/useMapClusters";
+import { MapMarker, isServerCluster, isRadialCluster } from "@/app/utils/map/useServerClusters";
 import AnimatedCluster from "./AnimatedCluster";
 import AnimatedMarker from "./AnimatedMarker";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import HoverStatsOverlay from './HoverStatsOverlay';
+import { formatPrice, getActivityColor } from "@/app/utils/map/colors";
 
 export interface MapViewHandles {
   flyToCity: (lat: number, lng: number, zoom?: number) => void;
@@ -60,50 +61,6 @@ const MAP_STYLES = {
     : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
 };
 
-function formatPrice(price?: number): string {
-  if (!price) return "—";
-  if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(1)}m`;
-  if (price >= 1_000) return `$${(price / 1_000).toFixed(0)}k`;
-  return `$${price}`;
-}
-
-// Calculate color based on listing activity
-// Light mode: High = Red, Medium = Yellow, Low = Blue, Zero = Gray
-// Dark mode: High = Red, Medium = Yellow, Low = Green, Zero = Gray
-function getActivityColor(
-  count: number,
-  allCounts: number[],
-  isLight: boolean
-): string {
-  // Zero listings = gray
-  if (count === 0) {
-    return isLight ? '#9ca3af' : '#6b7280';
-  }
-
-  // Filter out zeros for percentile calculation
-  const nonZeroCounts = allCounts.filter(c => c > 0);
-  if (nonZeroCounts.length === 0) {
-    return isLight ? '#9ca3af' : '#6b7280';
-  }
-
-  // Sort to find percentiles
-  const sorted = [...nonZeroCounts].sort((a, b) => a - b);
-  const percentile33 = sorted[Math.floor(sorted.length * 0.33)];
-  const percentile66 = sorted[Math.floor(sorted.length * 0.66)];
-
-  // Assign colors based on percentile
-  if (count >= percentile66) {
-    // High activity - RED
-    return isLight ? '#ef4444' : '#f87171';
-  } else if (count >= percentile33) {
-    // Medium activity - YELLOW
-    return isLight ? '#eab308' : '#fbbf24';
-  } else {
-    // Low activity - BLUE (light) or GREEN (dark)
-    return isLight ? '#3b82f6' : '#22c55e';
-  }
-}
-
 const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   {
     listings,
@@ -123,16 +80,36 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
+  // Detect mobile for lighter boundary colors
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [internalSelected, setInternalSelected] = useState<MapListing | null>(selectedListing ?? null);
   const [currentZoom, setCurrentZoom] = useState<number>(zoom ?? 5.5);
   const [hoveredPolygon, setHoveredPolygon] = useState<{
     name: string;
     count: number;
-    avgPrice: number;
+    medianPrice?: number;
+    avgPrice?: number;
     minPrice: number;
     maxPrice: number;
     type: 'county' | 'city' | 'region';
+  } | null>(null);
+
+  // California-wide statistics from database (all listings)
+  const [dbCaliforniaStats, setDbCaliforniaStats] = useState<{
+    count: number;
+    medianPrice: number;
+    minPrice: number;
+    maxPrice: number;
   } | null>(null);
 
   // Track the currently hovered feature for proper state cleanup
@@ -148,6 +125,27 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
+
+  // Fetch California-wide statistics from database on mount
+  useEffect(() => {
+    const fetchCaliforniaStats = async () => {
+      try {
+        console.log('[MapView] Fetching California-wide statistics from database...');
+        const res = await fetch('/api/california-stats');
+        if (res.ok) {
+          const stats = await res.json();
+          console.log('[MapView] California stats loaded:', stats);
+          setDbCaliforniaStats(stats);
+        } else {
+          console.error('[MapView] Failed to fetch California stats:', res.status);
+        }
+      } catch (error) {
+        console.error('[MapView] Error fetching California stats:', error);
+      }
+    };
+
+    fetchCaliforniaStats();
+  }, []);
 
   // Sync internal selection with prop
   useEffect(() => {
@@ -169,6 +167,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     pitch: 0,
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   };
+
 
   // Update map style dynamically
   useEffect(() => {
@@ -278,6 +277,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     const map = mapRef.current?.getMap?.();
     if (map) {
       const zoom = map.getZoom();
+      console.log(`🔍 [MapView] Setting currentZoom to: ${zoom} (was: ${currentZoom})`);
       setCurrentZoom(zoom);
     }
 
@@ -426,156 +426,79 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return polygonData.map(p => `${p.type}-${p.id}`).sort().join('|');
   }, [polygonData]);
 
-  // Calculate total listings count for default state
-  const totalListingsCount = useMemo(() => {
+  // Calculate California-wide stats from actual listings data
+  const californiaStats = useMemo(() => {
     const dataToRender = (markers && markers.length > 0) ? markers : listings;
-    if (!dataToRender || dataToRender.length === 0) return 0;
-
-    // Sum all listings from all markers/clusters
-    return dataToRender.reduce((total: number, marker: any) => {
-      if (isServerCluster(marker)) {
-        return total + (marker.count || 0);
-      }
-      return total + 1; // Individual listing
-    }, 0);
-  }, [markers, listings]);
-
-  // Register hover event handlers for polygon layers (only when polygon set changes)
-  useEffect(() => {
-    const map = mapRef.current?.getMap?.();
-    if (!map || polygonData.length === 0) return;
-
-    console.log('🎨 Registering polygon hover handlers for', polygonData.length, 'polygons');
-
-    const handlers: Array<{ layerId: string; type: string; handler: any }> = [];
-
-    const registerHandlers = () => {
-      // Track city indices to match rendering (cities can have duplicate names)
-      const cityIndexTracker: Record<string, number> = {};
-
-      // Register handlers for each polygon
-      polygonData.forEach((polygon) => {
-        let layerId: string;
-        let sourceName: string;
-
-        // Cities need special handling to match indexed IDs from rendering
-        if (polygon.type === 'city') {
-          const cityName = polygon.name;
-          const currentIndex = cityIndexTracker[cityName] || 0;
-          cityIndexTracker[cityName] = currentIndex + 1;
-          const indexedId = `${cityName}-${currentIndex}`;
-
-          layerId = `city-fill-${indexedId}`;
-          sourceName = `city-source-${indexedId}`;
-        } else {
-          // Regions and counties use simple IDs
-          layerId = `${polygon.type}-fill-${polygon.id}`;
-          sourceName = `${polygon.type}-source-${polygon.id}`;
-        }
-
-        // Check if layer exists before registering
-        if (!map.getLayer(layerId)) {
-          console.warn(`⚠️ Layer ${layerId} not found, skipping`);
-          return;
-        }
-        // Mouseenter handler
-        const onMouseEnter = (e: any) => {
-          console.log(`🎯 Hover ENTER: ${polygon.type} - ${polygon.name} (layer: ${layerId})`);
-          map.getCanvas().style.cursor = 'pointer';
-
-          // Clear previous hover state before setting new one
-          if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
-            console.log(`   ⏸️  Clearing previous: ${hoveredFeatureRef.current.source}`);
-            map.setFeatureState(
-              hoveredFeatureRef.current,
-              { hover: false }
-            );
-          }
-
-          if (e.features && e.features[0]) {
-            const featureRef = { source: sourceName, id: e.features[0].id };
-            console.log(`   ✅ Setting feature-state: source="${sourceName}", id=${e.features[0].id}, hover=true`);
-
-            // Verify source exists before setting state
-            if (map.getSource(sourceName)) {
-              map.setFeatureState(featureRef, { hover: true });
-              hoveredFeatureRef.current = featureRef;
-              console.log(`   ✨ Feature-state updated successfully`);
-            } else {
-              console.error(`   ❌ Source "${sourceName}" not found! Cannot set feature-state.`);
-            }
-          }
-
-          console.log(`   📊 Updating UI: "${polygon.name}" (${polygon.count} listings)`);
-          setHoveredPolygon({
-            name: polygon.name,
-            count: polygon.count,
-            avgPrice: polygon.avgPrice,
-            minPrice: polygon.minPrice,
-            maxPrice: polygon.maxPrice,
-            type: polygon.type,
-          });
-        };
-
-        // Mouseleave handler
-        const onMouseLeave = () => {
-          console.log(`👋 Hover LEAVE: ${polygon.type} - ${polygon.name}`);
-          map.getCanvas().style.cursor = 'default';
-
-          // Clear hover state for the specific feature
-          if (hoveredFeatureRef.current && map.getSource(hoveredFeatureRef.current.source)) {
-            console.log(`   ⏸️  Clearing hover state: ${hoveredFeatureRef.current.source}`);
-            map.setFeatureState(
-              hoveredFeatureRef.current,
-              { hover: false }
-            );
-            hoveredFeatureRef.current = null;
-          }
-
-          console.log(`   📊 Clearing UI (back to default)`);
-          setHoveredPolygon(null);
-        };
-
-        // Register hover handlers (click is handled via Map onClick)
-        map.on('mouseenter', layerId, onMouseEnter);
-        map.on('mouseleave', layerId, onMouseLeave);
-
-        // Track for cleanup
-        handlers.push(
-          { layerId, type: 'mouseenter', handler: onMouseEnter },
-          { layerId, type: 'mouseleave', handler: onMouseLeave }
-        );
-      });
-
-      console.log(`✅ Registered ${handlers.length} event handlers for polygons`);
-    }; // End of registerHandlers function
-
-    // Register handlers immediately if style is loaded, otherwise wait for it
-    if (map.isStyleLoaded()) {
-      console.log('✅ Style already loaded, registering handlers after small delay');
-      // Small delay to ensure all layers are fully added to the map
-      setTimeout(() => registerHandlers(), 50);
-    } else {
-      console.log('⏳ Waiting for style to load before registering handlers...');
-      const onStyleLoad = () => {
-        console.log('✅ Style loaded, registering handlers after small delay');
-        setTimeout(() => registerHandlers(), 50);
-      };
-      map.once('style.load', onStyleLoad);
+    if (!dataToRender || dataToRender.length === 0) {
+      return { count: 0, medianPrice: 0, minPrice: 0, maxPrice: 0 };
     }
 
-    // Cleanup function
-    return () => {
-      console.log('🧹 Cleaning up polygon hover handlers');
-      handlers.forEach(({ layerId, type, handler }) => {
-        try {
-          map.off(type, layerId, handler);
-        } catch (e) {
-          // Layer might not exist anymore
+    let totalCount = 0;
+    let allPrices: number[] = [];
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+
+    dataToRender.forEach((marker: any) => {
+      if (isServerCluster(marker)) {
+        // For clusters (regions/counties/cities), use count and track price range
+        const clusterCount = marker.count || 0;
+        if (clusterCount > 0) {
+          totalCount += clusterCount;
+
+          // For median calculation, use the cluster's representative price
+          const representativePrice = marker.medianPrice || marker.avgPrice;
+          if (representativePrice && representativePrice > 0) {
+            allPrices.push(representativePrice);
+          }
+
+          // Track min/max from cluster ranges
+          if (marker.minPrice && marker.minPrice > 0) {
+            minPrice = Math.min(minPrice, marker.minPrice);
+          }
+          if (marker.maxPrice && marker.maxPrice > 0) {
+            maxPrice = Math.max(maxPrice, marker.maxPrice);
+          }
         }
-      });
+      } else {
+        // Individual listing
+        totalCount += 1;
+        if (marker.listPrice && marker.listPrice > 0) {
+          allPrices.push(marker.listPrice);
+          minPrice = Math.min(minPrice, marker.listPrice);
+          maxPrice = Math.max(maxPrice, marker.listPrice);
+        }
+      }
+    });
+
+    // Handle case where no valid prices found
+    if (allPrices.length === 0) {
+      return { count: totalCount, medianPrice: 0, minPrice: 0, maxPrice: 0 };
+    }
+
+    // Calculate median from all representative prices
+    const sortedPrices = [...allPrices].sort((a, b) => a - b);
+    const mid = Math.floor(sortedPrices.length / 2);
+    const medianPrice = sortedPrices.length % 2 === 0
+      ? Math.round((sortedPrices[mid - 1] + sortedPrices[mid]) / 2)
+      : sortedPrices[mid];
+
+    console.log('📊 California Stats Calculation:', {
+      totalCount,
+      dataLength: dataToRender.length,
+      pricesCollected: allPrices.length,
+      medianPrice,
+      minPrice: minPrice === Infinity ? 0 : minPrice,
+      maxPrice: maxPrice === -Infinity ? 0 : maxPrice,
+      samplePrices: allPrices.slice(0, 5)
+    });
+
+    return {
+      count: totalCount,
+      medianPrice: Math.round(medianPrice),
+      minPrice: minPrice === Infinity ? 0 : Math.round(minPrice),
+      maxPrice: maxPrice === -Infinity ? 0 : Math.round(maxPrice)
     };
-  }, [polygonKey]); // Only re-run when the set of polygons changes
+  }, [markers, listings]);
 
   // Handle marker clicks
   const handleMarkerClick = (listing: MapListing) => {
@@ -636,16 +559,28 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Use markers if provided, otherwise fall back to listings
   const dataToRender = (markers && markers.length > 0) ? markers : listings;
 
+  console.log('🗺️ [MapView] dataToRender updated:', {
+    markersLength: markers?.length || 0,
+    listingsLength: listings.length,
+    usingMarkers: markers && markers.length > 0,
+    dataToRenderLength: dataToRender.length,
+    regionCount: dataToRender.filter((m: any) => m.clusterType === 'region').length,
+    countyCount: dataToRender.filter((m: any) => m.clusterType === 'county').length,
+    currentZoom: currentZoom.toFixed(2)
+  });
+
   // Enhanced logging for debugging zoom-based rendering
   useEffect(() => {
+    const flooredZoom = Math.floor(currentZoom);
     const regionCount = dataToRender.filter((m: any) => m.clusterType === 'region' && m.polygon).length;
     const countyCount = dataToRender.filter((m: any) => m.clusterType === 'county' && m.polygon).length;
     const cityCount = dataToRender.filter((m: any) => m.clusterType === 'city' && m.polygon).length;
     const listingCount = dataToRender.filter((m: any) => !isServerCluster(m)).length;
     const clusterCount = dataToRender.filter((m: any) => isServerCluster(m) && !['region', 'county', 'city'].includes((m as any).clusterType)).length;
 
-    console.log(`📊 MapView Render Data at Zoom ${Math.floor(currentZoom)}:`, {
-      zoom: Math.floor(currentZoom),
+    console.log(`📊 MapView Render Data at Zoom ${currentZoom.toFixed(2)} (floored: ${flooredZoom}):`, {
+      zoomRaw: currentZoom.toFixed(2),
+      zoomFloored: flooredZoom,
       regions: regionCount,
       counties: countyCount,
       cities: cityCount,
@@ -659,6 +594,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const handleMapClick = useCallback((event: any) => {
     if (panelOpen) return;
     if (!event.features || event.features.length === 0) return;
+
+    // Disable boundary click-to-zoom on mobile - let native gestures handle navigation
+    if (isMobile) {
+      console.log('🔇 Boundary click disabled on mobile - use native gestures');
+      return;
+    }
 
     const map = mapRef.current?.getMap?.();
     if (!map) return;
@@ -740,16 +681,25 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     } else if (polygonData.clusterType === 'county') {
       targetZoom = 10; // County → zoom to city view
     } else if (polygonData.clusterType === 'city') {
-      targetZoom = 12; // City → zoom to listing view
+      targetZoom = 13; // City → zoom to listing view
     }
 
+    // Get current zoom to determine if we need to force zoom in
+    const currentZoom = map.getZoom();
+
+    // Calculate padding based on mobile vs desktop
+    const padding = isMobile ? 80 : 50;
+
     // Fit map to polygon bounds with appropriate zoom level
+    // Always ensure we zoom in at least 1 level, or to the target zoom, whichever is greater
+    const minZoom = Math.max(targetZoom, currentZoom + 1);
+
     map.fitBounds(
       [[minLng, minLat], [maxLng, maxLat]],
       {
-        padding: 50,
+        padding: padding,
         duration: 1000,
-        maxZoom: targetZoom
+        minZoom: minZoom, // Ensure we always zoom in
       }
     );
 
@@ -784,18 +734,275 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     const layerIds: string[] = [];
 
-    dataToRender.forEach((marker: any) => {
-      if (marker.clusterType === 'region' && marker.polygon) {
+    // Regions
+    dataToRender
+      .filter((m: any) => m.clusterType === 'region' && m.polygon)
+      .forEach((marker: any) => {
         layerIds.push(`region-fill-${marker.regionName}`);
-      } else if (marker.clusterType === 'county' && marker.polygon) {
+      });
+
+    // Counties
+    dataToRender
+      .filter((m: any) => m.clusterType === 'county' && m.polygon)
+      .forEach((marker: any) => {
         layerIds.push(`county-fill-${marker.countyName}`);
-      } else if (marker.clusterType === 'city' && marker.polygon) {
-        layerIds.push(`city-fill-${marker.cityName}`);
-      }
-    });
+      });
+
+    // Cities - must match the indexing used in rendering (filtered then indexed)
+    dataToRender
+      .filter((m: any) => m.clusterType === 'city' && m.polygon)
+      .forEach((marker: any, i: number) => {
+        layerIds.push(`city-fill-${marker.cityName}-${i}`);
+      });
 
     return layerIds;
   }, [dataToRender]);
+
+  // Register hover event handlers for polygon layers (simplified and more reliable)
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+
+    console.log('🎨 Setting up global hover handlers for all polygon layers');
+
+    // Global mousemove handler - simpler and more reliable than per-layer handlers
+    const onMouseMove = (e: any) => {
+      // Query all polygon layers at mouse position
+      // Don't filter by layers - just get all features and filter by our layer IDs
+      const allFeatures = map.queryRenderedFeatures(e.point);
+
+      // Filter to only our polygon layers
+      const features = allFeatures.filter((f: any) => {
+        const layerId = f.layer?.id;
+        return layerId && (
+          layerId.startsWith('region-fill-') ||
+          layerId.startsWith('county-fill-') ||
+          layerId.startsWith('city-fill-')
+        );
+      });
+
+      if (features.length > 0) {
+        const feature = features[0];
+        const layerId = feature.layer.id;
+
+        // Extract polygon type and name from layer ID
+        let polygonType: string | null = null;
+        let polygonName: string | null = null;
+
+        if (layerId.startsWith('region-fill-')) {
+          polygonType = 'region';
+          polygonName = layerId.replace('region-fill-', '');
+        } else if (layerId.startsWith('county-fill-')) {
+          polygonType = 'county';
+          polygonName = layerId.replace('county-fill-', '');
+        } else if (layerId.startsWith('city-fill-')) {
+          polygonType = 'city';
+          // Extract city name (remove index suffix if present)
+          const extracted = layerId.replace('city-fill-', '');
+          polygonName = extracted.split('-').slice(0, -1).join('-') || extracted;
+        }
+
+        if (polygonType && polygonName) {
+          // Find matching polygon data
+          const polygon = dataToRender.find((m: any) => {
+            if (polygonType === 'region') return m.clusterType === 'region' && m.regionName === polygonName;
+            if (polygonType === 'county') return m.clusterType === 'county' && m.countyName === polygonName;
+            if (polygonType === 'city') return m.clusterType === 'city' && m.cityName?.startsWith(polygonName);
+            return false;
+          });
+
+          if (polygon) {
+            map.getCanvas().style.cursor = 'pointer';
+
+            // Update hover state only if it changed
+            const currentName = polygon.regionName || polygon.countyName || polygon.cityName;
+            if (!hoveredPolygon || hoveredPolygon.name !== currentName) {
+              setHoveredPolygon({
+                name: currentName,
+                count: polygon.count,
+                medianPrice: polygon.medianPrice,
+                avgPrice: polygon.avgPrice,
+                minPrice: polygon.minPrice,
+                maxPrice: polygon.maxPrice,
+                type: polygonType,
+              });
+            }
+
+            // Set feature state for visual hover effect
+            const sourceName = layerId.replace('-fill-', '-source-').replace('-outline-', '-source-').replace('-shadow-', '-source-');
+            if (feature.id !== undefined) {
+              // Clear previous hover state
+              if (hoveredFeatureRef.current && hoveredFeatureRef.current.source !== sourceName) {
+                try {
+                  // Check if source still exists before clearing
+                  if (map.getSource(hoveredFeatureRef.current.source)) {
+                    map.setFeatureState(hoveredFeatureRef.current, { hover: false });
+                  }
+                } catch (e) {
+                  // Source might not exist anymore - silently ignore
+                }
+              }
+
+              // Set new hover state
+              try {
+                // Check if source exists before setting state
+                if (map.getSource(sourceName)) {
+                  const featureRef = { source: sourceName, id: feature.id };
+                  map.setFeatureState(featureRef, { hover: true });
+                  hoveredFeatureRef.current = featureRef;
+                }
+              } catch (e) {
+                // Source might not exist - silently ignore
+              }
+            }
+            return; // Found a polygon, don't clear hover state
+          }
+        }
+      }
+
+      // No polygon under cursor - clear hover state
+      if (hoveredPolygon) {
+        map.getCanvas().style.cursor = 'default';
+        setHoveredPolygon(null);
+
+        if (hoveredFeatureRef.current) {
+          try {
+            // Check if source still exists before clearing
+            if (map.getSource(hoveredFeatureRef.current.source)) {
+              map.setFeatureState(hoveredFeatureRef.current, { hover: false });
+            }
+          } catch (e) {
+            // Source might not exist anymore - silently ignore
+          }
+          hoveredFeatureRef.current = null;
+        }
+      }
+    };
+
+    // Register global mousemove handler
+    map.on('mousemove', onMouseMove);
+    console.log('✅ Global hover handler registered');
+
+    // Cleanup
+    return () => {
+      console.log('🧹 Cleaning up global hover handler');
+      map.off('mousemove', onMouseMove);
+
+      // Clear any remaining hover state
+      if (hoveredFeatureRef.current) {
+        try {
+          // Check if source still exists before clearing
+          if (map.getSource(hoveredFeatureRef.current.source)) {
+            map.setFeatureState(hoveredFeatureRef.current, { hover: false });
+          }
+        } catch (e) {
+          // Silently ignore - source might not exist anymore
+        }
+        hoveredFeatureRef.current = null;
+      }
+    };
+  }, [dataToRender, hoveredPolygon]); // Re-run when data changes
+
+  // Determine contextual boundary based on current map view (when not hovering)
+  const contextualBoundary = useMemo(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !dataToRender || dataToRender.length === 0) return null;
+
+    const center = map.getCenter();
+    const flooredZoom = Math.floor(currentZoom);
+
+    console.log('[contextualBoundary] Checking boundaries at zoom', flooredZoom, 'center:', center);
+
+    // Helper to check if point is in polygon
+    const pointInPolygon = (point: [number, number], polygon: any): boolean => {
+      // Simple point-in-polygon check
+      const [lng, lat] = point;
+      let inside = false;
+
+      const flattenCoords = (coords: any): [number, number][] => {
+        if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+          return coords;
+        }
+        return coords.flat(2).reduce((acc: [number, number][], val: any, i: number, arr: any[]) => {
+          if (i % 2 === 0 && typeof val === 'number' && typeof arr[i + 1] === 'number') {
+            acc.push([val, arr[i + 1]]);
+          }
+          return acc;
+        }, []);
+      };
+
+      const points = flattenCoords(polygon);
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const [xi, yi] = points[i];
+        const [xj, yj] = points[j];
+        if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+          inside = !inside;
+        }
+      }
+      return inside;
+    };
+
+    // Priority order: City (zoom 10-11) > County (zoom 7-9) > Region (zoom 4-6)
+    if (flooredZoom >= 10 && flooredZoom <= 11) {
+      // Check if center is in a city boundary
+      const city = dataToRender.find((m: any) =>
+        m.clusterType === 'city' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
+      );
+      if (city) {
+        return {
+          name: city.cityName,
+          count: city.count || 0,
+          medianPrice: city.medianPrice,
+          avgPrice: city.avgPrice,
+          minPrice: city.minPrice || 0,
+          maxPrice: city.maxPrice || 0,
+          type: 'city' as const
+        };
+      }
+    }
+
+    if (flooredZoom >= 7 && flooredZoom <= 9) {
+      // Check if center is in a county boundary
+      const county = dataToRender.find((m: any) =>
+        m.clusterType === 'county' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
+      );
+      if (county) {
+        return {
+          name: county.countyName,
+          count: county.count || 0,
+          medianPrice: county.medianPrice,
+          avgPrice: county.avgPrice,
+          minPrice: county.minPrice || 0,
+          maxPrice: county.maxPrice || 0,
+          type: 'county' as const
+        };
+      }
+    }
+
+    if (flooredZoom >= 4 && flooredZoom <= 6) {
+      // Check if center is in a region boundary
+      const region = dataToRender.find((m: any) =>
+        m.clusterType === 'region' && m.polygon && pointInPolygon([center.lng, center.lat], m.polygon)
+      );
+      if (region) {
+        console.log('[contextualBoundary] Found region:', region.regionName, 'count:', region.count);
+        return {
+          name: region.regionName,
+          count: region.count || 0,
+          medianPrice: region.medianPrice,
+          avgPrice: region.avgPrice,
+          minPrice: region.minPrice || 0,
+          maxPrice: region.maxPrice || 0,
+          type: 'region' as const
+        };
+      } else {
+        console.log('[contextualBoundary] No region found at zoom', flooredZoom);
+      }
+    }
+
+    console.log('[contextualBoundary] No boundary found for current position');
+    return null;
+  }, [dataToRender, currentZoom]);
 
   return (
     <div ref={wrapperRef} className="relative w-full h-full">
@@ -812,12 +1019,37 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         interactiveLayerIds={interactiveLayerIds}
       >
         {/* Hover Stats Overlay */}
-        <HoverStatsOverlay data={hoveredPolygon} totalListings={totalListingsCount} />
+        <HoverStatsOverlay
+          data={hoveredPolygon}
+          californiaStats={dbCaliforniaStats || californiaStats}
+          contextualBoundary={contextualBoundary}
+        />
 
-        {/* Render region polygon overlays for zoom 5-6 ONLY */}
-        {dataToRender && dataToRender.length > 0 && currentZoom >= 5 && currentZoom <= 6 && dataToRender.some((m: any) => m.clusterType === 'region' && m.polygon) && (
+        {/* Render region polygon overlays for zoom 4-6 */}
+        {(() => {
+          const hasData = dataToRender && dataToRender.length > 0;
+          const flooredZoom = Math.floor(currentZoom);
+          const zoomInRange = flooredZoom >= 4 && flooredZoom <= 6;
+          const hasRegions = dataToRender?.some((m: any) => m.clusterType === 'region' && m.polygon);
+          const shouldRender = hasData && zoomInRange && hasRegions;
+
+          console.log(`[MapView] 🔍 REGION RENDER CHECK at zoom ${currentZoom.toFixed(2)} (floored: ${flooredZoom}):`, {
+            hasData,
+            dataLength: dataToRender?.length || 0,
+            zoomInRange: `floor(${currentZoom}) = ${flooredZoom}, ${flooredZoom} >= 4 && ${flooredZoom} <= 6 = ${zoomInRange}`,
+            hasRegions,
+            regionCount: dataToRender?.filter((m: any) => m.clusterType === 'region').length || 0,
+            regionsWithPolygon: dataToRender?.filter((m: any) => m.clusterType === 'region' && m.polygon).length || 0,
+            shouldRender: shouldRender ? '✅ YES' : '❌ NO',
+            reason: !hasData ? 'No data' : !zoomInRange ? `Floored zoom ${flooredZoom} not in range 4-6` : !hasRegions ? 'No regions with polygons' : 'OK'
+          });
+
+          return shouldRender;
+        })() && (
           <>
             {(() => {
+              console.log(`[MapView] ✅ Rendering ${dataToRender.filter((m: any) => m.clusterType === 'region' && m.polygon).length} region polygons`);
+
               // Calculate all region counts for color percentiles
               const regionCounts = dataToRender
                 .filter((m: any) => m.clusterType === 'region' && m.polygon)
@@ -885,8 +1117,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-color': regionColor,
                         'fill-opacity': ['case',
                           ['boolean', ['feature-state', 'hover'], false],
-                          0.55,  // hover - more dramatic
-                          0.35   // base - more visible
+                          isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
+                          isMobile ? 0.25 : 0.35   // base - lighter on mobile
                         ]
                       }}
                     />
@@ -937,8 +1169,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           </>
         )}
 
-        {/* Render county polygon overlays for zoom 7-9 ONLY */}
-        {dataToRender && dataToRender.length > 0 && currentZoom >= 7 && currentZoom <= 9 && dataToRender.some((m: any) => m.clusterType === 'county' && m.polygon) && (
+        {/* Render county polygon overlays for zoom 7-9 ONLY (can show WITH individual listings) */}
+        {(() => {
+          const flooredZoom = Math.floor(currentZoom);
+          const hasCounties = dataToRender?.some((m: any) => m.clusterType === 'county' && m.polygon);
+          // Show county boundaries if we have counties (can coexist with individual listings)
+          return dataToRender && dataToRender.length > 0 && flooredZoom >= 7 && flooredZoom <= 9 && hasCounties;
+        })() && (
           <>
             {(() => {
               // Calculate all county counts for color percentiles
@@ -1004,13 +1241,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.35,  // hover - more visible for zero listings
-                              0.20   // base - visible enough to see boundaries
+                              isMobile ? 0.25 : 0.35,  // hover - lighter on mobile for zero listings
+                              isMobile ? 0.12 : 0.20   // base - lighter on mobile
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.55,  // hover - more dramatic
-                              0.35   // base - more visible
+                              isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
+                              isMobile ? 0.25 : 0.35   // base - lighter on mobile
                             ]
                       }}
                     />
@@ -1064,7 +1301,10 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
 
         {/* Render city polygon overlays for zoom 10-11 ONLY */}
-        {dataToRender && dataToRender.length > 0 && currentZoom >= 10 && currentZoom <= 11 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon) && (
+        {(() => {
+          const flooredZoom = Math.floor(currentZoom);
+          return dataToRender && dataToRender.length > 0 && flooredZoom >= 10 && flooredZoom <= 11 && dataToRender.some((m: any) => m.clusterType === 'city' && m.polygon);
+        })() && (
           <>
             {(() => {
               // Calculate all city counts for color percentiles
@@ -1130,13 +1370,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.30,  // hover - more visible for zero listings
-                              0.15   // base - visible enough to see boundaries
+                              isMobile ? 0.20 : 0.30,  // hover - lighter on mobile for zero listings
+                              isMobile ? 0.08 : 0.15   // base - lighter on mobile
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              0.55,  // hover - more dramatic
-                              0.35   // base - more visible
+                              isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
+                              isMobile ? 0.25 : 0.35   // base - lighter on mobile
                             ]
                       }}
                     />
@@ -1180,33 +1420,52 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {dataToRender && dataToRender.length > 0 ? (
           dataToRender
             .filter((marker, i) => {
-              // At zoom 12, cap at 600 listings (not clusters)
+              const isCluster = isServerCluster(marker) || isRadialCluster(marker);
+
+              // Below zoom 12: Only show clusters (no individual listings)
+              if (currentZoom < 12) {
+                return isCluster;
+              }
+
+              // At zoom 12: Cap at 600 individual listings, show all clusters
               if (currentZoom >= 12 && currentZoom < 13) {
                 // Always render clusters
-                if (isServerCluster(marker)) return true;
+                if (isCluster) return true;
                 // For individual listings, only show first 600
-                const listingIndex = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m)).length;
+                const listingIndex = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m) && !isRadialCluster(m)).length;
                 return listingIndex <= 600;
               }
-              // At zoom 13+, show all listings
+
+              // At zoom 13+: Show all listings and clusters
               return true;
             })
             .map((marker, i) => {
-            if (isServerCluster(marker)) {
+            if (isServerCluster(marker) || isRadialCluster(marker)) {
+              const clusterTypeValue = (marker as any).clusterType;
+
               // Skip rendering markers for region, county, and city clusters (they have polygon overlays instead)
-              if ((marker as any).clusterType === 'region' || (marker as any).clusterType === 'county' || (marker as any).clusterType === 'city') {
+              if (clusterTypeValue === 'region' || clusterTypeValue === 'county' || clusterTypeValue === 'city') {
                 return null;
               }
 
-              // Render server-side cluster
+              // Below zoom 12: Don't render ANY cluster markers (only polygons should show)
+              if (currentZoom < 12) {
+                return null;
+              }
+
+              // Render server-side cluster or radial cluster (zoom 12+)
               const size = Math.min(40 + marker.count * 0.01, 80);
-              console.log(`🎨 Rendering cluster #${i}:`, {
+              const clusterType = isRadialCluster(marker) ? 'radial' : ((marker as any).clusterType || 'city');
+
+              console.log(`🎨 Rendering ${clusterType} cluster #${i}:`, {
                 lat: marker.latitude,
                 lng: marker.longitude,
                 count: marker.count,
                 size,
-                isCluster: marker.isCluster
+                isCluster: marker.isCluster,
+                clusterType
               });
+
               return (
                 <Marker
                   key={`cluster-${marker.latitude}-${marker.longitude}-${i}`}
@@ -1225,7 +1484,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     subdivisionName={(marker as any).subdivisionName}
                     countyName={(marker as any).countyName}
                     photoUrl={(marker as any).photoUrl}
-                    clusterType={(marker as any).clusterType || 'city'}
+                    clusterType={clusterType}
                   />
                 </Marker>
               );
@@ -1240,7 +1499,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
               return (
                 <Marker
-                  key={listing._id || `marker-${i}`}
+                  key={listing.listingKey || listing._id || `marker-${i}`}
                   longitude={listing.longitude}
                   latitude={listing.latitude}
                   anchor="bottom"
