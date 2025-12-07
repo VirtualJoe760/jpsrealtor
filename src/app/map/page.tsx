@@ -9,7 +9,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
-import { useTheme } from "@/app/contexts/ThemeContext";
+import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
+import LoadingGlobe from "@/app/components/LoadingGlobe";
 
 // Dynamic imports for map components (client-side only)
 const MapView = dynamicImport(
@@ -34,7 +35,7 @@ const DEFAULT_BOUNDS = {
   south: 32.5,
   east: -114.0,
   west: -124.5,
-  zoom: 5.5,
+  zoom: 4.8,
 };
 
 function MapPageContent() {
@@ -60,11 +61,14 @@ function MapPageContent() {
     toggleFavorite,
     removeFavorite,
     clearFavorites,
+    removeDislike,
+    clearDislikes,
     swipeQueue,
     totalCount,
   } = useMLSContext();
 
   const { currentTheme } = useTheme();
+  const { bgPrimary, textPrimary, cardBg } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -73,7 +77,23 @@ function MapPageContent() {
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [mapBounds, setMapBounds] = useState(DEFAULT_BOUNDS);
+
+  // Detect mobile for initial zoom
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Use mobile-specific zoom
+  const [mapBounds, setMapBounds] = useState({
+    ...DEFAULT_BOUNDS,
+    zoom: isMobile ? 4 : 4.8
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -303,11 +323,8 @@ function MapPageContent() {
 
   if (!mounted) {
     return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-          <p className="text-neutral-400">Loading map...</p>
-        </div>
+      <div className={`h-screen w-screen flex items-center justify-center ${bgPrimary}`}>
+        <LoadingGlobe message="Loading map..." size={140} />
       </div>
     );
   }
@@ -316,26 +333,27 @@ function MapPageContent() {
     <div className="h-screen w-screen relative bg-black" data-page="map">
       {isLoading && markers.length === 0 ? (
         // Loading state
-        <div className="h-full w-full flex items-center justify-center bg-black">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-            <p className="text-neutral-400">Loading listings...</p>
-          </div>
+        <div className={`h-full w-full flex items-center justify-center ${bgPrimary}`}>
+          <LoadingGlobe message="Loading listings..." size={140} />
         </div>
       ) : markers.length === 0 ? (
         // Empty state
-        <div className="h-full w-full flex items-center justify-center bg-black">
+        <div className={`h-full w-full flex items-center justify-center ${bgPrimary}`}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center gap-6 text-center"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center">
+            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${
+              isLight
+                ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                : 'bg-gradient-to-br from-emerald-500 to-cyan-500'
+            }`}>
               <MapPin className="w-10 h-10 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl font-light text-white mb-2">Map View</h2>
-              <p className="text-neutral-400 max-w-md">
+              <h2 className={`text-3xl font-light ${textPrimary} mb-2`}>Map View</h2>
+              <p className={`${textPrimary} opacity-70 max-w-md`}>
                 No properties found. Adjust your filters or try a different area.
               </p>
             </div>
@@ -357,20 +375,24 @@ function MapPageContent() {
             mapStyle={mapStyle}
           />
 
-          {/* Favorites Toggle Button - Top Right - Hidden when panel is open */}
+          {/* Favorites Toggle Button - Top Right, aligned with hamburger menu */}
           <AnimatePresence>
             {!favoritesPannelOpen && (
               <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setFavoritesPannelOpen(true)}
-                className="absolute top-4 right-4 z-40 bg-black/80 backdrop-blur-lg px-3 sm:px-4 py-2.5 sm:py-2 rounded-full border border-neutral-700 hover:border-emerald-500 active:border-emerald-400 transition-all flex items-center gap-2 touch-manipulation"
+                className={`fixed top-4 right-4 z-[60] rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation md:w-auto md:px-4 md:py-2 md:gap-2 ${
+                  isLight
+                    ? 'bg-white/90 hover:bg-white'
+                    : 'bg-black/85 hover:bg-black/90'
+                } w-16 h-16 md:h-auto backdrop-blur-xl shadow-lg`}
               >
-                <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${likedListings.length > 0 ? 'text-red-500 fill-red-500' : 'text-neutral-300'}`} />
-                <span className="text-sm sm:text-base text-white font-medium">{likedListings.length}</span>
-                <List className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-300" />
+                <Heart className={`w-6 h-6 ${likedListings.length > 0 ? 'text-red-500 fill-red-500' : isLight ? 'text-gray-600' : 'text-emerald-400'}`} />
+                <span className={`hidden md:inline text-base font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{likedListings.length}</span>
+                <List className={`hidden md:inline w-5 h-5 ${isLight ? 'text-gray-600' : 'text-emerald-400'}`} />
               </motion.button>
             )}
           </AnimatePresence>
@@ -386,12 +408,8 @@ function MapPageContent() {
             onSelectListing={handleSelectListing}
             onRemoveFavorite={removeFavorite}
             onClearFavorites={clearFavorites}
-            onRemoveDislike={(listing) => {
-              console.log("Remove dislike for:", listing.address);
-            }}
-            onClearDislikes={() => {
-              console.log("Clear all dislikes");
-            }}
+            onRemoveDislike={removeDislike}
+            onClearDislikes={clearDislikes}
           />
 
           {/* Listing Bottom Panel */}
@@ -414,10 +432,18 @@ function MapPageContent() {
 
           {/* Loading indicator for listing details */}
           {isLoadingListing && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-lg px-4 py-2 rounded-full border border-neutral-700">
+            <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-50 backdrop-blur-lg px-4 py-2 rounded-full ${
+              isLight
+                ? 'bg-white/95 border border-gray-300'
+                : 'bg-black/80 border border-neutral-700'
+            }`}>
               <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
-                <span className="text-sm text-neutral-300">Loading details...</span>
+                <Loader2 className={`w-4 h-4 animate-spin ${
+                  isLight ? 'text-blue-500' : 'text-emerald-500'
+                }`} />
+                <span className={`text-sm ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+                  Loading details...
+                </span>
               </div>
             </div>
           )}
@@ -432,10 +458,10 @@ function MapPageContent() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setControlsExpanded(true)}
-                className={`mx-auto sm:mx-0 sm:w-full backdrop-blur-xl border-b border-x sm:border rounded-b-xl sm:rounded-lg px-4 py-2 sm:py-2.5 transition-all flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto ${
+                className={`mx-auto sm:mx-0 sm:w-full sm:backdrop-blur-xl border-b border-x sm:border rounded-b-xl sm:rounded-lg px-4 py-2 sm:py-2.5 transition-all flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto ${
                   isLight
-                    ? 'bg-white/95 border-gray-300 hover:bg-blue-50 hover:border-blue-500 active:bg-blue-100'
-                    : 'bg-black/95 border-neutral-800 hover:bg-neutral-900/95 hover:border-emerald-500 active:bg-neutral-800/95'
+                    ? 'bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-500 active:bg-blue-100 sm:bg-white/95'
+                    : 'bg-black border-neutral-800 hover:bg-neutral-900 hover:border-emerald-500 active:bg-neutral-800 sm:bg-black/95'
                 }`}
                 style={{ width: 'fit-content' }}
               >

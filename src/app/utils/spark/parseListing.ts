@@ -1,6 +1,6 @@
-import type { IListing } from "@/models/listings";
+import type { IUnifiedListing } from "@/models/unified-listing";
 
-export function parseListing(raw: any): Partial<IListing> {
+export function parseListing(raw: any): Partial<IUnifiedListing> {
   const sf = raw?.StandardFields ?? {};
   const custom = raw?.CustomFields ?? [];
 

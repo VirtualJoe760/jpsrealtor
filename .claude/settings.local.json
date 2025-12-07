@@ -83,7 +83,20 @@
       "Bash(timeout 120 npm run build:*)",
       "Bash(git reset:*)",
       "Bash(/tmp/mapview_part1.txt)",
-      "Bash(/tmp/mapview_part2.txt)"
+      "Bash(/tmp/mapview_part2.txt)",
+      "Bash(timeout 180 npm run build)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 10 curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(wmic process:*)",
+      "Bash(if [ -n \"$NEXTAUTH_SECRET\" ])",
+      "Bash(then echo \"✅ NEXTAUTH_SECRET is set\")",
+      "Bash(else echo \"❌ NEXTAUTH_SECRET is NOT set\")",
+      "Bash(while read file)",
+      "Bash(do:*)",
+      "Bash(done)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

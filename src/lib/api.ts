@@ -1,8 +1,8 @@
 // src/lib/api.ts
 
-import { IListing } from "@/models/listings";
+import { IUnifiedListing } from "@/models/unified-listing";
 
-export interface MapListing extends IListing {
+export interface MapListing extends IUnifiedListing {
   primaryPhotoUrl: string;
 }
 

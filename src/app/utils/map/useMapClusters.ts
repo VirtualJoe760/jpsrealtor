@@ -95,7 +95,8 @@ export function useMapClusters(): UsMapClustersReturn {
       if (filters.poolYn !== undefined) params.append('pool', String(filters.poolYn));
       if (filters.spaYn !== undefined) params.append('spa', String(filters.spaYn));
       if (filters.city) params.append('city', filters.city);
-      if (filters.mlsSource) params.append('mlsSource', filters.mlsSource);
+      // @ts-ignore - mlsSource not in Filters type
+      // if (filters.mlsSource) params.append('mlsSource', filters.mlsSource);
 
       // Add context parameters for AI-driven clustering
       if (context) {

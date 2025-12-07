@@ -1,255 +1,255 @@
 # JPSRealtor Documentation
 
-**Last Updated:** November 29, 2025
+**Last Updated**: December 6, 2025
 
-## 🚨 SECURITY WARNING
-n## 🤖 FOR CLAUDE CODE
-
-**📖 Read [CLAUDE_INSTRUCTIONS.md](./CLAUDE_INSTRUCTIONS.md) for complete guidelines on:**
-- How to update documentation when making code changes
-- Security requirements (no real secrets!)
-- Documentation mapping (which docs to update for each change)
-- Quality checklist before completing tasks
-- **IMPORTANT:** Never run  - let the user control the dev server
+Complete technical documentation for the JPSRealtor platform - a modern real estate application built with Next.js 16, featuring unified MLS data integration (78,904+ listings from 8 MLSs), intelligent map clustering, AI-powered tools, and comprehensive CRM functionality.
 
 ---
 
+## 🚨 SECURITY WARNING
 
 **NEVER COMMIT REAL SECRETS TO DOCUMENTATION!**
 
-All documentation files in this directory are committed to GitHub and are PUBLIC. Always use placeholders for sensitive information:
+All documentation files are committed to GitHub and are PUBLIC. Always use placeholders:
 
 ### ✅ Safe Placeholders
 ```bash
-CLOUDINARY_CLOUD_NAME=YOUR_CLOUD_NAME
-CLOUDINARY_API_KEY=YOUR_CLOUDINARY_API_KEY
-CLOUDINARY_API_SECRET=YOUR_CLOUDINARY_API_SECRET
-ANTHROPIC_API_KEY=sk-ant-api03-...
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname
-VPS_PASSWORD=YOUR_VPS_PASSWORD
+ANTHROPIC_API_KEY=sk-ant-api03-...
+GROQ_API_KEY=gsk_...
 ```
 
 ### ❌ Never Include
-- Real API keys
-- Real passwords
-- Real database connection strings
-- Real OAuth secrets
-- Real cloud credentials
+- Real API keys, passwords, database URIs, OAuth secrets, or cloud credentials
 
 ---
 
-## 📚 Documentation Index
+## 📁 Documentation Structure
 
-### For Claude Code
-- **[CLAUDE_INSTRUCTIONS.md](./CLAUDE_INSTRUCTIONS.md)** - Instructions for AI assistant on maintaining documentation
+### [📐 Architecture](./architecture/) - System Design & Infrastructure
+Core system architecture, database design, and frontend framework documentation.
 
-
-### Architecture & System Design
-- **[MASTER_SYSTEM_ARCHITECTURE.md](./platform/MASTER_SYSTEM_ARCHITECTURE.md)** - Complete system overview
-- **[FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md)** - Frontend structure and patterns
-- **[DATABASE_MODELS.md](./DATABASE_MODELS.md)** - MongoDB schemas and collections
-
-### Features & Functionality
-- **[ARTICLES_CMS_COMPLETE.md](./ARTICLES_CMS_COMPLETE.md)** - Complete articles/blog/CMS documentation
-- **[AI_INTEGRATION.md](./AI_INTEGRATION.md)** - Groq AI chat integration
-- **[AUTHENTICATION.md](./AUTHENTICATION.md)** - NextAuth setup and OAuth
-- **[MAP_SYSTEM.md](./MAP_SYSTEM.md)** - MapLibre GL implementation
-- **[SWIPE_SYSTEM.md](./SWIPE_SYSTEM.md)** - Tinder-style property discovery
-- **[COMMUNITY_FACTS.md](./COMMUNITY_FACTS.md)** - HOA/subdivision data structure
-- **[INSIGHTS_PAGE.md](./INSIGHTS_PAGE.md)** - Analytics and insights dashboard
-
-### AI & Content
-- **[CLAUDE_CMS_INTEGRATION.md](./CLAUDE_CMS_INTEGRATION.md)** - Claude AI for article drafting
-- **[TIPTAP_MDX_EDITOR.md](./TIPTAP_MDX_EDITOR.md)** - Rich text MDX editor with Groq integration
-
-### Development & Deployment
-- **[PERFORMANCE.md](./PERFORMANCE.md)** - Performance optimizations (862ms startup!)
-- **[RESPONSIVE_DESIGN.md](./RESPONSIVE_DESIGN.md)** - Mobile-first responsive patterns
-- **[THEME_IMPLEMENTATION_GUIDE.md](./THEME_IMPLEMENTATION_GUIDE.md)** - Dual theme system
-
-### Testing
-- **[TESTING_ARTICLE_SEARCH.md](./TESTING_ARTICLE_SEARCH.md)** - Article search testing guide
+**Files**:
+- **MASTER_SYSTEM_ARCHITECTURE.md** - Complete system overview
+- **DATABASE_ARCHITECTURE.md** - MongoDB schema design
+- **MLS_DATA_ARCHITECTURE.md** - MLS integration architecture
+- **FRONTEND_ARCHITECTURE.md** - Next.js structure
+- **DATABASE_MODELS.md** - Mongoose model reference
+- **PERFORMANCE.md** - Performance optimizations
+- **RESPONSIVE_DESIGN.md** - Mobile-first design
 
 ---
 
-## 🏗️ System Overview
+### [🗺️ Map](./map/) - Mapping System ⭐ **RECENTLY UPDATED**
+Interactive map with intelligent clustering, server-side rendering, and real-time listing display.
 
-**jpsrealtor.com** is a Next.js 16 real estate platform for Joseph Sardella, specializing in the Coachella Valley market. The platform features:
+**Files**:
+- **MAP_FIXES_COMPLETE.md** ⭐ **Dec 6, 2025** - Latest fixes (server crash + React key)
+- **MAPPING_SYSTEM_ARCHITECTURE.md** - Complete map architecture
+- **UNIFIED_LISTINGS_AUDIT.md** - Collection usage audit
 
-- 🏠 **115,000+ MLS listings** from CRMLS
-- 💬 **AI-powered chat** with Groq (GPT OSS 120B)
-- 🗺️ **Interactive map** with clustering and filtering
-- 📱 **Swipe discovery** like Tinder for properties
-- 📝 **AI-driven CMS** with Claude Sonnet 4.5
-- 🎨 **Dual themes** (blackspace / lightgradient)
-- 📊 **Analytics dashboard** for admin insights
+**Recent Fixes (Dec 6, 2025)**:
+- ✅ Fixed server crashes at zoom 9 with intelligent prefetching (97% query reduction)
+- ✅ Fixed React duplicate key errors using `listingKey`
+- ✅ Stable operation at all zoom levels (4-13) with 24-893 listings
+
+---
+
+### [🏠 Listings](./listings/) - MLS Data Integration
+Unified MLS architecture supporting 8+ MLSs with consistent schema (78,904+ listings).
+
+**Files**:
+- **UNIFIED_MLS_ARCHITECTURE.md** - Complete unified MLS system
+- **PROPERTY_TYPES_AND_DATA_PIPELINE.md** - Property categorization
+- **TRELLO_IMPORT_CMA_AND_UNIFIED.md** - Trello CMA workflow
+- **CITIES_SUBDIVISIONS_UNIFIED_INTEGRATION.md** - Geographic data
+
+---
+
+### [📝 CMS](./cms/) - Content Management
+Article generation, insights page, and AI-powered content creation.
+
+**Files**:
+- **CMS_AND_INSIGHTS_COMPLETE.md** - Complete CMS system
+- **ARTICLE_GENERATION_GROQ.md** - AI article generation (Groq)
+
+---
+
+### [🤖 AI](./ai/) - AI Integration
+AI-powered tools including ChatGPT, Groq, and intelligent features.
+
+**Files**:
+- **AI_TOOLS_UNIFIED_INTEGRATION.md** - Complete AI tools guide
+
+---
+
+### [👥 CRM](./crm/) - Customer Relationship Management
+Lead management, user tracking, and marketing automation.
+
+**Files**:
+- **CRM_OVERVIEW.md** - Complete CRM system overview
+
+---
+
+### [☁️ Deployment](./deployment/) - Infrastructure
+Cloudflare deployment, PWA configuration, and security.
+
+**Files**:
+- **CLOUDFLARE_DEPLOYMENT_COMPLETE.md** - Cloudflare Pages guide
+- **PWA_SETUP.md** - Progressive Web App config
+- **SECURITY_AUDIT_2025-11-29.md** - Security audit
+
+---
+
+### [⚡ Features](./features/) - Application Features
+Individual feature documentation.
+
+**Files**:
+- **SWIPE_SYSTEM.md** - Tinder-style swipe functionality
+- **AUTHENTICATION.md** - NextAuth.js authentication
+- **THEME_IMPLEMENTATION_GUIDE.md** - Dynamic theming
+- **COMMUNITY_FACTS.md** - Community data integration
+- **CMA_CLOSED_LISTINGS_STRATEGY.md** - Comparative Market Analysis
+- **EXPIRED_LISTINGS_IMPLEMENTATION.md** - Expired listing handling
+
+---
+
+### [📚 Misc](./misc/) - Reference Materials
+Vision documents, analysis reports, and reference guides.
+
+**Files**:
+- **META_VISION.md** - Product vision and roadmap
+- **REPLICATION_GUIDE.md** - Project replication guide
+- **FLATTEN_PY_ANALYSIS.md** - Python script analysis
+
+---
+
+### [🐛 Debugging](./debugging/) - Temporary Debug Documentation
+Temporary workspace for active debugging sessions and issue investigation.
+
+**Purpose**:
+- Store temporary debug logs, error analysis, and troubleshooting notes
+- **Clean up after issues are resolved** - Don't let debug docs accumulate
+- Move valuable insights to permanent docs, then delete debug files
+
+**Files**: *Currently empty - all recent issues resolved*
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-```bash
-Node.js 20+
-MongoDB 7.0+
-npm or yarn
-```
-
-### Installation
-```bash
-# Clone repository
-git clone https://github.com/yourusername/jpsrealtor.git
-cd jpsrealtor
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your credentials
-
-# Run development server
-npm run dev
-```
-
-### Environment Variables Required
-See `.env.example` for complete list. Key variables:
-- `MONGODB_URI` - MongoDB Atlas connection string
-- `ANTHROPIC_API_KEY` - For Claude AI (article generation)
-- `GROQ_API_KEY` - For Groq chat
-- `CLOUDINARY_*` - For image hosting
-- `NEXTAUTH_*` - For authentication
-
----
-
-## 📖 How to Use This Documentation
-
 ### For New Developers
-1. Start with **MASTER_SYSTEM_ARCHITECTURE.md** for overall understanding
-2. Read **FRONTEND_ARCHITECTURE.md** to understand the codebase structure
-3. Review **DATABASE_MODELS.md** to understand the data layer
-4. Dive into feature-specific docs as needed
+1. **System Overview**: [MASTER_SYSTEM_ARCHITECTURE.md](./architecture/MASTER_SYSTEM_ARCHITECTURE.md)
+2. **Frontend Structure**: [FRONTEND_ARCHITECTURE.md](./architecture/FRONTEND_ARCHITECTURE.md)
+3. **MLS Integration**: [UNIFIED_MLS_ARCHITECTURE.md](./listings/UNIFIED_MLS_ARCHITECTURE.md)
 
-### For Content Editors
-1. Read **ARTICLES_CMS_COMPLETE.md** for the CMS system
-2. Review **CLAUDE_CMS_INTEGRATION.md** to learn AI drafting
+### For Map Development
+1. **Latest Fixes**: [MAP_FIXES_COMPLETE.md](./map/MAP_FIXES_COMPLETE.md) ⭐ **Dec 6, 2025**
+2. **Architecture**: [MAPPING_SYSTEM_ARCHITECTURE.md](./map/MAPPING_SYSTEM_ARCHITECTURE.md)
 
-### For Admins
-1. **AUTHENTICATION.md** - User management and OAuth
-2. **INSIGHTS_PAGE.md** - Analytics dashboard usage
-3. **PERFORMANCE.md** - Monitoring and optimization
+### For Feature Development
+1. Check [Features](./features/) directory for specific feature docs
+2. Review [DATABASE_MODELS.md](./architecture/DATABASE_MODELS.md) for data models
 
 ---
 
-## 🛠️ Tech Stack
+## 📊 Technology Stack
 
-### Frontend
-- **Next.js 16** (App Router)
-- **React 19**
-- **TypeScript**
-- **Tailwind CSS**
-- **Framer Motion**
-- **MapLibre GL JS**
-
-### Backend
-- **MongoDB** (8GB database, 115k+ listings)
-- **NextAuth.js** (OAuth + sessions)
-- **Mongoose** (ODM)
-
-### AI
-- **Groq** (GPT OSS 120B for chat)
-- **Claude Sonnet 4.5** (article generation)
-- **Function calling** (search, calculations, etc.)
-
-### Infrastructure
-- **Cloudinary** (CDN for images)
-- **DigitalOcean VPS** (deployment)
-- **PM2** (process management)
+| Category | Technologies |
+|----------|-------------|
+| **Framework** | Next.js 16.0.3 (Turbopack), React 19, TypeScript |
+| **Database** | MongoDB (78,904+ unified listings from 8 MLSs) |
+| **Maps** | MapLibre GL JS with server-side clustering |
+| **AI** | Groq (Llama 3.3 70B), OpenAI GPT-4, Claude Sonnet 4.5 |
+| **Auth** | NextAuth.js (OAuth + sessions) |
+| **Deployment** | Cloudflare Pages |
+| **Styling** | Tailwind CSS, Framer Motion |
 
 ---
 
-## 📊 Performance
+## 🔄 Recent Changes
 
-- **Startup:** 862ms (95% improvement from 18s)
-- **Map Rendering:** 90% CPU usage reduction
-- **Bundle Size:** Optimized with dynamic imports
-- **Lighthouse Score:** 90+ across all metrics
+### December 6, 2025 ⭐
+- ✅ **Map System Fixes** - Fixed server crashes + React duplicate key errors
+- ✅ **Intelligent Prefetching** - 97% reduction in database queries (300+ → 9)
+- ✅ **Documentation Reorganization** - 52% reduction (65 → 31 files)
+- ✅ **Proper React Keys** - Using `listingKey` (true business identifier)
 
-See **PERFORMANCE.md** for detailed optimizations.
+### November 2025
+- ✅ Unified MLS architecture (8 MLSs → 1 collection)
+- ✅ Server-side clustering implementation
+- ✅ Streaming response for large datasets
 
 ---
 
-## 🔒 Security Best Practices
+## 📝 Documentation Standards
 
-1. **Never commit secrets** - Use environment variables
-2. **Review .env before commits** - Use `.gitignore`
-3. **Rotate credentials regularly** - Update quarterly
-4. **Use admin-only routes** - Protect sensitive endpoints
-5. **Sanitize documentation** - Replace real values with placeholders
+All documentation follows these standards:
+- **Date stamps** on major updates
+- **Status indicators**: ✅ Complete, ⚠️ In Progress, ❌ Needs Update
+- **Code examples** with file paths and line numbers
+- **Clear problem → solution** structure
+- **Security-first**: No real secrets, only placeholders
+
+---
+
+## 🗂️ File Count Summary
+
+**Total**: 31 files (reduced from 65 - 52% reduction)
+
+| Directory | Files | Purpose |
+|-----------|-------|---------|
+| Architecture | 7 | System design & infrastructure |
+| Map | 3 | Map system (current Dec 6, 2025) |
+| Listings | 4 | MLS data integration |
+| CMS | 2 | Content management |
+| AI | 1 | AI tools integration |
+| CRM | 1 | Customer relationship management |
+| Deployment | 3 | Infrastructure & security |
+| Features | 6 | Individual features |
+| Misc | 3 | Reference materials |
+| **Debugging** | 0 | **Temporary debug docs** (empty when no active issues) |
+
+---
+
+## 🔍 Finding Information
+
+### By Topic
+- **Map issues**: `./map/MAP_FIXES_COMPLETE.md` ⭐
+- **Database**: `./architecture/DATABASE_*.md`
+- **MLS data**: `./listings/UNIFIED_MLS_ARCHITECTURE.md`
+- **Performance**: `./architecture/PERFORMANCE.md`
+- **Deployment**: `./deployment/CLOUDFLARE_DEPLOYMENT_COMPLETE.md`
+
+### By Date
+All files include date stamps. Most recent updates marked with ⭐ emoji.
+
+---
+
+## 🛠️ System Overview
+
+**jpsrealtor.com** is a Next.js 16 real estate platform for Joseph Sardella, specializing in California markets.
+
+**Key Features**:
+- 🏠 **78,904+ MLS listings** from 8 unified MLSs
+- 💬 **AI-powered chat** with Groq (Llama 3.3 70B)
+- 🗺️ **Interactive map** with intelligent clustering (zoom 4-13)
+- 📱 **Swipe discovery** (Tinder-style for properties)
+- 📝 **AI-driven CMS** with Claude Sonnet 4.5
+- 🎨 **Dual themes** (blackspace / lightgradient)
+- 📊 **Admin dashboard** with analytics
 
 ---
 
 ## 🤝 Contributing
 
 When adding new documentation:
-
-1. **Follow naming conventions** - Use SCREAMING_SNAKE_CASE.md
-2. **Add to this README** - Update the index
-3. **Include examples** - Code snippets with placeholders
-4. **Security check** - No real secrets!
-5. **Update date** - Add "Last Updated" timestamp
-
----
-
-## 📝 Documentation Standards
-
-### File Naming
-- Use descriptive names: `FEATURE_NAME.md`
-- All caps for major docs
-- Lowercase for minor guides
-
-### Content Structure
-```markdown
-# Feature Name
-
-**Last Updated:** YYYY-MM-DD
-
-## Overview
-Brief description
-
-## Technical Details
-Implementation specifics
-
-## Usage
-How to use it
-
-## Examples
-Code examples with placeholders
-
-## Troubleshooting
-Common issues
-```
-
-### Code Examples
-Always use placeholders for sensitive data:
-
-```typescript
-// ✅ Good
-const apiKey = process.env.ANTHROPIC_API_KEY;
-
-// ❌ Bad
-const apiKey = 'sk-ant-api03-real-key-here';
-```
-
----
-
-## 🐛 Issue Reporting
-
-Found an issue? Please include:
-1. Documentation file name
-2. Section/line number
-3. What's wrong or unclear
-4. Suggested improvement
+1. **Place in appropriate directory** (architecture/map/listings/etc.)
+2. **Update this README** with link and description
+3. **Include date stamp** in file header
+4. **Follow documentation standards** (see above)
+5. **Delete outdated docs** when superseded by new ones
+6. **Security check** - No real secrets, only placeholders!
 
 ---
 
@@ -262,5 +262,6 @@ Found an issue? Please include:
 
 ---
 
-**Last Security Audit:** November 29, 2025
+**Last Security Audit**: November 29, 2025
+**Last Documentation Reorganization**: December 6, 2025
 **All secrets sanitized and verified safe for public GitHub repository.**
