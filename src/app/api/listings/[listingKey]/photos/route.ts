@@ -32,10 +32,10 @@ import UnifiedListing from "@/models/unified-listing";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { listingKey: string } }
+  { params }: { params: Promise<{ listingKey: string }> }
 ) {
   try {
-    const { listingKey } = params;
+    const { listingKey } = await params;
 
     if (!listingKey) {
       return NextResponse.json(
