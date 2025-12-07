@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import dbConnect from "@/lib/mongoose";
+import UnifiedListing from "@/models/unified-listing";
 
 /**
  * GET /api/listings/[listingKey]/photos
  *
  * Fetches photos directly from Spark API in real-time
- * Ensures we always have the latest photos from MLS
+ * Supports multiple MLS IDs (GPS, CRMLS, DESERT, etc.)
+ *
+ * Process:
+ * 1. Look up listing in database to get mlsId
+ * 2. Fetch photos from Spark API using that mlsId
+ * 3. Return all photos for carousel display
  *
  * Response format:
  * {
  *   listingKey: string;
+ *   mlsSource: string;
  *   count: number;
  *   photos: Array<{
  *     mediaKey: string;
@@ -41,7 +49,34 @@ export async function GET(
       );
     }
 
-    // Fetch photos directly from Spark API
+    // Step 1: Get listing's mlsId from database
+    await dbConnect();
+
+    const listing = await UnifiedListing.findOne({ listingKey })
+      .select("mlsId mlsSource listingKey")
+      .lean();
+
+    if (!listing) {
+      console.error(`[photos API] Listing not found: ${listingKey}`);
+      return NextResponse.json({
+        error: "Listing not found",
+        listingKey
+      }, { status: 404 });
+    }
+
+    const { mlsId, mlsSource } = listing;
+
+    if (!mlsId) {
+      console.error(`[photos API] No mlsId for listing ${listingKey}`);
+      return NextResponse.json({
+        listingKey,
+        mlsSource,
+        count: 0,
+        photos: []
+      });
+    }
+
+    // Step 2: Fetch photos from Spark API using mlsId
     const sparkApiKey = process.env.SPARK_API_KEY;
 
     if (!sparkApiKey) {
@@ -52,7 +87,8 @@ export async function GET(
       );
     }
 
-    const sparkUrl = `https://sparkapi.com/v1/listings/${listingKey}/photos`;
+    // Use mlsId for Spark API (26-digit MLS association ID)
+    const sparkUrl = `https://sparkapi.com/${mlsId}/listings/${listingKey}/photos`;
 
     const response = await fetch(sparkUrl, {
       headers: {
@@ -103,9 +139,13 @@ export async function GET(
 
     const apiResponse = {
       listingKey,
+      mlsSource,
+      mlsId,
       count: photos.length,
       photos,
     };
+
+    console.log(`[photos API] Fetched ${photos.length} photos for ${listingKey} from ${mlsSource} (${mlsId})`);
 
     return NextResponse.json(apiResponse, {
       headers: {
