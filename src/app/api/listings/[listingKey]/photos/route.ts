@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/mongoose";
-import UnifiedListing from "@/models/unified-listing";
 
 /**
  * GET /api/listings/[listingKey]/photos
  *
- * Returns photo data from unified_listings.media field
- * Heavily cached by Cloudflare for performance
+ * Fetches photos directly from Spark API in real-time
+ * Ensures we always have the latest photos from MLS
  *
  * Response format:
  * {
  *   listingKey: string;
+ *   count: number;
  *   photos: Array<{
  *     mediaKey: string;
  *     order: number;
- *     mediaType?: string;
- *     mediaCategory?: string;
  *     caption?: string;
  *     uri300?: string;
  *     uri640?: string;
@@ -44,75 +41,93 @@ export async function GET(
       );
     }
 
-    await dbConnect();
+    // Fetch photos directly from Spark API
+    const sparkApiKey = process.env.SPARK_API_KEY;
 
-    // Fetch listing with only media field for performance
-    const listing = await UnifiedListing.findOne({ listingKey })
-      .select("media listingKey")
-      .lean();
-
-    if (!listing) {
+    if (!sparkApiKey) {
+      console.error("[photos API] SPARK_API_KEY not configured");
       return NextResponse.json(
-        { error: "Listing not found" },
-        { status: 404 }
+        { error: "API configuration error" },
+        { status: 500 }
       );
     }
 
-    // Transform media array to photo format
-    const media = listing.media || [];
-    const photos = media
-      .filter((item: any) => item.MediaKey) // Must have MediaKey
-      .map((item: any, index: number) => ({
-        mediaKey: item.MediaKey,
-        order: item.Order ?? index,
-        mediaType: item.MediaType,
-        mediaCategory: item.MediaCategory,
-        caption: item.ShortDescription,
+    const sparkUrl = `https://sparkapi.com/v1/listings/${listingKey}/photos`;
 
-        // All URI sizes
-        uri300: item.Uri300,
-        uri640: item.Uri640,
-        uri800: item.Uri800,
-        uri1024: item.Uri1024,
-        uri1280: item.Uri1280,
-        uri1600: item.Uri1600,
-        uri2048: item.Uri2048,
-        uriThumb: item.UriThumb,
-        uriLarge: item.UriLarge,
+    const response = await fetch(sparkUrl, {
+      headers: {
+        "Authorization": `Bearer ${sparkApiKey}`,
+        "X-SparkApi-User-Agent": "jpsrealtor.com",
+        "Accept": "application/json"
+      },
+      // Cache for 1 hour (photos don't change that often)
+      next: { revalidate: 3600 }
+    });
 
-        // Metadata
-        imageWidth: item.ImageWidth,
-        imageHeight: item.ImageHeight,
+    if (!response.ok) {
+      console.error(`[photos API] Spark API error: ${response.status} for listing ${listingKey}`);
 
-        // Mark primary photo
-        primary: item.MediaCategory === "Primary Photo" || item.Order === 0,
-      }))
-      .sort((a: any, b: any) => a.order - b.order); // Sort by order
+      // Return empty array instead of error to gracefully handle missing photos
+      return NextResponse.json({
+        listingKey,
+        count: 0,
+        photos: []
+      });
+    }
 
-    const response = {
+    const data = await response.json();
+
+    // Spark API response format: { D: { Success: true, Results: [...] } }
+    const results = data?.D?.Results || [];
+
+    // Transform Spark photos to our format
+    const photos = results.map((photo: any, index: number) => ({
+      mediaKey: photo.Id,
+      order: index,
+      caption: photo.Caption || photo.Name || "",
+
+      // All URI sizes from Spark API
+      uri300: photo.Uri300,
+      uri640: photo.Uri640,
+      uri800: photo.Uri800,
+      uri1024: photo.Uri1024,
+      uri1280: photo.Uri1280,
+      uri1600: photo.Uri1600,
+      uri2048: photo.Uri2048,
+      uriThumb: photo.UriThumb,
+      uriLarge: photo.UriLarge,
+
+      // Primary photo flag
+      primary: photo.Primary === true,
+    }));
+
+    const apiResponse = {
       listingKey,
       count: photos.length,
       photos,
     };
 
-    return NextResponse.json(response, {
+    return NextResponse.json(apiResponse, {
       headers: {
-        // Aggressive Cloudflare caching
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800', // 24 hours cache, 7 days stale
-        'CDN-Cache-Control': 'public, max-age=86400', // Cloudflare specific
-        'Vercel-CDN-Cache-Control': 'public, max-age=86400', // Vercel CDN
+        // Cache for 1 hour (photos don't change frequently)
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        'CDN-Cache-Control': 'public, max-age=3600',
+        'Vercel-CDN-Cache-Control': 'public, max-age=3600',
 
-        // Additional performance headers
+        // Security headers
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY',
       }
     });
 
   } catch (error) {
-    console.error("[photos API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch photos" },
-      { status: 500 }
-    );
+    console.error("[photos API] Error fetching from Spark API:", error);
+
+    // Return empty photos array on error for graceful degradation
+    return NextResponse.json({
+      listingKey: (await params).listingKey,
+      count: 0,
+      photos: []
+    });
   }
 }
