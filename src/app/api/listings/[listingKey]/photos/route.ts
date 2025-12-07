@@ -5,13 +5,11 @@ import UnifiedListing from "@/models/unified-listing";
 /**
  * GET /api/listings/[listingKey]/photos
  *
- * Fetches photos directly from Spark API in real-time
+ * Fetches photos using Spark Replication API with Media expansion
  * Supports multiple MLS IDs (GPS, CRMLS, DESERT, etc.)
  *
- * Process:
- * 1. Look up listing in database to get mlsId
- * 2. Fetch photos from Spark API using that mlsId
- * 3. Return all photos for carousel display
+ * Method: Uses _expand=Media on the listings endpoint
+ * URL: https://replication.sparkapi.com/v1/listings/{listingKey}?_expand=Media
  *
  * Response format:
  * {
@@ -49,25 +47,45 @@ export async function GET(
       );
     }
 
-    // Step 1: Get listing's mlsId from database
+    // Step 1: Get listing's mlsSource from database (for response metadata)
     await dbConnect();
 
     const listing = await UnifiedListing.findOne({ listingKey })
-      .select("mlsId mlsSource listingKey")
+      .select("mlsSource listingKey")
       .lean();
 
-    if (!listing) {
-      console.error(`[photos API] Listing not found: ${listingKey}`);
-      return NextResponse.json({
-        error: "Listing not found",
-        listingKey
-      }, { status: 404 });
+    const mlsSource = listing?.mlsSource || "Unknown";
+
+    // Step 2: Fetch listing with Media expansion from Replication API
+    const accessToken = process.env.SPARK_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      console.error("[photos API] SPARK_ACCESS_TOKEN not configured");
+      return NextResponse.json(
+        { error: "API configuration error" },
+        { status: 500 }
+      );
     }
 
-    const { mlsId, mlsSource } = listing;
+    // Use Replication API with Media expansion
+    const replicationUrl = `https://replication.sparkapi.com/v1/listings/${listingKey}?_expand=Media`;
 
-    if (!mlsId) {
-      console.error(`[photos API] No mlsId for listing ${listingKey}`);
+    console.log(`[photos API] Fetching: ${replicationUrl}`);
+
+    const response = await fetch(replicationUrl, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "X-SparkApi-User-Agent": "jpsrealtor.com",
+        "Accept": "application/json"
+      },
+      // Cache for 1 hour
+      next: { revalidate: 3600 }
+    });
+
+    if (!response.ok) {
+      console.error(`[photos API] Replication API error: ${response.status} for listing ${listingKey}`);
+
+      // Return empty array instead of error
       return NextResponse.json({
         listingKey,
         mlsSource,
@@ -76,80 +94,62 @@ export async function GET(
       });
     }
 
-    // Step 2: Fetch photos from Spark API using mlsId
-    const sparkApiKey = process.env.SPARK_API_KEY;
+    const data = await response.json();
 
-    if (!sparkApiKey) {
-      console.error("[photos API] SPARK_API_KEY not configured");
-      return NextResponse.json(
-        { error: "API configuration error" },
-        { status: 500 }
-      );
-    }
+    // Replication API response format: { D: { Success: true, Results: [listing] } }
+    const results = data?.D?.Results || [];
 
-    // Use mlsId for Spark API (26-digit MLS association ID)
-    const sparkUrl = `https://sparkapi.com/${mlsId}/listings/${listingKey}/photos`;
-
-    const response = await fetch(sparkUrl, {
-      headers: {
-        "Authorization": `Bearer ${sparkApiKey}`,
-        "X-SparkApi-User-Agent": "jpsrealtor.com",
-        "Accept": "application/json"
-      },
-      // Cache for 1 hour (photos don't change that often)
-      next: { revalidate: 3600 }
-    });
-
-    if (!response.ok) {
-      console.error(`[photos API] Spark API error: ${response.status} for listing ${listingKey}`);
-
-      // Return empty array instead of error to gracefully handle missing photos
+    if (results.length === 0) {
+      console.log(`[photos API] No listing found for ${listingKey}`);
       return NextResponse.json({
         listingKey,
+        mlsSource,
         count: 0,
         photos: []
       });
     }
 
-    const data = await response.json();
+    const listingData = results[0];
 
-    // Spark API response format: { D: { Success: true, Results: [...] } }
-    const results = data?.D?.Results || [];
+    // Media is in StandardFields.Media array
+    const media = listingData?.StandardFields?.Media || [];
 
-    // Transform Spark photos to our format
-    const photos = results.map((photo: any, index: number) => ({
-      mediaKey: photo.Id,
-      order: index,
-      caption: photo.Caption || photo.Name || "",
+    console.log(`[photos API] Found ${media.length} photos for ${listingKey} from ${mlsSource}`);
 
-      // All URI sizes from Spark API
-      uri300: photo.Uri300,
-      uri640: photo.Uri640,
-      uri800: photo.Uri800,
-      uri1024: photo.Uri1024,
-      uri1280: photo.Uri1280,
-      uri1600: photo.Uri1600,
-      uri2048: photo.Uri2048,
-      uriThumb: photo.UriThumb,
-      uriLarge: photo.UriLarge,
+    // Transform Media to photo format
+    const photos = media
+      .filter((m: any) => m.MediaKey) // Must have MediaKey
+      .map((m: any, index: number) => ({
+        mediaKey: m.MediaKey,
+        order: m.Order ?? index,
+        caption: m.ShortDescription || m.LongDescription || "",
 
-      // Primary photo flag
-      primary: photo.Primary === true,
-    }));
+        // All URI sizes
+        uri300: m.Uri300,
+        uri640: m.Uri640,
+        uri800: m.Uri800,
+        uri1024: m.Uri1024,
+        uri1280: m.Uri1280,
+        uri1600: m.Uri1600,
+        uri2048: m.Uri2048,
+        uriThumb: m.UriThumb,
+        uriLarge: m.UriLarge,
+
+        // Primary photo flag
+        primary: m.MediaCategory === "Primary Photo" || m.Order === 0,
+      }))
+      .sort((a: any, b: any) => a.order - b.order);
 
     const apiResponse = {
       listingKey,
       mlsSource,
-      mlsId,
       count: photos.length,
       photos,
     };
 
-    console.log(`[photos API] Fetched ${photos.length} photos for ${listingKey} from ${mlsSource} (${mlsId})`);
-
     return NextResponse.json(apiResponse, {
       headers: {
-        // Cache for 1 hour (photos don't change frequently)
+        // Cache for 1 hour
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
         'CDN-Cache-Control': 'public, max-age=3600',
         'Vercel-CDN-Cache-Control': 'public, max-age=3600',
@@ -161,11 +161,12 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error("[photos API] Error fetching from Spark API:", error);
+    console.error("[photos API] Error:", error);
 
-    // Return empty photos array on error for graceful degradation
+    // Return empty photos array on error
     return NextResponse.json({
       listingKey: (await params).listingKey,
+      mlsSource: "Unknown",
       count: 0,
       photos: []
     });

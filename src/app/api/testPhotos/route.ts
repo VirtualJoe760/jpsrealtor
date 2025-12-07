@@ -74,11 +74,11 @@ export async function GET() {
       };
 
       try {
-        // Construct Spark API URL with mlsId
-        const sparkUrl = `https://sparkapi.com/${mlsId}/listings/${listingKey}/photos`;
-        result.sparkUrl = sparkUrl;
+        // Use Replication API with Media expansion (correct method)
+        const replicationUrl = `https://replication.sparkapi.com/v1/listings/${listingKey}?_expand=Media`;
+        result.sparkUrl = replicationUrl;
 
-        const response = await fetch(sparkUrl, {
+        const response = await fetch(replicationUrl, {
           headers: {
             "Authorization": `Bearer ${sparkApiKey}`,
             "X-SparkApi-User-Agent": "jpsrealtor.com",
@@ -91,16 +91,26 @@ export async function GET() {
           result.success = false;
         } else {
           const data = await response.json();
-          const photoResults = data?.D?.Results || [];
 
-          result.photoCount = photoResults.length;
-          result.success = true;
+          // Get listing from Results array
+          const listingData = data?.D?.Results?.[0];
 
-          // Get sample photo URLs
-          if (photoResults.length > 0) {
-            result.samplePhotoUrls = photoResults.slice(0, 3).map((photo: any) =>
-              photo.Uri1024 || photo.Uri800 || photo.Uri640 || 'No URL'
-            );
+          if (!listingData) {
+            result.error = "Listing not found in response";
+            result.success = false;
+          } else {
+            // Media is in StandardFields.Media
+            const media = listingData?.StandardFields?.Media || [];
+
+            result.photoCount = media.length;
+            result.success = true;
+
+            // Get sample photo URLs
+            if (media.length > 0) {
+              result.samplePhotoUrls = media.slice(0, 3).map((m: any) =>
+                m.Uri1024 || m.Uri800 || m.Uri640 || 'No URL'
+              );
+            }
           }
         }
       } catch (error: any) {
