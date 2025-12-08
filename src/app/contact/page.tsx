@@ -23,6 +23,9 @@ export default function MarketingConsentPage() {
   const [ownsRealEstate, setOwnsRealEstate] = useState<'yes' | 'no' | ''>('');
   const [timeframe, setTimeframe] = useState('');
   const [realEstateGoals, setRealEstateGoals] = useState('');
+  const [hasAgent, setHasAgent] = useState(false);
+  const [agentName, setAgentName] = useState('');
+  const [preApprovalFile, setPreApprovalFile] = useState<File | null>(null);
 
   // Consent checkboxes
   const [smsNonMarketingConsent, setSmsNonMarketingConsent] = useState(false);
@@ -48,7 +51,7 @@ export default function MarketingConsentPage() {
     setError(null);
 
     // Validation
-    if (!firstName || !lastName || !email || !phone) {
+    if (!firstName || !lastName || !email || !phone || !realEstateGoals) {
       setError('Please fill in all required fields');
       return;
     }
@@ -355,7 +358,7 @@ export default function MarketingConsentPage() {
                   {newsletterConsent && (
                     <li className="flex items-center justify-center gap-2">
                       <Check className={`w-5 h-5 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
-                      <span>Email Newsletter (via SendFox)</span>
+                      <span>Email Newsletter</span>
                     </li>
                   )}
                 </ul>
@@ -588,11 +591,12 @@ export default function MarketingConsentPage() {
               {/* Real Estate Goals */}
               <div>
                 <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                  What are your real estate goals?
+                  What are your real estate goals? *
                 </label>
                 <textarea
                   value={realEstateGoals}
                   onChange={(e) => setRealEstateGoals(e.target.value)}
+                  required
                   rows={4}
                   placeholder="Tell us about your real estate goals, preferences, or any specific needs..."
                   className={`w-full px-4 py-3 rounded-lg border transition-all resize-none ${
@@ -602,8 +606,93 @@ export default function MarketingConsentPage() {
                   }`}
                 />
                 <p className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Optional: Share details about properties you're interested in, neighborhoods, price range, or timeline.
+                  Share details about properties you're interested in, neighborhoods, price range, or timeline.
                 </p>
+              </div>
+
+              {/* Current Agent */}
+              <div>
+                <div className={`flex items-center gap-3 p-4 rounded-lg border-2 mb-3 ${
+                  isLight
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-amber-900/20 border-amber-700'
+                }`}>
+                  <input
+                    id="hasAgent"
+                    type="checkbox"
+                    checked={hasAgent}
+                    onChange={(e) => setHasAgent(e.target.checked)}
+                    className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <label htmlFor="hasAgent" className={`text-sm font-semibold ${isLight ? 'text-amber-900' : 'text-amber-300'}`}>
+                    I currently have a real estate agent
+                  </label>
+                </div>
+                {hasAgent && (
+                  <input
+                    type="text"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="Agent's name (optional)"
+                    className={`w-full px-4 py-3 rounded-lg border transition-all ${
+                      isLight
+                        ? 'border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400'
+                        : 'border-gray-600 bg-gray-900 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-gray-500'
+                    }`}
+                  />
+                )}
+              </div>
+
+              {/* Pre-Approval Upload */}
+              <div>
+                <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                  Pre-Approval Letter (Optional)
+                </label>
+                <div className={`relative border-2 border-dashed rounded-lg p-6 transition-all ${
+                  preApprovalFile
+                    ? isLight
+                      ? 'border-green-400 bg-green-50'
+                      : 'border-green-600 bg-green-900/20'
+                    : isLight
+                      ? 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+                      : 'border-gray-600 bg-gray-800/50 hover:border-emerald-500 hover:bg-emerald-900/20'
+                }`}>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setPreApprovalFile(file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="text-center">
+                    <FileText className={`w-12 h-12 mx-auto mb-3 ${
+                      preApprovalFile
+                        ? isLight ? 'text-green-600' : 'text-green-400'
+                        : isLight ? 'text-gray-400' : 'text-gray-500'
+                    }`} />
+                    {preApprovalFile ? (
+                      <>
+                        <p className={`text-sm font-semibold mb-1 ${isLight ? 'text-green-700' : 'text-green-300'}`}>
+                          File uploaded: {preApprovalFile.name}
+                        </p>
+                        <p className={`text-xs ${isLight ? 'text-green-600' : 'text-green-400'}`}>
+                          Click to replace
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className={`text-sm font-semibold mb-1 ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
+                          Click to upload or drag and drop
+                        </p>
+                        <p className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
+                          PDF, DOC, DOCX, JPG, PNG (Max 10MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Consent Checkboxes */}
@@ -666,8 +755,8 @@ export default function MarketingConsentPage() {
                   />
                   <label htmlFor="newsletterConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'}`}>
                     <strong className={isLight ? 'text-emerald-900' : 'text-emerald-300'}>
-                      Email Newsletter (SendFox):
-                    </strong> I agree to receive email newsletters from Joseph Sardella / JPS & Company LLC via SendFox.
+                      Email Newsletter:
+                    </strong> I agree to receive email newsletters from Joseph Sardella / JPS & Company LLC.
                     I can unsubscribe at any time using the link in the emails.
                   </label>
                 </div>
