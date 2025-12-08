@@ -40,7 +40,7 @@ export default function AdminNav() {
   };
 
   return (
-    <nav className="mb-8">
+    <nav className="pt-6 mb-8">
       <div className={`flex items-center gap-2 border-b ${border}`}>
         {navItems.map((item) => {
           const Icon = item.icon;
