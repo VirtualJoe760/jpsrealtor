@@ -84,16 +84,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   const isLight = currentTheme === "lightgradient";
 
   // Cache city/county data for contextual boundary lookups at higher zoom levels
-  const cityStatsCache = useRef<Map<string, any> | null>(null);
-  const countyStatsCache = useRef<Map<string, any> | null>(null);
-
-  // Initialize Maps on first render
-  if (!cityStatsCache.current) {
-    cityStatsCache.current = new Map();
-  }
-  if (!countyStatsCache.current) {
-    countyStatsCache.current = new Map();
-  }
+  // Using object cache instead of Map to avoid TypeScript issues
+  const cityStatsCache = useMemo<Record<string, any>>(() => ({}), []);
+  const countyStatsCache = useMemo<Record<string, any>>(() => ({}), []);
 
   // Detect mobile for lighter boundary colors
   const [isMobile, setIsMobile] = useState(false);
@@ -578,24 +571,24 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   useEffect(() => {
     dataToRender.forEach((item: any) => {
       if (item.clusterType === 'city' && item.cityName) {
-        cityStatsCache.current.set(item.cityName, {
+        cityStatsCache[item.cityName] = {
           count: item.count || 0,
           medianPrice: item.medianPrice,
           avgPrice: item.avgPrice,
           minPrice: item.minPrice || 0,
           maxPrice: item.maxPrice || 0,
-        });
+        };
       } else if (item.clusterType === 'county' && item.countyName) {
-        countyStatsCache.current.set(item.countyName, {
+        countyStatsCache[item.countyName] = {
           count: item.count || 0,
           medianPrice: item.medianPrice,
           avgPrice: item.avgPrice,
           minPrice: item.minPrice || 0,
           maxPrice: item.maxPrice || 0,
-        });
+        };
       }
     });
-  }, [dataToRender]);
+  }, [dataToRender, cityStatsCache, countyStatsCache]);
 
   console.log('🗺️ [MapView] dataToRender updated:', {
     markersLength: markers?.length || 0,
@@ -605,8 +598,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     regionCount: dataToRender.filter((m: any) => m.clusterType === 'region').length,
     countyCount: dataToRender.filter((m: any) => m.clusterType === 'county').length,
     currentZoom: currentZoom.toFixed(2),
-    cachedCities: cityStatsCache.current.size,
-    cachedCounties: countyStatsCache.current.size
+    cachedCities: Object.keys(cityStatsCache).length,
+    cachedCounties: Object.keys(countyStatsCache).length
   });
 
   // Enhanced logging for debugging zoom-based rendering
@@ -1001,7 +994,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         );
         if (cityEntry) {
           const [cityName] = cityEntry;
-          const cachedStats = cityStatsCache.current.get(cityName);
+          const cachedStats = cityStatsCache[cityName];
           console.log('[contextualBoundary] Found city from static boundaries:', cityName, 'cached stats:', cachedStats);
           return {
             name: cityName,
@@ -1052,7 +1045,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           };
         } else {
           // County found but no stats in rendered data - check cache
-          const cachedStats = countyStatsCache.current.get(countyName);
+          const cachedStats = countyStatsCache[countyName];
           console.log('[contextualBoundary] Found county from static boundaries:', countyName, 'cached stats:', cachedStats);
           return {
             name: countyName,

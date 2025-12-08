@@ -91,7 +91,7 @@ async function getMlsSamples(): Promise<Listing[]> {
     );
 
     if (sample) {
-      samples.push(sample as Listing);
+      samples.push(sample as unknown as Listing);
       console.log(`✅ ${mls.padEnd(25)} | ${sample.city || 'N/A'} | $${sample.listPrice?.toLocaleString() || 'N/A'}`);
     } else {
       console.log(`❌ ${mls.padEnd(25)} | No listings found`);
