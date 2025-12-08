@@ -2,7 +2,6 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import CollageHero from "@/app/components/mls/CollageHero";
-import { fetchListingPhotos } from "@/app/utils/spark/photos";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
@@ -111,24 +110,29 @@ export default async function ListingPage({
 
   let rawPhotos: SparkPhoto[] = [];
 
-  // Fetch photos from unified MongoDB photos collection (works for all 8 MLS networks)
+  // Fetch photos from Spark API via our photo endpoint (works for all 8 MLS networks)
   try {
     const photosRes = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/listing/${listing.listingKey}/photos`,
-      { cache: "no-store" }
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/listings/${listing.listingKey}/photos`,
+      {
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      }
     );
     if (photosRes.ok) {
       const photosData = await photosRes.json();
-      // Convert unified photo format to SparkPhoto format
+      // Convert from photo API format to SparkPhoto format
       rawPhotos = (photosData.photos || []).map((p: any) => ({
-        Uri2048: p.src,
-        Uri1600: p.src,
-        Uri1280: p.src,
-        Uri1024: p.src,
-        Uri800: p.src,
-        UriLarge: p.src,
-        UriThumb: p.src,
-        Caption: p.caption || "",
+        Uri2048: p.uri2048 || p.uriLarge || "",
+        Uri1600: p.uri1600 || p.uri1280 || "",
+        Uri1280: p.uri1280 || p.uri1024 || "",
+        Uri1024: p.uri1024 || p.uri800 || "",
+        Uri800: p.uri800 || p.uri640 || "",
+        UriLarge: p.uriLarge || p.uri2048 || "",
+        UriThumb: p.uriThumb || p.uri300 || "",
+        Caption: p.caption || p.shortDescription || "",
       }));
     }
   } catch (err) {

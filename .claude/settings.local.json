@@ -96,7 +96,10 @@
       "Bash(while read file)",
       "Bash(do:*)",
       "Bash(done)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm update:*)",
+      "Bash(timeout 15 bash:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

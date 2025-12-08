@@ -48,6 +48,24 @@ export interface IMedia {
   MediaType?: string;
   MediaCategory?: string;
   Caption?: string;
+  ShortDescription?: string;
+  LongDescription?: string;
+
+  // Photo URIs (all size variants from Spark API)
+  Uri300?: string;
+  Uri640?: string;
+  Uri800?: string;
+  Uri1024?: string;
+  Uri1280?: string;
+  Uri1600?: string;
+  Uri2048?: string;
+  UriThumb?: string;
+  UriLarge?: string;
+
+  // Image metadata
+  ImageWidth?: number;
+  ImageHeight?: number;
+  ModificationTimestamp?: string;
 }
 
 export interface IGeoPoint {
@@ -101,6 +119,24 @@ const MediaSchema = new Schema<IMedia>({
   MediaType: String,
   MediaCategory: String,
   Caption: String,
+  ShortDescription: String,
+  LongDescription: String,
+
+  // Photo URIs (all size variants from Spark API)
+  Uri300: String,
+  Uri640: String,
+  Uri800: String,
+  Uri1024: String,
+  Uri1280: String,
+  Uri1600: String,
+  Uri2048: String,
+  UriThumb: String,
+  UriLarge: String,
+
+  // Image metadata
+  ImageWidth: Number,
+  ImageHeight: Number,
+  ModificationTimestamp: String,
 });
 
 // -----------------------------

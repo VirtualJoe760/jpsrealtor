@@ -1,14 +1,57 @@
-# Unified MLS Data Pipeline
+# Unified MLS Daily Update Pipeline
 
-Complete data pipeline for fetching, processing, and storing listings from all 8 MLS associations into a unified MongoDB collection.
+**Last Updated**: December 7, 2025
+**Status**: ✅ Production Ready
+**Coverage**: All 8 MLS Associations (87,562+ listings)
 
-## Overview
+---
 
-This unified system replaces separate GPS and CRMLS pipelines with a single, scalable architecture that supports all 8 MLS associations.
+## 🚀 Quick Start for VPS Cron Setup
 
-### Supported MLSs (87,604+ listings)
+**Everything is ready!** Just add this cron job:
 
-1. **GPS** - 5,140+ active listings
+```bash
+# Open crontab editor
+crontab -e
+```
+
+**Add this line** (replace `/path/to/jpsrealtor` with your actual path):
+
+```cron
+0 6 * * * cd /path/to/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/main.py >> /var/log/mls-update.log 2>&1
+```
+
+**That's it!** The pipeline will run daily at 6:00 AM.
+
+---
+
+## What the Daily Job Does
+
+1. ✅ **Fetches listings modified in last 24 hours** (incremental update)
+2. ✅ **Flattens** to camelCase format
+3. ✅ **Seeds** to MongoDB `unified_listings` collection
+4. ✅ **Updates statuses** (Active → Pending → Closed)
+5. ✅ **Moves sold listings** to `closed_listings` collection
+
+**Time**: ~2-3 hours (runs 6:00 AM → 8:00-9:00 AM)
+
+---
+
+## Pipeline Components
+
+| Script | Purpose | Run Time |
+|--------|---------|----------|
+| **`main.py`** | Daily orchestrator - Runs all steps | ~2-3 hours |
+| `unified-fetch.py` | Fetch from Spark Replication API | ~1.5 hours |
+| `flatten.py` | Transform to camelCase | ~5 min |
+| `seed.py` | Upsert to MongoDB | ~10 min |
+| `update-status.py` | Update statuses (Active → Closed) | ~30-60 min |
+
+---
+
+## Supported MLSs
+
+1. **GPS** - Greater Palm Springs
 2. **CRMLS** - California Regional MLS
 3. **CLAW** - Combined LA/Westside
 4. **SOUTHLAND** - Southland Regional
@@ -17,387 +60,347 @@ This unified system replaces separate GPS and CRMLS pipelines with a single, sca
 7. **CONEJO_SIMI_MOORPARK** - Conejo Simi Moorpark
 8. **ITECH** - iTech MLS
 
-## Pipeline Architecture
-
-```
-┌─────────────────┐
-│ unified-fetch.py│  Fetch from Spark API (all 8 MLSs)
-└────────┬────────┘
-         │ JSON (RESO PascalCase)
-         ▼
-┌─────────────────┐
-│   flatten.py    │  Transform to camelCase + enhance
-└────────┬────────┘
-         │ JSON (camelCase + mlsSource/mlsId/propertyTypeName)
-         ▼
-┌─────────────────┐
-│     seed.py     │  Load to MongoDB unified_listings
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ unified_listings│  MongoDB collection (geospatial indexes)
-└─────────────────┘
-```
-
-## Scripts
-
-### 1. unified-fetch.py
-
-Fetches listings from Spark Replication API with correct SkipToken pagination.
-
-**Features:**
-- All 8 MLS associations
-- PropertyTypes A-D (Residential, Lease, Income, Land)
-- Correct SkipToken pagination (fixes ID-based bug)
-- Total count verification
-- Rate limiting
-- Retry logic
-
-**Usage:**
-```bash
-# Fetch from GPS only (no prompts for single MLS)
-python src/scripts/mls/backend/unified/unified-fetch.py --mls GPS
-
-# Fetch from all 8 MLSs INTERACTIVELY (prompts after each MLS)
-python src/scripts/mls/backend/unified/unified-fetch.py
-# After GPS completes, you'll be prompted:
-# "Continue to CRMLS? [y/n]:"
-# Answer 'y' to continue or 'n' to skip
-
-# Fetch from all 8 MLSs AUTO-CONFIRMED (no prompts, yes to all)
-python src/scripts/mls/backend/unified/unified-fetch.py -y
-# or
-python src/scripts/mls/backend/unified/unified-fetch.py --yes
-
-# Fetch from specific MLSs in sequence with prompts
-python src/scripts/mls/backend/unified/unified-fetch.py --mls GPS CRMLS CLAW
-# Fetches GPS, then prompts "Continue to CRMLS?", then "Continue to CLAW?"
-
-# Fetch from specific MLSs without prompts
-python src/scripts/mls/backend/unified/unified-fetch.py --mls GPS CRMLS -y
-
-# Incremental update for all MLSs (auto-confirm recommended)
-python src/scripts/mls/backend/unified/unified-fetch.py --incremental -y
-
-# Custom batch size
-python src/scripts/mls/backend/unified/unified-fetch.py --mls GPS --batch-size 1000
-```
-
-**Output:** `local-logs/all_{MLS}_listings.json`
-
-### 2. flatten.py
-
-Transforms RESO PascalCase to camelCase with enhanced fields.
-
-**Enhancements:**
-- `mlsSource`: Human-readable MLS name (GPS, CRMLS, etc.)
-- `mlsId`: 26-digit MLS association ID
-- `propertyTypeName`: Human-readable type (Residential, Land, etc.)
-- `media`: Preserved from _expand=Media
-- `landType`, `landLeaseAmount`, etc.: Derived land details
-- `slugAddress`: URL-safe address slug
-
-**Usage:**
-```bash
-# Auto-detect most recent fetch
-python src/scripts/mls/backend/unified/flatten.py
-
-# Specify input file
-python src/scripts/mls/backend/unified/flatten.py --input local-logs/all_GPS_listings.json
-
-# Specify output file
-python src/scripts/mls/backend/unified/flatten.py --output local-logs/custom_output.json
-```
-
-**Output:** `local-logs/flattened_unified_{MLS}_listings.json`
-
-### 3. seed.py
-
-Loads flattened listings into MongoDB `unified_listings` collection.
-
-**Features:**
-- Bulk upsert (500 per batch)
-- Automatic index creation
-- Geospatial coordinates formatting
-- Progress tracking
-- Error handling
-
-**Indexes Created:**
-1. `coordinates_2dsphere` - Geospatial (for CMA radius queries)
-2. `mlsSource_mlsId` - MLS filtering
-3. `city_status` - City page queries
-4. `subdivision_status` - Subdivision page queries
-5. `propertyType_status` - Property type filtering
-6. `listingKey_unique` - Unique identifier
-7. `modificationTimestamp_desc` - Incremental updates
-
-**Usage:**
-```bash
-# Auto-detect most recent flattened file
-python src/scripts/mls/backend/unified/seed.py
-
-# Specify input file
-python src/scripts/mls/backend/unified/seed.py --input local-logs/flattened_unified_GPS_listings.json
-
-# Recreate indexes only (no data seeding)
-python src/scripts/mls/backend/unified/seed.py --indexes-only
-
-# Use custom collection name
-python src/scripts/mls/backend/unified/seed.py --collection my_listings
-```
-
-**Output:** MongoDB `unified_listings` collection
-
-### 4. run-pipeline.py
-
-Orchestrates the complete pipeline (fetch → flatten → seed).
-
-**Usage:**
-```bash
-# Run full pipeline for GPS
-python src/scripts/mls/backend/unified/run-pipeline.py --mls GPS
-
-# Run full pipeline for all 8 MLSs
-python src/scripts/mls/backend/unified/run-pipeline.py --all
-
-# Run only specific steps
-python src/scripts/mls/backend/unified/run-pipeline.py --mls GPS --steps fetch,flatten
-python src/scripts/mls/backend/unified/run-pipeline.py --mls GPS --steps seed
-
-# Incremental update (fetch recent changes only)
-python src/scripts/mls/backend/unified/run-pipeline.py --all --incremental
-```
-
-## Data Schema
-
-### Enhanced Fields
-
-Each listing in `unified_listings` includes:
-
-**MLS Tracking:**
-```json
-{
-  "mlsSource": "GPS",
-  "mlsId": "20190211172710340762000000"
-}
-```
-
-**Property Type:**
-```json
-{
-  "propertyType": "D",
-  "propertyTypeName": "Land"
-}
-```
-
-**PropertyType Mappings:**
-- A: Residential
-- B: Residential Lease
-- C: Residential Income
-- D: Land
-- E: Commercial Sale
-- F: Commercial Lease
-- G: Business Opportunity
-- H: Manufactured In Park
-- I: Mobile Home
-
-**Geospatial:**
-```json
-{
-  "latitude": 33.7845,
-  "longitude": -116.4321,
-  "coordinates": {
-    "type": "Point",
-    "coordinates": [-116.4321, 33.7845]
-  }
-}
-```
-
-**Identifiers:**
-```json
-{
-  "listingKey": "20190608123213401318000000",
-  "slug": "20190608123213401318000000",
-  "slugAddress": "123-main-st-palm-springs-ca-92262"
-}
-```
-
-## Quick Start
-
-### 1. Fetch GPS Listings (Test)
-```bash
-python src/scripts/mls/backend/unified/unified-fetch.py --mls GPS
-# Output: local-logs/all_GPS_listings.json (5,140 listings)
-```
-
-### 2. Flatten
-```bash
-python src/scripts/mls/backend/unified/flatten.py
-# Output: local-logs/flattened_unified_GPS_listings.json
-```
-
-### 3. Seed to MongoDB
-```bash
-python src/scripts/mls/backend/unified/seed.py
-# Output: unified_listings collection (5,123 documents)
-```
-
-### 4. Or Run Full Pipeline
-```bash
-python src/scripts/mls/backend/unified/run-pipeline.py --mls GPS
-# Runs all 3 steps automatically
-```
-
-## Full Production Run
-
-To fetch all 87,604+ listings from all 8 MLSs:
-
-```bash
-# WARNING: This will take ~30-45 minutes and create ~500MB of data
-python src/scripts/mls/backend/unified/run-pipeline.py --all
-```
-
-**Expected Results:**
-- Fetch: ~30-45 minutes
-- Flatten: ~2-3 minutes
-- Seed: ~5-10 minutes
-- Total: ~40-60 minutes
-- Database size: ~500MB (87K+ listings)
-
-## Incremental Updates
-
-For hourly updates (recommended):
-
-```bash
-# Fetch only changes from last hour
-python src/scripts/mls/backend/unified/run-pipeline.py --all --incremental
-```
-
-Set up as cron job:
-```cron
-0 * * * * cd /path/to/jpsrealtor && python src/scripts/mls/backend/unified/run-pipeline.py --all --incremental
-```
-
-## MongoDB Queries
-
-### Find listings by MLS
-```javascript
-db.unified_listings.find({ mlsSource: "GPS" }).count()
-```
-
-### Find by property type
-```javascript
-db.unified_listings.find({ propertyTypeName: "Land" }).count()
-```
-
-### Find by city
-```javascript
-db.unified_listings.find({ city: "Palm Springs", standardStatus: "Active" })
-```
-
-### Geospatial radius query (CMA)
-```javascript
-db.unified_listings.find({
-  coordinates: {
-    $near: {
-      $geometry: { type: "Point", coordinates: [-116.5453, 33.8303] },
-      $maxDistance: 1609  // 1 mile in meters
-    }
-  },
-  standardStatus: "Active"
-})
-```
-
-## Verification
-
-Check data quality:
-```bash
-python -c "
-import os
-from pymongo import MongoClient
-from dotenv import load_dotenv
-load_dotenv('.env.local')
-
-client = MongoClient(os.getenv('MONGODB_URI'))
-db = client.get_database()
-collection = db.unified_listings
-
-print(f'Total listings: {collection.count_documents({}):,}')
-print(f'Active: {collection.count_documents({\"standardStatus\": \"Active\"}):,}')
-print(f'With coordinates: {collection.count_documents({\"coordinates\": {\"\\$exists\": True}}):,}')
-print(f'GPS: {collection.count_documents({\"mlsSource\": \"GPS\"}):,}')
-print(f'CRMLS: {collection.count_documents({\"mlsSource\": \"CRMLS\"}):,}')
-"
-```
-
-## Troubleshooting
-
-### Pagination stops early
-- **Fixed**: Updated unified-fetch.py to use API-provided SkipToken (not listing ID)
-- **Fixed**: Corrected break condition logic in pagination loop
-
-### Missing enhanced fields
-- Check flatten.py ran successfully
-- Verify MLS_ID_TO_NAME mapping includes all 8 MLSs
-- Check PROPERTY_TYPE_NAMES has A-I mappings
-
-### Geospatial queries not working
-- Ensure coordinates_2dsphere index exists: `db.unified_listings.getIndexes()`
-- Recreate indexes: `python seed.py --indexes-only`
-- Verify coordinates format: `[longitude, latitude]` (GeoJSON order)
-
-### Skipped listings during seed
-- Check for missing listingKey/unparsedAddress
-- Verify flatten.py output has required fields
-- Review seed.py output for specific errors
-
-## Performance
-
-### GPS MLS (5,140 listings)
-- Fetch: ~20 seconds
-- Flatten: ~1 second
-- Seed: ~3 seconds
-- **Total: ~25 seconds**
-
-### All 8 MLSs (87,604 listings - estimated)
-- Fetch: ~30-45 minutes
-- Flatten: ~2-3 minutes
-- Seed: ~5-10 minutes
-- **Total: ~40-60 minutes**
-
-## Next Steps
-
-1. ✅ Unified fetch with all 8 MLSs
-2. ✅ Enhanced flatten with mlsSource/mlsId/propertyTypeName
-3. ✅ Seed to unified_listings with geospatial indexes
-4. ⏭️ Create `/api/unified-listings` endpoint
-5. ⏭️ Update city/subdivision APIs to use unified collection
-6. ⏭️ Consolidate AI tools (searchCity + matchLocation → searchListings)
-7. ⏭️ Deploy Cloudflare caching
-8. ⏭️ Implement CMA closed listings fetch
-
-## Files
-
-```
-src/scripts/mls/backend/unified/
-├── README.md              # This file
-├── unified-fetch.py       # Fetch from Spark API
-├── flatten.py             # Transform to camelCase + enhance
-├── seed.py                # Load to MongoDB
-└── run-pipeline.py        # Orchestrate full pipeline
-```
-
-## Support
-
-For issues or questions:
-1. Check this README
-2. Review docs/UNIFIED_MLS_ARCHITECTURE.md
-3. Check logs in local-logs/
-4. Verify environment variables in .env.local
+**Total**: 87,562+ active listings
 
 ---
 
-**Created:** December 4, 2025
-**Status:** ✅ Production Ready
-**Version:** 1.0
+## Prerequisites (Already Met)
+
+✅ Python 3.8+ installed
+✅ `.env.local` with `SPARK_ACCESS_TOKEN` and `MONGODB_URI`
+✅ Python packages: `pymongo`, `python-dotenv`, `requests`
+✅ All scripts created and tested
+
+---
+
+## Cron Job Setup
+
+### Step 1: Find Your Python Path
+
+```bash
+which python3
+# Example output: /usr/bin/python3
+```
+
+### Step 2: Find Your Project Path
+
+```bash
+pwd
+# Example output: /home/user/jpsrealtor
+# or: /var/www/jpsrealtor
+```
+
+### Step 3: Edit Crontab
+
+```bash
+crontab -e
+```
+
+### Step 4: Add Cron Job
+
+Use the paths from steps 1 and 2:
+
+```cron
+# Daily MLS update at 6:00 AM
+0 6 * * * cd /home/user/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/main.py >> /var/log/mls-update.log 2>&1
+```
+
+**Replace**:
+- `/home/user/jpsrealtor` → your actual project path
+- `/usr/bin/python3` → your actual python path (if different)
+
+### Step 5: Save and Exit
+
+- **Vim**: Press `Esc`, type `:wq`, press Enter
+- **Nano**: Press `Ctrl+X`, then `Y`, then Enter
+
+### Step 6: Verify
+
+```bash
+# List cron jobs
+crontab -l
+
+# Check cron service is running
+sudo systemctl status cron  # Ubuntu/Debian
+sudo systemctl status crond # CentOS/RHEL
+```
+
+---
+
+## Test Manually Before Cron
+
+```bash
+# Navigate to project
+cd /path/to/jpsrealtor
+
+# Test with dry run (no database writes)
+python3 src/scripts/mls/backend/unified/main.py --dry-run
+
+# Test with single MLS
+python3 src/scripts/mls/backend/unified/main.py --mls GPS
+
+# Full production test
+python3 src/scripts/mls/backend/unified/main.py
+```
+
+---
+
+## Command-Line Options
+
+### Basic Usage
+
+```bash
+# Full daily update (default for cron)
+python3 main.py
+
+# Update specific MLSs only
+python3 main.py --mls GPS CRMLS
+
+# Skip status update (faster, fetch + seed only)
+python3 main.py --skip-status-update
+
+# Dry run (no database writes)
+python3 main.py --dry-run
+```
+
+### Advanced Options
+
+```bash
+# Full refetch (not incremental) - use only for initial setup
+python3 main.py --full-refetch
+
+# Help
+python3 main.py --help
+```
+
+---
+
+## Monitoring
+
+### View Logs
+
+```bash
+# Real-time log viewing
+tail -f /var/log/mls-update.log
+
+# View last 100 lines
+tail -n 100 /var/log/mls-update.log
+
+# Search for errors
+grep -i error /var/log/mls-update.log
+grep -i failed /var/log/mls-update.log
+```
+
+### Status Logs
+
+Detailed JSON logs saved after each run:
+
+```bash
+ls -lh local-logs/status-logs/
+cat local-logs/status-logs/status_update_20251207_060000.json
+```
+
+**Example**:
+```json
+{
+  "timestamp": "2025-12-07T06:32:15Z",
+  "total_checked": 87562,
+  "status_updated": 234,
+  "sold_moved_to_closed": 89,
+  "offmarket_removed": 12,
+  "unchanged": 87227,
+  "elapsed_seconds": 1847.3
+}
+```
+
+---
+
+## Data Flow
+
+```
+Daily at 6:00 AM
+  ↓
+[Step 1] unified-fetch.py
+  - Fetches listings modified in last 24 hours
+  - Uses _expand=Media,OpenHouses,VirtualTours
+  - Queries all 8 MLSs
+  - Output: local-logs/all_*.json
+  ↓
+[Step 2] flatten.py
+  - Converts to camelCase
+  - Derives mlsSource, propertyTypeName, slugs
+  - Output: local-logs/flattened_unified_*.json
+  ↓
+[Step 3] seed.py
+  - Upserts to unified_listings collection
+  - Creates/updates indexes
+  - Batch size: 500 listings
+  ↓
+[Step 4] update-status.py
+  - Checks all Active/Pending listings
+  - Moves Closed → closed_listings
+  - Updates timestamps
+  ↓
+Complete
+  - unified_listings: Updated
+  - closed_listings: New sold listings added
+  - Logs: Saved to local-logs/status-logs/
+```
+
+---
+
+## Database Collections
+
+### unified_listings
+
+Main collection - All active listings from all 8 MLSs
+
+```javascript
+{
+  listingKey: "20190608182210368068000000",
+  mlsId: "20190211172710340762000000",
+  mlsSource: "GPS",
+  standardStatus: "Active",
+  listPrice: 500000,
+  bedsTotal: 3,
+  bathroomsTotalInteger: 2,
+  unparsedAddress: "123 Main St, Palm Springs, CA 92262",
+  coordinates: {
+    type: "Point",
+    coordinates: [-116.5453, 33.8303]
+  },
+  media: [
+    {
+      mediaKey: "...",
+      uri1024: "https://photos.sparkplatform.com/...",
+      order: 0
+    }
+  ]
+}
+```
+
+### closed_listings
+
+Archive collection - Sold/Closed listings
+
+Same schema as `unified_listings`, but:
+- `standardStatus: "Closed"`
+- `closedDate: "2025-12-07T06:00:00Z"`
+
+---
+
+## Troubleshooting
+
+### Cron job doesn't run
+
+**Check**:
+```bash
+sudo systemctl status cron
+grep CRON /var/log/syslog  # Ubuntu
+grep CRON /var/log/cron    # CentOS
+```
+
+**Fix**:
+```bash
+sudo systemctl restart cron
+```
+
+---
+
+### Environment variables not loaded
+
+**Symptom**: `Missing SPARK_ACCESS_TOKEN`
+
+**Fix**: Set variables in crontab directly:
+
+```cron
+SPARK_ACCESS_TOKEN=your_token_here
+MONGODB_URI=your_mongodb_uri_here
+0 6 * * * cd /path/to/jpsrealtor && python3 src/scripts/mls/backend/unified/main.py
+```
+
+---
+
+### Rate limiting (429 errors)
+
+**Symptom**: `⏳ Rate limited, waiting...`
+
+**Fix**: Already handled automatically with:
+- Exponential backoff
+- Batch pauses every 1000 requests
+- 5 concurrent workers max
+
+---
+
+### MongoDB connection timeout
+
+**Check**:
+```bash
+python3 -c "
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+load_dotenv('.env.local')
+client = MongoClient(os.getenv('MONGODB_URI'))
+client.admin.command('ping')
+print('✅ MongoDB connected')
+"
+```
+
+---
+
+## Initial Setup (One-Time)
+
+If running for the **first time** (no data in DB yet):
+
+```bash
+# Full population (~8-10 hours)
+python3 main.py --full-refetch
+
+# Or fetch MLSs one at a time
+python3 main.py --full-refetch --mls GPS
+python3 main.py --full-refetch --mls CRMLS
+# ... etc
+```
+
+After initial population, switch to incremental (automatic in cron).
+
+---
+
+## Expected Timeline
+
+| Step | Duration |
+|------|----------|
+| Fetch (incremental) | ~1.5 hours |
+| Flatten | ~5 minutes |
+| Seed | ~10 minutes |
+| Status Update | ~30-60 minutes |
+| **Total** | **~2-3 hours** |
+
+Starts: **6:00 AM**
+Finishes: **~8:00-9:00 AM**
+
+---
+
+## Related Documentation
+
+- **Photo Fix**: `docs/photos/PHOTO_FIX_COMPLETE.md`
+- **Pipeline Analysis**: `PHOTO_PIPELINE_ANALYSIS.md`
+- **MLS Architecture**: `docs/listings/UNIFIED_MLS_ARCHITECTURE.md`
+- **Replication Guide**: `docs/misc/REPLICATION_GUIDE.md`
+
+---
+
+## Support
+
+For issues:
+1. ✅ Check logs: `/var/log/mls-update.log`
+2. ✅ Check status logs: `local-logs/status-logs/`
+3. ✅ Test manually: `python3 main.py --dry-run`
+4. ✅ Review this README
+
+---
+
+**Last Updated**: December 7, 2025
+**Maintained By**: Development Team
+**Status**: ✅ Production Ready - Just add cron job!
