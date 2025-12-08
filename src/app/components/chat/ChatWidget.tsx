@@ -135,7 +135,7 @@ export default function ChatWidget() {
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
-            className="flex-1 flex items-center justify-center pb-32 md:pb-32 xl:pb-32 2xl:pb-0"
+            className="flex-1 flex items-center justify-center pb-12 md:pb-16"
           >
             <div className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-6 md:gap-8 px-4">
               {/* Logo & Brand */}
