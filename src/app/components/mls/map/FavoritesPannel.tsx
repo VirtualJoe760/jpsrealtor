@@ -190,9 +190,11 @@ export default function FavoritesPannel({
             : 'bg-neutral-900/95 border-neutral-800'
         }`}>
           {/* Title row with close button */}
-          <div className="px-5 pt-5 pb-3 flex justify-between items-center">
-            <div className="flex-1">
-              <h2 className={`text-xl md:text-2xl font-bold ${themeClasses.title}`}>
+          <div className="px-5 pt-5 pb-3 flex justify-between items-center relative">
+            {/* Invisible spacer to balance close button on mobile */}
+            <div className="w-10 md:w-0"></div>
+            <div className="flex-1 md:flex-initial">
+              <h2 className={`text-xl md:text-2xl font-bold text-center md:text-left ${themeClasses.title}`}>
                 {activeTab === "favorites"
                   ? "Your Favorites"
                   : "Disliked Properties"}
