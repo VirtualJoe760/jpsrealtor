@@ -1232,8 +1232,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-color': regionColor,
                         'fill-opacity': ['case',
                           ['boolean', ['feature-state', 'hover'], false],
-                          isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
-                          isMobile ? 0.25 : 0.35   // base - lighter on mobile
+                          isMobile ? 0.30 : 0.40,  // hover - dimmer opacity
+                          isMobile ? 0.15 : 0.22   // base - dimmer opacity
                         ]
                       }}
                     />
@@ -1356,13 +1356,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              isMobile ? 0.25 : 0.35,  // hover - lighter on mobile for zero listings
-                              isMobile ? 0.12 : 0.20   // base - lighter on mobile
+                              isMobile ? 0.18 : 0.25,  // hover - dimmer opacity for zero listings
+                              isMobile ? 0.08 : 0.12   // base - dimmer opacity
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
-                              isMobile ? 0.25 : 0.35   // base - lighter on mobile
+                              isMobile ? 0.30 : 0.40,  // hover - dimmer opacity
+                              isMobile ? 0.15 : 0.22   // base - dimmer opacity
                             ]
                       }}
                     />
@@ -1485,13 +1485,13 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                         'fill-opacity': marker.count === 0
                           ? ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              isMobile ? 0.20 : 0.30,  // hover - lighter on mobile for zero listings
-                              isMobile ? 0.08 : 0.15   // base - lighter on mobile
+                              isMobile ? 0.15 : 0.22,  // hover - dimmer opacity for zero listings
+                              isMobile ? 0.06 : 0.10   // base - dimmer opacity
                             ]
                           : ['case',
                               ['boolean', ['feature-state', 'hover'], false],
-                              isMobile ? 0.45 : 0.55,  // hover - lighter on mobile
-                              isMobile ? 0.25 : 0.35   // base - lighter on mobile
+                              isMobile ? 0.30 : 0.40,  // hover - dimmer opacity
+                              isMobile ? 0.15 : 0.22   // base - dimmer opacity
                             ]
                       }}
                     />
