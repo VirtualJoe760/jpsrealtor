@@ -628,6 +628,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     if (panelOpen) return;
     if (!event.features || event.features.length === 0) return;
 
+    // Disable boundary click-to-zoom on mobile - let native gestures handle navigation
+    if (isMobile) {
+      console.log('🔇 Boundary click disabled on mobile - use native gestures');
+      return;
+    }
+
     const map = mapRef.current?.getMap?.();
     if (!map) return;
 

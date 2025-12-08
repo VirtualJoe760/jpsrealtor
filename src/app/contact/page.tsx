@@ -25,7 +25,8 @@ export default function MarketingConsentPage() {
   const [realEstateGoals, setRealEstateGoals] = useState('');
 
   // Consent checkboxes
-  const [smsConsent, setSmsConsent] = useState(false);
+  const [smsNonMarketingConsent, setSmsNonMarketingConsent] = useState(false);
+  const [smsMarketingConsent, setSmsMarketingConsent] = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(false);
 
   // UI state
@@ -52,7 +53,7 @@ export default function MarketingConsentPage() {
       return;
     }
 
-    if (!smsConsent && !newsletterConsent) {
+    if (!smsNonMarketingConsent && !smsMarketingConsent && !newsletterConsent) {
       setError('Please agree to at least one form of communication');
       return;
     }
@@ -71,7 +72,7 @@ export default function MarketingConsentPage() {
         body: JSON.stringify({
           email,
           phoneNumber: phone,
-          smsConsent,
+          smsConsent: smsNonMarketingConsent || smsMarketingConsent,
           newsletterConsent,
         }),
       });
@@ -94,7 +95,7 @@ export default function MarketingConsentPage() {
             email,
             phone,
             address: fullAddress,
-            message: `Marketing Consent Form Submission\n\nOwns Real Estate: ${ownsRealEstate}\nTimeframe: ${timeframe || 'Not specified'}\nReal Estate Goals: ${realEstateGoals || 'Not specified'}\n\nSMS Consent: ${smsConsent ? 'Yes' : 'No'}\nNewsletter Consent: ${newsletterConsent ? 'Yes' : 'No'}`,
+            message: `Marketing Consent Form Submission\n\nOwns Real Estate: ${ownsRealEstate}\nTimeframe: ${timeframe || 'Not specified'}\nReal Estate Goals: ${realEstateGoals || 'Not specified'}\n\nSMS Non-Marketing Consent: ${smsNonMarketingConsent ? 'Yes' : 'No'}\nSMS Marketing Consent: ${smsMarketingConsent ? 'Yes' : 'No'}\nNewsletter Consent: ${newsletterConsent ? 'Yes' : 'No'}`,
             optIn: true,
           }),
         });
@@ -339,10 +340,16 @@ export default function MarketingConsentPage() {
               <div className={`text-lg space-y-2 ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
                 <p>Your marketing preferences have been saved:</p>
                 <ul className="list-none space-y-2 mt-4">
-                  {smsConsent && (
+                  {smsNonMarketingConsent && (
                     <li className="flex items-center justify-center gap-2">
                       <Check className={`w-5 h-5 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
-                      <span>SMS Text Messages (Automated & Person-to-Person)</span>
+                      <span>SMS Non-Marketing Messages (Customer Care & Service Updates)</span>
+                    </li>
+                  )}
+                  {smsMarketingConsent && (
+                    <li className="flex items-center justify-center gap-2">
+                      <Check className={`w-5 h-5 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
+                      <span>SMS Marketing Messages (Promotional Offers)</span>
                     </li>
                   )}
                   {newsletterConsent && (
@@ -354,7 +361,7 @@ export default function MarketingConsentPage() {
                 </ul>
               </div>
               <div className={`mt-6 text-sm space-y-1 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
-                {smsConsent && <p>Reply STOP to opt out of text messages anytime.</p>}
+                {(smsNonMarketingConsent || smsMarketingConsent) && <p>Reply STOP to opt out of text messages anytime.</p>}
                 {newsletterConsent && <p>Click unsubscribe in any email to opt out of the newsletter.</p>}
               </div>
             </div>
@@ -601,33 +608,48 @@ export default function MarketingConsentPage() {
 
               {/* Consent Checkboxes */}
               <div className="space-y-4">
-                {/* SMS Consent */}
+                {/* SMS Non-Marketing Consent */}
                 <div className={`flex items-start gap-3 p-4 rounded-lg border-2 ${
                   isLight
                     ? 'bg-blue-50 border-blue-200'
                     : 'bg-blue-900/20 border-blue-700'
                 }`}>
                   <input
-                    id="smsConsent"
+                    id="smsNonMarketingConsent"
                     type="checkbox"
-                    checked={smsConsent}
-                    onChange={(e) => setSmsConsent(e.target.checked)}
+                    checked={smsNonMarketingConsent}
+                    onChange={(e) => setSmsNonMarketingConsent(e.target.checked)}
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <label htmlFor="smsConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'} space-y-3`}>
-                    <div>
-                      <strong className={isLight ? 'text-blue-900' : 'text-blue-300'}>
-                        SMS Text Messaging:
-                      </strong>
-                    </div>
-                    <p>
-                      I agree to receive non-marketing SMS messages regarding customer care, service updates, reminders, notifications, scheduling links, booking confirmations, and follow-ups. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>Privacy Policy</a>.
-                    </p>
-                    <p>
-                      I also agree to receive marketing SMS messages regarding promotional offers. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>Privacy Policy</a>.
-                    </p>
+                  <label htmlFor="smsNonMarketingConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'}`}>
+                    <strong className={isLight ? 'text-blue-900' : 'text-blue-300'}>
+                      SMS Text Messaging (Non-Marketing):
+                    </strong>
+                    {' '}
+                    I agree to receive non-marketing SMS messages regarding customer care, service updates, reminders, notifications, scheduling links, booking confirmations, and follow-ups. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>Privacy Policy</a>.
                   </label>
+                </div>
 
+                {/* SMS Marketing Consent */}
+                <div className={`flex items-start gap-3 p-4 rounded-lg border-2 ${
+                  isLight
+                    ? 'bg-indigo-50 border-indigo-200'
+                    : 'bg-indigo-900/20 border-indigo-700'
+                }`}>
+                  <input
+                    id="smsMarketingConsent"
+                    type="checkbox"
+                    checked={smsMarketingConsent}
+                    onChange={(e) => setSmsMarketingConsent(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="smsMarketingConsent" className={`text-sm ${isLight ? 'text-gray-700' : 'text-gray-200'}`}>
+                    <strong className={isLight ? 'text-indigo-900' : 'text-indigo-300'}>
+                      SMS Text Messaging (Marketing):
+                    </strong>
+                    {' '}
+                    I also agree to receive marketing SMS messages regarding promotional offers. Message frequency may vary. Reply 'HELP' for assistance or 'STOP' to unsubscribe. Standard message and data rates may apply. My information will be handled in accordance with the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-indigo-600 hover:text-indigo-700' : 'text-indigo-400 hover:text-indigo-300'}`}>Privacy Policy</a>.
+                  </label>
                 </div>
                 {/* Newsletter Consent */}
                 <div className={`flex items-start gap-3 p-4 rounded-lg border-2 ${
@@ -679,7 +701,7 @@ export default function MarketingConsentPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || (!smsConsent && !newsletterConsent)}
+                disabled={loading || (!smsNonMarketingConsent && !smsMarketingConsent && !newsletterConsent)}
                 className={`w-full py-4 px-6 rounded-lg font-semibold shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                   isLight
                     ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white'
