@@ -362,11 +362,11 @@ function MapPageContent() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setFavoritesPannelOpen(true)}
-                className={`fixed top-4 right-4 z-[60] rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation md:w-auto md:px-4 md:py-2 md:gap-2 ${
+                className={`fixed top-4 right-4 z-[60] rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation md:w-auto md:px-4 md:py-2 md:gap-2 w-16 h-16 md:h-auto md:backdrop-blur-xl md:shadow-lg ${
                   isLight
-                    ? 'bg-white/90 hover:bg-white'
-                    : 'bg-black/85 hover:bg-black/90'
-                } w-16 h-16 md:h-auto backdrop-blur-xl shadow-lg`}
+                    ? 'md:bg-white/90 md:hover:bg-white'
+                    : 'md:bg-black/85 md:hover:bg-black/90'
+                }`}
               >
                 <Heart className={`w-6 h-6 ${likedListings.length > 0 ? 'text-red-500 fill-red-500' : isLight ? 'text-gray-600' : 'text-emerald-400'}`} />
                 <span className={`hidden md:inline text-base font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{likedListings.length}</span>
