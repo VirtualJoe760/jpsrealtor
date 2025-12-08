@@ -331,36 +331,14 @@ function MapPageContent() {
 
   return (
     <div className="h-screen w-screen relative bg-black" data-page="map">
-      {isLoading && markers.length === 0 ? (
-        // Loading state
+      {isLoading && !isPreloaded && markers.length === 0 ? (
+        // Initial loading state - only show on first load before any data
         <div className={`h-full w-full flex items-center justify-center ${bgPrimary}`}>
           <LoadingGlobe message="Loading listings..." size={140} />
         </div>
-      ) : markers.length === 0 ? (
-        // Empty state
-        <div className={`h-full w-full flex items-center justify-center ${bgPrimary}`}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center gap-6 text-center"
-          >
-            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${
-              isLight
-                ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-                : 'bg-gradient-to-br from-emerald-500 to-cyan-500'
-            }`}>
-              <MapPin className="w-10 h-10 text-white" />
-            </div>
-            <div>
-              <h2 className={`text-3xl font-light ${textPrimary} mb-2`}>Map View</h2>
-              <p className={`${textPrimary} opacity-70 max-w-md`}>
-                No properties found. Adjust your filters or try a different area.
-              </p>
-            </div>
-          </motion.div>
-        </div>
       ) : (
-        // Map with listings
+        // Always show map once initial data loads - never show "no properties" fallback
+        // The map can handle empty states gracefully without blocking the entire UI
         <>
           <MapView
             listings={visibleListings}
