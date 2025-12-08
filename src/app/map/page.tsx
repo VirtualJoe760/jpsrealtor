@@ -77,6 +77,8 @@ function MapPageContent() {
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // Detect mobile for initial zoom
   const [isMobile, setIsMobile] = useState(false);
@@ -214,6 +216,31 @@ function MapPageContent() {
     };
     handleApplyFilters(defaultFilters);
   }, [handleApplyFilters]);
+
+  // Swipe to close controls panel on mobile
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isUpSwipe = distance > minSwipeDistance;
+    const isDownSwipe = distance < -minSwipeDistance;
+
+    // Swipe down to close
+    if (isDownSwipe) {
+      setControlsExpanded(false);
+    }
+  };
 
   const handleSelectListing = useCallback(
     async (listing: MapListing) => {
@@ -469,6 +496,9 @@ function MapPageContent() {
                   stiffness: 300,
                   mass: 0.6
                 }}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
                 className={`backdrop-blur-xl sm:rounded-lg border-b sm:border overflow-hidden max-h-[80vh] overflow-y-auto shadow-2xl pointer-events-auto ${
                   isLight
                     ? 'bg-white/95 border-gray-300'
@@ -476,9 +506,14 @@ function MapPageContent() {
                 }`}
               >
                 {/* Drag Handle & Close Button - Mobile Only */}
-                <div className={`sm:hidden pt-2 pb-1 flex justify-between items-center px-4 ${
-                  isLight ? 'bg-white/95' : 'bg-black/95'
-                }`}>
+                <div
+                  className={`sm:hidden pt-2 pb-1 flex justify-between items-center px-4 ${
+                    isLight ? 'bg-white/95' : 'bg-black/95'
+                  }`}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
                   <div className="w-8"></div>
                   <div className={`w-12 h-1 rounded-full ${isLight ? 'bg-gray-400' : 'bg-neutral-600'}`}></div>
                   <button
@@ -894,26 +929,39 @@ function MapPageContent() {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex gap-2 pt-2">
+                            <div className="flex flex-col gap-2 pt-2">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApplyFilters(filters)}
+                                  className={`flex-1 px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                                    isLight
+                                      ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                                      : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white'
+                                  }`}
+                                >
+                                  Apply Filters
+                                </button>
+                                <button
+                                  onClick={handleResetFilters}
+                                  className={`px-4 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                                    isLight
+                                      ? 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700'
+                                      : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-300'
+                                  }`}
+                                >
+                                  Reset
+                                </button>
+                              </div>
+                              {/* Close Panel Button - Mobile Only */}
                               <button
-                                onClick={() => handleApplyFilters(filters)}
-                                className={`flex-1 px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                                onClick={() => setControlsExpanded(false)}
+                                className={`sm:hidden w-full px-3 py-2.5 rounded-md text-xs font-medium transition-colors touch-manipulation ${
                                   isLight
-                                    ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
-                                    : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white'
+                                    ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
+                                    : 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white'
                                 }`}
                               >
-                                Apply Filters
-                              </button>
-                              <button
-                                onClick={handleResetFilters}
-                                className={`px-4 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
-                                  isLight
-                                    ? 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700'
-                                    : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-300'
-                                }`}
-                              >
-                                Reset
+                                Close Panel
                               </button>
                             </div>
                           </div>
