@@ -426,8 +426,8 @@ function MapPageContent() {
             </div>
           )}
 
-          {/* Map Controls - Mobile: Top swipeable tab, Desktop: Bottom left */}
-          <div className="fixed top-0 left-0 right-0 sm:absolute sm:top-auto sm:bottom-4 sm:left-4 sm:right-auto z-40 sm:w-80 pointer-events-none">
+          {/* Map Controls - Mobile: Below info panel with swipeable tab, Desktop: Bottom left */}
+          <div className="fixed top-[88px] left-0 right-0 sm:absolute sm:top-auto sm:bottom-4 sm:left-4 sm:right-auto z-40 sm:w-80 pointer-events-none">
             {/* Always show the toggle button at the top */}
             {!controlsExpanded && (
               <motion.button
@@ -436,10 +436,10 @@ function MapPageContent() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setControlsExpanded(true)}
-                className={`mx-auto sm:mx-0 sm:w-full sm:backdrop-blur-xl border-b border-x sm:border rounded-b-xl sm:rounded-lg px-4 py-2 sm:py-2.5 transition-all flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto ${
+                className={`mx-auto sm:mx-0 sm:w-full sm:backdrop-blur-xl border-b border-x sm:border rounded-b-xl sm:rounded-lg px-4 py-2.5 sm:py-2.5 transition-all flex items-center justify-center gap-2 touch-manipulation shadow-lg pointer-events-auto ${
                   isLight
-                    ? 'bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-500 active:bg-blue-100 sm:bg-white/95'
-                    : 'bg-black border-neutral-800 hover:bg-neutral-900 hover:border-emerald-500 active:bg-neutral-800 sm:bg-black/95'
+                    ? 'bg-white/95 border-gray-300 hover:bg-blue-50 hover:border-blue-500 active:bg-blue-100 sm:bg-white/95'
+                    : 'bg-black/90 border-neutral-800 hover:bg-neutral-900 hover:border-emerald-500 active:bg-neutral-800 sm:bg-black/95'
                 }`}
                 style={{ width: 'fit-content' }}
               >
