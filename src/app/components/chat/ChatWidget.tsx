@@ -118,7 +118,7 @@ export default function ChatWidget() {
             addMessage(fullText, "assistant", undefined, components);
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }
-        }, 30); // 30ms per word - fast but readable
+        }, 15); // 15ms per word - faster reveal
       } else {
         // Handle API errors gracefully
         setIsLoading(false);
@@ -456,6 +456,15 @@ export default function ChatWidget() {
                 {msg.components?.comparison && (
                   <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
                     <ComparisonCard data={msg.components.comparison} />
+                  </div>
+                )}
+
+                {msg.components?.articles && msg.components.articles.results?.length > 0 && (
+                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
+                    <ArticleResults
+                      results={msg.components.articles.results}
+                      query={msg.components.articles.query || ""}
+                    />
                   </div>
                 )}
               </motion.div>

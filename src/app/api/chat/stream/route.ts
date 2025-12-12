@@ -722,11 +722,13 @@ When a user asks a QUESTION about real estate topics (not property searches):
    }
    [/ARTICLE_RESULTS]
 
-   Based on our article "[Article Title]", here's what you need to know...
+   Based on our article "[Article Title]", here's a quick summary:
 
-   [Provide answer using article content, cite the source]
+   [Provide CONCISE answer (2-3 sentences max) highlighting KEY points from the article]
 
-   **Source:** [Article Title] - Read more: /articles/[slug]
+   **Source:** [Article Title]
+
+   IMPORTANT: Keep your response SHORT and CONCISE (2-3 sentences). The article card will display full details.
 
 3. **If no articles found** - Provide general answer and suggest we can write about it
 
@@ -1168,6 +1170,18 @@ function parseComponentData(responseText: string): { carousel?: any; mapView?: a
     }
   }
 
+  // Parse [ARTICLE_RESULTS]...[/ARTICLE_RESULTS]
+  const articleMatch = responseText.match(/\[ARTICLE_RESULTS\]\s*([\s\S]*?)\s*\[\/ARTICLE_RESULTS\]/);
+  if (articleMatch) {
+    try {
+      const jsonStr = articleMatch[1].trim();
+      components.articles = JSON.parse(jsonStr);
+      console.log("[PARSE] Found article results with", components.articles?.results?.length || 0, "articles");
+    } catch (e) {
+      console.error("[PARSE] Failed to parse article results JSON:", e);
+    }
+  }
+
   return components;
 }
 
@@ -1188,6 +1202,9 @@ function cleanResponseText(responseText: string): string {
 
   // Remove [COMPARISON]...[/COMPARISON] blocks
   cleaned = cleaned.replace(/\[COMPARISON\]\s*[\s\S]*?\s*\[\/COMPARISON\]/g, '');
+
+  // Remove [ARTICLE_RESULTS]...[/ARTICLE_RESULTS] blocks
+  cleaned = cleaned.replace(/\[ARTICLE_RESULTS\]\s*[\s\S]*?\s*\[\/ARTICLE_RESULTS\]/g, '');
 
   // Clean up extra whitespace
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
