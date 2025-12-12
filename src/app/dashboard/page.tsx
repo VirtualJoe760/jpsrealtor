@@ -363,10 +363,21 @@ export default function DashboardPage() {
   // ────── Loading / unauth ──────
   if (status === "loading") {
     return (
-      <div className="min-h-screen" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className={`text-center ${textPrimary}`}>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-current mx-auto mb-4"></div>
+          <p>Loading your dashboard...</p>
+        </div>
+      </div>
     );
   }
-  if (!session) return null;
+
+  console.log("Dashboard - Session status:", status, "Session:", session);
+
+  if (!session) {
+    console.log("Dashboard - No session, should redirect to signin");
+    return null;
+  }
   const user = session.user;
 
   // ────── Render ──────

@@ -158,14 +158,18 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
             {!effectivelyCollapsed && (
               <>
-                <span className="text-sm font-medium flex-1 text-left">Dashboard</span>
-                <div onClick={handleDropdownToggle} className="p-1 -m-1">
-                  {dashboardDropdownOpen ? (
-                    <ChevronUp className="w-4 h-4 flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 flex-shrink-0" />
-                  )}
-                </div>
+                <span className="text-sm font-medium flex-1 text-left">
+                  {session ? "Dashboard" : "Sign In"}
+                </span>
+                {session && (
+                  <div onClick={handleDropdownToggle} className="p-1 -m-1">
+                    {dashboardDropdownOpen ? (
+                      <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                    )}
+                  </div>
+                )}
               </>
             )}
           </motion.button>
