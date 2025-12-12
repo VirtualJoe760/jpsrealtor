@@ -408,18 +408,44 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return polygonData.map(p => `${p.type}-${p.id}`).sort().join('|');
   }, [polygonData]);
 
-  // Calculate California-wide stats from actual listings data
-  // Note: Don't calculate from geographic boundary clusters (regions/counties/cities)
-  // as they represent aggregated stats, not individual listings
-  const californiaStats = useMemo(() => {
+  // Fetch California-wide stats from API on mount
+  // Use pre-calculated stats from database for accurate statewide statistics
+  const [californiaStatsFromAPI, setCaliforniaStatsFromAPI] = useState<{
+    count: number;
+    medianPrice: number;
+    minPrice: number;
+    maxPrice: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchCaliforniaStats = async () => {
+      try {
+        const response = await fetch('/api/california-stats');
+        if (response.ok) {
+          const data = await response.json();
+          setCaliforniaStatsFromAPI({
+            count: data.count || 0,
+            medianPrice: data.medianPrice || 0,
+            minPrice: data.minPrice || 0,
+            maxPrice: data.maxPrice || 0
+          });
+          console.log('📊 California Stats from API:', data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch California stats:', error);
+      }
+    };
+
+    fetchCaliforniaStats();
+  }, []);
+
+  // Calculate viewport-specific stats from visible markers/listings
+  // This is used when hovering over regions/counties/cities
+  const viewportStats = useMemo(() => {
     const dataToRender = (markers && markers.length > 0) ? markers : listings;
     if (!dataToRender || dataToRender.length === 0) {
       return { count: 0, medianPrice: 0, minPrice: 0, maxPrice: 0 };
     }
-
-    // Note: Removed geographic cluster check as RadialCluster only has type 'radial'
-    // ServerCluster and MapListing are always included in California stats
-    // If needed in future, add region/county/city types to RadialCluster interface
 
     let totalCount = 0;
     let allPrices: number[] = [];
@@ -428,18 +454,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     dataToRender.forEach((marker: any) => {
       if (isServerCluster(marker) || isRadialCluster(marker)) {
-        // For radial clusters (not geographic boundaries), use count and track price range
         const clusterCount = marker.count || 0;
         if (clusterCount > 0) {
           totalCount += clusterCount;
 
-          // For median calculation, use the cluster's representative price
           const representativePrice = marker.avgPrice;
           if (representativePrice && representativePrice > 0) {
             allPrices.push(representativePrice);
           }
 
-          // Track min/max from cluster ranges
           if (marker.minPrice && marker.minPrice > 0) {
             minPrice = Math.min(minPrice, marker.minPrice);
           }
@@ -448,7 +471,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           }
         }
       } else {
-        // Individual listing
         totalCount += 1;
         if (marker.listPrice && marker.listPrice > 0) {
           allPrices.push(marker.listPrice);
@@ -458,27 +480,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       }
     });
 
-    // Handle case where no valid prices found
     if (allPrices.length === 0) {
       return { count: totalCount, medianPrice: 0, minPrice: 0, maxPrice: 0 };
     }
 
-    // Calculate median from all representative prices
     const sortedPrices = [...allPrices].sort((a, b) => a - b);
     const mid = Math.floor(sortedPrices.length / 2);
     const medianPrice = sortedPrices.length % 2 === 0
       ? Math.round((sortedPrices[mid - 1] + sortedPrices[mid]) / 2)
       : sortedPrices[mid];
-
-    console.log('📊 California Stats Calculation:', {
-      totalCount,
-      dataLength: dataToRender.length,
-      pricesCollected: allPrices.length,
-      medianPrice,
-      minPrice: minPrice === Infinity ? 0 : minPrice,
-      maxPrice: maxPrice === -Infinity ? 0 : maxPrice,
-      samplePrices: allPrices.slice(0, 5)
-    });
 
     return {
       count: totalCount,
@@ -487,6 +497,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       maxPrice: maxPrice === -Infinity ? 0 : Math.round(maxPrice)
     };
   }, [markers, listings]);
+
+  // Use API stats as primary, fallback to viewport stats
+  const californiaStats = californiaStatsFromAPI || viewportStats;
 
   // Handle marker clicks
   const handleMarkerClick = (listing: MapListing) => {

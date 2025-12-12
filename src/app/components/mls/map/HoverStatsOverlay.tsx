@@ -146,7 +146,7 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                   <div className={`text-[10px] md:text-xs font-semibold uppercase tracking-wider mt-1 ${
                     isLight ? 'text-gray-500' : 'text-gray-400'
                   }`}>
-                    Median Price
+                    Median Residential
                   </div>
                 </div>
               </div>

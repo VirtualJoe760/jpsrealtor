@@ -13,23 +13,43 @@ import CaliforniaStats from "@/models/CaliforniaStats";
  * Migration: Replace /api/california-stats with /api/stats/california
  * See: /api/stats/MIGRATION.md for full migration guide
  *
- * Returns California-wide statistics from pre-calculated CaliforniaStats collection
+ * Returns California-wide statistics for RESIDENTIAL SALES ONLY (propertyType=A)
  * Used for "Explore California" overlay at default zoom levels
  *
- * PERFORMANCE: Just fetches a single document - extremely fast
+ * PERFORMANCE: Calculates from unifiedlistings with property type filter
  */
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
     console.warn('[california-stats] ⚠️ DEPRECATED ENDPOINT: Use /api/stats/california instead');
-    console.log('[california-stats] Fetching pre-calculated California stats...');
+    console.log('[california-stats] Calculating California residential sales stats...');
 
-    // Fetch the single document containing California-wide stats
-    const statsDoc = await CaliforniaStats.findOne({});
+    // Calculate stats for residential sales (propertyType=A) in real-time
+    // This ensures we show accurate median prices for actual homes
+    const UnifiedListing = (await import('@/models/unified-listing')).default;
 
-    if (!statsDoc) {
-      console.log('[california-stats] No stats document found - returning defaults');
+    const stats = await UnifiedListing.aggregate([
+      {
+        $match: {
+          standardStatus: "Active",
+          propertyType: "A" // Residential sale only
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          avgPrice: { $avg: "$listPrice" },
+          minPrice: { $min: "$listPrice" },
+          maxPrice: { $max: "$listPrice" },
+          prices: { $push: "$listPrice" }
+        }
+      }
+    ]);
+
+    if (!stats || stats.length === 0) {
+      console.log('[california-stats] No residential listings found');
       return NextResponse.json({
         count: 0,
         medianPrice: 0,
@@ -39,19 +59,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const result = stats[0];
+
+    // Calculate median price from sorted prices
+    const prices = result.prices.sort((a: number, b: number) => a - b);
+    const medianPrice = prices.length % 2 === 0
+      ? (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2
+      : prices[Math.floor(prices.length / 2)];
+
     const californiaStats = {
-      count: statsDoc.count,
-      medianPrice: statsDoc.medianPrice,
-      avgPrice: statsDoc.avgPrice,
-      minPrice: statsDoc.minPrice,
-      maxPrice: statsDoc.maxPrice
+      count: result.count,
+      medianPrice: Math.round(medianPrice),
+      avgPrice: Math.round(result.avgPrice),
+      minPrice: result.minPrice,
+      maxPrice: result.maxPrice
     };
 
-    console.log('[california-stats] Stats fetched:', californiaStats);
+    console.log('[california-stats] Residential stats calculated:', californiaStats);
 
     return NextResponse.json(californiaStats, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' // 1 hour cache
+        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200' // 10 min cache
       }
     });
 
