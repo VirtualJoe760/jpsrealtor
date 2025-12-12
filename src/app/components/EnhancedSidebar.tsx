@@ -35,13 +35,23 @@ interface SidebarProps {
 export default function SimpleSidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { isCollapsed, toggleSidebar, setSidebarCollapsed } = useSidebar();
   const { currentTheme, setTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
   const [isMobile, setIsMobile] = useState(false);
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
+
+  // Debug session state
+  useEffect(() => {
+    console.log("🔍 EnhancedSidebar Session Debug:", {
+      status,
+      hasSession: !!session,
+      sessionData: session,
+      dashboardDropdownOpen,
+    });
+  }, [status, session, dashboardDropdownOpen]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -72,6 +82,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   };
 
   const handleDashboardClick = () => {
+    // If session is loading, don't navigate yet
+    if (status === "loading") {
+      console.log("⏳ Session still loading, preventing navigation");
+      return;
+    }
+
     if (!session) {
       router.push("/auth/signin");
       if (onClose) onClose();
@@ -159,7 +175,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             {!effectivelyCollapsed && (
               <>
                 <span className="text-sm font-medium flex-1 text-left">
-                  {session ? "Dashboard" : "Sign In"}
+                  {status === "loading" ? "Loading..." : session ? "Dashboard" : "Sign In"}
                 </span>
                 {session && (
                   <div onClick={handleDropdownToggle} className="p-1 -m-1">
@@ -175,7 +191,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           </motion.button>
 
           {/* Dropdown Items */}
-          {!effectivelyCollapsed && dashboardDropdownOpen && session && (
+          {!effectivelyCollapsed && dashboardDropdownOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -183,31 +199,41 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="mt-1 ml-4 space-y-1"
             >
-              {dashboardItems.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
+              {status === "loading" ? (
+                <div className={`px-4 py-2 text-sm ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                  Loading...
+                </div>
+              ) : session ? (
+                dashboardItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  const Icon = item.icon;
 
-                return (
-                  <motion.button
-                    key={item.label}
-                    onClick={() => handleNavigate(item.href)}
-                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
-                      isActive
-                        ? isLight
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-purple-600/10 text-purple-400"
-                        : isLight
-                          ? "text-gray-600 hover:bg-gray-50"
-                          : "text-neutral-400 hover:bg-neutral-800/50"
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="font-medium">{item.label}</span>
-                  </motion.button>
-                );
-              })}
+                  return (
+                    <motion.button
+                      key={item.label}
+                      onClick={() => handleNavigate(item.href)}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                        isActive
+                          ? isLight
+                            ? "bg-blue-50 text-blue-600"
+                            : "bg-purple-600/10 text-purple-400"
+                          : isLight
+                            ? "text-gray-600 hover:bg-gray-50"
+                            : "text-neutral-400 hover:bg-neutral-800/50"
+                      }`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium">{item.label}</span>
+                    </motion.button>
+                  );
+                })
+              ) : (
+                <div className={`px-4 py-2 text-sm ${isLight ? "text-gray-600" : "text-neutral-400"}`}>
+                  Please sign in to access dashboard features
+                </div>
+              )}
             </motion.div>
           )}
         </div>
