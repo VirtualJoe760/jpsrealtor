@@ -14,6 +14,9 @@ import ChatMapView from "./ChatMapView";
 import { ArticleResults } from "./ArticleCard";
 import { AppreciationCard } from "../analytics/AppreciationCard";
 import { ComparisonCard } from "../analytics/ComparisonCard";
+import ListingBottomPanel from "../mls/map/ListingBottomPanel";
+import { useMLSContext } from "../mls/MLSProvider";
+import type { Listing } from "./ListingCarousel";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -27,6 +30,12 @@ export default function ChatWidget() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ListingBottomPanel state for swipe functionality
+  const [showListingPanel, setShowListingPanel] = useState(false);
+  const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
+  const [currentListingIndex, setCurrentListingIndex] = useState(0);
+  const { likedListings, dislikedListings, toggleFavorite, toggleDislike } = useMLSContext();
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -159,6 +168,87 @@ export default function ChatWidget() {
 
   const cancelNewChat = () => {
     setShowNewChatModal(false);
+  };
+
+  // Listing panel handlers
+  const handleOpenListingPanel = (listings: Listing[], startIndex: number) => {
+    setCurrentListingQueue(listings);
+    setCurrentListingIndex(startIndex);
+    setShowListingPanel(true);
+  };
+
+  const handleCloseListingPanel = () => {
+    setShowListingPanel(false);
+  };
+
+  const handleSwipeLeft = () => {
+    // Dislike current listing
+    const currentListing = currentListingQueue[currentListingIndex];
+    if (currentListing) {
+      // Convert to MapListing format for toggleDislike
+      const mapListing = {
+        _id: currentListing.id,
+        listingId: currentListing.id,
+        listingKey: currentListing.id,
+        slug: currentListing.url.replace('/mls-listings/', ''),
+        slugAddress: currentListing.url.replace('/mls-listings/', ''),
+        primaryPhotoUrl: currentListing.image || '',
+        unparsedAddress: currentListing.address,
+        address: currentListing.address,
+        latitude: currentListing.latitude || 0,
+        longitude: currentListing.longitude || 0,
+        listPrice: currentListing.price,
+        bedsTotal: currentListing.beds,
+        bathroomsTotalInteger: currentListing.baths,
+        livingArea: currentListing.sqft,
+        city: currentListing.city,
+        subdivisionName: currentListing.subdivision,
+      };
+      toggleDislike(mapListing);
+    }
+
+    // Move to next listing
+    if (currentListingIndex < currentListingQueue.length - 1) {
+      setCurrentListingIndex(currentListingIndex + 1);
+    } else {
+      // End of queue
+      setShowListingPanel(false);
+    }
+  };
+
+  const handleSwipeRight = () => {
+    // Like current listing
+    const currentListing = currentListingQueue[currentListingIndex];
+    if (currentListing) {
+      // Convert to MapListing format for toggleFavorite
+      const mapListing = {
+        _id: currentListing.id,
+        listingId: currentListing.id,
+        listingKey: currentListing.id,
+        slug: currentListing.url.replace('/mls-listings/', ''),
+        slugAddress: currentListing.url.replace('/mls-listings/', ''),
+        primaryPhotoUrl: currentListing.image || '',
+        unparsedAddress: currentListing.address,
+        address: currentListing.address,
+        latitude: currentListing.latitude || 0,
+        longitude: currentListing.longitude || 0,
+        listPrice: currentListing.price,
+        bedsTotal: currentListing.beds,
+        bathroomsTotalInteger: currentListing.baths,
+        livingArea: currentListing.sqft,
+        city: currentListing.city,
+        subdivisionName: currentListing.subdivision,
+      };
+      toggleFavorite(mapListing);
+    }
+
+    // Move to next listing
+    if (currentListingIndex < currentListingQueue.length - 1) {
+      setCurrentListingIndex(currentListingIndex + 1);
+    } else {
+      // End of queue
+      setShowListingPanel(false);
+    }
   };
 
   const showLanding = messages.length === 0;
@@ -436,6 +526,7 @@ export default function ChatWidget() {
                     <ListingCarousel
                       listings={msg.components.carousel.listings}
                       title={msg.components.carousel.title}
+                      onOpenPanel={handleOpenListingPanel}
                     />
                   </div>
                 )}
@@ -729,6 +820,61 @@ export default function ChatWidget() {
         </>
       )}
     </AnimatePresence>
+
+    {/* ListingBottomPanel for swipe functionality */}
+    {showListingPanel && currentListingQueue.length > 0 && currentListingIndex < currentListingQueue.length && (
+      <ListingBottomPanel
+        listing={{
+          _id: currentListingQueue[currentListingIndex].id,
+          listingId: currentListingQueue[currentListingIndex].id,
+          listingKey: currentListingQueue[currentListingIndex].id,
+          slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+          slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
+          unparsedAddress: currentListingQueue[currentListingIndex].address,
+          address: currentListingQueue[currentListingIndex].address,
+          latitude: currentListingQueue[currentListingIndex].latitude || 0,
+          longitude: currentListingQueue[currentListingIndex].longitude || 0,
+          listPrice: currentListingQueue[currentListingIndex].price,
+          bedsTotal: currentListingQueue[currentListingIndex].beds,
+          bathroomsTotalInteger: currentListingQueue[currentListingIndex].baths,
+          livingArea: currentListingQueue[currentListingIndex].sqft,
+          city: currentListingQueue[currentListingIndex].city,
+          subdivisionName: currentListingQueue[currentListingIndex].subdivision,
+        }}
+        fullListing={{
+          listingKey: currentListingQueue[currentListingIndex].id,
+          slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+          slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+          unparsedAddress: currentListingQueue[currentListingIndex].address,
+          address: currentListingQueue[currentListingIndex].address,
+          city: currentListingQueue[currentListingIndex].city,
+          subdivisionName: currentListingQueue[currentListingIndex].subdivision,
+          listPrice: currentListingQueue[currentListingIndex].price,
+          bedroomsTotal: currentListingQueue[currentListingIndex].beds,
+          bathroomsTotalDecimal: currentListingQueue[currentListingIndex].baths,
+          livingArea: currentListingQueue[currentListingIndex].sqft,
+          latitude: currentListingQueue[currentListingIndex].latitude?.toString() || '0',
+          longitude: currentListingQueue[currentListingIndex].longitude?.toString() || '0',
+          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
+        } as any}
+        onClose={handleCloseListingPanel}
+        onSwipeLeft={handleSwipeLeft}
+        onSwipeRight={handleSwipeRight}
+        isSidebarOpen={false}
+        isLeftSidebarCollapsed={false}
+        isDisliked={dislikedListings.some(d => d.listingKey === currentListingQueue[currentListingIndex].id)}
+        onRemoveDislike={() => {
+          const mapListing = {
+            _id: currentListingQueue[currentListingIndex].id,
+            listingKey: currentListingQueue[currentListingIndex].id,
+            slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+            slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+          };
+          toggleDislike(mapListing as any);
+        }}
+      />
+    )}
     </>
   );
 }

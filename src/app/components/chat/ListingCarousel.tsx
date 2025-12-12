@@ -34,13 +34,15 @@ interface ListingCarouselProps {
   title?: string;
   onSelectionChange?: (selectedListings: Listing[]) => void;
   selectedListings?: Listing[];
+  onOpenPanel?: (listings: Listing[], startIndex: number) => void;
 }
 
 export default function ListingCarousel({
   listings,
   title,
   onSelectionChange,
-  selectedListings = []
+  selectedListings = [],
+  onOpenPanel
 }: ListingCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { likedListings, toggleFavorite } = useMLSContext();
@@ -318,17 +320,30 @@ export default function ListingCarousel({
                 </p>
               )}
 
-              <Link
-                href={listing.url}
-                target="_blank"
-                className={`block w-full rounded-lg py-2 text-center text-sm transition-colors ${
-                  isLight
-                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                    : 'bg-neutral-700 text-white hover:bg-neutral-600'
-                }`}
-              >
-                View Details
-              </Link>
+              {onOpenPanel ? (
+                <button
+                  onClick={() => onOpenPanel(listings, index % listings.length)}
+                  className={`block w-full rounded-lg py-2 text-center text-sm transition-colors ${
+                    isLight
+                      ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                      : 'bg-neutral-700 text-white hover:bg-neutral-600'
+                  }`}
+                >
+                  View Details
+                </button>
+              ) : (
+                <Link
+                  href={listing.url}
+                  target="_blank"
+                  className={`block w-full rounded-lg py-2 text-center text-sm transition-colors ${
+                    isLight
+                      ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                      : 'bg-neutral-700 text-white hover:bg-neutral-600'
+                  }`}
+                >
+                  View Details
+                </Link>
+              )}
             </div>
           </div>
         ))}
