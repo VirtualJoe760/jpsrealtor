@@ -28,7 +28,6 @@ export default function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,20 +35,7 @@ export default function ChatWidget() {
   const [showListingPanel, setShowListingPanel] = useState(false);
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
-  const { likedListings, dislikedListings, toggleFavorite, toggleDislike } = useMLSContext();
-
-  // Detect page refresh/reload
-  useEffect(() => {
-    // Set refreshing state on component mount
-    setIsRefreshing(true);
-
-    // Clear refreshing state after a short delay to allow content to load
-    const timer = setTimeout(() => {
-      setIsRefreshing(false);
-    }, 800); // 800ms - enough time for smooth transition
-
-    return () => clearTimeout(timer);
-  }, []);
+  const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike } = useMLSContext();
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -218,7 +204,7 @@ export default function ChatWidget() {
         city: currentListing.city,
         subdivisionName: currentListing.subdivision,
       };
-      toggleDislike(mapListing);
+      toggleDislike(mapListing as any);
     }
 
     // Move to next listing
@@ -273,58 +259,6 @@ export default function ChatWidget() {
 
   return (
     <>
-    {/* Refresh Loading Spinner Overlay */}
-    <AnimatePresence>
-      {isRefreshing && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm"
-          style={{
-            background: isLight
-              ? "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,245,255,0.95) 100%)"
-              : "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(20,20,30,0.95) 100%)"
-          }}
-        >
-          <div className="flex flex-col items-center gap-4">
-            {/* Spinning Logo */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-20 h-20 md:w-24 md:h-24"
-            >
-              <Image
-                src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
-                alt="Loading"
-                width={96}
-                height={96}
-                className="object-contain"
-                priority
-              />
-            </motion.div>
-
-            {/* Loading Text */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col items-center gap-2"
-            >
-              <Loader2 className={`w-8 h-8 animate-spin ${
-                isLight ? "text-blue-600" : "text-purple-400"
-              }`} />
-              <p className={`text-lg font-medium ${
-                isLight ? "text-gray-700" : "text-white"
-              }`}>
-                Loading...
-              </p>
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-
     <div className="h-screen w-full flex flex-col" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
       {/* Landing View */}
       <AnimatePresence>
@@ -817,48 +751,43 @@ export default function ChatWidget() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md z-[9998]"
             onClick={cancelNewChat}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed z-[9999] w-[calc(100%-2rem)] max-w-md"
-            style={{
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)'
-            }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           >
             <div
-              className={`rounded-2xl p-6 shadow-2xl ${
+              className={`rounded-2xl p-8 shadow-2xl w-full max-w-md ${
                 isLight
                   ? 'bg-white border border-gray-200'
-                  : 'bg-neutral-800 border border-neutral-700'
+                  : 'bg-gray-800 border border-gray-700'
               }`}
             >
               {/* Icon */}
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-                isLight ? 'bg-blue-100' : 'bg-purple-900/30'
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-5 ${
+                isLight ? 'bg-blue-100' : 'bg-purple-500/20'
               }`}>
-                <SquarePen className={`w-6 h-6 ${
+                <SquarePen className={`w-7 h-7 ${
                   isLight ? 'text-blue-600' : 'text-purple-400'
                 }`} />
               </div>
 
               {/* Title */}
-              <h3 className={`text-xl font-bold mb-2 ${
+              <h3 className={`text-2xl font-bold mb-3 ${
                 isLight ? 'text-gray-900' : 'text-white'
               }`}>
                 Start New Conversation?
               </h3>
 
               {/* Description */}
-              <p className={`text-sm mb-6 ${
-                isLight ? 'text-gray-600' : 'text-neutral-400'
+              <p className={`text-base mb-8 leading-relaxed ${
+                isLight ? 'text-gray-600' : 'text-gray-300'
               }`}>
                 This will clear your current chat history. Your conversation will be permanently deleted and cannot be recovered.
               </p>
@@ -867,20 +796,20 @@ export default function ChatWidget() {
               <div className="flex gap-3">
                 <button
                   onClick={cancelNewChat}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-all ${
+                  className={`flex-1 px-5 py-3 rounded-xl font-semibold transition-all ${
                     isLight
-                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                      : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200'
+                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                      : 'bg-gray-700 hover:bg-gray-600 text-gray-200 hover:shadow-lg'
                   }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmNewChat}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium text-white transition-all ${
+                  className={`flex-1 px-5 py-3 rounded-xl font-semibold text-white transition-all shadow-lg ${
                     isLight
-                      ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-purple-600 hover:bg-purple-700'
+                      ? 'bg-blue-600 hover:bg-blue-700 hover:shadow-xl'
+                      : 'bg-purple-600 hover:bg-purple-700 hover:shadow-purple-500/50'
                   }`}
                 >
                   Start New Chat
@@ -942,7 +871,7 @@ export default function ChatWidget() {
             slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
             slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
           };
-          toggleDislike(mapListing as any);
+          removeDislike(mapListing as any);
         }}
       />
     )}

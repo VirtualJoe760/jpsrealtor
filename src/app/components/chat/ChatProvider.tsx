@@ -74,6 +74,10 @@ export interface ComponentData {
       marketStrength?: string;
     };
   };
+  articles?: {
+    query?: string;
+    results: any[];
+  };
 }
 
 export interface ChatMessage {

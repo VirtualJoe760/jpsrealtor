@@ -174,7 +174,10 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Enable/disable map gestures when panel is open
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
-    if (!map) return;
+    if (!map || !map.isStyleLoaded()) {
+      console.log('⏸️ Waiting for map to load before handling panel state');
+      return;
+    }
 
     const handlers = [
       map.dragPan,
@@ -187,8 +190,10 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     ].filter(Boolean);
 
     if (panelOpen) {
+      console.log('🔒 Disabling map gestures (panel open)');
       handlers.forEach((h: any) => h.disable());
     } else {
+      console.log('🔓 Enabling map gestures (panel closed)');
       handlers.forEach((h: any) => h.enable());
     }
   }, [panelOpen]);
@@ -199,6 +204,40 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  // Handle center/zoom prop changes (e.g., from URL bounds on page load)
+  // This ensures the map moves to the correct location when props update after initial render
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !map.isStyleLoaded()) {
+      console.log('⏸️ Map not ready for view update');
+      return;
+    }
+
+    // Only update if props are provided and different from current view
+    if (centerLat !== undefined && centerLng !== undefined && zoom !== undefined) {
+      const currentCenter = map.getCenter();
+      const currentZoom = map.getZoom();
+
+      const centerChanged = Math.abs(currentCenter.lat - centerLat) > 0.001 ||
+                           Math.abs(currentCenter.lng - centerLng) > 0.001;
+      const zoomChanged = Math.abs(currentZoom - zoom) > 0.1;
+
+      if (centerChanged || zoomChanged) {
+        console.log('🗺️ View props changed, updating map view:', {
+          from: { lat: currentCenter.lat, lng: currentCenter.lng, zoom: currentZoom },
+          to: { lat: centerLat, lng: centerLng, zoom }
+        });
+
+        // Use jumpTo for immediate update without animation on initial load
+        // This prevents jarring animations when loading from URL
+        map.jumpTo({
+          center: [centerLng, centerLat],
+          zoom: zoom,
+        });
+      }
+    }
+  }, [centerLat, centerLng, zoom]);
 
   // Update clusters when map moves/zooms
   const updateClusters = () => {
@@ -279,30 +318,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     updateClusters();
   };
 
-  // Setup map event listeners
+  // Setup map zoom event listeners
+  // NOTE: Map load is now handled via onLoad prop on <Map> component
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
-    if (!map) return;
-
-    console.log('🎯 Setting up map event listeners');
-
-    const onLoad = () => {
-      console.log('🗺️ Map loaded');
-      updateClusters();
-
-      // Set default cursor to default arrow
-      map.getCanvas().style.cursor = 'default';
-
-      // FIXED (Bug #1): Removed duplicate polygon event handler registrations
-      // These handlers are registered in the useEffect with [polygonKey] dependency (~line 622)
-      // Removing them here eliminates duplicate registrations, memory leaks, and events firing multiple times
-    };
-
-    if (map.isStyleLoaded()) {
-      onLoad();
-    } else {
-      map.once("load", onLoad);
+    if (!map) {
+      console.log('⏸️ Map not ready for zoom event listener setup');
+      return;
     }
+
+    console.log('🎯 Setting up map zoom event listener');
 
     const onZoomEnd = () => {
       console.log('🔍 Zoom ended');
@@ -314,33 +339,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     return () => {
       try {
         map.off("zoomend", onZoomEnd);
-
-        // Clean up region click handlers
-        const regionNames = ['Northern California', 'Central California', 'Southern California'];
-        regionNames.forEach(regionName => {
-          const layerId = `region-fill-${regionName}`;
-          map.off('click', layerId);
-          map.off('mouseenter', layerId);
-          map.off('mouseleave', layerId);
-        });
-
-        // Clean up county click handlers
-        const countyData = dataToRender.filter((m: any) => m.clusterType === 'county' && m.polygon);
-        countyData.forEach((marker: any) => {
-          const layerId = `county-fill-${marker.countyName}`;
-          map.off('click', layerId);
-          map.off('mouseenter', layerId);
-          map.off('mouseleave', layerId);
-        });
-
-        // Clean up city click handlers
-        const cityData = dataToRender.filter((m: any) => m.clusterType === 'city' && m.polygon);
-        cityData.forEach((marker: any) => {
-          const layerId = `city-fill-${marker.cityName}`;
-          map.off('click', layerId);
-          map.off('mouseenter', layerId);
-          map.off('mouseleave', layerId);
-        });
       } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -801,9 +799,28 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   // Register hover event handlers for polygon layers (simplified and more reliable)
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
-    if (!map) return;
+    if (!map) {
+      console.log('⏸️ Map not ready for hover handler setup');
+      return;
+    }
 
-    console.log('🎨 Setting up global hover handlers for all polygon layers');
+    // Wait for map to be fully loaded before setting up event handlers
+    if (!map.isStyleLoaded()) {
+      console.log('⏸️ Map style not loaded, waiting...');
+      const onLoad = () => {
+        console.log('🎨 Map style loaded, setting up hover handlers');
+        setupHoverHandlers();
+      };
+      map.once('load', onLoad);
+      return () => {
+        map.off('load', onLoad);
+      };
+    }
+
+    setupHoverHandlers();
+
+    function setupHoverHandlers() {
+      console.log('🎨 Setting up global hover handlers for all polygon layers');
 
     // Global mousemove handler - simpler and more reliable than per-layer handlers
     const onMouseMove = (e: any) => {
@@ -919,28 +936,29 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       }
     };
 
-    // Register global mousemove handler
-    map.on('mousemove', onMouseMove);
-    console.log('✅ Global hover handler registered');
+      // Register global mousemove handler
+      map.on('mousemove', onMouseMove);
+      console.log('✅ Global hover handler registered');
 
-    // Cleanup
-    return () => {
-      console.log('🧹 Cleaning up global hover handler');
-      map.off('mousemove', onMouseMove);
+      // Cleanup
+      return () => {
+        console.log('🧹 Cleaning up global hover handler');
+        map.off('mousemove', onMouseMove);
 
-      // Clear any remaining hover state
-      if (hoveredFeatureRef.current) {
-        try {
-          // Check if source still exists before clearing
-          if (map.getSource(hoveredFeatureRef.current.source)) {
-            map.setFeatureState(hoveredFeatureRef.current, { hover: false });
+        // Clear any remaining hover state
+        if (hoveredFeatureRef.current) {
+          try {
+            // Check if source still exists before clearing
+            if (map.getSource(hoveredFeatureRef.current.source)) {
+              map.setFeatureState(hoveredFeatureRef.current, { hover: false });
+            }
+          } catch (e) {
+            // Silently ignore - source might not exist anymore
           }
-        } catch (e) {
-          // Silently ignore - source might not exist anymore
+          hoveredFeatureRef.current = null;
         }
-        hoveredFeatureRef.current = null;
-      }
-    };
+      };
+    }
   }, [dataToRender, hoveredPolygon]); // Re-run when data changes
 
   // Helper function to calculate stats for a specific boundary from filtered markers
@@ -1203,14 +1221,37 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       <Map
         ref={mapRef}
         mapStyle={currentMapStyleURL}
-        key={`map-${mapStyle}`}
         initialViewState={hydratedInitialViewState}
         onMoveEnd={handleMoveEnd}
         onDragEnd={handleDragEnd}
         onClick={handleMapClick}
-        interactive={!panelOpen}
         cursor="default"
         interactiveLayerIds={interactiveLayerIds}
+        onLoad={(event) => {
+          const map = event.target;
+          console.log('🗺️ Map loaded via onLoad prop');
+
+          // Update clusters now that map is ready
+          updateClusters();
+
+          // Apply frozen map fix
+          const canvas = map.getCanvas();
+          canvas.style.touchAction = 'auto';
+          canvas.style.cursor = 'default';
+
+          // Force non-passive wheel listener to wake up the map
+          canvas.addEventListener('wheel', () => {}, { passive: false });
+
+          // Tiny movement to ensure map is fully interactive (optional but reliable)
+          setTimeout(() => {
+            const center = map.getCenter();
+            map.easeTo({
+              center: [center.lng + 0.000001, center.lat],
+              duration: 0,
+            });
+            console.log('✅ Map activated');
+          }, 100);
+        }}
       >
         {/* Hover Stats Overlay */}
         <HoverStatsOverlay

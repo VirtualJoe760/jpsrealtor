@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import dynamicImport from "next/dynamic";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Loader2, Heart, List, Map as MapIcon, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapListing, Filters } from "@/types/types";
@@ -80,6 +80,9 @@ function MapPageContent() {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+  // Track if URL update was caused by map movement (to prevent loops)
+  const isUpdatingFromMapRef = useRef(false);
+
   // Detect mobile for initial zoom
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -97,36 +100,110 @@ function MapPageContent() {
     zoom: isMobile ? 4 : 4.8
   });
 
+  // Parse URL parameters and update map bounds whenever URL changes
+  // BUT skip if the URL was updated by the map itself (to prevent infinite loops)
+  useEffect(() => {
+    // Skip if this URL update came from handleBoundsChange
+    if (isUpdatingFromMapRef.current) {
+      console.log('⏭️ Skipping URL parse - update came from map movement');
+      isUpdatingFromMapRef.current = false;
+      return;
+    }
+
+    console.log('🔍 URL search params changed (external):', searchParams.toString());
+
+    // Check for lat/lng/zoom in URL (set by handleBoundsChange)
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const zoom = searchParams.get('zoom');
+
+    // Check for bounds parameter (from chat map view)
+    const boundsParam = searchParams.get('bounds');
+
+    let newBounds = null;
+
+    // Priority 1: bounds parameter (complete bounds object)
+    if (boundsParam) {
+      try {
+        const parsedBounds = JSON.parse(decodeURIComponent(boundsParam));
+        newBounds = parsedBounds;
+        console.log("✅ Parsed bounds from URL:", newBounds);
+      } catch (e) {
+        console.error("❌ Failed to parse bounds from URL:", e);
+      }
+    }
+    // Priority 2: lat/lng/zoom parameters
+    else if (lat && lng && zoom) {
+      const centerLat = parseFloat(lat);
+      const centerLng = parseFloat(lng);
+      const zoomLevel = parseFloat(zoom);
+
+      // Reconstruct bounds from center + zoom
+      // This is approximate but good enough for the map to center correctly
+      const latDelta = 2 / Math.pow(2, zoomLevel - 5); // Rough calculation
+      const lngDelta = 3 / Math.pow(2, zoomLevel - 5);
+
+      newBounds = {
+        north: centerLat + latDelta,
+        south: centerLat - latDelta,
+        east: centerLng + lngDelta,
+        west: centerLng - lngDelta,
+        zoom: zoomLevel
+      };
+      console.log("✅ Constructed bounds from lat/lng/zoom:", newBounds);
+    }
+
+    // Update map bounds if we found new bounds in URL
+    if (newBounds) {
+      setMapBounds(newBounds);
+    }
+  }, [searchParams]);
+
+  // Initial mount - parse URL and load listings
   useEffect(() => {
     setMounted(true);
     console.log("🗺️ Map page mounted, preloaded:", isPreloaded, "listings:", visibleListings.length);
 
-    // Check URL for bounds parameter from chat map view
+    // Parse URL on initial mount (for full page loads/refreshes)
     const urlParams = new URLSearchParams(window.location.search);
+    const lat = urlParams.get('lat');
+    const lng = urlParams.get('lng');
+    const zoom = urlParams.get('zoom');
     const boundsParam = urlParams.get('bounds');
 
-    console.log('🔍 URL search params:', window.location.search);
-    console.log('📦 Raw bounds parameter:', boundsParam);
+    let initialBounds = mapBounds;
 
-    let initialBounds = DEFAULT_BOUNDS;
+    // Parse bounds from URL if present
     if (boundsParam) {
       try {
-        const parsedBounds = JSON.parse(decodeURIComponent(boundsParam));
-        initialBounds = parsedBounds;
-        setMapBounds(parsedBounds); // Store the parsed bounds for map centering
-        console.log("✅ Successfully parsed bounds from URL:", initialBounds);
-        console.log("📍 Bounds details - North:", parsedBounds.north, "South:", parsedBounds.south, "East:", parsedBounds.east, "West:", parsedBounds.west, "Zoom:", parsedBounds.zoom);
+        initialBounds = JSON.parse(decodeURIComponent(boundsParam));
+        setMapBounds(initialBounds);
+        console.log("✅ Initial mount - parsed bounds from URL:", initialBounds);
       } catch (e) {
-        console.error("❌ Failed to parse bounds from URL:", e);
-        console.error("❌ Raw boundsParam was:", boundsParam);
+        console.error("❌ Failed to parse bounds:", e);
       }
-    } else {
-      console.log("ℹ️ No bounds parameter found, using DEFAULT_BOUNDS:", DEFAULT_BOUNDS);
+    } else if (lat && lng && zoom) {
+      const centerLat = parseFloat(lat);
+      const centerLng = parseFloat(lng);
+      const zoomLevel = parseFloat(zoom);
+
+      const latDelta = 2 / Math.pow(2, zoomLevel - 5);
+      const lngDelta = 3 / Math.pow(2, zoomLevel - 5);
+
+      initialBounds = {
+        north: centerLat + latDelta,
+        south: centerLat - latDelta,
+        east: centerLng + lngDelta,
+        west: centerLng - lngDelta,
+        zoom: zoomLevel
+      };
+      setMapBounds(initialBounds);
+      console.log("✅ Initial mount - constructed bounds from lat/lng/zoom:", initialBounds);
     }
 
     // Load listings if not preloaded yet
     if (!isPreloaded && !isLoading) {
-      console.log("🚀 Loading MLS listings for map with bounds:", initialBounds);
+      console.log("🚀 Loading MLS listings for map with initial bounds");
       loadListings(initialBounds, filters);
     } else {
       console.log("ℹ️ Skipping loadListings - preloaded:", isPreloaded, "isLoading:", isLoading);
@@ -164,6 +241,10 @@ function MapPageContent() {
       params.set("zoom", bounds.zoom.toString());
 
       console.log("🔗 Updating URL to:", `/map?${params.toString()}`);
+
+      // Set flag to prevent searchParams watcher from reacting to this URL change
+      isUpdatingFromMapRef.current = true;
+
       router.replace(`?${params.toString()}`, { scroll: false });
     },
     [filters, loadListings, router, searchParams]
@@ -247,9 +328,11 @@ function MapPageContent() {
       console.log("🏠 User selected listing:", listing.address);
       await selectListing(listing);
 
-      // Initialize swipe queue when a listing is selected
-      if (swipeQueue.isReady && !swipeQueue.queueLength) {
-        console.log("🎬 Initializing swipe queue for:", listing.address);
+      // Always reset and reinitialize swipe queue when a new listing is selected
+      // This ensures we get properties near the newly selected listing, not the old one
+      if (swipeQueue.isReady) {
+        console.log("🎬 Resetting and initializing swipe queue for:", listing.address);
+        swipeQueue.reset();
         await swipeQueue.initializeQueue(listing);
       }
     },

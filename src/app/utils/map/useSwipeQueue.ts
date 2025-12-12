@@ -552,8 +552,8 @@ export function useSwipeQueue(): SwipeQueueHook {
     console.log("Remaining:", validQueue.length - 1);
     console.log("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n");
 
-    // Remove from queue
-    setQueue(queue.filter(item => item.listingKey !== next.listingKey));
+    // Remove from queue (use validQueue.slice(1) to avoid race condition with stale state)
+    setQueue(validQueue.slice(1));
 
     return { listing: next, reason: tier };
   }, [queue, excludeKeys]);

@@ -391,9 +391,9 @@ export default function SubdivisionListings({
       {/* Listings Grid */}
       {filteredListings.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredListings.map((listing) => (
+          {filteredListings.map((listing, index) => (
             <Link
-              key={listing.listingId}
+              key={listing.listingKey || listing.listingId || `listing-${index}`}
               href={`/mls-listings/${listing.slug}`}
               className={`${isLight ? 'bg-white/80 border-gray-300 shadow-md hover:shadow-xl hover:border-blue-400' : 'bg-gray-900 border-gray-800 shadow-xl hover:shadow-2xl hover:border-gray-700'} border rounded-lg overflow-hidden transition-all cursor-pointer block backdrop-blur-sm`}
               style={isLight ? { backdropFilter: "blur(10px) saturate(150%)", WebkitBackdropFilter: "blur(10px) saturate(150%)" } : undefined}
