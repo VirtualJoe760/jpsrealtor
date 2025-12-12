@@ -36,6 +36,44 @@ export interface ComponentData {
       mlsSources?: string[];
     };
   };
+  comparison?: {
+    location1: {
+      name: string;
+      appreciation: {
+        annual: number;
+        cumulative: number;
+        trend: "increasing" | "decreasing" | "stable" | "volatile";
+      };
+      marketData: {
+        startMedianPrice: number;
+        endMedianPrice: number;
+        totalSales: number;
+        confidence: "high" | "medium" | "low";
+      };
+    };
+    location2: {
+      name: string;
+      appreciation: {
+        annual: number;
+        cumulative: number;
+        trend: "increasing" | "decreasing" | "stable" | "volatile";
+      };
+      marketData: {
+        startMedianPrice: number;
+        endMedianPrice: number;
+        totalSales: number;
+        confidence: "high" | "medium" | "low";
+      };
+    };
+    period: string;
+    winner?: string;
+    insights?: {
+      annualDifference?: number;
+      cumulativeDifference?: number;
+      priceGrowth?: string;
+      marketStrength?: string;
+    };
+  };
 }
 
 export interface ChatMessage {
