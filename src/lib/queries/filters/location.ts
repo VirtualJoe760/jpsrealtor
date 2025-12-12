@@ -27,9 +27,10 @@ export function buildLocationQuery(filter: LocationFilter): any {
     query.city = { $regex: new RegExp(`^${escapeRegex(filter.city)}$`, 'i') };
   }
 
-  // Subdivision filter (case-insensitive partial match)
+  // Subdivision filter (case-insensitive exact match for performance)
+  // Using exact match with case-insensitive regex anchor for index optimization
   if (filter.subdivision) {
-    query.subdivisionName = { $regex: new RegExp(escapeRegex(filter.subdivision), 'i') };
+    query.subdivisionName = { $regex: new RegExp(`^${escapeRegex(filter.subdivision)}$`, 'i') };
   }
 
   // ZIP code (exact match)

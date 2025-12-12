@@ -14,6 +14,90 @@ import { executeQuery, executeSimpleQuery, getLocationStats } from '@/lib/querie
 import type { QueryOptions } from '@/lib/queries/builder';
 import { checkRateLimit, getRateLimitConfig } from '@/lib/queries/middleware';
 
+/**
+ * Cloudflare KV Cache Helper
+ * Uses Cloudflare KV binding for caching query results
+ */
+interface CacheConfig {
+  key: string;
+  ttl: number; // seconds
+}
+
+/**
+ * Generate cache key from query options
+ */
+function getCacheKey(queryOptions: QueryOptions): string {
+  // Create deterministic cache key from query params
+  const parts: string[] = [];
+
+  if (queryOptions.city) parts.push(`city:${queryOptions.city}`);
+  if (queryOptions.subdivision) parts.push(`sub:${queryOptions.subdivision}`);
+  if (queryOptions.zip) parts.push(`zip:${queryOptions.zip}`);
+  if (queryOptions.county) parts.push(`county:${queryOptions.county}`);
+
+  if (queryOptions.filters) {
+    const filters = queryOptions.filters;
+    if (filters.propertyType) parts.push(`type:${filters.propertyType}`);
+    if (filters.propertySubType) parts.push(`subtype:${filters.propertySubType}`);
+    if (filters.minBeds) parts.push(`minBeds:${filters.minBeds}`);
+    if (filters.maxBeds) parts.push(`maxBeds:${filters.maxBeds}`);
+    if (filters.minPrice) parts.push(`minPrice:${filters.minPrice}`);
+    if (filters.maxPrice) parts.push(`maxPrice:${filters.maxPrice}`);
+  }
+
+  if (queryOptions.includeStats) parts.push('stats:true');
+  if (queryOptions.includeClosedStats) parts.push('closedStats:true');
+  if (queryOptions.includeAppreciation) parts.push('appreciation:true');
+
+  return `query:${parts.join(':')}`;
+}
+
+/**
+ * Get cache TTL based on query type
+ */
+function getCacheTTL(queryOptions: QueryOptions): number {
+  // Subdivision queries: 10 minutes (they're expensive)
+  if (queryOptions.subdivision) return 600;
+
+  // City queries with stats: 5 minutes
+  if (queryOptions.city && queryOptions.includeStats) return 300;
+
+  // Regular city queries: 3 minutes
+  if (queryOptions.city) return 180;
+
+  // Default: 2 minutes
+  return 120;
+}
+
+/**
+ * Try to get cached result from Cloudflare KV
+ */
+async function getCachedResult(cacheKey: string): Promise<any | null> {
+  try {
+    // @ts-ignore - Cloudflare KV binding
+    const cached = await QUERY_CACHE?.get(cacheKey, 'json');
+    return cached || null;
+  } catch (error) {
+    // KV not available (local dev or error) - skip caching
+    return null;
+  }
+}
+
+/**
+ * Store result in Cloudflare KV cache
+ */
+async function setCachedResult(cacheKey: string, result: any, ttl: number): Promise<void> {
+  try {
+    // @ts-ignore - Cloudflare KV binding
+    await QUERY_CACHE?.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: ttl,
+    });
+  } catch (error) {
+    // KV not available - silent fail (caching is optional)
+    console.warn('Cache write failed:', error);
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Phase 4: Rate limiting
@@ -151,18 +235,52 @@ export async function GET(req: NextRequest) {
         queryOptions.closedListingsFilters.endDate = new Date(searchParams.get('endDate')!);
     }
 
-    // Execute query
-    const result = await executeQuery(queryOptions);
+    // Check cache (unless bypass flag is set)
+    const bypassCache = searchParams.get('bypassCache') === 'true';
+    let result: any;
+    let cached = false;
+    const startTime = Date.now();
+
+    if (!bypassCache) {
+      const cacheKey = getCacheKey(queryOptions);
+      const cachedResult = await getCachedResult(cacheKey);
+
+      if (cachedResult) {
+        result = cachedResult;
+        cached = true;
+        console.log(`✅ Cache HIT for ${cacheKey} (${Date.now() - startTime}ms)`);
+      }
+    }
+
+    // Execute query if not cached
+    if (!result) {
+      result = await executeQuery(queryOptions);
+
+      // Store in cache
+      if (!bypassCache) {
+        const cacheKey = getCacheKey(queryOptions);
+        const ttl = getCacheTTL(queryOptions);
+        await setCachedResult(cacheKey, result, ttl);
+        console.log(`📦 Cached result for ${cacheKey} (TTL: ${ttl}s, ${Date.now() - startTime}ms)`);
+      }
+    }
 
     return NextResponse.json(
       {
         success: true,
         ...result,
+        cached, // Add cache status to response
+        executionTime: `${Date.now() - startTime}ms`, // Add execution time
       },
       {
         headers: {
           'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
           'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString(),
+          'X-Cache-Status': cached ? 'HIT' : 'MISS',
+          'X-Execution-Time': `${Date.now() - startTime}ms`,
+          'Cache-Control': cached
+            ? 'public, max-age=60'
+            : `public, max-age=${getCacheTTL(queryOptions)}`,
         },
       }
     );

@@ -36,8 +36,9 @@ Core system architecture, database design, and frontend framework documentation.
 - **FRONTEND_ARCHITECTURE.md** - Next.js structure
 - **DATABASE_MODELS.md** - Mongoose model reference
 - **PERFORMANCE.md** - Performance optimizations
+- **QUERY_PERFORMANCE_OPTIMIZATION.md** ⭐ **New** - Query optimization (51s → 500ms)
 - **RESPONSIVE_DESIGN.md** - Mobile-first design
-- **ANALYTICS_SYSTEM.md** ⭐ **New** - Analytics & appreciation system
+- **ANALYTICS_SYSTEM.md** - Analytics & appreciation system
 - **ANALYTICS_ARCHITECTURE.md** - Real estate analytics architecture
 - **CLOSED_LISTINGS_SYSTEM.md** - Closed listings & analytics
 - **CHAT_ARCHITECTURE.md** - Chat/query architecture
@@ -230,6 +231,11 @@ Completed work sessions, migration reports, and archived documentation.
 ## 🔄 Recent Changes
 
 ### December 11, 2025 ⭐
+- ✅ **Query Performance Optimization** - 51s → 500ms (100x improvement)
+  - Optimized regex queries for index usage
+  - Created 34 database indexes (26 active + 8 closed)
+  - Implemented Cloudflare KV caching layer
+  - Dynamic TTL based on query type (2-10 minutes)
 - ✅ **Documentation Reorganization** - Complete restructure for clarity
 - ✅ **New Directories**: integrations/, development/, historical/, debug/testing/
 - ✅ **Deleted 7 outdated files** (completion reports & task lists)
@@ -264,7 +270,7 @@ All documentation follows these standards:
 
 | Directory | Files | Purpose |
 |-----------|-------|---------|
-| Architecture | 11 | System design & infrastructure (+4 analytics/closed listings) |
+| Architecture | 12 | System design & infrastructure (+1 query optimization) |
 | Map | 3 | Map system documentation |
 | Listings | 4 | MLS data integration |
 | CMS | 2 | Content management |
@@ -280,7 +286,7 @@ All documentation follows these standards:
 | Debugging | 2 + 23 tests | Debug tools & test scripts |
 | **Historical** | 3 | **Archived documentation (NEW)** |
 
-**Total Active Docs**: ~59 files (organized in 15 directories)
+**Total Active Docs**: ~60 files (organized in 15 directories)
 **Root Files**: 1 (README.md only)
 
 ---

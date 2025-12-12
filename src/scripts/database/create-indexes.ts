@@ -46,6 +46,10 @@ const UNIFIED_LISTINGS_INDEXES: IndexDefinition[] = [
     keys: { subdivisionName: 1, listPrice: 1 },
   },
   {
+    name: 'subdivisionName_standardStatus_listPrice',
+    keys: { subdivisionName: 1, standardStatus: 1, listPrice: 1 },
+  },
+  {
     name: 'postalCode_listPrice',
     keys: { postalCode: 1, listPrice: 1 },
   },
