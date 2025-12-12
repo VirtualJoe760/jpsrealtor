@@ -32,6 +32,12 @@ function SignInForm() {
     setIsLoading(true);
     setError("");
 
+    console.log("🔐 Starting sign in process...", {
+      email,
+      callbackUrl,
+      hasPassword: !!password
+    });
+
     try {
       const result = await signIn("credentials", {
         email,
@@ -40,35 +46,47 @@ function SignInForm() {
         redirect: false,
       });
 
-      console.log("Sign in result:", result);
+      console.log("📋 Sign in result:", result);
+      console.log("📋 Result details:", {
+        ok: result?.ok,
+        error: result?.error,
+        status: result?.status,
+        url: result?.url
+      });
 
       if (result?.error) {
-        console.error("Sign in error:", result.error);
+        console.error("❌ Sign in error:", result.error);
         setError(result.error);
         setIsLoading(false);
       } else if (result?.ok) {
-        console.log("Sign in successful, checking session...");
+        console.log("✅ Sign in successful! Checking session...");
 
         // Check if 2FA is required by making a quick session check
         try {
+          console.log("🔄 Fetching session from /api/auth/session...");
           const response = await fetch("/api/auth/session");
-          const session = await response.json();
+          console.log("📡 Session response status:", response.status);
 
-          console.log("Session data:", session);
+          const session = await response.json();
+          console.log("📦 Session data:", session);
+          console.log("📦 Has user?", !!session?.user);
+          console.log("📦 User email:", session?.user?.email);
 
           if (session?.user?.requiresTwoFactor) {
-            console.log("2FA required, redirecting to 2FA page");
-            // Store email for 2FA verification
+            console.log("🔐 2FA required, redirecting to 2FA page");
             sessionStorage.setItem("2fa_email", email);
             window.location.href = `/auth/2fa?from=${encodeURIComponent(callbackUrl)}`;
+          } else if (session?.user) {
+            console.log("✅ Session valid! Redirecting to:", callbackUrl);
+            window.location.href = callbackUrl;
           } else {
-            console.log("No 2FA required, redirecting to:", callbackUrl);
-            // Use window.location for more reliable redirect
+            console.warn("⚠️ No user in session after successful login!");
+            console.log("⚠️ This means the session wasn't created properly");
+            console.log("⚠️ Attempting redirect anyway to:", callbackUrl);
             window.location.href = callbackUrl;
           }
         } catch (sessionError) {
-          console.error("Session fetch error:", sessionError);
-          // If session check fails, just redirect to dashboard anyway
+          console.error("❌ Session fetch error:", sessionError);
           window.location.href = callbackUrl;
         }
       }
