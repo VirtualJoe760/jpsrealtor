@@ -13,6 +13,7 @@ import ListingCarousel from "./ListingCarousel";
 import ChatMapView from "./ChatMapView";
 import { ArticleResults } from "./ArticleCard";
 import { AppreciationCard } from "../analytics/AppreciationCard";
+import { ComparisonCard } from "../analytics/ComparisonCard";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -88,30 +89,51 @@ export default function ChatWidget() {
       const data = await response.json();
 
       if (data.success && data.response) {
-        // Streaming text reveal effect
+        // Natural word-by-word streaming reveal effect
         setIsLoading(false);
         setIsStreaming(true);
         const fullText = data.response;
         const components: ComponentData | undefined = data.components;
-        let currentIndex = 0;
+
+        // Split into words and preserve whitespace/punctuation
+        const words = fullText.split(/(\s+)/); // Preserves spaces between words
+        let currentWordIndex = 0;
+        let displayedText = "";
 
         const intervalId = setInterval(() => {
-          if (currentIndex < fullText.length) {
-            setStreamingText(fullText.substring(0, currentIndex + 1));
-            currentIndex++;
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          if (currentWordIndex < words.length) {
+            displayedText += words[currentWordIndex];
+            setStreamingText(displayedText);
+            currentWordIndex++;
+
+            // Smooth scroll every 5 words to reduce jank
+            if (currentWordIndex % 10 === 0 || currentWordIndex === words.length) {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }
           } else {
             clearInterval(intervalId);
             setIsStreaming(false);
             setStreamingText("");
             addMessage(fullText, "assistant", undefined, components);
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }
-        }, 20); // 20ms per character for smooth reveal
+        }, 30); // 30ms per word - fast but readable
+      } else {
+        // Handle API errors gracefully
+        setIsLoading(false);
+        const errorMessage = data.error || data.details || "I encountered an issue processing your request.";
+        addMessage(
+          `I apologize, but I encountered an issue: ${errorMessage}\n\nPlease try rephrasing your question or try again in a moment.`,
+          "assistant"
+        );
       }
     } catch (error) {
       console.error("Chat error:", error);
-      addMessage("Sorry, something went wrong. Please try again.", "assistant");
       setIsLoading(false);
+      addMessage(
+        "I apologize, but I'm having trouble connecting right now. Please check your connection and try again.",
+        "assistant"
+      );
     }
   };
 
@@ -398,6 +420,12 @@ export default function ChatWidget() {
                 {msg.components?.appreciation && (
                   <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
                     <AppreciationCard data={msg.components.appreciation} />
+                  </div>
+                )}
+
+                {msg.components?.comparison && (
+                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
+                    <ComparisonCard data={msg.components.comparison} />
                   </div>
                 )}
               </motion.div>

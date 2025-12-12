@@ -102,8 +102,9 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     [document.documentElement, document.body].forEach(el => {
       el.className = el.className
         .split(" ")
-        .filter((c) => !c.startsWith("theme-"))
+        .filter((c) => !c.startsWith("theme-") && c !== "dark")
         .concat(`theme-${currentTheme}`)
+        .concat(isLight ? [] : ["dark"]) // Add 'dark' class for Tailwind dark mode
         .join(" ");
     });
 

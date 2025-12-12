@@ -178,6 +178,33 @@ Provides annual appreciation rate, cumulative appreciation, trend analysis, and 
         required: []
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "lookupSubdivision",
+      description: `Find the correct subdivision name from a partial or fuzzy search. Use this when:
+- User provides a partial subdivision name (e.g., "Vintage" instead of "Vintage Country Club")
+- You're unsure of the exact subdivision name
+- The subdivision query returns no results and you want to find similar names
+- User says "The [Name]" and you need to find if it's "[Name] Country Club" or similar
+
+Returns the best matching subdivision name with confidence score.`,
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The partial or fuzzy subdivision name (e.g., 'Vintage', 'The Vintage', 'Indian Wells CC')"
+          },
+          city: {
+            type: ["string", "null"],
+            description: "Optional city name to narrow the search (e.g., 'Indian Wells'). Omit or use null if city is unknown."
+          }
+        },
+        required: ["query"]
+      }
+    }
   }
 ];
 
@@ -237,22 +264,54 @@ export async function POST(req: NextRequest) {
       content: msg.content,
     })));
 
-    // Get AI response from Groq with tool support
-    // AI can choose between matchLocation (subdivisions) and searchCity (city-wide)
-    let completion = await createChatCompletion({
-      messages: groqMessages,
-      model,
-      temperature: 0.3,
-      maxTokens: 500,
-      stream: false,
-      tools: CHAT_TOOLS,
-      tool_choice: "auto", // Let AI decide between matchLocation and searchCity
-    });
+    // MULTI-ROUND TOOL EXECUTION
+    // Support multiple rounds of tool calls for complex queries (e.g., comparisons)
+    const MAX_TOOL_ROUNDS = 3;
+    let toolRound = 0;
+    let messagesWithTools: GroqChatMessage[] = [...groqMessages];
+    let completion: any;
 
-    // Check if AI wants to use tools
-    const assistantMessage: any = 'choices' in completion ? completion.choices[0]?.message : null;
+    while (toolRound < MAX_TOOL_ROUNDS) {
+      console.log(`[TOOL ROUND ${toolRound + 1}/${MAX_TOOL_ROUNDS}] Starting...`);
 
-    if (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0) {
+      // Get AI response with tool support
+      completion = await createChatCompletion({
+        messages: messagesWithTools,
+        model,
+        temperature: 0.3,
+        maxTokens: toolRound === 0 ? 500 : 4000, // More tokens for synthesis rounds
+        stream: false,
+        tools: CHAT_TOOLS,
+        tool_choice: "auto", // Let AI decide if tools are needed
+      });
+
+      const assistantMessage: any = 'choices' in completion ? completion.choices[0]?.message : null;
+
+      // If no tool calls, we're done
+      if (!assistantMessage?.tool_calls || assistantMessage.tool_calls.length === 0) {
+        console.log(`[TOOL ROUND ${toolRound + 1}] No tool calls - finishing`);
+        break;
+      }
+
+      toolRound++;
+      console.log(`[TOOL ROUND ${toolRound}] AI requested ${assistantMessage.tool_calls.length} tool(s):`,
+        assistantMessage.tool_calls.map((tc: any) => tc.function.name));
+
+      // Safety check: prevent infinite loops
+      if (toolRound >= MAX_TOOL_ROUNDS) {
+        console.warn(`[TOOL ROUND ${toolRound}] Max rounds reached - forcing completion`);
+        // Get final response without tools
+        messagesWithTools.push(assistantMessage);
+        completion = await createChatCompletion({
+          messages: messagesWithTools,
+          model,
+          temperature: 0.3,
+          maxTokens: 4000,
+          stream: false,
+          tool_choice: "none"
+        });
+        break;
+      }
       console.log("[TOOL CALLS] AI requested:", assistantMessage.tool_calls.map((tc: any) => tc.function.name));
       console.log("[TOOL CALLS] Full details:", JSON.stringify(assistantMessage.tool_calls, null, 2));
 
@@ -400,6 +459,14 @@ export async function POST(req: NextRequest) {
 
               const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analytics/appreciation?${params.toString()}`);
               result = await response.json();
+            } else if (functionName === "lookupSubdivision") {
+              // Build query params for subdivision lookup API
+              const params = new URLSearchParams();
+              if (functionArgs.query) params.append("query", functionArgs.query);
+              if (functionArgs.city) params.append("city", functionArgs.city);
+
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analytics/subdivision-lookup?${params.toString()}`);
+              result = await response.json();
             } else {
               result = { error: `Unknown function: ${functionName}` };
             }
@@ -488,40 +555,14 @@ export async function POST(req: NextRequest) {
         })
       );
 
-      // Send tool results back to AI for final response
-      const messagesWithTools: GroqChatMessage[] = [
-        ...groqMessages,
-        assistantMessage,
-        ...toolResults
-      ];
+      // Append tool results to conversation for next round
+      messagesWithTools.push(assistantMessage);
+      messagesWithTools.push(...toolResults);
 
-      console.log("[TOOL RESULTS] Sending results back to AI for final response");
-      console.log("[TOOL RESULTS] Message count:", messagesWithTools.length);
+      console.log(`[TOOL ROUND ${toolRound}] Executed ${toolResults.length} tool(s)`);
+      console.log(`[TOOL ROUND ${toolRound}] Total messages: ${messagesWithTools.length}`);
 
-      // Try to get AI response without tools first
-      try {
-        completion = await createChatCompletion({
-          messages: messagesWithTools,
-          model,
-          temperature: 0.3,
-          maxTokens: 4000,
-          stream: false,
-          tool_choice: "none" // Prevent tool calls on final response
-        });
-        console.log("[AI RESPONSE] Completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
-      } catch (toolError: any) {
-        // If model tries to call tools despite tool_choice: "none", retry without the restriction
-        console.log("[AI RESPONSE] Model tried to call tools, retrying without tool_choice restriction");
-        completion = await createChatCompletion({
-          messages: messagesWithTools,
-          model,
-          temperature: 0.3,
-          maxTokens: 4000,
-          stream: false
-          // Let model call tools if it insists, we'll handle it in next iteration
-        });
-        console.log("[AI RESPONSE] Retry completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
-      }
+      // Continue loop - AI will either make more tool calls or give final response
     }
 
     // Extract final response
@@ -730,6 +771,138 @@ When users ask about market appreciation, growth, trends, or historical price da
    IMPORTANT: The [APPRECIATION] marker triggers an interactive analytics card with charts and detailed metrics.
    Always include it when presenting appreciation data.
 
+3. **COMPARISON QUERIES** - For comparing appreciation between two locations:
+
+   When users ask to "compare appreciation between X and Y":
+
+   **METHOD 1: Multiple tool calls (PREFERRED)**
+   - Call getAppreciation() twice in the FIRST round, once for each location
+   - Example: User asks "Compare Palm Desert vs La Quinta appreciation"
+     * Round 1: Call both getAppreciation({"city": "Palm Desert", "period": "5y"}) AND getAppreciation({"city": "La Quinta", "period": "5y"})
+     * Round 2: AI synthesizes results into comparison response
+
+   **RESPONSE FORMAT** - Use [COMPARISON] marker for side-by-side comparison:
+
+   Comparing [Location 1] vs [Location 2] over the past [X] years:
+
+   [COMPARISON]
+   {
+     "location1": {
+       "name": "Palm Desert",
+       "appreciation": {...appreciation data from first call...},
+       "marketData": {...market data from first call...}
+     },
+     "location2": {
+       "name": "La Quinta",
+       "appreciation": {...appreciation data from second call...},
+       "marketData": {...market data from second call...}
+     },
+     "period": "5y",
+     "winner": "Palm Desert",
+     "insights": {
+       "annualDifference": 2.3,
+       "cumulativeDifference": 12.5,
+       "priceGrowth": "Location 1 prices grew faster",
+       "marketStrength": "Both markets show high confidence"
+     }
+   }
+   [/COMPARISON]
+
+   [Location 1] showed [X]% annual appreciation compared to [Location 2]'s [Y]% annual appreciation.
+   This means [Location 1/2] appreciated [Z]% faster over this period.
+
+   IMPORTANT: You can now make multiple tool calls across multiple rounds. For comparison queries:
+   - Round 1: Call getAppreciation for BOTH locations
+   - Round 2: Synthesize the results into a comparison response with [COMPARISON] marker
+
+4. **SUBDIVISION NAME LOOKUP** - For handling partial or fuzzy subdivision names:
+
+   When users provide partial subdivision names, use the lookupSubdivision tool FIRST:
+
+   **Common scenarios:**
+   - User says "the Vintage" → actual name is "Vintage Country Club"
+   - User says "Indian Wells CC" → actual name is "Indian Wells Country Club"
+   - User says "PGA" → multiple matches like "PGA West", "PGA West - Nicklaus Tournament", etc.
+
+   **Best practice workflow:**
+   - If user provides a subdivision name that seems partial or informal, call lookupSubdivision first
+   - Use the bestMatch.subdivisionName from the lookup result
+   - Then call getAppreciation with the corrected subdivision name
+
+   **Example:**
+   User: "What's the appreciation for the Vintage in Indian Wells?"
+
+   Round 1:
+   - Call lookupSubdivision({"query": "the Vintage", "city": "Indian Wells"})
+   - Result shows bestMatch.subdivisionName = "Vintage Country Club"
+
+   Round 2:
+   - Call getAppreciation({"subdivision": "Vintage Country Club", "period": "5y"})
+   - Get accurate appreciation data
+
+   Round 3:
+   - Present the appreciation data with [APPRECIATION] marker
+
+   IMPORTANT: Always use lookupSubdivision when:
+   - Subdivision name seems shortened (e.g., "the Vintage", "PGA", "Indian Wells CC")
+   - getAppreciation returns no results for a subdivision
+   - User asks to compare subdivisions with informal names
+
+5. **SALES-FRIENDLY LANGUAGE** - Communication tone for appreciation data:
+
+   **Core Principle**: Inform, don't scare. Use positive, opportunity-focused language that educates buyers.
+
+   **Terminology Guidelines:**
+
+   Instead of "volatile" → Use sales-friendly alternatives:
+   - ✅ "dynamic growth" - Shows activity and opportunity
+   - ✅ "varied growth pattern" - Neutral, descriptive
+   - ✅ "active market with year-to-year variation" - Informative
+   - ✅ "strong overall growth with some year-to-year fluctuations" - Balanced
+   - ❌ "volatile" - Sounds risky and scary
+
+   Instead of "price swings" → Use:
+   - ✅ "year-to-year variations"
+   - ✅ "market adjustments"
+   - ✅ "varying growth rates"
+
+   Instead of "risk" → Use:
+   - ✅ "market dynamics"
+   - ✅ "growth pattern"
+   - ✅ "important considerations"
+
+   **Reframing Negative Data Positively:**
+
+   Declining appreciation:
+   - ❌ "prices are falling"
+   - ✅ "market is adjusting after strong growth"
+   - ✅ "presents potential buying opportunities"
+
+   Low sales volume:
+   - ❌ "limited transactions indicate low demand"
+   - ✅ "exclusive community with selective sales"
+   - ✅ "limited inventory creates exclusivity"
+
+   Year-to-year variations:
+   - ❌ "volatile market with unpredictable swings"
+   - ✅ "dynamic market that responded to economic conditions"
+   - ✅ "growth pattern reflects broader market trends"
+
+   **Tone Examples:**
+
+   BAD (Scary):
+   "The market shows volatile growth with risky price swings. You could lose money if there's a downturn."
+
+   GOOD (Informative & Positive):
+   "The market has shown dynamic growth over the past 5 years, with strong overall appreciation of 15% annually. Like many luxury markets, prices have varied year-to-year in response to economic conditions, creating strategic buying opportunities."
+
+   **Key Principles:**
+   - Always lead with the positive (total appreciation, price growth)
+   - Frame variations as normal market behavior, not red flags
+   - Focus on opportunities rather than risks
+   - Use specific numbers to build confidence
+   - End with actionable insights, not warnings
+
 ---
 
 # Core Capabilities
@@ -867,8 +1040,8 @@ Now assist the user with their real estate needs using these tools and knowledge
 /**
  * Parse component markers from AI response and extract structured data
  */
-function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any; appreciation?: any } {
-  const components: { carousel?: any; mapView?: any; articles?: any; appreciation?: any } = {};
+function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any } {
+  const components: { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any } = {};
 
   // Parse [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
   const carouselMatch = responseText.match(/\[LISTING_CAROUSEL\]\s*([\s\S]*?)\s*\[\/LISTING_CAROUSEL\]/);
@@ -906,6 +1079,18 @@ function parseComponentData(responseText: string): { carousel?: any; mapView?: a
     }
   }
 
+  // Parse [COMPARISON]...[/COMPARISON]
+  const comparisonMatch = responseText.match(/\[COMPARISON\]\s*([\s\S]*?)\s*\[\/COMPARISON\]/);
+  if (comparisonMatch) {
+    try {
+      const jsonStr = comparisonMatch[1].trim();
+      components.comparison = JSON.parse(jsonStr);
+      console.log("[PARSE] Found comparison data:", components.comparison?.location1?.name, "vs", components.comparison?.location2?.name);
+    } catch (e) {
+      console.error("[PARSE] Failed to parse comparison JSON:", e);
+    }
+  }
+
   return components;
 }
 
@@ -923,6 +1108,9 @@ function cleanResponseText(responseText: string): string {
 
   // Remove [APPRECIATION]...[/APPRECIATION] blocks
   cleaned = cleaned.replace(/\[APPRECIATION\]\s*[\s\S]*?\s*\[\/APPRECIATION\]/g, '');
+
+  // Remove [COMPARISON]...[/COMPARISON] blocks
+  cleaned = cleaned.replace(/\[COMPARISON\]\s*[\s\S]*?\s*\[\/COMPARISON\]/g, '');
 
   // Clean up extra whitespace
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();

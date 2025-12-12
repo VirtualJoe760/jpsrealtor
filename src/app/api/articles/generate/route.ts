@@ -4,6 +4,9 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createChatCompletion, GROQ_MODELS, GroqTool } from '@/lib/groq';
 import { digestAIResponse } from '@/lib/article-digester';
 
+// Increase timeout for AI generation (60 seconds)
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -168,18 +171,53 @@ ${length ? `Length: ${length}` : 'Length: comprehensive (1000-1500 words)'}
 
 Create a complete, engaging article following all guidelines. Make it actionable and SEO-optimized.`;
 
-    // Call Groq with tool use
-    const completion = await createChatCompletion({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      model: GROQ_MODELS.PREMIUM, // Use gpt-oss-120b for better quality
-      temperature: 0.7,
-      maxTokens: 4000,
-      tools,
-      tool_choice: { type: "function", function: { name: "generate_article_mdx" } }
-    });
+    // Call Groq with retry logic for cold starts
+    console.log('[CMS] Generating article with AI...');
+    const startTime = Date.now();
+
+    const generateWithRetry = async (retries = 2) => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          console.log(`[CMS] Attempt ${attempt}/${retries}...`);
+
+          const completion = await Promise.race([
+            createChatCompletion({
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+              model: GROQ_MODELS.PREMIUM,
+              temperature: 0.7,
+              maxTokens: 4000,
+              tools,
+              tool_choice: { type: "function", function: { name: "generate_article_mdx" } }
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Request timed out')), 50000)
+            )
+          ]) as any;
+
+          return completion;
+        } catch (error: any) {
+          console.error(`[CMS] Attempt ${attempt} failed:`, error.message);
+
+          // If this was the last attempt, throw the error
+          if (attempt === retries) {
+            throw error;
+          }
+
+          // Wait before retrying (exponential backoff: 1s, 2s)
+          const waitTime = attempt * 1000;
+          console.log(`[CMS] Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    };
+
+    const completion = await generateWithRetry();
+
+    const duration = Date.now() - startTime;
+    console.log(`[CMS] Article generated successfully in ${duration}ms`);
 
     const message = completion.choices[0]?.message;
 
