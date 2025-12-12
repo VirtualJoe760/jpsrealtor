@@ -406,21 +406,59 @@ export async function POST(req: NextRequest) {
                       insights: comparison.insights,
                       differences: comparison.differences
                     } : undefined,
-                    // Sample listings for AI (top 10)
-                    sampleListings: allListings.slice(0, 10).map((l: any) => ({
-                      id: l.listingKey,
-                      price: l.listPrice,
-                      beds: l.bedroomsTotal || l.bedsTotal,
-                      baths: l.bathroomsTotalDecimal,
-                      sqft: l.livingArea,
-                      address: l.address || l.unparsedAddress,
-                      city: l.city,
-                      subdivision: l.subdivisionName,
-                      image: l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "",
-                      url: `/mls-listings/${l.slug || l.listingKey}`,
-                      latitude: l.latitude,
-                      longitude: l.longitude
-                    }))
+                    // Sample listings for AI (top 10) - fetch photos from photo endpoint
+                    sampleListings: await Promise.all(
+                      allListings.slice(0, 10).map(async (l: any) => {
+                        let photoUrl = "";
+
+                        // Fetch photos from photo endpoint (same strategy as listing detail page)
+                        try {
+                          const photosRes = await fetch(
+                            `${process.env.NEXT_PUBLIC_BASE_URL}/api/listings/${l.listingKey}/photos`,
+                            {
+                              cache: "force-cache", // Use Cloudflare cache
+                              headers: { "Accept": "application/json" }
+                            }
+                          );
+
+                          if (photosRes.ok) {
+                            const photosData = await photosRes.json();
+                            if (photosData.photos && photosData.photos.length > 0) {
+                              // Use uri800 from first photo (primary photo)
+                              const primaryPhoto = photosData.photos[0];
+                              photoUrl = primaryPhoto.uri800 ||
+                                        primaryPhoto.uri1024 ||
+                                        primaryPhoto.uri640 ||
+                                        primaryPhoto.uri1280 ||
+                                        primaryPhoto.uriLarge ||
+                                        "";
+                            }
+                          }
+                        } catch (photoErr) {
+                          console.error(`[chat/stream] Failed to fetch photos for ${l.listingKey}:`, photoErr);
+                        }
+
+                        // Fallback to database photo fields if API fetch failed
+                        if (!photoUrl) {
+                          photoUrl = l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "";
+                        }
+
+                        return {
+                          id: l.listingKey,
+                          price: l.listPrice,
+                          beds: l.bedroomsTotal || l.bedsTotal,
+                          baths: l.bathroomsTotalDecimal,
+                          sqft: l.livingArea,
+                          address: l.address || l.unparsedAddress,
+                          city: l.city,
+                          subdivision: l.subdivisionName,
+                          image: photoUrl,
+                          url: `/mls-listings/${l.slug || l.listingKey}`,
+                          latitude: l.latitude,
+                          longitude: l.longitude
+                        };
+                      })
+                    )
                   },
                   meta: queryResult.meta
                 };
@@ -524,20 +562,59 @@ export async function POST(req: NextRequest) {
                 avgPrice: avgPrice,
                 medianPrice: medianPrice,
                 center: { lat: centerLat, lng: centerLng },
-                sampleListings: allListings.slice(0, 10).map((l: any) => ({
-                  id: l.listingId || l.listingKey,
-                  price: l.listPrice,
-                  beds: l.bedroomsTotal || l.bedsTotal,
-                  baths: l.bathroomsTotalDecimal,
-                  sqft: l.livingArea,
-                  address: l.address || l.unparsedAddress,
-                  city: l.city,
-                  subdivision: subdivisionName,
-                  image: l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "",
-                  url: `/mls-listings/${l.slugAddress || l.listingId}`,
-                  latitude: parseFloat(l.latitude) || null,
-                  longitude: parseFloat(l.longitude) || null
-                }))
+                sampleListings: await Promise.all(
+                  allListings.slice(0, 10).map(async (l: any) => {
+                    let photoUrl = "";
+                    const listingKey = l.listingKey || l.listingId;
+
+                    // Fetch photos from photo endpoint (same strategy as listing detail page)
+                    try {
+                      const photosRes = await fetch(
+                        `${process.env.NEXT_PUBLIC_BASE_URL}/api/listings/${listingKey}/photos`,
+                        {
+                          cache: "force-cache", // Use Cloudflare cache
+                          headers: { "Accept": "application/json" }
+                        }
+                      );
+
+                      if (photosRes.ok) {
+                        const photosData = await photosRes.json();
+                        if (photosData.photos && photosData.photos.length > 0) {
+                          // Use uri800 from first photo (primary photo)
+                          const primaryPhoto = photosData.photos[0];
+                          photoUrl = primaryPhoto.uri800 ||
+                                    primaryPhoto.uri1024 ||
+                                    primaryPhoto.uri640 ||
+                                    primaryPhoto.uri1280 ||
+                                    primaryPhoto.uriLarge ||
+                                    "";
+                        }
+                      }
+                    } catch (photoErr) {
+                      console.error(`[chat/stream] Failed to fetch photos for ${listingKey}:`, photoErr);
+                    }
+
+                    // Fallback to database photo fields if API fetch failed
+                    if (!photoUrl) {
+                      photoUrl = l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "";
+                    }
+
+                    return {
+                      id: l.listingId || l.listingKey,
+                      price: l.listPrice,
+                      beds: l.bedroomsTotal || l.bedsTotal,
+                      baths: l.bathroomsTotalDecimal,
+                      sqft: l.livingArea,
+                      address: l.address || l.unparsedAddress,
+                      city: l.city,
+                      subdivision: subdivisionName,
+                      image: photoUrl,
+                      url: `/mls-listings/${l.slugAddress || l.listingId}`,
+                      latitude: parseFloat(l.latitude) || null,
+                      longitude: parseFloat(l.longitude) || null
+                    };
+                  })
+                )
               };
 
               console.log("[AUTO-SEARCH] Summary:", JSON.stringify(result.summary, null, 2));
