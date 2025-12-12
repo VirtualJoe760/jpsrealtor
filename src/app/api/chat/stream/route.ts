@@ -416,7 +416,7 @@ export async function POST(req: NextRequest) {
                       address: l.address || l.unparsedAddress,
                       city: l.city,
                       subdivision: l.subdivisionName,
-                      image: l.primaryPhotoUrl || "",
+                      image: l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "",
                       url: `/mls-listings/${l.slug || l.listingKey}`,
                       latitude: l.latitude,
                       longitude: l.longitude
@@ -533,7 +533,7 @@ export async function POST(req: NextRequest) {
                   address: l.address || l.unparsedAddress,
                   city: l.city,
                   subdivision: subdivisionName,
-                  image: l.primaryPhotoUrl || "",
+                  image: l.primaryPhoto?.uri800 || l.primaryPhotoUrl || "",
                   url: `/mls-listings/${l.slugAddress || l.listingId}`,
                   latitude: parseFloat(l.latitude) || null,
                   longitude: parseFloat(l.longitude) || null
