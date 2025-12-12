@@ -700,34 +700,48 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     flattenCoords(coords);
 
-    // Determine target zoom level based on boundary type
-    let targetZoom = 12; // Default for cities
-    if (polygonData.clusterType === 'region') {
-      targetZoom = 7; // Region → zoom to county view
-    } else if (polygonData.clusterType === 'county') {
-      targetZoom = 10; // County → zoom to city view
-    } else if (polygonData.clusterType === 'city') {
-      targetZoom = 13; // City → zoom to listing view
-    }
-
-    // Get current zoom to determine if we need to force zoom in
+    // Get current zoom to determine behavior
     const currentZoom = map.getZoom();
 
     // Calculate padding based on mobile vs desktop
     const padding = isMobile ? 80 : 50;
 
-    // Fit map to polygon bounds with appropriate zoom level
-    // Always ensure we zoom in at least 1 level, or to the target zoom, whichever is greater
-    const minZoom = Math.max(targetZoom, currentZoom + 1);
+    // Calculate center of the polygon for county clicks at zoom 7-9
+    const centerLng = (minLng + maxLng) / 2;
+    const centerLat = (minLat + maxLat) / 2;
 
-    map.fitBounds(
-      [[minLng, minLat], [maxLng, maxLat]],
-      {
-        padding: padding,
-        duration: 1000,
-        minZoom: minZoom, // Ensure we always zoom in
+    // Special handling for county clicks at zoom 7-9: always go to zoom 10 centered
+    if (polygonData.clusterType === 'county' && currentZoom >= 7 && currentZoom <= 9) {
+      console.log(`🎯 County clicked at zoom ${currentZoom} - flying to zoom 10 (centered)`);
+      map.flyTo({
+        center: [centerLng, centerLat],
+        zoom: 10,
+        duration: 1000
+      });
+    } else {
+      // Standard behavior for other boundary types or zoom levels
+      let targetZoom = 12; // Default for cities
+      if (polygonData.clusterType === 'region') {
+        targetZoom = 7; // Region → zoom to county view
+      } else if (polygonData.clusterType === 'county') {
+        targetZoom = 10; // County → zoom to city view
+      } else if (polygonData.clusterType === 'city') {
+        targetZoom = 13; // City → zoom to listing view
       }
-    );
+
+      // Fit map to polygon bounds with appropriate zoom level
+      // Always ensure we zoom in at least 1 level, or to the target zoom, whichever is greater
+      const minZoom = Math.max(targetZoom, currentZoom + 1);
+
+      map.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        {
+          padding: padding,
+          duration: 1000,
+          minZoom: minZoom, // Ensure we always zoom in
+        }
+      );
+    }
 
     // After the animation completes, trigger bounds change to update URL
     setTimeout(() => {
