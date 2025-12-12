@@ -68,8 +68,8 @@ export interface MapListing {
 }
 
 export type Filters = {
-  // Listing Type (Sale vs Rental vs Multi-Family)
-  listingType: string; // 'sale' (A), 'rental' (B), or 'multifamily' (C)
+  // Listing Type (Sale vs Rental vs Multi-Family vs Land)
+  listingType: string; // 'sale' (A), 'rental' (B), 'multifamily' (C), or 'land' (D)
 
   // Price
   minPrice: string;

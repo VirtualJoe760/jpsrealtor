@@ -21,6 +21,7 @@ function getMarkerStyles(
 ) {
   const isRental = propertyType === "B";
   const isMultiFamily = propertyType === "C";
+  const isLand = propertyType === "D";
   const isCRMLS = mlsSource === "CRMLS";
 
   if (isSelected) {
@@ -37,6 +38,12 @@ function getMarkerStyles(
     return isCRMLS
       ? "bg-yellow-400 text-black border border-yellow-500 shadow-md"
       : "bg-yellow-600 text-black border border-yellow-700 shadow-md";
+  }
+
+  if (isLand) {
+    return isCRMLS
+      ? "bg-blue-500 text-white border border-blue-600 shadow-md"
+      : "bg-blue-600 text-white border border-blue-700 shadow-md";
   }
 
   // Sale properties

@@ -195,7 +195,7 @@ export default function FiltersPanel({
             {/* Listing Type Toggle */}
             <div>
               <label className={`text-xs ${textSecondary} mb-1 block`}>Listing Type</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setListingType("sale")}
                   className={`px-2 py-2 text-sm rounded-md font-medium transition ${
@@ -225,6 +225,16 @@ export default function FiltersPanel({
                   }`}
                 >
                   Multi-Family
+                </button>
+                <button
+                  onClick={() => setListingType("land")}
+                  className={`px-2 py-2 text-sm rounded-md font-medium transition ${
+                    listingType === "land"
+                      ? "bg-green-600 text-white"
+                      : buttonInactive
+                  }`}
+                >
+                  Land
                 </button>
               </div>
             </div>

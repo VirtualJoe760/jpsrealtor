@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
-import Photo from "@/models/photos";
+// Photo collection no longer used - using primaryPhoto from unified_listings
 import OpenHouse from "@/models/openHouses";
 
 export async function GET(req: NextRequest) {
@@ -20,11 +20,12 @@ export async function GET(req: NextRequest) {
   const lngMin = parseFloat(query.get("west") || "-180");
   const lngMax = parseFloat(query.get("east") || "180");
 
-  // ==================== LISTING TYPE FILTER (Sale vs Rental vs Multi-Family) ====================
+  // ==================== LISTING TYPE FILTER (Sale vs Rental vs Multi-Family vs Land) ====================
   const listingType = query.get("listingType") || "sale";
   const propertyTypeCode =
     listingType === "rental" ? "B" : // B = Residential Lease
     listingType === "multifamily" ? "C" : // C = Residential Income/Multi-Family
+    listingType === "land" ? "D" : // D = Land
     "A"; // A = Residential (default)
 
   const matchStage: Record<string, any> = {
@@ -220,20 +221,8 @@ export async function GET(req: NextRequest) {
       { $skip: skip },
       { $limit: limit },
 
-      // Stage 4: Join with photos (get primary photo)
-      {
-        $lookup: {
-          from: "photos",
-          let: { listingId: { $toString: "$listingId" } },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$listingId", "$$listingId"] } } },
-            { $sort: { primary: -1, Order: 1 } },
-            { $limit: 1 },
-            { $project: { uri800: 1, _id: 0 } }
-          ],
-          as: "photo"
-        }
-      },
+      // Stage 4: No longer need photo lookup - using primaryPhoto field from unified_listings
+      // HYBRID PHOTO STRATEGY: primaryPhoto is now embedded in the listing document
 
       // Stage 5: Join with open houses
       {
@@ -289,8 +278,14 @@ export async function GET(req: NextRequest) {
           hasHOA: { $gt: [{ $ifNull: ["$associationFee", 0] }, 0] },
           primaryPhotoUrl: {
             $ifNull: [
-              { $arrayElemAt: ["$photo.uri800", 0] },
-              "/images/no-photo.png"
+              "$primaryPhoto.uri800",
+              { $ifNull: [
+                "$primaryPhoto.uri1024",
+                { $ifNull: [
+                  "$primaryPhoto.uri640",
+                  "/images/no-photo.png"
+                ]}
+              ]}
             ]
           },
           openHouses: {

@@ -14,13 +14,22 @@ interface ContactRow {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('🚀 DROP COWBOY CAMPAIGN - STARTING');
+  console.log('═══════════════════════════════════════════════════════════');
+
   try {
     if (!DROP_COWBOY_TEAM_ID || !DROP_COWBOY_SECRET) {
+      console.error('❌ Drop Cowboy credentials not configured');
+      console.log('   TEAM_ID present:', !!DROP_COWBOY_TEAM_ID);
+      console.log('   SECRET present:', !!DROP_COWBOY_SECRET);
       return NextResponse.json(
         { error: 'Drop Cowboy credentials not configured' },
         { status: 500 }
       );
     }
+
+    console.log('✅ Drop Cowboy credentials verified');
 
     const formData = await req.formData();
     const contactsFile = formData.get('contacts') as File | null;
@@ -28,6 +37,13 @@ export async function POST(req: NextRequest) {
     const campaignName = formData.get('campaignName') as string;
     const brandId = formData.get('brandId') as string; // Required for TCPA compliance
     const forwardingNumber = formData.get('forwardingNumber') as string; // For replies
+
+    console.log('📋 Form Data Received:');
+    console.log('   Campaign Name:', campaignName);
+    console.log('   Brand ID:', brandId);
+    console.log('   Forwarding Number:', forwardingNumber);
+    console.log('   Contacts File:', contactsFile?.name, `(${contactsFile?.size} bytes)`);
+    console.log('   Audio File:', audioFile?.name, `(${audioFile?.size} bytes)`);
 
     if (!contactsFile) {
       return NextResponse.json(
@@ -50,12 +66,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!brandId) {
-      return NextResponse.json(
-        { error: 'Brand ID is required for TCPA compliance' },
-        { status: 400 }
-      );
-    }
+    // Brand ID is optional but recommended for TCPA compliance
+    // if (!brandId) {
+    //   return NextResponse.json(
+    //     { error: 'Brand ID is required for TCPA compliance' },
+    //     { status: 400 }
+    //   );
+    // }
 
     if (!forwardingNumber) {
       return NextResponse.json(
@@ -66,9 +83,13 @@ export async function POST(req: NextRequest) {
 
     // Parse contacts file (CSV)
     const contactsText = await contactsFile.text();
+    console.log('📄 CSV Content:', contactsText.substring(0, 200));
+
     const contacts = parseCSV(contactsText);
+    console.log(`📞 Parsed ${contacts.length} contacts:`, contacts);
 
     if (contacts.length === 0) {
+      console.error('❌ No valid contacts found in CSV');
       return NextResponse.json(
         { error: 'No valid contacts found in file' },
         { status: 400 }
@@ -76,13 +97,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 1: Upload audio to Drop Cowboy
-    console.log('Uploading audio to Drop Cowboy...');
+    console.log('\n🎵 STEP 1: Uploading audio to Drop Cowboy...');
     const audioArrayBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(audioArrayBuffer).toString('base64');
+    console.log('   Audio size (base64):', audioBase64.length, 'bytes');
 
     const uploadResponse = await uploadRecording(audioFile.name, audioBase64);
 
     if (!uploadResponse.success) {
+      console.error('❌ Audio upload failed:', uploadResponse.error);
       return NextResponse.json(
         { error: 'Failed to upload audio', details: uploadResponse.error },
         { status: 500 }
@@ -90,9 +113,10 @@ export async function POST(req: NextRequest) {
     }
 
     const recordingId = uploadResponse.recordingId;
+    console.log('✅ Audio uploaded successfully! Recording ID:', recordingId);
 
     // Step 2: Send RVM to each contact
-    console.log(`Sending RVM to ${contacts.length} contacts...`);
+    console.log(`\n📤 STEP 2: Sending RVM to ${contacts.length} contacts...`);
     const results = await sendCampaign(
       contacts,
       recordingId,
@@ -100,6 +124,12 @@ export async function POST(req: NextRequest) {
       forwardingNumber,
       campaignName
     );
+
+    console.log('\n🎉 CAMPAIGN COMPLETE:');
+    console.log('   ✅ Successful:', results.successes);
+    console.log('   ❌ Failed:', results.failures);
+    console.log('   Details:', JSON.stringify(results.details, null, 2));
+    console.log('═══════════════════════════════════════════════════════════\n');
 
     return NextResponse.json({
       success: true,
@@ -179,6 +209,10 @@ function formatPhoneE164(phone: string): string {
 
 async function uploadRecording(filename: string, audioBase64: string) {
   try {
+    console.log('   → Uploading to:', `${DROP_COWBOY_API_URL}/media`);
+    console.log('   → Filename:', filename);
+    console.log('   → Team ID:', DROP_COWBOY_TEAM_ID?.substring(0, 8) + '...');
+
     // Drop Cowboy uses /v1/media endpoint to upload recordings
     const response = await fetch(`${DROP_COWBOY_API_URL}/media`, {
       method: 'POST',
@@ -195,14 +229,24 @@ async function uploadRecording(filename: string, audioBase64: string) {
       }),
     });
 
+    console.log('   → Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const error = await response.text();
+      console.error('   → Upload error response:', error);
       return { success: false, error };
     }
 
     const data = await response.json();
-    return { success: true, recordingId: data.recording_id || data.id };
+    console.log('   → Upload response data:', data);
+
+    // Drop Cowboy returns an array with media object
+    const mediaObject = Array.isArray(data) ? data[0] : data;
+    const recordingId = mediaObject.media_id || mediaObject.recording_id || mediaObject.id;
+
+    return { success: true, recordingId };
   } catch (error: any) {
+    console.error('   → Upload exception:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -218,9 +262,30 @@ async function sendCampaign(
   let failures = 0;
   const details: any[] = [];
 
+  console.log('   Campaign Parameters:');
+  console.log('   → Recording ID:', recordingId);
+  console.log('   → Brand ID:', brandId);
+  console.log('   → Forwarding Number:', forwardingNumber);
+
   // Send RVM to each contact (Drop Cowboy processes individually)
   for (const contact of contacts) {
     try {
+      const payload: any = {
+        team_id: DROP_COWBOY_TEAM_ID,
+        secret: DROP_COWBOY_SECRET,
+        phone_number: contact.phone,
+        forwarding_number: forwardingNumber,
+        recording_id: recordingId,
+        foreign_id: `${campaignName}-${contact.phone}`,
+      };
+
+      // Add optional fields only if provided
+      if (brandId) payload.brand_id = brandId;
+      if (contact.postalCode) payload.postal_code = contact.postalCode;
+
+      console.log(`\n   📞 Sending to ${contact.phone}...`);
+      console.log('      Payload:', JSON.stringify(payload, null, 2));
+
       const response = await fetch(`${DROP_COWBOY_API_URL}/rvm`, {
         method: 'POST',
         headers: {
@@ -228,28 +293,25 @@ async function sendCampaign(
           'x-secret': DROP_COWBOY_SECRET!,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          team_id: DROP_COWBOY_TEAM_ID,
-          secret: DROP_COWBOY_SECRET,
-          brand_id: brandId,
-          phone_number: contact.phone,
-          forwarding_number: forwardingNumber,
-          recording_id: recordingId,
-          foreign_id: `${campaignName}-${contact.phone}`,
-          postal_code: contact.postalCode || '',
-        }),
+        body: JSON.stringify(payload),
       });
+
+      console.log('      → Response status:', response.status, response.statusText);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('      → Response data:', data);
+        const dropId = data.drop_id || data.id || data.status;
+        console.log('      ✅ SUCCESS - Drop ID:', dropId);
         successes++;
         details.push({
           phone: contact.phone,
           status: 'success',
-          dropId: data.drop_id,
+          dropId: dropId,
         });
       } else {
         const error = await response.text();
+        console.error('      ❌ FAILED - Error:', error);
         failures++;
         details.push({
           phone: contact.phone,
@@ -258,6 +320,7 @@ async function sendCampaign(
         });
       }
     } catch (error: any) {
+      console.error('      ❌ EXCEPTION:', error.message);
       failures++;
       details.push({
         phone: contact.phone,

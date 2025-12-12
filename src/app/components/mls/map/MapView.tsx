@@ -112,13 +112,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     type: 'county' | 'city' | 'region';
   } | null>(null);
 
-  // California-wide statistics from database (all listings)
-  const [dbCaliforniaStats, setDbCaliforniaStats] = useState<{
-    count: number;
-    medianPrice: number;
-    minPrice: number;
-    maxPrice: number;
-  } | null>(null);
+  // Note: California-wide statistics are now calculated from filtered markers
+  // in the californiaStats useMemo below, ensuring stats reflect active filters
 
   // Track the currently hovered feature for proper state cleanup
   const hoveredFeatureRef = useRef<{ source: string; id: number } | null>(null);
@@ -133,27 +128,6 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
-
-  // Fetch California-wide statistics from database on mount
-  useEffect(() => {
-    const fetchCaliforniaStats = async () => {
-      try {
-        console.log('[MapView] Fetching California-wide statistics from database...');
-        const res = await fetch('/api/california-stats');
-        if (res.ok) {
-          const stats = await res.json();
-          console.log('[MapView] California stats loaded:', stats);
-          setDbCaliforniaStats(stats);
-        } else {
-          console.error('[MapView] Failed to fetch California stats:', res.status);
-        }
-      } catch (error) {
-        console.error('[MapView] Error fetching California stats:', error);
-      }
-    };
-
-    fetchCaliforniaStats();
-  }, []);
 
   // Sync internal selection with prop
   useEffect(() => {
@@ -435,11 +409,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
   }, [polygonData]);
 
   // Calculate California-wide stats from actual listings data
+  // Note: Don't calculate from geographic boundary clusters (regions/counties/cities)
+  // as they represent aggregated stats, not individual listings
   const californiaStats = useMemo(() => {
     const dataToRender = (markers && markers.length > 0) ? markers : listings;
     if (!dataToRender || dataToRender.length === 0) {
       return { count: 0, medianPrice: 0, minPrice: 0, maxPrice: 0 };
     }
+
+    // Note: Removed geographic cluster check as RadialCluster only has type 'radial'
+    // ServerCluster and MapListing are always included in California stats
+    // If needed in future, add region/county/city types to RadialCluster interface
 
     let totalCount = 0;
     let allPrices: number[] = [];
@@ -447,8 +427,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     let maxPrice = -Infinity;
 
     dataToRender.forEach((marker: any) => {
-      if (isServerCluster(marker)) {
-        // For clusters (regions/counties/cities), use count and track price range
+      if (isServerCluster(marker) || isRadialCluster(marker)) {
+        // For radial clusters (not geographic boundaries), use count and track price range
         const clusterCount = marker.count || 0;
         if (clusterCount > 0) {
           totalCount += clusterCount;
@@ -936,6 +916,78 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     };
   }, [dataToRender, hoveredPolygon]); // Re-run when data changes
 
+  // Helper function to calculate stats for a specific boundary from filtered markers
+  const calculateBoundaryStats = useCallback((boundaryName: string, boundaryType: 'city' | 'county') => {
+    if (!dataToRender || dataToRender.length === 0) {
+      return { count: 0, medianPrice: 0, avgPrice: 0, minPrice: 0, maxPrice: 0 };
+    }
+
+    let totalCount = 0;
+    let allPrices: number[] = [];
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+
+    dataToRender.forEach((marker: any) => {
+      // Check if this marker belongs to the boundary
+      let belongsToBoundary = false;
+
+      // @ts-expect-error - Geographic boundary properties (clusterType, cityName, countyName) not in current type system
+      if (isServerCluster(marker) && marker.clusterType === boundaryType) {
+        // @ts-expect-error - Geographic boundary properties not in current type system
+        const markerName = boundaryType === 'city' ? marker.cityName : marker.countyName;
+        belongsToBoundary = markerName === boundaryName;
+      } else if (!isServerCluster(marker) && !isRadialCluster(marker)) {
+        // Individual listing - check city property
+        if (boundaryType === 'city') {
+          belongsToBoundary = marker.city === boundaryName;
+        }
+        // For county, we'd need to check listing data (not currently stored on listings)
+      }
+
+      if (belongsToBoundary) {
+        if (isServerCluster(marker)) {
+          totalCount += marker.count || 0;
+          if (marker.avgPrice && marker.avgPrice > 0) {
+            allPrices.push(marker.avgPrice);
+          }
+          if (marker.minPrice && marker.minPrice > 0) {
+            minPrice = Math.min(minPrice, marker.minPrice);
+          }
+          if (marker.maxPrice && marker.maxPrice > 0) {
+            maxPrice = Math.max(maxPrice, marker.maxPrice);
+          }
+        } else {
+          totalCount += 1;
+          if (marker.listPrice && marker.listPrice > 0) {
+            allPrices.push(marker.listPrice);
+            minPrice = Math.min(minPrice, marker.listPrice);
+            maxPrice = Math.max(maxPrice, marker.listPrice);
+          }
+        }
+      }
+    });
+
+    if (allPrices.length === 0) {
+      return { count: totalCount, medianPrice: 0, avgPrice: 0, minPrice: 0, maxPrice: 0 };
+    }
+
+    const sortedPrices = [...allPrices].sort((a, b) => a - b);
+    const mid = Math.floor(sortedPrices.length / 2);
+    const medianPrice = sortedPrices.length % 2 === 0
+      ? Math.round((sortedPrices[mid - 1] + sortedPrices[mid]) / 2)
+      : sortedPrices[mid];
+
+    const avgPrice = Math.round(allPrices.reduce((sum, p) => sum + p, 0) / allPrices.length);
+
+    return {
+      count: totalCount,
+      medianPrice,
+      avgPrice,
+      minPrice: minPrice === Infinity ? 0 : minPrice,
+      maxPrice: maxPrice === -Infinity ? 0 : maxPrice
+    };
+  }, [dataToRender]);
+
   // Determine contextual boundary based on current map view (when not hovering)
   const contextualBoundary = useMemo(() => {
     const map = mapRef.current?.getMap?.();
@@ -994,15 +1046,15 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         );
         if (cityEntry) {
           const [cityName] = cityEntry;
-          const cachedStats = cityStatsCache[cityName];
-          console.log('[contextualBoundary] Found city from static boundaries:', cityName, 'cached stats:', cachedStats);
+          const stats = calculateBoundaryStats(cityName, 'city');
+          console.log('[contextualBoundary] Found city from static boundaries:', cityName, 'filtered stats:', stats);
           return {
             name: cityName,
-            count: cachedStats?.count || 0,
-            medianPrice: cachedStats?.medianPrice || 0,
-            avgPrice: cachedStats?.avgPrice || 0,
-            minPrice: cachedStats?.minPrice || 0,
-            maxPrice: cachedStats?.maxPrice || 0,
+            count: stats.count,
+            medianPrice: stats.medianPrice,
+            avgPrice: stats.avgPrice,
+            minPrice: stats.minPrice,
+            maxPrice: stats.maxPrice,
             type: 'city' as const
           };
         }
@@ -1044,16 +1096,16 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
             type: 'county' as const
           };
         } else {
-          // County found but no stats in rendered data - check cache
-          const cachedStats = countyStatsCache[countyName];
-          console.log('[contextualBoundary] Found county from static boundaries:', countyName, 'cached stats:', cachedStats);
+          // County found but no stats in rendered data - calculate from filtered data
+          const stats = calculateBoundaryStats(countyName, 'county');
+          console.log('[contextualBoundary] Found county from static boundaries:', countyName, 'filtered stats:', stats);
           return {
             name: countyName,
-            count: cachedStats?.count || 0,
-            medianPrice: cachedStats?.medianPrice || 0,
-            avgPrice: cachedStats?.avgPrice || 0,
-            minPrice: cachedStats?.minPrice || 0,
-            maxPrice: cachedStats?.maxPrice || 0,
+            count: stats.count,
+            medianPrice: stats.medianPrice,
+            avgPrice: stats.avgPrice,
+            minPrice: stats.minPrice,
+            maxPrice: stats.maxPrice,
             type: 'county' as const
           };
         }
@@ -1117,7 +1169,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     console.log('[contextualBoundary] No boundary found for current position');
     return null;
-  }, [dataToRender, currentZoom]);
+  }, [dataToRender, currentZoom, calculateBoundaryStats]);
 
   return (
     <div ref={wrapperRef} className="relative w-full h-full">
@@ -1136,7 +1188,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         {/* Hover Stats Overlay */}
         <HoverStatsOverlay
           data={hoveredPolygon}
-          californiaStats={dbCaliforniaStats || californiaStats}
+          californiaStats={californiaStats}
           contextualBoundary={contextualBoundary}
         />
 

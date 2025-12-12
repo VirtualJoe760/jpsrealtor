@@ -27,14 +27,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert HTML to plain text (remove HTML tags for text version)
-    const plainText = message
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<[^>]*>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .trim();
-
     // Helper function to parse comma-separated emails
     const parseEmails = (emailString: string): string[] => {
       return emailString
@@ -43,13 +35,81 @@ export async function POST(req: NextRequest) {
         .filter(email => email.length > 0);
     };
 
+    // Format the message as HTML if it's plain text
+    const isHtml = message.includes('<') && message.includes('>');
+    const htmlMessage = isHtml ? message : `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              border-bottom: 2px solid #0066cc;
+              padding-bottom: 20px;
+              margin-bottom: 20px;
+            }
+            .message-body {
+              white-space: pre-wrap;
+              background: #f9f9f9;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2 style="margin: 0; color: #0066cc;">Message from Joseph Sardella</h2>
+          </div>
+
+          <div class="message-body">
+            ${message.replace(/\n/g, '<br>')}
+          </div>
+
+          <div class="footer">
+            <p>
+              <strong>Joseph Sardella</strong><br>
+              Email: <a href="mailto:joseph@josephsardella.com">joseph@josephsardella.com</a>
+            </p>
+            <p style="color: #999; font-size: 11px; margin-top: 20px;">
+              This email was sent via JPS Realtor CRM.
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Convert HTML to plain text (remove HTML tags for text version)
+    const plainText = message
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+
     // Build email payload with best practices for deliverability
     const emailPayload: any = {
       from: 'Joseph Sardella <joseph@josephsardella.com>',
       to: [to],
       subject: subject,
-      html: message, // Send as-is (already HTML from rich text editor)
-      text: plainText, // Include plain text version
+      html: htmlMessage, // Properly formatted HTML
+      text: plainText || message, // Include plain text version
       reply_to: 'joseph@josephsardella.com', // Add reply-to header
       headers: {
         'X-Entity-Ref-ID': Date.now() + '-' + Math.random().toString(36).substring(7), // Unique message ID

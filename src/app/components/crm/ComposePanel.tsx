@@ -1,15 +1,29 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette } from 'lucide-react';
+import ContactAutocomplete from './ContactAutocomplete';
+
+interface Email {
+  id: string;
+  to: string[];
+  from: string;
+  subject: string;
+  html?: string;
+  text?: string;
+  created_at: string;
+}
 
 interface ComposePanelProps {
   isLight: boolean;
   onClose: () => void;
   onSend?: () => void;
+  // Reply/Forward props
+  replyTo?: Email;
+  forwardEmail?: Email;
 }
 
-export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelProps) {
+export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwardEmail }: ComposePanelProps) {
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
@@ -23,6 +37,49 @@ export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelP
   const [success, setSuccess] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+
+  // Initialize reply or forward data
+  useEffect(() => {
+    if (replyTo) {
+      // Reply mode
+      setTo(replyTo.from);
+      setSubject(replyTo.subject.startsWith('Re: ') ? replyTo.subject : `Re: ${replyTo.subject}`);
+
+      const originalMessage = replyTo.html || replyTo.text || '';
+      const quotedMessage = `
+        <br><br>
+        <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-left: 8px; color: #666;">
+          <p style="margin: 0 0 8px 0;"><strong>On ${new Date(replyTo.created_at).toLocaleString()}, ${replyTo.from} wrote:</strong></p>
+          ${originalMessage}
+        </div>
+      `;
+      setMessage(quotedMessage);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = quotedMessage;
+      }
+    } else if (forwardEmail) {
+      // Forward mode
+      setSubject(forwardEmail.subject.startsWith('Fwd: ') ? forwardEmail.subject : `Fwd: ${forwardEmail.subject}`);
+
+      const originalMessage = forwardEmail.html || forwardEmail.text || '';
+      const forwardedMessage = `
+        <br><br>
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #f9f9f9;">
+          <p style="margin: 0 0 8px 0; font-weight: bold;">---------- Forwarded message ----------</p>
+          <p style="margin: 4px 0;"><strong>From:</strong> ${forwardEmail.from}</p>
+          <p style="margin: 4px 0;"><strong>Date:</strong> ${new Date(forwardEmail.created_at).toLocaleString()}</p>
+          <p style="margin: 4px 0;"><strong>Subject:</strong> ${forwardEmail.subject}</p>
+          <p style="margin: 4px 0;"><strong>To:</strong> ${forwardEmail.to.join(', ')}</p>
+          <hr style="margin: 12px 0; border: none; border-top: 1px solid #ddd;">
+          ${originalMessage}
+        </div>
+      `;
+      setMessage(forwardedMessage);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = forwardedMessage;
+      }
+    }
+  }, [replyTo, forwardEmail]);
 
   // Link modal state
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -196,7 +253,9 @@ export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelP
       <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${
         isLight ? 'bg-slate-800' : 'bg-gray-900'
       }`}>
-        <h3 className="text-white font-medium">New Message</h3>
+        <h3 className="text-white font-medium">
+          {replyTo ? 'Reply' : forwardEmail ? 'Forward' : 'New Message'}
+        </h3>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMinimized(true)}
@@ -220,17 +279,17 @@ export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelP
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-        {/* To Field */}
+        {/* To Field with Autocomplete */}
         <div className={`px-4 py-2 border-b ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
           <div className="flex items-center gap-2">
             <label className={`text-sm font-medium w-16 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>To</label>
-            <input
-              type="email"
+            <ContactAutocomplete
               value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
+              onChange={setTo}
               placeholder="Recipients"
+              isLight={isLight}
               required
+              multiple
             />
           </div>
         </div>
@@ -266,12 +325,12 @@ export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelP
               {showCc && (
                 <div className="flex items-center gap-2">
                   <label className={`text-sm font-medium w-8 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Cc</label>
-                  <input
-                    type="text"
+                  <ContactAutocomplete
                     value={cc}
-                    onChange={(e) => setCc(e.target.value)}
-                    className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
+                    onChange={setCc}
                     placeholder="Carbon copy recipients (comma separated)"
+                    isLight={isLight}
+                    multiple
                   />
                   <button
                     type="button"
@@ -285,12 +344,12 @@ export default function ComposePanel({ isLight, onClose, onSend }: ComposePanelP
               {showBcc && (
                 <div className="flex items-center gap-2">
                   <label className={`text-sm font-medium w-8 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Bcc</label>
-                  <input
-                    type="text"
+                  <ContactAutocomplete
                     value={bcc}
-                    onChange={(e) => setBcc(e.target.value)}
-                    className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
+                    onChange={setBcc}
                     placeholder="Blind carbon copy recipients (comma separated)"
+                    isLight={isLight}
+                    multiple
                   />
                   <button
                     type="button"

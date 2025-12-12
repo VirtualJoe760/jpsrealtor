@@ -5,6 +5,14 @@ import CaliforniaStats from "@/models/CaliforniaStats";
 /**
  * GET /api/california-stats
  *
+ * ⚠️ DEPRECATED: Use /api/stats/california instead
+ *
+ * This endpoint is maintained for backward compatibility but will be removed in a future version.
+ * New code should use the /api/stats/california endpoint which supports property type filtering.
+ *
+ * Migration: Replace /api/california-stats with /api/stats/california
+ * See: /api/stats/MIGRATION.md for full migration guide
+ *
  * Returns California-wide statistics from pre-calculated CaliforniaStats collection
  * Used for "Explore California" overlay at default zoom levels
  *
@@ -14,6 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
+    console.warn('[california-stats] ⚠️ DEPRECATED ENDPOINT: Use /api/stats/california instead');
     console.log('[california-stats] Fetching pre-calculated California stats...');
 
     // Fetch the single document containing California-wide stats

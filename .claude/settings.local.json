@@ -99,7 +99,12 @@
       "Bash(git push:*)",
       "Bash(npm update:*)",
       "Bash(timeout 15 bash:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:developers.google.com)",
+      "Bash(mkdir:*)",
+      "Bash(npx dotenv:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

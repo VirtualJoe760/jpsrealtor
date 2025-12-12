@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { city } = await req.json();
+    const { city, propertyType } = await req.json();
 
     if (!city) {
       return NextResponse.json(
@@ -14,14 +14,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[SEARCH-CITY] Searching city:", city);
+    console.log("[SEARCH-CITY] Searching city:", city, "propertyType:", propertyType || "sale (default)");
 
     // Convert city name to slug format
     const citySlug = city.toLowerCase().replace(/\s+/g, "-");
 
+    // Build query params - default to residential sale (Type A) unless specified
+    const params = new URLSearchParams({ limit: "100" });
+    if (propertyType) {
+      params.append("propertyType", propertyType);
+    }
+    // If no propertyType provided, endpoint defaults to "sale" (Type A)
+
     // Call the existing working city listings endpoint
     const listingsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cities/${citySlug}/listings?limit=100`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cities/${citySlug}/listings?${params.toString()}`,
       { method: "GET" }
     );
 
@@ -31,15 +38,17 @@ export async function POST(req: NextRequest) {
 
     const listingsData = await listingsResponse.json();
     const allListings = listingsData.listings || [];
-    const totalCount = listingsData.pagination?.total || allListings.length;
+
+    // ANALYTICS PATTERN: Use accurate stats from API endpoint, not calculated from sample
+    const apiStats = listingsData.stats || {};
+    const totalCount = apiStats.totalListings || allListings.length;
+    const minPrice = apiStats.priceRange?.min || 0;
+    const maxPrice = apiStats.priceRange?.max || 0;
+    const avgPrice = apiStats.avgPrice || 0;
+    const medianPrice = apiStats.medianPrice || 0;
 
     console.log("[SEARCH-CITY] Found", totalCount, "listings in", city);
-
-    // Calculate summary stats
-    const prices = allListings.map((l: any) => l.listPrice || 0).filter((p: number) => p > 0);
-    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-    const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length) : 0;
+    console.log("[SEARCH-CITY] Stats from API:", { avgPrice, medianPrice, minPrice, maxPrice });
 
     // Calculate center coordinates
     const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
@@ -76,6 +85,7 @@ export async function POST(req: NextRequest) {
         count: totalCount,
         priceRange: { min: minPrice, max: maxPrice },
         avgPrice: avgPrice,
+        medianPrice: medianPrice,
         center: { lat: centerLat, lng: centerLng },
         sampleListings
       }

@@ -38,12 +38,22 @@ interface MarketStats {
 /**
  * GET /api/market-stats
  *
+ * ⚠️ DEPRECATED: Use /api/stats/market instead
+ *
+ * This endpoint is maintained for backward compatibility but will be removed in a future version.
+ * New code should use the /api/stats/market endpoint.
+ *
+ * Migration: Replace /api/market-stats with /api/stats/market
+ * See: /api/stats/MIGRATION.md for full migration guide
+ *
  * Fetches live market data:
  * - Current mortgage rates from API Ninjas (CA specific)
  * - Historical mortgage rates from FRED API (past 12 months)
  */
 export async function GET() {
   try {
+    console.warn('[market-stats] ⚠️ DEPRECATED ENDPOINT: Use /api/stats/market instead');
+
     // Fetch all data in parallel
     const [currentRates, historicalRates, economicData] = await Promise.all([
       fetchMortgageRates(),
@@ -51,9 +61,9 @@ export async function GET() {
       fetchEconomicIndicators(),
     ]);
 
-    console.log('Current mortgage rates:', currentRates);
-    console.log('Historical data points:', historicalRates.length);
-    console.log('Economic indicators:', economicData);
+    console.log('[market-stats] Current mortgage rates:', currentRates);
+    console.log('[market-stats] Historical data points:', historicalRates.length);
+    console.log('[market-stats] Economic indicators:', economicData);
 
     const stats: MarketStats = {
       mortgageRates: {

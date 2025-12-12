@@ -1,8 +1,10 @@
-# Unified MLS Daily Update Pipeline
+# Unified MLS Data Pipeline
 
-**Last Updated**: December 7, 2025
+**Last Updated**: December 9, 2025
 **Status**: ✅ Production Ready
-**Coverage**: All 8 MLS Associations (87,562+ listings)
+**Coverage**: All 8 MLS Associations
+- **Active Listings**: 87,562+ properties (unified_listings)
+- **Closed Sales**: Past 5 years (unified_closed_listings)
 
 ---
 
@@ -39,13 +41,25 @@ crontab -e
 
 ## Pipeline Components
 
+### Active Listings (Daily Updates)
+
 | Script | Purpose | Run Time |
 |--------|---------|----------|
 | **`main.py`** | Daily orchestrator - Runs all steps | ~2-3 hours |
-| `unified-fetch.py` | Fetch from Spark Replication API | ~1.5 hours |
+| `unified-fetch.py` | Fetch active listings from all 8 MLSs | ~1.5 hours |
 | `flatten.py` | Transform to camelCase | ~5 min |
-| `seed.py` | Upsert to MongoDB | ~10 min |
+| `seed.py` | Upsert to `unified_listings` collection | ~10 min |
 | `update-status.py` | Update statuses (Active → Closed) | ~30-60 min |
+
+### Closed Listings (Weekly/Monthly)
+
+| Script | Purpose | Run Time |
+|--------|---------|----------|
+| **`closed/fetch.py`** | Fetch closed sales (past 5 years) | ~2-3 hours |
+| `closed/seed.py` | Upsert to `unified_closed_listings` collection | ~15 min |
+
+**Location**: `closed/` subdirectory
+**Documentation**: See `closed/README.md`
 
 ---
 
@@ -382,25 +396,96 @@ Finishes: **~8:00-9:00 AM**
 
 ---
 
+## 📊 Closed Listings Pipeline (NEW!)
+
+**Purpose**: Fetch closed sales from past 5 years for appreciation analysis, market stats, and investment calculations.
+
+**Location**: `closed/` subdirectory
+**Full Documentation**: See `closed/README.md`
+
+### Quick Start - Closed Listings
+
+```bash
+# 1. Fetch closed sales from all 8 MLSs (past 5 years)
+python3 closed/fetch.py -y
+
+# 2. Seed to MongoDB
+python3 closed/seed.py
+
+# Done! Data is now in unified_closed_listings collection
+```
+
+### Options
+
+```bash
+# Fetch from specific MLS only
+python3 closed/fetch.py --mls GPS
+
+# Custom lookback period (default: 5 years)
+python3 closed/fetch.py --years 3
+
+# Auto-confirm all MLSs (no prompts)
+python3 closed/fetch.py -y
+
+# Seed from specific file
+python3 closed/seed.py --input local-logs/closed/closed_5y_GPS_listings.json
+
+# Recreate indexes only
+python3 closed/seed.py --indexes-only
+```
+
+### Key Differences from Active Listings
+
+| Feature | Active Listings | Closed Listings |
+|---------|-----------------|-----------------|
+| **Script Location** | `unified-fetch.py` (root) | `closed/fetch.py` (subdir) |
+| **Filter** | `StandardStatus='Active'` | `StandardStatus='Closed'` |
+| **Date Range** | All time | Past 5 years only |
+| **Collection** | `unified_listings` | `unified_closed_listings` |
+| **Update Frequency** | Daily (incremental) | Weekly/monthly (full refetch) |
+| **TTL Index** | None | 5 years (auto-delete old data) |
+| **Purpose** | Map display, search | Appreciation, CMA, market stats |
+
+### Automation (Optional Cron)
+
+Run weekly to refresh closed sales data:
+
+```cron
+# Every Sunday at 2:00 AM
+0 2 * * 0 cd /path/to/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/closed/fetch.py -y && /usr/bin/python3 src/scripts/mls/backend/unified/closed/seed.py >> /var/log/mls-closed-update.log 2>&1
+```
+
+### Data Retention
+
+The `unified_closed_listings` collection has a **TTL index** that automatically deletes sales older than 5 years. This keeps the collection size manageable while providing sufficient historical data for appreciation analysis.
+
+**For complete documentation**, see `closed/README.md`
+
+---
+
 ## Related Documentation
 
 - **Photo Fix**: `docs/photos/PHOTO_FIX_COMPLETE.md`
 - **Pipeline Analysis**: `PHOTO_PIPELINE_ANALYSIS.md`
 - **MLS Architecture**: `docs/listings/UNIFIED_MLS_ARCHITECTURE.md`
 - **Replication Guide**: `docs/misc/REPLICATION_GUIDE.md`
+- **Closed Listings Architecture**: `docs/UNIFIED_CLOSED_LISTINGS_ARCHITECTURE.md`
+- **Analytics System**: `docs/REAL_ESTATE_ANALYTICS_ARCHITECTURE.md`
 
 ---
 
 ## Support
 
 For issues:
-1. ✅ Check logs: `/var/log/mls-update.log`
+1. ✅ Check logs: `/var/log/mls-update.log` (active) or `/var/log/mls-closed-update.log` (closed)
 2. ✅ Check status logs: `local-logs/status-logs/`
 3. ✅ Test manually: `python3 main.py --dry-run`
 4. ✅ Review this README
 
 ---
 
-**Last Updated**: December 7, 2025
+**Last Updated**: December 9, 2025
 **Maintained By**: Development Team
-**Status**: ✅ Production Ready - Just add cron job!
+**Status**: ✅ Production Ready
+- ✅ Active listings pipeline (daily cron)
+- ✅ Closed listings pipeline (weekly/monthly)

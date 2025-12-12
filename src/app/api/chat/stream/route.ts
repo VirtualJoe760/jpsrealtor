@@ -31,8 +31,83 @@ const CHAT_TOOLS: GroqTool[] = [
   {
     type: "function",
     function: {
+      name: "queryDatabase",
+      description: `Query our MLS database with flexible filters. Use this for ANY property search query. Supports:
+- Location filters (city, subdivision, ZIP, county)
+- Property filters (beds, baths, sqft, year, type)
+- Price filters (min/max price, price per sqft)
+- Amenity filters (pool, spa, view, garage, HOA)
+- Time filters (new listings, days on market, open houses)
+- Market statistics and comparisons
+
+Examples:
+- "3+ bed homes in Orange under $800k" → { city: "Orange", minBeds: 3, maxPrice: 800000 }
+- "New listings this week in Palm Desert" → { city: "Palm Desert", listedAfter: "2025-12-03" }
+- "Homes with pool and spa in Indian Wells Country Club" → { subdivision: "Indian Wells Country Club", pool: true, spa: true }
+- "Compare home prices in La Quinta vs Palm Desert" → { city: "La Quinta", compareWith: "Palm Desert" }
+
+This replaces searchCity and works with all locations.`,
+      parameters: {
+        type: "object",
+        properties: {
+          // LOCATION (choose one)
+          city: { type: "string", description: "City name (e.g., 'Orange', 'Palm Desert')" },
+          subdivision: { type: "string", description: "Subdivision/neighborhood name" },
+          zip: { type: "string", description: "ZIP code (e.g., '92260')" },
+          county: { type: "string", description: "County name (e.g., 'Riverside')" },
+
+          // PROPERTY FILTERS
+          propertySubType: {
+            type: "string",
+            enum: ["Single Family", "Condominium", "Townhouse", "Mobile/Manufactured"],
+            description: "Property subtype"
+          },
+          minBeds: { type: "number", description: "Minimum bedrooms" },
+          maxBeds: { type: "number", description: "Maximum bedrooms" },
+          minBaths: { type: "number", description: "Minimum bathrooms" },
+          maxBaths: { type: "number", description: "Maximum bathrooms" },
+          minSqft: { type: "number", description: "Minimum square footage" },
+          maxSqft: { type: "number", description: "Maximum square footage" },
+          minYear: { type: "number", description: "Minimum year built" },
+          maxYear: { type: "number", description: "Maximum year built" },
+
+          // PRICE FILTERS
+          minPrice: { type: "number", description: "Minimum price" },
+          maxPrice: { type: "number", description: "Maximum price" },
+
+          // AMENITY FILTERS
+          pool: { type: "boolean", description: "Has pool" },
+          spa: { type: "boolean", description: "Has spa" },
+          view: { type: "boolean", description: "Has view" },
+          gated: { type: "boolean", description: "Gated community" },
+          minGarages: { type: "number", description: "Minimum garage spaces" },
+
+          // TIME FILTERS
+          maxDaysOnMarket: { type: "number", description: "Maximum days on market" },
+          listedAfter: { type: "string", description: "Listed after date (ISO format: '2025-12-01')" },
+
+          // INCLUDE OPTIONS
+          includeStats: { type: "boolean", description: "Include market statistics", default: true },
+          includeDOMStats: { type: "boolean", description: "Include days on market analysis" },
+          compareWith: { type: "string", description: "Compare with another city/subdivision" },
+
+          // PAGINATION
+          limit: { type: "number", description: "Max results (default 100)" },
+          sort: {
+            type: "string",
+            enum: ["price-asc", "price-desc", "newest", "oldest", "sqft-asc", "sqft-desc"],
+            description: "Sort order"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "matchLocation",
-      description: "Resolve a SPECIFIC location query (subdivision/neighborhood/community name) to geographic data. Use this when user asks about a SPECIFIC subdivision like 'Palm Desert Country Club', 'Indian Wells Country Club', etc. Do NOT use for general city queries like 'Palm Desert' or 'La Quinta' - use searchCity instead.",
+      description: "[DEPRECATED - Use queryDatabase instead] Resolve a SPECIFIC location query (subdivision/neighborhood/community name) to geographic data. Use this when user asks about a SPECIFIC subdivision like 'Palm Desert Country Club', 'Indian Wells Country Club', etc. Do NOT use for general city queries like 'Palm Desert' or 'La Quinta' - use searchCity instead.",
       parameters: {
         type: "object",
         properties: {
@@ -49,7 +124,7 @@ const CHAT_TOOLS: GroqTool[] = [
     type: "function",
     function: {
       name: "searchCity",
-      description: "Search ALL properties in an entire city. Use this when user asks for homes in just a city name like 'Palm Desert', 'La Quinta', 'Indian Wells', etc. WITHOUT specifying a subdivision. This returns ALL active listings citywide.",
+      description: "[DEPRECATED - Use queryDatabase instead] Search ALL properties in an entire city. Use this when user asks for homes in just a city name like 'Palm Desert', 'La Quinta', 'Indian Wells', etc. WITHOUT specifying a subdivision. This returns ALL active listings citywide.",
       parameters: {
         type: "object",
         properties: {
@@ -59,6 +134,48 @@ const CHAT_TOOLS: GroqTool[] = [
           }
         },
         required: ["city"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "getAppreciation",
+      description: `Get property appreciation analytics for a location over time. Use this when users ask about:
+- Market appreciation/growth/trends (e.g., "how much have homes appreciated?")
+- Property value changes (e.g., "are prices going up or down?")
+- Investment potential (e.g., "is this a good market?")
+- Market statistics (e.g., "what's the market trend?")
+- Historical price data (e.g., "how have prices changed?")
+
+Provides annual appreciation rate, cumulative appreciation, trend analysis, and market confidence metrics.`,
+      parameters: {
+        type: "object",
+        properties: {
+          city: {
+            type: "string",
+            description: "City name (e.g., 'Palm Desert', 'Indian Wells', 'La Quinta')"
+          },
+          subdivision: {
+            type: "string",
+            description: "Subdivision/neighborhood name (e.g., 'Indian Wells Country Club', 'PGA West')"
+          },
+          county: {
+            type: "string",
+            description: "County name (e.g., 'Riverside', 'Los Angeles')"
+          },
+          period: {
+            type: "string",
+            enum: ["1y", "3y", "5y", "10y"],
+            description: "Time period for analysis: '1y' (1 year), '3y' (3 years), '5y' (5 years, default), '10y' (10 years)"
+          },
+          propertySubType: {
+            type: "string",
+            enum: ["Single Family", "Condominium", "Townhouse", "Mobile/Manufactured"],
+            description: "Property subtype filter. Defaults to 'Single Family' for residential queries to avoid mixing condos/townhouses. Use 'Condominium' or 'Townhouse' only if user explicitly asks about condos or townhomes."
+          }
+        },
+        required: []
       }
     }
   }
@@ -150,7 +267,108 @@ export async function POST(req: NextRequest) {
           let result: any;
 
           try {
-            if (functionName === "matchLocation") {
+            if (functionName === "queryDatabase") {
+              // Use the new modular query system
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  city: functionArgs.city,
+                  subdivision: functionArgs.subdivision,
+                  zip: functionArgs.zip,
+                  county: functionArgs.county,
+                  filters: {
+                    propertySubType: functionArgs.propertySubType,
+                    minBeds: functionArgs.minBeds,
+                    maxBeds: functionArgs.maxBeds,
+                    minBaths: functionArgs.minBaths,
+                    maxBaths: functionArgs.maxBaths,
+                    minSqft: functionArgs.minSqft,
+                    maxSqft: functionArgs.maxSqft,
+                    minYear: functionArgs.minYear,
+                    maxYear: functionArgs.maxYear,
+                    minPrice: functionArgs.minPrice,
+                    maxPrice: functionArgs.maxPrice,
+                    pool: functionArgs.pool,
+                    spa: functionArgs.spa,
+                    view: functionArgs.view,
+                    gated: functionArgs.gated,
+                    minGarages: functionArgs.minGarages,
+                    maxDaysOnMarket: functionArgs.maxDaysOnMarket,
+                    listedAfter: functionArgs.listedAfter ? new Date(functionArgs.listedAfter) : undefined,
+                    limit: functionArgs.limit || 100,
+                    sort: functionArgs.sort
+                  },
+                  includeStats: functionArgs.includeStats !== false, // Default to true
+                  includeDOMStats: functionArgs.includeDOMStats,
+                  includeComparison: functionArgs.compareWith ? {
+                    compareWith: functionArgs.compareWith,
+                    isCity: true // Assume city comparison by default
+                  } : undefined
+                })
+              });
+
+              const queryResult = await response.json();
+
+              // Format response for AI
+              if (queryResult.success) {
+                const allListings = queryResult.listings || [];
+                const stats = queryResult.stats || {};
+                const domStats = queryResult.domStats || {};
+                const comparison = queryResult.comparison;
+
+                // Calculate center coordinates
+                const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
+                const centerLat = validCoords.length > 0
+                  ? validCoords.reduce((sum: number, l: any) => sum + l.latitude, 0) / validCoords.length
+                  : null;
+                const centerLng = validCoords.length > 0
+                  ? validCoords.reduce((sum: number, l: any) => sum + l.longitude, 0) / validCoords.length
+                  : null;
+
+                result = {
+                  success: true,
+                  summary: {
+                    count: queryResult.meta.totalListings,
+                    priceRange: { min: stats.minPrice || 0, max: stats.maxPrice || 0 },
+                    avgPrice: stats.avgPrice || 0,
+                    medianPrice: stats.medianPrice || 0,
+                    avgPricePerSqft: stats.avgPricePerSqft,
+                    avgDaysOnMarket: stats.avgDaysOnMarket,
+                    center: centerLat && centerLng ? { lat: centerLat, lng: centerLng } : null,
+                    // DOM stats if requested
+                    marketVelocity: domStats.marketVelocity,
+                    freshListings: domStats.freshListings,
+                    staleListings: domStats.staleListings,
+                    domInsights: domStats.insights,
+                    // Comparison if requested
+                    comparison: comparison ? {
+                      winner: comparison.winner,
+                      insights: comparison.insights,
+                      differences: comparison.differences
+                    } : undefined,
+                    // Sample listings for AI (top 10)
+                    sampleListings: allListings.slice(0, 10).map((l: any) => ({
+                      id: l.listingKey,
+                      price: l.listPrice,
+                      beds: l.bedroomsTotal || l.bedsTotal,
+                      baths: l.bathroomsTotalDecimal,
+                      sqft: l.livingArea,
+                      address: l.address || l.unparsedAddress,
+                      city: l.city,
+                      subdivision: l.subdivisionName,
+                      image: l.primaryPhotoUrl || "",
+                      url: `/mls-listings/${l.slug || l.listingKey}`,
+                      latitude: l.latitude,
+                      longitude: l.longitude
+                    }))
+                  },
+                  meta: queryResult.meta
+                };
+              } else {
+                result = { error: queryResult.error || "Query failed" };
+              }
+            } else if (functionName === "matchLocation") {
               const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/match-location`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -170,6 +388,17 @@ export async function POST(req: NextRequest) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(functionArgs)
               });
+              result = await response.json();
+            } else if (functionName === "getAppreciation") {
+              // Build query params for appreciation API
+              const params = new URLSearchParams();
+              if (functionArgs.city) params.append("city", functionArgs.city);
+              if (functionArgs.subdivision) params.append("subdivision", functionArgs.subdivision);
+              if (functionArgs.county) params.append("county", functionArgs.county);
+              if (functionArgs.period) params.append("period", functionArgs.period);
+              if (functionArgs.propertySubType) params.append("propertySubType", functionArgs.propertySubType);
+
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analytics/appreciation?${params.toString()}`);
               result = await response.json();
             } else {
               result = { error: `Unknown function: ${functionName}` };
@@ -205,11 +434,12 @@ export async function POST(req: NextRequest) {
 
               console.log("[AUTO-SEARCH] Found", totalCount, "listings from working endpoint");
 
-              // Calculate summary stats from ALL listings
-              const prices = allListings.map((l: any) => l.listPrice || 0).filter((p: number) => p > 0);
-              const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-              const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-              const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length) : 0;
+              // ANALYTICS PATTERN: Use accurate stats from API, not calculated from sample
+              const apiStats = listingsData.stats || {};
+              const minPrice = apiStats.priceRange?.min || 0;
+              const maxPrice = apiStats.priceRange?.max || 0;
+              const avgPrice = apiStats.avgPrice || 0;
+              const medianPrice = apiStats.medianPrice || 0;
 
               // Calculate center coordinates for map
               const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
@@ -225,6 +455,7 @@ export async function POST(req: NextRequest) {
                 count: totalCount,
                 priceRange: { min: minPrice, max: maxPrice },
                 avgPrice: avgPrice,
+                medianPrice: medianPrice,
                 center: { lat: centerLat, lng: centerLng },
                 sampleListings: allListings.slice(0, 10).map((l: any) => ({
                   id: l.listingId || l.listingKey,
@@ -267,17 +498,30 @@ export async function POST(req: NextRequest) {
       console.log("[TOOL RESULTS] Sending results back to AI for final response");
       console.log("[TOOL RESULTS] Message count:", messagesWithTools.length);
 
-      // CRITICAL: NO TOOLS on final call - AI must respond with text, not call tools again
-      completion = await createChatCompletion({
-        messages: messagesWithTools,
-        model,
-        temperature: 0.3,
-        maxTokens: 4000, // Increased to accommodate full listing JSON response
-        stream: false,
-        // Intentionally omit tools and tool_choice - AI should present results, not call more tools
-      });
-
-      console.log("[AI RESPONSE] Completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
+      // Try to get AI response without tools first
+      try {
+        completion = await createChatCompletion({
+          messages: messagesWithTools,
+          model,
+          temperature: 0.3,
+          maxTokens: 4000,
+          stream: false,
+          tool_choice: "none" // Prevent tool calls on final response
+        });
+        console.log("[AI RESPONSE] Completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
+      } catch (toolError: any) {
+        // If model tries to call tools despite tool_choice: "none", retry without the restriction
+        console.log("[AI RESPONSE] Model tried to call tools, retrying without tool_choice restriction");
+        completion = await createChatCompletion({
+          messages: messagesWithTools,
+          model,
+          temperature: 0.3,
+          maxTokens: 4000,
+          stream: false
+          // Let model call tools if it insists, we'll handle it in next iteration
+        });
+        console.log("[AI RESPONSE] Retry completion:", JSON.stringify(completion.choices[0], null, 2).substring(0, 500));
+      }
     }
 
     // Extract final response
@@ -374,11 +618,24 @@ When a user asks a QUESTION about real estate topics (not property searches):
 
 When a user asks to "show me homes in [location]":
 
-1. **CALL matchLocation or searchCity** - The system automatically fetches listings
-   - For SPECIFIC subdivisions: matchLocation({"query": "palm desert country club"})
-   - For ENTIRE cities: searchCity({"city": "Palm Desert"})
-   - The backend automatically fetches all listings from the working endpoint
-   - You will receive a summary object with property statistics
+1. **ALWAYS CALL queryDatabase FIRST** - Modern flexible query system (REQUIRED)
+   - For ANY property search, ALWAYS use queryDatabase first
+   - Supports 30+ filters: city, subdivision, ZIP, beds, baths, price, amenities, stats, appreciation
+   - Examples:
+     * "homes in Orange" → queryDatabase({"city": "Orange", "includeStats": true})
+     * "3+ bed homes in Orange under $800k" → queryDatabase({"city": "Orange", "minBeds": 3, "maxPrice": 800000, "includeStats": true})
+     * "Homes with pool and spa in Palm Desert" → queryDatabase({"city": "Palm Desert", "pool": true, "spa": true, "includeStats": true})
+     * "New listings this week" → queryDatabase({"city": "Orange", "listedAfter": "2025-12-03", "includeStats": true})
+     * "Compare La Quinta vs Palm Desert" → queryDatabase({"city": "La Quinta", "compareWith": "Palm Desert", "includeStats": true})
+     * "Subdivision search" → queryDatabase({"subdivision": "Indian Wells Country Club", "includeStats": true})
+   - The backend automatically fetches listings and calculates statistics
+   - ALWAYS set "includeStats": true to get market data
+   - You will receive a summary object with property statistics and market insights
+
+   **DEPRECATED TOOLS (DO NOT USE):**
+   - matchLocation - DEPRECATED, use queryDatabase with subdivision parameter
+   - searchCity - DEPRECATED, use queryDatabase with city parameter
+   - These legacy tools are being phased out and should NOT be used
 
 2. **AUTOMATIC LISTING FETCH** - No additional tool calls needed
    - The tool result will include a summary object with:
@@ -419,10 +676,61 @@ When a user asks to "show me homes in [location]":
    Always include them when showing property results. Use the sampleListings data exactly as provided.
 
 4. **CRITICAL RULES**:
-   - ONLY call matchLocation (for subdivisions) or searchCity (for cities)
+   - **ALWAYS use queryDatabase for ALL property searches** - This is REQUIRED, not optional
+   - **NEVER use matchLocation or searchCity** - These are deprecated and being removed
+   - **ALWAYS set includeStats: true** - This provides essential market data
    - Backend automatically fetches all listings - no additional tool calls needed
    - Use data from result.summary object
    - Present the sampleListings array with full formatting in component markers
+   - If queryDatabase fails with an error, report the error to the user and ask them to try again
+
+---
+
+**APPRECIATION ANALYTICS**
+
+When users ask about market appreciation, growth, trends, or historical price data:
+
+1. **CALL getAppreciation** - Get property appreciation analytics
+   - For cities: getAppreciation({"city": "Palm Desert", "period": "5y"})
+   - For subdivisions: getAppreciation({"subdivision": "Indian Wells Country Club", "period": "3y"})
+   - For counties: getAppreciation({"county": "Riverside", "period": "10y"})
+   - Periods: "1y", "3y", "5y", "10y" (default: "5y")
+
+2. **RESPONSE FORMAT** - Use this EXACT format when showing appreciation data:
+
+   The [location] market has shown [trend] growth over the past [X] years.
+
+   [APPRECIATION]
+   {
+     "location": {
+       "city": "Palm Desert",
+       "subdivision": null,
+       "county": null
+     },
+     "period": "5y",
+     "appreciation": {
+       "annual": 6.5,
+       "cumulative": 37.2,
+       "trend": "increasing"
+     },
+     "marketData": {
+       "startMedianPrice": 450000,
+       "endMedianPrice": 617000,
+       "totalSales": 523,
+       "confidence": "high"
+     },
+     "metadata": {
+       "mlsSources": ["GPS", "CRMLS"]
+     }
+   }
+   [/APPRECIATION]
+
+   This represents strong market growth with [X]% annual appreciation and [Y]% cumulative appreciation.
+
+   IMPORTANT: The [APPRECIATION] marker triggers an interactive analytics card with charts and detailed metrics.
+   Always include it when presenting appreciation data.
+
+---
 
 # Core Capabilities
 
@@ -559,8 +867,8 @@ Now assist the user with their real estate needs using these tools and knowledge
 /**
  * Parse component markers from AI response and extract structured data
  */
-function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any } {
-  const components: { carousel?: any; mapView?: any; articles?: any } = {};
+function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any; appreciation?: any } {
+  const components: { carousel?: any; mapView?: any; articles?: any; appreciation?: any } = {};
 
   // Parse [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
   const carouselMatch = responseText.match(/\[LISTING_CAROUSEL\]\s*([\s\S]*?)\s*\[\/LISTING_CAROUSEL\]/);
@@ -586,6 +894,18 @@ function parseComponentData(responseText: string): { carousel?: any; mapView?: a
     }
   }
 
+  // Parse [APPRECIATION]...[/APPRECIATION]
+  const appreciationMatch = responseText.match(/\[APPRECIATION\]\s*([\s\S]*?)\s*\[\/APPRECIATION\]/);
+  if (appreciationMatch) {
+    try {
+      const jsonStr = appreciationMatch[1].trim();
+      components.appreciation = JSON.parse(jsonStr);
+      console.log("[PARSE] Found appreciation data for", components.appreciation?.location?.city || components.appreciation?.location?.subdivision || components.appreciation?.location?.county || "location");
+    } catch (e) {
+      console.error("[PARSE] Failed to parse appreciation JSON:", e);
+    }
+  }
+
   return components;
 }
 
@@ -600,6 +920,9 @@ function cleanResponseText(responseText: string): string {
 
   // Remove [MAP_VIEW]...[/MAP_VIEW] blocks
   cleaned = cleaned.replace(/\[MAP_VIEW\]\s*[\s\S]*?\s*\[\/MAP_VIEW\]/g, '');
+
+  // Remove [APPRECIATION]...[/APPRECIATION] blocks
+  cleaned = cleaned.replace(/\[APPRECIATION\]\s*[\s\S]*?\s*\[\/APPRECIATION\]/g, '');
 
   // Clean up extra whitespace
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();

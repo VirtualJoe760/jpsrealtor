@@ -36,6 +36,9 @@ export async function GET(
     // Build query for listings - unified collection
     const baseQuery: any = {
       standardStatus: "Active",
+      // DEFAULT: Only residential sale properties (Type A), exclude rentals (Type B)
+      // Include Type A (Residential) but NOT Type B (Rental Lease)
+      propertyType: { $ne: "B" }
     };
 
     // Handle Non-HOA subdivisions differently
@@ -77,7 +80,8 @@ export async function GET(
     // Query unified_listings (all 8 MLSs)
     const skip = (page - 1) * limit;
 
-    const [listings, total] = await Promise.all([
+    // ANALYTICS PATTERN: Get accurate stats from ALL listings, not just the page
+    const [listings, total, stats] = await Promise.all([
       UnifiedListing.find(baseQuery)
         .sort({ listPrice: -1 })
         .skip(skip)
@@ -101,23 +105,65 @@ export async function GET(
           propertyType: 1,
           propertySubType: 1,
           mlsSource: 1,
-          media: 1,
+          primaryPhoto: 1,  // NEW: Hybrid photo strategy
+          media: 1,         // Keep for backwards compatibility
         })
         .lean(),
       UnifiedListing.countDocuments(baseQuery),
+      // CRITICAL: Calculate stats from ALL listings, not just current page
+      UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: null,
+            avgPrice: { $avg: "$listPrice" },
+            minPrice: { $min: "$listPrice" },
+            maxPrice: { $max: "$listPrice" },
+            // Calculate median using percentile
+            prices: { $push: "$listPrice" }
+          }
+        },
+        {
+          $project: {
+            avgPrice: { $round: ["$avgPrice", 0] },
+            minPrice: 1,
+            maxPrice: 1,
+            // Sort prices and get median
+            medianPrice: {
+              $arrayElemAt: [
+                { $sortArray: { input: "$prices", sortBy: 1 } },
+                { $floor: { $divide: [{ $size: "$prices" }, 2] } }
+              ]
+            }
+          }
+        }
+      ])
     ]);
 
     // Attach photos to listings and build full address
     const finalListings = listings.map((listing: any) => {
-      // Get primary photo from media array
-      const media = listing.media || [];
-      const primaryPhoto = media.find(
-        (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
-      ) || media[0];
+      // HYBRID PHOTO STRATEGY: Use primaryPhoto object from database (new caching system)
+      // Fallback to media array for backwards compatibility
+      let photoUrl = null;
 
-      const photoUrl = primaryPhoto
-        ? primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640
-        : null;
+      if (listing.primaryPhoto) {
+        // New hybrid strategy: primaryPhoto object
+        photoUrl = listing.primaryPhoto.uri1600 ||
+                   listing.primaryPhoto.uri1280 ||
+                   listing.primaryPhoto.uri1024 ||
+                   listing.primaryPhoto.uri800 ||
+                   listing.primaryPhoto.uri640;
+      } else if (listing.media && listing.media.length > 0) {
+        // Fallback: Old media array approach
+        const media = listing.media;
+        const primaryPhoto = media.find(
+          (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+        ) || media[0];
+
+        photoUrl = primaryPhoto
+          ? primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640
+          : null;
+      }
 
       // Use unparsedAddress or address for the street address
       const streetAddress = listing.unparsedAddress || listing.address;
@@ -131,6 +177,14 @@ export async function GET(
         mlsSource: listing.mlsSource || "UNKNOWN",
       };
     });
+
+    // Extract stats (aggregation returns array)
+    const priceStats = stats[0] || {
+      avgPrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      medianPrice: 0
+    };
 
     return NextResponse.json({
       listings: finalListings,
@@ -146,6 +200,16 @@ export async function GET(
         limit,
         pages: Math.ceil(total / limit),
       },
+      // ANALYTICS: Accurate stats calculated from ALL listings
+      stats: {
+        totalListings: total,
+        avgPrice: priceStats.avgPrice,
+        medianPrice: priceStats.medianPrice,
+        priceRange: {
+          min: priceStats.minPrice,
+          max: priceStats.maxPrice
+        }
+      }
     });
   } catch (error) {
     console.error("❌ Error fetching subdivision listings:", error);

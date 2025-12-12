@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Copy, Check, Share } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useSession } from "next-auth/react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
 import ListingCarousel from "./ListingCarousel";
 import ChatMapView from "./ChatMapView";
 import { ArticleResults } from "./ArticleCard";
+import { AppreciationCard } from "../analytics/AppreciationCard";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -254,7 +256,71 @@ export default function ChatWidget() {
                       <div className={`text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mb-2 [&>h3]:font-semibold [&>h3]:mb-1 ${
                         msg.role === "user" ? "text-white" : ""
                       }`}>
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            table: ({ node, ...props }) => (
+                              <div className={`overflow-x-auto my-6 ${
+                                isLight
+                                  ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
+                                  : '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-emerald-600'
+                              }`}>
+                                <table className={`min-w-full border-collapse rounded-xl overflow-hidden shadow-lg ${
+                                  isLight
+                                    ? 'bg-white border border-gray-200'
+                                    : 'bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700'
+                                }`} {...props} />
+                              </div>
+                            ),
+                            thead: ({ node, ...props }) => (
+                              <thead className={
+                                isLight
+                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100/80'
+                                  : 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30'
+                              } {...props} />
+                            ),
+                            tbody: ({ node, ...props }) => (
+                              <tbody className={isLight ? '' : 'divide-y divide-neutral-700/50'} {...props} />
+                            ),
+                            tr: ({ node, ...props }) => (
+                              <tr className={`transition-colors ${
+                                isLight
+                                  ? 'hover:bg-blue-50/50 border-b border-gray-100 last:border-b-0'
+                                  : 'hover:bg-emerald-500/5 border-b border-neutral-700/30 last:border-b-0'
+                              }`} {...props} />
+                            ),
+                            th: ({ node, ...props }) => (
+                              <th className={`px-6 py-4 text-left font-bold tracking-tight ${
+                                isLight
+                                  ? 'text-blue-900'
+                                  : 'text-emerald-300'
+                              }`} {...props} />
+                            ),
+                            td: ({ node, ...props }) => (
+                              <td className={`px-6 py-4 font-medium ${
+                                isLight
+                                  ? 'text-gray-700'
+                                  : 'text-neutral-200'
+                              }`} {...props} />
+                            ),
+                            code: ({ node, inline, ...props }: any) =>
+                              inline ? (
+                                <code className={`px-2 py-1 rounded-md text-sm font-mono font-semibold ${
+                                  isLight
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                                }`} {...props} />
+                              ) : (
+                                <code className={`block px-5 py-4 rounded-xl my-3 text-sm font-mono overflow-x-auto shadow-inner ${
+                                  isLight
+                                    ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border border-gray-200'
+                                    : 'bg-gradient-to-br from-neutral-900 to-neutral-800 text-neutral-200 border border-neutral-700'
+                                }`} {...props} />
+                              )
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       </div>
                     </div>
                     {/* Copy and Share buttons for assistant messages */}
@@ -328,6 +394,12 @@ export default function ChatWidget() {
                     />
                   </div>
                 )}
+
+                {msg.components?.appreciation && (
+                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
+                    <AppreciationCard data={msg.components.appreciation} />
+                  </div>
+                )}
               </motion.div>
             ))}
 
@@ -379,7 +451,71 @@ export default function ChatWidget() {
                     }`}
                   >
                     <div className="text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold">
-                      <ReactMarkdown>{streamingText}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className={`overflow-x-auto my-6 ${
+                              isLight
+                                ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
+                                : '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-emerald-600'
+                            }`}>
+                              <table className={`min-w-full border-collapse rounded-xl overflow-hidden shadow-lg ${
+                                isLight
+                                  ? 'bg-white border border-gray-200'
+                                  : 'bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700'
+                              }`} {...props} />
+                            </div>
+                          ),
+                          thead: ({ node, ...props }) => (
+                            <thead className={
+                              isLight
+                                ? 'bg-gradient-to-r from-blue-50 to-blue-100/80'
+                                : 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30'
+                            } {...props} />
+                          ),
+                          tbody: ({ node, ...props }) => (
+                            <tbody className={isLight ? '' : 'divide-y divide-neutral-700/50'} {...props} />
+                          ),
+                          tr: ({ node, ...props }) => (
+                            <tr className={`transition-colors ${
+                              isLight
+                                ? 'hover:bg-blue-50/50 border-b border-gray-100 last:border-b-0'
+                                : 'hover:bg-emerald-500/5 border-b border-neutral-700/30 last:border-b-0'
+                            }`} {...props} />
+                          ),
+                          th: ({ node, ...props }) => (
+                            <th className={`px-6 py-4 text-left font-bold tracking-tight ${
+                              isLight
+                                ? 'text-blue-900'
+                                : 'text-emerald-300'
+                            }`} {...props} />
+                          ),
+                          td: ({ node, ...props }) => (
+                            <td className={`px-6 py-4 font-medium ${
+                              isLight
+                                ? 'text-gray-700'
+                                : 'text-neutral-200'
+                            }`} {...props} />
+                          ),
+                          code: ({ node, inline, ...props }: any) =>
+                            inline ? (
+                              <code className={`px-2 py-1 rounded-md text-sm font-mono font-semibold ${
+                                isLight
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                              }`} {...props} />
+                            ) : (
+                              <code className={`block px-5 py-4 rounded-xl my-3 text-sm font-mono overflow-x-auto shadow-inner ${
+                                isLight
+                                  ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border border-gray-200'
+                                  : 'bg-gradient-to-br from-neutral-900 to-neutral-800 text-neutral-200 border border-neutral-700'
+                              }`} {...props} />
+                            )
+                        }}
+                      >
+                        {streamingText}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 </div>

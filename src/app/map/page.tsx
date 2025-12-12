@@ -601,11 +601,12 @@ function MapPageContent() {
                               <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
                                 Listing Type
                               </label>
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-2 gap-2">
                                 {[
                                   { value: "sale", label: "For Sale" },
-                                  { value: "rent", label: "For Rent" },
-                                  { value: "multi", label: "Multi-Family" }
+                                  { value: "rental", label: "For Rent" },
+                                  { value: "multifamily", label: "Multi-Family" },
+                                  { value: "land", label: "Land" }
                                 ].map((type) => (
                                   <button
                                     key={type.value}

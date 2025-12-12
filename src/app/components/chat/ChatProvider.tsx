@@ -14,6 +14,28 @@ export interface ComponentData {
     center?: { lat: number; lng: number };
     zoom?: number;
   };
+  appreciation?: {
+    location?: {
+      city?: string;
+      subdivision?: string;
+      county?: string;
+    };
+    period: string;
+    appreciation: {
+      annual: number;
+      cumulative: number;
+      trend: "increasing" | "decreasing" | "stable";
+    };
+    marketData: {
+      startMedianPrice: number;
+      endMedianPrice: number;
+      totalSales: number;
+      confidence: "high" | "medium" | "low";
+    };
+    metadata?: {
+      mlsSources?: string[];
+    };
+  };
 }
 
 export interface ChatMessage {

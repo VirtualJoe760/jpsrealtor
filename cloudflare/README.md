@@ -122,6 +122,7 @@ chmod +x test.sh
 - Origin hit: 500-1000ms (5% of requests)
 
 **Endpoints Cached**:
+- `/api/query` ⭐ **New** - Chat Query System endpoint
 - `/api/mls-listings`
 - `/api/cities/*`
 - `/api/subdivisions/*`

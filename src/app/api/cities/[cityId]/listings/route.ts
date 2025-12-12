@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
-import Photo from "@/models/photos";
+// Photo collection no longer used - using primaryPhoto from unified_listings
 
 export async function GET(
   request: NextRequest,
@@ -13,7 +13,8 @@ export async function GET(
     const resolvedParams = await params;
     const cityId = resolvedParams.cityId;
     const searchParams = request.nextUrl.searchParams;
-    const propertyType = searchParams.get("propertyType") || "all";
+    // DEFAULT to residential sale (Type A) - only show rentals/multifamily/land if explicitly requested
+    const propertyType = searchParams.get("propertyType") || "sale";
     const limit = parseInt(searchParams.get("limit") || "100");
 
     // Get filter parameters
@@ -40,19 +41,16 @@ export async function GET(
     // Build $and array to combine all filters properly
     const andConditions: any[] = [];
 
-    // Filter by property type
+    // Filter by property type - DEFAULT to excluding rentals (Type B)
     if (propertyType === "sale") {
-      andConditions.push({
-        $or: [
-          { propertyType: "A" },
-          { propertyType: "C" },
-          { propertyType: { $exists: false } },
-          { propertyType: null },
-          { propertyType: "" },
-        ],
-      });
+      // EXCLUDE rentals (Type B) - only show sale properties
+      baseQuery.propertyType = { $ne: "B" };
     } else if (propertyType === "rental") {
       baseQuery.propertyType = "B";
+    } else if (propertyType === "multifamily") {
+      baseQuery.propertyType = "C";
+    } else if (propertyType === "land") {
+      baseQuery.propertyType = "D";
     }
 
     // Apply price filters
@@ -95,86 +93,88 @@ export async function GET(
       baseQuery.$and = andConditions;
     }
 
-    // Fetch listings from unified_listings (all 8 MLSs)
-    const listings = await UnifiedListing.find(baseQuery)
-      .select(
-        "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathsTotal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource"
-      )
-      .limit(limit)
-      .lean()
-      .exec();
+    // ANALYTICS PATTERN: Fetch listings + accurate stats from ALL listings
+    const [listings, stats] = await Promise.all([
+      // Fetch paginated listings
+      UnifiedListing.find(baseQuery)
+        .select(
+          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathsTotal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource primaryPhoto media"
+        )
+        .limit(limit)
+        .lean()
+        .exec(),
+
+      // CRITICAL: Calculate stats from ALL listings, not just current page
+      UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: null,
+            totalCount: { $sum: 1 },
+            avgPrice: { $avg: "$listPrice" },
+            minPrice: { $min: "$listPrice" },
+            maxPrice: { $max: "$listPrice" },
+            prices: { $push: "$listPrice" }
+          }
+        },
+        {
+          $project: {
+            totalCount: 1,
+            avgPrice: { $round: ["$avgPrice", 0] },
+            minPrice: 1,
+            maxPrice: 1,
+            medianPrice: {
+              $arrayElemAt: [
+                { $sortArray: { input: "$prices", sortBy: 1 } },
+                { $floor: { $divide: [{ $size: "$prices" }, 2] } }
+              ]
+            }
+          }
+        }
+      ])
+    ]);
 
     if (listings.length === 0) {
       return NextResponse.json({ listings: [] });
     }
 
-    // Get listing IDs for photo lookup
-    const listingIds = listings.map((l) => l.listingId).filter(Boolean);
-
-    // Fetch primary photos for these listings
-    let photos: any[] = await Photo.find({
-      listingId: { $in: listingIds },
-      primary: true,
-    })
-      .select({
-        listingId: 1,
-        uri1600: 1,
-        uri1280: 1,
-        uri1024: 1,
-        uri800: 1,
-        uri640: 1,
-        uri300: 1,
-        uriLarge: 1,
-      })
-      .lean()
-      .exec();
-
-    // For listings without primary photos, get the first available photo
-    const listingIdsWithPhotos = new Set(photos.map((p) => p.listingId));
-    const listingsWithoutPhotos = listingIds.filter(
-      (id) => !listingIdsWithPhotos.has(id)
-    );
-
-    if (listingsWithoutPhotos.length > 0) {
-      const firstPhotos = await Photo.aggregate([
-        { $match: { listingId: { $in: listingsWithoutPhotos } } },
-        { $sort: { order: 1, _id: 1 } },
-        {
-          $group: {
-            _id: "$listingId",
-            photo: { $first: "$$ROOT" },
-          },
-        },
-        {
-          $project: {
-            listingId: "$_id",
-            uri1600: "$photo.uri1600",
-            uri1280: "$photo.uri1280",
-            uri1024: "$photo.uri1024",
-            uri800: "$photo.uri800",
-            uri640: "$photo.uri640",
-            uri300: "$photo.uri300",
-            uriLarge: "$photo.uriLarge",
-          },
-        },
-      ]);
-
-      photos = [...photos, ...firstPhotos];
-    }
-
-    // Create a map of photos by listingId (prefer highest quality)
+    // HYBRID PHOTO STRATEGY: Extract photos from primaryPhoto field or media array
+    // No separate Photo collection query needed!
     const photoMap = new Map();
-    photos.forEach((photo) => {
-      const photoUrl =
-        photo.uri1600 ||
-        photo.uri1280 ||
-        photo.uri1024 ||
-        photo.uri800 ||
-        photo.uri640 ||
-        photo.uri300 ||
-        photo.uriLarge ||
-        null;
-      photoMap.set(photo.listingId, photoUrl);
+
+    listings.forEach((listing: any) => {
+      let photoUrl = null;
+
+      // Try new primaryPhoto field first (hybrid strategy)
+      if (listing.primaryPhoto) {
+        photoUrl = listing.primaryPhoto.uri1600 ||
+                   listing.primaryPhoto.uri1280 ||
+                   listing.primaryPhoto.uri1024 ||
+                   listing.primaryPhoto.uri800 ||
+                   listing.primaryPhoto.uri640 ||
+                   listing.primaryPhoto.uri300 ||
+                   listing.primaryPhoto.uriLarge;
+      }
+      // Fallback to media array (backwards compatibility)
+      else if (listing.media && listing.media.length > 0) {
+        const media = listing.media;
+        const primaryPhoto = media.find(
+          (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+        ) || media[0];
+
+        if (primaryPhoto) {
+          photoUrl = primaryPhoto.Uri1600 ||
+                     primaryPhoto.Uri1280 ||
+                     primaryPhoto.Uri1024 ||
+                     primaryPhoto.Uri800 ||
+                     primaryPhoto.Uri640 ||
+                     primaryPhoto.Uri300;
+        }
+      }
+
+      if (photoUrl && listing.listingId) {
+        photoMap.set(listing.listingId, photoUrl);
+      }
     });
 
     // Combine listings with photos
@@ -208,7 +208,28 @@ export async function GET(
       mlsSource: listing.mlsSource || "UNKNOWN",
     }));
 
-    return NextResponse.json({ listings: listingsWithPhotos });
+    // Extract stats (aggregation returns array)
+    const priceStats = stats[0] || {
+      totalCount: 0,
+      avgPrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      medianPrice: 0
+    };
+
+    return NextResponse.json({
+      listings: listingsWithPhotos,
+      // ANALYTICS: Accurate stats calculated from ALL listings
+      stats: {
+        totalListings: priceStats.totalCount,
+        avgPrice: priceStats.avgPrice,
+        medianPrice: priceStats.medianPrice,
+        priceRange: {
+          min: priceStats.minPrice,
+          max: priceStats.maxPrice
+        }
+      }
+    });
   } catch (error) {
     console.error("Error fetching city listings:", error);
     return NextResponse.json(

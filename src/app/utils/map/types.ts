@@ -107,7 +107,7 @@ export interface LoadedRegion {
  * Map filter options
  */
 export interface MapFilters {
-  listingType?: "sale" | "rental" | "multifamily";
+  listingType?: "sale" | "rental" | "multifamily" | "land";
   propertyType?: string;
   propertySubType?: string;
   minPrice?: number;

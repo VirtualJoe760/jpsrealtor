@@ -143,6 +143,7 @@ export async function GET(req: NextRequest) {
   const propertyTypeCode =
     listingType === "rental" ? "B" :
     listingType === "multifamily" ? "C" :
+    listingType === "land" ? "D" :
     "A";
   matchStage.propertyType = propertyTypeCode;
 

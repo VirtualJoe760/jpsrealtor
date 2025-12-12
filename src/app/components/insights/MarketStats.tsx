@@ -78,10 +78,12 @@ export default function MarketStats() {
 
   const loadMarketData = async () => {
     try {
-      const response = await fetch("/api/market-stats");
+      const response = await fetch("/api/stats/market");
       if (response.ok) {
         const result = await response.json();
-        setMarketData(result.data);
+        if (result.success) {
+          setMarketData(result.data);
+        }
       }
     } catch (error) {
       console.error("Failed to load market data:", error);

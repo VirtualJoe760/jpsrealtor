@@ -2,20 +2,24 @@
 
 import { useState } from 'react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
-import { Phone, Mail, Send, Settings } from 'lucide-react';
+import { Phone, Mail, Send, Settings, Users, MessageSquare } from 'lucide-react';
 import DropCowboyCampaign from '@/app/components/crm/DropCowboyCampaign';
 import EmailInbox from '@/app/components/crm/EmailInbox';
 import EmailComposer from '@/app/components/crm/EmailComposer';
 import CRMSettings from '@/app/components/crm/CRMSettings';
+import ContactsTab from '@/app/components/crm/ContactsTab';
+import MessagingTab from '@/app/components/crm/MessagingTab';
 
 export default function CRMPage() {
   const { currentTheme } = useTheme();
   const { border } = useThemeClasses();
   const isLight = currentTheme === 'lightgradient';
-  const [activeTab, setActiveTab] = useState<'voicemail' | 'inbox' | 'compose'>('voicemail');
+  const [activeTab, setActiveTab] = useState<'contacts' | 'messaging' | 'voicemail' | 'inbox' | 'compose'>('contacts');
   const [showSettings, setShowSettings] = useState(false);
 
   const tabs = [
+    { id: 'contacts' as const, label: 'Contacts', icon: Users },
+    { id: 'messaging' as const, label: 'SMS Messaging', icon: MessageSquare },
     { id: 'voicemail' as const, label: 'Voicemail Campaign', icon: Phone },
     { id: 'inbox' as const, label: 'Email Inbox', icon: Mail },
     { id: 'compose' as const, label: 'Compose Email', icon: Send },
@@ -82,6 +86,8 @@ export default function CRMPage() {
 
         {/* Tab Content */}
         <div className="mt-6">
+          {activeTab === 'contacts' && <ContactsTab isLight={isLight} />}
+          {activeTab === 'messaging' && <MessagingTab isLight={isLight} />}
           {activeTab === 'voicemail' && <DropCowboyCampaign isLight={isLight} />}
           {activeTab === 'inbox' && <EmailInbox isLight={isLight} />}
           {activeTab === 'compose' && <EmailComposer isLight={isLight} />}
