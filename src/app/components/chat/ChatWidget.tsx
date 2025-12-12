@@ -24,6 +24,7 @@ export default function ChatWidget() {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
   const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -146,11 +147,18 @@ export default function ChatWidget() {
 
   const handleNewChat = () => {
     if (messages.length > 0) {
-      if (confirm("Start a new conversation? This will clear the current chat history.")) {
-        clearMessages();
-        setMessage("");
-      }
+      setShowNewChatModal(true);
     }
+  };
+
+  const confirmNewChat = () => {
+    clearMessages();
+    setMessage("");
+    setShowNewChatModal(false);
+  };
+
+  const cancelNewChat = () => {
+    setShowNewChatModal(false);
   };
 
   const showLanding = messages.length === 0;
@@ -631,6 +639,85 @@ export default function ChatWidget() {
         </div>
         </div>
       )}
+
+      {/* New Chat Confirmation Modal */}
+      <AnimatePresence>
+        {showNewChatModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+              onClick={cancelNewChat}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4"
+            >
+              <div
+                className={`rounded-2xl p-6 shadow-2xl ${
+                  isLight
+                    ? 'bg-white border border-gray-200'
+                    : 'bg-neutral-800 border border-neutral-700'
+                }`}
+              >
+                {/* Icon */}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+                  isLight ? 'bg-blue-100' : 'bg-purple-900/30'
+                }`}>
+                  <SquarePen className={`w-6 h-6 ${
+                    isLight ? 'text-blue-600' : 'text-purple-400'
+                  }`} />
+                </div>
+
+                {/* Title */}
+                <h3 className={`text-xl font-bold mb-2 ${
+                  isLight ? 'text-gray-900' : 'text-white'
+                }`}>
+                  Start New Conversation?
+                </h3>
+
+                {/* Description */}
+                <p className={`text-sm mb-6 ${
+                  isLight ? 'text-gray-600' : 'text-neutral-400'
+                }`}>
+                  This will clear your current chat history. Your conversation will be permanently deleted and cannot be recovered.
+                </p>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={cancelNewChat}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-all ${
+                      isLight
+                        ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmNewChat}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-medium text-white transition-all ${
+                      isLight
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
+                  >
+                    Start New Chat
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
