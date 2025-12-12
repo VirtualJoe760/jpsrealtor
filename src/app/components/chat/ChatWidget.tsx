@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Copy, Check, Share } from "lucide-react";
+import { Send, Bot, User, Copy, Check, Share, SquarePen } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,7 +24,7 @@ export default function ChatWidget() {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const { messages, addMessage } = useChatContext();
+  const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = async (text: string, id: string) => {
@@ -144,6 +144,15 @@ export default function ChatWidget() {
     }
   };
 
+  const handleNewChat = () => {
+    if (messages.length > 0) {
+      if (confirm("Start a new conversation? This will clear the current chat history.")) {
+        clearMessages();
+        setMessage("");
+      }
+    }
+  };
+
   const showLanding = messages.length === 0;
 
   // Font options - change this to swap fonts easily
@@ -214,10 +223,23 @@ export default function ChatWidget() {
                     onKeyPress={handleKeyPress}
                     placeholder="Ask me anything about real estate..."
                     disabled={isLoading}
-                    className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+                    className={`w-full px-6 py-4 pr-28 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
                       isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
                     }`}
                   />
+                  {messages.length > 0 && (
+                    <button
+                      onClick={handleNewChat}
+                      title="Start new conversation"
+                      className={`absolute right-16 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                        isLight
+                          ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
+                      }`}
+                    >
+                      <SquarePen className="w-5 h-5" />
+                    </button>
+                  )}
                   <button
                     onClick={handleSend}
                     disabled={!message.trim() || isLoading}
@@ -575,10 +597,21 @@ export default function ChatWidget() {
               onKeyPress={handleKeyPress}
               placeholder="Ask me anything about real estate..."
               disabled={isLoading}
-              className={`w-full px-6 py-4 pr-14 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+              className={`w-full px-6 py-4 pr-28 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
                 isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
               }`}
             />
+            <button
+              onClick={handleNewChat}
+              title="Start new conversation"
+              className={`absolute right-16 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                isLight
+                  ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
+              }`}
+            >
+              <SquarePen className="w-5 h-5" />
+            </button>
             <button
               onClick={handleSend}
               disabled={!message.trim() || isLoading}
