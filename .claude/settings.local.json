@@ -104,7 +104,8 @@
       "WebFetch(domain:developers.google.com)",
       "Bash(mkdir:*)",
       "Bash(npx dotenv:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []
