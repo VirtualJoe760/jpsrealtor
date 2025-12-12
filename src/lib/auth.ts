@@ -1,18 +1,15 @@
 // src/lib/auth.ts
-// NextAuth configuration
+// NextAuth configuration with industry-standard JWT sessions
 
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
-import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import clientPromise from "./mongodb";
 import bcrypt from "bcryptjs";
 import dbConnect from "./mongoose";
 import User from "@/models/user";
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -167,9 +164,25 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: "/auth/verify-request",
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
+    updateAge: 24 * 60 * 60, // Update session every 24 hours
   },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+  useSecureCookies: process.env.NODE_ENV === "production",
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 };
