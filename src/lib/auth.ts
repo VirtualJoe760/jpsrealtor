@@ -10,6 +10,7 @@ import dbConnect from "./mongoose";
 import User from "@/models/user";
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true, // Trust the NEXTAUTH_URL
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
