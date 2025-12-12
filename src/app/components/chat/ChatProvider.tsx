@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { Listing } from "./ListingCarousel";
 
 // Component data from API response
@@ -93,8 +93,43 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const CHAT_STORAGE_KEY = 'jps-chat-messages';
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(messagesWithDates);
+        console.log('[ChatProvider] Loaded', messagesWithDates.length, 'messages from localStorage');
+      }
+    } catch (error) {
+      console.error('[ChatProvider] Error loading messages from localStorage:', error);
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (!isHydrated) return; // Don't save until initial load is complete
+
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+      console.log('[ChatProvider] Saved', messages.length, 'messages to localStorage');
+    } catch (error) {
+      console.error('[ChatProvider] Error saving messages to localStorage:', error);
+    }
+  }, [messages, isHydrated]);
 
   const addMessage = (content: string, role: "user" | "assistant", listings?: Listing[], components?: ComponentData) => {
     const newMessage: ChatMessage = {
@@ -108,7 +143,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages((prev) => [...prev, newMessage]);
   };
 
-  const clearMessages = () => setMessages([]);
+  const clearMessages = () => {
+    setMessages([]);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+  };
 
   return (
     <ChatContext.Provider value={{ messages, addMessage, clearMessages }}>
