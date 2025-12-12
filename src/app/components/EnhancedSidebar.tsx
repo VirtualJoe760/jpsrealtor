@@ -49,9 +49,13 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       status,
       hasSession: !!session,
       sessionData: session,
+      sessionUser: session?.user,
+      sessionEmail: session?.user?.email,
       dashboardDropdownOpen,
+      pathname,
+      timestamp: new Date().toISOString(),
     });
-  }, [status, session, dashboardDropdownOpen]);
+  }, [status, session, dashboardDropdownOpen, pathname]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -175,7 +179,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             {!effectivelyCollapsed && (
               <>
                 <span className="text-sm font-medium flex-1 text-left">
-                  {status === "loading" ? "Loading..." : session ? "Dashboard" : "Sign In"}
+                  {status === "loading" ? "Loading..." : session ? `Dashboard` : "Sign In"}
                 </span>
                 {session && (
                   <div onClick={handleDropdownToggle} className="p-1 -m-1">
