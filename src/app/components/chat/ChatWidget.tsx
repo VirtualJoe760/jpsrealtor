@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Copy, Check, Share, SquarePen } from "lucide-react";
+import { Send, Bot, User, Copy, Check, Share, SquarePen, Loader2 } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -28,6 +28,7 @@ export default function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +37,19 @@ export default function ChatWidget() {
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
   const { likedListings, dislikedListings, toggleFavorite, toggleDislike } = useMLSContext();
+
+  // Detect page refresh/reload
+  useEffect(() => {
+    // Set refreshing state on component mount
+    setIsRefreshing(true);
+
+    // Clear refreshing state after a short delay to allow content to load
+    const timer = setTimeout(() => {
+      setIsRefreshing(false);
+    }, 800); // 800ms - enough time for smooth transition
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -259,6 +273,58 @@ export default function ChatWidget() {
 
   return (
     <>
+    {/* Refresh Loading Spinner Overlay */}
+    <AnimatePresence>
+      {isRefreshing && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm"
+          style={{
+            background: isLight
+              ? "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,245,255,0.95) 100%)"
+              : "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(20,20,30,0.95) 100%)"
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            {/* Spinning Logo */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-20 h-20 md:w-24 md:h-24"
+            >
+              <Image
+                src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
+                alt="Loading"
+                width={96}
+                height={96}
+                className="object-contain"
+                priority
+              />
+            </motion.div>
+
+            {/* Loading Text */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <Loader2 className={`w-8 h-8 animate-spin ${
+                isLight ? "text-blue-600" : "text-purple-400"
+              }`} />
+              <p className={`text-lg font-medium ${
+                isLight ? "text-gray-700" : "text-white"
+              }`}>
+                Loading...
+              </p>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <div className="h-screen w-full flex flex-col" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
       {/* Landing View */}
       <AnimatePresence>
