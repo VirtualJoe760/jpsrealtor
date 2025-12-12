@@ -65,3 +65,5 @@ next-env.d.ts
 
 # California county GeoJSON data (intermediate build file)
 ca_counties.json
+
+.env*.local

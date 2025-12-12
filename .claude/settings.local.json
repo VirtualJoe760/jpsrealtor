@@ -105,7 +105,13 @@
       "Bash(mkdir:*)",
       "Bash(npx dotenv:*)",
       "Bash(tee:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(mongo:*)",
+      "Bash(mongosh:*)",
+      "Bash(vercel env:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "ask": []
