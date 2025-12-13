@@ -35,7 +35,7 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Map control for showing listings on background map
-  const { showMapWithListings, hideMap } = useMapControl();
+  const { showMapWithListings, hideMap, isMapVisible } = useMapControl();
 
   // ListingBottomPanel state for swipe functionality
   const [showListingPanel, setShowListingPanel] = useState(false);
@@ -289,10 +289,14 @@ export default function ChatWidget() {
   return (
     <>
     <ChatHeader />
-    <div className="h-screen w-full flex flex-col pt-20 md:pt-0" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
-      {/* Landing View */}
+    <div
+      className={`h-screen w-full flex flex-col pt-20 md:pt-0 ${isMapVisible ? 'justify-end pb-4' : ''}`}
+      data-page={showLanding ? "chat-landing" : "chat"}
+      style={{ fontFamily: `'${chatFont}', sans-serif` }}
+    >
+      {/* Landing View - hide when map is visible */}
       <AnimatePresence>
-        {showLanding && (
+        {showLanding && !isMapVisible && (
           <motion.div
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -924,6 +928,61 @@ export default function ChatWidget() {
           removeDislike(mapListing as any);
         }}
       />
+    )}
+
+    {/* Bottom Input Bar - shows when map is visible */}
+    {isMapVisible && (
+      <div className="fixed bottom-4 left-4 right-4 z-30 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl">
+        <div
+          className={`relative rounded-2xl backdrop-blur-md shadow-2xl ${
+            isLight ? "bg-white/90 border border-gray-300" : "bg-neutral-800/90 border border-neutral-700/50"
+          }`}
+          style={{
+            backdropFilter: "blur(20px) saturate(150%)",
+            WebkitBackdropFilter: "blur(20px) saturate(150%)",
+          }}
+        >
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask me anything about real estate..."
+            disabled={isLoading}
+            className={`w-full px-6 py-4 pr-28 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+              isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
+            }`}
+          />
+          {messages.length > 0 && (
+            <button
+              onClick={handleNewChat}
+              title="Start new conversation"
+              className={`absolute right-16 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                isLight
+                  ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
+              }`}
+            >
+              <SquarePen className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !message.trim()}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+              isLoading || !message.trim()
+                ? isLight
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-neutral-700 text-neutral-500 cursor-not-allowed"
+                : isLight
+                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            }`}
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     )}
     </>
   );
