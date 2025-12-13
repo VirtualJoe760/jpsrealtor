@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { Listing } from "./ListingCarousel";
 import type { SourceType } from "./SourceBubble";
+import type { ComparisonItem } from "./SubdivisionComparisonChart";
 
 // Component data from API response
 export interface ComponentData {
@@ -49,42 +50,8 @@ export interface ComponentData {
     };
   };
   comparison?: {
-    location1: {
-      name: string;
-      appreciation: {
-        annual: number;
-        cumulative: number;
-        trend: "increasing" | "decreasing" | "stable" | "volatile";
-      };
-      marketData: {
-        startMedianPrice: number;
-        endMedianPrice: number;
-        totalSales: number;
-        confidence: "high" | "medium" | "low";
-      };
-    };
-    location2: {
-      name: string;
-      appreciation: {
-        annual: number;
-        cumulative: number;
-        trend: "increasing" | "decreasing" | "stable" | "volatile";
-      };
-      marketData: {
-        startMedianPrice: number;
-        endMedianPrice: number;
-        totalSales: number;
-        confidence: "high" | "medium" | "low";
-      };
-    };
-    period: string;
-    winner?: string;
-    insights?: {
-      annualDifference?: number;
-      cumulativeDifference?: number;
-      priceGrowth?: string;
-      marketStrength?: string;
-    };
+    title?: string;
+    items: ComparisonItem[];
   };
   articles?: {
     query?: string;

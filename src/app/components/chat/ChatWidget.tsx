@@ -19,6 +19,7 @@ import ListingBottomPanel from "../mls/map/ListingBottomPanel";
 import { useMLSContext } from "../mls/MLSProvider";
 import ChatHeader from "./ChatHeader";
 import { SourceBubbles } from "./SourceBubble";
+import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import type { Listing } from "./ListingCarousel";
 
 export default function ChatWidget() {
@@ -915,7 +916,10 @@ export default function ChatWidget() {
 
                 {msg.components?.comparison && (
                   <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <ComparisonCard data={msg.components.comparison} />
+                    <SubdivisionComparisonChart
+                      items={msg.components.comparison.items}
+                      title={msg.components.comparison.title || "Comparison"}
+                    />
                   </div>
                 )}
 
