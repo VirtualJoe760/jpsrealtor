@@ -13,6 +13,7 @@ export default function GlobalHamburgerMenu() {
   const isLight = currentTheme === "lightgradient";
   const pathname = usePathname();
   const isMapPage = pathname === "/map";
+  const isChatPage = pathname === "/";
 
   useEffect(() => {
     setMounted(true);
@@ -23,8 +24,8 @@ export default function GlobalHamburgerMenu() {
 
   return (
     <>
-      {/* Top blur gradient overlay for mobile - hidden on map page */}
-      {!isMapPage && (
+      {/* Top blur gradient overlay for mobile - hidden on map and chat pages */}
+      {!isMapPage && !isChatPage && (
         <div
           className={`md:hidden fixed top-0 left-0 right-0 h-20 z-40 pointer-events-none backdrop-blur-lg ${
             effectiveIsLight

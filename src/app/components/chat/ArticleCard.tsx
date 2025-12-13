@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, Tag, ArrowRight, ExternalLink } from "lucide-react";
+import { Calendar, Tag, ArrowRight, ExternalLink, FileText } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 
 export interface ArticleCardProps {
@@ -14,11 +14,8 @@ export interface ArticleCardProps {
   slug: string;
   excerpt: string;
   category: string;
-  featuredImage: {
-    url: string;
-    alt: string;
-  };
-  seo: {
+  image?: string | { url: string; alt: string }; // Can be string URL or object
+  seo?: {
     description: string;
     keywords: string[];
   };
@@ -31,6 +28,14 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
   const { cardBg, cardBorder, textPrimary, textSecondary, textMuted } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
+  // Extract image URL and alt text (handle both string and object formats)
+  const imageUrl = typeof article.image === 'string'
+    ? article.image
+    : article.image?.url;
+  const imageAlt = typeof article.image === 'object' && article.image?.alt
+    ? article.image.alt
+    : article.title;
+
   // Format category
   const categoryNames: Record<string, string> = {
     "articles": "Articles",
@@ -41,28 +46,39 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
   const categoryName = categoryNames[article.category] || article.category;
 
   // Format date
-  const publishDate = new Date(article.publishedAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  });
+  const publishDate = article.publishedAt
+    ? new Date(article.publishedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      })
+    : "Date unavailable";
 
   return (
     <Link
-      href={`/articles/${article.slug}`}
+      href={`/insights/${article.category}/${article.slug}`}
       target="_blank"
       rel="noopener noreferrer"
       className={`group block ${cardBg} ${cardBorder} rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 h-full`}
     >
       {/* Featured Image */}
       <div className="relative w-full h-48 overflow-hidden bg-gray-200">
-        <Image
-          src={article.featuredImage.url}
-          alt={article.featuredImage.alt}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        {imageUrl && imageUrl.trim() !== '' ? (
+          <Image
+            src={imageUrl}
+            alt={imageAlt}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
+          />
+        ) : (
+          <div className={`w-full h-full flex items-center justify-center ${
+            isLight ? 'bg-gray-200 text-gray-400' : 'bg-neutral-800 text-neutral-600'
+          }`}>
+            <FileText className="w-16 h-16" />
+          </div>
+        )}
 
         {/* Category Badge */}
         <div className="absolute top-3 left-3">
@@ -99,7 +115,7 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
 
         {/* Excerpt */}
         <p className={`${textSecondary} text-sm mb-4 line-clamp-3`}>
-          {article.excerpt || article.seo.description}
+          {article.excerpt || article.seo?.description || ''}
         </p>
 
         {/* Meta Info */}
@@ -116,7 +132,7 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
         </div>
 
         {/* Keywords (first 3) */}
-        {article.seo.keywords && article.seo.keywords.length > 0 && (
+        {article.seo?.keywords && article.seo.keywords.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {article.seo.keywords.slice(0, 3).map((keyword, index) => (
               <span

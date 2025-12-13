@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
     let completion: any;
 
     while (toolRound < MAX_TOOL_ROUNDS) {
-      console.log(`[TOOL ROUND ${toolRound + 1}/${MAX_TOOL_ROUNDS}] Starting...`);
+      // console.log(`[TOOL ROUND ${toolRound + 1}/${MAX_TOOL_ROUNDS}] Starting...`);
 
       // Get AI response with tool support
       completion = await createChatCompletion({
@@ -289,17 +289,16 @@ export async function POST(req: NextRequest) {
 
       // If no tool calls, we're done
       if (!assistantMessage?.tool_calls || assistantMessage.tool_calls.length === 0) {
-        console.log(`[TOOL ROUND ${toolRound + 1}] No tool calls - finishing`);
+        // console.log(`[TOOL ROUND ${toolRound + 1}] No tool calls - finishing`);
         break;
       }
 
       toolRound++;
-      console.log(`[TOOL ROUND ${toolRound}] AI requested ${assistantMessage.tool_calls.length} tool(s):`,
-        assistantMessage.tool_calls.map((tc: any) => tc.function.name));
+      console.log(`[AI] Using tools: ${assistantMessage.tool_calls.map((tc: any) => tc.function.name).join(', ')}`);
 
       // Safety check: prevent infinite loops
       if (toolRound >= MAX_TOOL_ROUNDS) {
-        console.warn(`[TOOL ROUND ${toolRound}] Max rounds reached - forcing completion`);
+        console.warn(`[AI] Max tool rounds reached - completing response`);
         // Get final response without tools
         messagesWithTools.push(assistantMessage);
         completion = await createChatCompletion({
@@ -312,8 +311,7 @@ export async function POST(req: NextRequest) {
         });
         break;
       }
-      console.log("[TOOL CALLS] AI requested:", assistantMessage.tool_calls.map((tc: any) => tc.function.name));
-      console.log("[TOOL CALLS] Full details:", JSON.stringify(assistantMessage.tool_calls, null, 2));
+      // Detailed logging disabled for cleaner output
 
       // Execute all tool calls
       const toolResults = await Promise.all(
@@ -321,7 +319,7 @@ export async function POST(req: NextRequest) {
           const functionName = toolCall.function.name;
           const functionArgs = JSON.parse(toolCall.function.arguments);
 
-          console.log(`[EXECUTING] ${functionName} with args:`, JSON.stringify(functionArgs, null, 2));
+          // console.log(`[EXECUTING] ${functionName} with args:`, JSON.stringify(functionArgs, null, 2));
 
           let result: any;
 
@@ -513,7 +511,7 @@ export async function POST(req: NextRequest) {
             result = { error: error.message };
           }
 
-          console.log(`[RESULT] ${functionName}:`, JSON.stringify(result).substring(0, 200));
+          // console.log(`[RESULT] ${functionName}:`, JSON.stringify(result).substring(0, 200));
 
           // AUTOMATIC SEARCH: If matchLocation succeeded, call the WORKING subdivision endpoint
           // This bypasses the broken search-listings endpoint entirely
@@ -636,8 +634,7 @@ export async function POST(req: NextRequest) {
       messagesWithTools.push(assistantMessage);
       messagesWithTools.push(...toolResults);
 
-      console.log(`[TOOL ROUND ${toolRound}] Executed ${toolResults.length} tool(s)`);
-      console.log(`[TOOL ROUND ${toolRound}] Total messages: ${messagesWithTools.length}`);
+      // console.log(`[TOOL ROUND ${toolRound}] Executed ${toolResults.length} tool(s)`);
 
       // Continue loop - AI will either make more tool calls or give final response
     }
@@ -693,6 +690,35 @@ function buildEnhancedSystemPrompt(): string {
 # Your Role
 You help users find properties, analyze investments, generate CMAs (Comparative Market Analyses), and provide data-driven real estate insights for Southern California markets.
 
+# CRITICAL: Source Citations
+
+**EVERY response MUST include source citations in this format:**
+
+At the end of EVERY message, add:
+
+[SOURCES]
+[
+  {"type": "web", "url": "https://example.com", "domain": "example.com"},
+  {"type": "mls", "name": "California Regional MLS", "abbreviation": "CRMLS"},
+  {"type": "article", "category": "market-insights", "slug": "article-slug", "title": "Article Title"},
+  {"type": "analytics", "metric": "Property Appreciation"}
+]
+[/SOURCES]
+
+**Source Type Rules:**
+- **web**: Use when citing external websites (NOT our articles). Include full URL and domain name.
+- **mls**: Use when data comes from MLS databases. Abbreviate: "CRMLS" (California Regional MLS), "GPS" (Greater Palm Springs MLS), "SDMLS" (San Diego MLS).
+- **article**: Use when referencing our blog articles from searchArticles tool. Include category, slug, and title.
+- **analytics**: Use when providing appreciation data, market statistics, or calculated metrics from getAppreciation or queryDatabase tools. Specify the metric type.
+
+**Examples:**
+- Property search result → MLS source: {"type": "mls", "name": "California Regional MLS", "abbreviation": "CRMLS"}
+- Article about energy costs → Article source: {"type": "article", "category": "articles", "slug": "coachella-valley-energy-costs", "title": "What you need to know about energy costs"}
+- Appreciation analysis → Analytics source: {"type": "analytics", "metric": "Property Appreciation Analysis"}
+- External info → Web source: {"type": "web", "url": "https://www.nar.realtor/research", "domain": "nar.realtor"}
+
+IMPORTANT: ALWAYS include [SOURCES] block at the end of every response with at least one source.
+
 # CRITICAL: Tool Usage Workflow
 
 **PRIORITY 1: Search Articles First for Information Questions**
@@ -704,7 +730,7 @@ When a user asks a QUESTION about real estate topics (not property searches):
 - "Tips for first-time buyers"
 
 1. **CALL searchArticles FIRST** - Check our authoritative content
-   - Use searchArticles({"query": "user question keywords"})
+   - Use searchArticles({"query": "user question keywords", "limit": 3})
    - We have comprehensive guides on:
      * Energy costs (SCE vs IID rates in Coachella Valley)
      * Hidden costs of homeownership
@@ -715,9 +741,12 @@ When a user asks a QUESTION about real estate topics (not property searches):
 
 2. **ARTICLE RESPONSE FORMAT** - Use this when articles are found:
 
+   CRITICAL: Copy the ENTIRE article objects from the searchArticles API response into [ARTICLE_RESULTS].
+   Do NOT modify, filter, or summarize the article objects. Include ALL fields exactly as received.
+
    [ARTICLE_RESULTS]
    {
-     "results": [array of article objects from API],
+     "results": [Copy the COMPLETE article array from searchArticles response - DO NOT omit any fields],
      "query": "user's original question"
    }
    [/ARTICLE_RESULTS]
@@ -726,9 +755,12 @@ When a user asks a QUESTION about real estate topics (not property searches):
 
    [Provide CONCISE answer (2-3 sentences max) highlighting KEY points from the article]
 
-   **Source:** [Article Title]
+   **Source:** [Article Title] (jpsrealtor.com/insights/[category]/[slug])
 
-   IMPORTANT: Keep your response SHORT and CONCISE (2-3 sentences). The article card will display full details.
+   IMPORTANT:
+   - Keep your response SHORT and CONCISE (2-3 sentences). The article card will display full details.
+   - In [ARTICLE_RESULTS], paste the EXACT article objects from the API. Each article MUST have: _id, title, slug, excerpt, category, image, seo, publishedAt, relevanceScore
+   - DO NOT create new article objects. DO NOT omit the "image" field. Copy them EXACTLY from the API response.
 
 3. **If no articles found** - Provide general answer and suggest we can write about it
 
@@ -792,6 +824,8 @@ When a user asks to "show me homes in [location]":
    Price range: $[min] - $[max]
    Average: $[avgPrice]
 
+   **Data Source:** Multiple Listing Service (MLS) - Information deemed reliable but not guaranteed. Properties may be sold, pending, or off-market. Verify all details with your agent.
+
    IMPORTANT: The [LISTING_CAROUSEL] and [MAP_VIEW] markers trigger interactive UI components.
    Always include them when showing property results. Use the sampleListings data exactly as provided.
 
@@ -847,6 +881,9 @@ When users ask about market appreciation, growth, trends, or historical price da
 
    This represents strong market growth with [X]% annual appreciation and [Y]% cumulative appreciation.
 
+   **Data Source:** MLS historical sales data
+   **Disclaimer:** Past performance does not guarantee future results. Market appreciation estimates are based on historical MLS data and should not be considered investment advice. Consult with a licensed real estate professional and financial advisor before making investment decisions.
+
    IMPORTANT: The [APPRECIATION] marker triggers an interactive analytics card with charts and detailed metrics.
    Always include it when presenting appreciation data.
 
@@ -889,6 +926,9 @@ When users ask about market appreciation, growth, trends, or historical price da
 
    [Location 1] showed [X]% annual appreciation compared to [Location 2]'s [Y]% annual appreciation.
    This means [Location 1/2] appreciated [Z]% faster over this period.
+
+   **Data Source:** MLS historical sales data
+   **Disclaimer:** Past performance does not guarantee future results. These comparisons are based on historical data and should not be the sole basis for investment decisions. Market conditions vary by location and can change. Consult with a licensed real estate professional.
 
    IMPORTANT: You can now make multiple tool calls across multiple rounds. For comparison queries:
    - Round 1: Call getAppreciation for BOTH locations
@@ -1182,6 +1222,18 @@ function parseComponentData(responseText: string): { carousel?: any; mapView?: a
     }
   }
 
+  // Parse [SOURCES]...[/SOURCES]
+  const sourcesMatch = responseText.match(/\[SOURCES\]\s*([\s\S]*?)\s*\[\/SOURCES\]/);
+  if (sourcesMatch) {
+    try {
+      const jsonStr = sourcesMatch[1].trim();
+      components.sources = JSON.parse(jsonStr);
+      console.log("[PARSE] Found", components.sources?.length || 0, "source citations");
+    } catch (e) {
+      console.error("[PARSE] Failed to parse sources JSON:", e);
+    }
+  }
+
   return components;
 }
 
@@ -1193,6 +1245,9 @@ function cleanResponseText(responseText: string): string {
 
   // Remove [LISTING_CAROUSEL]...[/LISTING_CAROUSEL] blocks
   cleaned = cleaned.replace(/\[LISTING_CAROUSEL\]\s*[\s\S]*?\s*\[\/LISTING_CAROUSEL\]/g, '');
+
+  // Remove [SOURCES]...[/SOURCES] blocks
+  cleaned = cleaned.replace(/\[SOURCES\]\s*[\s\S]*?\s*\[\/SOURCES\]/g, '');
 
   // Remove [MAP_VIEW]...[/MAP_VIEW] blocks
   cleaned = cleaned.replace(/\[MAP_VIEW\]\s*[\s\S]*?\s*\[\/MAP_VIEW\]/g, '');

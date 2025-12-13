@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { Listing } from "./ListingCarousel";
+import type { SourceType } from "./SourceBubble";
 
 // Component data from API response
 export interface ComponentData {
@@ -14,6 +15,7 @@ export interface ComponentData {
     center?: { lat: number; lng: number };
     zoom?: number;
   };
+  sources?: SourceType[];
   appreciation?: {
     location?: {
       city?: string;
@@ -98,40 +100,64 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 const CHAT_STORAGE_KEY = 'jps-chat-messages';
+const CHAT_EXPIRATION_KEY = 'jps-chat-expiration';
+const CHAT_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load messages from localStorage on mount
+  // Load messages from sessionStorage on mount with expiration check
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Convert timestamp strings back to Date objects
-        const messagesWithDates = parsed.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }));
-        setMessages(messagesWithDates);
-        console.log('[ChatProvider] Loaded', messagesWithDates.length, 'messages from localStorage');
+      const stored = sessionStorage.getItem(CHAT_STORAGE_KEY);
+      const expiration = sessionStorage.getItem(CHAT_EXPIRATION_KEY);
+
+      if (stored && expiration) {
+        const expirationTime = parseInt(expiration, 10);
+        const now = Date.now();
+
+        // Check if session has expired
+        if (now < expirationTime) {
+          const parsed = JSON.parse(stored);
+          // Convert timestamp strings back to Date objects
+          const messagesWithDates = parsed.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+          console.log('[ChatProvider] Loaded', messagesWithDates.length, 'messages from session (expires in', Math.round((expirationTime - now) / 1000), 'seconds)');
+        } else {
+          // Session expired, clear it
+          console.log('[ChatProvider] Session expired, clearing chat history');
+          sessionStorage.removeItem(CHAT_STORAGE_KEY);
+          sessionStorage.removeItem(CHAT_EXPIRATION_KEY);
+        }
       }
     } catch (error) {
-      console.error('[ChatProvider] Error loading messages from localStorage:', error);
+      console.error('[ChatProvider] Error loading messages from sessionStorage:', error);
     }
     setIsHydrated(true);
   }, []);
 
-  // Save messages to localStorage whenever they change
+  // Save messages to sessionStorage with expiration timestamp
   useEffect(() => {
     if (!isHydrated) return; // Don't save until initial load is complete
 
     try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-      console.log('[ChatProvider] Saved', messages.length, 'messages to localStorage');
+      if (messages.length > 0) {
+        sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+        // Set expiration time to 5 minutes from now
+        const expirationTime = Date.now() + CHAT_EXPIRATION_TIME;
+        sessionStorage.setItem(CHAT_EXPIRATION_KEY, expirationTime.toString());
+        // console.log('[ChatProvider] Saved', messages.length, 'messages to session');
+      } else {
+        // Clear session if no messages
+        sessionStorage.removeItem(CHAT_STORAGE_KEY);
+        sessionStorage.removeItem(CHAT_EXPIRATION_KEY);
+      }
     } catch (error) {
-      console.error('[ChatProvider] Error saving messages to localStorage:', error);
+      console.error('[ChatProvider] Error saving messages to sessionStorage:', error);
     }
   }, [messages, isHydrated]);
 
@@ -149,7 +175,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const clearMessages = () => {
     setMessages([]);
-    localStorage.removeItem(CHAT_STORAGE_KEY);
+    sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    sessionStorage.removeItem(CHAT_EXPIRATION_KEY);
   };
 
   return (

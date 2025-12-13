@@ -11,11 +11,8 @@ export interface ArticleSearchResult {
   slug: string;
   excerpt: string;
   category: string;
-  featuredImage: {
-    url: string;
-    alt: string;
-  };
-  seo: {
+  image?: string; // Changed from featuredImage to match MDX format
+  seo?: {
     description: string;
     keywords: string[];
   };
@@ -69,15 +66,12 @@ export async function POST(req: NextRequest) {
         slug: article.slug,
         excerpt: article.excerpt,
         category: article.category,
-        featuredImage: {
-          url: article.featuredImage.url,
-          alt: article.featuredImage.alt
-        },
-        seo: {
-          description: article.seo.description,
-          keywords: article.seo.keywords
-        },
-        publishedAt: article.publishedAt.toISOString(),
+        image: article.featuredImage?.url || undefined, // Convert featuredImage.url to image
+        seo: article.seo ? {
+          description: article.seo.description || '',
+          keywords: article.seo.keywords || []
+        } : undefined,
+        publishedAt: article.publishedAt ? article.publishedAt.toISOString() : new Date().toISOString(),
         relevanceScore: article.score || 1.0
       }));
 
@@ -109,15 +103,12 @@ export async function POST(req: NextRequest) {
         slug: article.slug,
         excerpt: article.excerpt,
         category: article.category,
-        featuredImage: {
-          url: article.featuredImage.url,
-          alt: article.featuredImage.alt
-        },
-        seo: {
-          description: article.seo.description,
-          keywords: article.seo.keywords
-        },
-        publishedAt: article.publishedAt.toISOString(),
+        image: article.featuredImage?.url || undefined, // Convert featuredImage.url to image
+        seo: article.seo ? {
+          description: article.seo.description || '',
+          keywords: article.seo.keywords || []
+        } : undefined,
+        publishedAt: article.publishedAt ? article.publishedAt.toISOString() : new Date().toISOString(),
         relevanceScore: 1.0 - (index * 0.1) // Descending relevance
       }));
 

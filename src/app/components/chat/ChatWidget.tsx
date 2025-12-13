@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Copy, Check, Share, SquarePen, Loader2 } from "lucide-react";
+import { Send, Bot, User, Copy, Check, Share, SquarePen, Loader2, MapPin } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -16,6 +16,8 @@ import { AppreciationCard } from "../analytics/AppreciationCard";
 import { ComparisonCard } from "../analytics/ComparisonCard";
 import ListingBottomPanel from "../mls/map/ListingBottomPanel";
 import { useMLSContext } from "../mls/MLSProvider";
+import ChatHeader from "./ChatHeader";
+import { SourceBubbles } from "./SourceBubble";
 import type { Listing } from "./ListingCarousel";
 
 export default function ChatWidget() {
@@ -131,19 +133,25 @@ export default function ChatWidget() {
       } else {
         // Handle API errors gracefully
         setIsLoading(false);
-        const errorMessage = data.error || data.details || "I encountered an issue processing your request.";
+        setIsStreaming(false);
+        setStreamingText("");
+        const errorMessage = data.error || data.details || "something went wrong";
         addMessage(
-          `I apologize, but I encountered an issue: ${errorMessage}\n\nPlease try rephrasing your question or try again in a moment.`,
+          `I apologize, but I encountered an issue: ${errorMessage}.\n\nPlease try rephrasing your question or try again in a moment.`,
           "assistant"
         );
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
     } catch (error) {
       console.error("Chat error:", error);
       setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingText("");
       addMessage(
-        "I apologize, but I'm having trouble connecting right now. Please check your connection and try again.",
+        "I apologize, but I'm having trouble connecting right now. Please check your connection and try again in a moment.",
         "assistant"
       );
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -259,7 +267,8 @@ export default function ChatWidget() {
 
   return (
     <>
-    <div className="h-screen w-full flex flex-col" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
+    <ChatHeader />
+    <div className="h-screen w-full flex flex-col pt-20 md:pt-0" data-page={showLanding ? "chat-landing" : "chat"} style={{ fontFamily: `'${chatFont}', sans-serif` }}>
       {/* Landing View */}
       <AnimatePresence>
         {showLanding && (
@@ -363,13 +372,14 @@ export default function ChatWidget() {
 
       {/* Conversation View */}
       {!showLanding && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-6 pb-6 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-4 md:pt-6 pb-32 md:pb-2 relative">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
                 className="flex flex-col gap-4"
               >
                 {/* Text message row */}
@@ -466,37 +476,43 @@ export default function ChatWidget() {
                         </ReactMarkdown>
                       </div>
                     </div>
-                    {/* Copy and Share buttons for assistant messages */}
+                    {/* Copy, Share buttons, and Sources for assistant messages */}
                     {msg.role === "assistant" && (
-                      <div className="mt-2 self-start flex items-center gap-2">
-                        <button
-                          onClick={() => handleCopy(msg.content, msg.id)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-                            copiedId === msg.id
-                              ? isLight
-                                ? "bg-emerald-100 text-emerald-600"
-                                : "bg-emerald-500/20 text-emerald-400"
-                              : isLight
+                      <div className="mt-2 self-start">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleCopy(msg.content, msg.id)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                              copiedId === msg.id
+                                ? isLight
+                                  ? "bg-emerald-100 text-emerald-600"
+                                  : "bg-emerald-500/20 text-emerald-400"
+                                : isLight
+                                  ? "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                                  : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                            }`}
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="w-4 h-4" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleShare(msg.content)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                              isLight
                                 ? "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                                 : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-                          }`}
-                        >
-                          {copiedId === msg.id ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleShare(msg.content)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-                            isLight
-                              ? "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-                              : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-                          }`}
-                        >
-                          <Share className="w-4 h-4" />
-                        </button>
+                            }`}
+                          >
+                            <Share className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Source Citations */}
+                        {msg.components?.sources && msg.components.sources.length > 0 && (
+                          <SourceBubbles sources={msg.components.sources} />
+                        )}
                       </div>
                     )}
                   </div>
@@ -688,11 +704,20 @@ export default function ChatWidget() {
 
       {/* Chat Input - Only show in conversation mode */}
       {!showLanding && (
-        <div className="p-2 sm:p-4 pb-safe">
+        <div
+          className={`fixed bottom-0 left-0 pr-[10px] pl-3 sm:px-4 pb-[84px] sm:pb-4 pt-6 z-30 backdrop-blur-xl md:relative md:bottom-auto md:left-auto md:right-auto md:pr-4 md:pb-4 md:backdrop-blur-none ${
+            isLight ? 'bg-gradient-to-t from-white/90 via-white/70 to-transparent' : 'bg-gradient-to-t from-black/70 via-black/50 to-transparent'
+          }`}
+          style={{
+            right: '10px',
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 100%)',
+          }}
+        >
         <div className="max-w-4xl mx-auto">
           <div
-            className={`relative rounded-2xl backdrop-blur-md shadow-lg ${
-              isLight ? "bg-white/80 border border-gray-300" : "bg-neutral-800/50 border border-neutral-700/50"
+            className={`relative rounded-2xl backdrop-blur-md shadow-xl ${
+              isLight ? "bg-white/95 border-2 border-gray-300" : "bg-neutral-800/80 border-2 border-neutral-700/70"
             }`}
             style={{
               backdropFilter: "blur(10px) saturate(150%)",
@@ -706,35 +731,35 @@ export default function ChatWidget() {
               onKeyPress={handleKeyPress}
               placeholder="Ask me anything about real estate..."
               disabled={isLoading}
-              className={`w-full px-4 sm:px-6 py-3 sm:py-4 pr-20 sm:pr-28 bg-transparent outline-none rounded-2xl text-sm sm:text-[15px] font-medium tracking-[-0.01em] ${
-                isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
+              className={`w-full px-4 sm:px-6 py-4 sm:py-4 pr-24 sm:pr-28 bg-transparent outline-none rounded-2xl text-base sm:text-[15px] font-medium tracking-[-0.01em] ${
+                isLight ? "text-gray-900 placeholder-gray-500" : "text-white placeholder-neutral-400"
               }`}
             />
             <button
               onClick={handleNewChat}
               title="Start new conversation"
-              className={`absolute right-12 sm:right-16 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-xl transition-all ${
+              className={`absolute right-14 sm:right-16 top-1/2 -translate-y-1/2 p-2.5 sm:p-2.5 rounded-xl transition-all active:scale-95 ${
                 isLight
-                  ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
+                  ? "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700"
+                  : "bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500 text-neutral-300"
               }`}
             >
-              <SquarePen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <SquarePen className="w-5 h-5 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={handleSend}
               disabled={!message.trim() || isLoading}
-              className={`absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-xl transition-all ${
+              className={`absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-2.5 sm:p-2.5 rounded-xl transition-all active:scale-95 ${
                 message.trim() && !isLoading
                   ? isLight
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-purple-600 hover:bg-purple-700 text-white"
+                    ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-lg"
+                    : "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-lg"
                   : isLight
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-neutral-700 text-neutral-500 cursor-not-allowed"
               }`}
             >
-              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Send className="w-5 h-5 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
@@ -751,7 +776,7 @@ export default function ChatWidget() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-[9998]"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[9998]"
             onClick={cancelNewChat}
           />
 
@@ -763,31 +788,35 @@ export default function ChatWidget() {
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           >
             <div
-              className={`rounded-2xl p-8 shadow-2xl w-full max-w-md ${
+              className={`rounded-2xl p-8 shadow-2xl w-full max-w-md backdrop-blur-md ${
                 isLight
                   ? 'bg-white border border-gray-200'
-                  : 'bg-gray-800 border border-gray-700'
+                  : 'bg-neutral-900/60 border border-neutral-700/50'
               }`}
+              style={{
+                backdropFilter: "blur(20px) saturate(150%)",
+                WebkitBackdropFilter: "blur(20px) saturate(150%)",
+              }}
             >
               {/* Icon */}
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-5 ${
-                isLight ? 'bg-blue-100' : 'bg-purple-500/20'
+                isLight ? 'bg-blue-100' : 'bg-purple-500/10 border border-purple-500/20'
               }`}>
                 <SquarePen className={`w-7 h-7 ${
-                  isLight ? 'text-blue-600' : 'text-purple-400'
+                  isLight ? 'text-blue-600' : 'text-purple-300'
                 }`} />
               </div>
 
               {/* Title */}
               <h3 className={`text-2xl font-bold mb-3 ${
-                isLight ? 'text-gray-900' : 'text-white'
+                isLight ? 'text-gray-900' : 'text-neutral-100'
               }`}>
                 Start New Conversation?
               </h3>
 
               {/* Description */}
               <p className={`text-base mb-8 leading-relaxed ${
-                isLight ? 'text-gray-600' : 'text-gray-300'
+                isLight ? 'text-gray-600' : 'text-neutral-400'
               }`}>
                 This will clear your current chat history. Your conversation will be permanently deleted and cannot be recovered.
               </p>
@@ -799,17 +828,17 @@ export default function ChatWidget() {
                   className={`flex-1 px-5 py-3 rounded-xl font-semibold transition-all ${
                     isLight
                       ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-200 hover:shadow-lg'
+                      : 'bg-neutral-800/50 hover:bg-neutral-700/50 text-neutral-300 border border-neutral-700/50 hover:border-neutral-600/50'
                   }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmNewChat}
-                  className={`flex-1 px-5 py-3 rounded-xl font-semibold text-white transition-all shadow-lg ${
+                  className={`flex-1 px-5 py-3 rounded-xl font-semibold text-white transition-all ${
                     isLight
-                      ? 'bg-blue-600 hover:bg-blue-700 hover:shadow-xl'
-                      : 'bg-purple-600 hover:bg-purple-700 hover:shadow-purple-500/50'
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                      : 'bg-purple-600/90 hover:bg-purple-600 border border-purple-500/30 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30'
                   }`}
                 >
                   Start New Chat

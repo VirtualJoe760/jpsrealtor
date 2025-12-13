@@ -276,34 +276,66 @@ a {
   }
 }
 
-/* Global dark mode scrollbar styling */
-* {
+/* Theme-aware scrollbar styling */
+/* Light theme scrollbars */
+html.theme-lightgradient * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27); /* zinc-700 thumb, zinc-900 track */
+  scrollbar-color: rgb(203, 213, 225) rgb(241, 245, 249); /* slate-300 thumb, slate-100 track */
 }
 
-*::-webkit-scrollbar {
+html.theme-lightgradient *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-*::-webkit-scrollbar-track {
+html.theme-lightgradient *::-webkit-scrollbar-track {
+  background: rgb(241, 245, 249); /* slate-100 */
+  border-radius: 4px;
+}
+
+html.theme-lightgradient *::-webkit-scrollbar-thumb {
+  background: rgb(203, 213, 225); /* slate-300 */
+  border-radius: 4px;
+  border: 2px solid rgb(241, 245, 249); /* Creates padding effect */
+  transition: background 0.2s ease;
+}
+
+html.theme-lightgradient *::-webkit-scrollbar-thumb:hover {
+  background: rgb(148, 163, 184); /* slate-400 */
+}
+
+html.theme-lightgradient *::-webkit-scrollbar-corner {
+  background: rgb(241, 245, 249); /* slate-100 */
+}
+
+/* Dark theme scrollbars */
+html.theme-blackspace * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27); /* zinc-700 thumb, zinc-900 track */
+}
+
+html.theme-blackspace *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html.theme-blackspace *::-webkit-scrollbar-track {
   background: rgb(24, 24, 27); /* zinc-900 */
   border-radius: 4px;
 }
 
-*::-webkit-scrollbar-thumb {
+html.theme-blackspace *::-webkit-scrollbar-thumb {
   background: rgb(63, 63, 70); /* zinc-700 */
   border-radius: 4px;
   border: 2px solid rgb(24, 24, 27); /* Creates padding effect */
   transition: background 0.2s ease;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+html.theme-blackspace *::-webkit-scrollbar-thumb:hover {
   background: rgb(82, 82, 91); /* zinc-600 */
 }
 
-*::-webkit-scrollbar-corner {
+html.theme-blackspace *::-webkit-scrollbar-corner {
   background: rgb(24, 24, 27); /* zinc-900 */
 }
 
