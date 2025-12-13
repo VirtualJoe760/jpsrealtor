@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import MapLayer from "@/app/components/MapLayer";
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 
 /**
  * Map Background Demo Page
@@ -16,9 +17,13 @@ export default function MapDemoPage() {
     showMapAtLocation,
     hideMap,
     setOpacity,
+    isMapVisible,
   } = useMapControl();
   const { cardBg, cardBorder, textPrimary, textSecondary, buttonPrimary } = useThemeClasses();
   const [currentOpacity, setCurrentOpacity] = useState(0.8);
+
+  // Track if we should show the spatial background
+  const [showSpatialBg, setShowSpatialBg] = useState(true);
 
   // Sample locations in Coachella Valley
   const locations = [
@@ -38,10 +43,21 @@ export default function MapDemoPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Map Layer - renders behind all content */}
+      {/* Map Layer - always rendered, z-index 0 */}
       <MapLayer />
 
-      {/* Page Content - renders above map */}
+      {/* Spatial Background - slides away when map is shown */}
+      <div
+        className="fixed inset-0 transition-transform duration-1000 ease-in-out"
+        style={{
+          zIndex: 1,
+          transform: isMapVisible ? 'translateX(-100%)' : 'translateX(0)',
+        }}
+      >
+        <SpaticalBackground showGradient={true} className="h-full w-full" />
+      </div>
+
+      {/* Page Content - renders above both backgrounds */}
       <div className="relative z-20 p-8 pointer-events-none">
         <div className="max-w-4xl mx-auto space-y-6 pointer-events-auto">
         {/* Header */}

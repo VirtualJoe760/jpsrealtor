@@ -22,6 +22,7 @@ import type { MapListing } from "@/types/types";
  */
 export function useMapControl() {
   const {
+    isMapVisible,
     setMapVisible,
     setViewState,
     setDisplayListings,
@@ -129,5 +130,6 @@ export function useMapControl() {
     disableMapInteraction,
     toggleMapInteraction,
     isMapInteractive,
+    isMapVisible,
   };
 }
