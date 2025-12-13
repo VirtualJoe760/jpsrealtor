@@ -13,11 +13,12 @@ import MetaPixel from "../../components/MetaPixel";
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName } from "../contexts/ThemeContext";
-import { MapStateProvider } from "../contexts/MapStateContext";
+import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
+  const { isMapInteractive } = useMapState();
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -66,12 +67,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
-        style={{
-          // Ensure content above map is always clickable
-          pointerEvents: 'auto',
-        }}
       >
-        {children}
+        <div style={{ pointerEvents: 'auto' }}>
+          {children}
+        </div>
       </div>
 
       <MobileBottomNav />

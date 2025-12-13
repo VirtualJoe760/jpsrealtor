@@ -39,8 +39,8 @@ export default function MapDemoPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen p-8" style={{ pointerEvents: isMapInteractive ? 'none' : 'auto' }}>
+      <div className="max-w-4xl mx-auto space-y-6" style={{ pointerEvents: 'auto' }}>
         {/* Header */}
         <div className={`${cardBg} ${cardBorder} border rounded-xl p-6`}>
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>
