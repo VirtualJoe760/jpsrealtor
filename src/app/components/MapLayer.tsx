@@ -45,7 +45,6 @@ export default function MapLayer() {
     setSelectedListing,
     displayListings,
     mapStyle,
-    mapOpacity,
   } = useMapState();
 
   const { currentTheme } = useTheme();
@@ -84,9 +83,9 @@ export default function MapLayer() {
 
   return (
     <div
-      className="fixed inset-0 transition-opacity duration-500"
+      className="fixed inset-0"
       style={{
-        opacity: isMapVisible ? mapOpacity : 0,
+        opacity: 1,
         pointerEvents: isMapVisible ? 'auto' : 'none',
         zIndex: 0,
       }}

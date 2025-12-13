@@ -16,14 +16,9 @@ export default function MapDemoPage() {
   const {
     showMapAtLocation,
     hideMap,
-    setOpacity,
     isMapVisible,
   } = useMapControl();
   const { cardBg, cardBorder, textPrimary, textSecondary, buttonPrimary } = useThemeClasses();
-  const [currentOpacity, setCurrentOpacity] = useState(0.8);
-
-  // Track if we should show the spatial background
-  const [showSpatialBg, setShowSpatialBg] = useState(true);
 
   // Sample locations in Coachella Valley
   const locations = [
@@ -34,12 +29,6 @@ export default function MapDemoPage() {
     { name: "Palm Springs", lat: 33.8303, lng: -116.5453, zoom: 12 },
     { name: "California (Full State)", lat: 37.0, lng: -119.5, zoom: 5.5 },
   ];
-
-  const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    setCurrentOpacity(value);
-    setOpacity(value);
-  };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -104,25 +93,6 @@ export default function MapDemoPage() {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Opacity Slider */}
-          <div>
-            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-              Map Opacity: {currentOpacity.toFixed(2)}
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={currentOpacity}
-              onChange={handleOpacityChange}
-              className="w-full"
-            />
-            <p className={`text-xs ${textSecondary} mt-1`}>
-              Lower opacity makes content more readable, higher opacity shows map more clearly
-            </p>
           </div>
 
           {/* Control Buttons */}
