@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import MapLayer from "@/app/components/MapLayer";
 
 /**
  * Map Background Demo Page
  *
- * Test page to demonstrate the map background functionality.
+ * Test page to demonstrate the map layer functionality.
  * This shows how chat or other components can control the map.
  */
 export default function MapDemoPage() {
@@ -15,9 +16,6 @@ export default function MapDemoPage() {
     showMapAtLocation,
     hideMap,
     setOpacity,
-    showMapWithListings,
-    toggleMapInteraction,
-    isMapInteractive
   } = useMapControl();
   const { cardBg, cardBorder, textPrimary, textSecondary, buttonPrimary } = useThemeClasses();
   const [currentOpacity, setCurrentOpacity] = useState(0.8);
@@ -39,8 +37,13 @@ export default function MapDemoPage() {
   };
 
   return (
-    <div className="min-h-screen p-8" style={{ pointerEvents: isMapInteractive ? 'none' : 'auto' }}>
-      <div className="max-w-4xl mx-auto space-y-6" style={{ pointerEvents: 'auto' }}>
+    <div className="relative min-h-screen">
+      {/* Map Layer - renders behind all content */}
+      <MapLayer />
+
+      {/* Page Content - renders above map */}
+      <div className="relative z-10 p-8">
+        <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className={`${cardBg} ${cardBorder} border rounded-xl p-6`}>
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>
@@ -95,31 +98,6 @@ export default function MapDemoPage() {
             </p>
           </div>
 
-          {/* Map Interaction Toggle */}
-          <div>
-            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-              Map Interaction Mode: {isMapInteractive ? 'Enabled ✅' : 'Disabled ❌'}
-            </label>
-            <button
-              onClick={() => {
-                console.log('🔘 Toggle button clicked! Current state:', isMapInteractive);
-                toggleMapInteraction();
-              }}
-              className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                isMapInteractive
-                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                  : 'bg-gray-500 hover:bg-gray-600 text-white'
-              }`}
-            >
-              {isMapInteractive ? 'Disable Map Interaction' : 'Enable Map Interaction'}
-            </button>
-            <p className={`text-xs ${textSecondary} mt-2`}>
-              {isMapInteractive
-                ? '🗺️ You can now drag, zoom, and interact with the map'
-                : '🖱️ Content is clickable, map is in the background'}
-            </p>
-          </div>
-
           {/* Hide Map Button */}
           <button
             onClick={hideMap}
@@ -138,13 +116,19 @@ export default function MapDemoPage() {
             <li className="flex items-start gap-2">
               <span className="text-blue-500 mt-1">•</span>
               <span>
-                The map renders as a <strong>fixed background layer</strong> (z-index: 1)
+                The map renders as an <strong>absolute positioned layer</strong> (z-index: 0) within the page
               </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-500 mt-1">•</span>
               <span>
-                Page content sits <strong>above the map</strong> (z-index: 10) with pointer-events enabled
+                Page content sits <strong>above the map</strong> (z-index: 10) and is always clickable
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-500 mt-1">•</span>
+              <span>
+                <strong>Map is fully interactive!</strong> Drag, zoom, and pan work in areas between content
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -189,6 +173,7 @@ showMapWithListings(listings, {
 // When user asks about a city:
 showMapAtLocation(33.8303, -116.5453, 13);`}
           </pre>
+        </div>
         </div>
       </div>
     </div>
