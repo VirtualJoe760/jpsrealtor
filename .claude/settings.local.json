@@ -111,7 +111,9 @@
       "Bash(vercel env:*)",
       "Bash(vercel link:*)",
       "Bash(vercel:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "WebFetch(domain:jpsrealtor.com)",
+      "Bash(wrangler:*)"
     ],
     "deny": [],
     "ask": []
