@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import { useSession } from "next-auth/react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
+import { useMapControl } from "@/app/hooks/useMapControl";
 import ListingCarousel from "./ListingCarousel";
 import ChatMapView from "./ChatMapView";
 import { ArticleResults } from "./ArticleCard";
@@ -32,6 +33,9 @@ export default function ChatWidget() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const { messages, addMessage, clearMessages } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Map control for showing listings on background map
+  const { showMapWithListings, hideMap } = useMapControl();
 
   // ListingBottomPanel state for swipe functionality
   const [showListingPanel, setShowListingPanel] = useState(false);
@@ -128,6 +132,22 @@ export default function ChatWidget() {
             setStreamingText("");
             addMessage(fullText, "assistant", undefined, components);
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+            // Show map if listings are returned
+            if (components?.carousel?.listings && components.carousel.listings.length > 0) {
+              console.log('🗺️ [ChatWidget] Showing', components.carousel.listings.length, 'listings on map');
+
+              // Calculate center from listings or use mapView center
+              const centerLat = components.mapView?.center?.lat || components.carousel.listings[0]?.latitude || 33.8303;
+              const centerLng = components.mapView?.center?.lng || components.carousel.listings[0]?.longitude || -116.5453;
+              const zoom = components.mapView?.zoom || 12;
+
+              showMapWithListings(components.carousel.listings, {
+                centerLat,
+                centerLng,
+                zoom
+              });
+            }
           }
         }, 15); // 15ms per word - faster reveal
       } else {
@@ -172,6 +192,7 @@ export default function ChatWidget() {
     clearMessages();
     setMessage("");
     setShowNewChatModal(false);
+    hideMap(); // Hide map when starting new chat
   };
 
   const cancelNewChat = () => {
