@@ -11,20 +11,33 @@ import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
 
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
+import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName } from "../contexts/ThemeContext";
+import { MapStateProvider } from "../contexts/MapStateContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
 
-  // Pages where we DON'T want the spatial background
+  // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
-    '/map',
+    '/map', // /map page has its own map instance
     '/mls-listings',
   ];
 
-  // Check if current page should have spatial background
-  const shouldShowBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page));
+  // Pages where we want the MAP as background instead of spatial background
+  const pagesWithMapBackground = [
+    '/map-demo', // Demo page for testing map background
+    // Examples: Add more routes where you want map background
+    // '/', // Homepage with map background
+    // '/dashboard', // Dashboard with map background
+  ];
+
+  // Determine which background to show
+  const shouldShowSpatialBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page))
+    && !pagesWithMapBackground.some(page => pathname?.startsWith(page));
+
+  const shouldShowMapBackground = pagesWithMapBackground.some(page => pathname?.startsWith(page));
 
   return (
     <>
@@ -32,10 +45,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <GlobalHamburgerMenu />
 
       {/* Global Spatial Background - Persists across navigation */}
-      {shouldShowBackground && (
+      {shouldShowSpatialBackground && (
         <div className="fixed inset-0 z-0">
           <SpaticalBackground showGradient={true} className="h-full w-full" />
         </div>
+      )}
+
+      {/* Global Map Background - Shows on specific routes */}
+      {shouldShowMapBackground && (
+        <MapBackground />
       )}
 
       {/* Desktop: Always visible sidebar */}
@@ -48,6 +66,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
+        style={{
+          // Ensure content above map is always clickable
+          pointerEvents: 'auto',
+        }}
       >
         {children}
       </div>
@@ -118,11 +140,13 @@ export default function ClientLayoutWrapper({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
-      <Providers>
-        <SidebarProvider>
-          <LayoutContent>{children}</LayoutContent>
-        </SidebarProvider>
-      </Providers>
+      <MapStateProvider>
+        <Providers>
+          <SidebarProvider>
+            <LayoutContent>{children}</LayoutContent>
+          </SidebarProvider>
+        </Providers>
+      </MapStateProvider>
     </ThemeProvider>
   );
 }
