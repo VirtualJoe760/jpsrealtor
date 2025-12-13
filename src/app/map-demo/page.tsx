@@ -54,38 +54,18 @@ export default function MapDemoPage() {
         <SpaticalBackground showGradient={true} className="h-full w-full" />
       </div>
 
-      {/* Map wipe bars - reveals map from top and bottom */}
+      {/* Map Layer with wipe clip-path effect */}
       <div
-        className="fixed inset-0 pointer-events-none"
+        className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
         style={{
           zIndex: 1,
+          clipPath: isMapVisible
+            ? 'inset(0% 0% 0% 0%)' // Fully visible
+            : 'inset(50% 0% 50% 0%)', // Clipped to center horizontal line (hidden)
+          pointerEvents: isMapVisible ? 'auto' : 'none',
         }}
       >
-        {/* Top bar - map revealed from top */}
-        <div
-          className="absolute top-0 left-0 right-0 overflow-hidden transition-all duration-[1500ms] ease-in-out"
-          style={{
-            height: isMapVisible ? '50%' : '0%',
-            pointerEvents: isMapVisible ? 'auto' : 'none',
-          }}
-        >
-          <div className="w-full h-screen">
-            <MapLayer />
-          </div>
-        </div>
-
-        {/* Bottom bar - map revealed from bottom */}
-        <div
-          className="absolute bottom-0 left-0 right-0 overflow-hidden transition-all duration-[1500ms] ease-in-out"
-          style={{
-            height: isMapVisible ? '50%' : '0%',
-            pointerEvents: isMapVisible ? 'auto' : 'none',
-          }}
-        >
-          <div className="w-full h-screen absolute bottom-0">
-            <MapLayer />
-          </div>
-        </div>
+        <MapLayer />
       </div>
 
       {/* Page Content - renders above both backgrounds */}
