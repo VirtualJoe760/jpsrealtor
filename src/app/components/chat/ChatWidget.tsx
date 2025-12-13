@@ -92,7 +92,7 @@ export default function ChatWidget() {
   const [showListingPanel, setShowListingPanel] = useState(false);
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
-  const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike } = useMLSContext();
+  const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike, loadListings } = useMLSContext();
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -222,8 +222,29 @@ export default function ChatWidget() {
                 console.log('🗺️ [ChatWidget] Using search filters from AI:', sf);
               }
 
+              // Convert Listing[] to MapListing[] format
+              const mapListings = components.carousel.listings.map((listing: any) => ({
+                _id: listing.id || '',
+                listingId: listing.id || '',
+                listingKey: listing.id || '',
+                latitude: listing.latitude || 0,
+                longitude: listing.longitude || 0,
+                listPrice: listing.price || 0,
+                address: listing.address || '',
+                primaryPhotoUrl: listing.image || '',
+                bedsTotal: listing.beds || 0,
+                bathroomsTotalInteger: listing.baths || 0,
+                livingArea: listing.sqft || 0,
+                city: listing.city || '',
+                unparsedAddress: listing.address || '',
+                subdivisionName: listing.subdivision,
+                propertyType: listing.type || 'A',
+                mlsSource: 'GPS',
+                slugAddress: listing.slugAddress || listing.slug || '',
+              }));
+
               // Pre-position map with filters so subdivision boundaries load
-              prePositionMap(components.carousel.listings, {
+              prePositionMap(mapListings, {
                 centerLat,
                 centerLng,
                 zoom

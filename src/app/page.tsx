@@ -232,12 +232,9 @@ function HomeContent() {
             onClose={closeListing}
             onSwipeLeft={() => {}} // TODO: Implement swipe functionality
             onSwipeRight={() => {}} // TODO: Implement swipe functionality
-            isLiked={likedListings.some(l => l.listingKey === selectedFullListing.listingKey)}
+            isSidebarOpen={false}
             isDisliked={dislikedListings.some(l => l.listingKey === selectedFullListing.listingKey)}
-            onLike={() => {}} // TODO: Add like handler
-            onDislike={() => {}} // TODO: Add dislike handler
-            onRemoveLike={removeFavorite}
-            onRemoveDislike={removeDislike}
+            onRemoveDislike={() => selectedListing && removeDislike(selectedListing)}
           />
         )}
       </AnimatePresence>
