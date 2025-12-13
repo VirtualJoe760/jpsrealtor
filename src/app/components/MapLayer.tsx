@@ -107,19 +107,6 @@ export default function MapLayer() {
         />
       </div>
 
-      {/* Overlay gradient for better content readability */}
-      {isMapVisible && (
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-          style={{
-            background: isLight
-              ? 'linear-gradient(to top, rgba(255,255,255,0.3), transparent 40%)'
-              : 'linear-gradient(to top, rgba(0,0,0,0.3), transparent 40%)',
-            opacity: mapOpacity,
-            zIndex: 1,
-          }}
-        />
-      )}
     </div>
   );
 }
