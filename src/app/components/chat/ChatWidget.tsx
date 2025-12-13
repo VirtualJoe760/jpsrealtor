@@ -363,8 +363,8 @@ export default function ChatWidget() {
 
       {/* Conversation View */}
       {!showLanding && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-36 md:pt-6 pb-6 relative">
-          <div className="max-w-6xl mx-auto space-y-4 overflow-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-6 pb-6 relative">
+          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
@@ -373,20 +373,20 @@ export default function ChatWidget() {
                 className="flex flex-col gap-4"
               >
                 {/* Text message row */}
-                <div className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`flex gap-2 sm:gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   {msg.role === "assistant" && (
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                       isLight
                         ? "bg-gradient-to-br from-blue-400 to-blue-600"
                         : "bg-gradient-to-br from-neutral-600 to-neutral-800 border border-neutral-600"
                     }`}>
-                      <Bot className="w-5 h-5 text-white" />
+                      <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                   )}
 
-                  <div className="max-w-3xl flex flex-col">
+                  <div className="max-w-[85%] sm:max-w-3xl flex flex-col">
                     <div
-                      className={`rounded-2xl px-5 py-4 select-text ${
+                      className={`rounded-2xl px-3 sm:px-5 py-3 sm:py-4 select-text ${
                         msg.role === "user"
                           ? isLight
                             ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20"
@@ -396,7 +396,7 @@ export default function ChatWidget() {
                             : "bg-neutral-900/80 text-neutral-50 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
                       }`}
                     >
-                      <div className={`text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mb-2 [&>h3]:font-semibold [&>h3]:mb-1 ${
+                      <div className={`text-base sm:text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mb-2 [&>h3]:font-semibold [&>h3]:mb-1 ${
                         msg.role === "user" ? "text-white" : ""
                       }`}>
                         <ReactMarkdown
@@ -502,7 +502,7 @@ export default function ChatWidget() {
                   </div>
 
                   {msg.role === "user" && (
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
                       isLight ? "bg-blue-600" : "bg-emerald-500"
                     }`}>
                       {session?.user?.image ? (
@@ -514,7 +514,7 @@ export default function ChatWidget() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <User className="w-5 h-5 text-white" />
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       )}
                     </div>
                   )}
@@ -688,7 +688,7 @@ export default function ChatWidget() {
 
       {/* Chat Input - Only show in conversation mode */}
       {!showLanding && (
-        <div className="p-4">
+        <div className="p-2 sm:p-4 pb-safe">
         <div className="max-w-4xl mx-auto">
           <div
             className={`relative rounded-2xl backdrop-blur-md shadow-lg ${
@@ -706,25 +706,25 @@ export default function ChatWidget() {
               onKeyPress={handleKeyPress}
               placeholder="Ask me anything about real estate..."
               disabled={isLoading}
-              className={`w-full px-6 py-4 pr-28 bg-transparent outline-none rounded-2xl text-[15px] font-medium tracking-[-0.01em] ${
+              className={`w-full px-4 sm:px-6 py-3 sm:py-4 pr-20 sm:pr-28 bg-transparent outline-none rounded-2xl text-sm sm:text-[15px] font-medium tracking-[-0.01em] ${
                 isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
               }`}
             />
             <button
               onClick={handleNewChat}
               title="Start new conversation"
-              className={`absolute right-16 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+              className={`absolute right-12 sm:right-16 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-xl transition-all ${
                 isLight
                   ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
                   : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
               }`}
             >
-              <SquarePen className="w-5 h-5" />
+              <SquarePen className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={handleSend}
               disabled={!message.trim() || isLoading}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+              className={`absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-xl transition-all ${
                 message.trim() && !isLoading
                   ? isLight
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
@@ -734,7 +734,7 @@ export default function ChatWidget() {
                     : "bg-neutral-700 text-neutral-500 cursor-not-allowed"
               }`}
             >
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
