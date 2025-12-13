@@ -101,7 +101,10 @@ export default function MapDemoPage() {
               Map Interaction Mode: {isMapInteractive ? 'Enabled ✅' : 'Disabled ❌'}
             </label>
             <button
-              onClick={toggleMapInteraction}
+              onClick={() => {
+                console.log('🔘 Toggle button clicked! Current state:', isMapInteractive);
+                toggleMapInteraction();
+              }}
               className={`px-6 py-2 rounded-lg font-medium transition-all ${
                 isMapInteractive
                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white'

@@ -79,6 +79,12 @@ export default function MapBackground() {
     return null;
   }
 
+  console.log('🗺️ [MapBackground] Render:', {
+    isMapVisible,
+    isMapInteractive,
+    pointerEvents: isMapVisible && isMapInteractive ? 'auto' : 'none'
+  });
+
   return (
     <div
       className="fixed inset-0 z-[1] transition-opacity duration-500"
