@@ -11,6 +11,7 @@ import { MapListing } from "@/types/types";
 import { Home, MapPin } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useMapControl } from "@/app/hooks/useMapControl";
 
 interface ChatMapViewProps {
   listings: any[]; // Chat listings format
@@ -207,13 +208,22 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   const maxDiff = Math.max(latDiff, lngDiff);
 
   // Zoom formula: smaller diff = higher zoom
-  let zoom = 12;
+  // Use minimum zoom of 13 for neighborhood/subdivision views
+  let zoom = 13;
   if (maxDiff < 0.01) zoom = 15;
-  else if (maxDiff < 0.05) zoom = 13;
-  else if (maxDiff < 0.1) zoom = 12;
-  else if (maxDiff < 0.5) zoom = 10;
-  else if (maxDiff < 1) zoom = 9;
-  else zoom = 8;
+  else if (maxDiff < 0.05) zoom = 14;
+  else if (maxDiff < 0.1) zoom = 13;
+  else if (maxDiff < 0.5) zoom = 12;
+  else if (maxDiff < 1) zoom = 10;
+  else zoom = 9;
+
+  console.log('🗺️ [ChatMapView] Calculated zoom:', {
+    latDiff,
+    lngDiff,
+    maxDiff,
+    zoom,
+    listingsCount: validListings.length,
+  });
 
   const handleMarkerClick = useCallback((listing: any, mapListing: MapListing) => {
     setSelectedListing(listing);
@@ -231,43 +241,22 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
     }
   }, [onSelectListing]);
 
+  // Get map control hook to reveal the already pre-positioned map
+  const { showMapWithListings } = useMapControl();
+
   const handleOpenInMapView = useCallback(() => {
-    // Build URL params from search filters
-    const params = new URLSearchParams();
+    console.log('🗺️ [ChatMapView] Revealing map with bounds:', paddedBounds, 'zoom:', zoom);
 
-    if (searchFilters?.city) {
-      params.set('city', searchFilters.city);
-    }
-    if (searchFilters?.subdivision) {
-      params.set('subdivision', searchFilters.subdivision);
-    }
-    if (searchFilters?.propertyType) {
-      params.set('propertyType', searchFilters.propertyType);
-    }
-    if (searchFilters?.minPrice) {
-      params.set('minPrice', searchFilters.minPrice.toString());
-    }
-    if (searchFilters?.maxPrice) {
-      params.set('maxPrice', searchFilters.maxPrice.toString());
-    }
-    if (searchFilters?.minBeds) {
-      params.set('minBeds', searchFilters.minBeds.toString());
-    }
-    if (searchFilters?.maxBeds) {
-      params.set('maxBeds', searchFilters.maxBeds.toString());
-    }
+    // Set the listings to display and fly to the bounds
+    const mapListings = validListings.map(toMapListing);
 
-    // Add bounds to zoom to the subdivision
-    if (validListings.length > 0) {
-      params.set('bounds', JSON.stringify(paddedBounds));
-    }
-
-    const queryString = params.toString();
-    const url = queryString ? `/map?${queryString}` : '/map';
-
-    console.log('🗺️ Navigating to map view:', url);
-    router.push(url);
-  }, [searchFilters, validListings.length, paddedBounds, router]);
+    // Show map with listings - flyToLocation is called internally
+    showMapWithListings(mapListings, {
+      centerLat: (paddedBounds.north + paddedBounds.south) / 2,
+      centerLng: (paddedBounds.east + paddedBounds.west) / 2,
+      zoom: zoom,
+    });
+  }, [validListings, paddedBounds, zoom, showMapWithListings]);
 
   return (
     <div className={`relative w-full h-[250px] md:h-[300px] xl:h-[350px] 2xl:h-[450px] rounded-lg overflow-hidden border ${

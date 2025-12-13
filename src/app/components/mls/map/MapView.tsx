@@ -117,6 +117,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
   // Track the currently hovered feature for proper state cleanup
   const hoveredFeatureRef = useRef<{ source: string; id: number } | null>(null);
+  const hoveredPolygonRef = useRef<{ name: string; count: number; medianPrice: number; avgPrice: number; minPrice: number; maxPrice: number; type: 'city' | 'region' | 'county' } | null>(null);
 
   const mapRef = useRef<any>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -544,6 +545,21 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     },
   }));
 
+  // Watch for centerLat/centerLng/zoom prop changes and fly to new location
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !map.isStyleLoaded()) return;
+
+    if (centerLat !== undefined && centerLng !== undefined && zoom !== undefined) {
+      console.log('🗺️ [MapView] Props changed - flying to:', { centerLat, centerLng, zoom });
+      map.flyTo({
+        center: [centerLng, centerLat],
+        zoom: zoom,
+        duration: 1500,
+      });
+    }
+  }, [centerLat, centerLng, zoom]);
+
   // Check if listing is selected
   const isSelected = (l: MapListing) => {
     const id = l._id;
@@ -871,10 +887,12 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
           if (polygon) {
             map.getCanvas().style.cursor = 'pointer';
 
-            // Update hover state only if it changed
+            // Update hover state only if it changed (use ref to avoid triggering re-renders)
             const currentName = (polygon as any).regionName || (polygon as any).countyName || (polygon as any).cityName;
-            if (!hoveredPolygon || hoveredPolygon.name !== currentName) {
-              setHoveredPolygon({
+            const currentHovered = hoveredPolygonRef.current;
+
+            if (!currentHovered || currentHovered.name !== currentName) {
+              const newHoveredData = {
                 name: currentName,
                 count: (polygon as any).count,
                 medianPrice: (polygon as any).medianPrice,
@@ -882,7 +900,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                 minPrice: (polygon as any).minPrice,
                 maxPrice: (polygon as any).maxPrice,
                 type: polygonType as 'city' | 'region' | 'county',
-              });
+              };
+              hoveredPolygonRef.current = newHoveredData;
+              setHoveredPolygon(newHoveredData);
             }
 
             // Set feature state for visual hover effect
@@ -918,8 +938,9 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       }
 
       // No polygon under cursor - clear hover state
-      if (hoveredPolygon) {
+      if (hoveredPolygonRef.current) {
         map.getCanvas().style.cursor = 'default';
+        hoveredPolygonRef.current = null;
         setHoveredPolygon(null);
 
         if (hoveredFeatureRef.current) {
@@ -959,7 +980,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         }
       };
     }
-  }, [dataToRender, hoveredPolygon]); // Re-run when data changes
+  }, [dataToRender]); // Re-run when data changes (removed hoveredPolygon to prevent infinite loop)
 
   // Helper function to calculate stats for a specific boundary from filtered markers
   const calculateBoundaryStats = useCallback((boundaryName: string, boundaryType: 'city' | 'county') => {

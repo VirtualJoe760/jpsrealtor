@@ -41,25 +41,39 @@ export function useMapControl() {
     listings: MapListing[],
     viewState?: { centerLat: number; centerLng: number; zoom: number }
   ) => {
-    console.log('🗺️ [useMapControl] Showing map with', listings.length, 'listings');
+    console.log('🗺️ [useMapControl.showMapWithListings] Called with:', {
+      listingsCount: listings.length,
+      viewState,
+      hasViewState: !!viewState,
+    });
+
     setDisplayListings(listings);
+    console.log('🗺️ [useMapControl.showMapWithListings] Display listings set');
 
-    if (viewState) {
-      setViewState(viewState);
-    } else if (listings.length > 0) {
-      // Auto-center on first listing
-      const first = listings[0];
-      if (first.latitude && first.longitude) {
-        setViewState({
-          centerLat: first.latitude,
-          centerLng: first.longitude,
-          zoom: 13,
-        });
-      }
-    }
-
+    // IMPORTANT: Show map FIRST to trigger wipe animation, then fly to location
+    console.log('🗺️ [useMapControl.showMapWithListings] Setting map visible to trigger wipe animation');
     setMapVisible(true);
-    setMapOpacity(0.8); // Slightly transparent so content is readable
+    setMapOpacity(0.8);
+
+    // Delay the flyTo slightly to allow wipe animation to start
+    setTimeout(() => {
+      if (viewState) {
+        console.log('🗺️ [useMapControl.showMapWithListings] Flying to location:', viewState);
+        setViewState(viewState);
+      } else if (listings.length > 0) {
+        const first = listings[0];
+        if (first.latitude && first.longitude) {
+          console.log('🗺️ [useMapControl.showMapWithListings] Auto-centering on first listing');
+          setViewState({
+            centerLat: first.latitude,
+            centerLng: first.longitude,
+            zoom: 13,
+          });
+        }
+      }
+    }, 100); // Small delay to let wipe animation start
+
+    console.log('🗺️ [useMapControl.showMapWithListings] Completed');
   };
 
   /**
@@ -120,6 +134,35 @@ export function useMapControl() {
     setMapInteractive(!isMapInteractive);
   };
 
+  /**
+   * Pre-position map in background WITHOUT revealing it
+   * Used by AI to prepare the map silently - user clicks "Open in Map View" to reveal
+   */
+  const prePositionMap = (
+    listings: MapListing[],
+    viewState?: { centerLat: number; centerLng: number; zoom: number }
+  ) => {
+    console.log('🗺️ [useMapControl] Pre-positioning map (hidden) with', listings.length, 'listings');
+    setDisplayListings(listings);
+
+    if (viewState) {
+      setViewState(viewState);
+    } else if (listings.length > 0) {
+      // Auto-center on first listing
+      const first = listings[0];
+      if (first.latitude && first.longitude) {
+        setViewState({
+          centerLat: first.latitude,
+          centerLng: first.longitude,
+          zoom: 13,
+        });
+      }
+    }
+
+    // DO NOT call setMapVisible(true) - keep map hidden
+    // Map will be revealed when user clicks "Open in Map View"
+  };
+
   return {
     showMapWithListings,
     showMapAtLocation,
@@ -129,7 +172,10 @@ export function useMapControl() {
     enableMapInteraction,
     disableMapInteraction,
     toggleMapInteraction,
+    prePositionMap,
     isMapInteractive,
     isMapVisible,
+    setBounds,
+    setMapVisible,
   };
 }

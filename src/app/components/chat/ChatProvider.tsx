@@ -14,6 +14,16 @@ export interface ComponentData {
     listings: any[];
     center?: { lat: number; lng: number };
     zoom?: number;
+    searchFilters?: {
+      city?: string;
+      subdivision?: string;
+      county?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      beds?: number;
+      baths?: number;
+      propertyType?: string;
+    };
   };
   sources?: SourceType[];
   appreciation?: {

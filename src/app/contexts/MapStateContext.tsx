@@ -91,10 +91,14 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
   }, []);
 
   const flyToLocation = useCallback((lat: number, lng: number, zoom: number = 13) => {
-    console.log('🗺️ [MapStateContext] Fly to location:', { lat, lng, zoom });
+    console.log('🗺️ [MapStateContext.flyToLocation] Called with:', { lat, lng, zoom });
+    console.log('🗺️ [MapStateContext.flyToLocation] Setting pendingFlyTo...');
     setPendingFlyTo({ lat, lng, zoom });
+    console.log('🗺️ [MapStateContext.flyToLocation] Setting viewState...');
     setViewStateInternal({ centerLat: lat, centerLng: lng, zoom });
+    console.log('🗺️ [MapStateContext.flyToLocation] Setting map visible...');
     setIsMapVisible(true);
+    console.log('🗺️ [MapStateContext.flyToLocation] Completed');
   }, []);
 
   const setBounds = useCallback((bounds: MapBounds) => {

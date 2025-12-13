@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import type { MapListing } from "@/types/types";
 import LoadingGlobe from "@/app/components/LoadingGlobe";
 
@@ -20,62 +21,109 @@ const MapView = dynamic(
   }
 );
 
+// Default bounds - show entire California state with all regions visible
+// Matches /map page implementation
+const DEFAULT_BOUNDS = {
+  north: 42.0,
+  south: 32.5,
+  east: -114.0,
+  west: -124.5,
+  zoom: 5.5,
+};
+
 /**
  * MapLayer Component
  *
- * Renders an interactive map as a layer within page content.
- * This component is meant to be used INSIDE a page, positioned absolutely
- * to appear behind other content.
+ * Renders an interactive map as a layer within page content with full MLS functionality.
+ * Architecture matches /map page to prevent infinite loops.
  *
- * Usage:
- * ```tsx
- * <div className="relative min-h-screen">
- *   <MapLayer />
- *   <div className="relative z-10">
- *     Your page content here
- *   </div>
- * </div>
- * ```
+ * Features:
+ * - Hierarchical clustering (regions → counties → cities → listings)
+ * - Polygon boundaries with hover effects
+ * - Auto-loads listings when user pans/zooms
+ * - Supports all map styles
+ *
+ * IMPORTANT: Uses local state for position (like /map page) to prevent feedback loops
  */
 export default function MapLayer() {
   const {
     isMapVisible,
-    viewState,
-    selectedListing,
-    setSelectedListing,
-    displayListings,
     mapStyle,
+    viewState: contextViewState,
   } = useMapState();
+
+  const {
+    markers,
+    selectedListing,
+    isLoading,
+    isPreloaded,
+    loadListings,
+    selectListing,
+    filters,
+  } = useMLSContext();
 
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
   const [mounted, setMounted] = useState(false);
-  const [markers, setMarkers] = useState<any[]>([]);
+  const hasInitializedRef = useRef(false);
+
+  // Auto-select map style based on theme (override MapStateContext)
+  const themeAwareMapStyle = isLight ? 'bright' : 'dark';
+
+  // Use viewState from context if available, otherwise use default bounds
+  const viewState = useMemo(() => {
+    if (contextViewState) {
+      console.log('🗺️ [MapLayer] Using viewState from context:', contextViewState);
+      return contextViewState;
+    }
+    const defaultState = {
+      centerLat: (DEFAULT_BOUNDS.north + DEFAULT_BOUNDS.south) / 2,
+      centerLng: (DEFAULT_BOUNDS.east + DEFAULT_BOUNDS.west) / 2,
+      zoom: DEFAULT_BOUNDS.zoom,
+    };
+    console.log('🗺️ [MapLayer] Using default viewState:', defaultState);
+    return defaultState;
+  }, [contextViewState]); // Update when context changes
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Default view state for California (entire state visible)
-  const defaultViewState = useMemo(() => ({
-    centerLat: 37.0,
-    centerLng: -119.5,
-    zoom: 5.5,
-  }), []);
+  // Initial data load (matches /map page pattern)
+  useEffect(() => {
+    if (!hasInitializedRef.current && mounted && !isPreloaded && !isLoading) {
+      hasInitializedRef.current = true;
+      console.log('🗺️ [MapLayer] Initial load triggered');
+      loadListings(DEFAULT_BOUNDS, filters);
+    }
+  }, [mounted, isPreloaded, isLoading, filters, loadListings]);
 
-  const effectiveViewState = viewState || defaultViewState;
+  // Load listings when bounds change (user pans/zooms)
+  // CRITICAL: Do NOT update viewState or any external state here!
+  const handleBoundsChange = useCallback(
+    async (bounds: {north: number, south: number, east: number, west: number, zoom: number}) => {
+      console.log("🗺️ [MapLayer] Bounds changed:", bounds);
+
+      // Load new listings with current filters (merge mode = true to keep existing listings)
+      // The useServerClusters hook handles caching and deduplication internally
+      await loadListings(bounds, filters, true);
+
+      // NOTE: We do NOT call setBounds/setViewState here!
+      // That would create a feedback loop: bounds change → state update → props change → map moves → bounds change
+      // The MapView's internal state is the source of truth for position
+    },
+    [filters, loadListings]
+  );
 
   // Handle listing selection
-  const handleSelectListing = (listing: MapListing) => {
-    console.log('🗺️ [MapLayer] Listing selected:', listing.address);
-    setSelectedListing(listing);
-  };
-
-  // Handle bounds change (when user pans/zooms)
-  const handleBoundsChange = (bounds: any) => {
-    console.log('🗺️ [MapLayer] Bounds changed:', bounds);
-  };
+  const handleSelectListing = useCallback(
+    async (listing: MapListing) => {
+      console.log('🗺️ [MapLayer] Listing selected:', listing.address);
+      await selectListing(listing);
+    },
+    [selectListing]
+  );
 
   if (!mounted) {
     return null;
@@ -93,16 +141,16 @@ export default function MapLayer() {
       {/* Map Container */}
       <div className="absolute inset-0 w-full h-full">
         <MapView
-          listings={displayListings}
+          listings={[]}
           markers={markers}
-          centerLat={effectiveViewState.centerLat}
-          centerLng={effectiveViewState.centerLng}
-          zoom={effectiveViewState.zoom}
+          centerLat={viewState.centerLat}
+          centerLng={viewState.centerLng}
+          zoom={viewState.zoom}
           onSelectListing={handleSelectListing}
           selectedListing={selectedListing}
           onBoundsChange={handleBoundsChange}
           panelOpen={false}
-          mapStyle={mapStyle}
+          mapStyle={themeAwareMapStyle}
         />
       </div>
 
