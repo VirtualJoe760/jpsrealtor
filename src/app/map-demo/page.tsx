@@ -46,12 +46,13 @@ export default function MapDemoPage() {
       {/* Map Layer - always rendered, z-index 0 */}
       <MapLayer />
 
-      {/* Spatial Background - slides away when map is shown */}
+      {/* Spatial Background - dissolves away when map is shown */}
       <div
-        className="fixed inset-0 transition-transform duration-1000 ease-in-out"
+        className="fixed inset-0 transition-opacity duration-[2000ms] ease-in-out"
         style={{
           zIndex: 1,
-          transform: isMapVisible ? 'translateX(-100%)' : 'translateX(0)',
+          opacity: isMapVisible ? 0 : 1,
+          pointerEvents: 'none',
         }}
       >
         <SpaticalBackground showGradient={true} className="h-full w-full" />
