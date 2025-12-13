@@ -84,7 +84,7 @@ export default function MapLayer() {
 
   return (
     <div
-      className="absolute inset-0 transition-opacity duration-500"
+      className="fixed inset-0 transition-opacity duration-500"
       style={{
         opacity: isMapVisible ? mapOpacity : 0,
         pointerEvents: isMapVisible ? 'auto' : 'none',

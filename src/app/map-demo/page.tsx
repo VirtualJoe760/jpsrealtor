@@ -37,13 +37,13 @@ export default function MapDemoPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen overflow-hidden">
       {/* Map Layer - renders behind all content */}
       <MapLayer />
 
       {/* Page Content - renders above map */}
-      <div className="relative z-10 p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="relative z-20 p-8 pointer-events-none">
+        <div className="max-w-4xl mx-auto space-y-6 pointer-events-auto">
         {/* Header */}
         <div className={`${cardBg} ${cardBorder} border rounded-xl p-6`}>
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>
