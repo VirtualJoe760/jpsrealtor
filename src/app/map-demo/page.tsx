@@ -43,41 +43,49 @@ export default function MapDemoPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Map Layer - always rendered, z-index 0 */}
-      <MapLayer />
-
-      {/* Spatial Background - behind black bars */}
+      {/* Spatial Background - base layer */}
       <div
         className="fixed inset-0"
         style={{
-          zIndex: 1,
+          zIndex: 0,
           pointerEvents: 'none',
         }}
       >
         <SpaticalBackground showGradient={true} className="h-full w-full" />
       </div>
 
-      {/* Black bars wipe transition - reveals map underneath */}
+      {/* Map wipe bars - reveals map from top and bottom */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          zIndex: 2,
+          zIndex: 1,
         }}
       >
-        {/* Top bar */}
+        {/* Top bar - map revealed from top */}
         <div
-          className="absolute top-0 left-0 right-0 bg-black transition-all duration-[1500ms] ease-in-out"
+          className="absolute top-0 left-0 right-0 overflow-hidden transition-all duration-[1500ms] ease-in-out"
           style={{
             height: isMapVisible ? '50%' : '0%',
+            pointerEvents: isMapVisible ? 'auto' : 'none',
           }}
-        />
-        {/* Bottom bar */}
+        >
+          <div className="w-full h-screen">
+            <MapLayer />
+          </div>
+        </div>
+
+        {/* Bottom bar - map revealed from bottom */}
         <div
-          className="absolute bottom-0 left-0 right-0 bg-black transition-all duration-[1500ms] ease-in-out"
+          className="absolute bottom-0 left-0 right-0 overflow-hidden transition-all duration-[1500ms] ease-in-out"
           style={{
             height: isMapVisible ? '50%' : '0%',
+            pointerEvents: isMapVisible ? 'auto' : 'none',
           }}
-        />
+        >
+          <div className="w-full h-screen absolute bottom-0">
+            <MapLayer />
+          </div>
+        </div>
       </div>
 
       {/* Page Content - renders above both backgrounds */}
