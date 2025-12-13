@@ -16,43 +16,25 @@
    - `vercel.json` headers: `Cache-Control: max-age=31536000` for all routes
    - Cloudflare serving stale/cached versions of auth pages
 
-3. ✅ **Missing subdomain DNS record**
-   - `dashboard.jpsrealtor.com` → 404 (no CNAME record)
-
-4. ✅ **No cache bypass for auth routes**
+3. ✅ **No cache bypass for auth routes**
    - `/api/auth/*`, `/auth/*`, `/dashboard` being cached
+   - User sees stale/minimal content instead of full site
 
 ---
 
 ## 📋 Fix Checklist (Do in Order)
 
-### Priority 1: Add Subdomain DNS Record (Fix 404)
-- [ ] **1.1** Log into Cloudflare Dashboard
-- [ ] **1.2** Navigate to: DNS → Records
-- [ ] **1.3** Add new CNAME record:
-  ```
-  Type: CNAME
-  Name: dashboard
-  Target: cname.vercel-dns.com
-  Proxy status: Proxied (orange cloud) ✅
-  TTL: Auto
-  ```
-- [ ] **1.4** Save and wait 5-30 minutes for propagation
-- [ ] **1.5** Test: `https://dashboard.jpsrealtor.com` should NOT return 404
-
----
-
-### Priority 2: Update Worker Routes (Fix API Interception)
+### Priority 1: Update Worker Routes (Fix API Interception)
 
 **Current Problem:** Worker route `/api/*` catches ALL API requests, including `/api/auth/*`
 
 #### Fix in Cloudflare Dashboard:
 
-- [ ] **2.1** Navigate to: Workers → Overview
-- [ ] **2.2** Find your Worker (likely named `jpsrealtor-listings-api` or similar)
-- [ ] **2.3** Click on Worker → Settings → Triggers → Routes
-- [ ] **2.4** **Remove** broad route: `jpsrealtor.com/api/*`
-- [ ] **2.5** **Add** specific routes (one at a time):
+- [ ] **1.1** Navigate to: Workers → Overview
+- [ ] **1.2** Find your Worker (likely named `jpsrealtor-listings-api` or similar)
+- [ ] **1.3** Click on Worker → Settings → Triggers → Routes
+- [ ] **1.4** **Remove** broad route: `jpsrealtor.com/api/*`
+- [ ] **1.5** **Add** specific routes (one at a time):
   ```
   jpsrealtor.com/api/mls-listings*
   jpsrealtor.com/api/cities*
@@ -77,15 +59,15 @@
 - ❌ `/api/consent*` (user data)
 - ❌ `/api/crm/*` (session-dependent)
 
-- [ ] **2.6** Save Routes
-- [ ] **2.7** Test: `curl https://jpsrealtor.com/api/auth/session` should return `{}` (not Worker cache)
+- [ ] **1.6** Save Routes
+- [ ] **1.7** Test: `curl https://jpsrealtor.com/api/auth/session` should return `{}` (not Worker cache)
 
 ---
 
-### Priority 3: Add Page Rules (Bypass Cache for Auth)
+### Priority 2: Add Page Rules (Bypass Cache for Auth)
 
-- [ ] **3.1** Navigate to: Rules → Page Rules
-- [ ] **3.2** Click "Create Page Rule"
+- [ ] **2.1** Navigate to: Rules → Page Rules
+- [ ] **2.2** Click "Create Page Rule"
 
 #### Rule 1: Auth API Routes
 ```
@@ -106,7 +88,7 @@ Settings:
 Priority: 2
 ```
 
-#### Rule 3: Dashboard (Primary Domain)
+#### Rule 3: Dashboard Route
 ```
 URL pattern: *jpsrealtor.com/dashboard*
 Settings:
@@ -114,42 +96,20 @@ Settings:
 Priority: 3
 ```
 
-#### Rule 4: Dashboard Subdomain
-```
-URL pattern: *dashboard.jpsrealtor.com/*
-Settings:
-  - Cache Level: Bypass
-Priority: 4
-```
+**Note:** Free Cloudflare accounts get 3 Page Rules - these 3 are perfect!
 
-#### Rule 5: User API Routes (Session-Dependent)
-```
-URL pattern: *jpsrealtor.com/api/user/*
-Settings:
-  - Cache Level: Bypass
-Priority: 5
-```
-
-**Note:** Free Cloudflare accounts get 3 Page Rules. You may need to upgrade to Pro ($20/month) for all 5, or combine some rules.
-
-**Alternative (if limited):** Use a single wildcard rule:
-```
-URL pattern: *jpsrealtor.com/*auth*
-Settings: Cache Level: Bypass
-```
-
-- [ ] **3.3** Save all Page Rules
-- [ ] **3.4** Verify rules are active
+- [ ] **2.3** Save all Page Rules
+- [ ] **2.4** Verify rules are active
 
 ---
 
-### Priority 4: Purge All Caches
+### Priority 3: Purge All Caches
 
-- [ ] **4.1** Navigate to: Caching → Configuration
-- [ ] **4.2** Click "Purge Cache" → "Purge Everything"
-- [ ] **4.3** Confirm purge
-- [ ] **4.4** Wait 60 seconds
-- [ ] **4.5** Hard refresh browser: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
+- [ ] **3.1** Navigate to: Caching → Configuration
+- [ ] **3.2** Click "Purge Cache" → "Purge Everything"
+- [ ] **3.3** Confirm purge
+- [ ] **3.4** Wait 60 seconds
+- [ ] **3.5** Hard refresh browser: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
 
 **Alternative (CLI):**
 ```bash
@@ -160,14 +120,11 @@ Settings: Cache Level: Bypass
 
 ---
 
-### Priority 5: Update vercel.json (Prevent Future Caching)
+### Priority 4: Update vercel.json (Already Done ✅)
 
-**Current Problem:** Broad `Cache-Control: max-age=31536000` headers being honored by Cloudflare
+**Status:** ✅ Already deployed in latest commit
 
-#### Fix in Code:
-
-- [ ] **5.1** Edit `vercel.json`
-- [ ] **5.2** Add cache exclusions BEFORE the broad `/(.*)" rule:
+Cache exclusions added to `vercel.json` for:
 
 ```json
 {
@@ -211,45 +168,37 @@ Settings: Cache Level: Bypass
 }
 ```
 
-- [ ] **5.3** Commit and push to GitHub
-- [ ] **5.4** Wait for Vercel deployment to complete
-- [ ] **5.5** Purge Cloudflare cache again (to clear old headers)
+**No action needed** - changes already live on Vercel.
 
 ---
 
-### Priority 6: Test Authentication End-to-End
+### Priority 5: Test Authentication End-to-End
 
-- [ ] **6.1** Clear all browser cookies for `.jpsrealtor.com`
-- [ ] **6.2** Visit `https://jpsrealtor.com`
+- [ ] **5.1** Clear all browser cookies for `.jpsrealtor.com`
+- [ ] **5.2** Visit `https://jpsrealtor.com`
   - [ ] Should load FULL site (not minimal version)
   - [ ] Navigation visible
   - [ ] Sidebar (EnhancedSidebar) visible
   - [ ] "Sign In" button accessible
 
-- [ ] **6.3** Click "Sign In"
+- [ ] **5.3** Click "Sign In"
   - [ ] Should redirect to `/auth/signin`
   - [ ] Form should appear (email/password fields)
   - [ ] Google/Facebook buttons visible
 
-- [ ] **6.4** Sign in with credentials
+- [ ] **5.4** Sign in with credentials
   - [ ] Should redirect to `/dashboard` after success
   - [ ] Check DevTools → Application → Cookies
   - [ ] Cookie `__Secure-next-auth.session-token` should exist
   - [ ] Domain should be `.jpsrealtor.com` (with leading dot)
 
-- [ ] **6.5** Verify session persistence
+- [ ] **5.5** Verify session persistence
   - [ ] Refresh page (F5)
   - [ ] Should remain signed in
   - [ ] Sidebar should show "Dashboard" (not "Sign In")
   - [ ] Dropdown chevron should be visible
 
-- [ ] **6.6** Test subdomain session sharing
-  - [ ] Navigate to `https://dashboard.jpsrealtor.com`
-  - [ ] Should NOT return 404
-  - [ ] Should show dashboard content
-  - [ ] Should use same session (no re-login required)
-
-- [ ] **6.7** Test API endpoint
+- [ ] **5.6** Test API endpoint
   - [ ] Visit: `https://jpsrealtor.com/api/auth/session`
   - [ ] Should return JSON with user data:
     ```json
@@ -265,7 +214,7 @@ Settings: Cache Level: Bypass
     }
     ```
 
-- [ ] **6.8** Test MLS caching (ensure still working)
+- [ ] **5.7** Test MLS caching (ensure still working)
   - [ ] First request: `curl https://jpsrealtor.com/api/mls-listings?limit=1`
     - Should be slow (cache miss, ~1-2s)
   - [ ] Second request (same URL)
@@ -313,11 +262,7 @@ curl -I https://jpsrealtor.com/api/mls-listings?limit=1 | grep -i cf-cache-statu
 - Sign in button visible and functional
 - `/api/auth/session` returns session data when authenticated
 - Dynamic routes bypass Cloudflare cache
-
-### ✅ Subdomain (dashboard.jpsrealtor.com)
-- No 404 error
-- Loads dashboard content
-- Shares session with primary domain (cookie domain `.jpsrealtor.com`)
+- Dashboard accessible at `/dashboard` route
 
 ### ✅ MLS Caching (Unchanged)
 - Worker routes handle `/api/mls-*`, `/images/*`
