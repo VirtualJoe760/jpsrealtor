@@ -1159,8 +1159,8 @@ Now assist the user with their real estate needs using these tools and knowledge
 /**
  * Parse component markers from AI response and extract structured data
  */
-function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any } {
-  const components: { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any } = {};
+function parseComponentData(responseText: string): { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any; sources?: any } {
+  const components: { carousel?: any; mapView?: any; articles?: any; appreciation?: any; comparison?: any; sources?: any } = {};
 
   // Parse [LISTING_CAROUSEL]...[/LISTING_CAROUSEL]
   const carouselMatch = responseText.match(/\[LISTING_CAROUSEL\]\s*([\s\S]*?)\s*\[\/LISTING_CAROUSEL\]/);
