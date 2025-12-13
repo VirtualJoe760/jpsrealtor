@@ -15,10 +15,11 @@ Successfully deployed Cloudflare Workers + R2 infrastructure to replace Redis VP
 | Component | Status | Route/Location |
 |-----------|--------|----------------|
 | **R2 Buckets** | ✅ Active | `listings-cache`, `listings-cache-preview` |
-| **Listings API Worker** | ✅ Deployed | `jpsrealtor.com/api/*` |
+| **Listings API Worker** | ✅ Deployed | MLS routes only (see below) |
 | **Images Transform Worker** | ✅ Deployed | `jpsrealtor.com/images/*` |
 | **DNS** | ✅ Active | Cloudflare nameservers (haley, titan) |
 | **Multi-tier Cache** | ✅ Working | Edge → R2 → MongoDB |
+| **Page Rules** | ✅ Active | Auth routes bypass cache |
 
 ---
 
@@ -74,16 +75,47 @@ User Request
 └─────────────────────────────────────┘
 ```
 
-### Worker Logic
+### Worker Routes
 
 **Listings API Worker** (`jpsrealtor-listings-api`):
+
+**IMPORTANT**: Worker routes are configured to handle ONLY MLS-related API endpoints. Authentication routes (`/api/auth/*`) must NEVER be cached and are excluded.
+
+**Active Routes**:
+- `jpsrealtor.com/api/mls-listings*`
+- `jpsrealtor.com/api/cities*`
+- `jpsrealtor.com/api/subdivisions*`
+- `jpsrealtor.com/api/market-stats*`
+- `jpsrealtor.com/api/unified-listings*`
+- `jpsrealtor.com/api/map-clusters*`
+- `jpsrealtor.com/api/photos/*`
+- `jpsrealtor.com/api/listing/*`
+- `jpsrealtor.com/api/search*`
+- `jpsrealtor.com/api/query*`
+- `jpsrealtor.com/api/stats*`
+- `jpsrealtor.com/api/california-stats*`
+
+**Excluded Routes** (go directly to Vercel):
+- `❌ /api/auth/*` - NextAuth session/authentication (MUST NOT cache)
+- `❌ /api/user/*` - User-specific data (session-dependent)
+- `❌ /api/upload/*` - Dynamic uploads
+- `❌ /api/contact*` - Form submissions
+- `❌ /api/consent*` - User consent management
+- `❌ /api/crm/*` - CRM operations (session-dependent)
+
+**Images Transform Worker** (`jpsrealtor-images`):
+- Route: `jpsrealtor.com/images/*`
+
+### Worker Logic
+
+**Listings API Worker**:
 1. Check Edge cache (5 min)
 2. If miss → Check R2 (15 min)
 3. If miss → Fetch from origin
 4. Store in R2 → Store in Edge
 5. Return cached response
 
-**Images Transform Worker** (`jpsrealtor-images`):
+**Images Transform Worker**:
 1. Accept image URL + params (width, quality, format)
 2. Transform using Cloudflare Images API
 3. Auto WebP/AVIF conversion
@@ -134,6 +166,28 @@ CF_API_TOKEN=zSOyp8bZHnBL-lyPd6SvZ0wrljNwNEgCFjxo9v8K
 CF_ZONE_ID=507fb990b30c9f287498ab566ba6d390
 CF_ACCOUNT_ID=cd0533e7f970b37ee8c80d293389e169
 ```
+
+### Cloudflare Page Rules (Cache Bypass)
+
+**CRITICAL**: The following Page Rules are configured to prevent caching of authentication and dynamic routes:
+
+**Rule 1**: `*jpsrealtor.com/api/auth/*`
+- Settings: Cache Level → Bypass
+- Priority: 1 (highest)
+- Purpose: Prevents caching of NextAuth session/authentication endpoints
+
+**Rule 2**: `*jpsrealtor.com/auth/*`
+- Settings: Cache Level → Bypass
+- Priority: 2
+- Purpose: Ensures sign-in/sign-up pages are always fresh
+
+**Rule 3**: `*jpsrealtor.com/dashboard*`
+- Settings: Cache Level → Bypass
+- Priority: 3
+- Purpose: Dashboard is user-specific and should never cache
+
+**Why This Matters**:
+Without these Page Rules, Cloudflare will cache authentication responses, breaking user sessions and causing login failures. These rules ensure NextAuth cookies are set/read correctly while still caching MLS listings for performance.
 
 ### Cloudflare Nameservers
 
