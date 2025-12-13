@@ -29,6 +29,8 @@ export function useMapControl() {
     flyToLocation,
     setBounds,
     setMapOpacity,
+    isMapInteractive,
+    setMapInteractive,
   } = useMapState();
 
   /**
@@ -93,11 +95,39 @@ export function useMapControl() {
     setMapOpacity(opacity);
   };
 
+  /**
+   * Enable map interaction (dragging, zooming)
+   */
+  const enableMapInteraction = () => {
+    console.log('🗺️ [useMapControl] Enabling map interaction');
+    setMapInteractive(true);
+  };
+
+  /**
+   * Disable map interaction (content is clickable)
+   */
+  const disableMapInteraction = () => {
+    console.log('🗺️ [useMapControl] Disabling map interaction');
+    setMapInteractive(false);
+  };
+
+  /**
+   * Toggle map interaction mode
+   */
+  const toggleMapInteraction = () => {
+    console.log('🗺️ [useMapControl] Toggling map interaction');
+    setMapInteractive(!isMapInteractive);
+  };
+
   return {
     showMapWithListings,
     showMapAtLocation,
     hideMap,
     selectListing,
     setOpacity,
+    enableMapInteraction,
+    disableMapInteraction,
+    toggleMapInteraction,
+    isMapInteractive,
   };
 }

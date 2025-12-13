@@ -11,7 +11,14 @@ import { useThemeClasses } from "@/app/contexts/ThemeContext";
  * This shows how chat or other components can control the map.
  */
 export default function MapDemoPage() {
-  const { showMapAtLocation, hideMap, setOpacity, showMapWithListings } = useMapControl();
+  const {
+    showMapAtLocation,
+    hideMap,
+    setOpacity,
+    showMapWithListings,
+    toggleMapInteraction,
+    isMapInteractive
+  } = useMapControl();
   const { cardBg, cardBorder, textPrimary, textSecondary, buttonPrimary } = useThemeClasses();
   const [currentOpacity, setCurrentOpacity] = useState(0.8);
 
@@ -85,6 +92,28 @@ export default function MapDemoPage() {
             />
             <p className={`text-xs ${textSecondary} mt-1`}>
               Lower opacity makes content more readable, higher opacity shows map more clearly
+            </p>
+          </div>
+
+          {/* Map Interaction Toggle */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+              Map Interaction Mode: {isMapInteractive ? 'Enabled ✅' : 'Disabled ❌'}
+            </label>
+            <button
+              onClick={toggleMapInteraction}
+              className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                isMapInteractive
+                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                  : 'bg-gray-500 hover:bg-gray-600 text-white'
+              }`}
+            >
+              {isMapInteractive ? 'Disable Map Interaction' : 'Enable Map Interaction'}
+            </button>
+            <p className={`text-xs ${textSecondary} mt-2`}>
+              {isMapInteractive
+                ? '🗺️ You can now drag, zoom, and interact with the map'
+                : '🖱️ Content is clickable, map is in the background'}
             </p>
           </div>
 

@@ -55,6 +55,10 @@ interface MapStateContextType {
   // Opacity control for layering
   mapOpacity: number;
   setMapOpacity: (opacity: number) => void;
+
+  // Map interaction mode
+  isMapInteractive: boolean;
+  setMapInteractive: (interactive: boolean) => void;
 }
 
 const MapStateContext = createContext<MapStateContextType | undefined>(undefined);
@@ -70,6 +74,7 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
   const [displayListings, setDisplayListings] = useState<MapListing[]>([]);
   const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>('dark');
   const [mapOpacity, setMapOpacity] = useState(1.0);
+  const [isMapInteractive, setIsMapInteractive] = useState(false);
 
   // Pending actions to be executed when map mounts
   const [pendingFlyTo, setPendingFlyTo] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
@@ -113,6 +118,8 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
     setMapStyle,
     mapOpacity,
     setMapOpacity,
+    isMapInteractive,
+    setMapInteractive: setIsMapInteractive,
   };
 
   return (

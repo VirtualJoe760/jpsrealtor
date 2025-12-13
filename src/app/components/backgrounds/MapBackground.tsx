@@ -41,6 +41,7 @@ export default function MapBackground() {
     displayListings,
     mapStyle,
     mapOpacity,
+    isMapInteractive,
   } = useMapState();
 
   const { currentTheme } = useTheme();
@@ -83,7 +84,7 @@ export default function MapBackground() {
       className="fixed inset-0 z-[1] transition-opacity duration-500"
       style={{
         opacity: isMapVisible ? mapOpacity : 0,
-        pointerEvents: isMapVisible ? 'auto' : 'none',
+        pointerEvents: isMapVisible && isMapInteractive ? 'auto' : 'none',
       }}
     >
       {/* Map Container */}
