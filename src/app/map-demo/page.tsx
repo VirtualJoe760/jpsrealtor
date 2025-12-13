@@ -46,16 +46,38 @@ export default function MapDemoPage() {
       {/* Map Layer - always rendered, z-index 0 */}
       <MapLayer />
 
-      {/* Spatial Background - dissolves away when map is shown */}
+      {/* Spatial Background - behind black bars */}
       <div
-        className="fixed inset-0 transition-opacity duration-[2000ms] ease-in-out"
+        className="fixed inset-0"
         style={{
           zIndex: 1,
-          opacity: isMapVisible ? 0 : 1,
           pointerEvents: 'none',
         }}
       >
         <SpaticalBackground showGradient={true} className="h-full w-full" />
+      </div>
+
+      {/* Black bars wipe transition - reveals map underneath */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 2,
+        }}
+      >
+        {/* Top bar */}
+        <div
+          className="absolute top-0 left-0 right-0 bg-black transition-all duration-[1500ms] ease-in-out"
+          style={{
+            height: isMapVisible ? '50%' : '0%',
+          }}
+        />
+        {/* Bottom bar */}
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-black transition-all duration-[1500ms] ease-in-out"
+          style={{
+            height: isMapVisible ? '50%' : '0%',
+          }}
+        />
       </div>
 
       {/* Page Content - renders above both backgrounds */}
