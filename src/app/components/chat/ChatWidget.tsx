@@ -50,14 +50,6 @@ export default function ChatWidget() {
   // Auto-scroll to bottom on new messages
   const messagesEndRef = useChatScroll(messages);
 
-  // Autocomplete hook (handles all autocomplete logic)
-  const autocomplete = useAutocomplete({
-    message,
-    isMapVisible,
-    suggestionsRef,
-    onSelect: (suggestion) => setMessage(suggestion.label),
-  });
-
   // ListingBottomPanel state for swipe functionality
   const [showListingPanel, setShowListingPanel] = useState(false);
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
@@ -96,22 +88,66 @@ export default function ChatWidget() {
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim() || isLoading) return;
+  // Handle map query - loads location on map
+  const handleMapQuery = async (query: string, suggestion?: any) => {
+    console.log('🗺️ [ChatWidget] Executing map query:', query, suggestion);
 
-    const userMessage = message;
-    setMessage("");
-    autocomplete.clear();
+    // Helper function to determine zoom level based on location type
+    const getZoomLevel = (type: string) => {
+      switch (type) {
+        case 'region': return 7;      // Broader region view
+        case 'county': return 9;      // County view
+        case 'city': return 11;       // City view
+        case 'subdivision': return 13; // Neighborhood view
+        case 'listing': return 15;    // Individual property
+        case 'geocode': return 12;    // General geocode
+        default: return 12;           // Default zoom
+      }
+    };
 
-    // If map is visible, this is a map search, not an AI chat
-    if (isMapVisible) {
-      console.log('🗺️ [ChatWidget] Map search query:', userMessage);
-      // Map search will be handled by autocomplete selection
-      // Don't send to AI
-      return;
+    // If we have a suggestion with coordinates, use it
+    if (suggestion) {
+      const { latitude, longitude, zoom, type } = suggestion;
+
+      if (latitude && longitude) {
+        const zoomLevel = zoom || getZoomLevel(type);
+        console.log(`🗺️ [ChatWidget] Showing map at ${type}:`, query, { latitude, longitude, zoom: zoomLevel });
+        showMapAtLocation(latitude, longitude, zoomLevel);
+      }
+    } else {
+      // No suggestion - search for best match via API (skip "Ask AI" option)
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          // Skip "Ask AI" result (type: "ai") and find first real location
+          const bestMatch = data.results.find((r: any) => r.type !== 'ai');
+
+          if (bestMatch && bestMatch.latitude && bestMatch.longitude) {
+            const zoomLevel = bestMatch.zoom || getZoomLevel(bestMatch.type);
+            console.log('🗺️ [ChatWidget] Best match found:', bestMatch, 'zoom:', zoomLevel);
+            showMapAtLocation(bestMatch.latitude, bestMatch.longitude, zoomLevel);
+          } else {
+            console.warn('🗺️ [ChatWidget] No map results found for:', query);
+          }
+        } else {
+          console.warn('🗺️ [ChatWidget] No results returned from API for:', query);
+        }
+      } catch (error) {
+        console.error('🗺️ [ChatWidget] Map query error:', error);
+      }
     }
 
-    addMessage(userMessage, "user");
+    // Background: Also send to AI for when user switches back to chat
+    handleAIQueryInBackground(query);
+  };
+
+  // Handle AI query - sends to AI chat
+  const handleAIQuery = async (query: string) => {
+    console.log('🤖 [ChatWidget] Executing AI query:', query);
+
+    addMessage(query, "user");
     setIsLoading(true);
 
     try {
@@ -122,7 +158,7 @@ export default function ChatWidget() {
         body: JSON.stringify({
           messages: [
             ...messages.map((m) => ({ role: m.role, content: m.content })),
-            { role: "user", content: userMessage },
+            { role: "user", content: query },
           ],
           userId: "demo-user",
           userTier: "premium",
@@ -283,6 +319,130 @@ export default function ChatWidget() {
         "assistant"
       );
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Background AI query - executes AI query silently for when user switches views
+  const handleAIQueryInBackground = async (query: string) => {
+    console.log('🤖 [ChatWidget] Background AI query:', query);
+
+    // Don't show user message or loading state since this is background
+    try {
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            ...messages.map((m) => ({ role: m.role, content: m.content })),
+            { role: "user", content: query },
+          ],
+          userId: "demo-user",
+          userTier: "premium",
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('🤖 [ChatWidget] Background AI query failed:', response.status);
+        return;
+      }
+
+      let fullText = "";
+      let components: ComponentData | undefined;
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonStr = line.substring(6);
+                  const data = JSON.parse(jsonStr);
+
+                  if (data.token) {
+                    fullText += data.token;
+                  }
+
+                  if (data.components) {
+                    components = data.components;
+                  }
+
+                  if (data.done) {
+                    // Silently add message to history
+                    addMessage(query, "user");
+                    addMessage(fullText, "assistant", undefined, components);
+                    console.log('🤖 [ChatWidget] Background AI query completed, message added to history');
+                  }
+                } catch (parseError) {
+                  console.warn('[Background SSE] Skipped malformed chunk:', parseError);
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    } catch (error) {
+      console.error('🤖 [ChatWidget] Background AI query error:', error);
+    }
+  };
+
+  // Autocomplete hook (handles all autocomplete logic)
+  const autocomplete = useAutocomplete({
+    message,
+    isMapVisible,
+    suggestionsRef,
+    onSelect: (suggestion) => {
+      console.log('🎯 [ChatWidget] Autocomplete selected:', suggestion);
+
+      setMessage(""); // Clear input
+
+      // Check if this is an "Ask AI" suggestion
+      if (suggestion.type === "ask_ai") {
+        // Always switch to AI view and execute AI query
+        console.log('🤖 [ChatWidget] AI query selected, switching to chat view');
+        hideMap(); // Switch to chat view
+        handleAIQuery(suggestion.label);
+      } else {
+        // This is a map query (city, subdivision, listing, etc.)
+        console.log('🗺️ [ChatWidget] Map query selected');
+
+        if (isMapVisible) {
+          // Already on map, just execute map query
+          handleMapQuery(suggestion.label, suggestion);
+        } else {
+          // On chat view, switch to map and execute query
+          console.log('🗺️ [ChatWidget] Switching to map view');
+          handleMapQuery(suggestion.label, suggestion);
+        }
+      }
+    },
+  });
+
+  const handleSend = async () => {
+    if (!message.trim() || isLoading) return;
+
+    const userMessage = message;
+    setMessage("");
+    autocomplete.clear();
+
+    // Route based on current view
+    if (isMapVisible) {
+      // On map view: Default to map query (search for best location match)
+      console.log('🗺️ [ChatWidget] Enter on map view - executing map query');
+      handleMapQuery(userMessage);
+    } else {
+      // On chat view: Default to AI query
+      console.log('🤖 [ChatWidget] Enter on chat view - executing AI query');
+      handleAIQuery(userMessage);
     }
   };
 
@@ -518,7 +678,7 @@ export default function ChatWidget() {
 
       {/* Conversation View - Hide when map is visible */}
       {!showLanding && !isMapVisible && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 py-4 md:pt-6 pb-[12rem] md:pb-2 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-48 md:pt-28 pb-[12rem] md:pb-2 relative">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div

@@ -38,12 +38,29 @@ export default function TopToggles() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+      {/* Blur gradient backdrop - only show when NOT on map view */}
+      {!isMapVisible && (
+        <div
+          className={`absolute inset-0 h-32 backdrop-blur-md transition-opacity duration-300 ${
+            isLight
+              ? 'bg-gradient-to-b from-white/80 via-white/40 to-transparent'
+              : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent'
+          }`}
+          style={{
+            backdropFilter: 'blur(12px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(150%)',
+            maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+          }}
+        />
+      )}
+
       {/*
         Info panel is min-h-[3.5rem] (56px) with py-2
         Icon buttons are h-12 (48px) on mobile
         Add pt-4 to push icons down and center with panel content
       */}
-      <div className="max-w-7xl mx-auto px-4 pt-6 flex items-center justify-between pointer-events-none">
+      <div className="max-w-7xl mx-auto px-4 pt-6 flex items-center justify-between pointer-events-none relative z-10">
         {/* Theme Toggle - Left */}
         <motion.button
           onClick={handleToggleTheme}

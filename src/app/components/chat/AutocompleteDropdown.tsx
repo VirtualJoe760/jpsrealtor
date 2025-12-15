@@ -30,19 +30,30 @@ export default function AutocompleteDropdown({
   }
 
   // Determine positioning class based on variant
+  // For map variant, use fixed positioning to match ChatInput
+  // For conversation variant, use absolute positioning relative to parent
   const positionClass = variant === "conversation"
     ? "absolute bottom-full mb-2 w-full"
-    : "absolute top-full mt-2 w-full";
+    : variant === "map"
+      ? "fixed left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl"
+      : "absolute top-full mt-2 w-full";
+
+  // Calculate bottom offset for map variant (above the input)
+  const bottomOffset = variant === "map"
+    ? "calc(92px + 4rem + 0.5rem)" // bottom-[92px] + input height (~4rem) + gap (0.5rem)
+    : undefined;
 
   return (
     <div
       ref={suggestionsRef}
-      className={`${positionClass} rounded-xl shadow-2xl backdrop-blur-md overflow-hidden z-50 max-h-80 overflow-y-auto ${
+      className={`${positionClass} rounded-xl shadow-2xl backdrop-blur-md overflow-hidden z-40 max-h-80 overflow-y-auto ${
         isLight ? "bg-white/95 border border-gray-300" : "bg-neutral-800/95 border border-neutral-700"
       }`}
       style={{
         backdropFilter: "blur(20px) saturate(150%)",
         WebkitBackdropFilter: "blur(20px) saturate(150%)",
+        ...(variant === "map" && bottomOffset ? { bottom: bottomOffset } : {}),
+        pointerEvents: 'auto',
       }}
     >
       {suggestions.map((suggestion, index) => {

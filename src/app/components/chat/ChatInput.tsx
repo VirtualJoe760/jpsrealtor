@@ -120,7 +120,7 @@ export default function ChatInput({
   // Map variant - bottom fixed with gear icon
   if (variant === "map") {
     return (
-      <div className={`fixed bottom-[84px] sm:bottom-4 left-4 right-4 z-30 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl ${className}`} style={{ pointerEvents: 'auto' }}>
+      <div className={`fixed bottom-[92px] sm:bottom-4 left-4 right-4 z-30 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl ${className}`} style={{ pointerEvents: 'auto' }}>
         <div
           className={`relative rounded-2xl backdrop-blur-md shadow-2xl ${
             isLight ? "bg-white/90 border border-gray-300" : "bg-neutral-800/90 border border-neutral-700/50"
