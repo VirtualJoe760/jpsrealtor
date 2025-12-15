@@ -103,7 +103,7 @@ export default function MobileBottomNav() {
                 {isChatMapButton ? (
                   <>
                     {/* Bottom layer - inactive mode (top-right offset, fully visible) */}
-                    <div className="absolute top-0 right-0 translate-x-1 -translate-y-1">
+                    <div className="absolute top-0 right-0 translate-x-2 -translate-y-1">
                       {isMapVisible ? (
                         <MessageSquare className={`w-5 h-5 ${
                           isLight ? "text-gray-400" : "text-neutral-500"
