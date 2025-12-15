@@ -4,9 +4,9 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
-import GlobalHamburgerMenu from "./GlobalHamburgerMenu";
 import EnhancedSidebar from "./EnhancedSidebar";
 import MapToggleButton from "./MapToggleButton";
+import ThemeToggleButton from "./ThemeToggleButton";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
@@ -44,7 +44,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <MetaPixel />
-      <GlobalHamburgerMenu />
 
       {/* Global Spatial Background - Persists across navigation */}
       {shouldShowSpatialBackground && (
@@ -63,7 +62,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <EnhancedSidebar />
       </div>
 
-      {/* Global Map Toggle Button - Available on all pages */}
+      {/* Global Theme Toggle Button - Top Left */}
+      <ThemeToggleButton />
+
+      {/* Global Map Toggle Button - Top Right */}
       <MapToggleButton />
 
       {/* Main content with sidebar spacing on desktop */}
