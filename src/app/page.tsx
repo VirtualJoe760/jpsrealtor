@@ -147,10 +147,7 @@ function HomeContent() {
       {/* Map/Chat Toggle Button - Aligned with info panel center - Green glow style matching hamburger */}
       <button
         onClick={handleToggleMap}
-        className="fixed right-4 z-30 w-16 h-16 flex items-center justify-center rounded-xl transition-transform active:scale-95"
-        style={{
-          top: 'max(calc(env(safe-area-inset-top, 0px) + 4px), 24px)', // 4px below safe area or 24px from top
-        }}
+        className="fixed top-6 right-4 z-30 w-16 h-16 flex items-center justify-center rounded-xl transition-transform active:scale-95"
         aria-label={isMapVisible ? "Show Chat" : "Show Map"}
       >
         <svg

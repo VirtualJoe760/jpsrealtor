@@ -39,13 +39,10 @@ export default function GlobalHamburgerMenu() {
         />
       )}
 
-      {/* Hamburger Button - Top Left, Mobile Only - Vertically centered with compact header */}
+      {/* Hamburger Button - Top Left, Mobile Only */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed left-4 z-50 w-12 h-12 flex items-center justify-center active:scale-95 transition-transform rounded-xl"
-        style={{
-          top: 'max(env(safe-area-inset-top, 0px) + 8px, 32px)', // 8px below safe area or 32px from top
-        }}
+        className="md:hidden fixed top-4 left-4 z-50 w-16 h-16 flex items-center justify-center active:scale-95 transition-transform rounded-xl"
         aria-label={isOpen ? "Close menu" : "Open menu"}
       >
         <div className="relative w-9 h-8 flex flex-col justify-center items-center">
