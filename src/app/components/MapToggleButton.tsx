@@ -6,20 +6,31 @@
 
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { usePathname, useRouter } from "next/navigation";
 import { Map, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function MapToggleButton() {
   const { currentTheme } = useTheme();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const pathname = usePathname();
+  const router = useRouter();
   const isLight = currentTheme === "lightgradient";
 
+  const isHomePage = pathname === "/";
+
   const handleToggleMap = () => {
-    if (isMapVisible) {
-      hideMap();
+    // If we're on the homepage, toggle the map
+    if (isHomePage) {
+      if (isMapVisible) {
+        hideMap();
+      } else {
+        // Show map centered on Palm Desert (default location)
+        showMapAtLocation(33.8303, -116.5453, 12);
+      }
     } else {
-      // Show map centered on Palm Desert (default location)
-      showMapAtLocation(33.8303, -116.5453, 12);
+      // If we're on any other page, redirect to homepage with map open
+      router.push("/?view=map");
     }
   };
 
@@ -32,10 +43,9 @@ export default function MapToggleButton() {
         flex items-center justify-center
         rounded-xl
         transition-all duration-200
-        shadow-lg
         ${isLight
-          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+          ? 'text-blue-600 hover:text-blue-700'
+          : 'text-emerald-400 hover:text-emerald-300'
         }
       `}
       whileTap={{ scale: 0.95 }}
