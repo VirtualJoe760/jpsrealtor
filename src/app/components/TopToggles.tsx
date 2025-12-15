@@ -38,7 +38,13 @@ export default function TopToggles() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between pointer-events-none">
+      {/*
+        Info panel is min-h-[3.5rem] (56px) with py-2
+        Icon buttons are h-12 (48px) on mobile
+        To center icons with panel: use items-center in container
+        Container height matches panel: min-h-[3.5rem]
+      */}
+      <div className="max-w-7xl mx-auto px-4 min-h-[3.5rem] flex items-center justify-between pointer-events-none">
         {/* Theme Toggle - Left */}
         <motion.button
           onClick={handleToggleTheme}
