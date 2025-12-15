@@ -29,8 +29,8 @@ export default function MapToggleButton() {
         showMapAtLocation(33.8303, -116.5453, 12);
       }
     } else {
-      // If we're on any other page, redirect to homepage with map open
-      router.push("/?view=map");
+      // If we're on any other page, redirect to homepage (returns to last state)
+      router.push("/");
     }
   };
 

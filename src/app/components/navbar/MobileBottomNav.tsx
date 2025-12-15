@@ -1,15 +1,17 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Lightbulb, User } from "lucide-react";
+import { Home, MessageSquare, Map, Lightbulb, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { useMapControl } from "@/app/hooks/useMapControl";
 import { useState, useEffect } from "react";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { currentTheme, bgPrimary, border, textSecondary } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
   const [isPWA, setIsPWA] = useState(false);
@@ -25,11 +27,28 @@ export default function MobileBottomNav() {
     }
   }, []);
 
+  const isHomePage = pathname === "/";
+
+  // Handle Chat/Map button click
+  const handleChatMapClick = () => {
+    if (isHomePage) {
+      // On homepage, toggle map visibility
+      if (isMapVisible) {
+        hideMap();
+      } else {
+        showMapAtLocation(33.8303, -116.5453, 12);
+      }
+    } else {
+      // On other pages, navigate to homepage (returns to last state)
+      router.push("/");
+    }
+  };
+
   const navItems = [
     {
-      name: "Chat",
-      icon: MessageSquare,
-      href: "/",
+      name: isMapVisible ? "Map" : "Chat",
+      icon: isMapVisible ? Map : MessageSquare,
+      onClick: handleChatMapClick,
       active: pathname === "/",
     },
     {
@@ -64,7 +83,7 @@ export default function MobileBottomNav() {
           return (
             <button
               key={item.name}
-              onClick={() => router.push(item.href)}
+              onClick={item.onClick || (() => router.push(item.href!))}
               className={`flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all ${
                 item.active
                   ? isLight
