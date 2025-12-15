@@ -99,26 +99,50 @@ export default function MobileBottomNav() {
               }`}
             >
               <div className="relative w-6 h-6 mb-1 flex items-center justify-center">
-                <Icon
-                  className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
-                />
-                {/* Rotating arrows indicator for Chat/Map button */}
-                {isChatMapButton && (
-                  <motion.div
-                    className="absolute -bottom-0.5 -right-0.5"
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                  >
-                    <RefreshCw className={`w-2.5 h-2.5 ${
-                      item.active
-                        ? isLight ? "text-blue-600" : "text-emerald-500"
-                        : isLight ? "text-gray-400" : "text-neutral-500"
-                    }`} />
-                  </motion.div>
+                {/* Layered icons for Chat/Map button */}
+                {isChatMapButton ? (
+                  <>
+                    {/* Bottom layer - inactive mode (slightly offset and faded) */}
+                    <div className="absolute">
+                      {isMapVisible ? (
+                        <MessageSquare className={`w-5 h-5 translate-y-0.5 opacity-30 ${
+                          isLight ? "text-gray-400" : "text-neutral-500"
+                        }`} />
+                      ) : (
+                        <Map className={`w-5 h-5 translate-y-0.5 opacity-30 ${
+                          isLight ? "text-gray-400" : "text-neutral-500"
+                        }`} />
+                      )}
+                    </div>
+
+                    {/* Top layer - active mode (main icon) */}
+                    <div className="relative z-10">
+                      <Icon
+                        className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
+                      />
+                    </div>
+
+                    {/* Rotating arrows indicator */}
+                    <motion.div
+                      className="absolute -bottom-0.5 -right-0.5 z-20"
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear"
+                      }}
+                    >
+                      <RefreshCw className={`w-2.5 h-2.5 ${
+                        item.active
+                          ? isLight ? "text-blue-600" : "text-emerald-500"
+                          : isLight ? "text-gray-400" : "text-neutral-500"
+                      }`} />
+                    </motion.div>
+                  </>
+                ) : (
+                  <Icon
+                    className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
+                  />
                 )}
               </div>
               <span className="text-xs font-medium">{item.name}</span>

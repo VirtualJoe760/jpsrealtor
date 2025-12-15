@@ -43,12 +43,12 @@ export default function TopToggles() {
         Icon buttons are h-12 (48px) on mobile
         Add pt-4 to push icons down and center with panel content
       */}
-      <div className="max-w-7xl mx-auto px-4 pt-4 flex items-center justify-between pointer-events-none">
+      <div className="max-w-7xl mx-auto px-4 pt-6 flex items-center justify-between pointer-events-none">
         {/* Theme Toggle - Left */}
         <motion.button
           onClick={handleToggleTheme}
           className={`
-            w-12 h-12 md:w-14 md:h-14
+            w-14 h-14 md:w-14 md:h-14
             flex items-center justify-center
             transition-all duration-200
             pointer-events-auto
