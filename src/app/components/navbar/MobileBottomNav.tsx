@@ -102,14 +102,14 @@ export default function MobileBottomNav() {
                 {/* Layered icons for Chat/Map button */}
                 {isChatMapButton ? (
                   <>
-                    {/* Bottom layer - inactive mode (slightly offset and faded) */}
-                    <div className="absolute">
+                    {/* Bottom layer - inactive mode (offset bottom-right for visibility) */}
+                    <div className="absolute bottom-0 right-0 translate-x-1 translate-y-1">
                       {isMapVisible ? (
-                        <MessageSquare className={`w-5 h-5 translate-y-0.5 opacity-30 ${
+                        <MessageSquare className={`w-4 h-4 opacity-40 ${
                           isLight ? "text-gray-400" : "text-neutral-500"
                         }`} />
                       ) : (
-                        <Map className={`w-5 h-5 translate-y-0.5 opacity-30 ${
+                        <Map className={`w-4 h-4 opacity-40 ${
                           isLight ? "text-gray-400" : "text-neutral-500"
                         }`} />
                       )}
