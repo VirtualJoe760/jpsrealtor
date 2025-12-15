@@ -55,7 +55,7 @@ export default function MobileBottomNav() {
       }`}
       style={{
         // Only add safe area padding in PWA mode, use minimal padding in browser
-        paddingBottom: isPWA ? 'env(safe-area-inset-bottom)' : '8px',
+        paddingBottom: isPWA ? 'env(safe-area-inset-bottom)' : '2px',
       }}
     >
       <div className="flex items-center justify-around px-2 py-2">
