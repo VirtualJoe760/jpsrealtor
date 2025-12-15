@@ -180,7 +180,7 @@ export default function ChatInput({
   // Conversation variant - bottom floating with gradient mask
   return (
     <div
-      className={`fixed bottom-0 left-0 pr-[10px] pl-3 sm:px-4 pb-[84px] sm:pb-4 pt-6 z-30 backdrop-blur-xl md:relative md:bottom-auto md:left-auto md:right-auto md:pr-4 md:pb-4 md:backdrop-blur-none ${
+      className={`fixed bottom-0 left-0 pr-[10px] pl-3 sm:px-4 pb-[100px] sm:pb-4 pt-6 z-30 backdrop-blur-xl md:relative md:bottom-auto md:left-auto md:right-auto md:pr-4 md:pb-4 md:backdrop-blur-none ${
         isLight ? 'bg-gradient-to-t from-white/90 via-white/70 to-transparent' : 'bg-gradient-to-t from-black/70 via-black/50 to-transparent'
       } ${className}`}
       style={{
