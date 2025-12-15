@@ -5,8 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import EnhancedSidebar from "./EnhancedSidebar";
-import MapToggleButton from "./MapToggleButton";
-import ThemeToggleButton from "./ThemeToggleButton";
+import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
@@ -62,11 +61,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <EnhancedSidebar />
       </div>
 
-      {/* Global Theme Toggle Button - Top Left */}
-      <ThemeToggleButton />
-
-      {/* Global Map Toggle Button - Top Right */}
-      <MapToggleButton />
+      {/* Top Toggles - Theme (left) and Map (right) */}
+      <TopToggles />
 
       {/* Main content with sidebar spacing on desktop */}
       <div
