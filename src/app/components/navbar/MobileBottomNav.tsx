@@ -98,33 +98,55 @@ export default function MobileBottomNav() {
                     : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
-              <div className="relative w-6 h-6 mb-1 flex items-center justify-center">
+              <div className="relative w-8 h-8 mb-1 flex items-center justify-center">
                 {/* Layered icons for Chat/Map button */}
                 {isChatMapButton ? (
                   <>
-                    {/* Bottom layer - inactive mode (top-right offset, fully visible) */}
-                    <div className="absolute top-0 right-0 translate-x-2 -translate-y-1">
+                    {/* Shadow outline - alternate mode hint */}
+                    <motion.div
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0.3, scale: 1.1 }}
+                      animate={{
+                        opacity: [0.3, 0.5, 0.3],
+                        scale: [1.1, 1.15, 1.1]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
                       {isMapVisible ? (
-                        <MessageSquare className={`w-5 h-5 ${
-                          isLight ? "text-gray-400" : "text-neutral-500"
-                        }`} />
+                        <MessageSquare className={`w-7 h-7 ${
+                          isLight ? "text-blue-300" : "text-emerald-700"
+                        }`} style={{ filter: 'blur(2px)' }} />
                       ) : (
-                        <Map className={`w-5 h-5 ${
-                          isLight ? "text-gray-400" : "text-neutral-500"
-                        }`} />
+                        <Map className={`w-7 h-7 ${
+                          isLight ? "text-blue-300" : "text-emerald-700"
+                        }`} style={{ filter: 'blur(2px)' }} />
                       )}
-                    </div>
+                    </motion.div>
 
-                    {/* Top layer - active mode (main icon) */}
-                    <div className="relative z-10">
+                    {/* Main icon with subtle flip animation */}
+                    <motion.div
+                      className="relative z-10"
+                      animate={{
+                        rotateY: [0, 2, 0, -2, 0]
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
                       <Icon
                         className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
                       />
-                    </div>
+                    </motion.div>
 
                     {/* Rotating arrows indicator */}
                     <motion.div
-                      className="absolute -bottom-0.5 -right-0.5 z-20"
+                      className="absolute -bottom-1 -right-1 z-20"
                       animate={{ rotate: 360 }}
                       transition={{
                         duration: 3,
@@ -132,7 +154,7 @@ export default function MobileBottomNav() {
                         ease: "linear"
                       }}
                     >
-                      <RefreshCw className={`w-2.5 h-2.5 ${
+                      <RefreshCw className={`w-3 h-3 ${
                         item.active
                           ? isLight ? "text-blue-600" : "text-emerald-500"
                           : isLight ? "text-gray-400" : "text-neutral-500"
