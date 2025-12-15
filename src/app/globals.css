@@ -119,12 +119,16 @@ html {
   /* Prevent horizontal overflow */
   overflow-x: hidden;
   max-width: 100vw;
-  /* Default background for PWA status bar area */
-  background-color: #ffffff;
 }
 
-/* Theme-aware backgrounds for PWA Dynamic Island support */
-html.theme-lightgradient,
+/* Theme-aware backgrounds - fills PWA status bar area */
+html.theme-lightgradient {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
+  background-size: 400% 400%;
+  background-attachment: fixed;
+  animation: gradient 12s ease infinite;
+}
+
 html.theme-lightgradient body {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
   background-size: 400% 400%;
@@ -143,7 +147,10 @@ html.theme-lightgradient body {
   }
 }
 
-html.theme-blackspace,
+html.theme-blackspace {
+  background-color: #000000;
+}
+
 html.theme-blackspace body {
   background-color: #000000;
 }
