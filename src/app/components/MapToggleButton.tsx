@@ -25,8 +25,10 @@ export default function MapToggleButton() {
       if (isMapVisible) {
         hideMap();
       } else {
-        // Show map centered on Palm Desert (default location)
-        showMapAtLocation(33.8303, -116.5453, 12);
+        // Show map centered on California (entire state view)
+        // Center: ~37°N, 119.5°W (California geographic center)
+        // Zoom: 5.5 shows entire state from border to border
+        showMapAtLocation(37.0, -119.5, 5.5);
       }
     } else {
       // If we're on any other page, redirect to homepage (returns to last state)

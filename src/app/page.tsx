@@ -65,7 +65,8 @@ function HomeContent() {
 
     if (viewParam === 'map' || mapParam === 'open') {
       if (!isMapVisible) {
-        showMapAtLocation(33.8303, -116.5453, 12);
+        // Show entire California on initial map load
+        showMapAtLocation(37.0, -119.5, 5.5);
       }
     }
 
@@ -99,8 +100,8 @@ function HomeContent() {
     if (isMapVisible) {
       hideMap();
     } else {
-      // Show map centered on Palm Desert
-      showMapAtLocation(33.8303, -116.5453, 12);
+      // Show map centered on California (entire state view)
+      showMapAtLocation(37.0, -119.5, 5.5);
     }
   };
 
