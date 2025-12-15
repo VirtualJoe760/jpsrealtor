@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, MessageSquare, Lightbulb, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { useState, useEffect } from "react";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -11,6 +12,18 @@ export default function MobileBottomNav() {
   const { data: session } = useSession();
   const { currentTheme, bgPrimary, border, textSecondary } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+  const [isPWA, setIsPWA] = useState(false);
+
+  // Detect if running as PWA (installed app) vs browser
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check if app is running in standalone mode (PWA)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                          (window.navigator as any).standalone ||
+                          document.referrer.includes('android-app://');
+      setIsPWA(isStandalone);
+    }
+  }, []);
 
   const navItems = [
     {
@@ -41,7 +54,8 @@ export default function MobileBottomNav() {
           : "bg-black/95 border-neutral-800"
       }`}
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        // Only add safe area padding in PWA mode, use minimal padding in browser
+        paddingBottom: isPWA ? 'env(safe-area-inset-bottom)' : '8px',
       }}
     >
       <div className="flex items-center justify-around px-2 py-2">
