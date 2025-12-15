@@ -37,7 +37,7 @@ export default function MobileBottomNav() {
         hideMap();
       } else {
         // Show map centered on California (entire state view)
-        showMapAtLocation(37.0, -119.5, 5.5);
+        showMapAtLocation(37.0, -119.5, 5);
       }
     } else {
       // On other pages, navigate to homepage (returns to last state)

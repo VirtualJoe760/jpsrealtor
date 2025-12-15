@@ -27,8 +27,8 @@ export default function MapToggleButton() {
       } else {
         // Show map centered on California (entire state view)
         // Center: ~37°N, 119.5°W (California geographic center)
-        // Zoom: 5.5 shows entire state from border to border
-        showMapAtLocation(37.0, -119.5, 5.5);
+        // Zoom: 5 shows entire state with more breathing room
+        showMapAtLocation(37.0, -119.5, 5);
       }
     } else {
       // If we're on any other page, redirect to homepage (returns to last state)

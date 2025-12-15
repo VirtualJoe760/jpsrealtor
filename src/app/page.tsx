@@ -66,7 +66,7 @@ function HomeContent() {
     if (viewParam === 'map' || mapParam === 'open') {
       if (!isMapVisible) {
         // Show entire California on initial map load
-        showMapAtLocation(37.0, -119.5, 5.5);
+        showMapAtLocation(37.0, -119.5, 5);
       }
     }
 
@@ -101,7 +101,7 @@ function HomeContent() {
       hideMap();
     } else {
       // Show map centered on California (entire state view)
-      showMapAtLocation(37.0, -119.5, 5.5);
+      showMapAtLocation(37.0, -119.5, 5);
     }
   };
 
