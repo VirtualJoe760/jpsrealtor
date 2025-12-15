@@ -115,7 +115,10 @@ function HomeContent() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div
+      className="relative overflow-hidden"
+      style={{ minHeight: '100dvh' }}
+    >
       {/* Spatial Background - base layer */}
       <div
         className="fixed inset-0"
@@ -141,47 +144,37 @@ function HomeContent() {
         <MapLayer />
       </div>
 
-      {/* Map/Chat Toggle Button - Top Right */}
+      {/* Map/Chat Toggle Button - Aligned with info panel center - Green glow style matching hamburger */}
       <button
         onClick={handleToggleMap}
-        className={`fixed top-4 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
-          isLight
-            ? "bg-blue-500 hover:bg-blue-600 text-white"
-            : "bg-purple-600 hover:bg-purple-700 text-white"
-        }`}
+        className="fixed top-6 right-4 z-30 w-16 h-16 flex items-center justify-center rounded-xl transition-transform active:scale-95"
         aria-label={isMapVisible ? "Show Chat" : "Show Map"}
       >
         <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
+          className={`w-8 h-8`}
+          fill={isLight ? "#1e40af" : "#10b981"}
           viewBox="0 0 24 24"
+          style={{
+            filter: isLight
+              ? "drop-shadow(0 0 10px rgba(30,64,175,0.5))"
+              : "drop-shadow(0 0 10px rgba(16,185,129,0.5))"
+          }}
         >
           {isMapVisible ? (
-            // Chat icon when map is visible (go back to chat)
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
+            // Chat icon when map is visible (go back to chat) - Filled version
+            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2v-2zm0-10h2v8h-2V6z" />
           ) : (
-            // Map icon when chat is visible (show map)
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-            />
+            // Map icon when chat is visible (show map) - Filled version
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
           )}
         </svg>
       </button>
 
-      {/* Favorites Button - Top Right (when map is visible and has favorites) */}
+      {/* Favorites Button - Above bottom navigation (when map is visible and has favorites) */}
       {isMapVisible && likedListings.length > 0 && (
         <button
           onClick={() => setFavoritesPannelOpen(true)}
-          className={`fixed top-4 right-20 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
+          className={`fixed bottom-24 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
             isLight
               ? "bg-red-500 hover:bg-red-600 text-white"
               : "bg-pink-600 hover:bg-pink-700 text-white"

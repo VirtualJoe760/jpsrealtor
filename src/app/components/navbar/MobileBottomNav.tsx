@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Map, Lightbulb, User } from "lucide-react";
+import { Home, MessageSquare, Lightbulb, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -20,12 +20,6 @@ export default function MobileBottomNav() {
       active: pathname === "/",
     },
     {
-      name: "Map",
-      icon: Map,
-      href: "/map",
-      active: pathname?.startsWith("/map"),
-    },
-    {
       name: "Insights",
       icon: Lightbulb,
       href: "/insights",
@@ -41,12 +35,14 @@ export default function MobileBottomNav() {
 
   return (
     <nav
-      className={`fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t sm:hidden ${
+      className={`fixed left-0 right-0 bottom-0 z-50 backdrop-blur-xl border-t sm:hidden ${
         isLight
           ? "bg-white/95 border-gray-200"
           : "bg-black/95 border-neutral-800"
       }`}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
