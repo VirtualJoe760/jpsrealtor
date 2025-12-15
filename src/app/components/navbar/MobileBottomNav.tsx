@@ -1,11 +1,12 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Map, Lightbulb, User } from "lucide-react";
+import { Home, MessageSquare, Map, Lightbulb, User, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -79,8 +80,10 @@ export default function MobileBottomNav() {
       }}
     >
       <div className="flex items-center justify-around px-2 py-2">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const Icon = item.icon;
+          const isChatMapButton = index === 0; // First item is Chat/Map
+
           return (
             <button
               key={item.name}
@@ -95,9 +98,29 @@ export default function MobileBottomNav() {
                     : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
-              <Icon
-                className={`w-6 h-6 mb-1 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
-              />
+              <div className="relative w-6 h-6 mb-1 flex items-center justify-center">
+                <Icon
+                  className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
+                />
+                {/* Rotating arrows indicator for Chat/Map button */}
+                {isChatMapButton && (
+                  <motion.div
+                    className="absolute -bottom-0.5 -right-0.5"
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    <RefreshCw className={`w-2.5 h-2.5 ${
+                      item.active
+                        ? isLight ? "text-blue-600" : "text-emerald-500"
+                        : isLight ? "text-gray-400" : "text-neutral-500"
+                    }`} />
+                  </motion.div>
+                )}
+              </div>
               <span className="text-xs font-medium">{item.name}</span>
             </button>
           );

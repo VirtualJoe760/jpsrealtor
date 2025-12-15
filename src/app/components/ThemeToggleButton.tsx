@@ -23,7 +23,6 @@ export default function ThemeToggleButton() {
         fixed top-4 left-4 z-50
         w-12 h-12 md:w-14 md:h-14
         flex items-center justify-center
-        rounded-xl
         transition-all duration-200
         ${isLight
           ? 'text-blue-600 hover:text-blue-700'
@@ -36,9 +35,9 @@ export default function ThemeToggleButton() {
       style={{ pointerEvents: 'auto' }}
     >
       {isLight ? (
-        <Moon className="w-5 h-5 md:w-6 md:h-6" />
+        <Moon className="w-7 h-7 md:w-8 md:h-8" />
       ) : (
-        <Sun className="w-5 h-5 md:w-6 md:h-6" />
+        <Sun className="w-7 h-7 md:w-8 md:h-8" />
       )}
     </motion.button>
   );

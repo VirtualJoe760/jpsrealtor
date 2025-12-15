@@ -43,7 +43,6 @@ export default function MapToggleButton() {
         fixed top-4 right-4 z-50
         w-12 h-12 md:w-14 md:h-14
         flex items-center justify-center
-        rounded-xl
         transition-all duration-200
         ${isLight
           ? 'text-blue-600 hover:text-blue-700'
@@ -56,9 +55,9 @@ export default function MapToggleButton() {
       style={{ pointerEvents: 'auto' }}
     >
       {isMapVisible ? (
-        <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+        <MessageSquare className="w-7 h-7 md:w-8 md:h-8" />
       ) : (
-        <Map className="w-5 h-5 md:w-6 md:h-6" />
+        <Map className="w-7 h-7 md:w-8 md:h-8" />
       )}
     </motion.button>
   );
