@@ -39,21 +39,26 @@ export default function CityStats({
   // Theme support
   const { cardBg, cardBorder, textPrimary, textMuted, shadow, border } = useThemeClasses();
 
-  // Fetch both sale and rental stats on mount
+  // Fetch stats incrementally - sale first (more important), then rental
   useEffect(() => {
-    async function fetchAllStats() {
-      try {
-        const [saleRes, rentalRes] = await Promise.all([
-          fetch(`/api/cities/${cityId}/stats?propertyType=sale`),
-          fetch(`/api/cities/${cityId}/stats?propertyType=rental`)
-        ]);
+    let isMounted = true;
 
-        if (saleRes.ok) {
+    async function fetchStatsIncrementally() {
+      try {
+        // Fetch sale stats first (priority)
+        const saleRes = await fetch(`/api/cities/${cityId}/stats?propertyType=sale`);
+        if (saleRes.ok && isMounted) {
           const saleData = await saleRes.json();
           setSaleStats(saleData.stats);
+          // Immediately show sale stats
+          if (currentType === "sale") {
+            setStats(saleData.stats);
+          }
         }
 
-        if (rentalRes.ok) {
+        // Then fetch rental stats (lower priority)
+        const rentalRes = await fetch(`/api/cities/${cityId}/stats?propertyType=rental`);
+        if (rentalRes.ok && isMounted) {
           const rentalData = await rentalRes.json();
           setRentalStats(rentalData.stats);
         }
@@ -62,7 +67,11 @@ export default function CityStats({
       }
     }
 
-    fetchAllStats();
+    fetchStatsIncrementally();
+
+    return () => {
+      isMounted = false;
+    };
   }, [cityId]);
 
   // Auto-cycle between sale and rental every 5 seconds

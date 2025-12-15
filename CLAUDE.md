@@ -1,0 +1,2 @@
+- you can review our ai chat logs by reviewing /local-logs/chat-records
+- when updating our documentation, we can manage our progress by creating trello cards. We have Trello Guidelines located here docs/trello/TRELLO_GUIDELINES.md

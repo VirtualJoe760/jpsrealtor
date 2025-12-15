@@ -47,8 +47,8 @@ export function calculateViewportCenter(
   const latSpan = bounds.north - bounds.south;
   const lngSpan = bounds.east - bounds.west;
 
-  // Mobile: Expand focus circle significantly to show more individual listings
-  const mobileFocusMultiplier = isMobile ? 2.0 : 1.8; // Much larger focus area (2x mobile, 1.8x desktop)
+  // Mobile: Slightly smaller focus circle for better distribution
+  const mobileFocusMultiplier = isMobile ? 0.8 : 1.8; // Smaller on mobile for spread out markers
 
   // Focus radius is a percentage of the viewport's average span
   const avgSpan = (latSpan + lngSpan) / 2;
@@ -102,22 +102,30 @@ export function isInCenterCircle(
  */
 export function createRadialClusters(
   listings: MapListing[],
-  gridSizeInDegrees: number = 0.05, // ~5km at equator
-  minClusterSize: number = 3 // Minimum listings needed to form a cluster
+  gridSizeInDegrees: number = 0.02, // REDUCED: ~2km for tighter clustering (was 0.05)
+  minClusterSize: number = 2, // REDUCED: Cluster even 2 nearby listings (was 3)
+  isMobile: boolean = false
 ): RadialCluster[] {
+  // Mobile: Higher threshold to show more individual markers
+  const clusterThreshold = isMobile ? 50 : 40; // Higher for mobile to prevent over-clustering
+
   // Don't cluster if there are relatively few listings in periphery
-  if (listings.length <= 40) {
+  if (listings.length <= clusterThreshold) {
     // Return each listing as a single-item "cluster" (will be rendered as individual markers)
     return [];
   }
+
+  // Mobile: Use smaller grid for better distribution
+  const mobileGridMultiplier = isMobile ? 0.6 : 1.0; // Smaller grid on mobile for spread
+  const effectiveGridSize = gridSizeInDegrees * mobileGridMultiplier;
 
   // Group listings by grid cell
   const gridMap = new Map<string, MapListing[]>();
 
   for (const listing of listings) {
-    // Round to grid cell
-    const gridLat = Math.round(listing.latitude / gridSizeInDegrees) * gridSizeInDegrees;
-    const gridLng = Math.round(listing.longitude / gridSizeInDegrees) * gridSizeInDegrees;
+    // Round to grid cell (using effective grid size for mobile)
+    const gridLat = Math.round(listing.latitude / effectiveGridSize) * effectiveGridSize;
+    const gridLng = Math.round(listing.longitude / effectiveGridSize) * effectiveGridSize;
     const gridKey = `${gridLat},${gridLng}`;
 
     const cell = gridMap.get(gridKey) || [];
@@ -134,7 +142,10 @@ export function createRadialClusters(
       continue; // Skip small groups, they'll be rendered as individual markers
     }
 
-    const [lat, lng] = gridKey.split(',').map(Number);
+    // Calculate the ACTUAL centroid (average position) of listings in this cluster
+    // This prevents the rigid grid alignment
+    const avgLat = cellListings.reduce((sum, l) => sum + l.latitude, 0) / cellListings.length;
+    const avgLng = cellListings.reduce((sum, l) => sum + l.longitude, 0) / cellListings.length;
 
     // Calculate cluster stats
     const prices = cellListings.map(l => l.listPrice);
@@ -143,8 +154,8 @@ export function createRadialClusters(
     const maxPrice = Math.max(...prices);
 
     clusters.push({
-      latitude: lat,
-      longitude: lng,
+      latitude: avgLat,  // Use actual centroid instead of grid position
+      longitude: avgLng, // Use actual centroid instead of grid position
       count: cellListings.length,
       avgPrice: Math.round(avgPrice),
       minPrice,
@@ -180,7 +191,8 @@ export function applyCenterFocusedClustering(
   console.log('[applyCenterFocusedClustering] Starting with', listings.length, 'listings', isMobile ? '(MOBILE)' : '(DESKTOP)');
 
   // If there are very few listings total, don't cluster at all
-  const maxListingsBeforeClustering = isMobile ? 50 : 150; // Show up to 150 individual markers on desktop
+  // MOBILE: Higher threshold to show more individual markers
+  const maxListingsBeforeClustering = isMobile ? 80 : 100; // Higher for mobile distribution
   if (listings.length <= maxListingsBeforeClustering) {
     console.log('[applyCenterFocusedClustering] Too few listings to cluster, showing all as individual markers');
     return {
@@ -222,8 +234,8 @@ export function applyCenterFocusedClustering(
   // Create radial clusters from periphery listings
   // Adjust grid size based on zoom level
   const gridSize = getClusterGridSize(bounds.zoom, isMobile);
-  const minClusterSize = isMobile ? 10 : 8; // Only cluster groups of 8+ listings (10+ on mobile)
-  const peripheryClusters = createRadialClusters(peripheryListings, gridSize, minClusterSize);
+  const minClusterSize = isMobile ? 5 : 5; // Require more listings per cluster on mobile
+  const peripheryClusters = createRadialClusters(peripheryListings, gridSize, minClusterSize, isMobile);
 
   console.log('[applyCenterFocusedClustering] Created', peripheryClusters.length, 'radial clusters');
 
@@ -237,11 +249,11 @@ export function applyCenterFocusedClustering(
 /**
  * Get cluster grid size based on zoom level
  * Larger grid = fewer, larger clusters
- * Mobile uses larger grids (less aggressive clustering)
+ * Mobile uses smaller grids for better distribution
  */
 function getClusterGridSize(zoom: number, isMobile: boolean = false): number {
-  // Mobile: Use larger grid sizes to cluster less aggressively
-  const mobileMultiplier = isMobile ? 1.5 : 1.0;
+  // Mobile: Use smaller grid sizes for more distributed clustering
+  const mobileMultiplier = isMobile ? 0.5 : 1.0;
 
   if (zoom >= 15) return 0.005 * mobileMultiplier;  // ~500m - very small clusters
   if (zoom >= 14) return 0.01 * mobileMultiplier;   // ~1km

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, User, Copy, Check, Share } from "lucide-react";
+import { Bot, User, Copy, Check, Share, Map, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -18,7 +18,6 @@ import { AppreciationCard } from "../analytics/AppreciationCard";
 import { ComparisonCard } from "../analytics/ComparisonCard";
 import ListingBottomPanel from "../mls/map/ListingBottomPanel";
 import { useMLSContext } from "../mls/MLSProvider";
-import ChatHeader from "./ChatHeader";
 import { SourceBubbles } from "./SourceBubble";
 import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import MarketStatsCard from "./MarketStatsCard";
@@ -436,8 +435,6 @@ export default function ChatWidget() {
 
   return (
     <>
-    {/* Hide ChatHeader when map is visible to prevent double top bars on mobile */}
-    {!isMapVisible && <ChatHeader />}
     <div
       className={`w-full flex flex-col ${isMapVisible ? 'pt-0 justify-end pb-4' : 'pt-0 md:pt-0'}`}
       data-page={showLanding ? "chat-landing" : "chat"}
@@ -521,7 +518,7 @@ export default function ChatWidget() {
 
       {/* Conversation View - Hide when map is visible */}
       {!showLanding && !isMapVisible && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-[8rem] md:pt-6 pb-[12rem] md:pb-2 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 py-4 md:pt-6 pb-[12rem] md:pb-2 relative">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div

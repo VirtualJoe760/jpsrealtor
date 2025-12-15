@@ -13,9 +13,9 @@
 export * from './closed-sales';
 
 // ============================================================================
-// ACTIVE LISTINGS AGGREGATORS (Future)
+// ACTIVE LISTINGS AGGREGATORS
 // ============================================================================
-// export * from './active-listings';
+export * from './active-listings';
 
 /**
  * 🔌 HOW TO ADD A NEW AGGREGATOR

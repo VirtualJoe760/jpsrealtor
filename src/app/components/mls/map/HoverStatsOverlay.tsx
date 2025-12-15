@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/app/contexts/ThemeContext';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { MapPin, Home } from 'lucide-react';
 
 interface HoverStatsOverlayProps {
   data: {
@@ -35,6 +37,7 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
   const [messageIndex, setMessageIndex] = useState(0);
+  const router = useRouter();
 
   // Rotating messages for default state (no hover)
   const defaultMessages = [
@@ -74,12 +77,76 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
   // Check if we're showing California default (no hover, no contextual boundary)
   const isCaliforniaDefault = !data && !contextualBoundary;
 
+  // Helper functions for navigation
+  const createSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+  };
+
+  const getButtonText = (data: typeof displayData): string => {
+    if (!data) return 'View All Regions';
+
+    switch (data.type) {
+      case 'california':
+        return 'View All Regions';
+      case 'region':
+        return `Explore ${data.name}`;
+      case 'county':
+        return `View ${data.name}`;
+      case 'city':
+        return `View ${data.name}`;
+      default:
+        return 'View Details';
+    }
+  };
+
+  const getButtonIcon = (type: 'california' | 'region' | 'county' | 'city') => {
+    switch (type) {
+      case 'california':
+      case 'region':
+        return <MapPin className="w-4 h-4" />;
+      case 'county':
+      case 'city':
+        return <Home className="w-4 h-4" />;
+      default:
+        return <MapPin className="w-4 h-4" />;
+    }
+  };
+
+  const handleNavigate = () => {
+    if (!displayData) {
+      router.push('/neighborhoods');
+      return;
+    }
+
+    const slug = createSlug(displayData.name);
+
+    switch (displayData.type) {
+      case 'california':
+        router.push('/neighborhoods');
+        break;
+      case 'region':
+        router.push(`/neighborhoods#${slug}`);
+        break;
+      case 'county':
+        router.push(`/neighborhoods/${slug}-county`);
+        break;
+      case 'city':
+        router.push(`/neighborhoods/${slug}`);
+        break;
+    }
+  };
+
   return (
     <div className="fixed top-0 left-0 right-0 md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto z-50 pointer-events-none">
       {/* Mobile: Always visible card container */}
       <div
         className={`
-          w-full px-6 py-4 md:w-auto md:px-8 md:py-5 md:rounded-2xl backdrop-blur-xl
+          w-full px-6 py-3 md:w-auto md:px-8 md:py-5 md:rounded-2xl backdrop-blur-xl
           flex flex-col items-center justify-center
           border-b md:border-b-0
           ${isLight
@@ -104,7 +171,7 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
             {/* Area Name */}
             <h1
               className={`
-                text-xl md:text-3xl font-bold mb-1 md:mb-2 text-center tracking-tight
+                text-xl md:text-3xl font-bold mb-0.5 md:mb-2 text-center tracking-tight
                 ${isLight
                   ? 'text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-900'
                   : 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-200'
@@ -117,9 +184,9 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
             {/* Stats Grid - Fixed height container to prevent box resize */}
             {isCaliforniaDefault && californiaStats && californiaStats.count > 0 ? (
               /* California default state - show California-wide stats (no price range) */
-              <div className="flex items-center gap-4 md:gap-8">
+              <div className="flex items-end justify-center gap-2 md:gap-8">
                 {/* Listing Count */}
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <div className={`text-2xl md:text-4xl font-extrabold tracking-tight ${
                     isLight
                       ? 'text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-blue-800'
@@ -134,10 +201,10 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                   </div>
                 </div>
 
-                <div className={`w-px h-12 md:h-14 ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
+                <div className={`w-px h-12 md:h-14 self-center ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
 
                 {/* Median Price */}
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <div className={`text-xl md:text-3xl font-bold tracking-tight ${
                     isLight ? 'text-blue-700' : 'text-emerald-300'
                   }`}>
@@ -181,9 +248,9 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                 </div>
               </div>
             ) : displayData ? (
-              <div className="flex items-center gap-4 md:gap-8">
+              <div className="flex items-end justify-center gap-2 md:gap-8">
                 {/* Listing Count */}
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <div className={`text-2xl md:text-4xl font-extrabold tracking-tight ${
                     isLight
                       ? 'text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-blue-800'
@@ -198,10 +265,10 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                   </div>
                 </div>
 
-                <div className={`w-px h-12 md:h-14 ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
+                <div className={`w-px h-12 md:h-14 self-center ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
 
                 {/* Median Price */}
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <div className={`text-xl md:text-3xl font-bold tracking-tight ${
                     isLight ? 'text-blue-700' : 'text-emerald-300'
                   }`}>
@@ -214,10 +281,10 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
                   </div>
                 </div>
 
-                <div className={`w-px h-12 md:h-14 ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
+                <div className={`w-px h-12 md:h-14 self-center ${isLight ? 'bg-gradient-to-b from-transparent via-gray-300 to-transparent' : 'bg-gradient-to-b from-transparent via-emerald-800/50 to-transparent'}`} />
 
                 {/* Price Range */}
-                <div className="text-center">
+                <div className="flex flex-col items-center">
                   <div className={`text-base md:text-xl font-bold tracking-tight ${
                     isLight ? 'text-gray-800' : 'text-gray-100'
                   }`}>
@@ -232,20 +299,30 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
               </div>
             ) : null}
 
-            {/* Area Type Badge - Hidden on mobile */}
-            {displayData && (
-              <div
+            {/* Area Type Badge - Hidden on mobile - Now Clickable */}
+            <div className="flex justify-center w-full px-4 md:px-8">
+              <button
+                onClick={handleNavigate}
                 className={`
-                  hidden md:flex items-center justify-center mt-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest
+                  hidden md:flex items-center justify-center mt-3 px-6 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest w-full
+                  transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer pointer-events-auto
                   ${isLight
-                    ? 'bg-blue-100/80 text-blue-700 border border-blue-200/50'
-                    : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                    ? 'bg-blue-100/80 text-blue-700 border border-blue-200/50 hover:bg-blue-200/90 hover:border-blue-300'
+                    : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-800/50 hover:border-emerald-600'
                   }
                 `}
               >
-                {displayData.type}
-              </div>
-            )}
+                {!displayData
+                  ? 'Explore All Neighborhoods'
+                  : displayData.type === 'city'
+                  ? `City of ${displayData.name}`
+                  : displayData.type === 'county'
+                  ? `County of ${displayData.name}`
+                  : displayData.type === 'region'
+                  ? displayData.name
+                  : displayData.type}
+              </button>
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>

@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
     if (searchParams.get('maxDaysOnMarket'))
       queryOptions.filters.maxDaysOnMarket = parseInt(searchParams.get('maxDaysOnMarket')!);
     if (searchParams.get('listedAfter'))
-      queryOptions.filters.listedAfter = new Date(searchParams.get('listedAfter')!);
+      queryOptions.filters.listedAfter = searchParams.get('listedAfter')!; // Keep as string - MongoDB field is stored as string
 
     // Pagination & sorting
     if (searchParams.get('limit'))

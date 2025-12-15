@@ -5,6 +5,7 @@
  */
 
 export * from './appreciation';
+export * from './market-stats';
 // TODO: Add more calculations as needed
 // export * from './cashflow';
 // export * from './roi';

@@ -56,8 +56,12 @@ export function combineFilters(filters: CombinedFilters): any {
   const amenitiesQuery = buildAmenitiesQuery(filters);
   const timeQuery = buildTimeQuery(filters);
 
+  console.log('[combineFilters] Input filters:', JSON.stringify(filters, null, 2));
+  console.log('[combineFilters] locationQuery:', JSON.stringify(locationQuery, null, 2));
+  console.log('[combineFilters] timeQuery:', JSON.stringify(timeQuery, null, 2));
+
   // Merge all queries
-  return {
+  const finalQuery = {
     ...baseQuery,
     ...locationQuery,
     ...propertyQuery,
@@ -65,6 +69,15 @@ export function combineFilters(filters: CombinedFilters): any {
     ...amenitiesQuery,
     ...timeQuery,
   };
+
+  console.log('[combineFilters] FINAL QUERY:', JSON.stringify(finalQuery, (key, value) => {
+    if (value instanceof RegExp) {
+      return { $regex: value.source, $options: value.flags };
+    }
+    return value;
+  }, 2));
+
+  return finalQuery;
 }
 
 /**

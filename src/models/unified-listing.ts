@@ -488,6 +488,8 @@ UnifiedListingSchema.index({ mlsSource: 1, mlsId: 1 });
 UnifiedListingSchema.index({ city: 1, standardStatus: 1 });
 UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1 });
 UnifiedListingSchema.index({ propertyType: 1, standardStatus: 1 });
+// Optimized index for city stats queries (city + propertyType + listPrice)
+UnifiedListingSchema.index({ city: 1, propertyType: 1, listPrice: 1 });
 
 // -----------------------------
 // Model Export

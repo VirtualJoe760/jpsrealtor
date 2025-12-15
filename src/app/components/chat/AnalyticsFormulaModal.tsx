@@ -123,53 +123,72 @@ export default function AnalyticsFormulaModal({ metric, onClose }: AnalyticsForm
         className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       >
         <div
-          className={`rounded-2xl p-6 md:p-8 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto ${cardBg} ${cardBorder} border-2`}
+          className={`rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto ${cardBg} ${cardBorder} border-2`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${
-                isLight ? "bg-blue-100 text-blue-600" : "bg-emerald-500/20 text-emerald-400"
-              }`}>
-                {details.icon}
-              </div>
-              <div>
-                <h2 className={`text-2xl font-bold ${textPrimary}`}>
-                  {details.title}
-                </h2>
-                <p className={`text-sm mt-1 ${textSecondary}`}>
-                  {details.description}
-                </p>
-              </div>
+          <div className="mb-6">
+            {/* Close Button - Top Right on Mobile */}
+            <div className="flex justify-end mb-2 sm:hidden">
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-lg transition-colors ${
+                  isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-gray-800 text-gray-400"
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-lg transition-colors ${
-                isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-gray-800 text-gray-400"
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            {/* Icon + Title Section */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1">
+                <div className={`p-2 sm:p-3 rounded-xl flex-shrink-0 ${
+                  isLight ? "bg-blue-100 text-blue-600" : "bg-emerald-500/20 text-emerald-400"
+                }`}>
+                  <div className="w-6 h-6 sm:w-8 sm:h-8">
+                    {details.icon}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className={`text-lg sm:text-xl md:text-2xl font-bold ${textPrimary}`}>
+                    {details.title}
+                  </h2>
+                  <p className={`text-xs sm:text-sm mt-1 ${textSecondary}`}>
+                    {details.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Button - Desktop Only */}
+              <button
+                onClick={onClose}
+                className={`hidden sm:block p-2 rounded-lg transition-colors ml-4 flex-shrink-0 ${
+                  isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-gray-800 text-gray-400"
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Formulas */}
-          <div className="space-y-4 mb-6">
-            <h3 className={`text-lg font-semibold ${textPrimary}`}>Calculation Methods</h3>
+          <div className="space-y-3 sm:space-y-4 mb-6">
+            <h3 className={`text-base sm:text-lg font-semibold ${textPrimary}`}>Calculation Methods</h3>
             {details.formulas.map((formula, index) => (
               <div
                 key={index}
-                className={`p-4 rounded-xl ${
+                className={`p-3 sm:p-4 rounded-xl ${
                   isLight ? "bg-gray-50 border border-gray-200" : "bg-gray-800/50 border border-gray-700"
                 }`}
               >
-                <h4 className={`font-semibold mb-2 ${textPrimary}`}>{formula.name}</h4>
-                <code className={`block font-mono text-sm mb-2 ${
+                <h4 className={`text-sm sm:text-base font-semibold mb-2 ${textPrimary}`}>{formula.name}</h4>
+                <code className={`block font-mono text-xs sm:text-sm mb-2 break-all ${
                   isLight ? "text-blue-700" : "text-emerald-400"
                 }`}>
                   {formula.formula}
                 </code>
-                <p className={`text-sm ${textMuted}`}>
+                <p className={`text-xs sm:text-sm ${textMuted}`}>
                   <span className="font-medium">Example:</span> {formula.example}
                 </p>
               </div>
@@ -177,30 +196,30 @@ export default function AnalyticsFormulaModal({ metric, onClose }: AnalyticsForm
           </div>
 
           {/* Data Sources */}
-          <div className="mb-6">
-            <h3 className={`text-lg font-semibold mb-3 ${textPrimary}`}>Data Sources</h3>
-            <ul className={`space-y-2 ${textSecondary}`}>
+          <div className="mb-4 sm:mb-6">
+            <h3 className={`text-base sm:text-lg font-semibold mb-2 sm:mb-3 ${textPrimary}`}>Data Sources</h3>
+            <ul className={`space-y-1 sm:space-y-2 text-sm sm:text-base ${textSecondary}`}>
               {details.dataSources.map((source, index) => (
                 <li key={index} className="flex items-start gap-2">
-                  <span className={isLight ? "text-blue-500" : "text-emerald-400"}>•</span>
-                  <span>{source}</span>
+                  <span className={`flex-shrink-0 ${isLight ? "text-blue-500" : "text-emerald-400"}`}>•</span>
+                  <span className="flex-1">{source}</span>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* Methodology */}
-          <div className={`p-4 rounded-xl ${
+          <div className={`p-3 sm:p-4 rounded-xl ${
             isLight ? "bg-blue-50 border border-blue-200" : "bg-emerald-500/10 border border-emerald-500/30"
           }`}>
-            <h3 className={`text-sm font-semibold mb-2 ${textPrimary}`}>Methodology</h3>
-            <p className={`text-sm ${textSecondary}`}>
+            <h3 className={`text-sm sm:text-base font-semibold mb-2 ${textPrimary}`}>Methodology</h3>
+            <p className={`text-xs sm:text-sm ${textSecondary}`}>
               {details.methodology}
             </p>
           </div>
 
           {/* Disclaimer */}
-          <div className={`mt-6 p-4 rounded-xl ${
+          <div className={`mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl ${
             isLight ? "bg-gray-50 border border-gray-200" : "bg-gray-800/50 border border-gray-700"
           }`}>
             <p className={`text-xs ${textMuted}`}>
@@ -212,10 +231,10 @@ export default function AnalyticsFormulaModal({ metric, onClose }: AnalyticsForm
           </div>
 
           {/* Close Button */}
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end mt-4 sm:mt-6">
             <button
               onClick={onClose}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              className={`w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl font-semibold transition-all text-sm sm:text-base ${
                 isLight
                   ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
                   : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import GlobalHamburgerMenu from "./GlobalHamburgerMenu";
 import EnhancedSidebar from "./EnhancedSidebar";
+import MapToggleButton from "./MapToggleButton";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
@@ -61,6 +62,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
         <EnhancedSidebar />
       </div>
+
+      {/* Global Map Toggle Button - Available on all pages */}
+      <MapToggleButton />
 
       {/* Main content with sidebar spacing on desktop */}
       <div

@@ -1,7 +1,8 @@
 # CHAP Architecture - Chat + Map Unified Experience
 
 **Created**: December 10, 2025
-**Status**: In Development
+**Updated**: December 13, 2025 - **Major Refactoring Complete** ✅
+**Status**: Production Ready - Modular Architecture
 **Goal**: Seamless integration of AI chat with full map system
 
 ---
@@ -160,10 +161,24 @@ src/app/
 │   │   ├── CHAPMobileToggle.tsx    # Mobile toggle component
 │   │   └── CHAPContext.tsx         # Shared state context
 │   │
-│   ├── chat/
-│   │   ├── ChatWidget.tsx          # Existing chat (enhanced)
+│   ├── chat/                       # ✅ REFACTORED (Dec 13, 2025)
+│   │   ├── ChatWidget.tsx          # Main orchestrator (946 lines, was 1469)
+│   │   ├── ChatInput.tsx           # ✅ NEW: Unified input (3 variants)
+│   │   ├── AutocompleteDropdown.tsx # ✅ NEW: Reusable autocomplete
+│   │   ├── NewChatModal.tsx        # ✅ NEW: Confirmation modal
 │   │   ├── ChatProvider.tsx        # Chat state provider
-│   │   └── OpenMapButton.tsx       # NEW: Trigger CHAP mode
+│   │   ├── ChatHeader.tsx          # Header component
+│   │   ├── ListingCarousel.tsx     # Listing display
+│   │   ├── ChatMapView.tsx         # Mini map preview
+│   │   ├── MarketStatsCard.tsx     # Market statistics
+│   │   ├── SubdivisionComparisonChart.tsx # Analytics
+│   │   ├── SourceBubble.tsx        # Citation bubbles
+│   │   ├── ArticleCard.tsx         # Article results
+│   │   ├── hooks/
+│   │   │   ├── useAutocomplete.ts  # ✅ Autocomplete logic
+│   │   │   └── useChatScroll.ts    # ✅ Auto-scroll management
+│   │   └── utils/
+│   │       └── getSuggestionDisplay.tsx # ✅ Suggestion formatting
 │   │
 │   └── mls/map/
 │       └── MapView.tsx             # Existing full map system
@@ -171,6 +186,13 @@ src/app/
 └── contexts/
     └── CHAPContext.tsx             # Global CHAP state
 ```
+
+**Refactoring Complete** (December 13, 2025):
+- ✅ Reduced ChatWidget from 1,469 → 946 lines (-35.6%)
+- ✅ Created 3 modular components (ChatInput, AutocompleteDropdown, NewChatModal)
+- ✅ Eliminated 523 lines of duplicate code
+- ✅ Enhanced 2 hooks (useAutocomplete, useChatScroll)
+- ✅ Build passing with 0 TypeScript errors
 
 ---
 

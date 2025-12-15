@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { X, Heart, ThumbsDown } from "lucide-react";
+import { X, Heart, ThumbsDown, CheckSquare } from "lucide-react";
 import type { MapListing } from "@/types/types";
 import {
   groupListingsBySubdivision,
@@ -39,11 +39,25 @@ export default function FavoritesPannel({
   onRemoveDislike,
   onClearDislikes,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"favorites" | "disliked">("favorites");
+  const [activeTab, setActiveTab] = useState<"favorites" | "disliked" | "selected">("favorites");
   const router = useRouter();
   const asideRef = useRef<HTMLElement>(null);
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Dynamic title based on active tab
+  const getTitle = () => {
+    switch (activeTab) {
+      case "favorites":
+        return "Your Favorites";
+      case "disliked":
+        return "Disliked Properties";
+      case "selected":
+        return "Selected Properties";
+      default:
+        return "Your Favorites";
+    }
+  };
 
   // Theme-aware classes
   const themeClasses = {
@@ -51,12 +65,10 @@ export default function FavoritesPannel({
     text: isLight ? 'text-gray-700' : 'text-neutral-300',
     textSecondary: isLight ? 'text-gray-600' : 'text-neutral-400',
     textTertiary: isLight ? 'text-gray-500' : 'text-neutral-500',
+    border: isLight ? 'border-gray-300' : 'border-neutral-700',
     buttonSecondary: isLight
       ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
       : 'text-neutral-400 hover:text-white hover:bg-neutral-800',
-    tabInactive: isLight
-      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900'
-      : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white',
     emptyStateBg: isLight ? 'bg-gray-200' : 'bg-neutral-800',
     emptyStateIcon: isLight ? 'text-gray-400' : 'text-neutral-600',
     cardBg: isLight ? 'bg-white' : 'bg-neutral-800/50',
@@ -173,96 +185,117 @@ export default function FavoritesPannel({
             onClose();
           }
         }}
-        className={`fixed top-0 right-0 h-screen
-        w-[95%] sm:w-[90%] md:w-[35%] lg:w-[28%] xl:w-[26%] 2xl:w-[24%]
+        className={`fixed top-0 right-0 h-screen w-full
         backdrop-blur-xl transform transition-transform duration-300 z-[70]
         shadow-2xl overflow-hidden flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
         ${isLight
-          ? 'bg-white/98 text-gray-900 border-l border-gray-300'
-          : 'bg-neutral-900/98 text-white border-l border-neutral-800'
+          ? 'bg-white/98 text-gray-900'
+          : 'bg-neutral-900/98 text-white'
         }`}
       >
-        {/* Sticky header: tabs + close + title/clear */}
+        {/* Sticky header: title + tabs + close */}
         <div className={`flex-shrink-0 backdrop-blur-xl border-b ${
           isLight
             ? 'bg-white/95 border-gray-300'
             : 'bg-neutral-900/95 border-neutral-800'
         }`}>
           {/* Title row with close button */}
-          <div className="px-5 pt-5 pb-3 flex justify-between items-center relative">
-            {/* Invisible spacer to balance close button on mobile */}
-            <div className="w-10 md:w-0"></div>
-            <div className="flex-1 md:flex-initial">
-              <h2 className={`text-xl md:text-2xl font-bold text-center md:text-left ${themeClasses.title}`}>
-                {activeTab === "favorites"
-                  ? "Your Favorites"
-                  : "Disliked Properties"}
-              </h2>
-            </div>
+          <div className="px-6 pt-6 pb-4 flex justify-center items-center relative">
+            <h2 className={`text-2xl font-bold ${themeClasses.title}`}>
+              {getTitle()}
+            </h2>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
               aria-label="Close Panel"
-              className={`flex-shrink-0 p-2 rounded-lg transition ${themeClasses.buttonSecondary}`}
+              className={`absolute right-6 flex-shrink-0 p-2 rounded-lg transition ${themeClasses.buttonSecondary}`}
               type="button"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Tabs row */}
-          <div className="px-5 pb-4">
-            <div className="flex gap-2">
-                <button
-                  className={clsx(
-                    "flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                    activeTab === "favorites"
-                      ? isLight
-                        ? "bg-pink-500 text-white shadow-lg shadow-pink-500/30"
-                        : "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30"
-                      : themeClasses.tabInactive
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab("favorites");
-                  }}
-                  type="button"
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <Heart className="w-4 h-4" />
-                    <span>Favorites</span>
-                    <span className="text-xs opacity-80">({favorites.length})</span>
-                  </div>
-                </button>
+          {/* Tabs row - Admin nav style with underline */}
+          <div className="px-6">
+            <div className={`flex items-center gap-2 border-b ${themeClasses.border}`}>
+              <button
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-3 border-b-2 transition-all",
+                  activeTab === "favorites"
+                    ? isLight
+                      ? "border-pink-500 text-pink-600 font-semibold"
+                      : "border-pink-500 text-pink-400 font-semibold"
+                    : `border-transparent ${themeClasses.textSecondary} ${
+                        isLight ? "hover:text-gray-900 hover:border-gray-300" : "hover:text-white hover:border-gray-700"
+                      }`
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab("favorites");
+                }}
+                type="button"
+              >
+                <Heart className="w-4 h-4" />
+                <span>Favorites</span>
+                <span className={`text-sm ${activeTab === "favorites" ? "" : "opacity-60"}`}>
+                  ({favorites.length})
+                </span>
+              </button>
 
-                <button
-                  className={clsx(
-                    "flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                    activeTab === "disliked"
-                      ? isLight
-                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                        : "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30"
-                      : themeClasses.tabInactive
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab("disliked");
-                  }}
-                  type="button"
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <ThumbsDown className="w-4 h-4" />
-                    <span>Disliked</span>
-                    <span className="text-xs opacity-80">({dislikedListings.length})</span>
-                  </div>
-                </button>
-              </div>
+              <button
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-3 border-b-2 transition-all",
+                  activeTab === "selected"
+                    ? isLight
+                      ? "border-blue-500 text-blue-600 font-semibold"
+                      : "border-emerald-500 text-emerald-400 font-semibold"
+                    : `border-transparent ${themeClasses.textSecondary} ${
+                        isLight ? "hover:text-gray-900 hover:border-gray-300" : "hover:text-white hover:border-gray-700"
+                      }`
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab("selected");
+                }}
+                type="button"
+              >
+                <CheckSquare className="w-4 h-4" />
+                <span>Selected</span>
+                <span className={`text-sm ${activeTab === "selected" ? "" : "opacity-60"}`}>
+                  (0)
+                </span>
+              </button>
+
+              <button
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-3 border-b-2 transition-all",
+                  activeTab === "disliked"
+                    ? isLight
+                      ? "border-red-500 text-red-600 font-semibold"
+                      : "border-red-500 text-red-400 font-semibold"
+                    : `border-transparent ${themeClasses.textSecondary} ${
+                        isLight ? "hover:text-gray-900 hover:border-gray-300" : "hover:text-white hover:border-gray-700"
+                      }`
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab("disliked");
+                }}
+                type="button"
+              >
+                <ThumbsDown className="w-4 h-4" />
+                <span>Disliked</span>
+                <span className={`text-sm ${activeTab === "disliked" ? "" : "opacity-60"}`}>
+                  ({dislikedListings.length})
+                </span>
+              </button>
+            </div>
 
             {/* Clear All Button */}
-            <div className="mt-3">
+            <div className="py-3">
               {activeTab === "favorites" && favorites.length > 0 && (
                 <button
                   onClick={(e) => {
@@ -273,6 +306,18 @@ export default function FavoritesPannel({
                   type="button"
                 >
                   Clear All Favorites
+                </button>
+              )}
+              {activeTab === "selected" && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: Add clear selected functionality
+                  }}
+                  className={`text-sm transition font-medium ${themeClasses.textSecondary} hover:text-red-400`}
+                  type="button"
+                >
+                  Clear All Selected
                 </button>
               )}
               {activeTab === "disliked" && dislikedListings.length > 0 && (
@@ -292,7 +337,7 @@ export default function FavoritesPannel({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-3 pb-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {activeTab === "favorites" && favorites.length === 0 ? (
             <div className="text-center py-20">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${themeClasses.emptyStateBg}`}>
@@ -300,6 +345,14 @@ export default function FavoritesPannel({
               </div>
               <p className={`text-lg font-medium mb-2 ${themeClasses.text}`}>No favorites yet</p>
               <p className={`text-sm ${themeClasses.textTertiary}`}>Swipe right on listings to save them</p>
+            </div>
+          ) : activeTab === "selected" ? (
+            <div className="text-center py-20">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${themeClasses.emptyStateBg}`}>
+                <CheckSquare className={`w-10 h-10 ${themeClasses.emptyStateIcon}`} />
+              </div>
+              <p className={`text-lg font-medium mb-2 ${themeClasses.text}`}>No selected properties</p>
+              <p className={`text-sm ${themeClasses.textTertiary}`}>Select properties from the map to compare them</p>
             </div>
           ) : activeTab === "disliked" && dislikedListings.length === 0 ? (
             <div className="text-center py-20">
@@ -310,7 +363,7 @@ export default function FavoritesPannel({
               <p className={`text-sm ${themeClasses.textTertiary}`}>Swipe left on listings to dislike them</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-0">
               {(() => {
                 const prioritySubdivision = selectedListing
                   ? ((selectedListing as any).subdivisionName ||
@@ -329,33 +382,33 @@ export default function FavoritesPannel({
 
                   return (
                     <div key={group.subdivision}>
-                      {/* Subdivision Header - Improved */}
-                      <div className={`sticky top-0 z-20 backdrop-blur-xl py-3 -mx-5 px-5 border-b mb-4 ${themeClasses.subdivisionHeader}`}>
+                      {/* Subdivision Header - No gap, connects to menu */}
+                      <div className={`sticky top-0 z-20 backdrop-blur-xl py-3 px-6 border-b ${themeClasses.subdivisionHeader}`}>
                         <div className="flex items-center gap-2">
                           {isPrioritySubdivision && (
                             <span className="text-yellow-400">⭐</span>
                           )}
                           <h3
                             className={`text-sm font-bold uppercase tracking-wider ${
-                              isPrioritySubdivision
-                                ? "text-emerald-400"
-                                : "text-emerald-400"
+                              isLight ? "text-blue-600" : "text-emerald-400"
                             }`}
                           >
                             {getSubdivisionDisplayName(group.subdivision)}
                           </h3>
                         </div>
-                        <p className="text-xs text-neutral-500 mt-1">
+                        <p className={`text-xs mt-1 ${themeClasses.textTertiary}`}>
                           {group.listings.length}{" "}
                           {group.listings.length === 1 ? "property" : "properties"}
                           {isPrioritySubdivision && " • Current Selection"}
                         </p>
                       </div>
 
-                      {/* Listings - Improved Cards */}
-                      <ul className="space-y-4">
-                        {group.listings.map((listing, index) => (
-                          <li key={listing.listingKey || listing.listingId || listing._id || `listing-${index}`} className="relative group">
+                      {/* Listings - Centered with max-width container */}
+                      <div className="px-6 py-4">
+                        <div className="max-w-7xl mx-auto">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                            {group.listings.map((listing, index) => (
+                          <div key={listing.listingKey || listing.listingId || listing._id || `listing-${index}`} className="relative group">
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -384,8 +437,8 @@ export default function FavoritesPannel({
                               tabIndex={0}
                               className="w-full text-left cursor-pointer"
                             >
-                              <div className="flex flex-col rounded-xl overflow-hidden border ${themeClasses.cardBg} ${themeClasses.cardBorder} ${themeClasses.cardHoverBorder} transition-colors will-change-auto">
-                                {/* Image Container - LARGER */}
+                              <div className={`flex flex-col rounded-xl overflow-hidden border ${themeClasses.cardBg} ${themeClasses.cardBorder} ${themeClasses.cardHoverBorder} transition-colors will-change-auto`}>
+                                {/* Image Container */}
                                 <div className={`relative overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-neutral-900'}`}>
                                   <img
                                     src={listing.primaryPhotoUrl}
@@ -399,16 +452,22 @@ export default function FavoritesPannel({
                                   {/* Gradient Overlay */}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                                  {/* Price Badge - On Image */}
+                                  {/* Price Badge */}
                                   <div className="absolute bottom-3 left-3">
-                                    <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                      <p className="text-xl font-bold text-emerald-400">
+                                    <div className={`backdrop-blur-md px-3 py-1.5 rounded-lg border ${
+                                      isLight
+                                        ? 'bg-white/90 border-blue-500/30'
+                                        : 'bg-black/80 border-emerald-500/30'
+                                    }`}>
+                                      <p className={`text-lg font-bold ${
+                                        isLight ? 'text-blue-600' : 'text-emerald-400'
+                                      }`}>
                                         ${Number(listing.listPrice ?? 0).toLocaleString()}
                                       </p>
                                     </div>
                                   </div>
 
-                                  {/* Remove Buttons */}
+                                  {/* Remove Button */}
                                   {activeTab === "favorites" && (
                                     <button
                                       onClick={(e) => {
@@ -420,7 +479,7 @@ export default function FavoritesPannel({
                                       aria-label="Remove from favorites"
                                       type="button"
                                     >
-                                      <Heart className="w-5 h-5 fill-red-500" />
+                                      <Heart className="w-4 h-4 fill-red-500" />
                                     </button>
                                   )}
 
@@ -436,70 +495,69 @@ export default function FavoritesPannel({
                                       title="Click to un-dislike this listing"
                                       type="button"
                                     >
-                                      <ThumbsDown className="w-5 h-5" />
+                                      <ThumbsDown className="w-4 h-4" />
                                     </button>
                                   )}
                                 </div>
 
-                                {/* Listing Info - Better Spacing */}
-                                <div className="p-4 space-y-3">
+                                {/* Listing Info */}
+                                <div className="p-3 space-y-2">
                                   {/* Address */}
                                   <p className={`text-sm font-medium line-clamp-2 leading-relaxed ${themeClasses.text}`}>
                                     {listing.unparsedAddress || listing.address}
                                   </p>
 
-                                  {/* Property Details - Improved Pills */}
-                                  <div className="flex flex-wrap gap-2">
+                                  {/* Property Details */}
+                                  <div className="flex flex-wrap gap-1.5">
                                     {listing.bedsTotal != null && (
-                                      <span className="px-2.5 py-1 rounded-full ${themeClasses.badgeBg} text-xs font-medium">
-                                        🛏️ {listing.bedsTotal} {listing.bedsTotal === 1 ? 'Bed' : 'Beds'}
+                                      <span className={`px-2 py-0.5 rounded-full ${themeClasses.badgeBg} text-xs font-medium`}>
+                                        {listing.bedsTotal} bd
                                       </span>
                                     )}
                                     {listing.bathroomsTotalInteger != null && (
-                                      <span className="px-2.5 py-1 rounded-full ${themeClasses.badgeBg} text-xs font-medium">
-                                        🛁 {listing.bathroomsTotalInteger} {listing.bathroomsTotalInteger === 1 ? 'Bath' : 'Baths'}
+                                      <span className={`px-2 py-0.5 rounded-full ${themeClasses.badgeBg} text-xs font-medium`}>
+                                        {listing.bathroomsTotalInteger} ba
                                       </span>
                                     )}
                                     {listing.livingArea != null && (
-                                      <span className="px-2.5 py-1 rounded-full ${themeClasses.badgeBg} text-xs font-medium">
-                                        📐 {listing.livingArea.toLocaleString()} SqFt
+                                      <span className={`px-2 py-0.5 rounded-full ${themeClasses.badgeBg} text-xs font-medium`}>
+                                        {listing.livingArea.toLocaleString()} ft²
                                       </span>
                                     )}
                                   </div>
 
-                                  {/* Amenities Row */}
-                                  {(listing.lotSizeSqft != null || listing.poolYn || listing.spaYn) && (
-                                    <div className="flex flex-wrap gap-2">
-                                      {listing.lotSizeSqft != null && (
-                                        <span className="px-2.5 py-1 rounded-full ${themeClasses.badgeBg} text-xs font-medium">
-                                          🏡 {Math.round(listing.lotSizeSqft).toLocaleString()} Lot
-                                        </span>
-                                      )}
+                                  {/* Amenities */}
+                                  {(listing.poolYn || listing.spaYn) && (
+                                    <div className="flex flex-wrap gap-1.5">
                                       {listing.poolYn && (
-                                        <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full text-xs font-medium">
-                                          🏊 Pool
+                                        <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full text-xs font-medium">
+                                          Pool
                                         </span>
                                       )}
                                       {listing.spaYn && (
-                                        <span className="px-2.5 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-medium">
-                                          🧖 Spa
+                                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-medium">
+                                          Spa
                                         </span>
                                       )}
                                     </div>
                                   )}
 
-                                  {/* Remarks */}
-                                  {listing.publicRemarks && (
-                                    <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">
-                                      {listing.publicRemarks}
-                                    </p>
-                                  )}
+                                  {/* View Details Button */}
+                                  <button
+                                    className={`w-full mt-2 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                                      isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                                    }`}
+                                  >
+                                    View Details
+                                  </button>
                                 </div>
                               </div>
                             </div>
-                          </li>
-                        ))}
-                      </ul>
+                          </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 });

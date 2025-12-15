@@ -351,16 +351,24 @@ export default function MapPageClient() {
   };
 
   const advanceToNextListing = async () => {
-    console.log("🔍 === ADVANCE TO NEXT LISTING ===");
-    console.log("🔍 Current:", selectedFullListing?.unparsedAddress);
+    console.log("\n🔍 === ADVANCE TO NEXT LISTING ===");
+    console.log("🔍 Current listing:", selectedFullListing?.unparsedAddress);
+    console.log("🔍 Current listingKey:", selectedFullListing?.listingKey);
+    console.log("🔍 Queue length:", swipeQueue.queueLength);
+    console.log("🔍 Is exhausted:", swipeQueue.isExhausted);
 
     const { listing: nextListing, reason } = swipeQueue.getNext();
 
+    console.log("🔍 getNext() returned:", nextListing ? `${nextListing.slug} (${reason})` : "null");
+
     if (nextListing) {
-      console.log(`🎯 Next listing${reason ? ` (${reason})` : ''}`);
+      console.log(`🎯 Next listing found${reason ? ` (${reason})` : ''}`);
+      console.log(`🎯 Next listingKey: ${nextListing.listingKey}`);
+      console.log(`🎯 Next slug: ${nextListing.slugAddress ?? nextListing.slug}`);
 
       const nextSlug = nextListing.slugAddress ?? nextListing.slug;
       if (!nextSlug) {
+        console.warn("⚠️ Next listing has no slug - closing panel");
         handleCloseListing();
         return;
       }
@@ -376,6 +384,7 @@ export default function MapPageClient() {
           setIsLoadingListing(false);
         }
       } else {
+        console.log(`🔄 Fetching full listing data for ${nextSlug}`);
         fetchFullListing(nextSlug);
       }
 
@@ -393,14 +402,15 @@ export default function MapPageClient() {
     }
 
     // Queue exhausted
+    console.log("⚠️ No next listing available");
     if (swipeQueue.isExhausted) {
-      console.log("🏁 Queue exhausted");
+      console.log("🏁 Queue marked as exhausted - showing completion modal");
       handleCloseListing();
       setShowCompletionModal(true);
       return;
     }
 
-    console.log("⏳ Queue loading...");
+    console.log("⏳ Queue loading or in unexpected state - closing panel");
     handleCloseListing();
   };
 

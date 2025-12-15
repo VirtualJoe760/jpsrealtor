@@ -516,11 +516,24 @@ export function useSwipeQueue(): SwipeQueueHook {
   // ========================================
 
   const getNext = useCallback((): { listing: QueueItem | null; reason?: string } => {
+    console.log(`📊 getNext called - Queue length: ${queue.length}, Exclude keys: ${excludeKeys.size}`);
+    console.log(`📊 Queue listingKeys:`, queue.slice(0, 5).map(item => item.listingKey));
+    console.log(`📊 Exclude keys:`, Array.from(excludeKeys).slice(0, 5));
+
     // Filter out any newly excluded items
-    const validQueue = queue.filter(item => !excludeKeys.has(item.listingKey));
+    const validQueue = queue.filter(item => {
+      const isExcluded = excludeKeys.has(item.listingKey);
+      if (isExcluded) {
+        console.log(`🚫 Filtering out ${item.listingKey} (excluded)`);
+      }
+      return !isExcluded;
+    });
+
+    console.log(`📊 Valid queue length after filtering: ${validQueue.length}`);
+    console.log(`📊 Valid queue first 5 keys:`, validQueue.slice(0, 5).map(item => item.listingKey));
 
     if (validQueue.length === 0) {
-      console.log("⚠️ Queue exhausted");
+      console.log("⚠️ Queue exhausted - no valid listings remaining");
       setIsExhausted(true);
       return { listing: null };
     }
@@ -528,7 +541,7 @@ export function useSwipeQueue(): SwipeQueueHook {
     const next = validQueue[0];
 
     if (!next) {
-      console.log("⚠️ No valid listing found");
+      console.log("⚠️ No valid listing found (validQueue[0] is null/undefined)");
       return { listing: null };
     }
 
@@ -543,6 +556,7 @@ export function useSwipeQueue(): SwipeQueueHook {
     console.log("\n▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼");
     console.log("➡️  NEXT LISTING");
     console.log("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼");
+    console.log("Listing Key:", next.listingKey);
     console.log("Address:", next.slug);
     console.log("City:", next.city);
     console.log("Subdivision:", next.subdivisionName || "N/A");
@@ -553,7 +567,9 @@ export function useSwipeQueue(): SwipeQueueHook {
     console.log("▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n");
 
     // Remove from queue (use validQueue.slice(1) to avoid race condition with stale state)
-    setQueue(validQueue.slice(1));
+    const newQueue = validQueue.slice(1);
+    console.log(`🔄 Updating queue: ${validQueue.length} → ${newQueue.length} listings`);
+    setQueue(newQueue);
 
     return { listing: next, reason: tier };
   }, [queue, excludeKeys]);
@@ -571,12 +587,18 @@ export function useSwipeQueue(): SwipeQueueHook {
       console.log("\n" + "💚".repeat(80));
       console.log("❤️  SWIPED RIGHT (LIKED)");
       console.log("💚".repeat(80));
+      console.log("Listing Key:", listingKey);
       console.log("Address:", listingData?.unparsedAddress || listingData?.address || "N/A");
       console.log("Price: $" + (listingData?.listPrice?.toLocaleString() || "N/A"));
       console.log("💚".repeat(80) + "\n");
 
       // Update local exclude keys immediately
-      setExcludeKeys(prev => new Set([...prev, listingKey]));
+      console.log(`📝 Adding ${listingKey} to exclude keys`);
+      setExcludeKeys(prev => {
+        const newSet = new Set([...prev, listingKey]);
+        console.log(`📝 Exclude keys updated: ${prev.size} → ${newSet.size}`);
+        return newSet;
+      });
 
       // Send to server immediately (no batching)
       sendSwipe(listingKey, "like", listingData);
@@ -602,11 +624,17 @@ export function useSwipeQueue(): SwipeQueueHook {
       console.log("\n" + "💔".repeat(80));
       console.log("👎 SWIPED LEFT (DISLIKED)");
       console.log("💔".repeat(80));
+      console.log("Listing Key:", listingKey);
       console.log("Address:", listingData?.unparsedAddress || listingData?.address || "N/A");
       console.log("💔".repeat(80) + "\n");
 
       // Update local exclude keys immediately
-      setExcludeKeys(prev => new Set([...prev, listingKey]));
+      console.log(`📝 Adding ${listingKey} to exclude keys`);
+      setExcludeKeys(prev => {
+        const newSet = new Set([...prev, listingKey]);
+        console.log(`📝 Exclude keys updated: ${prev.size} → ${newSet.size}`);
+        return newSet;
+      });
 
       // Send to server immediately (no batching)
       sendSwipe(listingKey, "dislike", listingData);

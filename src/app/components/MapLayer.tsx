@@ -28,7 +28,7 @@ const DEFAULT_BOUNDS = {
   south: 32.5,
   east: -114.0,
   west: -124.5,
-  zoom: 5.5,
+  zoom: 4.8, // More zoomed out to show full California view
 };
 
 /**
@@ -90,14 +90,9 @@ export default function MapLayer() {
     setMounted(true);
   }, []);
 
-  // Initial data load (matches /map page pattern)
-  useEffect(() => {
-    if (!hasInitializedRef.current && mounted && !isPreloaded && !isLoading) {
-      hasInitializedRef.current = true;
-      console.log('🗺️ [MapLayer] Initial load triggered');
-      loadListings(DEFAULT_BOUNDS, filters);
-    }
-  }, [mounted, isPreloaded, isLoading, filters, loadListings]);
+  // Initial data load is handled by the map's onLoad event calling handleBoundsChange
+  // This ensures data is loaded for the actual visible map bounds, not the DEFAULT_BOUNDS
+  // Keeping this comment to explain why there's no initial data load here
 
   // Load listings when bounds change (user pans/zooms)
   // CRITICAL: Do NOT update viewState or any external state here!

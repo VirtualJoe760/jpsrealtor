@@ -175,24 +175,12 @@ export function useServerClusters() {
         } else if (data.type === 'listings') {
           const listings: MapListing[] = data.listings || [];
 
-          console.log('[loadMarkers] Applying center-focused clustering to', listings.length, 'listings', isMobile ? '(MOBILE)' : '(DESKTOP)');
+          console.log('[loadMarkers] Received', listings.length, 'individual listings from server');
 
-          // Apply center-focused clustering with mobile awareness
-          const { centerMarkers, peripheryClusters } = applyCenterFocusedClustering(
-            listings,
-            bounds,
-            0.75, // 75% of viewport shows as individual markers (with 1.8x multiplier = ~135% effective coverage)
-            isMobile // Pass mobile flag for adjusted clustering behavior
-          );
-
-          console.log('[loadMarkers] Center-focused clustering results:', {
-            centerMarkers: centerMarkers.length,
-            peripheryClusters: peripheryClusters.length,
-            total: centerMarkers.length + peripheryClusters.length,
-            isMobile
-          });
-
-          setMarkers([...centerMarkers, ...peripheryClusters]);
+          // DISABLE client-side clustering - server already provides optimal data
+          // At zoom 12+, show individual markers as-is
+          // At lower zooms, server provides pre-clustered boundaries
+          setMarkers(listings);
           setTotalCount({ total: data.totalCount || 0 });
         }
 

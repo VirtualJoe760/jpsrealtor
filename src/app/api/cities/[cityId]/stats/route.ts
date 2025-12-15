@@ -41,9 +41,11 @@ export async function GET(
     }
 
     // Get all matching listings from unified collection (all 8 MLSs)
+    // Use select and limit to reduce memory usage
     const allListings = await UnifiedListing.find(baseQuery)
       .select("listPrice")
       .lean()
+      .limit(5000) // Cap at 5000 to prevent excessive memory usage
       .exec();
 
     if (allListings.length === 0) {

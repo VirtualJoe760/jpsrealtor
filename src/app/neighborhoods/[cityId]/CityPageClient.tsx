@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Heart } from "lucide-react";
+import { Heart, ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import CityMap from "@/app/components/cities/CityMap";
 import CityStats from "@/app/components/cities/CityStats";
 import SubdivisionsSection from "@/app/components/cities/SubdivisionsSection";
 import HOASection from "@/app/components/cities/HOASection";
 import Link from "next/link";
-import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface CityPageClientProps {
   city: {
@@ -35,19 +35,19 @@ export default function CityPageClient({
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Theme support - Use centralized theme classes
-  const {
-    cardBg,
-    cardBorder,
-    textPrimary,
-    textSecondary,
-    textMuted,
-    buttonPrimary,
-    buttonSecondary,
-    shadow,
-    currentTheme,
-  } = useThemeClasses();
+  // Theme support
+  const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Theme-based classes
+  const textPrimary = isLight ? "text-gray-900" : "text-white";
+  const textSecondary = isLight ? "text-gray-600" : "text-gray-400";
+  const textMuted = isLight ? "text-gray-500" : "text-gray-500";
+  const cardBg = isLight ? "bg-white" : "bg-gray-800";
+  const cardBorder = isLight ? "border-gray-200" : "border-gray-700";
+  const shadow = isLight ? "shadow-lg" : "shadow-xl shadow-black/20";
+  const buttonPrimary = isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-blue-500 text-white hover:bg-blue-600";
+  const buttonSecondary = isLight ? "bg-gray-200 text-gray-900 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600";
 
   // Check if city is favorited
   useEffect(() => {
@@ -111,9 +111,35 @@ export default function CityPageClient({
     }
   };
 
+  // Helper to create slug from name
+  const createSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+  };
+
+  // Get back link for city page - goes to county
+  const countySlug = createSlug(countyName) + '-county';
+
   return (
-    <div className="min-h-screen py-12 px-4" data-page="neighborhoods-city">
+    <div className="min-h-screen pt-20 md:pt-12 px-4" data-page="neighborhoods-city">
       <div className="max-w-7xl mx-auto">
+        {/* Back to County Button */}
+        <Link
+          href={`/neighborhoods/${countySlug}`}
+          className={`inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-lg transition-all ${
+            isLight
+              ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+          }`}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Back to {countyName}</span>
+        </Link>
+
         {/* Hero Section */}
         <div className="mb-8">
           <p className={`text-sm ${textMuted} mb-2 flex items-center gap-2`}>
@@ -173,6 +199,7 @@ export default function CityPageClient({
             <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
               Listings in {city.name}
             </h2>
+
             <CityMap
               cityId={cityId}
               cityName={city.name}

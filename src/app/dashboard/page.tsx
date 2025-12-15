@@ -16,9 +16,12 @@ import {
   Trash2,
   Check,
   BarChart3,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useThemeClasses } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 import ScrollPanel from "../components/ScrollPanel";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
@@ -234,6 +237,7 @@ export default function DashboardPage() {
     textTertiary,
     shadow,
   } = useThemeClasses();
+  const { toggleTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
   // ────── Auth & initial data ──────
@@ -609,7 +613,7 @@ export default function DashboardPage() {
               <Heart className={`w-16 h-16 mx-auto mb-4 ${textTertiary}`} />
               <p className={`${textSecondary} mb-4`}>No favorites yet</p>
               <Link
-                href="/mls-listings"
+                href="/?view=map"
                 className={`inline-block px-6 py-3 rounded-lg transition-all text-white font-medium ${
                   isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
@@ -934,8 +938,26 @@ export default function DashboardPage() {
                   user.name?.[0]?.toUpperCase() || "U"
                 )}
               </div>
-              <div>
-                <h2 className={`text-2xl font-semibold ${textPrimary}`}>{user.name || "User"}</h2>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h2 className={`text-2xl font-semibold ${textPrimary}`}>{user.name || "User"}</h2>
+                  {/* Theme Toggle Icons */}
+                  <button
+                    onClick={toggleTheme}
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      isLight
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                    }`}
+                    aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+                  >
+                    {isLight ? (
+                      <Moon className="w-5 h-5" />
+                    ) : (
+                      <Sun className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
                 <p className={textSecondary}>{user.email}</p>
               </div>
             </div>

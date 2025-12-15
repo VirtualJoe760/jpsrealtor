@@ -48,7 +48,7 @@ export default function CityMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental">("sale");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<"all" | "sale" | "rental" | "multifamily" | "land">("sale");
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const [mapStyle, setMapStyle] = useState<"dark" | "light">(isLight ? "light" : "dark");
@@ -62,12 +62,13 @@ export default function CityMap({
   const [minBaths, setMinBaths] = useState<string>("");
   const [maxBaths, setMaxBaths] = useState<string>("");
 
-  // Fetch listings for this city
+  // Fetch listings for this city - deferred and limited for performance
   useEffect(() => {
-    async function fetchListings() {
+    // Defer map listings by 300ms to prioritize page render
+    const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
-          limit: "200",
+          limit: "100", // Reduced from 200 for faster loading
           propertyType: propertyTypeFilter,
         });
 
@@ -88,8 +89,9 @@ export default function CityMap({
       } finally {
         setLoading(false);
       }
-    }
-    fetchListings();
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [cityId, propertyTypeFilter, minPrice, maxPrice, minBeds, maxBeds, minBaths, maxBaths]);
 
   const handleFilterClear = () => {
@@ -587,6 +589,30 @@ export default function CityMap({
             }`}
           >
             For Rent
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("multifamily")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "multifamily"
+                ? "bg-amber-500 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            Multifamily
+          </button>
+          <button
+            onClick={() => setPropertyTypeFilter("land")}
+            className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              propertyTypeFilter === "land"
+                ? "bg-green-600 text-white shadow-lg"
+                : isLight
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            Land
           </button>
           <button
             onClick={() => setPropertyTypeFilter("all")}

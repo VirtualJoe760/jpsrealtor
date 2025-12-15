@@ -43,105 +43,79 @@ export default function AnimatedCluster({
   const displayCount = abbreviateNumber(count);
   const locationLabel = regionName || subdivisionName || cityName || countyName;
 
-  // Pin dimensions based on size - INCREASED for better visibility (especially for colorblind users)
-  const baseSizeMultiplier = 1.8; // Increased from 1.0 to make markers 80% larger
-  const pinWidth = size * 1.2 * baseSizeMultiplier;
-  const pinHeight = size * 1.5 * baseSizeMultiplier;
-  const photoSize = size * 0.9 * baseSizeMultiplier;
+  // Modern circular cluster design - compact and clean
+  const baseSizeMultiplier = 1.4; // Compact size for modern look
+  const clusterSize = size * baseSizeMultiplier;
+
+  // Size tiers for visual hierarchy
+  const getSizeClass = () => {
+    if (count > 100) return clusterSize * 1.3;
+    if (count > 50) return clusterSize * 1.15;
+    if (count > 20) return clusterSize * 1.0;
+    return clusterSize * 0.9;
+  };
+
+  const finalSize = getSizeClass();
 
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer transition-all hover:scale-110 active:scale-95 relative"
+      className="cursor-pointer transition-all hover:scale-105 active:scale-95 relative"
       style={{
         zIndex: 1000,
-        width: pinWidth,
-        height: pinHeight,
+        width: finalSize,
+        height: finalSize,
       }}
     >
-      {/* Pin drop container */}
-      <div className="relative flex flex-col items-center">
-        {/* Pin head with photo or gradient - ENHANCED for colorblind visibility */}
+      {/* Modern circular cluster */}
+      <div className="relative flex items-center justify-center">
+        {/* Outer ring with pulse animation */}
         <div
-          className={`relative rounded-t-full rounded-b-none overflow-hidden ${
+          className={`absolute inset-0 rounded-full ${
             isLight
-              ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl hover:shadow-2xl'
-              : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-xl hover:shadow-2xl'
+              ? 'bg-emerald-500/20'
+              : 'bg-emerald-400/20'
           }`}
           style={{
-            width: photoSize,
-            height: photoSize,
-            border: '4px solid white', // Increased from 3px to 4px for stronger border
-            boxShadow: isLight
-              ? '0 6px 20px rgba(0,0,0,0.3), 0 0 0 3px rgba(16, 185, 129, 0.4), 0 2px 8px rgba(16, 185, 129, 0.5)' // Stronger multi-layer shadow
-              : '0 6px 20px rgba(0,0,0,0.5), 0 0 0 3px rgba(16, 185, 129, 0.5), 0 2px 8px rgba(16, 185, 129, 0.6)',
-          }}
-        >
-          {/* Photo (if available) */}
-          {photoUrl ? (
-            <Image
-              src={photoUrl}
-              alt={locationLabel || 'Location'}
-              fill
-              className="object-cover"
-              sizes={`${photoSize}px`}
-            />
-          ) : (
-            // Default gradient background with home icon
-            <div className="w-full h-full flex items-center justify-center">
-              <svg
-                className="w-1/2 h-1/2 text-white opacity-70"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-              </svg>
-            </div>
-          )}
-
-          {/* Overlay with count */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-end justify-center pb-1">
-            <span className="text-white font-bold text-xs drop-shadow-lg">
-              {displayCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Pin point (teardrop bottom) */}
-        <div
-          className={`${
-            isLight
-              ? 'bg-gradient-to-b from-emerald-500 to-emerald-700'
-              : 'bg-gradient-to-b from-emerald-600 to-emerald-800'
-          }`}
-          style={{
-            width: 0,
-            height: 0,
-            borderLeft: `${photoSize / 6}px solid transparent`,
-            borderRight: `${photoSize / 6}px solid transparent`,
-            borderTop: `${photoSize / 3}px solid ${isLight ? '#10b981' : '#059669'}`,
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
           }}
         />
 
-        {/* Location label with ENHANCED drop shadow and stroke for better visibility */}
-        {/* Hide labels for city clusters to prevent overlapping - cities are too dense */}
-        {locationLabel && clusterType !== 'city' && (
+        {/* Main cluster circle */}
+        <div
+          className={`relative rounded-full overflow-hidden flex items-center justify-center ${
+            isLight
+              ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg hover:shadow-xl'
+              : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-lg hover:shadow-xl'
+          }`}
+          style={{
+            width: finalSize * 0.85,
+            height: finalSize * 0.85,
+            border: '3px solid white',
+            boxShadow: isLight
+              ? '0 4px 14px rgba(0,0,0,0.25), 0 0 0 2px rgba(16, 185, 129, 0.3)'
+              : '0 4px 14px rgba(0,0,0,0.4), 0 0 0 2px rgba(16, 185, 129, 0.4)',
+          }}
+        >
+          {/* Count display */}
+          <div className="text-white font-bold flex flex-col items-center justify-center">
+            <span style={{ fontSize: Math.max(12, finalSize * 0.25) }}>
+              {displayCount}
+            </span>
+            {count > 10 && (
+              <span className="text-[8px] opacity-75">listings</span>
+            )}
+          </div>
+        </div>
+
+        {/* Location label - only for larger regions */}
+        {locationLabel && clusterType !== 'city' && count > 20 && (
           <div
-            className="absolute left-1/2 transform -translate-x-1/2 text-center whitespace-nowrap font-bold transition-all hover:scale-105 pointer-events-none"
+            className="absolute left-1/2 transform -translate-x-1/2 text-center whitespace-nowrap font-bold pointer-events-none bg-white/90 dark:bg-gray-900/90 px-2 py-0.5 rounded-full shadow-sm"
             style={{
-              top: pinHeight + 6,
-              fontSize: Math.max(14, size * 0.35 * baseSizeMultiplier), // Increased font size
-              maxWidth: pinWidth * 3,
-              paddingTop: '4px', // Add top padding to prevent clipping
-              paddingBottom: '4px', // Add bottom padding to prevent clipping
-              lineHeight: '1.4', // Increase line height for better spacing
-              overflow: 'visible', // Changed from 'hidden' to prevent clipping
+              top: finalSize + 4,
+              fontSize: Math.max(10, finalSize * 0.2),
               color: isLight ? '#1f2937' : '#ffffff',
-              textShadow: isLight
-                ? '0 3px 6px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3), -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, -1px 0 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff' // Stronger stroke
-                : '0 4px 8px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.7), -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000',
-              filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.6))', // Stronger shadow
             }}
           >
             {locationLabel}

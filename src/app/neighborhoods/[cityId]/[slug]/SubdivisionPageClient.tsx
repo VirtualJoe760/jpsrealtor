@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Heart } from "lucide-react";
+import { Heart, ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -114,8 +114,21 @@ export default function SubdivisionPageClient({
   };
 
   return (
-    <div className={`min-h-screen py-12 px-4`} data-page="neighborhoods-subdivision">
+    <div className={`min-h-screen pt-20 md:pt-12 px-4`} data-page="neighborhoods-subdivision">
       <div className="max-w-7xl mx-auto">
+        {/* Back to City Button */}
+        <Link
+          href={`/neighborhoods/${cityId}`}
+          className={`inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-lg transition-all ${
+            isLight
+              ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+          }`}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Back to {subdivision.city}</span>
+        </Link>
+
         {/* Header */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div className="flex-1">

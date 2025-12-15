@@ -11,6 +11,12 @@ export interface ComponentData {
     title?: string;
     listings: Listing[];
   };
+  listView?: {
+    title?: string;
+    listings: Listing[];
+    totalCount?: number;
+    hasMore?: boolean;
+  };
   mapView?: {
     listings: any[];
     center?: { lat: number; lng: number };
@@ -56,6 +62,48 @@ export interface ComponentData {
   articles?: {
     query?: string;
     results: any[];
+  };
+  marketStats?: {
+    location?: {
+      city?: string;
+      subdivision?: string;
+      county?: string;
+    };
+    daysOnMarket?: {
+      average: number;
+      median: number;
+      min: number;
+      max: number;
+      distribution: any;
+      trend: string;
+      sampleSize: number;
+    };
+    pricePerSqft?: {
+      average: number;
+      median: number;
+      min: number;
+      max: number;
+      distribution: any;
+      sampleSize: number;
+    };
+    hoaFees?: {
+      average: number;
+      median: number;
+      min: number;
+      max: number;
+      distribution: any;
+      frequency: any;
+      sampleSize: number;
+    };
+    propertyTax?: {
+      average: number;
+      median: number;
+      min: number;
+      max: number;
+      effectiveRate: number;
+      distribution: any;
+      sampleSize: number;
+    };
   };
 }
 

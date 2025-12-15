@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Lock, Heart, Upload, Loader2, Mail } from "lucide-react";
+import { User, Lock, Upload, Loader2, Mail } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
@@ -32,16 +32,12 @@ export default function SettingsPage() {
     image: "",
   });
 
-  // Partner linking state
-  const [partnerEmail, setPartnerEmail] = useState("");
-  const [linkedPartner, setLinkedPartner] = useState<any>(null);
-
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "partner" | "marketing">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "marketing">("profile");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -75,7 +71,6 @@ export default function SettingsPage() {
           homeownerStatus: profileData.profile.homeownerStatus || "",
           image: profileData.profile.image || "",
         });
-        setLinkedPartner(profileData.profile.significantOther || null);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -137,61 +132,6 @@ export default function SettingsPage() {
         });
       } else {
         setMessage({ type: "error", text: data.error || "Failed to update 2FA" });
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: "An unexpected error occurred" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLinkPartner = async () => {
-    if (!partnerEmail.trim()) return;
-
-    setIsLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/user/link-partner", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partnerEmail }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: "success", text: "Partner linked successfully!" });
-        setLinkedPartner(data.partner);
-        setPartnerEmail("");
-      } else {
-        setMessage({ type: "error", text: data.error || "Failed to link partner" });
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: "An unexpected error occurred" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUnlinkPartner = async () => {
-    if (!confirm("Are you sure you want to unlink your partner account?")) return;
-
-    setIsLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/user/link-partner", {
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: "success", text: "Partner unlinked successfully" });
-        setLinkedPartner(null);
-      } else {
-        setMessage({ type: "error", text: data.error || "Failed to unlink partner" });
       }
     } catch (error) {
       setMessage({ type: "error", text: "An unexpected error occurred" });
@@ -269,13 +209,13 @@ export default function SettingsPage() {
 
   return (
     <SpaticalBackground showGradient={true}>
-      <div className="min-h-screen py-12 px-4 pt-24 md:pt-12">
+      <div className="min-h-screen px-4 pt-6 pb-12">
         <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+        {/* Back Button */}
+        <div className="mb-6 pt-16 md:pt-6">
           <Link
             href="/dashboard"
-            className={`inline-flex items-center transition-colors mb-4 ${
+            className={`inline-flex items-center transition-colors ${
               isLight ? "text-gray-500 hover:text-gray-900" : "text-gray-400 hover:text-white"
             }`}
           >
@@ -284,6 +224,10 @@ export default function SettingsPage() {
             </svg>
             Back to Dashboard
           </Link>
+        </div>
+
+        {/* Header */}
+        <div className="mb-8">
           <h1 className={`text-4xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>Settings</h1>
           <p className={isLight ? "text-gray-600" : "text-gray-400"}>Manage your profile and account preferences</p>
         </div>
@@ -336,21 +280,6 @@ export default function SettingsPage() {
           >
             <Lock className="w-5 h-5 inline mr-2" />
             Security
-          </button>
-          <button
-            onClick={() => setActiveTab("partner")}
-            className={`px-6 py-3 font-medium transition-all ${
-              activeTab === "partner"
-                ? isLight
-                  ? "text-gray-900 border-b-2 border-blue-500"
-                  : "text-white border-b-2 border-emerald-500"
-                : isLight
-                  ? "text-gray-500 hover:text-gray-900"
-                  : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <Heart className="w-5 h-5 inline mr-2" />
-            Partner Linking
           </button>
           <button
             onClick={() => setActiveTab("marketing")}
@@ -649,77 +578,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Partner Linking Tab */}
-        {activeTab === "partner" && (
-          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
-            isLight
-              ? "bg-white/80 border border-gray-200"
-              : "bg-gray-900/50 border border-gray-800"
-          }`}
-          style={isLight ? {
-            backdropFilter: "blur(10px) saturate(150%)",
-            WebkitBackdropFilter: "blur(10px) saturate(150%)",
-          } : undefined}
-          >
-            <h2 className={`text-2xl font-semibold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>Partner Linking</h2>
-            <p className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-              Link your account with a significant other to track joint real estate goals and preferences
-            </p>
-
-            {linkedPartner ? (
-              <div className={`rounded-lg p-6 ${
-                isLight
-                  ? "bg-gray-50 border border-gray-200"
-                  : "bg-gray-800/50 border border-gray-700"
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className={`text-lg font-medium mb-1 ${isLight ? "text-gray-900" : "text-white"}`}>Linked Partner</h3>
-                    <p className={isLight ? "text-blue-600" : "text-emerald-400"}>{linkedPartner.name || linkedPartner.email}</p>
-                    <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-500"}`}>{linkedPartner.email}</p>
-                  </div>
-                  <button
-                    onClick={handleUnlinkPartner}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Unlink
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                    Partner's Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={partnerEmail}
-                    onChange={(e) => setPartnerEmail(e.target.value)}
-                    placeholder="partner@example.com"
-                    className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                      isLight
-                        ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
-                        : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
-                    }`}
-                  />
-                </div>
-                <button
-                  onClick={handleLinkPartner}
-                  disabled={isLoading || !partnerEmail.trim()}
-                  className={`w-full px-6 py-3 font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isLight
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                      : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
-                  }`}
-                >
-                  {isLoading ? "Linking..." : "Link Partner"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Marketing Consent Tab */}
         {activeTab === "marketing" && (
@@ -752,11 +610,10 @@ export default function SettingsPage() {
                       Update Your Marketing Preferences
                     </h3>
                     <p className={`text-sm mb-4 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                      Visit our marketing consent page to update your preferences for SMS text messages and email newsletters.
-                      You can also provide additional information about your real estate goals and preferences.
+                      Contact us to update your preferences for SMS text messages, email newsletters, and other communication preferences.
                     </p>
                     <Link
-                      href="/marketing-consent"
+                      href="/contact"
                       className={`inline-flex items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 ${
                         isLight
                           ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
@@ -764,49 +621,10 @@ export default function SettingsPage() {
                       }`}
                     >
                       <Mail className="w-5 h-5 mr-2" />
-                      Go to Marketing Consent Page
+                      Contact Us
                     </Link>
                   </div>
                 </div>
-              </div>
-
-              {/* What You Can Update */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
-                  What You Can Update:
-                </h3>
-                <ul className={`space-y-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                  <li className="flex items-start gap-3">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      isLight ? "bg-blue-500" : "bg-emerald-500"
-                    }`}></span>
-                    <span><strong>SMS Text Messaging:</strong> Consent to receive both automated and person-to-person text messages</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      isLight ? "bg-blue-500" : "bg-emerald-500"
-                    }`}></span>
-                    <span><strong>Email Newsletter:</strong> Subscribe to our newsletter via SendFox</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      isLight ? "bg-blue-500" : "bg-emerald-500"
-                    }`}></span>
-                    <span><strong>Contact Information:</strong> Phone number, address, and location details</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      isLight ? "bg-blue-500" : "bg-emerald-500"
-                    }`}></span>
-                    <span><strong>Real Estate Info:</strong> Current ownership status and buying/selling timeframe</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      isLight ? "bg-blue-500" : "bg-emerald-500"
-                    }`}></span>
-                    <span><strong>Goals & Preferences:</strong> Share your real estate goals and preferences</span>
-                  </li>
-                </ul>
               </div>
 
               {/* Privacy Notice */}

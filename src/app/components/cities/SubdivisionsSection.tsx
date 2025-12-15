@@ -31,7 +31,8 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
   const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, bgTertiary } = useThemeClasses();
 
   useEffect(() => {
-    async function fetchSubdivisions() {
+    // Defer subdivisions loading by 500ms to prioritize critical content
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/cities/${cityId}/subdivisions`);
         if (res.ok) {
@@ -45,9 +46,9 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
       } finally {
         setLoading(false);
       }
-    }
+    }, 500);
 
-    fetchSubdivisions();
+    return () => clearTimeout(timer);
   }, [cityId]);
 
   if (loading) {

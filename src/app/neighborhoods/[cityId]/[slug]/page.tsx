@@ -5,7 +5,6 @@ import { Metadata } from "next";
 import SubdivisionPageClient from "./SubdivisionPageClient";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
-import { findCityByName } from "@/app/constants/counties";
 import { notFound } from "next/navigation";
 
 interface SubdivisionPageProps {
@@ -13,6 +12,16 @@ interface SubdivisionPageProps {
     cityId: string;
     slug: string;
   }>;
+}
+
+// Helper to create slug from city name
+function createSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
 }
 
 export async function generateMetadata({
@@ -29,9 +38,9 @@ export async function generateMetadata({
     };
   }
 
-  // Validate cityId matches subdivision's city
-  const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== cityId) {
+  // Validate cityId matches subdivision's city by comparing slugs
+  const citySlug = createSlug(subdivision.city);
+  if (citySlug !== cityId) {
     return {
       title: "Subdivision Not Found",
     };
@@ -56,9 +65,9 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
     notFound();
   }
 
-  // Validate cityId matches subdivision's city
-  const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== cityId) {
+  // Validate cityId matches subdivision's city by comparing slugs
+  const citySlug = createSlug(subdivision.city);
+  if (citySlug !== cityId) {
     notFound();
   }
 

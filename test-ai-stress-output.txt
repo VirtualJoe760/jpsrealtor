@@ -1,0 +1,185 @@
+Starting AI Stress Tests - 2025-12-13T23:07:22.786Z
+API Base: http://localhost:3000
+Total tests: 6
+
+================================================================================
+TEST 1/6: Multi-Subdivision Comparison
+================================================================================
+Query: Compare PGA West, Trilogy, and La Quinta Resort in terms of price, amenities, and lifestyle. Show me listings from each.
+Expected Tools: search_properties, compare_subdivisions, get_subdivision_stats
+Expected Components: carousel, comparison
+
+Sending request...
+
+✅ Test completed in 3296ms
+
+Response length: 1451 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667246085.json
+
+Response preview (first 500 chars):
+Here is a comparison of PGA West, Trilogy, and La Quinta Resort in terms of price, amenities, and lifestyle:
+
+**PGA West**
+
+* Price: $590,000 - $5,900,000
+* Amenities: 41 golf courses, 35 tennis courts, 24 pools, 15 restaurants, 10 fitness centers
+* Lifestyle: Upscale, resort-style community with a focus on golf and recreation
+* Sample Listings:
+	+ 52642 Cahuilla Court, La Quinta, CA 92253
+	+ 55556 Pinehurst, La Quinta, CA 92253
+	+ 81846 Mission Palms Drive, La Quinta, CA 92253
+
+**Trilogy**
+
+* P...
+
+Waiting 2s before next test...
+
+================================================================================
+TEST 2/6: Complex Market Analysis
+================================================================================
+Query: What are the best subdivisions in La Quinta for families? Compare schools, parks, and prices. Show me 5 listings from each top subdivision.
+Expected Tools: search_properties, get_subdivision_stats, search_schools
+Expected Components: carousel, comparison
+
+Sending request...
+
+✅ Test completed in 3447ms
+
+Response length: 1152 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667251537.json
+
+Response preview (first 500 chars):
+Based on the search results, here are the top 5 subdivisions in La Quinta for families:
+
+1. **La Quinta Village**: This subdivision offers a mix of single-family homes and townhouses, with prices ranging from $449,900 to $850,000. The average price per square foot is $2,099.
+2. **The Madison**: This subdivision features a range of single-family homes, with prices from $695,000 to $850,000. The average price per square foot is $2,099.
+3. **La Quinta Cove**: This subdivision offers a mix of single...
+
+Waiting 2s before next test...
+
+================================================================================
+TEST 3/6: Multi-City Comparison
+================================================================================
+Query: Compare real estate in Palm Desert, Indian Wells, and La Quinta. What's the price difference? Show me luxury listings from each city.
+Expected Tools: search_properties, get_city_stats, compare_cities
+Expected Components: carousel, comparison, appreciation
+
+Sending request...
+
+✅ Test completed in 10318ms
+
+Response length: 964 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667263857.json
+
+Response preview (first 500 chars):
+Based on the data provided, the average price of a home in Palm Desert is $968,506, while the average price of a home in La Quinta is $2,045,067. This means that La Quinta is approximately 2.1 times more expensive than Palm Desert.
+
+Here are some luxury listings from each city:
+
+**Palm Desert:**
+
+1. 101 Netas Court, Palm Desert, CA 92260 - $4,495,000
+2. 312 Metate Place, Palm Desert, CA 92260 - $3,100,000
+3. 702 Summit Cove, Palm Desert, CA 92260 - $4,295,000
+
+**La Quinta:**
+
+1. 45534 Indian Wel...
+
+Waiting 2s before next test...
+
+================================================================================
+TEST 4/6: Investment Analysis
+================================================================================
+Query: Which subdivisions in the Coachella Valley have the best appreciation rates? Compare the top 3 and show me investment properties.
+Expected Tools: search_properties, get_appreciation_data, compare_subdivisions
+Expected Components: carousel, appreciation, comparison
+
+Sending request...
+
+✅ Test completed in 2605ms
+
+Response length: 941 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667268471.json
+
+Response preview (first 500 chars):
+Based on the available data, it appears that there are no closed sales for the specified subdivisions in the Coachella Valley over the past 5 years. Therefore, it is not possible to determine the appreciation rates for these subdivisions.
+
+However, I can suggest some alternative options to find the top-performing subdivisions in the Coachella Valley:
+
+1. Use the `lookupSubdivision` tool to find the most popular subdivisions in the area and then use the `getAppreciation` tool to analyze their app...
+
+Waiting 2s before next test...
+
+================================================================================
+TEST 5/6: Very Long Query with Multiple Requests
+================================================================================
+Query: I'm looking to invest in La Quinta. First, show me the overall market stats. Then compare PGA West with Trilogy in terms of HOA fees, amenities, price ranges, and appreciation. After that, show me 10 listings under $1M in PGA West, and 10 listings in Trilogy between $500k-$800k. Also, what are the best schools in each area?
+Expected Tools: search_properties, get_market_stats, compare_subdivisions, get_subdivision_stats, search_schools
+Expected Components: carousel, comparison, appreciation
+
+Sending request...
+
+✅ Test completed in 15036ms
+
+Response length: 2663 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667285509.json
+
+Response preview (first 500 chars):
+The La Quinta real estate market is a popular destination for those looking to invest in luxury properties. The market has shown a volatile growth pattern over the past 5 years, with a cumulative appreciation of 15.82% and an annual appreciation rate of 2.98%. The median price in La Quinta has increased from $535,000 in 2021 to $619,620 in 2025.
+
+PGA West and Trilogy are two popular subdivisions in La Quinta, known for their luxury homes and golf courses. PGA West has a best-match subdivision na...
+
+Waiting 2s before next test...
+
+================================================================================
+TEST 6/6: Rapid-Fire Questions
+================================================================================
+Query: What's the average price in PGA West? How about Trilogy? La Quinta Resort? Madison Club? The Hideaway? Show me one listing from each.
+Expected Tools: search_properties, get_subdivision_stats
+Expected Components: carousel
+
+Sending request...
+
+✅ Test completed in 3468ms
+
+Response length: 1258 characters
+
+Components received:
+
+Log saved to: F:\web-clients\joseph-sardella\jpsrealtor\local-logs\chat-records\stress-test-1765667290979.json
+
+Response preview (first 500 chars):
+Based on the provided data, here are the average prices for each subdivision:
+
+* PGA West: The average price for PGA West is $817,638, with a price range of $449,000 to $1,385,000.
+* Trilogy: The average price for Trilogy is not available as the data does not include any listings for this subdivision.
+* La Quinta Resort: The average price for La Quinta Resort is not available as the data does not include any listings for this subdivision.
+* Madison Club: The average price for Madison Club is not...
+
+================================================================================
+TEST SUMMARY
+================================================================================
+Total tests: 6
+Successful: 6
+Failed: 0
+Total issues detected: 0
+Average duration: 6362ms
+
+✅ All tests passed with no issues!

@@ -6,8 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Map,
-  MapPin,
   Lightbulb,
   LayoutDashboard,
   Sun,
@@ -68,9 +66,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
   const menuItems = [
     { label: "Chat", icon: MessageSquare, href: "/" },
-    { label: "Map", icon: Map, href: "/map" },
     { label: "Insights", icon: Lightbulb, href: "/insights" },
-    { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 
   const dashboardItems = [

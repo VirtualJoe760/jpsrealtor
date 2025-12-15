@@ -102,12 +102,24 @@ function determineClusteringStrategy(
     return true;
   }
 
-  // Default: use hierarchical zoom-based decision
-  // Zoom < 12: Show clusters (counties or cities)
-  // Zoom 12+: Show individual listings
-  const defaultDecision = zoom < 12;
-  console.log(`🔄 Default clustering decision at zoom ${zoom} → ${defaultDecision ? 'CLUSTERS' : 'LISTINGS'}`);
-  return defaultDecision;
+  // Default: use hierarchical zoom-based decision with density awareness
+  // Zoom < 11: Always show clusters (counties or cities)
+  // Zoom 11-12: Show listings if count < 800, otherwise clusters
+  // Zoom 12+: Always show individual listings (capped at 500-600)
+  if (zoom < 11) {
+    console.log(`🔄 Zoom ${zoom} < 11 → CLUSTERS (hierarchical boundaries)`);
+    return true;
+  }
+
+  if (zoom >= 11 && zoom < 12) {
+    const showListings = actualListingCount < 800;
+    console.log(`🔄 Zoom ${zoom} (11-12 transition) → ${showListings ? 'LISTINGS' : 'CLUSTERS'} (count: ${actualListingCount})`);
+    return !showListings;
+  }
+
+  // Zoom 12+: Always show listings
+  console.log(`🔄 Zoom ${zoom} >= 12 → LISTINGS (individual markers)`);
+  return false;
 }
 
 // Legacy function - kept for backward compatibility
@@ -778,10 +790,61 @@ export async function GET(req: NextRequest) {
         .sort({ listingCount: -1 }) // Sort by population (listing count) descending
         .lean();
 
-        console.log(`📍 Found ${cities.length} cities in viewport (zoom ${zoom}, showing all cities with boundaries)`);
+        console.log(`📍 Found ${cities.length} cities in viewport (zoom ${zoom})`);
 
-        // Calculate total listing count from cities (avoid expensive UnifiedListing count)
+        // Calculate total listing count from cities
         listingCount = cities.reduce((sum, city: any) => sum + (city.listingCount || 0), 0);
+
+        // At zoom 11, if there are very few listings, skip city boundaries and show listings directly
+        if (zoom >= 11 && listingCount > 0 && listingCount <= 300) {
+          console.log(`✨ Zoom ${zoom} with only ${listingCount} listings → Skipping city boundaries, showing individual listings`);
+
+          // Fetch listings directly instead of showing city boundaries
+          const listings = await UnifiedListing.find(matchStage)
+            .select({
+              listingId: 1,
+              listingKey: 1,
+              slug: 1,
+              slugAddress: 1,
+              latitude: 1,
+              longitude: 1,
+              listPrice: 1,
+              bedroomsTotal: 1,
+              bedsTotal: 1,
+              bathroomsTotalDecimal: 1,
+              livingArea: 1,
+              address: 1,
+              unparsedAddress: 1,
+              city: 1,
+              propertyType: 1,
+              propertySubType: 1,
+              mlsSource: 1,
+              poolYn: 1,
+              spaYn: 1,
+              primaryPhotoUrl: 1,
+            })
+            .limit(500)
+            .lean();
+
+          return NextResponse.json(
+            {
+              type: "listings",
+              zoom,
+              listings,
+              totalCount: listingCount,
+              listingCount: listings.length,
+              context,
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400',
+                'CDN-Cache-Control': 'max-age=1800',
+                'Vary': 'Accept-Encoding',
+              }
+            }
+          );
+        }
 
         // Transform City documents to cluster format
         clusters = cities.map((city: any) => ({
@@ -814,12 +877,15 @@ export async function GET(req: NextRequest) {
           {
             $group: {
               _id: {
-                // Round lat/lng to grid cells
+                // Round lat/lng to grid cells FOR GROUPING ONLY
                 lat: { $multiply: [{ $round: { $divide: ["$latitude", gridSize] } }, gridSize] },
                 lng: { $multiply: [{ $round: { $divide: ["$longitude", gridSize] } }, gridSize] }
               },
               // Count listings in this cluster
               count: { $sum: 1 },
+              // Calculate ACTUAL centroid (average position) of all listings in cluster
+              actualLat: { $avg: "$latitude" },
+              actualLng: { $avg: "$longitude" },
               // Calculate average price
               avgPrice: { $avg: "$listPrice" },
               // Track property types in cluster
@@ -834,12 +900,13 @@ export async function GET(req: NextRequest) {
             }
           },
 
-          // Stage 3: Project cluster data
+          // Stage 3: Project cluster data with ACTUAL centroid positions
           {
             $project: {
               _id: 0,
-              latitude: "$_id.lat",
-              longitude: "$_id.lng",
+              // Use ACTUAL centroid instead of grid position for natural placement
+              latitude: "$actualLat",
+              longitude: "$actualLng",
               count: 1,
               avgPrice: { $round: "$avgPrice" },
               minPrice: 1,

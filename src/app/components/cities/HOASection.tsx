@@ -23,7 +23,8 @@ export default function HOASection({ cityId }: HOASectionProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary, shadow, bgTertiary } = useThemeClasses();
 
   useEffect(() => {
-    async function fetchHOAData() {
+    // Defer HOA data loading by 1 second to prioritize critical content
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/cities/${cityId}/hoa`);
         if (res.ok) {
@@ -35,9 +36,9 @@ export default function HOASection({ cityId }: HOASectionProps) {
       } finally {
         setLoading(false);
       }
-    }
+    }, 1000);
 
-    fetchHOAData();
+    return () => clearTimeout(timer);
   }, [cityId]);
 
   if (loading) {

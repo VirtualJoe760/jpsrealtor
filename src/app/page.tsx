@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
@@ -11,7 +12,7 @@ import ChatWidget from "@/app/components/chat/ChatWidget";
 import MapLayer from "@/app/components/MapLayer";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
-import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import type { Filters } from "@/types/types";
 
 // Dynamic imports for map panels (client-side only)
@@ -26,6 +27,8 @@ const FavoritesPannel = dynamic(
 );
 
 function HomeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const {
     selectedListing,
@@ -49,10 +52,38 @@ function HomeContent() {
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   // Import theme context
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Check for view parameter on initial mount
+  useEffect(() => {
+    const viewParam = searchParams?.get('view');
+    const mapParam = searchParams?.get('map');
+
+    if (viewParam === 'map' || mapParam === 'open') {
+      if (!isMapVisible) {
+        showMapAtLocation(33.8303, -116.5453, 12);
+      }
+    }
+
+    setInitialLoad(false);
+  }, []); // Only run on mount
+
+  // Update URL when map visibility changes (but not on initial load)
+  useEffect(() => {
+    if (initialLoad) return;
+
+    const currentView = searchParams?.get('view');
+
+    if (isMapVisible && currentView !== 'map') {
+      router.replace('/?view=map', { scroll: false });
+    } else if (!isMapVisible && currentView === 'map') {
+      router.replace('/', { scroll: false });
+    }
+  }, [isMapVisible, initialLoad]);
 
   // Listen for map controls toggle event from ChatWidget
   useEffect(() => {
@@ -143,32 +174,6 @@ function HomeContent() {
       >
         <MapLayer />
       </div>
-
-      {/* Map/Chat Toggle Button - Aligned with info panel center - Green glow style matching hamburger */}
-      <button
-        onClick={handleToggleMap}
-        className="fixed top-6 right-4 z-30 w-16 h-16 flex items-center justify-center rounded-xl transition-transform active:scale-95"
-        aria-label={isMapVisible ? "Show Chat" : "Show Map"}
-      >
-        <svg
-          className={`w-8 h-8`}
-          fill={isLight ? "#1e40af" : "#10b981"}
-          viewBox="0 0 24 24"
-          style={{
-            filter: isLight
-              ? "drop-shadow(0 0 10px rgba(30,64,175,0.5))"
-              : "drop-shadow(0 0 10px rgba(16,185,129,0.5))"
-          }}
-        >
-          {isMapVisible ? (
-            // Chat icon when map is visible (go back to chat) - Filled version
-            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2v-2zm0-10h2v8h-2V6z" />
-          ) : (
-            // Map icon when chat is visible (show map) - Filled version
-            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
-          )}
-        </svg>
-      </button>
 
       {/* Favorites Button - Above bottom navigation (when map is visible and has favorites) */}
       {isMapVisible && likedListings.length > 0 && (

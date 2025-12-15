@@ -3,43 +3,127 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { findCountyBySlug, soCalCounties, CountyCity } from "@/app/constants/counties";
-import CountyCityGrid from "@/app/components/neighborhoods/CountyCityGrid";
 import CityPageClient from "./CityPageClient";
 import dbConnect from "@/lib/mongoose";
 import { City } from "@/models/cities";
 
-// Helper function to find a city across all counties
-function findCityById(cityId: string): { city: CountyCity; countyName: string } | null {
-  for (const county of soCalCounties) {
-    const city = county.cities.find((c) => c.id === cityId);
-    if (city) {
-      return { city, countyName: county.name };
-    }
-  }
-  return null;
+interface CityData {
+  name: string;
+  slug: string;
+  listings: number;
 }
 
-// Generate metadata for the city or county page
+interface CountyData {
+  name: string;
+  slug: string;
+  listings: number;
+  cities: CityData[];
+}
+
+interface RegionData {
+  name: string;
+  slug: string;
+  listings: number;
+  counties: CountyData[];
+}
+
+// Types for different page types
+type PageType = 'city' | 'county' | 'region';
+
+interface PageData {
+  type: PageType;
+  city?: CityData;
+  countyName?: string;
+  county?: CountyData;
+  region?: RegionData;
+}
+
+// Fetch data from neighborhoods API (handles cities, counties, and regions)
+async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
+  try {
+    const response = await fetch(`http://localhost:3000/api/neighborhoods/directory`, {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    if (!data.success || !data.data) return null;
+
+    const regions = data.data as RegionData[];
+
+    // Check if it's a region slug
+    const region = regions.find(r => r.slug === slug);
+    if (region) {
+      return { type: 'region', region };
+    }
+
+    // Check if it's a county slug (ends with -county)
+    for (const region of regions) {
+      const county = region.counties.find((c: CountyData) => c.slug === slug);
+      if (county) {
+        return { type: 'county', county, region };
+      }
+    }
+
+    // Check if it's a city slug
+    for (const region of regions) {
+      for (const county of region.counties) {
+        const city = county.cities.find((c: CityData) => c.slug === slug);
+        if (city) {
+          return { type: 'city', city, countyName: county.name };
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching data from API:', error);
+    return null;
+  }
+}
+
+// Generate metadata for the page (city, county, or region)
 export async function generateMetadata({ params }: { params: Promise<{ cityId: string }> }): Promise<Metadata> {
   const { cityId } = await params;
 
-  // Check if this is a county
-  const county = findCountyBySlug(cityId);
-  if (county) {
+  // Fetch page data from API
+  const pageData = await getPageDataFromAPI(cityId);
+
+  if (!pageData) {
     return {
-      title: `${county.name} Real Estate | Cities & Neighborhoods`,
-      description: `Explore homes and properties across ${county.name}. ${county.description}`,
+      title: 'Not Found',
+      description: 'The requested page could not be found.',
     };
   }
 
-  // Otherwise check if it's a city
-  const cityData = findCityById(cityId);
-  if (!cityData) return {};
+  if (pageData.type === 'city' && pageData.city) {
+    return {
+      title: `${pageData.city.name} Real Estate | ${pageData.countyName}`,
+      description: `Explore homes and properties in ${pageData.city.name}, ${pageData.countyName}. Browse ${pageData.city.listings.toLocaleString()} active listings.`,
+    };
+  }
+
+  if (pageData.type === 'county' && pageData.county) {
+    const citiesCount = pageData.county.cities.length;
+    return {
+      title: `${pageData.county.name} Real Estate | California Homes`,
+      description: `Explore ${pageData.county.listings.toLocaleString()} active listings across ${citiesCount} cities in ${pageData.county.name}. Find your perfect home in California.`,
+    };
+  }
+
+  if (pageData.type === 'region' && pageData.region) {
+    const countiesCount = pageData.region.counties.length;
+    return {
+      title: `${pageData.region.name} Real Estate | California Properties`,
+      description: `Discover ${pageData.region.listings.toLocaleString()} homes for sale across ${countiesCount} counties in ${pageData.region.name}. Browse listings and find your dream home.`,
+    };
+  }
 
   return {
-    title: `${cityData.city.name} Real Estate | ${cityData.countyName}`,
-    description: `Explore homes and properties in ${cityData.city.name}, a beautiful community in ${cityData.countyName}.`,
+    title: 'California Real Estate',
+    description: 'Find your perfect home in California',
   };
 }
 
@@ -47,60 +131,72 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
   const resolvedParams = await params;
   const { cityId } = resolvedParams;
 
-  // Check if this is a county first
-  const county = findCountyBySlug(cityId);
-  if (county) {
-    return <CountyCityGrid county={county} />;
-  }
+  // Fetch page data from API
+  const pageData = await getPageDataFromAPI(cityId);
 
-  // Find the city data based on cityId across all counties
-  const cityData = findCityById(cityId);
-
-  // Handle city not found
-  if (!cityData) {
+  // Handle not found
+  if (!pageData) {
     notFound(); // Returns a 404 page
   }
 
-  const { city, countyName } = cityData;
+  // Handle region pages - regions are shown in the directory, not as individual pages
+  if (pageData.type === 'region' && pageData.region) {
+    // Redirect to neighborhoods directory
+    notFound();
+  }
 
-  // Get city data from the Cities model
-  await dbConnect();
+  // Handle county pages - use CountyCityGrid component
+  if (pageData.type === 'county' && pageData.county) {
+    const CountyCityGrid = require('@/app/components/neighborhoods/CountyCityGrid').default;
+    return <CountyCityGrid county={pageData.county} />;
+  }
 
-  const cityDoc = await City.findOne({ slug: cityId }).lean().exec();
+  // Handle city pages - existing functionality
+  if (pageData.type === 'city' && pageData.city) {
+    const { city, countyName } = pageData;
 
-  // Convert MongoDB document to a plain serializable object
-  const serializedCityDoc = cityDoc
-    ? {
-        ...cityDoc,
-        _id: cityDoc._id.toString(),
-        createdAt: cityDoc.createdAt?.toISOString() || null,
-        updatedAt: cityDoc.updatedAt?.toISOString() || null,
-        lastUpdated: cityDoc.lastUpdated?.toISOString() || null,
-      }
-    : null;
+    // Get city data from the Cities model
+    await dbConnect();
 
-  // Fallback if city not found in database
-  const initialStats = cityDoc
-    ? {
-        listingCount: cityDoc.listingCount,
-        avgPrice: cityDoc.avgPrice,
-        medianPrice: cityDoc.medianPrice || 0,
-        priceRange: cityDoc.priceRange,
-      }
-    : {
-        listingCount: 0,
-        avgPrice: 0,
-        medianPrice: 0,
-        priceRange: { min: 0, max: 0 },
-      };
+    const cityDoc = await City.findOne({ slug: cityId }).lean().exec();
 
-  return (
-    <CityPageClient
-      city={city}
-      countyName={countyName}
-      cityId={cityId}
-      cityDoc={serializedCityDoc}
-      initialStats={initialStats}
-    />
-  );
+    // Convert MongoDB document to a plain serializable object
+    const serializedCityDoc = cityDoc
+      ? {
+          ...cityDoc,
+          _id: cityDoc._id.toString(),
+          createdAt: cityDoc.createdAt?.toISOString() || null,
+          updatedAt: cityDoc.updatedAt?.toISOString() || null,
+          lastUpdated: cityDoc.lastUpdated?.toISOString() || null,
+        }
+      : null;
+
+    // Fallback if city not found in database
+    const initialStats = cityDoc
+      ? {
+          listingCount: cityDoc.listingCount,
+          avgPrice: cityDoc.avgPrice,
+          medianPrice: cityDoc.medianPrice || 0,
+          priceRange: cityDoc.priceRange,
+        }
+      : {
+          listingCount: 0,
+          avgPrice: 0,
+          medianPrice: 0,
+          priceRange: { min: 0, max: 0 },
+        };
+
+    return (
+      <CityPageClient
+        city={city}
+        countyName={countyName!}
+        cityId={cityId}
+        cityDoc={serializedCityDoc}
+        initialStats={initialStats}
+      />
+    );
+  }
+
+  // Fallback - should never reach here
+  notFound();
 }

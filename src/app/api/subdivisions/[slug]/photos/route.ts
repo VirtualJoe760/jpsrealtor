@@ -1,5 +1,5 @@
 // src/app/api/subdivisions/[slug]/photos/route.ts
-// API route for getting cached photos from all listings in a subdivision
+// API route for getting photos from all listings in a subdivision via Spark API
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
@@ -30,29 +30,17 @@ export async function GET(
     // Build query for listings in subdivision
     const listingQuery: any = {
       standardStatus: "Active",
+      city: { $regex: new RegExp(`^${subdivision.city}$`, 'i') },
     };
 
-    // Handle Non-HOA subdivisions differently
-    if (subdivision.name.startsWith("Non-HOA ")) {
-      const cityName = subdivision.name.replace("Non-HOA ", "");
-      listingQuery.city = cityName;
-      listingQuery.$or = [
-        { subdivisionName: { $exists: false } },
-        { subdivisionName: null },
-        { subdivisionName: "" },
-        { subdivisionName: { $regex: /^(not applicable|n\/?a|none)$/i } },
-      ];
-    } else {
+    // If it's not a "Non-HOA" subdivision, also filter by subdivision name
+    if (!subdivision.name.startsWith("Non-HOA ")) {
       listingQuery.subdivisionName = subdivision.name;
-      listingQuery.city = subdivision.city;
     }
 
-    // Get listings from unified collection with media
-    const listings = await UnifiedListing.find({
-      ...listingQuery,
-      "media.0": { $exists: true }, // Only listings with photos
-    })
-      .select("listingKey unparsedAddress slugAddress listPrice bedroomsTotal bathroomsTotalDecimal media city stateOrProvince postalCode")
+    // Get listings from unified collection
+    const listings = await UnifiedListing.find(listingQuery)
+      .select("listingKey unparsedAddress slugAddress listPrice bedroomsTotal bathroomsTotalDecimal primaryPhotoUrl city stateOrProvince postalCode")
       .limit(limit)
       .lean();
 
@@ -60,16 +48,54 @@ export async function GET(
       return NextResponse.json({ photos: [] });
     }
 
-    // Transform listings to photo format
-    const transformedPhotos = listings
-      .map((listing: any) => {
-        const media = listing.media || [];
-        // Find primary photo or use first photo
-        const primaryPhoto = media.find(
-          (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
-        ) || media[0];
+    // Fetch photos for each listing using the same photo API that MLS listings use
+    const photoPromises = listings.map(async (listing: any) => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const photosRes = await fetch(
+          `${baseUrl}/api/listings/${listing.listingKey}/photos`,
+          {
+            cache: "no-store",
+            headers: { "Accept": "application/json" }
+          }
+        );
 
-        if (!primaryPhoto) return null;
+        if (!photosRes.ok) {
+          // Fallback to primaryPhotoUrl if API fails
+          return {
+            photoId: listing.listingKey,
+            listingId: listing.listingKey,
+            slug: listing.slugAddress || listing.listingKey,
+            caption: "",
+            src: listing.primaryPhotoUrl || "",
+            thumb: listing.primaryPhotoUrl || "",
+            address: listing.unparsedAddress || "Address not available",
+            listPrice: listing.listPrice || 0,
+            bedroomsTotal: listing.bedroomsTotal || 0,
+            bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
+          };
+        }
+
+        const photosData = await photosRes.json();
+        const photos = photosData.photos || [];
+
+        // Use first photo from the array
+        const firstPhoto = photos[0];
+        if (!firstPhoto) {
+          // No photos from API, use primaryPhotoUrl
+          return {
+            photoId: listing.listingKey,
+            listingId: listing.listingKey,
+            slug: listing.slugAddress || listing.listingKey,
+            caption: "",
+            src: listing.primaryPhotoUrl || "",
+            thumb: listing.primaryPhotoUrl || "",
+            address: listing.unparsedAddress || "Address not available",
+            listPrice: listing.listPrice || 0,
+            bedroomsTotal: listing.bedroomsTotal || 0,
+            bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
+          };
+        }
 
         // Build complete address
         const addressParts = [
@@ -81,23 +107,43 @@ export async function GET(
         const fullAddress = addressParts.join(", ");
 
         return {
-          photoId: primaryPhoto.MediaKey,
+          photoId: firstPhoto.mediaKey || listing.listingKey,
           listingId: listing.listingKey,
           slug: listing.slugAddress || listing.listingKey,
-          caption: primaryPhoto.ShortDescription || "",
-          src: primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640,
-          thumb: primaryPhoto.UriThumb || primaryPhoto.Uri300,
+          caption: firstPhoto.caption || firstPhoto.shortDescription || "",
+          src: firstPhoto.uri1600 || firstPhoto.uri1280 || firstPhoto.uri1024 || firstPhoto.uri800 || firstPhoto.uriLarge || "",
+          thumb: firstPhoto.uriThumb || firstPhoto.uri300 || "",
           address: fullAddress || "Address not available",
           listPrice: listing.listPrice || 0,
           bedroomsTotal: listing.bedroomsTotal || 0,
           bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
         };
-      })
-      .filter((p) => p && p.src); // Only include photos with valid src
+      } catch (err) {
+        console.error(`Failed to fetch photos for ${listing.listingKey}:`, err);
+        // Fallback to primaryPhotoUrl on error
+        return {
+          photoId: listing.listingKey,
+          listingId: listing.listingKey,
+          slug: listing.slugAddress || listing.listingKey,
+          caption: "",
+          src: listing.primaryPhotoUrl || "",
+          thumb: listing.primaryPhotoUrl || "",
+          address: listing.unparsedAddress || "Address not available",
+          listPrice: listing.listPrice || 0,
+          bedroomsTotal: listing.bedroomsTotal || 0,
+          bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
+        };
+      }
+    });
+
+    const allPhotos = await Promise.all(photoPromises);
+
+    // Filter out photos without valid src
+    const validPhotos = allPhotos.filter((p) => p && p.src);
 
     return NextResponse.json({
-      photos: transformedPhotos,
-      total: transformedPhotos.length,
+      photos: validPhotos,
+      total: validPhotos.length,
       subdivision: {
         name: subdivision.name,
         city: subdivision.city,

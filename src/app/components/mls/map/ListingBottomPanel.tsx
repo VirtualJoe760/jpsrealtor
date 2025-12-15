@@ -341,7 +341,7 @@ export default function ListingBottomPanel({
       onDragEnd={handleDragEnd}
       animate={controls}
       exit={{ opacity: 0, y: 36, transition: { duration: 0.15 } }}
-      className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden max-h-[85vh] sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${
+      className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden max-h-screen sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${
         isLight ? 'text-gray-900' : 'text-white'
       }`}
       style={{

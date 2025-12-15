@@ -59,6 +59,7 @@ export async function getActiveListingsByCity(
   filters: ActiveListingsFilters = {}
 ): Promise<ActiveListing[]> {
   const query = combineFilters({ city, ...filters });
+
   const listings = await UnifiedListing.find(query)
     .select(getFieldSelection())
     .limit(filters.limit || 100)

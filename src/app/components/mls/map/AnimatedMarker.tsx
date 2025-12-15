@@ -10,6 +10,7 @@ interface AnimatedMarkerProps {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   isLight?: boolean;
+  showAsDot?: boolean; // New prop: if true, render as small dot instead of price bubble
 }
 
 function getMarkerStyles(
@@ -67,7 +68,8 @@ export default function AnimatedMarker({
   onClick,
   onMouseEnter,
   onMouseLeave,
-  isLight = false
+  isLight = false,
+  showAsDot = false
 }: AnimatedMarkerProps) {
   const markerStyles = getMarkerStyles(
     propertyType,
@@ -77,20 +79,44 @@ export default function AnimatedMarker({
     isLight
   );
 
+  // Dot mode: render as small circular dot
+  if (showAsDot) {
+    return (
+      <div
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        className={`
+          cursor-pointer rounded-full
+          transition-all duration-200 active:scale-90
+          ${markerStyles}
+          ${isSelected ? 'w-4 h-4 scale-125 z-[100] ring-2 ring-white' : isHovered ? 'w-3.5 h-3.5 scale-110 z-40 shadow-lg' : 'w-3 h-3 scale-100 z-30'}
+        `}
+        style={{
+          minWidth: isSelected ? '16px' : isHovered ? '14px' : '12px',
+          minHeight: isSelected ? '16px' : isHovered ? '14px' : '12px',
+        }}
+      />
+    );
+  }
+
+  // Price bubble mode: original behavior
   return (
     <div
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={`
-        cursor-pointer px-2 py-1 rounded-md text-xs font-semibold whitespace-nowrap
-        transition-all duration-150 active:scale-95
+        cursor-pointer px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap
+        transition-all duration-200 active:scale-90
         ${markerStyles}
-        ${isSelected ? 'scale-125 z-[100]' : isHovered ? 'scale-110 z-40 shadow-lg' : 'scale-100 z-30'}
+        ${isSelected ? 'scale-110 z-[100] ring-2 ring-white ring-offset-1' : isHovered ? 'scale-105 z-40 shadow-xl' : 'scale-100 z-30'}
       `}
       style={{
-        fontFamily: "Raleway, sans-serif",
-        letterSpacing: "-0.01em"
+        fontFamily: "Inter, system-ui, sans-serif",
+        letterSpacing: "-0.02em",
+        minHeight: "18px",
+        lineHeight: "18px"
       }}
     >
       {price}
