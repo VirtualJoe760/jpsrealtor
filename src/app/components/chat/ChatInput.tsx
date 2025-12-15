@@ -33,6 +33,27 @@ export default function ChatInput({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
+  // iOS Safari fix: Force viewport recalculation when keyboard closes
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Force a layout recalculation to fix "frozen" state after keyboard closes
+    if (typeof window !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      // Method 1: Force a minimal scroll to trigger reflow
+      window.scrollTo(0, 0);
+
+      // Method 2: Force immediate viewport height recalculation
+      setTimeout(() => {
+        // Trigger a reflow by reading a layout property
+        const _ = document.body.offsetHeight;
+
+        // Force repaint by toggling a style
+        document.body.style.transform = 'translateZ(0)';
+        requestAnimationFrame(() => {
+          document.body.style.transform = '';
+        });
+      }, 100);
+    }
+  };
+
   // Landing variant - prominent, centered
   if (variant === "landing") {
     return (
@@ -54,6 +75,7 @@ export default function ChatInput({
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={onKeyPress}
             onKeyDown={onKeyDown}
+            onBlur={handleBlur}
             placeholder={placeholder}
             disabled={isLoading}
             autoComplete="off"
@@ -114,6 +136,7 @@ export default function ChatInput({
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={onKeyPress}
             onKeyDown={onKeyDown}
+            onBlur={handleBlur}
             placeholder={placeholder}
             disabled={isLoading}
             autoComplete="off"
@@ -184,12 +207,14 @@ export default function ChatInput({
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={onKeyPress}
             onKeyDown={onKeyDown}
+            onBlur={handleBlur}
             placeholder={placeholder}
             disabled={isLoading}
             autoComplete="off"
             className={`w-full px-4 sm:px-6 py-4 sm:py-4 pr-24 sm:pr-28 bg-transparent outline-none rounded-2xl text-base sm:text-[15px] font-medium tracking-[-0.01em] ${
               isLight ? "text-gray-900 placeholder-gray-500" : "text-white placeholder-neutral-400"
             }`}
+            style={{ fontSize: '16px' }} // Prevent iOS zoom on focus
           />
           {showNewChatButton && onNewChat && (
             <button
