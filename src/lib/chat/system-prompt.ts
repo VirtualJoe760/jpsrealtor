@@ -291,7 +291,7 @@ When a user asks to "show me homes in [location]":
 
    [SOURCES]
    [
-     {"type": "mls", "name": "Multiple Listing Service", "abbreviation": "MLS"}
+     {"type": "mls", "name": "California Regional MLS", "abbreviation": "CRMLS"}
    ]
    [/SOURCES]
 

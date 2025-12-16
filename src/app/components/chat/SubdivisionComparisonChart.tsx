@@ -35,12 +35,17 @@ interface SubdivisionComparisonChartProps {
 }
 
 export default function SubdivisionComparisonChart({
-  items,
+  items = [],
   title = "Comparison"
 }: SubdivisionComparisonChartProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  // Guard against undefined or invalid items
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return null;
+  }
 
   const formatPrice = (price?: number) => {
     if (!price) return "—";
