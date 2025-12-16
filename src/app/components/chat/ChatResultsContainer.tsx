@@ -42,45 +42,73 @@ export default function ChatResultsContainer({
       {/* Listing Carousel or List View with Toggle */}
       {hasCarousel && (
         <div>
-          {/* Toggle View Mode Button */}
-          <div className="flex justify-end mb-3">
-            <button
-              onClick={() => setListingViewMode(listingViewMode === 'carousel' ? 'list' : 'carousel')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                isLight
-                  ? 'bg-white text-blue-600 hover:bg-blue-50 border border-blue-200 shadow-sm'
-                  : 'bg-neutral-800 text-emerald-400 hover:bg-neutral-700 border border-neutral-600 shadow-md'
-              }`}
-            >
-              {listingViewMode === 'carousel' ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  <span>List View</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                  </svg>
-                  <span>Carousel View</span>
-                </>
-              )}
-            </button>
-          </div>
+          {/* Title and Toggle Pill */}
+          {components.carousel.title && (
+            <div className="mb-3">
+              <p className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                {components.carousel.title}
+              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>
+                  {components.carousel.listings.length} properties found
+                </p>
+
+                {/* Pill Toggle */}
+                <div className={`inline-flex rounded-full p-0.5 ${
+                  isLight
+                    ? 'bg-gray-200'
+                    : 'bg-neutral-700'
+                }`}>
+                  <button
+                    onClick={() => setListingViewMode('carousel')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      listingViewMode === 'carousel'
+                        ? isLight
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'bg-neutral-800 text-emerald-400 shadow-md'
+                        : isLight
+                          ? 'text-gray-600 hover:text-gray-900'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    <span>Panels</span>
+                  </button>
+                  <button
+                    onClick={() => setListingViewMode('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      listingViewMode === 'list'
+                        ? isLight
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'bg-neutral-800 text-emerald-400 shadow-md'
+                        : isLight
+                          ? 'text-gray-600 hover:text-gray-900'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span>List</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Render based on view mode */}
           {listingViewMode === 'carousel' ? (
             <ListingCarousel
               listings={components.carousel.listings}
-              title={components.carousel.title}
+              title="" // Don't show title in carousel since we show it above
               onOpenPanel={onOpenListingPanel}
             />
           ) : (
             <ListingListView
               listings={components.carousel.listings}
-              title={components.carousel.title}
+              title="" // Don't show title in list view since we show it above
               totalCount={components.carousel.listings.length}
               hasMore={false}
               onOpenPanel={onOpenListingPanel}
