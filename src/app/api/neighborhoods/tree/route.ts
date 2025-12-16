@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           counties: 1,
         },
       },
-      { $sort: { listings: -1 } },
+      { $sort: { listings: -1 as const } },
     ];
 
     const results = await UnifiedListing.aggregate(pipeline).exec();

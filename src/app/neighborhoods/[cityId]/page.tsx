@@ -153,7 +153,8 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
 
   // Handle city pages - existing functionality
   if (pageData.type === 'city' && pageData.city) {
-    const { city, countyName } = pageData;
+    const { city: cityData, countyName } = pageData;
+    const city = { ...cityData, id: cityId };
 
     // Get city data from the Cities model
     await dbConnect();

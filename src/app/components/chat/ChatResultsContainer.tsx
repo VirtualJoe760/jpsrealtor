@@ -20,7 +20,8 @@ export default function ChatResultsContainer({
   components,
   onOpenListingPanel,
 }: ChatResultsContainerProps) {
-  const { isLight } = useTheme();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === 'lightgradient';
   const [listingViewMode, setListingViewMode] = useState<'carousel' | 'list'>('carousel');
 
   // Check if we have any components to render
