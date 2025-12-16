@@ -16,6 +16,7 @@ import { SourceBubbles } from "./SourceBubble";
 import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
+import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
 
 // New modular components
 import ChatInput from "./ChatInput";
@@ -573,9 +574,30 @@ export default function ChatWidget() {
 
   // Listing panel handlers
   const handleOpenListingPanel = async (listings: Listing[], startIndex: number) => {
-    const listing = listings[startIndex];
+    console.log('[ChatWidget] Opening panel for listing:', listings[startIndex]);
 
-    console.log('[ChatWidget] Opening panel for listing:', listing);
+    // Extract filters from user's last query
+    const lastUserMessage = messages
+      .filter(m => m.role === 'user')
+      .pop()?.content || '';
+
+    const filters = extractFiltersFromQuery(lastUserMessage);
+    console.log('[ChatWidget] Extracted filters from query:', filters);
+
+    // Apply filters to listings (client-side)
+    let filteredListings = applyFiltersToListings(listings, filters);
+    console.log(`[ChatWidget] Filtered listings: ${listings.length} → ${filteredListings.length}`);
+
+    // Fallback if filters are too restrictive
+    if (filteredListings.length === 0) {
+      console.warn('[ChatWidget] Filters too restrictive, using all listings');
+      filteredListings = listings;
+    }
+
+    // Adjust startIndex if needed (in case filtered)
+    const adjustedIndex = Math.min(startIndex, filteredListings.length - 1);
+
+    const listing = filteredListings[adjustedIndex];
 
     // Fetch full listing data from API to ensure we have ALL fields
     try {
@@ -594,11 +616,11 @@ export default function ChatWidget() {
           });
 
           // Merge full data with chat listing (full data takes priority)
-          const enrichedListings = [...listings];
-          enrichedListings[startIndex] = { ...listing, ...fullData };
+          const enrichedListings = [...filteredListings];
+          enrichedListings[adjustedIndex] = { ...listing, ...fullData };
 
           setCurrentListingQueue(enrichedListings);
-          setCurrentListingIndex(startIndex);
+          setCurrentListingIndex(adjustedIndex);
           setShowListingPanel(true);
           return;
         } else {
@@ -609,9 +631,9 @@ export default function ChatWidget() {
       console.error('[ChatWidget] Error fetching full listing data:', error);
     }
 
-    // Fallback to using chat data as-is
-    setCurrentListingQueue(listings);
-    setCurrentListingIndex(startIndex);
+    // Fallback to using filtered chat data
+    setCurrentListingQueue(filteredListings);
+    setCurrentListingIndex(adjustedIndex);
     setShowListingPanel(true);
   };
 
