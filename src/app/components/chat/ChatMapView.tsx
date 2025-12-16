@@ -259,17 +259,18 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   }, [validListings, paddedBounds, zoom, showMapWithListings]);
 
   return (
-    <div className={`relative w-full h-[250px] md:h-[300px] xl:h-[350px] 2xl:h-[450px] rounded-lg overflow-hidden border ${
-      isLight ? 'border-gray-300' : 'border-neutral-700'
-    }`}>
-      {mapError && (
-        <div className={`absolute inset-0 flex items-center justify-center z-50 ${
-          isLight ? 'bg-white/90' : 'bg-neutral-900/90'
-        }`}>
-          <p className="text-red-500">Map Error: {mapError}</p>
-        </div>
-      )}
-      <Map
+    <div className="relative w-full h-[250px] md:h-[300px] xl:h-[350px] 2xl:h-[450px]">
+      <div className={`absolute inset-0 rounded-lg overflow-hidden border ${
+        isLight ? 'border-gray-300' : 'border-neutral-700'
+      }`}>
+        {mapError && (
+          <div className={`absolute inset-0 flex items-center justify-center z-50 ${
+            isLight ? 'bg-white/90' : 'bg-neutral-900/90'
+          }`}>
+            <p className="text-red-500">Map Error: {mapError}</p>
+          </div>
+        )}
+        <Map
         ref={mapRef}
         initialViewState={{
           latitude: centerLat,
@@ -325,8 +326,8 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
 
                 {/* Compact hover tooltip */}
                 {isHovered && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[200] pointer-events-none">
-                    <div className={`rounded-lg shadow-lg px-3 py-2 whitespace-nowrap ${
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[9999] pointer-events-none">
+                    <div className={`rounded-lg shadow-xl px-3 py-2 whitespace-nowrap ${
                       isLight
                         ? 'bg-white border border-gray-200'
                         : 'bg-neutral-800 border border-neutral-600'
@@ -367,6 +368,7 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
           <MapPin className="w-4 h-4 md:w-5 md:h-5" />
           <span>Open in Map View</span>
         </button>
+      </div>
       </div>
     </div>
   );
