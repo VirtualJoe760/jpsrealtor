@@ -10,19 +10,12 @@ import { useSession } from "next-auth/react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
 import { useMapControl } from "@/app/hooks/useMapControl";
-import ListingCarousel from "./ListingCarousel";
-import ListingListView from "./ListingListView";
-import ChatMapView from "./ChatMapView";
-import { ArticleResults } from "./ArticleCard";
-import { AppreciationCard } from "../analytics/AppreciationCard";
-import { ComparisonCard } from "../analytics/ComparisonCard";
 import ListingBottomPanel from "../mls/map/ListingBottomPanel";
 import { useMLSContext } from "../mls/MLSProvider";
 import { SourceBubbles } from "./SourceBubble";
-import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
-import MarketStatsCard from "./MarketStatsCard";
 import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
+import ChatResultsContainer from "./ChatResultsContainer";
 
 // New modular components
 import ChatInput from "./ChatInput";
@@ -120,16 +113,23 @@ export default function ChatWidget() {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await response.json();
 
+        console.log('🗺️ [ChatWidget] Search API response:', data);
+
         if (data.results && data.results.length > 0) {
-          // Skip "Ask AI" result (type: "ai") and find first real location
-          const bestMatch = data.results.find((r: any) => r.type !== 'ai');
+          console.log('🗺️ [ChatWidget] All results:', data.results);
+
+          // Skip "Ask AI" result (type: "ask_ai") and find first real location
+          // Priority order: Subdivision > City > County > Region > Geocode > Listing
+          const bestMatch = data.results.find((r: any) => r.type !== 'ask_ai');
+
+          console.log('🗺️ [ChatWidget] Best match after filtering:', bestMatch);
 
           if (bestMatch && bestMatch.latitude && bestMatch.longitude) {
             const zoomLevel = bestMatch.zoom || getZoomLevel(bestMatch.type);
-            console.log('🗺️ [ChatWidget] Best match found:', bestMatch, 'zoom:', zoomLevel);
+            console.log('🗺️ [ChatWidget] Flying to:', { lat: bestMatch.latitude, lng: bestMatch.longitude, zoom: zoomLevel, type: bestMatch.type });
             showMapAtLocation(bestMatch.latitude, bestMatch.longitude, zoomLevel);
           } else {
-            console.warn('🗺️ [ChatWidget] No map results found for:', query);
+            console.warn('🗺️ [ChatWidget] No valid location found in results:', data.results);
           }
         } else {
           console.warn('🗺️ [ChatWidget] No results returned from API for:', query);
@@ -507,7 +507,44 @@ export default function ChatWidget() {
   };
 
   // Listing panel handlers
-  const handleOpenListingPanel = (listings: Listing[], startIndex: number) => {
+  const handleOpenListingPanel = async (listings: Listing[], startIndex: number) => {
+    const listing = listings[startIndex];
+
+    console.log('[ChatWidget] Opening panel for listing:', listing);
+
+    // Fetch full listing data from API to ensure we have ALL fields
+    try {
+      const slugAddress = listing.slugAddress || listing.slug || listing.url?.replace('/mls-listings/', '');
+
+      if (slugAddress) {
+        console.log('[ChatWidget] Fetching full data for:', slugAddress);
+        const response = await fetch(`/api/mls-listings/${slugAddress}`);
+
+        if (response.ok) {
+          const { listing: fullData } = await response.json();
+          console.log('[ChatWidget] Full data fetched:', {
+            hasPublicRemarks: !!fullData.publicRemarks,
+            hasAgentInfo: !!fullData.listOfficeName,
+            hasDaysOnMarket: fullData.daysOnMarket != null
+          });
+
+          // Merge full data with chat listing (full data takes priority)
+          const enrichedListings = [...listings];
+          enrichedListings[startIndex] = { ...listing, ...fullData };
+
+          setCurrentListingQueue(enrichedListings);
+          setCurrentListingIndex(startIndex);
+          setShowListingPanel(true);
+          return;
+        } else {
+          console.warn('[ChatWidget] Failed to fetch full data, using chat data');
+        }
+      }
+    } catch (error) {
+      console.error('[ChatWidget] Error fetching full listing data:', error);
+    }
+
+    // Fallback to using chat data as-is
     setCurrentListingQueue(listings);
     setCurrentListingIndex(startIndex);
     setShowListingPanel(true);
@@ -678,7 +715,7 @@ export default function ChatWidget() {
 
       {/* Conversation View - Hide when map is visible */}
       {!showLanding && !isMapVisible && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-48 md:pt-28 pb-[12rem] md:pb-2 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-40 md:pt-28 pb-[12rem] md:pb-2 relative">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
@@ -842,65 +879,12 @@ export default function ChatWidget() {
                   )}
                 </div>
 
-                {/* Components rendered full-width and centered - MacBook optimized */}
-                {msg.components?.carousel && msg.components.carousel.listings?.length > 0 && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <ListingCarousel
-                      listings={msg.components.carousel.listings}
-                      title={msg.components.carousel.title}
-                      onOpenPanel={handleOpenListingPanel}
-                    />
-                  </div>
-                )}
-
-                {msg.components?.listView && msg.components.listView.listings?.length > 0 && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <ListingListView
-                      listings={msg.components.listView.listings}
-                      title={msg.components.listView.title}
-                      totalCount={msg.components.listView.totalCount}
-                      hasMore={msg.components.listView.hasMore}
-                      onOpenPanel={handleOpenListingPanel}
-                    />
-                  </div>
-                )}
-
-                {msg.components?.mapView && msg.components.mapView.listings?.length > 0 && !msg.components?.listView && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <ChatMapView
-                      listings={msg.components.carousel?.listings || msg.components.mapView.listings}
-                    />
-                  </div>
-                )}
-
-                {msg.components?.appreciation && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <AppreciationCard data={msg.components.appreciation} />
-                  </div>
-                )}
-
-                {msg.components?.comparison && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <SubdivisionComparisonChart
-                      items={msg.components.comparison.items}
-                      title={msg.components.comparison.title || "Comparison"}
-                    />
-                  </div>
-                )}
-
-                {msg.components?.marketStats && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <MarketStatsCard {...msg.components.marketStats} />
-                  </div>
-                )}
-
-                {msg.components?.articles && msg.components.articles.results?.length > 0 && (
-                  <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12">
-                    <ArticleResults
-                      results={msg.components.articles.results}
-                      query={msg.components.articles.query || ""}
-                    />
-                  </div>
+                {/* Consolidated component rendering */}
+                {msg.components && (
+                  <ChatResultsContainer
+                    components={msg.components}
+                    onOpenListingPanel={handleOpenListingPanel}
+                  />
                 )}
               </motion.div>
             ))}
@@ -1085,20 +1069,16 @@ export default function ChatWidget() {
           subdivisionName: currentListingQueue[currentListingIndex].subdivision,
         }}
         fullListing={{
+          ...currentListingQueue[currentListingIndex], // Spread ALL fields from chat listing (includes publicRemarks, agent info, etc.)
+          // Override/normalize field names for panel compatibility
           listingKey: currentListingQueue[currentListingIndex].id,
           slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
           slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          unparsedAddress: currentListingQueue[currentListingIndex].address,
-          address: currentListingQueue[currentListingIndex].address,
-          city: currentListingQueue[currentListingIndex].city,
-          subdivisionName: currentListingQueue[currentListingIndex].subdivision,
-          listPrice: currentListingQueue[currentListingIndex].price,
           bedroomsTotal: currentListingQueue[currentListingIndex].beds,
           bathroomsTotalDecimal: currentListingQueue[currentListingIndex].baths,
-          livingArea: currentListingQueue[currentListingIndex].sqft,
+          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
           latitude: currentListingQueue[currentListingIndex].latitude?.toString() || '0',
           longitude: currentListingQueue[currentListingIndex].longitude?.toString() || '0',
-          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
         } as any}
         onClose={handleCloseListingPanel}
         onSwipeLeft={handleSwipeLeft}

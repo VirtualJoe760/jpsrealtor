@@ -212,7 +212,7 @@ export default function ListingCarousel({
         {duplicatedListings.map((listing, index) => (
           <div
             key={`${listing.id}-${index}`}
-            className={`flex-shrink-0 w-52 md:w-56 xl:w-64 2xl:w-72 rounded-xl overflow-hidden transition-all group ${
+            className={`flex-shrink-0 w-[85vw] sm:w-72 md:w-80 xl:w-96 2xl:w-[28rem] rounded-xl overflow-hidden transition-all group ${
               isLight
                 ? 'bg-white/90 border border-gray-300 hover:border-gray-400 shadow-md'
                 : 'bg-neutral-800/50 border border-neutral-700 hover:border-neutral-600'
@@ -220,7 +220,7 @@ export default function ListingCarousel({
             style={isLight ? { backdropFilter: "blur(10px) saturate(150%)" } : {}}
           >
             {/* Image */}
-            <div className="relative h-28 md:h-32 xl:h-36 2xl:h-44">
+            <div className="relative h-48 sm:h-40 md:h-44 xl:h-52 2xl:h-60">
               {listing.image ? (
                 <Image
                   src={listing.image}

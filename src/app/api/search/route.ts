@@ -197,20 +197,25 @@ export async function GET(req: Request) {
 
   // Add "Ask AI" option at the top for general queries
   const askAiOption = {
-    type: "ai" as const,
+    type: "ask_ai" as const,
     label: q,
     query: q,
   };
 
-  // Priority order: Ask AI > regions > counties > cities > subdivisions > geocode > listings
-  // This ensures broader areas appear first, then specific locations
+  // Priority order for MAP queries (when user hits Enter on map view):
+  // Subdivision > City > County > Region > Geocode > Listings
+  // This ensures most specific areas appear first for map flyovers
+
+  // Priority order for AUTOCOMPLETE display:
+  // Ask AI > Subdivisions > Cities > Counties > Regions > Geocode > Listings
+  // This gives users the AI option first, then most relevant locations
   return NextResponse.json({
     results: [
       askAiOption,
-      ...regionResults,
-      ...countyResults,
-      ...cityResults,
       ...subdivisionResults,
+      ...cityResults,
+      ...countyResults,
+      ...regionResults,
       ...geoResults,
       ...listingResults,
     ],

@@ -207,6 +207,15 @@ export interface IUnifiedListing extends Document {
   onMarketDate?: Date;
   originalOnMarketTimestamp?: Date;
   daysOnMarket?: number;
+  listingUpdateTimestamp?: Date;
+  priceChangeTimestamp?: Date;
+  photosChangeTimestamp?: Date;
+  majorChangeTimestamp?: Date;
+  extensionTimestamp?: Date;
+
+  // Listing changes tracking
+  majorChangeType?: string;
+  listingTerms?: string;
 
   // Media & Remarks
   publicRemarks?: string;
@@ -377,9 +386,18 @@ const UnifiedListingSchema = new Schema<IUnifiedListing>(
     modificationTimestamp: { type: Date, index: true },
     listingContractDate: Date,
     statusChangeTimestamp: Date,
-    onMarketDate: Date,
+    onMarketDate: { type: Date, index: true }, // For filtering new listings
     originalOnMarketTimestamp: Date,
     daysOnMarket: Number,
+    listingUpdateTimestamp: Date,
+    priceChangeTimestamp: { type: Date, index: true }, // For price change tracking
+    photosChangeTimestamp: Date,
+    majorChangeTimestamp: Date,
+    extensionTimestamp: Date,
+
+    // Listing changes tracking
+    majorChangeType: String, // e.g., "Price Reduced", "Back on Market"
+    listingTerms: String, // e.g., "Cash, 1031 Exchange"
 
     // Media & Remarks
     publicRemarks: String,

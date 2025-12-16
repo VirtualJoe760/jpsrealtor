@@ -32,11 +32,21 @@ export interface ActiveListing {
   bedroomsTotal?: number;
   bedsTotal?: number;
   bathroomsTotalDecimal?: number;
+  bathroomsTotalInteger?: number;
+  bathroomsFull?: number;
+  bathroomsHalf?: number;
   livingArea?: number;
   lotSizeSqft?: number;
   yearBuilt?: number;
   daysOnMarket?: number;
   onMarketDate?: Date;
+  listingContractDate?: Date;
+  listingUpdateTimestamp?: Date;
+  priceChangeTimestamp?: Date;
+  majorChangeTimestamp?: Date;
+  majorChangeType?: string;
+  originalListPrice?: number;
+  listingTerms?: string;
   primaryPhotoUrl?: string;
   latitude?: number;
   longitude?: number;
@@ -48,6 +58,20 @@ export interface ActiveListing {
   viewYn?: boolean;
   garageSpaces?: number;
   associationFee?: number;
+  associationYN?: boolean;
+  // Description and agent info
+  publicRemarks?: string;
+  supplement?: string;
+  listAgentFullName?: string;
+  listAgentEmail?: string;
+  listAgentMlsId?: string;
+  listOfficeName?: string;
+  listOfficePhone?: string;
+  landType?: string;
+  slug?: string;
+  slugAddress?: string;
+  unparsedAddress?: string;
+  postalCode?: string;
   [key: string]: any;
 }
 
@@ -208,6 +232,28 @@ function getFieldSelection(): string {
     'unparsedAddress',
     'postalCode',
     'slug',
+    // Description and agent info (for ListingBottomPanel)
+    'publicRemarks',
+    'supplement',
+    'listAgentFullName',
+    'listAgentEmail',
+    'listAgentMlsId',
+    'listOfficeName',
+    'listOfficePhone',
+    'landType',
+    'bathroomsFull',
+    'bathroomsHalf',
+    'slugAddress',
+    // Listing date and change tracking (for filtering new/updated listings)
+    'onMarketDate',
+    'listingContractDate',
+    'listingUpdateTimestamp',
+    'priceChangeTimestamp',
+    'majorChangeTimestamp',
+    'majorChangeType',
+    'originalListPrice',
+    'listingTerms',
+    'associationYN',
   ].join(' ');
 }
 

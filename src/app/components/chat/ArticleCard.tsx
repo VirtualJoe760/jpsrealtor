@@ -3,6 +3,7 @@
 
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Tag, ArrowRight, ExternalLink, FileText } from "lucide-react";
@@ -14,7 +15,7 @@ export interface ArticleCardProps {
   slug: string;
   excerpt: string;
   category: string;
-  image?: string | { url: string; alt: string }; // Can be string URL or object
+  image?: string; // String URL (already full Cloudinary URL from API)
   seo?: {
     description: string;
     keywords: string[];
@@ -27,14 +28,15 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
   const { currentTheme } = useTheme();
   const { cardBg, cardBorder, textPrimary, textSecondary, textMuted } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+  const [imageError, setImageError] = useState(false);
 
-  // Extract image URL and alt text (handle both string and object formats)
-  const imageUrl = typeof article.image === 'string'
-    ? article.image
-    : article.image?.url;
-  const imageAlt = typeof article.image === 'object' && article.image?.alt
-    ? article.image.alt
-    : article.title;
+  // Debug: Log article data
+  console.log('[ArticleCard] Article data:', {
+    title: article.title,
+    image: article.image,
+    imageError,
+    hasImage: !!article.image
+  });
 
   // Format category
   const categoryNames: Record<string, string> = {
@@ -63,14 +65,12 @@ export default function ArticleCard({ article }: { article: ArticleCardProps }) 
     >
       {/* Featured Image */}
       <div className="relative w-full h-48 overflow-hidden bg-gray-200">
-        {imageUrl && imageUrl.trim() !== '' ? (
-          <Image
-            src={imageUrl}
-            alt={imageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            unoptimized
+        {article.image && !imageError ? (
+          <img
+            src={article.image}
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => setImageError(true)}
           />
         ) : (
           <div className={`w-full h-full flex items-center justify-center ${

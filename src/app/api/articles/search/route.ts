@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { query, limit = 5 } = body;
 
+    console.log('[Article Search API] Called with query:', query, 'limit:', limit);
+
     if (!query || typeof query !== "string") {
       return NextResponse.json(
         { error: "Missing required field: query (string)" },
@@ -39,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Connect to MongoDB
     await dbConnect();
+    console.log('[Article Search API] Connected to MongoDB');
 
     // Extract keywords from query for better matching
     const keywords = extractKeywords(query);
@@ -60,6 +63,9 @@ export async function POST(req: NextRequest) {
 
     // If text search returns results, use those
     if (textSearchResults.length > 0) {
+      console.log('[Article Search] Found', textSearchResults.length, 'text search results');
+      console.log('[Article Search] First result featuredImage:', textSearchResults[0]?.featuredImage);
+
       const results: ArticleSearchResult[] = textSearchResults.map((article: any) => ({
         _id: article._id.toString(),
         title: article.title,
@@ -75,12 +81,19 @@ export async function POST(req: NextRequest) {
         relevanceScore: article.score || 1.0
       }));
 
-      return NextResponse.json({
+      console.log('[Article Search] Mapped first result image:', results[0]?.image);
+      console.log('[Article Search] Full mapped first result:', JSON.stringify(results[0], null, 2));
+
+      const response = {
         success: true,
         results,
         query,
         method: "text_search"
-      });
+      };
+
+      console.log('[Article Search] Returning response with', results.length, 'results');
+
+      return NextResponse.json(response);
     }
 
     // Fallback: Keyword-based search on title, excerpt, keywords
@@ -97,6 +110,9 @@ export async function POST(req: NextRequest) {
       .lean();
 
     if (keywordSearchResults.length > 0) {
+      console.log('[Article Search] Found', keywordSearchResults.length, 'keyword search results');
+      console.log('[Article Search] First keyword result featuredImage:', keywordSearchResults[0]?.featuredImage);
+
       const results: ArticleSearchResult[] = keywordSearchResults.map((article: any, index: number) => ({
         _id: article._id.toString(),
         title: article.title,
@@ -111,6 +127,8 @@ export async function POST(req: NextRequest) {
         publishedAt: article.publishedAt ? article.publishedAt.toISOString() : new Date().toISOString(),
         relevanceScore: 1.0 - (index * 0.1) // Descending relevance
       }));
+
+      console.log('[Article Search] Mapped first keyword result image:', results[0]?.image);
 
       return NextResponse.json({
         success: true,

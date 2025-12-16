@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 
 export default function TopToggles() {
   const { currentTheme, setTheme } = useTheme();
@@ -17,6 +18,40 @@ export default function TopToggles() {
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
   const isHomePage = pathname === "/";
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    // ONLY on map view, keep toggles always visible (never hide)
+    if (isMapVisible) {
+      setIsVisible(true);
+      return;
+    }
+
+    // For all other views (chat, insights, dashboard, etc.), enable scroll-hide
+    const handleScroll = () => {
+      // Since html has overflow:hidden, scrolling happens on body element
+      const currentScrollY = document.body.scrollTop || window.scrollY;
+
+      // Show when scrolling up, hide when scrolling down
+      if (currentScrollY < lastScrollY.current || currentScrollY < 10) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsVisible(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    // Listen to scroll on body element (since html has overflow:hidden)
+    document.body.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      document.body.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [isMapVisible]);
 
   const handleToggleTheme = () => {
     setTheme(isLight ? "blackspace" : "lightgradient");
@@ -37,78 +72,110 @@ export default function TopToggles() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-      {/* Blur gradient backdrop - only show when NOT on map view */}
-      {!isMapVisible && (
-        <div
-          className={`absolute inset-0 h-32 backdrop-blur-md transition-opacity duration-300 ${
-            isLight
-              ? 'bg-gradient-to-b from-white/80 via-white/40 to-transparent'
-              : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent'
-          }`}
-          style={{
-            backdropFilter: 'blur(12px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-            maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-          }}
-        />
-      )}
-
+    <motion.div
+      className="fixed top-0 left-0 right-0 z-50 pointer-events-none"
+      initial={{ y: 0, opacity: 1 }}
+      animate={{
+        y: isVisible ? 0 : -100,
+        opacity: isVisible ? 1 : 0,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+    >
       {/*
-        Info panel is min-h-[3.5rem] (56px) with py-2
-        Icon buttons are h-12 (48px) on mobile
-        Add pt-4 to push icons down and center with panel content
+        Icon buttons with individual blur backgrounds
+        Mobile: h-12 (48px), Desktop: h-14 (56px)
       */}
-      <div className="max-w-7xl mx-auto px-4 pt-6 flex items-center justify-between pointer-events-none relative z-10">
-        {/* Theme Toggle - Left */}
+      {/* Mobile: Centered container with toggles on left/right */}
+      <div className="md:hidden max-w-7xl mx-auto px-4 pt-8 flex items-center justify-between pointer-events-none">
+        {/* Theme Toggle - Left (Mobile Only) */}
         <motion.button
           onClick={handleToggleTheme}
-          className={`
-            w-14 h-14 md:w-14 md:h-14
-            flex items-center justify-center
-            transition-all duration-200
-            pointer-events-auto
-            ${isLight
-              ? 'text-blue-600 hover:text-blue-700'
-              : 'text-emerald-400 hover:text-emerald-300'
-            }
-          `}
+          className="pointer-events-auto"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
         >
           {isLight ? (
-            <Moon className="w-7 h-7 md:w-8 md:h-8" />
+            <Moon
+              className="w-9 h-9 text-blue-600 hover:text-blue-700 transition-colors"
+              style={{
+                filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))',
+              }}
+            />
           ) : (
-            <Sun className="w-7 h-7 md:w-8 md:h-8" />
+            <Sun
+              className="w-9 h-9 text-emerald-400 hover:text-emerald-300 transition-colors"
+              style={{
+                filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+              }}
+            />
           )}
         </motion.button>
 
-        {/* Map Toggle - Right */}
+        {/* Map Toggle - Right (Mobile) */}
         <motion.button
           onClick={handleToggleMap}
-          className={`
-            w-12 h-12 md:w-14 md:h-14
-            flex items-center justify-center
-            transition-all duration-200
-            pointer-events-auto
-            ${isLight
-              ? 'text-blue-600 hover:text-blue-700'
-              : 'text-emerald-400 hover:text-emerald-300'
-            }
-          `}
+          className="pointer-events-auto"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={isMapVisible ? "Show Chat" : "Show Map"}
         >
           {isMapVisible ? (
-            <MessageSquare className="w-7 h-7 md:w-8 md:h-8" />
+            <MessageSquare
+              className="w-9 h-9 transition-colors"
+              style={{
+                color: isLight ? '#2563eb' : '#34d399',
+                filter: isLight
+                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+              }}
+            />
           ) : (
-            <Map className="w-7 h-7 md:w-8 md:h-8" />
+            <Map
+              className="w-9 h-9 transition-colors"
+              style={{
+                color: isLight ? '#2563eb' : '#34d399',
+                filter: isLight
+                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+              }}
+            />
           )}
         </motion.button>
       </div>
-    </div>
+
+      {/* Desktop: Map toggle on far right edge of screen */}
+      <div className="hidden md:block">
+        <motion.button
+          onClick={handleToggleMap}
+          className="pointer-events-auto fixed right-6 top-6"
+          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05 }}
+          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
+        >
+          {isMapVisible ? (
+            <MessageSquare
+              className="w-11 h-11 transition-colors"
+              style={{
+                color: isLight ? '#2563eb' : '#34d399',
+                filter: isLight
+                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+              }}
+            />
+          ) : (
+            <Map
+              className="w-11 h-11 transition-colors"
+              style={{
+                color: isLight ? '#2563eb' : '#34d399',
+                filter: isLight
+                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+              }}
+            />
+          )}
+        </motion.button>
+      </div>
+    </motion.div>
   );
 }

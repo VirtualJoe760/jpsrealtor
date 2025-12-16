@@ -32,10 +32,12 @@ export function parseComponentData(responseText: string): {
   if (carouselMatch) {
     try {
       const jsonStr = carouselMatch[1].trim();
+      console.log("[PARSE] Raw carousel JSON:", jsonStr.substring(0, 500));
       components.carousel = JSON.parse(jsonStr);
       console.log("[PARSE] Found carousel with", components.carousel?.listings?.length || 0, "listings");
     } catch (e) {
       console.error("[PARSE] Failed to parse carousel JSON:", e);
+      console.error("[PARSE] Problematic JSON snippet:", carouselMatch[1].substring(0, 500));
     }
   }
 
@@ -110,8 +112,15 @@ export function parseComponentData(responseText: string): {
     }
   }
 
-  // Parse [SOURCES]...[/SOURCES]
-  const sourcesMatch = responseText.match(/\[SOURCES\]\s*([\s\S]*?)\s*\[\/SOURCES\]/);
+  // Parse [SOURCES]...[/SOURCES] or [SOURCES] [...]
+  // First try multi-line format with closing tag
+  let sourcesMatch = responseText.match(/\[SOURCES\]\s*([\s\S]*?)\s*\[\/SOURCES\]/);
+
+  // If not found, try single-line JSON array format (e.g., "[SOURCES] [ {...} ]")
+  if (!sourcesMatch) {
+    sourcesMatch = responseText.match(/\[SOURCES\]\s*(\[[\s\S]*?\])/);
+  }
+
   if (sourcesMatch) {
     try {
       const jsonStr = sourcesMatch[1].trim();
@@ -166,14 +175,26 @@ export function cleanResponseText(responseText: string): string {
   // Remove [LISTING_CAROUSEL]...[/LISTING_CAROUSEL] blocks
   cleaned = cleaned.replace(/\[LISTING_CAROUSEL\]\s*[\s\S]*?\s*\[\/LISTING_CAROUSEL\]/g, '');
 
+  // Fallback: Remove [LISTING_CAROUSEL] followed by JSON (even without closing tag)
+  cleaned = cleaned.replace(/\[LISTING_CAROUSEL\]\s*\{[\s\S]*$/g, '');
+
   // Remove [LIST_VIEW]...[/LIST_VIEW] blocks
   cleaned = cleaned.replace(/\[LIST_VIEW\]\s*[\s\S]*?\s*\[\/LIST_VIEW\]/g, '');
 
-  // Remove [SOURCES]...[/SOURCES] blocks
+  // Fallback: Remove [LIST_VIEW] followed by JSON (even without closing tag)
+  cleaned = cleaned.replace(/\[LIST_VIEW\]\s*\{[\s\S]*$/g, '');
+
+  // Remove [SOURCES]...[/SOURCES] blocks (multi-line format)
   cleaned = cleaned.replace(/\[SOURCES\]\s*[\s\S]*?\s*\[\/SOURCES\]/g, '');
+
+  // Remove [SOURCES] [...] blocks (single-line format)
+  cleaned = cleaned.replace(/\[SOURCES\]\s*\[[\s\S]*?\]/g, '');
 
   // Remove [MAP_VIEW]...[/MAP_VIEW] blocks
   cleaned = cleaned.replace(/\[MAP_VIEW\]\s*[\s\S]*?\s*\[\/MAP_VIEW\]/g, '');
+
+  // Fallback: Remove [MAP_VIEW] followed by JSON (even without closing tag)
+  cleaned = cleaned.replace(/\[MAP_VIEW\]\s*\{[\s\S]*$/g, '');
 
   // Remove [APPRECIATION]...[/APPRECIATION] blocks
   cleaned = cleaned.replace(/\[APPRECIATION\]\s*[\s\S]*?\s*\[\/APPRECIATION\]/g, '');

@@ -1,12 +1,40 @@
 // src/lib/chat/tool-executor.ts
 // Tool execution handlers for chat AI
 
+import { toolCache } from './tool-cache';
+
 /**
  * Execute a single tool call and return the result
  */
 export async function executeToolCall(toolCall: any): Promise<any> {
   const functionName = toolCall.function.name;
   const functionArgs = JSON.parse(toolCall.function.arguments);
+
+  console.log(`[${functionName}] Starting with args:`, JSON.stringify(functionArgs, null, 2));
+
+  // Check cache first (skip caching for certain tools)
+  const cacheableTools = [
+    'queryDatabase',
+    'getAppreciation',
+    'getMarketStats',
+    'getRegionalStats',
+    'searchArticles',
+    'lookupSubdivision',
+    'getNeighborhoodPageLink'
+  ];
+
+  if (cacheableTools.includes(functionName)) {
+    const cachedResult = toolCache.get(functionName, functionArgs);
+    if (cachedResult) {
+      console.log(`[${functionName}] Returning cached result`);
+      return {
+        role: "tool" as const,
+        tool_call_id: toolCall.id,
+        name: functionName,
+        content: JSON.stringify(cachedResult),
+      };
+    }
+  }
 
   let result: any;
 
@@ -32,8 +60,13 @@ export async function executeToolCall(toolCall: any): Promise<any> {
     } else {
       result = { error: `Unknown function: ${functionName}` };
     }
+
+    // Cache successful results
+    if (result && !result.error && cacheableTools.includes(functionName)) {
+      toolCache.set(functionName, functionArgs, result);
+    }
   } catch (error: any) {
-    console.error(`Error executing ${functionName}:`, error);
+    console.error(`[${functionName}] Error:`, error);
     result = { error: error.message };
   }
 
@@ -75,33 +108,33 @@ export async function executeToolCall(toolCall: any): Promise<any> {
         : -116.37;
 
       // Return summary + 10 sample listings for AI
+      const sampleListings = allListings.slice(0, 10);
+      const photoMap = await batchFetchPhotos(sampleListings);
+
       result.summary = {
         count: totalCount,
         priceRange: { min: minPrice, max: maxPrice },
         avgPrice: avgPrice,
         medianPrice: medianPrice,
         center: { lat: centerLat, lng: centerLng },
-        sampleListings: await Promise.all(
-          allListings.slice(0, 10).map(async (l: any) => {
-            const listingKey = l.listingKey || l.listingId;
-            const photoUrl = await fetchListingPhoto(listingKey, l);
+        sampleListings: sampleListings.map((l: any) => {
+          const listingKey = l.listingKey || l.listingId;
 
-            return {
-              id: l.listingId || l.listingKey,
-              price: l.listPrice,
-              beds: l.bedroomsTotal || l.bedsTotal,
-              baths: l.bathroomsTotalDecimal,
-              sqft: l.livingArea,
-              address: l.address || l.unparsedAddress,
-              city: l.city,
-              subdivision: subdivisionName,
-              image: photoUrl,
-              url: `/mls-listings/${l.slugAddress || l.listingId}`,
-              latitude: parseFloat(l.latitude) || null,
-              longitude: parseFloat(l.longitude) || null
-            };
-          })
-        )
+          return {
+            id: l.listingId || l.listingKey,
+            price: l.listPrice,
+            beds: l.bedroomsTotal || l.bedsTotal,
+            baths: l.bathroomsTotalDecimal,
+            sqft: l.livingArea,
+            address: l.address || l.unparsedAddress,
+            city: l.city,
+            subdivision: subdivisionName,
+            image: photoMap.get(listingKey) || DEFAULT_PHOTO_URL,
+            url: `/mls-listings/${l.slugAddress || l.listingId}`,
+            latitude: parseFloat(l.latitude) || null,
+            longitude: parseFloat(l.longitude) || null
+          };
+        })
       };
 
       console.log("[AUTO-SEARCH] Summary:", JSON.stringify(result.summary, null, 2));
@@ -213,42 +246,28 @@ async function executeQueryDatabase(args: any): Promise<any> {
           insights: comparison.insights,
           differences: comparison.differences
         } : undefined,
-        sampleListings: await Promise.all(
-          allListings.slice(0, 10).map(async (l: any) => {
-            const photoUrl = await fetchListingPhoto(l.listingKey, l);
+        sampleListings: await (async () => {
+          // Batch fetch all photos in parallel
+          const sampleListings = allListings.slice(0, 10);
+          const photoMap = await batchFetchPhotos(sampleListings);
 
-            return {
-              id: l.listingKey,
-              price: l.listPrice,
-              beds: l.bedroomsTotal || l.bedsTotal,
-              baths: l.bathroomsTotalDecimal,
-              sqft: l.livingArea,
-              address: l.address || l.unparsedAddress,
-              city: l.city,
-              subdivision: l.subdivisionName,
-              image: photoUrl,
-              url: `/mls-listings/${l.slug || l.listingKey}`,
-              latitude: l.latitude,
-              longitude: l.longitude,
-
-              // Additional fields for ListingBottomPanel
-              yearBuilt: l.yearBuilt,
-              lotSizeSqft: l.lotSizeSqft,
-              pool: l.poolYn,
-              spa: l.spaYn,
-              garageSpaces: l.garageSpaces,
-              propertyType: l.propertyType,
-              propertySubType: l.propertySubType,
-              publicRemarks: l.publicRemarks,
-              daysOnMarket: l.daysOnMarket,
-              onMarketDate: l.onMarketDate,
-              slug: l.slug,
-              mlsSource: l.mlsSource,
-              associationFee: l.associationFee,
-              viewYn: l.viewYn
-            };
-          })
-        )
+          // Return FULL listing objects with added display fields
+          return sampleListings.map((l: any) => ({
+            ...l, // Include ALL original fields from database
+            // Add/override display-friendly fields for AI consumption
+            id: l.listingKey,
+            price: l.listPrice,
+            beds: l.bedroomsTotal || l.bedsTotal,
+            baths: l.bathroomsTotalDecimal,
+            sqft: l.livingArea,
+            address: l.address || l.unparsedAddress,
+            city: l.city,
+            subdivision: l.subdivisionName,
+            image: photoMap.get(l.listingKey) || DEFAULT_PHOTO_URL,
+            url: `/mls-listings/${l.slug || l.listingKey}`,
+            primaryPhotoUrl: photoMap.get(l.listingKey) || DEFAULT_PHOTO_URL
+          }));
+        })()
       },
       meta: queryResult.meta
     };
@@ -286,7 +305,22 @@ async function executeSearchArticles(args: any): Promise<any> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args)
   });
-  return await response.json();
+  const data = await response.json();
+
+  // Transform featuredImage.url to image for ArticleCard compatibility
+  if (data.results && Array.isArray(data.results)) {
+    data.results = data.results.map((article: any) => ({
+      ...article,
+      image: article.featuredImage?.url || article.image,
+      // Remove featuredImage to avoid confusion
+      featuredImage: undefined
+    }));
+  }
+
+  console.log('[executeSearchArticles] API returned:', data.results?.length, 'articles');
+  console.log('[executeSearchArticles] First article has image?:', data.results?.[0]?.image);
+
+  return data;
 }
 
 /**
@@ -408,35 +442,91 @@ async function executeGetNeighborhoodPageLink(args: any): Promise<any> {
   }
 }
 
+// Default placeholder for listings without photos
+const DEFAULT_PHOTO_URL = "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&h=600&fit=crop&q=80"; // Professional house placeholder
+
 /**
- * Fetch listing photo from API with fallback to database fields
+ * Batch fetch photos for multiple listings in parallel
+ * @param listings Array of listings to fetch photos for
+ * @returns Map of listingKey -> photoUrl
+ */
+async function batchFetchPhotos(listings: any[]): Promise<Map<string, string>> {
+  const photoMap = new Map<string, string>();
+
+  // Process in chunks of 10 to avoid overwhelming the server
+  const chunkSize = 10;
+  for (let i = 0; i < listings.length; i += chunkSize) {
+    const chunk = listings.slice(i, i + chunkSize);
+
+    // Fetch photos in parallel for this chunk
+    const photoPromises = chunk.map(async (listing) => {
+      const listingKey = listing.listingKey || listing.listingId;
+      const photoUrl = await fetchListingPhoto(listingKey, listing);
+      return [listingKey, photoUrl] as const;
+    });
+
+    const results = await Promise.all(photoPromises);
+    results.forEach(([key, url]) => photoMap.set(key, url));
+  }
+
+  console.log(`[batchFetchPhotos] Fetched ${photoMap.size} photos`);
+  return photoMap;
+}
+
+/**
+ * Fetch listing photo from API with timeout and fallback chain
  */
 async function fetchListingPhoto(listingKey: string, listing: any): Promise<string> {
   try {
+    // Create AbortController for 3-second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
     const photosRes = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/listings/${listingKey}/photos`,
       {
         cache: "force-cache",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        signal: controller.signal
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (photosRes.ok) {
       const photosData = await photosRes.json();
       if (photosData.photos && photosData.photos.length > 0) {
         const primaryPhoto = photosData.photos[0];
-        return primaryPhoto.uri800 ||
+        const photoUrl = primaryPhoto.uri800 ||
                primaryPhoto.uri1024 ||
                primaryPhoto.uri640 ||
                primaryPhoto.uri1280 ||
                primaryPhoto.uriLarge ||
                "";
+
+        if (photoUrl) {
+          return photoUrl;
+        }
       }
     }
-  } catch (photoErr) {
-    console.error(`[chat/stream] Failed to fetch photos for ${listingKey}:`, photoErr);
+  } catch (photoErr: any) {
+    // Log timeout or fetch errors
+    if (photoErr.name === 'AbortError') {
+      console.warn(`[fetchListingPhoto] Timeout fetching photos for ${listingKey}`);
+    } else {
+      console.error(`[fetchListingPhoto] Failed to fetch photos for ${listingKey}:`, photoErr);
+    }
   }
 
-  // Fallback to database photo fields
-  return listing.primaryPhoto?.uri800 || listing.primaryPhotoUrl || "";
+  // Fallback chain: database fields -> placeholder
+  const fallbackUrl = listing.primaryPhoto?.uri800 ||
+                      listing.primaryPhotoUrl ||
+                      listing.media?.[0]?.Uri800 ||
+                      DEFAULT_PHOTO_URL;
+
+  if (fallbackUrl === DEFAULT_PHOTO_URL) {
+    console.log(`[fetchListingPhoto] Using placeholder for ${listingKey}`);
+  }
+
+  return fallbackUrl;
 }

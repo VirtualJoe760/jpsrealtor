@@ -19,12 +19,14 @@ import {
   Settings,
   Shield,
   LogOut,
+  Map,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMapControl } from "../hooks/useMapControl";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -36,7 +38,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const { data: session, status } = useSession();
   const { isCollapsed, toggleSidebar, setSidebarCollapsed } = useSidebar();
   const { currentTheme, setTheme } = useTheme();
+  const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const isLight = currentTheme === "lightgradient";
+  const isHomePage = pathname === "/";
 
   const [isMobile, setIsMobile] = useState(false);
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
@@ -64,8 +68,37 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
 
+  const handleMapToggle = () => {
+    if (isHomePage) {
+      if (isMapVisible) {
+        hideMap();
+      } else {
+        // Show map centered on California (entire state view)
+        showMapAtLocation(37.0, -119.5, 5);
+      }
+      if (onClose) onClose();
+    } else {
+      // If we're on any other page, redirect to homepage first
+      router.push("/");
+      if (onClose) onClose();
+      // Map will show on next visit to homepage
+    }
+  };
+
+  const handleChatToggle = () => {
+    if (isHomePage) {
+      // Hide map to show chat view
+      hideMap();
+    } else {
+      // If we're on any other page, redirect to homepage (chat view)
+      router.push("/");
+    }
+    if (onClose) onClose();
+  };
+
   const menuItems = [
-    { label: "Chat", icon: MessageSquare, href: "/" },
+    { label: "Chat", icon: MessageSquare, action: "chat" }, // Special action for chat toggle
+    { label: "Map", icon: Map, action: "map" }, // Special action for map toggle
     { label: "Insights", icon: Lightbulb, href: "/insights" },
   ];
 
@@ -240,13 +273,27 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
         {/* Regular Menu Items */}
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.action === "map"
+            ? isMapVisible
+            : item.action === "chat"
+              ? isHomePage && !isMapVisible
+              : pathname === item.href;
           const Icon = item.icon;
+
+          const handleClick = () => {
+            if (item.action === "map") {
+              handleMapToggle();
+            } else if (item.action === "chat") {
+              handleChatToggle();
+            } else {
+              handleNavigate(item.href);
+            }
+          };
 
           return (
             <motion.button
               key={item.label}
-              onClick={() => handleNavigate(item.href)}
+              onClick={handleClick}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 isActive
                   ? isLight
