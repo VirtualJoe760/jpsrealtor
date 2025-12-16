@@ -208,12 +208,12 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
   const maxDiff = Math.max(latDiff, lngDiff);
 
   // Zoom formula: smaller diff = higher zoom
-  // Use minimum zoom of 13 for neighborhood/subdivision views
-  let zoom = 13;
-  if (maxDiff < 0.01) zoom = 15;
-  else if (maxDiff < 0.05) zoom = 14;
-  else if (maxDiff < 0.1) zoom = 13;
-  else if (maxDiff < 0.5) zoom = 12;
+  // Use zoom level 12 for better neighborhood/subdivision overview
+  let zoom = 12;
+  if (maxDiff < 0.01) zoom = 14;
+  else if (maxDiff < 0.05) zoom = 13;
+  else if (maxDiff < 0.1) zoom = 12;
+  else if (maxDiff < 0.5) zoom = 11;
   else if (maxDiff < 1) zoom = 10;
   else zoom = 9;
 
