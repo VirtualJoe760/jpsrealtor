@@ -2,15 +2,23 @@
 // Tool execution handlers for chat AI
 
 import { toolCache } from './tool-cache';
+import { logChatMessage } from '@/lib/chat-logger';
 
 /**
  * Execute a single tool call and return the result
  */
-export async function executeToolCall(toolCall: any): Promise<any> {
+export async function executeToolCall(toolCall: any, userId: string = 'unknown'): Promise<any> {
   const functionName = toolCall.function.name;
   const functionArgs = JSON.parse(toolCall.function.arguments);
 
   console.log(`[${functionName}] Starting with args:`, JSON.stringify(functionArgs, null, 2));
+
+  // Log tool execution start
+  await logChatMessage("system", `Executing tool: ${functionName}`, userId, {
+    tool: functionName,
+    arguments: functionArgs,
+    timestamp: new Date().toISOString(),
+  });
 
   // Check cache first (skip caching for certain tools)
   const cacheableTools = [
@@ -65,9 +73,27 @@ export async function executeToolCall(toolCall: any): Promise<any> {
     if (result && !result.error && cacheableTools.includes(functionName)) {
       toolCache.set(functionName, functionArgs, result);
     }
+
+    // Log tool execution result
+    await logChatMessage("system", `Tool result: ${functionName}`, userId, {
+      tool: functionName,
+      success: !result?.error,
+      resultSummary: result?.error ? { error: result.error } : {
+        listingCount: result?.summary?.count || result?.listings?.length || 0,
+        hasData: !!result?.success || !!result?.listings || !!result?.data,
+      },
+      timestamp: new Date().toISOString(),
+    });
   } catch (error: any) {
     console.error(`[${functionName}] Error:`, error);
     result = { error: error.message };
+
+    // Log error
+    await logChatMessage("system", `Tool error: ${functionName}`, userId, {
+      tool: functionName,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // AUTOMATIC SEARCH: If matchLocation succeeded, call the WORKING subdivision endpoint
@@ -165,44 +191,64 @@ export async function executeToolCall(toolCall: any): Promise<any> {
 async function executeQueryDatabase(args: any): Promise<any> {
   console.log('[queryDatabase] Starting with args:', JSON.stringify(args, null, 2));
 
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  // Build database query payload
+  const queryPayload = {
+    city: args.city,
+    subdivision: args.subdivision,
+    zip: args.zip,
+    county: args.county,
+    filters: {
+      propertySubType: args.propertySubType,
+      minBeds: args.minBeds,
+      maxBeds: args.maxBeds,
+      minBaths: args.minBaths,
+      maxBaths: args.maxBaths,
+      minSqft: args.minSqft,
+      maxSqft: args.maxSqft,
+      minYear: args.minYear,
+      maxYear: args.maxYear,
+      minPrice: args.minPrice,
+      maxPrice: args.maxPrice,
+      pool: args.pool,
+      spa: args.spa,
+      view: args.view,
+      gated: args.gated,
+      minGarages: args.minGarages,
+      maxDaysOnMarket: args.maxDaysOnMarket,
+      listedAfter: args.listedAfter, // Keep as string - MongoDB field is stored as string, not Date
+      limit: Math.min(args.limit || 10, 10), // Reduced from 100 to 10 for faster responses
+      sort: args.sort
+    },
+    includeStats: args.includeStats !== false,
+    includeDOMStats: args.includeDOMStats,
+    includeComparison: args.compareWith ? {
+      compareWith: args.compareWith,
+      isCity: true
+    } : undefined
+  };
+
+  // Log the database query being executed
+  await logChatMessage("system", "Database query executed", "system", {
+    endpoint: "/api/query",
+    query: {
+      location: {
         city: args.city,
         subdivision: args.subdivision,
         zip: args.zip,
         county: args.county,
-        filters: {
-          propertySubType: args.propertySubType,
-          minBeds: args.minBeds,
-          maxBeds: args.maxBeds,
-          minBaths: args.minBaths,
-          maxBaths: args.maxBaths,
-          minSqft: args.minSqft,
-          maxSqft: args.maxSqft,
-          minYear: args.minYear,
-          maxYear: args.maxYear,
-          minPrice: args.minPrice,
-          maxPrice: args.maxPrice,
-          pool: args.pool,
-          spa: args.spa,
-          view: args.view,
-          gated: args.gated,
-          minGarages: args.minGarages,
-          maxDaysOnMarket: args.maxDaysOnMarket,
-          listedAfter: args.listedAfter, // Keep as string - MongoDB field is stored as string, not Date
-          limit: Math.min(args.limit || 10, 10), // Reduced from 100 to 10 for faster responses
-          sort: args.sort
-        },
-        includeStats: args.includeStats !== false,
-        includeDOMStats: args.includeDOMStats,
-        includeComparison: args.compareWith ? {
-          compareWith: args.compareWith,
-          isCity: true
-        } : undefined
-      })
+      },
+      filters: Object.fromEntries(
+        Object.entries(queryPayload.filters).filter(([_, v]) => v !== undefined && v !== null)
+      ),
+    },
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(queryPayload)
     });
 
     if (!response.ok) {
@@ -218,6 +264,20 @@ async function executeQueryDatabase(args: any): Promise<any> {
       success: queryResult.success,
       listingCount: queryResult.listings?.length || 0,
       hasStats: !!queryResult.stats
+    });
+
+    // Log database query results
+    await logChatMessage("system", "Database query results", "system", {
+      success: queryResult.success,
+      totalListings: queryResult.meta?.totalListings || queryResult.listings?.length || 0,
+      stats: queryResult.stats ? {
+        avgPrice: queryResult.stats.avgPrice,
+        medianPrice: queryResult.stats.medianPrice,
+        minPrice: queryResult.stats.minPrice,
+        maxPrice: queryResult.stats.maxPrice,
+        avgDaysOnMarket: queryResult.stats.avgDaysOnMarket,
+      } : null,
+      timestamp: new Date().toISOString(),
     });
 
   if (queryResult.success) {

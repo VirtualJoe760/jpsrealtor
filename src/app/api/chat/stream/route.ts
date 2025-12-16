@@ -40,10 +40,17 @@ export async function POST(req: NextRequest) {
     // Determine which model to use based on tier
     const model = userTier === "premium" ? GROQ_MODELS.PREMIUM : GROQ_MODELS.FREE;
 
-    // Log API request
+    // Log API request with user query
+    const userQuery = messages[messages.length - 1]?.content || "No query";
     await logChatMessage("system", `Groq chat request (${model})`, userId, {
       messageCount: messages.length,
       userTier,
+      timestamp: new Date().toISOString(),
+      userQuery: userQuery,
+    });
+
+    // Log the actual user query
+    await logChatMessage("user", userQuery, userId, {
       timestamp: new Date().toISOString(),
     });
 
@@ -109,9 +116,18 @@ export async function POST(req: NextRequest) {
       toolRound++;
       console.log(`[AI] Round ${toolRound}: Using tools:`, assistantMessage.tool_calls.map((tc: any) => tc.function.name).join(', '));
 
+      // Log tool usage
+      await logChatMessage("system", `Tool calls in round ${toolRound}`, userId, {
+        tools: assistantMessage.tool_calls.map((tc: any) => ({
+          name: tc.function.name,
+          arguments: JSON.parse(tc.function.arguments || '{}')
+        })),
+        timestamp: new Date().toISOString(),
+      });
+
       // Execute all tool calls
       const toolResults = await Promise.all(
-        assistantMessage.tool_calls.map((toolCall: any) => executeToolCall(toolCall))
+        assistantMessage.tool_calls.map((toolCall: any) => executeToolCall(toolCall, userId))
       );
 
       console.log(`[AI] Round ${toolRound}: Tool results:`, toolResults.map((r: any) => {
