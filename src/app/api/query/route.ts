@@ -74,7 +74,8 @@ function getCacheTTL(queryOptions: QueryOptions): number {
  */
 async function getCachedResult(cacheKey: string): Promise<any | null> {
   try {
-    // @ts-ignore - Cloudflare KV binding
+    // @ts-ignore - Cloudflare KV binding (only available in production)
+    if (typeof QUERY_CACHE === 'undefined') return null;
     const cached = await QUERY_CACHE?.get(cacheKey, 'json');
     return cached || null;
   } catch (error) {
@@ -88,13 +89,14 @@ async function getCachedResult(cacheKey: string): Promise<any | null> {
  */
 async function setCachedResult(cacheKey: string, result: any, ttl: number): Promise<void> {
   try {
-    // @ts-ignore - Cloudflare KV binding
+    // @ts-ignore - Cloudflare KV binding (only available in production)
+    if (typeof QUERY_CACHE === 'undefined') return;
     await QUERY_CACHE?.put(cacheKey, JSON.stringify(result), {
       expirationTtl: ttl,
     });
   } catch (error) {
     // KV not available - silent fail (caching is optional)
-    console.warn('Cache write failed:', error);
+    // No console.warn needed - expected in local dev
   }
 }
 
