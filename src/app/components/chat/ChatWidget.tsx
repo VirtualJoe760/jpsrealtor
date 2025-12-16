@@ -1116,35 +1116,25 @@ export default function ChatWidget() {
     {showListingPanel && currentListingQueue.length > 0 && currentListingIndex < currentListingQueue.length && (
       <ListingBottomPanel
         listing={{
+          ...(currentListingQueue[currentListingIndex] as any),
           _id: currentListingQueue[currentListingIndex].id,
           listingId: currentListingQueue[currentListingIndex].id,
-          listingKey: currentListingQueue[currentListingIndex].id,
-          slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
-          unparsedAddress: currentListingQueue[currentListingIndex].address,
+          listingKey: (currentListingQueue[currentListingIndex] as any).listingKey || currentListingQueue[currentListingIndex].id,
+          slug: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
+          slugAddress: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
+          primaryPhotoUrl: (currentListingQueue[currentListingIndex] as any).primaryPhotoUrl || currentListingQueue[currentListingIndex].image || '',
+          unparsedAddress: (currentListingQueue[currentListingIndex] as any).unparsedAddress || currentListingQueue[currentListingIndex].address,
           address: currentListingQueue[currentListingIndex].address,
           latitude: currentListingQueue[currentListingIndex].latitude || 0,
           longitude: currentListingQueue[currentListingIndex].longitude || 0,
-          listPrice: currentListingQueue[currentListingIndex].price,
-          bedsTotal: currentListingQueue[currentListingIndex].beds,
-          bathroomsTotalInteger: currentListingQueue[currentListingIndex].baths,
-          livingArea: currentListingQueue[currentListingIndex].sqft,
+          listPrice: (currentListingQueue[currentListingIndex] as any).listPrice || currentListingQueue[currentListingIndex].price,
+          bedsTotal: (currentListingQueue[currentListingIndex] as any).bedsTotal || (currentListingQueue[currentListingIndex] as any).bedroomsTotal || currentListingQueue[currentListingIndex].beds,
+          bathroomsTotalInteger: (currentListingQueue[currentListingIndex] as any).bathroomsTotalInteger || (currentListingQueue[currentListingIndex] as any).bathroomsTotalDecimal || currentListingQueue[currentListingIndex].baths,
+          livingArea: (currentListingQueue[currentListingIndex] as any).livingArea || currentListingQueue[currentListingIndex].sqft,
           city: currentListingQueue[currentListingIndex].city,
-          subdivisionName: currentListingQueue[currentListingIndex].subdivision,
-        }}
-        fullListing={{
-          ...currentListingQueue[currentListingIndex], // Spread ALL fields from chat listing (includes publicRemarks, agent info, etc.)
-          // Override/normalize field names for panel compatibility
-          listingKey: currentListingQueue[currentListingIndex].id,
-          slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          bedroomsTotal: currentListingQueue[currentListingIndex].beds,
-          bathroomsTotalDecimal: currentListingQueue[currentListingIndex].baths,
-          primaryPhotoUrl: currentListingQueue[currentListingIndex].image || '',
-          latitude: currentListingQueue[currentListingIndex].latitude?.toString() || '0',
-          longitude: currentListingQueue[currentListingIndex].longitude?.toString() || '0',
+          subdivisionName: (currentListingQueue[currentListingIndex] as any).subdivisionName || currentListingQueue[currentListingIndex].subdivision,
         } as any}
+        fullListing={currentListingQueue[currentListingIndex] as any}
         onClose={handleCloseListingPanel}
         onSwipeLeft={handleSwipeLeft}
         onSwipeRight={handleSwipeRight}
