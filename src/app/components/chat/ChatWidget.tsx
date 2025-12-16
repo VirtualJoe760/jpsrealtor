@@ -395,6 +395,66 @@ export default function ChatWidget() {
     }
   };
 
+  // Background map query - pre-positions map silently without switching views
+  const handleMapQueryInBackground = async (query: string) => {
+    console.log('🗺️ [ChatWidget] Background map query:', query);
+
+    // Helper function to determine zoom level based on location type
+    const getZoomLevel = (type: string) => {
+      switch (type) {
+        case 'region': return 7;      // Broader region view
+        case 'county': return 9;      // County view
+        case 'city': return 11;       // City view
+        case 'subdivision': return 13; // Neighborhood view
+        case 'listing': return 15;    // Individual property
+        case 'geocode': return 12;    // General geocode
+        default: return 12;           // Default zoom
+      }
+    };
+
+    try {
+      // Query search API to extract location from natural language
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      console.log('🗺️ [ChatWidget] Background search API response:', data);
+
+      if (data.results && data.results.length > 0) {
+        // Skip "Ask AI" result (type: "ask_ai") and find first real location
+        // This handles queries like "buyers guide to coachella valley" → extracts "coachella valley"
+        const bestMatch = data.results.find((r: any) => r.type !== 'ask_ai');
+
+        console.log('🗺️ [ChatWidget] Best location match for background positioning:', bestMatch);
+
+        if (bestMatch && bestMatch.latitude && bestMatch.longitude) {
+          const zoomLevel = bestMatch.zoom || getZoomLevel(bestMatch.type);
+          console.log('🗺️ [ChatWidget] Pre-positioning map at:', {
+            lat: bestMatch.latitude,
+            lng: bestMatch.longitude,
+            zoom: zoomLevel,
+            type: bestMatch.type,
+            location: bestMatch.label || query
+          });
+
+          // Pre-position map without showing it (map stays hidden until user switches)
+          // Use empty listings array with viewState to set the position
+          prePositionMap([], {
+            centerLat: bestMatch.latitude,
+            centerLng: bestMatch.longitude,
+            zoom: zoomLevel
+          });
+        } else {
+          console.warn('🗺️ [ChatWidget] No valid location found for background map positioning');
+        }
+      } else {
+        console.warn('🗺️ [ChatWidget] No search results for background map query');
+      }
+    } catch (error) {
+      console.error('🗺️ [ChatWidget] Background map query error:', error);
+      // Silent fail - don't interrupt user experience
+    }
+  };
+
   // Autocomplete hook (handles all autocomplete logic)
   const autocomplete = useAutocomplete({
     message,
@@ -434,15 +494,20 @@ export default function ChatWidget() {
     setMessage("");
     autocomplete.clear();
 
-    // Route based on current view
+    // Bidirectional processing: Execute both AI and map queries in parallel
+    // The foreground query depends on current view, background query prepares the other view
     if (isMapVisible) {
-      // On map view: Default to map query (search for best location match)
-      console.log('🗺️ [ChatWidget] Enter on map view - executing map query');
-      handleMapQuery(userMessage);
+      // On map view: Map query in foreground, AI query in background
+      console.log('🗺️ [ChatWidget] Map view - executing map query (foreground) + AI query (background)');
+      handleMapQuery(userMessage); // Foreground: show map results
+      handleAIQueryInBackground(userMessage); // Background: prepare chat response
     } else {
-      // On chat view: Default to AI query
-      console.log('🤖 [ChatWidget] Enter on chat view - executing AI query');
-      handleAIQuery(userMessage);
+      // On chat view: AI query in foreground, map query in background
+      console.log('🤖 [ChatWidget] Chat view - executing AI query (foreground) + map query (background)');
+      handleAIQuery(userMessage); // Foreground: show AI response
+
+      // Background: Pre-position map
+      handleMapQueryInBackground(userMessage);
     }
   };
 
