@@ -289,9 +289,9 @@ When a user asks to "show me homes in [location]":
 
    HOW TO INCLUDE LISTINGS:
    1. Find the "sampleListings" array in the queryDatabase tool response
-   2. Copy it EXACTLY as provided into the "listings" field - do not modify or filter
-   3. The frontend automatically enriches listings with complete data when users view details
-   4. Just copy the array - it's already optimized with minimal fields to reduce token usage
+   2. Copy the array into the "listings" field
+   3. Include at minimum: id, price, beds, baths, sqft, address, city, subdivision, image, url, slug, slugAddress
+   4. Additional fields are helpful but not required (frontend will fetch complete data when needed)
 
 4. **ERROR HANDLING & FALLBACK - getNeighborhoodPageLink**:
 
