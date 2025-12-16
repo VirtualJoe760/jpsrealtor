@@ -39,7 +39,7 @@ interface ListingListViewProps {
   onOpenPanel?: (listings: Listing[], startIndex: number) => void;
 }
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 4;
 
 export default function ListingListView({
   listings,
