@@ -108,12 +108,61 @@ export default function ListingBottomPanel({
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // State for fetched listing data
+  const [enrichedListing, setEnrichedListing] = useState<IUnifiedListing>(fullListing);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch full listing data from API using slugAddress
+  useEffect(() => {
+    const fetchListingData = async () => {
+      const slugAddress = listing.slugAddress || listing.slug || fullListing.slug;
+
+      if (!slugAddress) {
+        console.warn('[ListingBottomPanel] No slugAddress available, using provided data');
+        setEnrichedListing(fullListing);
+        return;
+      }
+
+      console.log('[ListingBottomPanel] Fetching data for:', slugAddress);
+      setIsLoading(true);
+
+      try {
+        const response = await fetch(`/api/mls-listings/${slugAddress}`);
+
+        if (response.ok) {
+          const { listing: apiListing } = await response.json();
+          console.log('[ListingBottomPanel] API data fetched:', {
+            hasPublicRemarks: !!apiListing.publicRemarks,
+            hasPrice: !!apiListing.listPrice,
+            hasBeds: !!apiListing.bedsTotal,
+            allKeys: Object.keys(apiListing).sort().slice(0, 20)
+          });
+
+          // Merge API data with original listing (API data takes priority)
+          setEnrichedListing({ ...fullListing, ...apiListing });
+        } else {
+          console.warn('[ListingBottomPanel] API fetch failed, using provided data');
+          setEnrichedListing(fullListing);
+        }
+      } catch (error) {
+        console.error('[ListingBottomPanel] Error fetching listing data:', error);
+        setEnrichedListing(fullListing);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListingData();
+  }, [listing.slugAddress, listing.slug, fullListing.listingKey]);
+
   // Debug logging for chat listings
-  console.log('[ListingBottomPanel] fullListing data:', {
-    hasPublicRemarks: !!fullListing.publicRemarks,
-    publicRemarksLength: fullListing.publicRemarks?.length || 0,
-    publicRemarksPreview: fullListing.publicRemarks?.substring(0, 100),
-    allKeys: Object.keys(fullListing).sort()
+  console.log('[ListingBottomPanel] enrichedListing data:', {
+    hasPublicRemarks: !!enrichedListing.publicRemarks,
+    publicRemarksLength: enrichedListing.publicRemarks?.length || 0,
+    publicRemarksPreview: enrichedListing.publicRemarks?.substring(0, 100),
+    price: enrichedListing.listPrice,
+    beds: enrichedListing.bedsTotal || enrichedListing.bedroomsTotal,
+    allKeys: Object.keys(enrichedListing).sort()
   });
 
   // Theme awareness
@@ -122,11 +171,11 @@ export default function ListingBottomPanel({
 
   // Generate subdivision URL
   const getSubdivisionUrl = () => {
-    if (!fullListing.subdivisionName || !fullListing.city) return null;
+    if (!enrichedListing.subdivisionName || !enrichedListing.city) return null;
 
     // Filter out non-applicable subdivisions
     const nonApplicableValues = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
-    const lowerSubdivision = fullListing.subdivisionName.toLowerCase().trim();
+    const lowerSubdivision = enrichedListing.subdivisionName.toLowerCase().trim();
     if (nonApplicableValues.some(val => lowerSubdivision.includes(val))) {
       return null;
     }
@@ -134,14 +183,14 @@ export default function ListingBottomPanel({
     // Import the findCityByName function to get the proper cityId
     const { findCityByName } = require('@/app/constants/counties');
 
-    const cityData = findCityByName(fullListing.city);
+    const cityData = findCityByName(enrichedListing.city);
     if (!cityData) return null;
 
     // Use the city's ID from the counties constant
     const cityId = cityData.city.id;
 
     // Create subdivision slug from name - this should match the database slug
-    const subdivisionSlug = fullListing.subdivisionName
+    const subdivisionSlug = enrichedListing.subdivisionName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
@@ -217,7 +266,7 @@ export default function ListingBottomPanel({
         panel.removeEventListener('touchstart', preventDoubleTapZoom);
       }
     };
-  }, [fullListing.listingKey]);
+  }, [enrichedListing.listingKey]);
 
   /* ======================================================
      CENTERPIECE LAYOUT LOGIC
@@ -333,15 +382,15 @@ export default function ListingBottomPanel({
   ====================================================== */
 
   const address =
-    fullListing.unparsedAddress ||
-    fullListing.unparsedFirstLineAddress ||
-    fullListing.address ||
+    enrichedListing.unparsedAddress ||
+    enrichedListing.unparsedFirstLineAddress ||
+    enrichedListing.address ||
     listing.address ||
     "Unknown address";
 
   const panel = (
     <motion.div
-      key={fullListing.listingKey}
+      key={enrichedListing.listingKey}
       ref={panelRef}
       drag="x"
       dragElastic={SWIPE.dragElastic}
@@ -392,7 +441,7 @@ export default function ListingBottomPanel({
 
       {/* Carousel */}
       <div className="flex-shrink-0">
-        <PannelCarousel listingKey={fullListing.listingKey} alt={address} />
+        <PannelCarousel listingKey={enrichedListing.listingKey} alt={address} />
       </div>
 
       {/* Header */}
@@ -409,7 +458,7 @@ export default function ListingBottomPanel({
             <p className={`text-3xl font-bold tracking-tight ${
               isLight ? 'text-blue-600' : 'text-emerald-400'
             }`}>
-              {`$${Number(fullListing.listPrice ?? 0).toLocaleString()}`}
+              {`$${Number(enrichedListing.listPrice ?? 0).toLocaleString()}`}
             </p>
           </div>
 
@@ -446,7 +495,7 @@ export default function ListingBottomPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar min-h-0">
         <div className="flex flex-wrap gap-2 text-sm mb-4">
-          {fullListing.subdivisionName && (
+          {enrichedListing.subdivisionName && (
             subdivisionUrl ? (
               <Link
                 href={subdivisionUrl}
@@ -456,7 +505,7 @@ export default function ListingBottomPanel({
                     : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30'
                 }`}
               >
-                {fullListing.subdivisionName}
+                {enrichedListing.subdivisionName}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -467,93 +516,93 @@ export default function ListingBottomPanel({
                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                   : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
               }`}>
-                {fullListing.subdivisionName}
+                {enrichedListing.subdivisionName}
               </span>
             )
           )}
 
-          {(fullListing.bedsTotal != null || fullListing.bedroomsTotal != null) && (
+          {(enrichedListing.bedsTotal != null || enrichedListing.bedroomsTotal != null) && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {fullListing.bedsTotal || fullListing.bedroomsTotal} Bed
+              {enrichedListing.bedsTotal || enrichedListing.bedroomsTotal} Bed
             </span>
           )}
 
-          {fullListing.bathroomsTotalInteger != null && (
+          {enrichedListing.bathroomsTotalInteger != null && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {fullListing.bathroomsTotalInteger} Bath
+              {enrichedListing.bathroomsTotalInteger} Bath
             </span>
           )}
 
-          {fullListing.livingArea != null && (
+          {enrichedListing.livingArea != null && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {fullListing.livingArea.toLocaleString()} SqFt
+              {enrichedListing.livingArea.toLocaleString()} SqFt
             </span>
           )}
 
-          {fullListing.lotSizeArea != null && (
+          {enrichedListing.lotSizeArea != null && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {Math.round(fullListing.lotSizeArea).toLocaleString()} Lot
+              {Math.round(enrichedListing.lotSizeArea).toLocaleString()} Lot
             </span>
           )}
 
-          {fullListing.landType && (
+          {enrichedListing.landType && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {fullListing.landType}
+              {enrichedListing.landType}
             </span>
           )}
 
-          {fullListing.associationFee && (
+          {enrichedListing.associationFee && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              ${fullListing.associationFee}/mo HOA
+              ${enrichedListing.associationFee}/mo HOA
             </span>
           )}
 
-          {fullListing.yearBuilt && (
+          {enrichedListing.yearBuilt && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              Built {fullListing.yearBuilt}
+              Built {enrichedListing.yearBuilt}
             </span>
           )}
 
-          {fullListing.daysOnMarket != null && fullListing.daysOnMarket > 0 && (
+          {enrichedListing.daysOnMarket != null && enrichedListing.daysOnMarket > 0 && (
             <span className={`px-3 py-1.5 rounded-lg border font-medium ${
               isLight
                 ? 'bg-gray-100 text-gray-700 border-gray-200'
                 : 'bg-white/5 text-gray-200 border-white/10'
             }`}>
-              {fullListing.daysOnMarket} {fullListing.daysOnMarket === 1 ? 'Day' : 'Days'} on Market
+              {enrichedListing.daysOnMarket} {enrichedListing.daysOnMarket === 1 ? 'Day' : 'Days'} on Market
             </span>
           )}
         </div>
 
-        {fullListing.publicRemarks && (
+        {enrichedListing.publicRemarks && (
           <div className={`p-4 rounded-xl mb-4 ${
             isLight
               ? 'bg-gray-50 border border-gray-200'
@@ -561,7 +610,7 @@ export default function ListingBottomPanel({
           }`}>
             <p className={`text-sm leading-relaxed line-clamp-4 ${
               isLight ? 'text-gray-700' : 'text-gray-300'
-            }`}>{fullListing.publicRemarks}</p>
+            }`}>{enrichedListing.publicRemarks}</p>
           </div>
         )}
 
@@ -587,7 +636,7 @@ export default function ListingBottomPanel({
           : 'bg-white/[0.02] border-white/[0.08]'
       }`}>
         <Link
-          href={`/mls-listings/${fullListing.slugAddress || fullListing.slug}`}
+          href={`/mls-listings/${enrichedListing.slugAddress || enrichedListing.slug}`}
           className={`block w-full text-center font-semibold py-3.5 rounded-xl text-base transition-all ${
             isLight
               ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'

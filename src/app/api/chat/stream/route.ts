@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
               temperature: 0.3,
               max_tokens: 4000,
               stream: true,
-              // No tools in final streaming call
+              tool_choice: "none", // Explicitly disable tools in final response
             });
 
             // Stream each token as it arrives
