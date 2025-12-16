@@ -247,7 +247,7 @@ When a user asks to "show me homes in [location]":
 
 3. **RESPONSE FORMAT** - ALWAYS use LISTING_CAROUSEL + MAP_VIEW for property searches:
 
-   I found [count] properties in [location]!
+   [Brief 1-2 sentence description of the subdivision/area - what makes it special, desirable features, etc.]
 
    [LISTING_CAROUSEL]
    {
@@ -266,8 +266,16 @@ When a user asks to "show me homes in [location]":
    NOTE: MAP_VIEW does NOT need the "listings" array - it will automatically use listings from LISTING_CAROUSEL
    This saves tokens and prevents response cutoff
 
-   Price range: $[min] - $[max]
-   Average: $[avgPrice]
+   IMPORTANT COUNT ACCURACY:
+   - Use the EXACT count from the tool response "summary.count" field
+   - This is the total number of listings, not just the sample shown
+   - Example: If summary.count is 31, say "31 homes" not "100 homes"
+
+   DO NOT DISPLAY:
+   - Price ranges (min/max prices)
+   - Average prices
+   - Statistical summaries
+   - The carousel shows all this information visually
 
    [SOURCES]
    [
