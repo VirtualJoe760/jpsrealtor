@@ -323,52 +323,29 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
                   {formatPrice(listing.price)}
                 </div>
 
-                {/* Hover preview card */}
+                {/* Compact hover tooltip */}
                 {isHovered && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[200] pointer-events-none">
-                    <div className={`rounded-lg shadow-2xl p-2 w-48 ${
+                    <div className={`rounded-lg shadow-lg px-3 py-2 whitespace-nowrap ${
                       isLight
-                        ? 'bg-white border border-gray-300'
-                        : 'bg-neutral-900 border border-neutral-700'
+                        ? 'bg-white border border-gray-200'
+                        : 'bg-neutral-800 border border-neutral-600'
                     }`}>
-                      {/* Image */}
-                      <div className={`relative w-full h-24 mb-2 rounded overflow-hidden ${
-                        isLight ? 'bg-gray-200' : 'bg-neutral-800'
+                      <p className={`text-sm font-bold mb-0.5 ${
+                        isLight ? 'text-gray-900' : 'text-white'
                       }`}>
-                        {listing.image ? (
-                          <Image
-                            src={listing.image}
-                            alt={listing.address || "Property"}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <Home className={`w-8 h-8 ${isLight ? 'text-gray-400' : 'text-neutral-600'}`} />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Details */}
-                      <div>
-                        <p className={`text-lg font-bold mb-1 ${
-                          isLight ? 'text-blue-600' : 'text-emerald-400'
-                        }`}>
-                          ${listing.price?.toLocaleString()}
-                        </p>
-                        <p className={`text-xs truncate mb-1 ${
-                          isLight ? 'text-gray-700' : 'text-neutral-300'
-                        }`}>
-                          {listing.address}
-                        </p>
-                        <p className={`text-xs ${
-                          isLight ? 'text-gray-600' : 'text-neutral-400'
-                        }`}>
-                          {listing.beds}bd • {listing.baths}ba • {listing.sqft?.toLocaleString()} sqft
-                        </p>
-                      </div>
+                        ${listing.price?.toLocaleString()}
+                      </p>
+                      <p className={`text-xs ${
+                        isLight ? 'text-gray-600' : 'text-neutral-300'
+                      }`}>
+                        {listing.beds}bd • {listing.baths}ba • {listing.sqft?.toLocaleString()} sqft
+                      </p>
                     </div>
+                    {/* Arrow pointer */}
+                    <div className={`absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${
+                      isLight ? 'border-t-white' : 'border-t-neutral-800'
+                    }`}></div>
                   </div>
                 )}
               </div>
