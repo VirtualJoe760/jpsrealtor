@@ -107,7 +107,7 @@ export async function executeToolCall(toolCall: any): Promise<any> {
         ? validCoords.reduce((sum: number, l: any) => sum + parseFloat(l.longitude), 0) / validCoords.length
         : -116.37;
 
-      // Return summary + 10 sample listings for AI
+      // Return summary + 10 sample listings for AI (MINIMAL fields for token efficiency)
       const sampleListings = allListings.slice(0, 10);
       const photoMap = await batchFetchPhotos(sampleListings);
 
@@ -121,6 +121,12 @@ export async function executeToolCall(toolCall: any): Promise<any> {
           const listingKey = l.listingKey || l.listingId;
 
           return {
+            // IDENTIFIERS (for frontend to fetch full data)
+            listingKey: listingKey,
+            slugAddress: l.slugAddress,
+            slug: l.slug,
+
+            // DISPLAY FIELDS (for carousel cards)
             id: l.listingId || l.listingKey,
             price: l.listPrice,
             beds: l.bedroomsTotal || l.bedsTotal,
@@ -131,6 +137,8 @@ export async function executeToolCall(toolCall: any): Promise<any> {
             subdivision: subdivisionName,
             image: photoMap.get(listingKey) || DEFAULT_PHOTO_URL,
             url: `/mls-listings/${l.slugAddress || l.listingId}`,
+
+            // LOCATION (for map)
             latitude: parseFloat(l.latitude) || null,
             longitude: parseFloat(l.longitude) || null
           };
@@ -251,10 +259,15 @@ async function executeQueryDatabase(args: any): Promise<any> {
           const sampleListings = allListings.slice(0, 10);
           const photoMap = await batchFetchPhotos(sampleListings);
 
-          // Return FULL listing objects with added display fields
+          // Return MINIMAL listing objects - frontend will fetch complete data on-demand
+          // This reduces token usage from ~4000 to ~800 (80% savings!)
           return sampleListings.map((l: any) => ({
-            ...l, // Include ALL original fields from database
-            // Add/override display-friendly fields for AI consumption
+            // IDENTIFIERS (required for frontend to fetch full data)
+            listingKey: l.listingKey,
+            slugAddress: l.slugAddress,
+            slug: l.slug,
+
+            // DISPLAY FIELDS (for carousel cards - all that's needed for initial render)
             id: l.listingKey,
             price: l.listPrice,
             beds: l.bedroomsTotal || l.bedsTotal,
@@ -265,7 +278,13 @@ async function executeQueryDatabase(args: any): Promise<any> {
             subdivision: l.subdivisionName,
             image: photoMap.get(l.listingKey) || DEFAULT_PHOTO_URL,
             url: `/mls-listings/${l.slug || l.listingKey}`,
-            primaryPhotoUrl: photoMap.get(l.listingKey) || DEFAULT_PHOTO_URL
+
+            // LOCATION (for map positioning)
+            latitude: l.latitude,
+            longitude: l.longitude,
+
+            // NOTE: No publicRemarks, no agent info, no 30+ extra fields
+            // Frontend fetches complete data when user opens ListingBottomPanel
           }));
         })()
       },
