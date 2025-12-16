@@ -146,7 +146,7 @@ When a user asks a QUESTION about real estate topics (not property searches):
 
    [ARTICLE_RESULTS]
    {
-     "results": [Copy the results array EXACTLY as provided from searchArticles tool]
+     "results": [Paste the COMPLETE article array here - copy every single field including "image"]
    }
    [/ARTICLE_RESULTS]
 
@@ -160,12 +160,12 @@ When a user asks a QUESTION about real estate topics (not property searches):
    ]
    [/SOURCES]
 
-   HOW TO INCLUDE ARTICLES:
-   1. Find the "results" array in the searchArticles tool response
-   2. Copy it EXACTLY as provided into the "results" field - do not modify or filter
-   3. The API already returns optimized article data (slug, title, excerpt, image, category)
-   4. DO NOT write URLs in the response text - use [SOURCES] block only
-   5. NEVER write "jpsrealtor.com" or any URLs directly in your response
+   CRITICAL VALIDATION:
+   - Every article in [ARTICLE_RESULTS] MUST include the "image" field
+   - If "image" is missing, the article card will not display properly
+   - Copy the exact JSON from the tool response, do not recreate it manually
+   - DO NOT write URLs in the response text - use [SOURCES] block only
+   - NEVER write "jpsrealtor.com" or any URLs directly in your response
 
 3. **If no articles found** - Provide general answer and suggest we can write about it
 
