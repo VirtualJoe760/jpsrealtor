@@ -243,7 +243,16 @@ export default function MapSearchBar({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSearch(query);
+      e.preventDefault();
+
+      // If there are suggestions visible, select the first one
+      if (showSuggestions && suggestions.length > 0) {
+        console.log('🔍 [MapSearchBar] Enter pressed - selecting first suggestion:', suggestions[0].name);
+        handleSuggestionClick(suggestions[0]);
+      } else {
+        // No suggestions, just do a basic search
+        handleSearch(query);
+      }
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
     }
