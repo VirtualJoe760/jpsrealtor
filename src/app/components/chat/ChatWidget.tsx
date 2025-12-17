@@ -500,16 +500,13 @@ export default function ChatWidget() {
         handleAIQuery(suggestion.label);
       } else {
         // This is a map query (city, subdivision, listing, etc.)
-        console.log('🗺️ [ChatWidget] Map query selected');
+        console.log('🗺️ [ChatWidget] Map query selected, ensuring map is visible');
 
-        if (isMapVisible) {
-          // Already on map, just execute map query
-          handleMapQuery(suggestion.label, suggestion);
-        } else {
-          // On chat view, switch to map and execute query
-          console.log('🗺️ [ChatWidget] Switching to map view');
-          handleMapQuery(suggestion.label, suggestion);
-        }
+        // Always execute the map query which will fly to the location
+        handleMapQuery(suggestion.label, suggestion);
+
+        // Also send to AI in background to prepare chat response
+        handleAIQueryInBackground(suggestion.label);
       }
     },
   });

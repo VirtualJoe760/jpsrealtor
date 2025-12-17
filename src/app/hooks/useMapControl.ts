@@ -81,6 +81,7 @@ export function useMapControl() {
    */
   const showMapAtLocation = (lat: number, lng: number, zoom: number = 12) => {
     console.log('🗺️ [useMapControl] Showing map at location:', { lat, lng, zoom });
+    setMapVisible(true); // Make map visible
     flyToLocation(lat, lng, zoom);
     setMapOpacity(0.8);
   };
