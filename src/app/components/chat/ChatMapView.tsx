@@ -258,6 +258,12 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
     });
   }, [validListings, paddedBounds, zoom, showMapWithListings]);
 
+  // Handle clicking anywhere on the map (not on a marker)
+  const handleMapClick = useCallback(() => {
+    console.log('🗺️ [ChatMapView] Map clicked - flying to location');
+    handleOpenInMapView();
+  }, [handleOpenInMapView]);
+
   return (
     <div className="relative w-full h-[250px] md:h-[300px] xl:h-[350px] 2xl:h-[450px]">
       <div className={`absolute inset-0 rounded-lg overflow-hidden border ${
@@ -279,7 +285,8 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
         }}
         mapStyle={MAPTILER_STYLE}
         mapLib={import("maplibre-gl")}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", cursor: "pointer" }}
+        onClick={handleMapClick}
         onError={(e) => {
           console.error('🗺️ Map error:', e);
           setMapError(e.error?.message || 'Failed to load map');
