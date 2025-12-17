@@ -234,18 +234,18 @@ export default function FavoritesPannel({
           }
         }}
         className={`fixed top-0 right-0 h-screen w-full
-        backdrop-blur-2xl transform transition-transform duration-300 z-[70]
+        backdrop-blur-md transform transition-transform duration-300 z-[70]
         shadow-2xl overflow-hidden flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
         ${isLight
-          ? 'bg-white/40 text-gray-900'
+          ? 'bg-gradient-to-br from-blue-50/95 via-white/95 to-purple-50/95 text-gray-900'
           : 'bg-neutral-900/98 text-white'
         }`}
       >
         {/* Sticky header: title + tabs + close */}
-        <div className={`flex-shrink-0 backdrop-blur-xl border-b ${
+        <div className={`flex-shrink-0 border-b ${
           isLight
-            ? 'bg-white/30 border-gray-200'
+            ? 'bg-white/60 border-blue-200/50'
             : 'bg-neutral-900/95 border-neutral-800'
         }`}>
           {/* Title row with close button */}
