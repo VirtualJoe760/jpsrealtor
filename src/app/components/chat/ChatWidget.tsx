@@ -17,6 +17,7 @@ import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
 import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
+import { getMapCenter } from "@/lib/geo-centers";
 
 // New modular components
 import ChatInput from "./ChatInput";
@@ -226,10 +227,34 @@ export default function ChatWidget() {
                     if (components?.carousel?.listings && components.carousel.listings.length > 0) {
                       console.log('🗺️ [ChatWidget] Pre-positioning map (hidden) with', components.carousel.listings.length, 'listings');
 
-                      // Calculate center from listings or use mapView center
-                      const centerLat = components.mapView?.center?.lat || components.carousel.listings[0]?.latitude || 33.8303;
-                      const centerLng = components.mapView?.center?.lng || components.carousel.listings[0]?.longitude || -116.5453;
-                      const zoom = components.mapView?.zoom || 12;
+                      // Get city/subdivision from search filters
+                      const searchFilters = components.mapView?.searchFilters;
+                      const city = searchFilters?.city;
+                      const subdivision = searchFilters?.subdivision;
+
+                      // Try to get geographical center (for cities) or calculate from listings (for subdivisions)
+                      const geoCenter = getMapCenter({
+                        city,
+                        subdivision,
+                        listings: components.carousel.listings.map(l => ({
+                          latitude: l.latitude,
+                          longitude: l.longitude
+                        }))
+                      });
+
+                      // Use geo center if available, otherwise fall back to mapView center or first listing
+                      const centerLat = geoCenter?.lat || components.mapView?.center?.lat || components.carousel.listings[0]?.latitude || 33.8303;
+                      const centerLng = geoCenter?.lng || components.mapView?.center?.lng || components.carousel.listings[0]?.longitude || -116.5453;
+                      const zoom = geoCenter?.zoom || components.mapView?.zoom || 12;
+
+                      console.log('🗺️ [ChatWidget] Map center:', {
+                        city,
+                        subdivision,
+                        usedGeoCenter: !!geoCenter,
+                        lat: centerLat,
+                        lng: centerLng,
+                        zoom
+                      });
 
                       // Build filters from searchFilters if provided by AI
                       const mapFilters: any = {};
