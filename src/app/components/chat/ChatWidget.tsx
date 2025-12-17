@@ -109,6 +109,12 @@ export default function ChatWidget() {
         const zoomLevel = zoom || getZoomLevel(type);
         console.log(`🗺️ [ChatWidget] Showing map at ${type}:`, query, { latitude, longitude, zoom: zoomLevel });
         showMapAtLocation(latitude, longitude, zoomLevel);
+
+        // Wait for map animation to complete (1 second), then trigger AI digest
+        setTimeout(() => {
+          console.log('🗺️ [ChatWidget] Map flyover complete, triggering AI digest in background');
+          handleAIQueryInBackground(query);
+        }, 1000);
       }
     } else {
       // No suggestion - search for best match via API (skip "Ask AI" option)
@@ -133,6 +139,12 @@ export default function ChatWidget() {
             console.log('🗺️ [ChatWidget] ✅ CALLING showMapAtLocation with:', { lat: bestMatch.latitude, lng: bestMatch.longitude, zoom: zoomLevel, type: bestMatch.type });
             showMapAtLocation(bestMatch.latitude, bestMatch.longitude, zoomLevel);
             console.log('🗺️ [ChatWidget] ✅ showMapAtLocation called successfully');
+
+            // Wait for map animation to complete (1 second), then trigger AI digest
+            setTimeout(() => {
+              console.log('🗺️ [ChatWidget] Map flyover complete, triggering AI digest in background');
+              handleAIQueryInBackground(query);
+            }, 1000);
           } else {
             console.warn('🗺️ [ChatWidget] ❌ No valid location found - bestMatch:', bestMatch);
           }
@@ -143,9 +155,6 @@ export default function ChatWidget() {
         console.error('🗺️ [ChatWidget] ❌ Map query error:', error);
       }
     }
-
-    // Background: Also send to AI for when user switches back to chat
-    handleAIQueryInBackground(query);
   };
 
   // Handle AI query - sends to AI chat
@@ -353,7 +362,7 @@ export default function ChatWidget() {
 
   // Background AI query - executes AI query silently for when user switches views
   const handleAIQueryInBackground = async (query: string) => {
-    console.log('🤖 [ChatWidget] Background AI query:', query);
+    console.log('🤖 [ChatWidget] Background AI query (text-only digest):', query);
 
     // Don't show user message or loading state since this is background
     try {
@@ -367,6 +376,7 @@ export default function ChatWidget() {
           ],
           userId: "demo-user",
           userTier: "premium",
+          textOnly: true, // Request markdown-only response (no components)
         }),
       });
 
