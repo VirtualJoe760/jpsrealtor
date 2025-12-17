@@ -12,6 +12,54 @@ import {
 import clsx from "clsx";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
+// Component to fetch and display listing photo from Spark API
+function ListingPhoto({ listingKey, alt }: { listingKey: string; alt: string }) {
+  const [photoUrl, setPhotoUrl] = useState<string>("/images/no-photo.png");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPhoto = async () => {
+      try {
+        const res = await fetch(`/api/listings/${listingKey}/photos`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.photos && data.photos.length > 0) {
+            // Get primary photo or first photo
+            const primaryPhoto = data.photos.find((p: any) => p.primary) || data.photos[0];
+            const url = primaryPhoto.uri800 || primaryPhoto.uri640 || primaryPhoto.uri1024 || "/images/no-photo.png";
+            setPhotoUrl(url);
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching photo for ${listingKey}:`, error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPhoto();
+  }, [listingKey]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-48 flex items-center justify-center bg-gray-200 dark:bg-neutral-900">
+        <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photoUrl}
+      alt={alt}
+      className="w-full h-48 object-cover"
+      draggable={false}
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
 type Props = {
   visibleListings: MapListing[];
   favorites: MapListing[];
@@ -440,20 +488,9 @@ export default function FavoritesPannel({
                               <div className={`flex flex-col rounded-xl overflow-hidden border ${themeClasses.cardBg} ${themeClasses.cardBorder} ${themeClasses.cardHoverBorder} transition-colors will-change-auto`}>
                                 {/* Image Container */}
                                 <div className={`relative overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-neutral-900'}`}>
-                                  <img
-                                    src={(() => {
-                                      // Extract primary photo from media array (matches /api/mls-listings/[slugAddress])
-                                      const media = (listing as any).media || [];
-                                      const primaryPhoto = media.find(
-                                        (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
-                                      ) || media[0];
-                                      return primaryPhoto?.Uri800 || primaryPhoto?.Uri640 || (listing as any).primaryPhotoUrl || "/images/no-photo.png";
-                                    })()}
+                                  <ListingPhoto
+                                    listingKey={listing.listingKey}
                                     alt={listing.address}
-                                    className="w-full h-48 object-cover"
-                                    draggable={false}
-                                    loading="lazy"
-                                    decoding="async"
                                   />
 
                                   {/* Gradient Overlay */}
