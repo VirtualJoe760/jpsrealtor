@@ -41,7 +41,7 @@ export default function ChatWidget() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Map control for showing listings on background map
-  const { showMapWithListings, showMapAtLocation, hideMap, isMapVisible, prePositionMap } = useMapControl();
+  const { showMapWithListings, showMapAtLocation, hideMap, isMapVisible, prePositionMap, setMapVisible } = useMapControl();
 
   // Auto-scroll to bottom on new messages
   const messagesEndRef = useChatScroll(messages);
@@ -515,7 +515,7 @@ export default function ChatWidget() {
         console.log('🗺️ [ChatWidget] Map query selected, switching to map view');
 
         // Switch to map view first
-        showMap();
+        setMapVisible(true);
 
         // Execute the map query which will fly to the location
         handleMapQuery(suggestion.label, suggestion);

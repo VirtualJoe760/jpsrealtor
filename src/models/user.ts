@@ -52,7 +52,21 @@ export interface IUser extends Document {
     swipedAt: Date;
     subdivision?: string;
     city?: string;
+    county?: string; // NEW: For county-level analytics and filtering
     propertySubType?: string;
+
+    // NEW: Source context tracking (map vs AI chat)
+    sourceContext?: {
+      type: 'map' | 'ai_chat'; // Where did this swipe originate?
+      query?: string; // Original AI query (if from chat)
+      queueId?: string; // Link to specific swipe session
+      userIntent?: string; // Parsed intent (e.g., "investment", "family home")
+    };
+
+    // NEW: Engagement tracking
+    viewDuration?: number; // How long did they view this listing (seconds)?
+    detailsViewed?: boolean; // Did they click "View Full Details"?
+    photosViewed?: number; // How many photos did they look at?
   }>;
   dislikedListings: Array<{
     listingKey: string;
@@ -81,7 +95,36 @@ export interface IUser extends Document {
     totalDislikes: number;
     topSubdivisions: Array<{ name: string; count: number }>;
     topCities: Array<{ name: string; count: number }>;
+    topCounties?: Array<{ name: string; count: number }>; // NEW: County aggregation
     topPropertySubTypes: Array<{ type: string; count: number }>;
+    lastUpdated: Date;
+  };
+
+  // NEW: Search History (for AI personalization)
+  searchHistory?: Array<{
+    query: string;
+    timestamp: Date;
+    resultsCount: number;
+    swipedCount: number;
+    likedCount: number;
+    filters: Record<string, any>; // Applied filters (beds, baths, price, etc.)
+  }>;
+
+  // NEW: Preference Patterns (auto-calculated from liked listings)
+  preferencePatterns?: {
+    favoriteSubdivisions: Array<{ name: string; county: string; count: number }>;
+    favoriteCities: Array<{ name: string; county: string; count: number }>;
+    favoriteCounties: Array<{ name: string; count: number }>;
+    favoritePropertyTypes: Array<{ type: string; count: number }>;
+
+    priceRange: { min: number; max: number; avg: number };
+    bedroomRange: { min: number; max: number; avg: number };
+    bathroomRange: { min: number; max: number; avg: number };
+    sqftRange: { min: number; max: number; avg: number };
+
+    preferredAmenities: Array<{ name: string; count: number }>; // pool, spa, garage, etc.
+    preferredFeatures: Array<{ name: string; count: number }>; // view, waterfront, gated
+
     lastUpdated: Date;
   };
 

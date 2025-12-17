@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 import TwoFactorToken from "@/models/twoFactorToken";
 import { send2FACode } from "@/lib/email-resend";
 

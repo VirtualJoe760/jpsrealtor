@@ -1,7 +1,7 @@
 // src/app/api/auth/verify/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 
 export async function POST(request: NextRequest) {

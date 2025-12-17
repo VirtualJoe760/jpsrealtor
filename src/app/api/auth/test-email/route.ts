@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 import { sendVerificationEmail } from "@/lib/email-resend";
 
 // Mark this route as dynamic to prevent static optimization during build

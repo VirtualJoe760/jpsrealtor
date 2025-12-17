@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 
 const DISLIKE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 

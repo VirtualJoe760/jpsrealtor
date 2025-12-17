@@ -1,7 +1,7 @@
 // src/app/api/auth/check-verification/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 
 export async function GET(request: NextRequest) {
   try {
