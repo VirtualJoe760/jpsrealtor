@@ -226,11 +226,11 @@ function HomeContent() {
         <MapLayer />
       </div>
 
-      {/* Favorites Button - Above bottom navigation (when map is visible and has favorites) */}
+      {/* Favorites Button - Under info panel (when map is visible and has favorites) */}
       {isMapVisible && likedListings.length > 0 && (
         <button
           onClick={() => setFavoritesPannelOpen(true)}
-          className={`fixed bottom-24 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
+          className={`fixed top-32 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
             isLight
               ? "bg-red-500 hover:bg-red-600 text-white"
               : "bg-pink-600 hover:bg-pink-700 text-white"
