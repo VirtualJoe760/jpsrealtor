@@ -80,10 +80,14 @@ export function useMapControl() {
    * Show map at a specific location (e.g., when user asks about a city)
    */
   const showMapAtLocation = (lat: number, lng: number, zoom: number = 12) => {
-    console.log('🗺️ [useMapControl] Showing map at location:', { lat, lng, zoom });
+    console.log('🗺️ [useMapControl.showMapAtLocation] 🚀 CALLED with:', { lat, lng, zoom });
+    console.log('🗺️ [useMapControl.showMapAtLocation] Setting map visible...');
     setMapVisible(true); // Make map visible
+    console.log('🗺️ [useMapControl.showMapAtLocation] Calling flyToLocation...');
     flyToLocation(lat, lng, zoom);
+    console.log('🗺️ [useMapControl.showMapAtLocation] Setting opacity...');
     setMapOpacity(0.8);
+    console.log('🗺️ [useMapControl.showMapAtLocation] ✅ Complete');
   };
 
   /**

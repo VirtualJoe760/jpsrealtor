@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
-import { useMapControl } from "@/app/hooks/useMapControl";
 import type { MapListing } from "@/types/types";
 import LoadingGlobe from "@/app/components/LoadingGlobe";
 
@@ -65,8 +64,6 @@ export default function MapLayer() {
 
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
-
-  const { showMapAtLocation } = useMapControl();
 
   const [mounted, setMounted] = useState(false);
   const hasInitializedRef = useRef(false);
@@ -151,25 +148,6 @@ export default function MapLayer() {
           mapStyle={themeAwareMapStyle}
         />
       </div>
-
-      {/* TEST BUTTON - Fly to Palm Springs */}
-      {isMapVisible && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
-          <button
-            onClick={() => {
-              console.log('🧪 [TEST] Fly to Palm Springs button clicked');
-              showMapAtLocation(33.8303, -116.5453, 12);
-            }}
-            className={`px-6 py-3 rounded-lg font-bold text-lg shadow-2xl transition-all hover:scale-105 active:scale-95 ${
-              isLight
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-            }`}
-          >
-            🧪 TEST: Fly to PS
-          </button>
-        </div>
-      )}
 
     </div>
   );

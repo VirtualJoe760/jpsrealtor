@@ -113,6 +113,7 @@ export default function ChatWidget() {
     } else {
       // No suggestion - search for best match via API (skip "Ask AI" option)
       try {
+        console.log('🗺️ [ChatWidget] Fetching search results for:', query);
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await response.json();
 
@@ -129,16 +130,17 @@ export default function ChatWidget() {
 
           if (bestMatch && bestMatch.latitude && bestMatch.longitude) {
             const zoomLevel = bestMatch.zoom || getZoomLevel(bestMatch.type);
-            console.log('🗺️ [ChatWidget] Flying to:', { lat: bestMatch.latitude, lng: bestMatch.longitude, zoom: zoomLevel, type: bestMatch.type });
+            console.log('🗺️ [ChatWidget] ✅ CALLING showMapAtLocation with:', { lat: bestMatch.latitude, lng: bestMatch.longitude, zoom: zoomLevel, type: bestMatch.type });
             showMapAtLocation(bestMatch.latitude, bestMatch.longitude, zoomLevel);
+            console.log('🗺️ [ChatWidget] ✅ showMapAtLocation called successfully');
           } else {
-            console.warn('🗺️ [ChatWidget] No valid location found in results:', data.results);
+            console.warn('🗺️ [ChatWidget] ❌ No valid location found - bestMatch:', bestMatch);
           }
         } else {
-          console.warn('🗺️ [ChatWidget] No results returned from API for:', query);
+          console.warn('🗺️ [ChatWidget] ❌ No results returned from API for:', query);
         }
       } catch (error) {
-        console.error('🗺️ [ChatWidget] Map query error:', error);
+        console.error('🗺️ [ChatWidget] ❌ Map query error:', error);
       }
     }
 

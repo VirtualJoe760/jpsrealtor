@@ -134,7 +134,9 @@
       "Bash(BOARD_ID=\"5f3cd37b52550c49f6dada4c\")",
       "Bash(/tmp/old-counties-constants.ts)",
       "Bash(timeout 120 node:*)",
-      "WebFetch(domain:www.bram.us)"
+      "WebFetch(domain:www.bram.us)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []
