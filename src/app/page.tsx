@@ -57,6 +57,12 @@ function HomeContent() {
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  // Notify TopToggles when favorites panel opens/closes
+  useEffect(() => {
+    const event = new CustomEvent('favoritesPanelChange', { detail: { isOpen: favoritesPannelOpen } });
+    window.dispatchEvent(event);
+  }, [favoritesPannelOpen]);
+
   // Import theme context
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";

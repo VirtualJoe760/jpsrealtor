@@ -238,14 +238,14 @@ export default function FavoritesPannel({
         shadow-2xl overflow-hidden flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
         ${isLight
-          ? 'bg-white/98 text-gray-900'
+          ? 'bg-white/60 text-gray-900'
           : 'bg-neutral-900/98 text-white'
         }`}
       >
         {/* Sticky header: title + tabs + close */}
         <div className={`flex-shrink-0 backdrop-blur-xl border-b ${
           isLight
-            ? 'bg-white/95 border-gray-300'
+            ? 'bg-white/50 border-gray-300'
             : 'bg-neutral-900/95 border-neutral-800'
         }`}>
           {/* Title row with close button */}

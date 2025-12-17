@@ -21,9 +21,26 @@ export default function TopToggles() {
   const isLight = currentTheme === "lightgradient";
   const isHomePage = pathname === "/";
   const [isVisible, setIsVisible] = useState(true);
+  const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const lastScrollY = useRef(0);
 
+  // Listen for favorites panel state changes
   useEffect(() => {
+    const handleFavoritesPanel = (e: CustomEvent) => {
+      setFavoritesPanelOpen(e.detail.isOpen);
+    };
+
+    window.addEventListener('favoritesPanelChange', handleFavoritesPanel as EventListener);
+    return () => window.removeEventListener('favoritesPanelChange', handleFavoritesPanel as EventListener);
+  }, []);
+
+  useEffect(() => {
+    // Hide if favorites panel is open
+    if (favoritesPanelOpen) {
+      setIsVisible(false);
+      return;
+    }
+
     // ONLY on map view, keep toggles always visible (never hide)
     if (isMapVisible) {
       setIsVisible(true);
@@ -53,7 +70,7 @@ export default function TopToggles() {
       document.body.removeEventListener("scroll", handleScroll);
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [isMapVisible]);
+  }, [isMapVisible, favoritesPanelOpen]);
 
   const handleToggleTheme = () => {
     setTheme(isLight ? "blackspace" : "lightgradient");
