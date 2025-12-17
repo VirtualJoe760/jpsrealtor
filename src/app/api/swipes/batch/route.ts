@@ -111,7 +111,21 @@ export async function POST(request: NextRequest) {
             swipedAt: new Date(swipe.timestamp),
             subdivision: swipe.listingData?.subdivisionName,
             city: swipe.listingData?.city,
+            county: swipe.listingData?.county, // NEW: Track county
             propertySubType: swipe.listingData?.propertySubType,
+
+            // NEW: Source context (defaults to 'map' for backward compatibility)
+            sourceContext: (swipe as any).sourceContext || {
+              type: 'map',
+              query: null,
+              queueId: null,
+              userIntent: null,
+            },
+
+            // NEW: Engagement tracking (optional fields)
+            viewDuration: (swipe as any).viewDuration,
+            detailsViewed: (swipe as any).detailsViewed,
+            photosViewed: (swipe as any).photosViewed,
           });
           likesAdded++;
         } else {
@@ -213,12 +227,14 @@ export async function POST(request: NextRequest) {
 function calculateAnalytics(likedListings: any[]) {
   const subdivisionCounts: Record<string, number> = {};
   const cityCounts: Record<string, number> = {};
+  const countyCounts: Record<string, number> = {}; // NEW: County aggregation
   const propertySubTypeCounts: Record<string, number> = {};
 
   likedListings.forEach((listing) => {
     // Check both top-level and listingData for fields
     const subdivision = listing.subdivision || listing.listingData?.subdivisionName;
     const city = listing.city || listing.listingData?.city;
+    const county = listing.county || listing.listingData?.county; // NEW
     const propertySubType = listing.propertySubType || listing.listingData?.propertySubType;
 
     if (subdivision) {
@@ -226,6 +242,9 @@ function calculateAnalytics(likedListings: any[]) {
     }
     if (city) {
       cityCounts[city] = (cityCounts[city] || 0) + 1;
+    }
+    if (county) { // NEW: Track county counts
+      countyCounts[county] = (countyCounts[county] || 0) + 1;
     }
     if (propertySubType) {
       propertySubTypeCounts[propertySubType] = (propertySubTypeCounts[propertySubType] || 0) + 1;
@@ -243,6 +262,11 @@ function calculateAnalytics(likedListings: any[]) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
+  const topCounties = Object.entries(countyCounts) // NEW: Top counties
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
   const topPropertySubTypes = Object.entries(propertySubTypeCounts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
@@ -253,6 +277,7 @@ function calculateAnalytics(likedListings: any[]) {
     totalDislikes: 0, // Will be calculated separately
     topSubdivisions,
     topCities,
+    topCounties, // NEW: Include county analytics
     topPropertySubTypes,
   };
 }
