@@ -71,3 +71,4 @@ export function buildSystemPrompt(options: PromptOptions = {}): string {
 export { buildBasePrompt } from './base';
 export { buildSourcesPrompt } from './sources';
 export { buildTextOnlyPrompt } from './text-only';
+export { isHelpCommand, getHelpContent, HELP_DIRECTORY, TOOLS_REFERENCE, EXAMPLES_GUIDE } from './help-commands';

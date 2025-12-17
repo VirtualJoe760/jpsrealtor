@@ -9,6 +9,7 @@ import { CHAT_TOOLS } from "@/lib/chat/tools";
 import { buildSystemPrompt } from "@/lib/chat/prompts";
 import { executeToolCall } from "@/lib/chat/tool-executor";
 import { parseComponentData, cleanResponseText } from "@/lib/chat/response-parser";
+import { isHelpCommand, getHelpContent } from "@/lib/chat/prompts/help-commands";
 import groq from "@/lib/groq";
 
 export async function POST(req: NextRequest) {
@@ -53,6 +54,65 @@ export async function POST(req: NextRequest) {
     await logChatMessage("user", userQuery, userId, {
       timestamp: new Date().toISOString(),
     });
+
+    // Check if user is requesting help/directory
+    const helpCommand = isHelpCommand(userQuery);
+    if (helpCommand) {
+      console.log(`[AI] Help command detected: ${helpCommand}`);
+      const helpContent = getHelpContent(helpCommand);
+
+      // Stream the help content immediately (no AI call needed)
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            // Stream help content word-by-word for consistent UX
+            const words = helpContent.split(' ');
+            for (let i = 0; i < words.length; i++) {
+              const word = words[i] + (i < words.length - 1 ? ' ' : '');
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token: word })}\n\n`));
+            }
+
+            // Log help response
+            await logChatMessage("assistant", helpContent, userId, {
+              model: "help-system",
+              processingTime: Date.now() - startTime,
+              helpCommand,
+            });
+
+            // Send done signal
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  done: true,
+                  metadata: {
+                    model: "help-system",
+                    processingTime: Date.now() - startTime,
+                    tier: userTier,
+                  },
+                })}\n\n`
+              )
+            );
+
+            controller.close();
+          } catch (error: any) {
+            console.error("[SSE] Help stream error:", error);
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: error.message })}\n\n`)
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
+    }
 
     // Build system prompt using modular composition
     // textOnly mode provides focused markdown-only responses for map digests

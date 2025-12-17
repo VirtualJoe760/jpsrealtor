@@ -23,6 +23,7 @@ This directory contains the modular prompt system for the AI chat assistant. Pro
 ├── base.ts            ← Core identity, role, communication style
 ├── sources.ts         ← Citation rules and [SOURCES] formatting
 ├── text-only.ts       ← Map digest mode (markdown-only responses)
+├── help-commands.ts   ← Help directory system (help, ls, tools, examples)
 └── (future modules)
     ├── components.ts  ← UI component instructions (Phase 2)
     ├── tools/         ← Tool-specific documentation (Phase 3)
@@ -77,6 +78,26 @@ import {
 
 // Build custom combination
 const customPrompt = buildBasePrompt(dates) + buildTextOnlyPrompt();
+```
+
+### Help Commands (User-Facing)
+
+```typescript
+import { isHelpCommand, getHelpContent } from '@/lib/chat/prompts';
+
+// Detect help commands
+const userQuery = "help";
+const helpCommand = isHelpCommand(userQuery); // Returns: 'help'
+
+if (helpCommand) {
+  const content = getHelpContent(helpCommand);
+  // Return instant response without AI call
+}
+
+// Supported commands:
+// "help" or "ls" → Main help directory
+// "tools" → Detailed tool reference
+// "examples" → Example queries for each tool
 ```
 
 ## Module Reference
@@ -143,6 +164,24 @@ interface PromptOptions {
 **Token Count:** ~200 tokens
 
 **When to use:** When `textOnly: true` option is set
+
+### `help-commands.ts` - Help Directory System
+
+**Purpose:** Directory-style command system for tool discovery
+
+**Content:**
+- User-friendly help directory (triggered by `help` or `ls`)
+- Detailed tool reference (triggered by `tools`)
+- Example queries guide (triggered by `examples`)
+- Command detection utility (`isHelpCommand`)
+
+**Features:**
+- No AI call needed - instant response
+- Organized by use case (Search, Market Analysis, Specialized)
+- Natural language examples for each tool
+- Progressive disclosure (help → tools → examples)
+
+**When to use:** Automatically detected when user types help/ls/tools/examples
 
 ## Performance Comparison
 
