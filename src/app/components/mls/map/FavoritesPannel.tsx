@@ -441,7 +441,14 @@ export default function FavoritesPannel({
                                 {/* Image Container */}
                                 <div className={`relative overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-neutral-900'}`}>
                                   <img
-                                    src={listing.primaryPhotoUrl}
+                                    src={(() => {
+                                      // Extract primary photo from media array (matches /api/mls-listings/[slugAddress])
+                                      const media = listing.media || [];
+                                      const primaryPhoto = media.find(
+                                        (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+                                      ) || media[0];
+                                      return primaryPhoto?.Uri800 || primaryPhoto?.Uri640 || listing.primaryPhotoUrl || "/images/no-photo.png";
+                                    })()}
                                     alt={listing.address}
                                     className="w-full h-48 object-cover"
                                     draggable={false}

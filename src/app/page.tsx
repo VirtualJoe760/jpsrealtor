@@ -49,6 +49,7 @@ function HomeContent() {
     filters,
     setFilters,
     loadListings,
+    swipeQueue,
   } = useMLSContext();
 
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
@@ -97,6 +98,47 @@ function HomeContent() {
     window.addEventListener('toggleMapControls', handleToggleControls);
     return () => window.removeEventListener('toggleMapControls', handleToggleControls);
   }, []);
+
+  // Initialize swipe queue when a listing is selected
+  useEffect(() => {
+    if (selectedListing && !swipeQueue.isReady) {
+      console.log('[HomePage] Initializing swipe queue for:', selectedListing.listingKey);
+      swipeQueue.initializeQueue(selectedListing);
+    }
+  }, [selectedListing, swipeQueue]);
+
+  // Handler to advance to next listing after swipe
+  const handleSwipeAndAdvance = async (swipeAction: 'left' | 'right') => {
+    if (!selectedFullListing) return;
+
+    // Perform the swipe action
+    if (swipeAction === 'left') {
+      swipeLeft(selectedFullListing);
+    } else {
+      swipeRight(selectedFullListing);
+    }
+
+    // Get next listing from queue
+    const { listing: nextQueueItem } = swipeQueue.getNext();
+
+    if (nextQueueItem) {
+      // Find the full listing in visibleListings
+      const nextListing = visibleListings.find(
+        (l) => l.listingKey === nextQueueItem.listingKey
+      );
+
+      if (nextListing) {
+        console.log('[HomePage] Advancing to next listing:', nextQueueItem.listingKey);
+        await selectListing(nextListing);
+      } else {
+        console.warn('[HomePage] Next listing not found in visibleListings, closing panel');
+        closeListing();
+      }
+    } else {
+      console.log('[HomePage] Queue exhausted, closing panel');
+      closeListing();
+    }
+  };
 
   const handleToggleMap = () => {
     if (isMapVisible) {
@@ -231,14 +273,8 @@ function HomeContent() {
             listing={selectedListing}
             fullListing={selectedFullListing}
             onClose={closeListing}
-            onSwipeLeft={() => {
-              swipeLeft(selectedFullListing);
-              closeListing();
-            }}
-            onSwipeRight={() => {
-              swipeRight(selectedFullListing);
-              closeListing();
-            }}
+            onSwipeLeft={() => handleSwipeAndAdvance('left')}
+            onSwipeRight={() => handleSwipeAndAdvance('right')}
             isSidebarOpen={false}
             isDisliked={dislikedListings.some(l => l.listingKey === selectedFullListing.listingKey)}
             onRemoveDislike={() => selectedListing && removeDislike(selectedListing)}
