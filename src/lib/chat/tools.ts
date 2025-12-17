@@ -10,6 +10,38 @@ export const CHAT_TOOLS: GroqTool[] = [
   {
     type: "function",
     function: {
+      name: "getLocationSnapshot",
+      description: `Get a real estate market snapshot for a specific location. Use this when user searches for a location via map search or asks for general market overview. Returns text-only formatted response with:
+- Typical home prices by property type
+- Market activity and trends
+- Community highlights and features
+
+WHEN TO USE:
+- User clicks on map search autocomplete (city, subdivision, county)
+- User asks "Tell me about [location]"
+- User asks "What's the market like in [location]?"
+
+This is a TEXT-ONLY tool - it returns markdown formatted insights, not data components.`,
+      parameters: {
+        type: "object",
+        properties: {
+          locationName: {
+            type: "string",
+            description: "The location name (e.g., 'Palm Desert', 'Indian Wells Country Club', 'Riverside County')"
+          },
+          locationType: {
+            type: "string",
+            enum: ["city", "subdivision", "county", "region"],
+            description: "Type of location for context"
+          }
+        },
+        required: ["locationName", "locationType"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "searchArticles",
       description: "Search our real estate blog articles and guides for information. Use this FIRST when user asks questions about real estate topics, market insights, tips, or general information (e.g., 'energy costs', 'hidden costs', 'buying tips', 'HOA fees', etc.). This provides authoritative content we've written with citations and sources.",
       parameters: {

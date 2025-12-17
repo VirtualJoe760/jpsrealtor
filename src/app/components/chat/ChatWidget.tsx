@@ -573,18 +573,10 @@ export default function ChatWidget() {
       const { locationName, locationType, city, state } = event.detail;
       console.log('📍 [ChatWidget] Received location insights request:', { locationName, locationType, city, state });
 
-      // Construct AI query for market insights
-      const query = `IMPORTANT: Do NOT use any tools or functions. Just answer directly from your knowledge.
+      // Construct a clean query that triggers the getLocationSnapshot tool
+      const query = `Give me a Real Estate Snapshot of ${locationName}`;
 
-Tell me about the real estate market in ${locationName}${city && city !== locationName ? `, ${city}` : ''}, ${state}:
-
-- What are typical home prices?
-- What's the market like (hot/cool)?
-- What makes this area desirable?
-
-Keep it brief and conversational. Format in markdown with bullet points.`;
-
-      console.log('🤖 [ChatWidget] Sending location insights query to AI');
+      console.log('🤖 [ChatWidget] Sending location snapshot request to AI');
 
       // Send to AI in background (no user message shown)
       handleAIQueryInBackground(query);

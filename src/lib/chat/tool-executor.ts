@@ -47,7 +47,9 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
   let result: any;
 
   try {
-    if (functionName === "queryDatabase") {
+    if (functionName === "getLocationSnapshot") {
+      result = await executeGetLocationSnapshot(functionArgs);
+    } else if (functionName === "queryDatabase") {
       result = await executeQueryDatabase(functionArgs);
     } else if (functionName === "matchLocation") {
       result = await executeMatchLocation(functionArgs);
@@ -182,6 +184,25 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     tool_call_id: toolCall.id,
     name: functionName,
     content: JSON.stringify(result)
+  };
+}
+
+/**
+ * Execute getLocationSnapshot tool
+ * Returns a formatted text-only market snapshot for a location
+ */
+async function executeGetLocationSnapshot(args: any): Promise<any> {
+  const { locationName, locationType } = args;
+
+  console.log(`[getLocationSnapshot] Generating snapshot for ${locationName} (${locationType})`);
+
+  // This is a text-only tool - it returns markdown formatted insights
+  // The AI will use its knowledge to provide the response
+  return {
+    success: true,
+    locationName,
+    locationType,
+    message: `Please provide a real estate market snapshot for ${locationName}. Format your response in markdown with sections for typical prices, market activity, and community highlights.`
   };
 }
 
