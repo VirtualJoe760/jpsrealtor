@@ -22,6 +22,7 @@ import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/cha
 import ChatInput from "./ChatInput";
 import AutocompleteDropdown from "./AutocompleteDropdown";
 import NewChatModal from "./NewChatModal";
+import TypingAnimation from "./TypingAnimation";
 import { useAutocomplete } from "./hooks/useAutocomplete";
 import { useChatScroll } from "./hooks/useChatScroll";
 
@@ -994,11 +995,7 @@ export default function ChatWidget() {
                     ? "bg-white/90 shadow-md border border-gray-200/50"
                     : "bg-neutral-900/80 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
                 }`}>
-                  <div className="flex gap-2">
-                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} />
-                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} style={{ animationDelay: "0.2s" }} />
-                    <div className={`w-2 h-2 rounded-full animate-bounce ${isLight ? "bg-blue-400" : "bg-emerald-400"}`} style={{ animationDelay: "0.4s" }} />
-                  </div>
+                  <TypingAnimation />
                 </div>
               </motion.div>
             )}
