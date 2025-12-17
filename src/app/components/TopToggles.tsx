@@ -8,12 +8,14 @@ import { Sun, Moon, Map, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { useMapState } from "@/app/contexts/MapStateContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 export default function TopToggles() {
   const { currentTheme, setTheme } = useTheme();
-  const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const { viewState } = useMapState();
   const pathname = usePathname();
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
@@ -62,8 +64,14 @@ export default function TopToggles() {
       if (isMapVisible) {
         hideMap();
       } else {
-        // Show map centered on California (entire state view)
-        showMapAtLocation(37.0, -119.5, 5);
+        // Check if chat has pre-positioned the map
+        if (viewState) {
+          // User has searched - reveal the pre-positioned map
+          setMapVisible(true);
+        } else {
+          // No search yet - show default California view
+          showMapAtLocation(37.0, -119.5, 5);
+        }
       }
     } else {
       // If we're on any other page, redirect to homepage (returns to last state)
