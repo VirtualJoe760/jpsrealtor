@@ -7,7 +7,7 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import bcrypt from "bcryptjs";
 import dbConnect from "./mongoose";
-import User from "@/models/user";
+import User from "@/models/User";
 
 export const authOptions: NextAuthOptions = {
   providers: [
