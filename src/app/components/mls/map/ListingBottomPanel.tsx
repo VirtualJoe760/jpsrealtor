@@ -112,22 +112,24 @@ export default function ListingBottomPanel({
   const [enrichedListing, setEnrichedListing] = useState<IUnifiedListing>(fullListing);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch full listing data from API using slugAddress
+  // Fetch full listing data from API using slugAddress or listingKey
   useEffect(() => {
     const fetchListingData = async () => {
-      const slugAddress = listing.slugAddress || listing.slug || fullListing.slug;
+      // Priority: slugAddress (preferred) → listingKey (fallback)
+      const identifier = listing.slugAddress || listing.slug || fullListing.slugAddress || fullListing.listingKey;
 
-      if (!slugAddress) {
-        console.warn('[ListingBottomPanel] No slugAddress available, using provided data');
+      if (!identifier) {
+        console.warn('[ListingBottomPanel] No identifier available, using provided data');
         setEnrichedListing(fullListing);
         return;
       }
 
-      console.log('[ListingBottomPanel] Fetching data for:', slugAddress);
+      console.log('[ListingBottomPanel] Fetching data for:', identifier);
       setIsLoading(true);
 
       try {
-        const response = await fetch(`/api/mls-listings/${slugAddress}`);
+        // The mls-listings route now accepts both slugAddress AND listingKey
+        const response = await fetch(`/api/mls-listings/${identifier}`);
 
         if (response.ok) {
           const { listing: apiListing } = await response.json();
@@ -153,7 +155,7 @@ export default function ListingBottomPanel({
     };
 
     fetchListingData();
-  }, [listing.slugAddress, listing.slug, fullListing.listingKey]);
+  }, [listing.slugAddress, listing.slug, fullListing.slugAddress, fullListing.listingKey]);
 
   // Debug logging for chat listings
   console.log('[ListingBottomPanel] enrichedListing data:', {

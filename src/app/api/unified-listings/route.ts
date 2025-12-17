@@ -12,6 +12,12 @@ export const dynamic = "force-dynamic";
  * Universal endpoint for querying listings from all 8 MLS associations
  *
  * Query Parameters:
+ *
+ * Single Listing Lookup:
+ * - listingKey: Find by ListingKey (exact match)
+ * - slugAddress: Find by slugAddress (exact match)
+ *
+ * Filters:
  * - city: Filter by city name
  * - subdivisionName: Filter by subdivision
  * - mlsSource: Filter by MLS (GPS, CRMLS, etc.)
@@ -41,6 +47,15 @@ export async function GET(request: NextRequest) {
 
     // Build query filter
     const filter: any = {};
+
+    // Single listing lookup by ListingKey or slugAddress
+    if (searchParams.has("listingKey")) {
+      filter.listingKey = searchParams.get("listingKey");
+    }
+
+    if (searchParams.has("slugAddress")) {
+      filter.slugAddress = searchParams.get("slugAddress");
+    }
 
     // Location filters
     if (searchParams.has("city")) {

@@ -1,4 +1,5 @@
 // src/app/api/mls-listings/[slugAddress]/route.ts
+// Lookup a single listing by slugAddress OR listingKey from unified_listings
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
@@ -13,7 +14,14 @@ export async function GET(
 
   try {
     // 🔍 Find listing in unified_listings (all 8 MLSs)
-    const listing: any = await UnifiedListing.findOne({ slugAddress }).lean();
+    // Try by slugAddress first, then by listingKey (fallback for when slugAddress isn't generated yet)
+    let listing: any = await UnifiedListing.findOne({ slugAddress }).lean();
+
+    // If not found by slugAddress, try by listingKey
+    if (!listing) {
+      console.log(`[mls-listings] slugAddress not found (${slugAddress}), trying as listingKey...`);
+      listing = await UnifiedListing.findOne({ listingKey: slugAddress }).lean();
+    }
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found in database" }, { status: 404 });
