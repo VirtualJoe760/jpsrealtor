@@ -538,7 +538,7 @@ export default function ChatWidget() {
     console.log('🗺️ [ChatWidget] Executing bidirectional query - switching to map view');
 
     // Switch to map view to see the flyover animation
-    showMap();
+    setMapVisible(true);
 
     // Execute map query in foreground (shows map results)
     handleMapQuery(userMessage);
