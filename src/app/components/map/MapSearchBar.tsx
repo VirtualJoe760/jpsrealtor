@@ -38,13 +38,15 @@ export default function MapSearchBar({
   const isLight = currentTheme === "lightgradient";
   const { showMapAtLocation } = useMapControl();
 
+  console.log('🔍 [MapSearchBar] Component rendered');
+
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Click-outside detection to close dropdown
   useEffect(() => {
@@ -108,6 +110,7 @@ export default function MapSearchBar({
               lng: r.longitude,
             }));
 
+          console.log('📋 [MapSearchBar] Setting suggestions:', transformed);
           setSuggestions(transformed);
           setShowSuggestions(transformed.length > 0);
         }
@@ -133,28 +136,88 @@ export default function MapSearchBar({
     onSearch(searchQuery);
   };
 
-  const handleSuggestionClick = (suggestion: AutocompleteSuggestion) => {
+  const handleSuggestionClick = async (suggestion: AutocompleteSuggestion) => {
     console.log('🗺️ [MapSearchBar] Suggestion clicked:', suggestion);
 
     setQuery(suggestion.name);
     setShowSuggestions(false);
     onSearch(suggestion.name);
 
-    // If we have coordinates, fly map to location
-    if (suggestion.lat && suggestion.lng) {
-      console.log('🗺️ [MapSearchBar] Has coordinates, flying to:', suggestion.name, { lat: suggestion.lat, lng: suggestion.lng });
+    // If we have coordinates, call flyover API
+    // Check for valid non-zero coordinates
+    const hasValidCoords = suggestion.lat && suggestion.lng &&
+                          suggestion.lat !== 0 && suggestion.lng !== 0;
 
-      // Determine zoom level based on type
-      const zoomLevel = suggestion.type === 'subdivision' ? 13 :
-                       suggestion.type === 'city' ? 11 :
-                       suggestion.type === 'county' ? 9 : 12;
+    if (hasValidCoords) {
+      console.log('🗺️ [MapSearchBar] Has coordinates, calling flyover API:', suggestion.name);
 
-      console.log('🗺️ [MapSearchBar] Calling showMapAtLocation with zoom:', zoomLevel);
+      try {
+        const response = await fetch('/api/map/flyover', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: suggestion.name,
+            type: suggestion.type,
+            lat: suggestion.lat,
+            lng: suggestion.lng,
+            city: suggestion.city,
+            state: suggestion.state,
+          }),
+        });
 
-      // Trigger map flyover animation using useMapControl hook
-      showMapAtLocation(suggestion.lat, suggestion.lng, zoomLevel);
+        const data = await response.json();
+
+        if (data.success) {
+          console.log('🗺️ [MapSearchBar] Flyover API success:', data.flyover);
+
+          // Trigger map flyover animation using useMapControl hook
+          showMapAtLocation(data.flyover.lat, data.flyover.lng, data.flyover.zoom);
+        } else {
+          console.error('🗺️ [MapSearchBar] Flyover API error:', data.error);
+        }
+      } catch (error) {
+        console.error('🗺️ [MapSearchBar] Failed to call flyover API:', error);
+        // Fallback: still try to show map at location
+        const zoomLevel = suggestion.type === 'subdivision' ? 13 :
+                         suggestion.type === 'city' ? 11 :
+                         suggestion.type === 'county' ? 9 : 12;
+        showMapAtLocation(suggestion.lat, suggestion.lng, zoomLevel);
+      }
     } else {
-      console.warn('🗺️ [MapSearchBar] No coordinates found for suggestion:', suggestion);
+      console.warn('🗺️ [MapSearchBar] No valid coordinates, attempting geocoding fallback:', suggestion);
+
+      // Fallback: Try to geocode the location name
+      try {
+        const geocodeQuery = suggestion.city
+          ? `${suggestion.name}, ${suggestion.city}, CA`
+          : `${suggestion.name}, CA`;
+
+        console.log('🌍 [MapSearchBar] Geocoding query:', geocodeQuery);
+
+        const geocodeResponse = await fetch(`/api/search?q=${encodeURIComponent(geocodeQuery)}`);
+        const geocodeData = await geocodeResponse.json();
+
+        // Look for a geocode result with coordinates
+        const geocoded = geocodeData.results?.find((r: any) =>
+          r.type === 'geocode' && r.latitude && r.longitude
+        );
+
+        if (geocoded) {
+          console.log('🌍 [MapSearchBar] Geocoding success:', geocoded);
+
+          const zoomLevel = suggestion.type === 'subdivision' ? 13 :
+                           suggestion.type === 'city' ? 11 :
+                           suggestion.type === 'county' ? 9 : 12;
+
+          showMapAtLocation(geocoded.latitude, geocoded.longitude, zoomLevel);
+        } else {
+          console.error('🌍 [MapSearchBar] Geocoding failed - no results with coordinates');
+        }
+      } catch (error) {
+        console.error('🌍 [MapSearchBar] Geocoding error:', error);
+      }
     }
   };
 
@@ -228,16 +291,23 @@ export default function MapSearchBar({
         {showSuggestions && suggestions.length > 0 && (
           <div
             ref={dropdownRef}
-            className={`absolute bottom-full mb-2 left-0 right-0 rounded-xl shadow-2xl overflow-hidden z-50 pointer-events-auto ${
+            className={`absolute bottom-full mb-2 left-0 right-0 rounded-xl shadow-2xl overflow-hidden pointer-events-auto ${
               isLight ? "bg-white border border-gray-300" : "bg-neutral-800 border border-neutral-700"
             }`}
+            style={{ zIndex: 9999 }}
           >
             {suggestions.map((suggestion, index) => (
               <button
                 key={index}
-                onMouseDown={() => {
-                  console.log('🖱️ [MapSearchBar] MOUSE DOWN - Handling suggestion click:', suggestion.name);
+                onMouseDown={(e) => {
+                  console.log('🖱️ [MapSearchBar] MOUSE DOWN EVENT!', suggestion.name);
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🖱️ [MapSearchBar] About to call handleSuggestionClick');
                   handleSuggestionClick(suggestion);
+                }}
+                onClick={(e) => {
+                  console.log('🖱️ [MapSearchBar] CLICK EVENT ALSO FIRED!', suggestion.name);
                 }}
                 className={`w-full px-6 py-3 text-left transition-colors cursor-pointer ${
                   isLight
