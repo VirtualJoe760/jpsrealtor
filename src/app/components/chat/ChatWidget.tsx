@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, User, Copy, Check, Share, Map, MessageSquare } from "lucide-react";
 import Image from "next/image";
@@ -51,6 +51,10 @@ export default function ChatWidget() {
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
   const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike, loadListings } = useMLSContext();
+
+  // Location insights notification states
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationPreview, setNotificationPreview] = useState("");
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -418,6 +422,30 @@ export default function ChatWidget() {
                     addMessage(query, "user");
                     addMessage(fullText, "assistant", undefined, components);
                     console.log('🤖 [ChatWidget] Background AI query completed, message added to history');
+
+                    // Trigger notification for location insights
+                    const preview = fullText.substring(0, 80).replace(/[#*\n]/g, '').trim();
+                    setNotificationPreview(preview + '...');
+                    setShowNotification(true);
+
+                    // Play notification sound
+                    try {
+                      const audio = new Audio('/sounds/notification.mp3');
+                      audio.volume = 0.5;
+                      audio.play().catch(e => console.log('Could not play sound:', e));
+                    } catch (e) {
+                      console.log('Could not play notification sound:', e);
+                    }
+
+                    // Vibrate if supported
+                    if (navigator.vibrate) {
+                      navigator.vibrate([200, 100, 200]);
+                    }
+
+                    // Hide notification after 3 seconds
+                    setTimeout(() => {
+                      setShowNotification(false);
+                    }, 3000);
                   }
                 } catch (parseError) {
                   console.warn('[Background SSE] Skipped malformed chunk:', parseError);
@@ -533,19 +561,38 @@ export default function ChatWidget() {
     setMessage("");
     autocomplete.clear();
 
-    // Bidirectional processing: Execute both AI and map queries in parallel
-    // Default behavior: show map first (since most queries are location-based)
-    console.log('🗺️ [ChatWidget] Executing bidirectional query - switching to map view');
-
-    // Switch to map view to see the flyover animation
-    setMapVisible(true);
-
-    // Execute map query in foreground (shows map results)
-    handleMapQuery(userMessage);
-
-    // Execute AI query in background (prepares chat response)
-    handleAIQueryInBackground(userMessage);
+    // Chat-only behavior: just send to AI
+    // If user wants map view, they can use the map toggle or autocomplete
+    console.log('🤖 [ChatWidget] Sending message to AI');
+    handleAIQuery(userMessage);
   };
+
+  // Listen for location insights requests from MapSearchBar
+  useEffect(() => {
+    const handleLocationInsights = (event: CustomEvent) => {
+      const { locationName, locationType, city, state } = event.detail;
+      console.log('📍 [ChatWidget] Received location insights request:', { locationName, locationType, city, state });
+
+      // Construct AI query for market insights
+      const query = `IMPORTANT: Do NOT use any tools or functions. Just answer directly from your knowledge.
+
+Tell me about the real estate market in ${locationName}${city && city !== locationName ? `, ${city}` : ''}, ${state}:
+
+- What are typical home prices?
+- What's the market like (hot/cool)?
+- What makes this area desirable?
+
+Keep it brief and conversational. Format in markdown with bullet points.`;
+
+      console.log('🤖 [ChatWidget] Sending location insights query to AI');
+
+      // Send to AI in background (no user message shown)
+      handleAIQueryInBackground(query);
+    };
+
+    window.addEventListener('requestLocationInsights', handleLocationInsights as EventListener);
+    return () => window.removeEventListener('requestLocationInsights', handleLocationInsights as EventListener);
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     // Autocomplete hook handles its own keyboard navigation (ArrowUp, ArrowDown, Escape, Enter with selection)
@@ -820,10 +867,10 @@ export default function ChatWidget() {
                   showNewChatButton={messages.length > 0}
                 />
 
-                {/* Autocomplete Suggestions Dropdown - Only show in Map mode */}
+                {/* Autocomplete Suggestions Dropdown */}
                 <AutocompleteDropdown
                   suggestions={autocomplete.suggestions}
-                  showSuggestions={isMapVisible && autocomplete.showSuggestions}
+                  showSuggestions={autocomplete.showSuggestions}
                   selectedIndex={autocomplete.selectedSuggestionIndex}
                   onSelect={autocomplete.handleSelectSuggestion}
                   suggestionsRef={suggestionsRef}
@@ -1206,30 +1253,67 @@ export default function ChatWidget() {
       />
     )}
 
-    {/* Bottom Input Bar - shows when map is visible */}
-    {isMapVisible && (
-      <>
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSend={handleSend}
-          onKeyPress={handleKeyPress}
-          onKeyDown={handleKeyDown}
-          isLoading={isLoading}
-          variant="map"
-          placeholder="Search locations, addresses, cities..."
-        />
+    {/* Location Insights Notification Toast */}
+    <AnimatePresence>
+      {showNotification && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.9 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+          }}
+          exit={{ opacity: 0, y: -20, scale: 0.9 }}
+          className="fixed top-20 right-4 z-[9999] max-w-sm"
+          style={{
+            animation: 'shake 0.5s ease-in-out'
+          }}
+        >
+          <div
+            className={`rounded-xl shadow-2xl p-4 border cursor-pointer ${
+              isLight
+                ? 'bg-white/95 border-blue-200 backdrop-blur-lg'
+                : 'bg-neutral-900/95 border-emerald-500/30 backdrop-blur-lg'
+            }`}
+            onClick={() => {
+              setShowNotification(false);
+              // User can click to dismiss or open chat
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-full ${
+                isLight ? 'bg-blue-100' : 'bg-emerald-500/20'
+              }`}>
+                <MessageSquare className={`w-5 h-5 ${
+                  isLight ? 'text-blue-600' : 'text-emerald-400'
+                }`} />
+              </div>
+              <div className="flex-1">
+                <div className={`text-sm font-semibold mb-1 ${
+                  isLight ? 'text-gray-900' : 'text-white'
+                }`}>
+                  Market Insights Ready
+                </div>
+                <div className={`text-xs ${
+                  isLight ? 'text-gray-600' : 'text-neutral-400'
+                }`}>
+                  {notificationPreview}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
 
-        <AutocompleteDropdown
-          suggestions={autocomplete.suggestions}
-          showSuggestions={autocomplete.showSuggestions}
-          selectedIndex={autocomplete.selectedSuggestionIndex}
-          onSelect={autocomplete.handleSelectSuggestion}
-          suggestionsRef={suggestionsRef}
-          variant="map"
-        />
-      </>
-    )}
+    <style jsx>{`
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+      }
+    `}</style>
+
     </>
   );
 }

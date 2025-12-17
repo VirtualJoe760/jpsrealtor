@@ -174,6 +174,16 @@ export default function MapSearchBar({
 
           // Trigger map flyover animation using useMapControl hook
           showMapAtLocation(data.flyover.lat, data.flyover.lng, data.flyover.zoom);
+
+          // Send location to AI for market insights
+          window.dispatchEvent(new CustomEvent('requestLocationInsights', {
+            detail: {
+              locationName: suggestion.name,
+              locationType: suggestion.type,
+              city: suggestion.city,
+              state: suggestion.state || 'CA',
+            }
+          }));
         } else {
           console.error('🗺️ [MapSearchBar] Flyover API error:', data.error);
         }
@@ -212,6 +222,16 @@ export default function MapSearchBar({
                            suggestion.type === 'county' ? 9 : 12;
 
           showMapAtLocation(geocoded.latitude, geocoded.longitude, zoomLevel);
+
+          // Send location to AI for market insights
+          window.dispatchEvent(new CustomEvent('requestLocationInsights', {
+            detail: {
+              locationName: suggestion.name,
+              locationType: suggestion.type,
+              city: suggestion.city,
+              state: suggestion.state || 'CA',
+            }
+          }));
         } else {
           console.error('🌍 [MapSearchBar] Geocoding failed - no results with coordinates');
         }
