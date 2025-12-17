@@ -512,9 +512,12 @@ export default function ChatWidget() {
         handleAIQuery(suggestion.label);
       } else {
         // This is a map query (city, subdivision, listing, etc.)
-        console.log('🗺️ [ChatWidget] Map query selected, ensuring map is visible');
+        console.log('🗺️ [ChatWidget] Map query selected, switching to map view');
 
-        // Always execute the map query which will fly to the location
+        // Switch to map view first
+        showMap();
+
+        // Execute the map query which will fly to the location
         handleMapQuery(suggestion.label, suggestion);
 
         // Also send to AI in background to prepare chat response
@@ -531,20 +534,17 @@ export default function ChatWidget() {
     autocomplete.clear();
 
     // Bidirectional processing: Execute both AI and map queries in parallel
-    // The foreground query depends on current view, background query prepares the other view
-    if (isMapVisible) {
-      // On map view: Map query in foreground, AI query in background
-      console.log('🗺️ [ChatWidget] Map view - executing map query (foreground) + AI query (background)');
-      handleMapQuery(userMessage); // Foreground: show map results
-      handleAIQueryInBackground(userMessage); // Background: prepare chat response
-    } else {
-      // On chat view: AI query in foreground, map query in background
-      console.log('🤖 [ChatWidget] Chat view - executing AI query (foreground) + map query (background)');
-      handleAIQuery(userMessage); // Foreground: show AI response
+    // Default behavior: show map first (since most queries are location-based)
+    console.log('🗺️ [ChatWidget] Executing bidirectional query - switching to map view');
 
-      // Background: Pre-position map
-      handleMapQueryInBackground(userMessage);
-    }
+    // Switch to map view to see the flyover animation
+    showMap();
+
+    // Execute map query in foreground (shows map results)
+    handleMapQuery(userMessage);
+
+    // Execute AI query in background (prepares chat response)
+    handleAIQueryInBackground(userMessage);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
