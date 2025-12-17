@@ -10,6 +10,7 @@ import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import ChatWidget from "@/app/components/chat/ChatWidget";
 import MapLayer from "@/app/components/MapLayer";
+import MapSearchBar from "@/app/components/map/MapSearchBar";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
@@ -273,6 +274,18 @@ function HomeContent() {
         <MapLayer />
       </div>
 
+      {/* Map Search Bar - Only visible when map is active */}
+      {isMapVisible && (
+        <MapSearchBar
+          onSearch={(query) => {
+            console.log('🗺️ [Map Search]:', query);
+          }}
+          onSettingsClick={() => {
+            setControlsExpanded(!controlsExpanded);
+          }}
+        />
+      )}
+
       {/* Favorites Button - Under info panel (when map is visible and has favorites) */}
       {isMapVisible && likedListings.length > 0 && (
         <button
@@ -337,7 +350,7 @@ function HomeContent() {
 
       {/* Map Controls - Only visible when map is active and expanded */}
       {isMapVisible && controlsExpanded && (
-        <div className="fixed bottom-24 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto">
+        <div className="fixed bottom-[160px] sm:bottom-28 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto">
           {/* Expanded Panel - slides up from search bar */}
           <AnimatePresence>
             {controlsExpanded && (
