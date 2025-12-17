@@ -40,6 +40,8 @@ function HomeContent() {
     selectListing,
     removeFavorite,
     clearFavorites,
+    swipeLeft,
+    swipeRight,
     removeDislike,
     clearDislikes,
     mapStyle,
@@ -229,8 +231,14 @@ function HomeContent() {
             listing={selectedListing}
             fullListing={selectedFullListing}
             onClose={closeListing}
-            onSwipeLeft={() => {}} // TODO: Implement swipe functionality
-            onSwipeRight={() => {}} // TODO: Implement swipe functionality
+            onSwipeLeft={() => {
+              swipeLeft(selectedFullListing);
+              closeListing();
+            }}
+            onSwipeRight={() => {
+              swipeRight(selectedFullListing);
+              closeListing();
+            }}
             isSidebarOpen={false}
             isDisliked={dislikedListings.some(l => l.listingKey === selectedFullListing.listingKey)}
             onRemoveDislike={() => selectedListing && removeDislike(selectedListing)}

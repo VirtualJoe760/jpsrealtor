@@ -54,6 +54,7 @@ interface MLSContextValue {
   removeFavorite: (listing: MapListing) => void;
   clearFavorites: () => void;
   swipeLeft: (listing: IUnifiedListing) => void;
+  swipeRight: (listing: IUnifiedListing) => void;
   removeDislike: (listing: MapListing) => void;
   clearDislikes: () => void;
 
@@ -494,6 +495,28 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     [swipeQueue, addDislike, likedListings, removeFavoriteFromHook]
   );
 
+  // Swipe right (like) - using the hook
+  const swipeRight = useCallback(
+    (listing: IUnifiedListing) => {
+      if (!swipeQueue.isReady) {
+        console.warn("⚠️ Swipe system not ready yet");
+        return;
+      }
+
+      swipeQueue.markAsLiked(listing.listingKey, listing);
+
+      // Add to favorites using hook
+      addFavorite(listing as unknown as MapListing);
+
+      // Remove from dislikes if present
+      const isDisliked = dislikedListings.some((dis) => dis.listingKey === listing.listingKey);
+      if (isDisliked) {
+        removeDislike(listing as unknown as MapListing);
+      }
+    },
+    [swipeQueue, addFavorite, dislikedListings, removeDislike]
+  );
+
   const value: MLSContextValue = {
     allListings,
     visibleListings,
@@ -511,6 +534,7 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     removeFavorite,
     clearFavorites,
     swipeLeft,
+    swipeRight,
     removeDislike,
     clearDislikes,
     mapStyle,
