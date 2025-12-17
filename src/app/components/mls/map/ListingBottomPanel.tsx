@@ -234,13 +234,14 @@ export default function ListingBottomPanel({
   useEffect(() => {
     setMounted(true);
 
-    controls.set({ opacity: 0, y: 28, scale: 0.985 });
+    controls.set({ opacity: 0, y: 28, scale: 0.985, rotate: 0 });
     dragX.set(0);
 
     controls.start({
       opacity: 1,
       y: 0,
       scale: 1,
+      rotate: 0,
       transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
     });
 

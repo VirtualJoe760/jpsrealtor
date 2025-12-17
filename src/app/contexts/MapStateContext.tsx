@@ -70,6 +70,7 @@ interface MapStateProviderProps {
 export function MapStateProvider({ children }: MapStateProviderProps) {
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [viewState, setViewStateInternal] = useState<MapViewState | null>(null);
+
   const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
   const [displayListings, setDisplayListings] = useState<MapListing[]>([]);
   const [mapStyle, setMapStyle] = useState<'toner' | 'dark' | 'satellite' | 'bright'>('dark');

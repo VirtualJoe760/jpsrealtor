@@ -74,8 +74,21 @@ function HomeContent() {
 
     if (viewParam === 'map' || mapParam === 'open') {
       if (!isMapVisible) {
-        // Show entire California on initial map load
-        showMapAtLocation(37.0, -119.5, 5);
+        // Check URL for map coordinates
+        const latParam = searchParams?.get('lat');
+        const lngParam = searchParams?.get('lng');
+        const zoomParam = searchParams?.get('zoom');
+
+        if (latParam && lngParam && zoomParam) {
+          const lat = parseFloat(latParam);
+          const lng = parseFloat(lngParam);
+          const zoom = parseFloat(zoomParam);
+          console.log('🗺️ [HomePage] Restoring map view from URL:', { lat, lng, zoom });
+          showMapAtLocation(lat, lng, zoom);
+        } else {
+          // Show entire California on initial map load
+          showMapAtLocation(37.0, -119.5, 5);
+        }
       }
     }
 
@@ -105,17 +118,45 @@ function HomeContent() {
     return () => window.removeEventListener('toggleMapControls', handleToggleControls);
   }, []);
 
+  // Restore selected listing from URL parameter
+  useEffect(() => {
+    if (initialLoad || !isMapVisible) return;
+
+    // Check URL for listing slug
+    const listingParam = searchParams?.get('listing');
+    if (listingParam && !selectedListing) {
+      console.log('🗺️ [HomePage] Attempting to restore selected listing from URL:', listingParam);
+
+      // Fetch the listing from the API and select it
+      fetch(`/api/mls-listings/${listingParam}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.listing) {
+            console.log('✅ [HomePage] Fetched listing data, selecting:', listingParam);
+            selectListing(data.listing);
+          } else {
+            console.warn('⚠️ [HomePage] No listing data returned for:', listingParam);
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️ [HomePage] Failed to fetch listing:', listingParam, err);
+        });
+    }
+  }, [isMapVisible, selectedListing, selectListing, initialLoad, searchParams]);
+
   // Initialize swipe queue when a listing is selected
   useEffect(() => {
-    if (selectedListing && !swipeQueue.isReady) {
+    if (selectedListing) {
       console.log('[HomePage] Initializing swipe queue for:', selectedListing.listingKey);
       swipeQueue.initializeQueue(selectedListing);
     }
-  }, [selectedListing, swipeQueue]);
+  }, [selectedListing?.listingKey, swipeQueue]);
 
   // Handler to advance to next listing after swipe
   const handleSwipeAndAdvance = async (swipeAction: 'left' | 'right') => {
     if (!selectedFullListing) return;
+
+    console.log(`\n🔄 [handleSwipeAndAdvance] Swipe ${swipeAction} on:`, selectedFullListing.listingKey);
 
     // Perform the swipe action
     if (swipeAction === 'left') {
@@ -125,23 +166,29 @@ function HomeContent() {
     }
 
     // Get next listing from queue
+    console.log('📊 [handleSwipeAndAdvance] Calling swipeQueue.getNext()...');
     const { listing: nextQueueItem } = swipeQueue.getNext();
 
+    console.log('📊 [handleSwipeAndAdvance] getNext() returned:', nextQueueItem ? `${nextQueueItem.listingKey} - ${nextQueueItem.slug}` : 'null');
+
     if (nextQueueItem) {
+      console.log(`🔍 [handleSwipeAndAdvance] Looking for ${nextQueueItem.listingKey} in ${visibleListings.length} visible listings`);
+
       // Find the full listing in visibleListings
       const nextListing = visibleListings.find(
         (l) => l.listingKey === nextQueueItem.listingKey
       );
 
       if (nextListing) {
-        console.log('[HomePage] Advancing to next listing:', nextQueueItem.listingKey);
+        console.log('✅ [handleSwipeAndAdvance] Found next listing, advancing to:', nextQueueItem.listingKey);
         await selectListing(nextListing);
       } else {
-        console.warn('[HomePage] Next listing not found in visibleListings, closing panel');
+        console.warn('⚠️ [handleSwipeAndAdvance] Next listing not found in visibleListings');
+        console.warn('   Visible listing keys:', visibleListings.slice(0, 5).map(l => l.listingKey));
         closeListing();
       }
     } else {
-      console.log('[HomePage] Queue exhausted, closing panel');
+      console.log('🏁 [handleSwipeAndAdvance] Queue exhausted, closing panel');
       closeListing();
     }
   };

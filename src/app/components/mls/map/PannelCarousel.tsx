@@ -23,7 +23,7 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPhotosFromRoute = async () => {
+    const fetchPhotosFromRoute = async (retryCount = 0) => {
       setIsLoading(true);
       try {
         const res = await fetch(`/api/listings/${listingKey}/photos`, {
@@ -35,13 +35,22 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
           console.error(
             `🚫 Failed to fetch photos for ${listingKey}: ${res.status}`
           );
+
+          // Retry once on 429 (rate limit) or 5xx errors
+          if ((res.status === 429 || res.status >= 500) && retryCount < 1) {
+            console.log(`🔄 Retrying photo fetch (attempt ${retryCount + 1})...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+            return fetchPhotosFromRoute(retryCount + 1);
+          }
+
           setPhotos([]);
           setIsLoading(false);
           return;
         }
 
         const data = await res.json();
-        if (!Array.isArray(data.photos)) {
+        if (!Array.isArray(data.photos) || data.photos.length === 0) {
+          console.warn(`⚠️ No photos available for ${listingKey}`);
           setPhotos([]);
           setIsLoading(false);
           return;

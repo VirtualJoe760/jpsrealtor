@@ -233,7 +233,7 @@ export default function FavoritesPannel({
             onClose();
           }
         }}
-        className={`fixed top-0 right-0 h-screen w-full
+        className={`fixed top-0 right-0 h-screen w-full md:w-[320px] lg:w-[360px] xl:w-[380px] 2xl:w-[400px]
         backdrop-blur-md transform transition-transform duration-300 z-[70]
         shadow-2xl overflow-hidden flex flex-col
         ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}
@@ -428,6 +428,9 @@ export default function FavoritesPannel({
                     prioritySubdivision &&
                     group.subdivision.toLowerCase() === prioritySubdivision.toLowerCase();
 
+                  // Get city from first listing in group
+                  const cityName = group.listings[0]?.city || '';
+
                   return (
                     <div key={group.subdivision}>
                       {/* Subdivision Header - No gap, connects to menu */}
@@ -436,13 +439,15 @@ export default function FavoritesPannel({
                           {isPrioritySubdivision && (
                             <span className="text-yellow-400">⭐</span>
                           )}
-                          <h3
-                            className={`text-sm font-bold uppercase tracking-wider ${
-                              isLight ? "text-blue-600" : "text-emerald-400"
-                            }`}
-                          >
-                            {getSubdivisionDisplayName(group.subdivision)}
-                          </h3>
+                          <div className="flex-1">
+                            <h3
+                              className={`text-sm font-bold uppercase tracking-wider ${
+                                isLight ? "text-blue-600" : "text-emerald-400"
+                              }`}
+                            >
+                              {cityName && `${cityName} / `}{getSubdivisionDisplayName(group.subdivision)}
+                            </h3>
+                          </div>
                         </div>
                         <p className={`text-xs mt-1 ${themeClasses.textTertiary}`}>
                           {group.listings.length}{" "}
@@ -451,12 +456,12 @@ export default function FavoritesPannel({
                         </p>
                       </div>
 
-                      {/* Listings - Centered with max-width container */}
+                      {/* Listings - Single column for narrow sidebar */}
                       <div className="px-6 py-4">
                         <div className="max-w-7xl mx-auto">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                          <div className="grid grid-cols-1 gap-4">
                             {group.listings.map((listing, index) => (
-                          <div key={listing.listingKey || listing.listingId || listing._id || `listing-${index}`} className="relative group">
+                          <div key={`${group.subdivision}-${listing.listingKey || listing.listingId || listing._id}-${index}`} className="relative group">
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -588,6 +593,10 @@ export default function FavoritesPannel({
 
                                   {/* View Details Button */}
                                   <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/mls-listings/${listing.slugAddress || listing.slug}`);
+                                    }}
                                     className={`w-full mt-2 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
                                       isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
                                     }`}

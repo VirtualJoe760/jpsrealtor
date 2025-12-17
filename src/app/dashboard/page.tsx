@@ -656,7 +656,7 @@ export default function DashboardPage() {
 
                         return (
                           <div
-                            key={listing.listingKey}
+                            key={`${listing.listingKey}-${globalIdx}`}
                             className={`${cardBg} border rounded-xl overflow-hidden ${
                               selected ? "border-blue-500 ring-2 ring-blue-500/50" : isLight ? "border-gray-300" : "border-gray-700"
                             }`}

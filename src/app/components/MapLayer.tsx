@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
@@ -46,6 +47,9 @@ const DEFAULT_BOUNDS = {
  * IMPORTANT: Uses local state for position (like /map page) to prevent feedback loops
  */
 export default function MapLayer() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const {
     isMapVisible,
     mapStyle,
@@ -107,8 +111,21 @@ export default function MapLayer() {
       // NOTE: We do NOT call setBounds/setViewState here!
       // That would create a feedback loop: bounds change → state update → props change → map moves → bounds change
       // The MapView's internal state is the source of truth for position
+
+      // Update URL with new map position
+      const centerLat = ((bounds.north + bounds.south) / 2).toFixed(4);
+      const centerLng = ((bounds.east + bounds.west) / 2).toFixed(4);
+      const zoom = bounds.zoom.toFixed(1);
+
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('view', 'map');
+      params.set('lat', centerLat);
+      params.set('lng', centerLng);
+      params.set('zoom', zoom);
+
+      router.replace(`/?${params.toString()}`, { scroll: false });
     },
-    [filters, loadListings]
+    [filters, loadListings, router, searchParams]
   );
 
   // Handle listing selection
@@ -116,8 +133,16 @@ export default function MapLayer() {
     async (listing: MapListing) => {
       console.log('🗺️ [MapLayer] Listing selected:', listing.address);
       await selectListing(listing);
+
+      // Add listing slug to URL
+      const slug = listing.slugAddress || listing.slug || listing.listingKey;
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('listing', slug);
+
+      router.replace(`/?${params.toString()}`, { scroll: false });
+      console.log('🗺️ [MapLayer] Updated URL with listing:', slug);
     },
-    [selectListing]
+    [selectListing, router, searchParams]
   );
 
   if (!mounted) {
