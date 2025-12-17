@@ -144,8 +144,8 @@ export default function ChatWidget() {
       }
     }
 
-    // Background: Also send to AI for when user switches back to chat
-    handleAIQueryInBackground(query);
+    // Note: We do NOT send to AI here anymore - when on map view, stay on map view
+    // If user wants AI response, they can switch to chat view
   };
 
   // Handle AI query - sends to AI chat
@@ -507,8 +507,7 @@ export default function ChatWidget() {
         // Always execute the map query which will fly to the location
         handleMapQuery(suggestion.label, suggestion);
 
-        // Also send to AI in background to prepare chat response
-        handleAIQueryInBackground(suggestion.label);
+        // Note: We do NOT send to AI here - when selecting a map query, stay on map
       }
     },
   });
@@ -520,19 +519,20 @@ export default function ChatWidget() {
     setMessage("");
     autocomplete.clear();
 
-    // Bidirectional processing: Execute both AI and map queries in parallel
-    // The foreground query depends on current view, background query prepares the other view
+    console.log('🔍 [ChatWidget.handleSend] isMapVisible:', isMapVisible, 'message:', userMessage);
+
+    // Route query based on current view
     if (isMapVisible) {
-      // On map view: Map query in foreground, AI query in background
-      console.log('🗺️ [ChatWidget] Map view - executing map query (foreground) + AI query (background)');
-      handleMapQuery(userMessage); // Foreground: show map results
-      handleAIQueryInBackground(userMessage); // Background: prepare chat response
+      // On map view: ONLY execute map query, stay on map
+      console.log('🗺️ [ChatWidget] Map view detected - executing map query ONLY (staying on map)');
+      handleMapQuery(userMessage); // Fly to location, stay on map
+      // Do NOT call handleAIQueryInBackground - we want to stay on map view
     } else {
-      // On chat view: AI query in foreground, map query in background
-      console.log('🤖 [ChatWidget] Chat view - executing AI query (foreground) + map query (background)');
+      // On chat view: Execute AI query and pre-position map in background
+      console.log('🤖 [ChatWidget] Chat view detected - executing AI query (foreground) + map query (background)');
       handleAIQuery(userMessage); // Foreground: show AI response
 
-      // Background: Pre-position map
+      // Background: Pre-position map for smooth transition when user clicks map toggle
       handleMapQueryInBackground(userMessage);
     }
   };
