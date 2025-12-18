@@ -119,6 +119,15 @@ export async function POST(req: NextRequest) {
     // locationSnapshot mode provides location overviews for map search
     const systemPrompt = buildSystemPrompt({ textOnly, locationSnapshot });
 
+    // Log mode for debugging
+    if (locationSnapshot) {
+      console.log(`[AI] 📍 Location Snapshot Mode: ${locationSnapshot.name} (${locationSnapshot.type})`);
+    } else if (textOnly) {
+      console.log(`[AI] 📝 Text-Only Mode`);
+    } else {
+      console.log(`[AI] 🔧 Full Mode (with tools)`);
+    }
+
     // Convert messages to Groq format, adding system prompt if not already present
     const groqMessages: GroqChatMessage[] = [];
 
@@ -138,12 +147,14 @@ export async function POST(req: NextRequest) {
 
     // STEP 1: MULTI-ROUND TOOL EXECUTION (non-streaming)
     // Execute all tool calls FIRST before streaming the final response
+    // SKIP tool execution ONLY in text-only mode (locationSnapshot DOES use tools for real data)
     const MAX_TOOL_ROUNDS = 3;
     let toolRound = 0;
     let messagesWithTools: GroqChatMessage[] = [...groqMessages];
     let needsStreaming = true;
+    const shouldUseTools = !textOnly; // locationSnapshot mode NEEDS tools for real MLS data
 
-    while (toolRound < MAX_TOOL_ROUNDS) {
+    while (toolRound < MAX_TOOL_ROUNDS && shouldUseTools) {
       console.log(`[AI] Starting round ${toolRound + 1} with ${messagesWithTools.length} messages`);
       console.log(`[AI] Model: ${model}, Tools count: ${CHAT_TOOLS.length}`);
 

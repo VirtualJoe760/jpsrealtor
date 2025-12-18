@@ -10,39 +10,43 @@ export function buildLocationSnapshotPrompt(location: {
 
 You are providing a real estate market snapshot for: **${location.name}** (${location.type})
 
-**Your Task**: Provide a concise, engaging overview in 2-3 paragraphs covering:
+**CRITICAL: You MUST use tools to get REAL, CURRENT MLS data. Do NOT rely on general knowledge.**
 
-1. **Typical Home Prices** by property type (SFR, condos, townhomes)
-   - Use general knowledge about the area's price ranges
-   - Mention if it's a luxury, mid-range, or affordable market
-   - Reference current market data if available
+**Step 1: Gather Real Data**
+Use these tools to get actual market statistics:
+- \`getMarketStats\` - Get average price, median price, days on market, price per sqft, total listings
+- \`queryDatabase\` with \`includeStats: true\` - Get bedroom distribution (2BR, 3BR, 4+BR counts)
 
-2. **Market Activity & Trends**
-   - Current market conditions (hot/balanced/slow)
-   - What buyers are looking for (pools, views, golf course, etc.)
-   - Recent trends (appreciating, stable, adjusting)
+**Step 2: Write Snapshot**
+After getting real data, provide a concise, engaging overview in 2-3 paragraphs covering:
 
-3. **Community Highlights**
-   - Lifestyle & demographics (retirees, families, professionals)
-   - Notable amenities & attractions
-   - Unique characteristics or fun facts
+1. **Current Market Data** (use REAL numbers from tools)
+   - Total active listings
+   - Average price, median price, price range
+   - Average days on market
+   - Bedroom distribution (how many 2BR, 3BR, 4+BR homes)
+   - Average square footage
 
-**Format**: Markdown with short, readable paragraphs. Be warm and informative.
+2. **Market Conditions**
+   - Hot/balanced/slow based on days on market
+   - Price trends (use appreciation data if available)
+   - What's moving quickly vs sitting longer
 
-**Tone**: Friendly and conversational, like a knowledgeable local real estate expert sharing insights.
+3. **Community Character** (brief)
+   - Lifestyle & demographics
+   - Notable amenities or attractions
+   - One unique characteristic
 
-**Example Structure**:
-"[Location] is known for [key characteristic]. Homes here typically range from [price range], with [premium areas] commanding [higher prices].
+**Format Requirements**:
+- Markdown with short, readable paragraphs
+- Lead with REAL NUMBERS from your tool calls
+- Be warm and conversational
+- DO NOT include [LISTING_CAROUSEL], [MAP_VIEW], or other UI components
+- DO include [SOURCES] at the end
 
-The market [current condition], with buyers seeking [popular features]. Properties with [desirable amenities] are especially popular.
+**Example Opening**:
+"Right now, ${location.name} has [X] active listings with an average price of $[Y] and a median of $[Z]. Homes are averaging [N] days on market, indicating a [hot/balanced/slow] market. The inventory breaks down to [X] 2-bedroom, [Y] 3-bedroom, and [Z] 4+ bedroom properties..."
 
-This [community vibe] attracts [target demographics] who love [lifestyle benefits]. [Unique fact or feature]."
-
-**Remember**:
-- Keep it conversational and avoid jargon
-- Make it engaging and informative
-- Include specific details that make the location unique
-- DO NOT include [LISTING_CAROUSEL] or other UI components
-- DO include [SOURCES] if you reference market data
+**Remember**: Use REAL data from tools, not estimates. Users want current, accurate market statistics.
 `;
 }

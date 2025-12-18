@@ -128,6 +128,19 @@ export default function MapSearchBar({
       if (onSearch) {
         onSearch(result.latitude, result.longitude);
       }
+
+      // Dispatch location insights request to ChatWidget
+      // This triggers AI to provide a location snapshot (2-3 paragraph overview)
+      const event = new CustomEvent('requestLocationInsights', {
+        detail: {
+          locationName: result.label,
+          locationType: 'city', // geocode results are typically cities
+          city: result.label,
+          state: 'CA' // TODO: Extract from result if available
+        }
+      });
+      window.dispatchEvent(event);
+      console.log('📍 [MapSearchBar] Dispatched requestLocationInsights for:', result.label);
     }
   };
 

@@ -338,3 +338,58 @@ Move the detailed examples and instructions to the system prompt where they belo
 4. Verify tool calling works properly
 
 This is the REAL fix - not the model, not the schema, but the overly complex tool descriptions.
+
+---
+
+## UPDATE 2: December 17, 2025 11:45 PM
+
+### THE SOLUTION: Qwen 3-32B Model
+
+After extensive testing, we found the real issue and solution:
+
+**The Problem**:
+- GPT-OSS 120B: Triple backslash bug in JSON generation
+- Llama 3.3 70B: Incompatible function calling format
+- Llama 3.1-8b: Never worked reliably (user confirmed)
+
+**The Solution**: **Qwen 3-32B** (`qwen/qwen3-32b`)
+
+**Test Results** (same query: "Show me homes in Temecula under $800k with a pool"):
+
+```bash
+✅ QWEN 3-32B: SUCCESS
+- Called queryDatabase tool
+- Generated PERFECT JSON (no errors)
+- Executed query successfully
+- Responded intelligently when no results found
+- Processing time: ~6 seconds
+```
+
+**Why Qwen Works**:
+- Qwen models are specifically known for excellent structured outputs
+- 400 tokens/second
+- 131K context window
+- Supports tool use with OpenAI-compatible format
+- No JSON generation bugs
+
+### Final Conclusion
+
+**It WAS the model, but in an unexpected way**:
+- Not tool complexity (we tested simple tools)
+- Not description length (we tested short descriptions)
+- Not our code (same code works with Qwen)
+- **It's a bug in GPT-OSS 120B's JSON generator**
+
+**GPT-OSS 120B** is rated "BEST for reasoning" but has a critical bug with tool calling. This doesn't make sense (user was right!), and it's a real Groq API issue.
+
+**Qwen 3-32B** is the actual best choice for tool calling reliability.
+
+### Recommendation
+
+**Use Qwen 3-32B for production**:
+- Proven to work with our tools
+- Fast and reliable
+- Excellent at structured outputs
+- 131K context (vs GPT-OSS's smaller context)
+
+Report the GPT-OSS 120B bug to Groq, but don't wait for a fix.
