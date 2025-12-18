@@ -202,22 +202,52 @@ export async function GET(req: Request) {
     query: q,
   };
 
-  // Priority order for MAP queries (when user hits Enter on map view):
-  // Subdivision > City > County > Region > Geocode > Listings
-  // This ensures most specific areas appear first for map flyovers
+  // Smart priority: Exact matches first, then by specificity
+  // This ensures "Palm Springs" query returns Palm Springs city first,
+  // not "Outdoor Resorts Palm Springs" subdivision
 
-  // Priority order for AUTOCOMPLETE display:
-  // Ask AI > Subdivisions > Cities > Counties > Regions > Geocode > Listings
-  // This gives users the AI option first, then most relevant locations
+  const allResults = [
+    ...subdivisionResults,
+    ...cityResults,
+    ...countyResults,
+    ...regionResults,
+    ...geoResults,
+    ...listingResults,
+  ];
+
+  // Sort by exact match priority
+  allResults.sort((a, b) => {
+    const aLabel = a.label.toLowerCase();
+    const bLabel = b.label.toLowerCase();
+    const queryLower = normalizedQuery.toLowerCase();
+
+    // Exact match wins (e.g., "palm springs" matches "Palm Springs" city)
+    const aExact = aLabel === queryLower;
+    const bExact = bLabel === queryLower;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+
+    // If both exact or neither exact, prioritize by type:
+    // City > Subdivision > County > Region > Geocode > Listing
+    const typePriority: Record<string, number> = {
+      city: 1,
+      subdivision: 2,
+      county: 3,
+      region: 4,
+      geocode: 5,
+      listing: 6,
+    };
+
+    const aPriority = typePriority[a.type] || 999;
+    const bPriority = typePriority[b.type] || 999;
+
+    return aPriority - bPriority;
+  });
+
   return NextResponse.json({
     results: [
       askAiOption,
-      ...subdivisionResults,
-      ...cityResults,
-      ...countyResults,
-      ...regionResults,
-      ...geoResults,
-      ...listingResults,
+      ...allResults,
     ],
   });
 }
