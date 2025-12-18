@@ -3,6 +3,7 @@
 
 import { toolCache } from './tool-cache';
 import { logChatMessage } from '@/lib/chat-logger';
+import { executeSearchHomes } from './tools/executors/search-homes';
 
 /**
  * Execute a single tool call and return the result
@@ -10,12 +11,26 @@ import { logChatMessage } from '@/lib/chat-logger';
 export async function executeToolCall(toolCall: any, userId: string = 'unknown'): Promise<any> {
   const functionName = toolCall.function.name;
 
-  // Sanitize arguments to fix Groq's malformed JSON (escaped quotes issue)
-  // Example: "includeStats\": true" → "includeStats": true
+  // Log RAW arguments from Groq BEFORE any processing
+  console.log(`[${functionName}] RAW arguments from Groq:`, toolCall.function.arguments);
+
+  // CRITICAL: Aggressive sanitization for Groq API's severely malformed JSON
   let argsString = toolCall.function.arguments;
 
-  // Fix escaped quotes before property names (Groq bug)
-  argsString = argsString.replace(/\\":\s*/g, '": ');
+  // Fix 1: Remove all excessive backslashes (triple, double → none)
+  // "includeStats\\\": true" → "includeStats": true
+  argsString = argsString.replace(/\\+"/g, '"');
+
+  // Fix 2: Remove all garbage whitespace (carriage returns, excessive newlines)
+  argsString = argsString.replace(/\r/g, '');
+  argsString = argsString.replace(/\n\s*\n\s*\n/g, '\n'); // Triple+ newlines → single
+
+  // Fix 3: Fix malformed boolean values with quotes inside
+  // "includeStats": true" → "includeStats": true
+  argsString = argsString.replace(/:\s*true"\s*$/gm, ': true');
+  argsString = argsString.replace(/:\s*false"\s*$/gm, ': false');
+
+  console.log(`[${functionName}] SANITIZED arguments:`, argsString);
 
   const functionArgs = JSON.parse(argsString);
 
@@ -30,6 +45,7 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
 
   // Check cache first (skip caching for certain tools)
   const cacheableTools = [
+    'searchHomes',        // NEW: 2 minute cache
     'queryDatabase',
     'getAppreciation',
     'getMarketStats',
@@ -55,9 +71,12 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
   let result: any;
 
   try {
-    if (functionName === "getLocationSnapshot") {
-      result = await executeGetLocationSnapshot(functionArgs);
-    } else if (functionName === "queryDatabase") {
+    // NEW USER-FIRST TOOLS
+    if (functionName === "searchHomes") {
+      result = await executeSearchHomes(functionArgs, userId);
+    }
+    // OLD TOOLS (to be migrated)
+    else if (functionName === "queryDatabase") {
       result = await executeQueryDatabase(functionArgs);
     } else if (functionName === "matchLocation") {
       result = await executeMatchLocation(functionArgs);
@@ -192,25 +211,6 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     tool_call_id: toolCall.id,
     name: functionName,
     content: JSON.stringify(result)
-  };
-}
-
-/**
- * Execute getLocationSnapshot tool
- * Returns a formatted text-only market snapshot for a location
- */
-async function executeGetLocationSnapshot(args: any): Promise<any> {
-  const { locationName, locationType } = args;
-
-  console.log(`[getLocationSnapshot] Generating snapshot for ${locationName} (${locationType})`);
-
-  // This is a text-only tool - it returns markdown formatted insights
-  // The AI will use its knowledge to provide the response
-  return {
-    success: true,
-    locationName,
-    locationType,
-    message: `Please provide a real estate market snapshot for ${locationName}. Format your response in markdown with sections for typical prices, market activity, and community highlights.`
   };
 }
 

@@ -136,7 +136,8 @@
       "Bash(timeout 120 node:*)",
       "WebFetch(domain:www.bram.us)",
       "Bash(if exist .next rmdir /s /q .next)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "WebFetch(domain:console.groq.com)"
     ],
     "deny": [],
     "ask": []

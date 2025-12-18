@@ -569,22 +569,88 @@ export default function ChatWidget() {
 
   // Listen for location insights requests from MapSearchBar
   useEffect(() => {
-    const handleLocationInsights = (event: CustomEvent) => {
+    const handleLocationInsights = async (event: CustomEvent) => {
       const { locationName, locationType, city, state } = event.detail;
       console.log('📍 [ChatWidget] Received location insights request:', { locationName, locationType, city, state });
 
-      // Construct a clean query that triggers the getLocationSnapshot tool
-      const query = `Give me a Real Estate Snapshot of ${locationName}`;
+      // Use locationSnapshot mode instead of fake tool
+      console.log('🤖 [ChatWidget] Sending location snapshot request to AI (locationSnapshot mode)');
 
-      console.log('🤖 [ChatWidget] Sending location snapshot request to AI');
+      try {
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+              { role: "user", content: `Tell me about ${locationName}` },
+            ],
+            userId: "demo-user",
+            userTier: "premium",
+            locationSnapshot: {
+              name: locationName,
+              type: locationType
+            }
+          }),
+        });
 
-      // Send to AI in background (no user message shown)
-      handleAIQueryInBackground(query);
+        if (!response.ok) {
+          console.warn('🤖 [ChatWidget] Location snapshot query failed:', response.status);
+          return;
+        }
+
+        let fullText = "";
+        let components: ComponentData | undefined;
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (reader) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const jsonStr = line.substring(6);
+                    const data = JSON.parse(jsonStr);
+
+                    if (data.token) {
+                      fullText += data.token;
+                    }
+
+                    if (data.components) {
+                      components = data.components;
+                    }
+
+                    if (data.done) {
+                      // Add location snapshot as background digest
+                      addMessage(`Tell me about ${locationName}`, "user");
+                      addMessage(fullText, "assistant", undefined, components);
+                      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  } catch (parseError) {
+                    console.warn('[SSE] Skipped malformed chunk:', parseError);
+                  }
+                }
+              }
+            }
+          } finally {
+            reader.releaseLock();
+          }
+        }
+      } catch (error) {
+        console.error('Location snapshot error:', error);
+      }
     };
 
     window.addEventListener('requestLocationInsights', handleLocationInsights as EventListener);
     return () => window.removeEventListener('requestLocationInsights', handleLocationInsights as EventListener);
-  }, []);
+  }, [messages]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     // Autocomplete hook handles its own keyboard navigation (ArrowUp, ArrowDown, Escape, Enter with selection)

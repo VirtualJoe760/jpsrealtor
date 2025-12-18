@@ -2,43 +2,23 @@
 // Chat tool definitions for Groq AI function calling
 
 import type { GroqTool } from "@/lib/groq";
+import { searchHomesTool } from "./tools/definitions/search-homes";
 
 /**
  * All available tools for the chat AI to use
+ *
+ * NEW USER-FIRST TOOLS (Phase 1):
+ * - searchHomes: Simple, focused property search (replaces queryDatabase)
+ *
+ * OLD TOOLS (will be migrated):
+ * - queryDatabase: Complex 30+ param tool (to be deprecated)
+ * - searchArticles, getAppreciation, etc. (to be refactored)
  */
 export const CHAT_TOOLS: GroqTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "getLocationSnapshot",
-      description: `Get a real estate market snapshot for a specific location. Use this when user searches for a location via map search or asks for general market overview. Returns text-only formatted response with:
-- Typical home prices by property type
-- Market activity and trends
-- Community highlights and features
+  // NEW: User-first tool (testing)
+  searchHomesTool,
 
-WHEN TO USE:
-- User clicks on map search autocomplete (city, subdivision, county)
-- User asks "Tell me about [location]"
-- User asks "What's the market like in [location]?"
-
-This is a TEXT-ONLY tool - it returns markdown formatted insights, not data components.`,
-      parameters: {
-        type: "object",
-        properties: {
-          locationName: {
-            type: "string",
-            description: "The location name (e.g., 'Palm Desert', 'Indian Wells Country Club', 'Riverside County')"
-          },
-          locationType: {
-            type: "string",
-            enum: ["city", "subdivision", "county", "region"],
-            description: "Type of location for context"
-          }
-        },
-        required: ["locationName", "locationType"]
-      }
-    }
-  },
+  // OLD: Keep for comparison/fallback
   {
     type: "function",
     function: {
@@ -128,7 +108,7 @@ This replaces searchCity and works with all locations.`,
           listedAfter: { type: "string", description: "Listed after date in ISO format (YYYY-MM-DD). Use the '7 Days Ago' or '30 Days Ago' dates provided in system prompt for 'new listings' queries. Example: '2025-12-07'" },
 
           // INCLUDE OPTIONS
-          includeStats: { type: "boolean", description: "Include market statistics", default: true },
+          includeStats: { type: "boolean", description: "Include market statistics (recommended: always use true for comprehensive data)" },
           includeDOMStats: { type: "boolean", description: "Include days on market analysis" },
           compareWith: { type: "string", description: "Compare with another city/subdivision" },
 
