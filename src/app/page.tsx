@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -57,6 +57,7 @@ function HomeContent() {
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const isClosingRef = useRef(false);
 
   // Notify TopToggles when favorites panel opens/closes
   useEffect(() => {
@@ -121,7 +122,7 @@ function HomeContent() {
 
   // Restore selected listing from URL parameter
   useEffect(() => {
-    if (initialLoad || !isMapVisible) return;
+    if (initialLoad || !isMapVisible || isClosingRef.current) return;
 
     // Check URL for listing slug
     const listingParam = searchParams?.get('listing');
@@ -152,6 +153,29 @@ function HomeContent() {
       swipeQueue.initializeQueue(selectedListing);
     }
   }, [selectedListing?.listingKey, swipeQueue]);
+
+  // Wrapper to close listing and clear URL parameter
+  const handleCloseListing = () => {
+    console.log('[HomePage] Closing listing and clearing URL parameter');
+
+    // Mark that we're intentionally closing
+    isClosingRef.current = true;
+
+    // Remove listing parameter from URL FIRST
+    const params = new URLSearchParams(searchParams?.toString());
+    params.delete('listing');
+
+    const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+    router.replace(newUrl, { scroll: false });
+
+    // Then close the listing state
+    closeListing();
+
+    // Reset the closing flag after a brief delay
+    setTimeout(() => {
+      isClosingRef.current = false;
+    }, 100);
+  };
 
   // Handler to advance to next listing after swipe
   const handleSwipeAndAdvance = async (swipeAction: 'left' | 'right') => {
@@ -186,11 +210,11 @@ function HomeContent() {
       } else {
         console.warn('⚠️ [handleSwipeAndAdvance] Next listing not found in visibleListings');
         console.warn('   Visible listing keys:', visibleListings.slice(0, 5).map(l => l.listingKey));
-        closeListing();
+        handleCloseListing();
       }
     } else {
       console.log('🏁 [handleSwipeAndAdvance] Queue exhausted, closing panel');
-      closeListing();
+      handleCloseListing();
     }
   };
 
@@ -338,7 +362,7 @@ function HomeContent() {
             key={selectedFullListing.listingKey}
             listing={selectedListing}
             fullListing={selectedFullListing}
-            onClose={closeListing}
+            onClose={handleCloseListing}
             onSwipeLeft={() => handleSwipeAndAdvance('left')}
             onSwipeRight={() => handleSwipeAndAdvance('right')}
             isSidebarOpen={false}

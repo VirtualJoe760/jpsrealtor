@@ -1256,10 +1256,9 @@ export default function ChatWidget() {
             scale: 1,
           }}
           exit={{ opacity: 0, y: -20, scale: 0.9 }}
-          className="fixed top-20 right-4 max-w-sm"
+          className="fixed top-24 right-4 max-w-sm z-[100]"
           style={{
             animation: 'shake 0.5s ease-in-out',
-            zIndex: 99999, // Above all UI elements including favorites panel
           }}
         >
           <div
