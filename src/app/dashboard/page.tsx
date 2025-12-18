@@ -23,6 +23,7 @@ import { motion } from "framer-motion";
 import { useThemeClasses } from "../contexts/ThemeContext";
 import { useTheme } from "../contexts/ThemeContext";
 import ScrollPanel from "../components/ScrollPanel";
+import ListingPhoto from "../components/ListingPhoto";
 // import ChatWidget from "../components/chat/ChatWidget";
 // import GoalTracker from "../components/chat/GoalTracker";
 
@@ -72,6 +73,8 @@ interface FavoriteProperty {
   slugAddress?: string;
   city?: string;
   propertyType?: string;
+  mlsId?: string;
+  mlsSource?: string;
   [key: string]: any;
 }
 
@@ -133,18 +136,14 @@ function DesktopFavorites({
             >
               {/* Image */}
               <div className="relative h-48">
-                {listing.primaryPhotoUrl ? (
-                  <Image
-                    src={listing.primaryPhotoUrl}
-                    alt={listing.address || "Property"}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-gray-700">
-                    <Home className="h-12 w-12 text-gray-500" />
-                  </div>
-                )}
+                <ListingPhoto
+                  listingKey={listing.listingKey}
+                  mlsId={listing.mlsId}
+                  mlsSource={listing.mlsSource}
+                  alt={listing.address || "Property"}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
 
                 {/* Checkbox + Delete */}
                 <div className="absolute left-2 top-2 flex items-center gap-2">
@@ -671,19 +670,15 @@ export default function DashboardPage() {
                                 className="w-5 h-5 rounded border-gray-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                               />
                               <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
-                                {listing.primaryPhotoUrl ? (
-                                  <Image
-                                    src={listing.primaryPhotoUrl}
-                                    alt={listing.address || "Property"}
-                                    width={56}
-                                    height={56}
-                                    className="object-cover w-full h-full"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                    <Home className="w-6 h-6 text-gray-500" />
-                                  </div>
-                                )}
+                                <ListingPhoto
+                                  listingKey={listing.listingKey}
+                                  mlsId={listing.mlsId}
+                                  mlsSource={listing.mlsSource}
+                                  alt={listing.address || "Property"}
+                                  width={56}
+                                  height={56}
+                                  className="object-cover w-full h-full"
+                                />
                               </div>
                               <button
                                 onClick={() => setExpandedIndex(expanded ? null : globalIdx)}
@@ -712,18 +707,14 @@ export default function DashboardPage() {
                             {expanded && (
                               <div className={`border-t ${isLight ? "border-gray-300" : "border-gray-700"}`}>
                                 <div className="relative h-48">
-                                  {listing.primaryPhotoUrl ? (
-                                    <Image
-                                      src={listing.primaryPhotoUrl}
-                                      alt={listing.address || "Property"}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                      <Home className="w-12 h-12 text-gray-500" />
-                                    </div>
-                                  )}
+                                  <ListingPhoto
+                                    listingKey={listing.listingKey}
+                                    mlsId={listing.mlsId}
+                                    mlsSource={listing.mlsSource}
+                                    alt={listing.address || "Property"}
+                                    fill
+                                    className="object-cover"
+                                  />
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
