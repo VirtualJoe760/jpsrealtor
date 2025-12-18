@@ -15,7 +15,7 @@ import groq from "@/lib/groq";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, userId, userTier = "free", textOnly = false } = body;
+    const { messages, userId, userTier = "free", textOnly = false, locationSnapshot } = body;
 
     if (!messages || !Array.isArray(messages) || !userId) {
       return NextResponse.json(
@@ -116,7 +116,8 @@ export async function POST(req: NextRequest) {
 
     // Build system prompt using modular composition
     // textOnly mode provides focused markdown-only responses for map digests
-    const systemPrompt = buildSystemPrompt({ textOnly });
+    // locationSnapshot mode provides location overviews for map search
+    const systemPrompt = buildSystemPrompt({ textOnly, locationSnapshot });
 
     // Convert messages to Groq format, adding system prompt if not already present
     const groqMessages: GroqChatMessage[] = [];
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
 
     while (toolRound < MAX_TOOL_ROUNDS) {
       console.log(`[AI] Starting round ${toolRound + 1} with ${messagesWithTools.length} messages`);
+      console.log(`[AI] Model: ${model}, Tools count: ${CHAT_TOOLS.length}`);
 
       // Get AI response with tool support (non-streaming for tool calls)
       const completion = await createChatCompletion({
@@ -177,11 +179,11 @@ export async function POST(req: NextRequest) {
       toolRound++;
       console.log(`[AI] Round ${toolRound}: Using tools:`, assistantMessage.tool_calls.map((tc: any) => tc.function.name).join(', '));
 
-      // Log tool usage
+      // Log tool usage (store raw arguments - tool-executor will parse with sanitization)
       await logChatMessage("system", `Tool calls in round ${toolRound}`, userId, {
         tools: assistantMessage.tool_calls.map((tc: any) => ({
           name: tc.function.name,
-          arguments: JSON.parse(tc.function.arguments || '{}')
+          argumentsRaw: tc.function.arguments // Don't parse - may be malformed from Groq
         })),
         timestamp: new Date().toISOString(),
       });

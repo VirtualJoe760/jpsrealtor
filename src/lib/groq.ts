@@ -19,8 +19,12 @@ export const GROQ_MODELS = {
   // Free tier: Fast and cheap
   FREE: "llama-3.1-8b-instant", // 840 TPS, ~$0.013/month per user
 
-  // Premium tier: Smarter and better quality
-  PREMIUM: "openai/gpt-oss-120b", // 500 TPS, 131K context, function calling support
+  // Premium tier: BEST reasoning and tool use quality
+  // As of Dec 2025, openai/gpt-oss-120b is the TOP model for tool calling
+  // See: https://console.groq.com/docs/tool-use/overview
+  // NOTE: Does NOT support parallel tool calls (sequential only) - this is a documented feature limitation, not a bug
+  // NOTE: Previous malformed JSON issues were caused by invalid schema (default: true) and fake tools, NOT the model
+  PREMIUM: "openai/gpt-oss-120b", // BEST reasoning, top tool use quality, built-in tools
 } as const;
 
 export interface GroqChatMessage {
