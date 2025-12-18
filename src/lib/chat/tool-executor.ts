@@ -9,7 +9,15 @@ import { logChatMessage } from '@/lib/chat-logger';
  */
 export async function executeToolCall(toolCall: any, userId: string = 'unknown'): Promise<any> {
   const functionName = toolCall.function.name;
-  const functionArgs = JSON.parse(toolCall.function.arguments);
+
+  // Sanitize arguments to fix Groq's malformed JSON (escaped quotes issue)
+  // Example: "includeStats\": true" → "includeStats": true
+  let argsString = toolCall.function.arguments;
+
+  // Fix escaped quotes before property names (Groq bug)
+  argsString = argsString.replace(/\\":\s*/g, '": ');
+
+  const functionArgs = JSON.parse(argsString);
 
   console.log(`[${functionName}] Starting with args:`, JSON.stringify(functionArgs, null, 2));
 
