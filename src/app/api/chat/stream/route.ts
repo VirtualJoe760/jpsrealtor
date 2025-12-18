@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { logChatMessage } from "@/lib/chat-logger";
 import { createChatCompletion, GROQ_MODELS } from "@/lib/groq";
 import type { GroqChatMessage } from "@/lib/groq";
-import { CHAT_TOOLS } from "@/lib/chat/tools";
+// TESTING: Use minimal tool set to debug GPT-OSS 120B
+import { CHAT_TOOLS } from "@/lib/chat/tools-minimal";
+// import { CHAT_TOOLS } from "@/lib/chat/tools";
 import { buildSystemPrompt } from "@/lib/chat/prompts";
 import { executeToolCall } from "@/lib/chat/tool-executor";
 import { parseComponentData, cleanResponseText } from "@/lib/chat/response-parser";
