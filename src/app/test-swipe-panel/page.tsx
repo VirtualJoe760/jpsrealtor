@@ -10,6 +10,7 @@ import type { IUnifiedListing } from "@/models/unified-listing";
 const sampleListing: MapListing = {
   _id: "test-listing-1",
   listingKey: "test-listing-1",
+  listingId: "test-listing-1",
   slug: "77145-minnesota-avenue-palm-desert-ca-92211",
   slugAddress: "77145-minnesota-avenue-palm-desert-ca-92211",
   primaryPhotoUrl: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop",
@@ -28,7 +29,7 @@ const sampleListing: MapListing = {
   postalCode: "92211",
 };
 
-const fullListing: IUnifiedListing = {
+const fullListing: any = {
   ...sampleListing,
   publicRemarks: "Beautiful single-family home in the desirable Palm Desert Country Club community. This well-maintained property features 3 bedrooms, 2 bathrooms, and 1,850 square feet of living space. The open floor plan is perfect for entertaining, with a spacious living room that flows into the dining area and kitchen. The master suite offers a private retreat with an en-suite bathroom. The backyard is an oasis with a sparkling pool and plenty of space for outdoor dining. This home is located in a quiet neighborhood with easy access to shopping, dining, and golf courses.",
   listOfficeName: "Desert Sotheby's International Realty",
@@ -38,7 +39,7 @@ const fullListing: IUnifiedListing = {
   lotSizeArea: 7200,
   garageSpaces: 2,
   standardStatus: "Active",
-} as IUnifiedListing;
+};
 
 export default function TestSwipePanelPage() {
   const { currentTheme } = useTheme();

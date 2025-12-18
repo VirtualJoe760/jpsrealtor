@@ -74,8 +74,10 @@ function getCacheTTL(queryOptions: QueryOptions): number {
  */
 async function getCachedResult(cacheKey: string): Promise<any | null> {
   try {
-    // @ts-ignore - Cloudflare KV binding (only available in production)
+    // Cloudflare KV binding (only available in production)
+    // @ts-expect-error - QUERY_CACHE is a Cloudflare KV binding
     if (typeof QUERY_CACHE === 'undefined') return null;
+    // @ts-expect-error - QUERY_CACHE is a Cloudflare KV binding
     const cached = await QUERY_CACHE?.get(cacheKey, 'json');
     return cached || null;
   } catch (error) {
@@ -89,8 +91,10 @@ async function getCachedResult(cacheKey: string): Promise<any | null> {
  */
 async function setCachedResult(cacheKey: string, result: any, ttl: number): Promise<void> {
   try {
-    // @ts-ignore - Cloudflare KV binding (only available in production)
+    // Cloudflare KV binding (only available in production)
+    // @ts-expect-error - QUERY_CACHE is a Cloudflare KV binding
     if (typeof QUERY_CACHE === 'undefined') return;
+    // @ts-expect-error - QUERY_CACHE is a Cloudflare KV binding
     await QUERY_CACHE?.put(cacheKey, JSON.stringify(result), {
       expirationTtl: ttl,
     });
