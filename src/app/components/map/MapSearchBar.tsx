@@ -47,6 +47,7 @@ export default function MapSearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const isSelectionRef = useRef(false); // Track if query was set from selection
 
   // Click-outside detection to close dropdown
   useEffect(() => {
@@ -70,6 +71,12 @@ export default function MapSearchBar({
 
   // Fetch autocomplete suggestions
   useEffect(() => {
+    // Skip autocomplete if query was set from a selection
+    if (isSelectionRef.current) {
+      isSelectionRef.current = false;
+      return;
+    }
+
     if (query.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -138,6 +145,9 @@ export default function MapSearchBar({
 
   const handleSuggestionClick = async (suggestion: AutocompleteSuggestion) => {
     console.log('🗺️ [MapSearchBar] Suggestion clicked:', suggestion);
+
+    // Mark as selection to prevent autocomplete from triggering
+    isSelectionRef.current = true;
 
     setQuery(suggestion.name);
     setShowSuggestions(false);
