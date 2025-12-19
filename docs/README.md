@@ -1,6 +1,6 @@
 # JPSRealtor Documentation
 
-**Last Updated**: December 11, 2025
+**Last Updated**: December 19, 2025
 
 Complete technical documentation for the JPSRealtor platform - a modern real estate application built with Next.js 16, featuring unified MLS data integration (78,904+ listings from 8 MLSs), intelligent map clustering, AI-powered tools, and comprehensive CRM functionality.
 
@@ -138,21 +138,26 @@ Guides for developers working on the platform.
 
 ---
 
-### [💬 Chat & Query](./chat-query/) - Chat System Architecture
-Comprehensive documentation for the AI-powered query system.
+### [💬 Chat System](./chat/) - AI Chat Architecture ⭐ **UPDATED DEC 19**
+Component-first, intent-based real estate AI chat system.
+
+**Architecture**: Intent classification → Single tool selection → Parameter return → Component data fetching
+
+**Performance**: 200x faster (10+ seconds → 50ms tool execution)
 
 **Files**:
-- **README.md** - Chat system overview
-- **CHAT_QUERY_ARCHITECTURE.md** - Complete architecture
-- **QUERY_SYSTEM_IMPLEMENTATION.md** - Implementation details
-- **QUERY_SYSTEM_PHASE2_COMPLETE.md** - Phase 2 completion
-- **QUERY_SYSTEM_PHASE3_COMPLETE.md** - Phase 3 completion
-- **QUERY_SYSTEM_PHASE4_COMPLETE.md** - Phase 4 completion
-- **DATABASE_INDEXES.md** - Database optimization
-- **DEPLOYMENT_GUIDE.md** - Deployment instructions
-- **AI_TESTING_REPORT.md** - Testing results
-- **ISSUES_FIXED_SUMMARY.md** - Bug fixes
-- **REDIS_TO_CLOUDFLARE_MIGRATION.md** - Cache migration
+- **README.md** - System overview & quick start
+- **ARCHITECTURE.md** - Component-first architecture & data flow
+- **INTENT_CLASSIFICATION.md** - Pattern matching & tool selection
+- **TOOLS.md** - Tool development guide
+- **TESTING.md** - Testing strategies & examples
+- **TROUBLESHOOTING.md** - Common issues & solutions
+
+**Recent Changes** (Dec 19, 2025):
+- ✅ Deleted old query system (37 files, ~10,000 lines)
+- ✅ Migrated to component-first architecture
+- ✅ 11 user-first tools active
+- ✅ Zero MongoDB timeout errors
 
 ---
 
@@ -231,7 +236,28 @@ Completed work sessions, migration reports, and archived documentation.
 
 ## 🔄 Recent Changes
 
-### December 11, 2025 ⭐
+### December 19, 2025 ⭐ **LATEST**
+- ✅ **Chat System Reorganization** - Complete documentation restructure
+  - Created new `docs/chat/` directory with 6 comprehensive guides
+  - Migrated from backend query system to component-first architecture
+  - Deleted 18 outdated chat summary files from root docs/
+  - Performance: 200x improvement (10s+ → 50ms tool execution)
+  - Zero MongoDB timeout errors
+  - 11 active user-first tools
+- ✅ **Old Query System Cleanup** - Removed deprecated architecture
+  - Deleted 37 files (~10,000 lines of code)
+  - Removed `src/lib/queries/` directory (22 files)
+  - Removed deprecated API endpoints (`/api/query`, `match-location`, `search-city`)
+  - Removed deprecated tools (`executeQueryDatabase`, `matchLocation`, `searchCity`)
+- ✅ **New Documentation Structure**
+  - `chat/README.md` - Overview & quick start
+  - `chat/ARCHITECTURE.md` - System design & data flow
+  - `chat/INTENT_CLASSIFICATION.md` - Pattern matching guide
+  - `chat/TOOLS.md` - Tool development guide
+  - `chat/TESTING.md` - Testing strategies
+  - `chat/TROUBLESHOOTING.md` - Common issues
+
+### December 11, 2025
 - ✅ **Query Performance Optimization** - 51s → 500ms (100x improvement)
   - Optimized regex queries for index usage
   - Created 34 database indexes (26 active + 8 closed)
@@ -284,22 +310,25 @@ All documentation follows these standards:
 | CRM | 2 | Customer relationship management (+1 contact sync) |
 | Deployment | 4 | Infrastructure & security (+1 VPS) |
 | Features | 7 | Individual features (+1 property filtering) |
-| **Integrations** | 4 | **Third-party services (NEW)** |
-| **Development** | 1 | **Developer guides (NEW)** |
-| Chat-Query | 10 | Chat system architecture |
+| **Integrations** | 4 | **Third-party services** |
+| **Development** | 1 | **Developer guides** |
+| **Chat** | 6 | **AI chat system (UPDATED DEC 19)** |
 | Misc | 3 | Reference materials |
 | Photos | 2 | Photo management |
 | Debugging | 2 + 23 tests | Debug tools & test scripts |
 | **Historical** | 3 | **Archived documentation (NEW)** |
 
-**Total Active Docs**: ~61 files (organized in 15 directories)
+**Total Active Docs**: ~55 files (organized in 15 directories)
 **Root Files**: 1 (README.md only)
+
+**Recent Deletions** (Dec 19, 2025): 18 outdated chat files removed
 
 ---
 
 ## 🔍 Finding Information
 
 ### By Topic
+- **Chat system**: `./chat/README.md` ⭐ **UPDATED DEC 19**
 - **Map issues**: `./map/MAP_FIXES_COMPLETE.md`
 - **Database**: `./architecture/DATABASE_*.md`
 - **MLS data**: `./listings/UNIFIED_MLS_ARCHITECTURE.md`
@@ -354,5 +383,6 @@ When adding new documentation:
 ---
 
 **Last Security Audit**: November 29, 2025
-**Last Documentation Reorganization**: December 11, 2025
+**Last Documentation Reorganization**: December 19, 2025
+**Last Chat System Update**: December 19, 2025
 **All secrets sanitized and verified safe for public GitHub repository.**
