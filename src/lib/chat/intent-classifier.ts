@@ -2,18 +2,13 @@
 // Intent classification: Map user query to single tool
 
 import { identifyEntityType } from "./utils/entity-recognition";
+import Groq from "groq-sdk";
 
 export type UserIntent =
-  | "search_homes"           // 60% - "Show me homes in [location]"
-  | "new_listings"           // 15% - "What's new in [location]"
-  | "market_overview"        // 10% - "Tell me about [location]"
-  | "pricing"                // 5%  - "How much are homes in [location]"
-  | "market_trends"          // 3%  - "How have homes appreciated"
-  | "compare_locations"      // 3%  - "Compare [location1] and [location2]"
-  | "find_neighborhoods"     // 1%  - "What neighborhoods are in [city]"
-  | "subdivision_query"      // NEW - "Does PDCC allow short term rentals?"
-  | "listing_query"          // NEW - "What's the HOA fee for 82223 Vandenberg?"
-  | "search_articles"        // 1%  - Real estate knowledge questions
+  | "search_homes"           // Browse properties - "Show me homes in [location]"
+  | "market_trends"          // Appreciation/investment data - "How has [location] appreciated?"
+  | "search_articles"        // Educational content - "How to buy a home"
+  | "general"                // General conversation (help, get started, greetings)
   | "unknown";               // Fallback
 
 interface IntentResult {
@@ -22,65 +17,141 @@ interface IntentResult {
   detectedPatterns: string[];
 }
 
+// =========================================================================
+// AI-BASED INTENT CLASSIFICATION
+// =========================================================================
+
+const INTENT_CLASSIFICATION_PROMPT = `You are an intent classifier for a real estate chatbot. Analyze the user's query and determine their PRIMARY intent.
+
+AVAILABLE INTENTS:
+
+1. search_homes
+   - User wants to BROWSE or SEE property listings
+   - Covers: viewing homes, new listings, property search, price info, general browsing
+   - Examples:
+     * "Show me homes in Palm Desert"
+     * "Find properties under $500k"
+     * "What's new in La Quinta"
+     * "How much are homes in PDCC"
+     * "Tell me about properties in Indian Wells"
+     * "Recently listed homes"
+   - This is the MOST COMMON intent (use when unsure)
+
+2. market_trends
+   - User wants APPRECIATION, INVESTMENT DATA, or MARKET TRENDS over time
+   - Examples:
+     * "How has Palm Desert appreciated?"
+     * "Investment returns in PGA West"
+     * "Show me appreciation trends"
+     * "Value over time in La Quinta"
+     * "Market growth in Riverside County"
+   - IMPORTANT: "appreciation" keyword ALWAYS means market_trends
+
+3. search_articles
+   - User asks EDUCATIONAL/HOW-TO questions (not about specific locations/listings)
+   - Examples:
+     * "What is a short sale?"
+     * "How to buy a home"
+     * "First time buyer tips"
+     * "What are closing costs?"
+     * "Explain HOA fees"
+
+4. general
+   - Greetings, help requests, getting started
+   - Examples:
+     * "Hello", "Hi", "Hey"
+     * "Help me get started"
+     * "What can you do?"
+     * "How does this work?"
+
+CRITICAL RULES:
+- Respond with ONLY the intent name
+- "show me appreciation" → market_trends (NOT search_homes)
+- "show me homes" → search_homes
+- When unsure → default to search_homes (most common)
+- Do NOT add explanations
+
+Respond with ONLY the intent name.`;
+
 /**
- * Classify user intent from their message
+ * Classify user intent using AI (Groq LLM)
+ * Fast, semantic understanding of user's request
+ * Returns null if AI classification fails (fallback to keyword system)
+ */
+async function classifyIntentWithAI(userMessage: string): Promise<IntentResult | null> {
+  try {
+    const startTime = Date.now();
+
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
+    const response = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: INTENT_CLASSIFICATION_PROMPT
+        },
+        {
+          role: "user",
+          content: userMessage
+        }
+      ],
+      model: "llama-3.1-8b-instant", // Fast, cheap model for classification
+      temperature: 0.1, // Low temp for consistency
+      max_tokens: 20, // Only need intent name
+    });
+
+    const responseTime = Date.now() - startTime;
+    const intentString = response.choices[0].message.content?.trim();
+
+    // Validate intent is one of our known intents
+    const validIntents: UserIntent[] = [
+      "search_homes",
+      "market_trends",
+      "search_articles",
+      "general"
+    ];
+
+    if (!intentString || !validIntents.includes(intentString as UserIntent)) {
+      console.warn(`[AI Intent] Invalid intent returned: "${intentString}"`);
+      return null;
+    }
+
+    console.log(`[AI Intent] Classified as: ${intentString} (${responseTime}ms)`);
+
+    return {
+      intent: intentString as UserIntent,
+      confidence: 0.95, // High confidence for AI classification
+      detectedPatterns: ["ai-classified"]
+    };
+
+  } catch (error: any) {
+    // Log different error types for debugging
+    if (error.name === 'AbortError') {
+      console.error("[AI Intent] Classification timeout");
+    } else if (error.status === 429) {
+      console.error("[AI Intent] Rate limit exceeded");
+    } else {
+      console.error("[AI Intent] Classification failed:", error.message);
+    }
+    return null; // Always return null on error → fallback to keywords
+  }
+}
+
+// =========================================================================
+// KEYWORD-BASED INTENT CLASSIFICATION (Fallback)
+// =========================================================================
+
+/**
+ * Classify user intent from their message using keyword patterns
+ * This is the fallback when AI classification fails or times out
  * Returns the single most likely intent
  */
-export function classifyIntent(userMessage: string): IntentResult {
+function classifyIntentWithKeywords(userMessage: string): IntentResult {
   const message = userMessage.toLowerCase();
 
-  // STEP 0: Entity Recognition Override
-  // If we detect a specific address or subdivision with a data query, prioritize those intents
-  const entityResult = identifyEntityType(userMessage);
-
-  // Listing query: Detected address + specific question (not "show")
-  if (entityResult.type === "listing" && entityResult.confidence > 0.9) {
-    // Check for search/listing intent keywords - these should trigger search_homes or getListingInfo
-    const isVisualQuery = message.includes("show") ||
-                          message.includes("find") ||
-                          message.includes("search") ||
-                          message.includes("look at") ||
-                          message.includes("see");
-    if (!isVisualQuery) {
-      return {
-        intent: "listing_query",
-        confidence: entityResult.confidence,
-        detectedPatterns: ["address-detected", entityResult.value]
-      };
-    }
-  }
-
-  // Subdivision query: Detected subdivision + specific question (not "show me" or "tell me about")
-  if (entityResult.type === "subdivision" && entityResult.confidence > 0.9) {
-    // Check for search/listing intent keywords - these should trigger search_homes, not subdivision_query
-    const isVisualQuery = message.includes("show") ||
-                          message.includes("find") ||
-                          message.includes("search") ||
-                          message.includes("homes") ||
-                          message.includes("properties") ||
-                          message.includes("listings") ||
-                          message.includes("available") ||
-                          message.includes("for sale");
-    const isOverviewQuery = message.includes("tell me about") || message.includes("what is");
-
-    // Don't override if strong trend/appreciation keywords present
-    const hasTrendKeywords = message.includes("appreciation") ||
-                            message.includes("appreciated") ||
-                            message.includes("going up") ||
-                            message.includes("going down") ||
-                            message.includes("market trend") ||
-                            message.includes("investment");
-
-    if (!isVisualQuery && !isOverviewQuery && !hasTrendKeywords) {
-      return {
-        intent: "subdivision_query",
-        confidence: entityResult.confidence,
-        detectedPatterns: ["subdivision-detected", entityResult.value]
-      };
-    }
-  }
-
-  // STEP 0.5: PRIORITY CHECK - Appreciation Keywords
+  // STEP 1: PRIORITY CHECK - Appreciation Keywords
   // These keywords ALWAYS trigger market_trends intent, regardless of other patterns
   const appreciationKeywords = [
     "appreciation", "appreciated", "appreciating", "appreciate",
@@ -98,54 +169,36 @@ export function classifyIntent(userMessage: string): IntentResult {
     }
   }
 
-  // STEP 1: Pattern Matching
+  // STEP 2: Pattern Matching - Simplified to 4 Intents
   const patterns: { intent: UserIntent; patterns: string[]; weight: number }[] = [
-    // Search homes (60% of queries)
+    // 1. search_homes - Browse properties (most common)
     {
       intent: "search_homes",
       patterns: [
+        // Direct search patterns
         "show me homes", "show me properties", "find homes", "search homes",
         "find properties", "looking for homes", "homes for sale", "properties in",
         "homes in", "available in", "listings in", "search for homes",
-        "i want to see", "let me see", "can you show", "looking in"
-      ],
-      weight: 2.0 // Higher weight = more likely default
-    },
+        "i want to see", "let me see", "can you show", "looking in",
 
-    // New listings (15%)
-    {
-      intent: "new_listings",
-      patterns: [
+        // New listings
         "what's new", "new listings", "latest homes", "recent listings",
         "just listed", "recently listed", "fresh listings", "this week",
-        "what came on the market", "newest homes", "what just hit"
-      ],
-      weight: 1.5
-    },
+        "what came on the market", "newest homes", "what just hit",
 
-    // Market overview (10%)
-    {
-      intent: "market_overview",
-      patterns: [
+        // Location info (tell me about, overview)
         "tell me about", "what's it like", "describe", "overview of",
-        "what is", "information about", "what should i know", "give me info",
-        "market in", "area like", "community like", "neighborhood like"
-      ],
-      weight: 1.2
-    },
+        "information about", "what should i know", "give me info",
 
-    // Pricing (5%)
-    {
-      intent: "pricing",
-      patterns: [
+        // Pricing questions (price implies browsing homes)
         "how much", "what do homes cost", "price range", "average price",
         "median price", "typical price", "how expensive", "afford",
         "what do homes go for", "price per", "cost in"
       ],
-      weight: 1.0
+      weight: 2.0 // Highest weight - most common intent
     },
 
-    // Market trends (3%) - secondary patterns (primary handled above)
+    // 2. market_trends - Appreciation and investment data
     {
       intent: "market_trends",
       patterns: [
@@ -153,61 +206,18 @@ export function classifyIntent(userMessage: string): IntentResult {
         "good investment", "market forecast", "price trends",
         "how fast do homes sell", "days on market", "market velocity", "hot market"
       ],
-      weight: 1.0
+      weight: 1.5
     },
 
-    // Compare locations (3%)
-    {
-      intent: "compare_locations",
-      patterns: [
-        "compare", " vs ", " versus ", "difference between",
-        "which is better", "or ", "better value"
-      ],
-      weight: 1.0
-    },
-
-    // Find neighborhoods (1%)
-    {
-      intent: "find_neighborhoods",
-      patterns: [
-        "what neighborhoods", "what subdivisions", "what communities",
-        "where should i look", "best neighborhoods", "areas in",
-        "communities in", "subdivisions in"
-      ],
-      weight: 1.0
-    },
-
-    // Subdivision query (specific subdivision data questions)
-    {
-      intent: "subdivision_query",
-      patterns: [
-        "does", "is", "are", "can i", "can you", "allowed",
-        "allow", "permit", "hoa fee", "hoa cost", "amenities",
-        "restrictions", "rules", "rental", "rent"
-      ],
-      weight: 1.2 // Higher weight for specific data queries
-    },
-
-    // Listing query (specific address/property questions)
-    // This will be enhanced by entity recognition (checking for address patterns)
-    {
-      intent: "listing_query",
-      patterns: [
-        "what's the", "what is the", "how much is", "property at",
-        "home at", "house at", "listing at"
-      ],
-      weight: 1.0
-    },
-
-    // Search articles (1%)
+    // 3. search_articles - Educational content
     {
       intent: "search_articles",
       patterns: [
-        // Definitional queries (specific to concepts, not locations)
+        // Definitional queries
         "what is an", "what is a", "what are", "how to", "explain", "define",
         "help me understand", "what does", "meaning of",
 
-        // Cost & utility queries (HIGH PRIORITY - specific patterns)
+        // Cost & utility queries
         "utility costs", "utility cost", "energy costs", "energy cost",
         "power costs", "power bills", "electric bills", "electricity costs",
         "best costs", "cheapest", "most affordable", "expenses",
@@ -223,7 +233,19 @@ export function classifyIntent(userMessage: string): IntentResult {
         "how does", "process for", "steps to", "requirements for",
         "pros and cons", "benefits of", "downsides of"
       ],
-      weight: 2.0 // High weight - these are clear article queries (increased from 1.5)
+      weight: 2.0 // High weight for clear educational queries
+    },
+
+    // 4. general - Help, greetings, getting started
+    {
+      intent: "general",
+      patterns: [
+        "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
+        "help", "help me", "get started", "getting started", "start",
+        "what can you do", "how does this work", "how do i use",
+        "show me around", "guide me", "what are your features"
+      ],
+      weight: 1.0
     }
   ];
 
@@ -267,22 +289,43 @@ export function classifyIntent(userMessage: string): IntentResult {
   return bestMatch;
 }
 
+// =========================================================================
+// HYBRID CLASSIFICATION (AI First, Keyword Fallback)
+// =========================================================================
+
+/**
+ * Classify user intent using AI first, then keyword fallback
+ * This is the main classification function used by the system
+ */
+export async function classifyIntent(userMessage: string): Promise<IntentResult> {
+  // STEP 1: Try AI classification first
+  const aiResult = await classifyIntentWithAI(userMessage);
+
+  if (aiResult) {
+    console.log("[Intent Classifier] Using AI classification");
+    return aiResult;
+  }
+
+  // STEP 2: Fallback to keyword system
+  console.log("[Intent Classifier] AI failed, falling back to keyword system");
+  return classifyIntentWithKeywords(userMessage);
+}
+
+// =========================================================================
+// TOOL MAPPING
+// =========================================================================
+
 /**
  * Get tool name for the classified intent
+ * Simplified to 3 core tools
  */
 export function getToolForIntent(intent: UserIntent): string | null {
   const intentToTool: Record<UserIntent, string | null> = {
-    search_homes: "searchHomes",
-    new_listings: "searchNewListings",
-    market_overview: "getMarketOverview",
-    pricing: "getPricing",
-    market_trends: "getAppreciation",      // CHANGED: Use simple getAppreciation tool
-    compare_locations: "compareLocations",
-    find_neighborhoods: "findNeighborhoods",
-    subdivision_query: "getSubdivisionInfo",
-    listing_query: "getListingInfo",
-    search_articles: "searchArticles",
-    unknown: null
+    search_homes: "searchHomes",           // Property search and browsing
+    market_trends: "getAppreciation",      // Appreciation and investment data
+    search_articles: "searchArticles",     // Educational content
+    general: null,                         // Conversational (no tool needed)
+    unknown: null                          // Fallback
   };
 
   return intentToTool[intent];
@@ -290,23 +333,28 @@ export function getToolForIntent(intent: UserIntent): string | null {
 
 /**
  * Main function: Classify intent and return the single tool to use
+ * Now uses AI-first hybrid classification system
  */
-export function selectToolForQuery(userMessage: string): {
+export async function selectToolForQuery(userMessage: string): Promise<{
   toolName: string | null;
   intent: UserIntent;
   confidence: number;
-} {
-  const result = classifyIntent(userMessage);
+  classificationMethod: "ai" | "keyword";
+}> {
+  const result = await classifyIntent(userMessage); // Now async
   const toolName = getToolForIntent(result.intent);
+  const classificationMethod = result.detectedPatterns.includes("ai-classified") ? "ai" : "keyword";
 
   console.log(`[Intent Classifier] Query: "${userMessage}"`);
   console.log(`[Intent Classifier] Intent: ${result.intent} (${result.confidence.toFixed(2)} confidence)`);
+  console.log(`[Intent Classifier] Method: ${classificationMethod}`);
   console.log(`[Intent Classifier] Matched patterns:`, result.detectedPatterns);
   console.log(`[Intent Classifier] Selected tool: ${toolName || "none"}`);
 
   return {
     toolName,
     intent: result.intent,
-    confidence: result.confidence
+    confidence: result.confidence,
+    classificationMethod
   };
 }
