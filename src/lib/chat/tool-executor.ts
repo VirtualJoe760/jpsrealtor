@@ -6,6 +6,7 @@ import { logChatMessage } from '@/lib/chat-logger';
 import { executeSearchHomes } from './tools/executors/search-homes';
 import { getSubdivisionData, checkShortTermRentals } from './utils/subdivision-data';
 import { getListingData, checkListingShortTermRentals } from './utils/listing-data';
+import { identifyEntityType } from './utils/entity-recognition';
 
 /**
  * Execute a single tool call and return the result
@@ -23,13 +24,20 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
   // "includeStats\\\": true" → "includeStats": true
   argsString = argsString.replace(/\\+"/g, '"');
 
-  // Fix 2: Fix the specific pattern: "key\": value":"}"
-  // This handles: {"includeStats\": true":"}","subdivision":"Palm Desert Country Club"}
-  // Step 1: Remove the malformed closing pattern ":"}"
-  argsString = argsString.replace(/"\s*:\s*"\}"/g, '');
+  // Fix 2: Fix the Groq pattern where key-value is treated as key: "key": value":"}"
+  // Transform: "includeStats": true":"}" → "includeStats": true
+  argsString = argsString.replace(/(":\s*(?:true|false|null|\d+))"\s*:\s*"\}"/, '$1');
 
-  // Step 2: Fix standalone ":"}" patterns
-  argsString = argsString.replace(/:\s*"\}"/g, '');
+  // Fix 3: Fix the specific pattern: "key\": value":"}"
+  // This handles: {"includeStats\": true":"}","subdivision":"Palm Desert Country Club"}
+  // Step 1: Remove the malformed closing pattern ":"}" after any value (not just after quotes)
+  argsString = argsString.replace(/\s*:\s*"\}"/g, '');
+
+  // Step 2: Remove standalone ":"} patterns (without quotes)
+  argsString = argsString.replace(/\s*:\s*\}"/g, '');
+
+  // Step 3: Remove stray quotes after boolean/number values (e.g., true" → true, 123" → 123)
+  argsString = argsString.replace(/(true|false|null|\d+)"\s*([,}])/g, '$1$2');
 
   // Fix 3: Remove all garbage whitespace (carriage returns, excessive newlines)
   argsString = argsString.replace(/\r/g, '');
@@ -60,8 +68,7 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     'searchHomes',              // NEW: 2 minute cache
     'getSubdivisionInfo',       // NEW: Subdivision data queries
     'getListingInfo',           // NEW: Listing data queries
-    'queryDatabase',
-    'getAppreciation',
+    'getAppreciation',          // NEW: Appreciation queries
     'getMarketStats',
     'getRegionalStats',
     'searchArticles',
@@ -95,17 +102,11 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     else if (functionName === "getListingInfo") {
       result = await executeGetListingInfo(functionArgs);
     }
-    // OLD TOOLS (to be migrated)
-    else if (functionName === "queryDatabase") {
-      result = await executeQueryDatabase(functionArgs);
-    } else if (functionName === "matchLocation") {
-      result = await executeMatchLocation(functionArgs);
-    } else if (functionName === "searchArticles") {
-      result = await executeSearchArticles(functionArgs);
-    } else if (functionName === "searchCity") {
-      result = await executeSearchCity(functionArgs);
-    } else if (functionName === "getAppreciation") {
+    else if (functionName === "getAppreciation") {
       result = await executeGetAppreciation(functionArgs);
+    }
+    else if (functionName === "searchArticles") {
+      result = await executeSearchArticles(functionArgs);
     } else if (functionName === "getMarketStats") {
       result = await executeGetMarketStats(functionArgs);
     } else if (functionName === "lookupSubdivision") {
@@ -145,283 +146,12 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     });
   }
 
-  // AUTOMATIC SEARCH: If matchLocation succeeded, call the WORKING subdivision endpoint
-  if (functionName === "matchLocation" && result.success && result.match?.type === "subdivision") {
-    console.log("[AUTO-SEARCH] Subdivision match found, using working /api/subdivisions endpoint");
-
-    try {
-      const subdivisionName = result.match.name;
-      const slug = subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-      console.log("[AUTO-SEARCH] Fetching from /api/subdivisions/" + slug + "/listings");
-
-      const listingsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/subdivisions/${slug}/listings?limit=10`,
-        { method: "GET" }
-      );
-      const listingsData = await listingsResponse.json();
-
-      const allListings = listingsData.listings || [];
-      const totalCount = listingsData.pagination?.total || allListings.length;
-
-      console.log("[AUTO-SEARCH] Found", totalCount, "listings from working endpoint");
-
-      // ANALYTICS PATTERN: Use accurate stats from API, not calculated from sample
-      const apiStats = listingsData.stats || {};
-      const minPrice = apiStats.priceRange?.min || 0;
-      const maxPrice = apiStats.priceRange?.max || 0;
-      const avgPrice = apiStats.avgPrice || 0;
-      const medianPrice = apiStats.medianPrice || 0;
-
-      // Calculate center coordinates for map
-      const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
-      const centerLat = validCoords.length > 0
-        ? validCoords.reduce((sum: number, l: any) => sum + parseFloat(l.latitude), 0) / validCoords.length
-        : 33.72;
-      const centerLng = validCoords.length > 0
-        ? validCoords.reduce((sum: number, l: any) => sum + parseFloat(l.longitude), 0) / validCoords.length
-        : -116.37;
-
-      // Return summary + 10 sample listings for AI (MINIMAL fields for token efficiency)
-      const sampleListings = allListings.slice(0, 10);
-      const photoMap = await batchFetchPhotos(sampleListings);
-
-      result.summary = {
-        count: totalCount,
-        priceRange: { min: minPrice, max: maxPrice },
-        avgPrice: avgPrice,
-        medianPrice: medianPrice,
-        center: { lat: centerLat, lng: centerLng },
-        sampleListings: sampleListings.map((l: any) => {
-          const listingKey = l.listingKey || l.listingId;
-
-          return {
-            // IDENTIFIERS (for frontend to fetch full data)
-            listingKey: listingKey,
-            slugAddress: l.slugAddress,
-            slug: l.slug,
-
-            // DISPLAY FIELDS (for carousel cards)
-            id: l.listingId || l.listingKey,
-            price: l.listPrice,
-            beds: l.bedroomsTotal || l.bedsTotal,
-            baths: l.bathroomsTotalDecimal,
-            sqft: l.livingArea,
-            address: l.address || l.unparsedAddress,
-            city: l.city,
-            subdivision: subdivisionName,
-            image: photoMap.get(listingKey) || DEFAULT_PHOTO_URL,
-            url: `/mls-listings/${l.slugAddress || l.listingId}`,
-
-            // LOCATION (for map)
-            latitude: parseFloat(l.latitude) || null,
-            longitude: parseFloat(l.longitude) || null
-          };
-        })
-      };
-
-      console.log("[AUTO-SEARCH] Summary:", JSON.stringify(result.summary, null, 2));
-    } catch (error: any) {
-      console.error("[AUTO-SEARCH] Failed:", error);
-    }
-  }
-
   return {
     role: "tool" as const,
     tool_call_id: toolCall.id,
     name: functionName,
     content: JSON.stringify(result)
   };
-}
-
-/**
- * Execute queryDatabase tool
- */
-async function executeQueryDatabase(args: any): Promise<any> {
-  console.log('[queryDatabase] Starting with args:', JSON.stringify(args, null, 2));
-
-  // Build database query payload
-  const queryPayload = {
-    city: args.city,
-    subdivision: args.subdivision,
-    zip: args.zip,
-    county: args.county,
-    filters: {
-      propertySubType: args.propertySubType,
-      minBeds: args.minBeds,
-      maxBeds: args.maxBeds,
-      minBaths: args.minBaths,
-      maxBaths: args.maxBaths,
-      minSqft: args.minSqft,
-      maxSqft: args.maxSqft,
-      minYear: args.minYear,
-      maxYear: args.maxYear,
-      minPrice: args.minPrice,
-      maxPrice: args.maxPrice,
-      pool: args.pool,
-      spa: args.spa,
-      view: args.view,
-      gated: args.gated,
-      minGarages: args.minGarages,
-      maxDaysOnMarket: args.maxDaysOnMarket,
-      listedAfter: args.listedAfter, // Keep as string - MongoDB field is stored as string, not Date
-      limit: Math.min(args.limit || 10, 10), // Reduced from 100 to 10 for faster responses
-      sort: args.sort
-    },
-    includeStats: args.includeStats !== false,
-    includeDOMStats: args.includeDOMStats,
-    includeComparison: args.compareWith ? {
-      compareWith: args.compareWith,
-      isCity: true
-    } : undefined
-  };
-
-  // Log the database query being executed
-  await logChatMessage("system", "Database query executed", "system", {
-    endpoint: "/api/query",
-    query: {
-      location: {
-        city: args.city,
-        subdivision: args.subdivision,
-        zip: args.zip,
-        county: args.county,
-      },
-      filters: Object.fromEntries(
-        Object.entries(queryPayload.filters).filter(([_, v]) => v !== undefined && v !== null)
-      ),
-    },
-    timestamp: new Date().toISOString(),
-  });
-
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(queryPayload)
-    });
-
-    if (!response.ok) {
-      console.error(`[queryDatabase] API returned ${response.status}: ${response.statusText}`);
-      return {
-        error: `Query failed with status ${response.status}`,
-        success: false
-      };
-    }
-
-    const queryResult = await response.json();
-    console.log('[queryDatabase] Query result:', {
-      success: queryResult.success,
-      listingCount: queryResult.listings?.length || 0,
-      hasStats: !!queryResult.stats
-    });
-
-    // Log database query results
-    await logChatMessage("system", "Database query results", "system", {
-      success: queryResult.success,
-      totalListings: queryResult.meta?.totalListings || queryResult.listings?.length || 0,
-      stats: queryResult.stats ? {
-        avgPrice: queryResult.stats.avgPrice,
-        medianPrice: queryResult.stats.medianPrice,
-        minPrice: queryResult.stats.minPrice,
-        maxPrice: queryResult.stats.maxPrice,
-        avgDaysOnMarket: queryResult.stats.avgDaysOnMarket,
-      } : null,
-      timestamp: new Date().toISOString(),
-    });
-
-  if (queryResult.success) {
-    const allListings = queryResult.listings || [];
-    const stats = queryResult.stats || {};
-    const domStats = queryResult.domStats || {};
-    const comparison = queryResult.comparison;
-
-    // Calculate center coordinates
-    const validCoords = allListings.filter((l: any) => l.latitude && l.longitude);
-    const centerLat = validCoords.length > 0
-      ? validCoords.reduce((sum: number, l: any) => sum + l.latitude, 0) / validCoords.length
-      : null;
-    const centerLng = validCoords.length > 0
-      ? validCoords.reduce((sum: number, l: any) => sum + l.longitude, 0) / validCoords.length
-      : null;
-
-    return {
-      success: true,
-      summary: {
-        count: queryResult.meta.totalListings,
-        priceRange: { min: stats.minPrice || 0, max: stats.maxPrice || 0 },
-        avgPrice: stats.avgPrice || 0,
-        medianPrice: stats.medianPrice || 0,
-        avgPricePerSqft: stats.avgPricePerSqft,
-        avgDaysOnMarket: stats.avgDaysOnMarket,
-        center: centerLat && centerLng ? { lat: centerLat, lng: centerLng } : null,
-        marketVelocity: domStats.marketVelocity,
-        freshListings: domStats.freshListings,
-        staleListings: domStats.staleListings,
-        domInsights: domStats.insights,
-        comparison: comparison ? {
-          winner: comparison.winner,
-          insights: comparison.insights,
-          differences: comparison.differences
-        } : undefined,
-        sampleListings: await (async () => {
-          // Batch fetch all photos in parallel
-          const sampleListings = allListings.slice(0, 10);
-          const photoMap = await batchFetchPhotos(sampleListings);
-
-          // Return MINIMAL listing objects - frontend will fetch complete data on-demand
-          // This reduces token usage from ~4000 to ~800 (80% savings!)
-          return sampleListings.map((l: any) => ({
-            // IDENTIFIERS (required for frontend to fetch full data)
-            listingKey: l.listingKey,
-            slugAddress: l.slugAddress,
-            slug: l.slug,
-
-            // DISPLAY FIELDS (for carousel cards - all that's needed for initial render)
-            id: l.listingKey,
-            price: l.listPrice,
-            beds: l.bedroomsTotal || l.bedsTotal,
-            baths: l.bathroomsTotalDecimal,
-            sqft: l.livingArea,
-            address: l.address || l.unparsedAddress,
-            city: l.city,
-            subdivision: l.subdivisionName,
-            image: photoMap.get(l.listingKey) || DEFAULT_PHOTO_URL,
-            url: `/mls-listings/${l.slug || l.listingKey}`,
-
-            // LOCATION (for map positioning)
-            latitude: l.latitude,
-            longitude: l.longitude,
-
-            // NOTE: No publicRemarks, no agent info, no 30+ extra fields
-            // Frontend fetches complete data when user opens ListingBottomPanel
-          }));
-        })()
-      },
-      meta: queryResult.meta
-    };
-  } else {
-    console.error('[queryDatabase] Query unsuccessful:', queryResult.error);
-    return { error: queryResult.error || "Query failed", success: false };
-  }
-  } catch (error: any) {
-    console.error('[queryDatabase] Exception:', error);
-    return {
-      error: `Failed to query database: ${error.message}`,
-      success: false
-    };
-  }
-}
-
-/**
- * Execute matchLocation tool
- */
-async function executeMatchLocation(args: any): Promise<any> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/match-location`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(args)
-  });
-  return await response.json();
 }
 
 /**
@@ -449,33 +179,6 @@ async function executeSearchArticles(args: any): Promise<any> {
   console.log('[executeSearchArticles] First article has image?:', data.results?.[0]?.image);
 
   return data;
-}
-
-/**
- * Execute searchCity tool
- */
-async function executeSearchCity(args: any): Promise<any> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat/search-city`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(args)
-  });
-  return await response.json();
-}
-
-/**
- * Execute getAppreciation tool
- */
-async function executeGetAppreciation(args: any): Promise<any> {
-  const params = new URLSearchParams();
-  if (args.city) params.append("city", args.city);
-  if (args.subdivision) params.append("subdivision", args.subdivision);
-  if (args.county) params.append("county", args.county);
-  if (args.period) params.append("period", args.period);
-  if (args.propertySubType) params.append("propertySubType", args.propertySubType);
-
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/analytics/appreciation?${params.toString()}`);
-  return await response.json();
 }
 
 /**
@@ -748,6 +451,37 @@ async function executeGetSubdivisionInfo(args: any): Promise<any> {
       error: error.message || "Failed to get subdivision info"
     };
   }
+}
+
+/**
+ * Execute getAppreciation tool
+ * Returns component parameters - frontend component will fetch the data
+ * Uses entity recognition to automatically determine location type
+ */
+async function executeGetAppreciation(args: any): Promise<any> {
+  console.log('[getAppreciation] Starting with args:', JSON.stringify(args, null, 2));
+
+  const { location, period = '5y' } = args;
+
+  if (!location) {
+    return {
+      success: false,
+      error: "location is required"
+    };
+  }
+
+  // Use entity recognition to determine location type
+  const entityResult = identifyEntityType(location);
+  console.log(`[getAppreciation] Entity recognition: ${entityResult.type} - ${entityResult.value}`);
+
+  // Return component parameters - frontend will make the API call
+  return {
+    success: true,
+    component: "appreciation",
+    location: entityResult.value,
+    locationType: entityResult.type,
+    period
+  };
 }
 
 /**
