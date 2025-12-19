@@ -5,9 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { logChatMessage } from "@/lib/chat-logger";
 import { createChatCompletion, GROQ_MODELS } from "@/lib/groq";
 import type { GroqChatMessage } from "@/lib/groq";
-// TESTING: Use minimal tool set to debug GPT-OSS 120B
-import { CHAT_TOOLS } from "@/lib/chat/tools-minimal";
-// import { CHAT_TOOLS } from "@/lib/chat/tools";
+// Dynamic tool loading based on intent classification
+import { selectToolForQuery } from "@/lib/chat/intent-classifier";
+import { getToolByName } from "@/lib/chat/tools-user-first";
+import type { GroqTool } from "@/lib/groq";
 import { buildSystemPrompt } from "@/lib/chat/prompts";
 import { executeToolCall } from "@/lib/chat/tool-executor";
 import { parseComponentData, cleanResponseText } from "@/lib/chat/response-parser";
@@ -147,18 +148,38 @@ export async function POST(req: NextRequest) {
       content: msg.content,
     })));
 
-    // STEP 1: MULTI-ROUND TOOL EXECUTION (non-streaming)
-    // Execute all tool calls FIRST before streaming the final response
-    // SKIP tool execution ONLY in text-only mode (locationSnapshot DOES use tools for real data)
-    const MAX_TOOL_ROUNDS = 3;
+    // STEP 1: INTENT CLASSIFICATION & DYNAMIC TOOL LOADING
+    // Classify user's intent and load ONLY the single relevant tool
+    // This prevents overwhelming GPT-OSS 120B with too many tool options
+    const currentQuery = messages[messages.length - 1]?.content || "";
+    const { toolName, intent, confidence } = selectToolForQuery(currentQuery);
+
+    // Build tool array - either 1 tool or none
+    const CHAT_TOOLS: GroqTool[] = [];
+    if (toolName) {
+      const tool = getToolByName(toolName);
+      if (tool) {
+        CHAT_TOOLS.push(tool);
+        console.log(`[AI] 🎯 Loaded tool: ${toolName} (intent: ${intent}, confidence: ${confidence.toFixed(2)})`);
+      } else {
+        console.warn(`[AI] ⚠️  Tool not found: ${toolName}`);
+      }
+    } else {
+      console.log(`[AI] 💬 No tool needed (intent: ${intent})`);
+    }
+
+    // STEP 2: SINGLE-ROUND TOOL EXECUTION (non-streaming)
+    // User-first approach: 1 user message = 1 tool call maximum
+    // If AI needs more data, it should ASK the user instead of calling more tools
+    const MAX_TOOL_ROUNDS = 1;
     let toolRound = 0;
     let messagesWithTools: GroqChatMessage[] = [...groqMessages];
     let needsStreaming = true;
-    const shouldUseTools = !textOnly; // locationSnapshot mode NEEDS tools for real MLS data
+    const shouldUseTools = !textOnly && CHAT_TOOLS.length > 0;
 
     while (toolRound < MAX_TOOL_ROUNDS && shouldUseTools) {
-      console.log(`[AI] Starting round ${toolRound + 1} with ${messagesWithTools.length} messages`);
-      console.log(`[AI] Model: ${model}, Tools count: ${CHAT_TOOLS.length}`);
+      console.log(`[AI] Starting tool execution round ${toolRound + 1}`);
+      console.log(`[AI] Model: ${model}, Tool: ${CHAT_TOOLS[0]?.function.name}`);
 
       // Get AI response with tool support (non-streaming for tool calls)
       const completion = await createChatCompletion({

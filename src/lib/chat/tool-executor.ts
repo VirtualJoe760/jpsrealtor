@@ -4,6 +4,8 @@
 import { toolCache } from './tool-cache';
 import { logChatMessage } from '@/lib/chat-logger';
 import { executeSearchHomes } from './tools/executors/search-homes';
+import { getSubdivisionData, checkShortTermRentals } from './utils/subdivision-data';
+import { getListingData, checkListingShortTermRentals } from './utils/listing-data';
 
 /**
  * Execute a single tool call and return the result
@@ -21,14 +23,24 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
   // "includeStats\\\": true" → "includeStats": true
   argsString = argsString.replace(/\\+"/g, '"');
 
-  // Fix 2: Remove all garbage whitespace (carriage returns, excessive newlines)
+  // Fix 2: Fix the specific pattern: "key\": value":"}"
+  // This handles: {"includeStats\": true":"}","subdivision":"Palm Desert Country Club"}
+  // Step 1: Remove the malformed closing pattern ":"}"
+  argsString = argsString.replace(/"\s*:\s*"\}"/g, '');
+
+  // Step 2: Fix standalone ":"}" patterns
+  argsString = argsString.replace(/:\s*"\}"/g, '');
+
+  // Fix 3: Remove all garbage whitespace (carriage returns, excessive newlines)
   argsString = argsString.replace(/\r/g, '');
   argsString = argsString.replace(/\n\s*\n\s*\n/g, '\n'); // Triple+ newlines → single
 
-  // Fix 3: Fix malformed boolean values with quotes inside
+  // Fix 4: Fix malformed boolean values with quotes inside
   // "includeStats": true" → "includeStats": true
   argsString = argsString.replace(/:\s*true"\s*$/gm, ': true');
   argsString = argsString.replace(/:\s*false"\s*$/gm, ': false');
+  argsString = argsString.replace(/:\s*true"\s*,/g, ': true,');
+  argsString = argsString.replace(/:\s*false"\s*,/g, ': false,');
 
   console.log(`[${functionName}] SANITIZED arguments:`, argsString);
 
@@ -45,7 +57,9 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
 
   // Check cache first (skip caching for certain tools)
   const cacheableTools = [
-    'searchHomes',        // NEW: 2 minute cache
+    'searchHomes',              // NEW: 2 minute cache
+    'getSubdivisionInfo',       // NEW: Subdivision data queries
+    'getListingInfo',           // NEW: Listing data queries
     'queryDatabase',
     'getAppreciation',
     'getMarketStats',
@@ -74,6 +88,12 @@ export async function executeToolCall(toolCall: any, userId: string = 'unknown')
     // NEW USER-FIRST TOOLS
     if (functionName === "searchHomes") {
       result = await executeSearchHomes(functionArgs, userId);
+    }
+    else if (functionName === "getSubdivisionInfo") {
+      result = await executeGetSubdivisionInfo(functionArgs);
+    }
+    else if (functionName === "getListingInfo") {
+      result = await executeGetListingInfo(functionArgs);
     }
     // OLD TOOLS (to be migrated)
     else if (functionName === "queryDatabase") {
@@ -637,4 +657,195 @@ async function fetchListingPhoto(listingKey: string, listing: any): Promise<stri
   }
 
   return fallbackUrl;
+}
+
+/**
+ * Execute getSubdivisionInfo tool
+ * Get information about a subdivision (HOA, amenities, rental restrictions, etc.)
+ */
+async function executeGetSubdivisionInfo(args: any): Promise<any> {
+  console.log('[getSubdivisionInfo] Starting with args:', JSON.stringify(args, null, 2));
+
+  const { subdivisionName, field = 'all' } = args;
+
+  if (!subdivisionName) {
+    return {
+      success: false,
+      error: "subdivisionName is required"
+    };
+  }
+
+  try {
+    // Get subdivision data
+    const subdivisionData = await getSubdivisionData(subdivisionName);
+
+    if (!subdivisionData.found) {
+      return {
+        success: false,
+        error: subdivisionData.error || `Subdivision "${subdivisionName}" not found`
+      };
+    }
+
+    const sub = subdivisionData.subdivision!;
+
+    // Build response based on requested field
+    let response: any = {
+      success: true,
+      subdivision: sub.name,
+      city: sub.city,
+      county: sub.county
+    };
+
+    if (field === 'shortTermRentals' || field === 'all') {
+      // Check short-term rental status (with fallback to nearby listings)
+      const strStatus = await checkShortTermRentals(subdivisionName);
+
+      response.shortTermRentals = {
+        allowed: strStatus.allowed,
+        details: strStatus.details,
+        confidence: strStatus.confidence,
+        source: strStatus.source
+      };
+    }
+
+    if (field === 'hoa' || field === 'all') {
+      response.hoa = {
+        monthlyMin: sub.hoaMonthlyMin,
+        monthlyMax: sub.hoaMonthlyMax,
+        includes: sub.hoaIncludes
+      };
+    }
+
+    if (field === 'amenities' || field === 'all') {
+      response.amenities = {
+        golfCourses: sub.golfCourses,
+        golfCoursesNames: sub.golfCoursesNames,
+        tennisCourts: sub.tennisCourts,
+        pools: sub.pools,
+        restaurantNames: sub.restaurantNames,
+        securityType: sub.securityType
+      };
+    }
+
+    if (field === 'all') {
+      response.description = sub.description;
+      response.features = sub.features;
+      response.listingCount = sub.listingCount;
+      response.priceRange = sub.priceRange;
+      response.avgPrice = sub.avgPrice;
+      response.medianPrice = sub.medianPrice;
+      response.seniorCommunity = sub.seniorCommunity;
+      response.communityType = sub.communityType;
+    }
+
+    console.log('[getSubdivisionInfo] Success:', JSON.stringify(response, null, 2).substring(0, 500));
+    return response;
+
+  } catch (error: any) {
+    console.error('[getSubdivisionInfo] Error:', error);
+    return {
+      success: false,
+      error: error.message || "Failed to get subdivision info"
+    };
+  }
+}
+
+/**
+ * Execute getListingInfo tool
+ * Get information about a specific listing by address
+ */
+async function executeGetListingInfo(args: any): Promise<any> {
+  console.log('[getListingInfo] Starting with args:', JSON.stringify(args, null, 2));
+
+  const { address, field = 'all' } = args;
+
+  if (!address) {
+    return {
+      success: false,
+      error: "address is required"
+    };
+  }
+
+  try {
+    // Get listing data (includes subdivision data if available)
+    const listingData = await getListingData(address, true);
+
+    if (!listingData.found) {
+      return {
+        success: false,
+        error: listingData.error || `Listing not found for address "${address}"`
+      };
+    }
+
+    const listing = listingData.listing!;
+
+    // Build response based on requested field
+    let response: any = {
+      success: true,
+      address: listing.address,
+      city: listing.city,
+      subdivisionName: listing.subdivisionName
+    };
+
+    if (field === 'shortTermRentals' || field === 'all') {
+      // Check short-term rental status (with fallback chain)
+      const strStatus = await checkListingShortTermRentals(address);
+
+      response.shortTermRentals = {
+        allowed: strStatus.allowed,
+        details: strStatus.details,
+        confidence: strStatus.confidence,
+        source: strStatus.source
+      };
+    }
+
+    if (field === 'hoa' || field === 'all') {
+      response.hoa = {
+        hasHOA: listing.associationYN,
+        fee: listing.associationFee,
+        frequency: listing.associationFeeFrequency
+      };
+
+      // Include subdivision HOA if available
+      if (listingData.subdivisionInfo) {
+        response.subdivisionHOA = {
+          monthlyMin: listingData.subdivisionInfo.hoaMonthlyMin,
+          monthlyMax: listingData.subdivisionInfo.hoaMonthlyMax
+        };
+      }
+    }
+
+    if (field === 'details' || field === 'all') {
+      response.details = {
+        price: listing.currentPrice,
+        listPrice: listing.listPrice,
+        originalListPrice: listing.originalListPrice,
+        pricePerSquareFoot: listing.pricePerSquareFoot,
+        bedrooms: listing.bedroomsTotal,
+        bathrooms: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        livingArea: listing.livingArea,
+        lotSizeAcres: listing.lotSizeAcres,
+        lotSizeSquareFeet: listing.lotSizeSquareFeet,
+        yearBuilt: listing.yearBuilt,
+        propertyType: listing.propertyType,
+        pool: listing.poolYN,
+        spa: listing.spaYN,
+        view: listing.viewYN,
+        mlsStatus: listing.mlsStatus,
+        daysOnMarket: listing.daysOnMarket,
+        mlsSource: listing.mlsSource,
+        listingId: listing.listingId
+      };
+    }
+
+    console.log('[getListingInfo] Success:', JSON.stringify(response, null, 2).substring(0, 500));
+    return response;
+
+  } catch (error: any) {
+    console.error('[getListingInfo] Error:', error);
+    return {
+      success: false,
+      error: error.message || "Failed to get listing info"
+    };
+  }
 }

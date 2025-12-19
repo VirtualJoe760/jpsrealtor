@@ -137,7 +137,10 @@
       "WebFetch(domain:www.bram.us)",
       "Bash(if exist .next rmdir /s /q .next)",
       "Bash(powershell -Command:*)",
-      "WebFetch(domain:console.groq.com)"
+      "WebFetch(domain:console.groq.com)",
+      "Bash(dir /b /o-d F:web-clientsjoseph-sardellajpsrealtorlocal-logschat-records*.json 2)",
+      "Bash(git rm:*)",
+      "Bash(xargs cat:*)"
     ],
     "deny": [],
     "ask": []
