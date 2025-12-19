@@ -27,6 +27,7 @@ export interface Listing {
   slugAddress?: string;
   latitude?: number;
   longitude?: number;
+  listingKey?: string;
 }
 
 interface ListingCarouselProps {
@@ -49,6 +50,53 @@ export default function ListingCarousel({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const [localSelectedListings, setLocalSelectedListings] = useState<Listing[]>(selectedListings);
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+
+  // Fetch photos from Spark API for all listings
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      const photoPromises = listings.map(async (listing) => {
+        const listingKey = listing.listingKey || listing.id;
+        if (!listingKey) return null;
+
+        try {
+          const res = await fetch(`/api/listings/${listingKey}/photos`);
+          if (res.ok) {
+            const data = await res.json();
+            const firstPhoto = data.photos?.[0];
+            if (firstPhoto) {
+              // Use the highest quality available
+              const photoUrl = firstPhoto.uri2048 ||
+                               firstPhoto.uri1600 ||
+                               firstPhoto.uri1280 ||
+                               firstPhoto.uri1024 ||
+                               firstPhoto.uri800 ||
+                               firstPhoto.uriLarge ||
+                               firstPhoto.uriThumb ||
+                               listing.image;
+              return { listingKey, photoUrl };
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch photo for ${listingKey}:`, err);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(photoPromises);
+      const photoMap: Record<string, string> = {};
+      results.forEach((result) => {
+        if (result) {
+          photoMap[result.listingKey] = result.photoUrl;
+        }
+      });
+      setPhotos(photoMap);
+    };
+
+    if (listings.length > 0) {
+      fetchPhotos();
+    }
+  }, [listings]);
 
   // Helper function to check if a listing is favorited
   const isFavorited = (listing: Listing) => {
@@ -83,17 +131,17 @@ export default function ListingCarousel({
     const mapListing: MapListing = {
       _id: listing.id,
       listingId: listing.id,
-      listingKey: listing.id,
+      listingKey: listing.listingKey || listing.id,
       slug: listing.slug || listing.id,
       slugAddress: listing.slugAddress || listing.slug || listing.id,
       primaryPhotoUrl: listing.image || '',
       unparsedAddress: listing.address,
       address: listing.address,
-      latitude: 0, // Not available in chat listing format
-      longitude: 0, // Not available in chat listing format
+      latitude: listing.latitude || 0,
+      longitude: listing.longitude || 0,
       listPrice: listing.price,
       bedsTotal: listing.beds,
-      bathroomsTotalInteger: listing.baths,
+      bathroomsTotalInteger: Math.floor(listing.baths),
       livingArea: listing.sqft,
       city: listing.city,
       subdivisionName: listing.subdivision,
@@ -221,9 +269,9 @@ export default function ListingCarousel({
           >
             {/* Image */}
             <div className="relative h-48 sm:h-40 md:h-44 xl:h-52 2xl:h-60">
-              {listing.image ? (
+              {(photos[listing.listingKey || listing.id] || listing.image) ? (
                 <Image
-                  src={listing.image}
+                  src={photos[listing.listingKey || listing.id] || listing.image || ''}
                   alt={listing.address || "Property"}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -300,11 +348,11 @@ export default function ListingCarousel({
               }`}>
                 <div className="flex items-center gap-1">
                   <Bed className="w-4 h-4" />
-                  <span>{listing.beds ?? 0} bd</span>
+                  <span>{listing.beds} bd</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Bath className="w-4 h-4" />
-                  <span>{listing.baths ?? 0} ba</span>
+                  <span>{listing.baths} ba</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Maximize2 className="w-4 h-4" />

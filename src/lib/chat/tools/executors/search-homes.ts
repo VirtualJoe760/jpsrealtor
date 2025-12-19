@@ -64,8 +64,11 @@ export async function executeSearchHomes(
 
   try {
     // Call /api/query endpoint
+    const apiUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`;
+    console.log('[searchHomes] Calling API:', apiUrl);
+
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/query`,
+      apiUrl,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,8 +76,11 @@ export async function executeSearchHomes(
       }
     );
 
+    console.log('[searchHomes] Response status:', response.status);
+
     if (!response.ok) {
-      console.error(`[searchHomes] API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[searchHomes] API error: ${response.status}`, errorText);
       return {
         error: `Search failed (${response.status})`,
         success: false
@@ -131,9 +137,9 @@ export async function executeSearchHomes(
           // Display fields
           id: l.listingId || l.listingKey,
           price: l.listPrice,
-          beds: l.bedroomsTotal,
-          baths: l.bathroomsTotalDecimal,
-          sqft: l.livingArea,
+          beds: l.bedsTotal || l.bedroomsTotal || 0,
+          baths: l.bathroomsTotalDecimal || 0,
+          sqft: l.livingArea || 0,
           address: l.address || l.unparsedAddress,
           city: l.city,
           subdivision: l.subdivisionName,
@@ -148,9 +154,9 @@ export async function executeSearchHomes(
     };
 
   } catch (error: any) {
-    console.error('[searchHomes] Error:', error);
+    console.error('[searchHomes] Fetch error:', error.message, error.stack);
     return {
-      error: error.message,
+      error: `Network error: ${error.message}`,
       success: false
     };
   }
