@@ -280,6 +280,21 @@ See [TOOLS.md](./TOOLS.md) for detailed guide.
 
 ## Recent Changes (Dec 2025)
 
+### Intent Classification & System Prompt Fixes (Dec 19, 2025)
+- ✅ Fixed intent classification for utility/cost queries
+- ✅ Added 13+ cost-related patterns to article search intent
+- ✅ Fixed system prompt conflicting with single-tool architecture
+- ✅ Increased article search weight from 0.8 to 2.0
+- ✅ Fixed tool execution streaming error with `tool_choice: "none"`
+- ✅ Increased MAX_TOOL_ROUNDS from 1 to 2
+- ✅ **Graceful error recovery** - Chat no longer breaks on errors
+
+**Documentation:**
+- [Intent Classification Improvements](./INTENT_CLASSIFICATION_IMPROVEMENTS_DEC19.md) - Detailed fix for article search patterns
+- [System Prompt Tool Conflict Fix](./SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md) - Resolved AI calling unavailable tools
+- [Graceful Error Recovery](./GRACEFUL_ERROR_RECOVERY_DEC19.md) - **NEW: Stream errors instead of breaking chat**
+- [Web Search Fallback Card](../trello/pending-cards/WEB_SEARCH_FALLBACK_CARD.md) - Future enhancement for Tavily integration
+
 ### Cleanup (Dec 19, 2025)
 - ✅ Deleted old query system (37 files, ~10,000 lines)
 - ✅ Removed deprecated tools (executeQueryDatabase, matchLocation, searchCity)

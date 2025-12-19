@@ -4,7 +4,7 @@ import { useState } from "react";
 import ListingCarousel from "./ListingCarousel";
 import ListingListView from "./ListingListView";
 import ChatMapView from "./ChatMapView";
-import { AppreciationCard } from "../analytics/AppreciationCard";
+import { AppreciationContainer } from "./AppreciationContainer";
 import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import MarketStatsCard from "./MarketStatsCard";
 import { ArticleResults } from "./ArticleCard";
@@ -126,7 +126,11 @@ export default function ChatResultsContainer({
 
       {/* Appreciation Card */}
       {hasAppreciation && (
-        <AppreciationCard data={components.appreciation} />
+        <AppreciationContainer
+          location={components.appreciation.location}
+          locationType={components.appreciation.locationType}
+          period={components.appreciation.period || "5y"}
+        />
       )}
 
       {/* Subdivision Comparison Chart */}

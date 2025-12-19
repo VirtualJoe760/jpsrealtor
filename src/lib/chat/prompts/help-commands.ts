@@ -1,92 +1,327 @@
 // src/lib/chat/prompts/help-commands.ts
-// Help command system - directory-style tool discovery
+// Dual help system: customer-friendly and technical
 
 /**
- * User-friendly help content for the AI assistant
- * Triggered when user types "help" or "ls"
+ * CUSTOMER-FRIENDLY HELP
+ * Simple, approachable guide for end users
+ * Triggered by: "help", "get started", "what can you do"
  */
-export const HELP_DIRECTORY = `
-# 🏠 JPSRealtor AI Assistant - Available Commands
+export const CUSTOMER_HELP = `
+# 👋 Welcome! I'm your AI Real Estate Assistant
 
-I have access to these tools to help you with real estate:
+I'm here to help you explore homes and neighborhoods in Southern California. Here's what I can do:
 
-## 🔍 Search & Discovery
+## 🏠 Find Your Perfect Home
 
-**🏘️ Property Search** - \`search [location]\` or just ask naturally
-   Find homes by city, neighborhood, or ZIP code
-   Examples:
-   • "Show me homes in Palm Desert"
-   • "3 bed, 2 bath homes under $800k in Indian Wells"
-   • "New listings in La Quinta this week"
+**Search for homes:**
+• "Show me homes in Palm Desert"
+• "3 bedroom homes under $800k"
+• "Homes with a pool in Indian Wells"
+• "What's new in La Quinta?"
 
-**📍 Neighborhood Info** - Ask about any area
-   Get details about subdivisions, communities, and HOAs
-   Examples:
-   • "Tell me about PGA West"
-   • "What's it like in Indian Wells Country Club?"
-   • "Browse neighborhoods in Palm Desert"
+**I can filter by:**
+✓ Bedrooms & bathrooms
+✓ Price range
+✓ Property type (house, condo, townhouse)
+✓ Amenities (pool, spa, views, garage)
+✓ Age & condition
 
-**📝 Articles & Guides** - Ask questions about real estate topics
-   Search our blog for expert advice and local insights
-   Examples:
-   • "What are the hidden costs of homeownership?"
-   • "Tell me about energy costs in Coachella Valley"
-   • "Tips for first-time home buyers"
+## 🗺️ Explore Neighborhoods
 
-## 📊 Market Analysis
+**Learn about areas:**
+• "Tell me about PGA West"
+• "What's Indian Wells like?"
+• "Does Palm Desert Country Club allow short-term rentals?"
+• "What's the HOA fee in Trilogy?"
 
-**📈 Market Trends** - \`trends [location]\` or ask about the market
-   Get appreciation data, price trends, and market health
-   Examples:
-   • "How much have homes appreciated in Palm Springs?"
-   • "Is the Indian Wells market going up or down?"
-   • "Show me 5-year trends for La Quinta"
+**I know about:**
+✓ Subdivisions & communities
+✓ HOA fees & restrictions
+✓ Golf courses & amenities
+✓ Rental policies
+✓ Community features
 
-**📉 Market Statistics** - Ask about market conditions
-   Get days on market, price per sqft, HOA fees, property taxes
-   Examples:
-   • "How fast do homes sell in Palm Desert?"
-   • "What's the average price per square foot in Rancho Mirage?"
-   • "What are HOA fees like in PGA West?"
+## 📊 Market Insights
 
-**🌴 Regional Overview** - \`regional stats\` or ask about Coachella Valley
-   See all cities in the valley with breakdowns
-   Examples:
-   • "Show me new listings in Coachella Valley"
-   • "Compare all desert cities"
-   • "What's available in the valley?"
+**Get market data:**
+• "How have homes appreciated in Palm Springs?"
+• "What's the average price in La Quinta?"
+• "How fast do homes sell in Indian Wells?"
+• "Show me price trends for Rancho Mirage"
 
-## 🎯 Specialized Tools
+**Market info includes:**
+✓ Home appreciation rates
+✓ Average prices & price per sqft
+✓ Days on market
+✓ Market trends over time
 
-**🔎 Subdivision Lookup** - When you're not sure of exact names
-   Fuzzy search for subdivision names
-   Examples:
-   • "Find subdivisions with 'vintage' in the name"
-   • "Is there an Indian Wells Country Club?"
+## 💡 Quick Tips
 
-**🔗 Browse Pages** - Get direct links to explore
-   Links to city and neighborhood pages
-   Examples:
-   • "Show me the Palm Desert neighborhoods page"
-   • "Link to browse Orange County homes"
+**Be specific:** The more details you provide, the better I can help!
+**Ask naturally:** Just talk to me like you would a real estate agent
+**Follow up:** I remember our conversation, so feel free to ask follow-up questions
 
-## 💡 Tips
+## 🚀 Ready to Start?
 
-• **Natural Language**: Just ask questions naturally - I'll figure out which tools to use!
-• **Be Specific**: The more details you provide (beds, baths, price range), the better results
-• **Filters**: I can search by property type, amenities (pool, spa, view), age, and more
-• **Recent Listings**: Use words like "new", "latest", or "recent" to see just-listed homes
-• **Compare**: Ask me to compare cities or neighborhoods for market analysis
-
-## 🆘 Help Commands
-
-• \`help\` or \`ls\` - Show this directory (what you're reading now!)
-• \`tools\` - See detailed tool descriptions
-• \`examples\` - Show example queries for each tool
+Try asking me:
+• "Show me homes in [your favorite city]"
+• "Tell me about [a neighborhood you're interested in]"
+• "What's the market like in [location]?"
 
 ---
 
-**Ready to help!** What would you like to know about real estate in Southern California?
+**Type \`examples\` to see more examples, or just start asking questions!**
+
+For developers/technical users, type \`/**help\` for detailed documentation.
+`;
+
+/**
+ * TECHNICAL HELP (DEVELOPER MODE)
+ * Detailed tool documentation for developers and power users
+ * Triggered by: "/**help", "technical help", "dev help"
+ */
+export const TECHNICAL_HELP = `
+# 🛠️ JPSRealtor AI Assistant - Technical Documentation
+
+## System Architecture
+
+**Component-First Architecture:**
+- Tools return parameters (not data)
+- Frontend components fetch their own data
+- Tool execution: ~50ms (200x faster than old system)
+- Zero MongoDB timeout errors
+
+**Available Tools:** 11 user-first tools
+**Intent Classification:** Pattern-based with entity recognition
+**Streaming:** SSE (Server-Sent Events) for real-time responses
+
+---
+
+## 🔧 Available Tools
+
+### 1. searchHomes
+**Purpose:** Property search with filters
+**Parameters:**
+- \`location\` (required): city, subdivision, ZIP
+- \`beds\`: minimum bedrooms
+- \`baths\`: minimum bathrooms
+- \`maxPrice\`: maximum price
+- \`minPrice\`: minimum price
+- \`pool\`: must have pool
+- \`propertyType\`: "house" | "condo" | "townhouse"
+
+**Returns:** Search parameters for ListingCarousel component
+**Performance:** 50ms execution
+
+**Examples:**
+- "Show me homes in Palm Desert"
+- "3 bed homes under $800k with a pool"
+
+---
+
+### 2. getSubdivisionInfo
+**Purpose:** Subdivision data (HOA, amenities, rentals)
+**Parameters:**
+- \`subdivisionName\` (required)
+- \`field\`: "shortTermRentals" | "hoa" | "amenities" | "all"
+
+**Returns:** Subdivision details including:
+- Short-term rental policies
+- HOA fees & includes
+- Amenities (golf, tennis, pools)
+- Security type
+
+**Examples:**
+- "Does PDCC allow short-term rentals?"
+- "What's the HOA fee in PGA West?"
+
+---
+
+### 3. getListingInfo
+**Purpose:** Specific property details
+**Parameters:**
+- \`address\` (required)
+- \`field\`: "shortTermRentals" | "hoa" | "details" | "all"
+
+**Examples:**
+- "What's the HOA for 82223 Vandenberg?"
+- "Tell me about 123 Desert Willow Drive"
+
+---
+
+### 4. getAppreciation
+**Purpose:** Historical appreciation analytics
+**Parameters:**
+- \`location\` (required): city, subdivision, or county
+- \`period\`: "1y" | "3y" | "5y" | "10y"
+
+**Returns:** Component parameters for AppreciationContainer
+**Output:** Closed sales chart with appreciation rates
+
+**Examples:**
+- "How have homes appreciated in Palm Springs?"
+- "5-year trends for Indian Wells"
+
+---
+
+### 5. searchNewListings
+**Purpose:** Recent listings with time filter
+**Parameters:**
+- \`location\` (required)
+- \`timeframe\`: "today" | "week" | "month"
+
+**Examples:**
+- "New listings in La Quinta this week"
+- "What's new in Palm Desert?"
+
+---
+
+### 6. getMarketOverview
+**Purpose:** General market information
+**Parameters:**
+- \`location\` (required)
+
+**Examples:**
+- "Tell me about Palm Desert"
+- "What's Indian Wells like?"
+
+---
+
+### 7. getPricing
+**Purpose:** Price statistics for area
+**Parameters:**
+- \`location\` (required)
+
+**Examples:**
+- "How much are homes in La Quinta?"
+- "Average price in Indian Wells"
+
+---
+
+### 8. getMarketTrends
+**Purpose:** Market health & trends
+**Parameters:**
+- \`location\` (required)
+
+**Examples:**
+- "Is the Palm Springs market going up?"
+- "Market trends for Rancho Mirage"
+
+---
+
+### 9. compareLocations
+**Purpose:** Side-by-side location comparison
+**Parameters:**
+- \`location1\` (required)
+- \`location2\` (required)
+
+**Examples:**
+- "Compare Palm Desert vs Indian Wells"
+- "Palm Springs or La Quinta?"
+
+---
+
+### 10. findNeighborhoods
+**Purpose:** Neighborhood discovery
+**Parameters:**
+- \`city\` (required)
+- \`criteria\`: "golf" | "55+" | "family" | "luxury"
+
+**Examples:**
+- "What neighborhoods are in Palm Desert?"
+- "Best golf communities"
+
+---
+
+### 11. searchArticles
+**Purpose:** Blog article search
+**Parameters:**
+- \`query\` (required)
+
+**Examples:**
+- "What is an HOA?"
+- "First-time buyer tips"
+
+---
+
+## 🎯 Intent Classification
+
+**Priority System:**
+1. Entity recognition override (subdivision/address queries)
+2. Priority keywords ("appreciation", "roi")
+3. Pattern matching (60+ patterns)
+
+**Confidence Scores:**
+- 5.0: Very specific patterns
+- 4.0: Strong patterns
+- 3.0: Priority keywords
+- 2.0: Weak patterns
+- 1.0: Fallback
+
+**File:** \`src/lib/chat/intent-classifier.ts\` (283 lines)
+
+---
+
+## 📦 Component Markers
+
+Tools return component markers that trigger frontend rendering:
+
+- \`[LISTING_CAROUSEL]\` - searchHomes, searchNewListings
+- \`[APPRECIATION]\` - getAppreciation
+- \`[MARKET_STATS]\` - getMarketStats
+- \`[SUBDIVISION_INFO]\` - getSubdivisionInfo
+
+**Frontend:** \`ChatResultsContainer.tsx\` parses markers and renders components
+
+---
+
+## 🚀 Performance Metrics
+
+**Tool Execution:** ~50ms (vs 10+ seconds in old system)
+**AI Streaming:** ~1000ms
+**Component Data Fetch:** ~500ms
+**Total E2E:** ~1.5-2 seconds
+
+**Optimization:**
+- Component-first architecture
+- Parameter return (no data in tools)
+- Parallel data fetching
+- 2-minute tool caching
+
+---
+
+## 📚 Documentation
+
+Full docs available at:
+- \`docs/chat/README.md\` - Overview
+- \`docs/chat/ARCHITECTURE.md\` - System design
+- \`docs/chat/INTENT_CLASSIFICATION.md\` - Intent patterns
+- \`docs/chat/TOOLS.md\` - Tool development
+- \`docs/chat/TESTING.md\` - Testing guide
+- \`docs/chat/TROUBLESHOOTING.md\` - Common issues
+
+---
+
+## 🔍 Debugging
+
+**Add logging:**
+\`\`\`typescript
+console.log('[toolName] Args:', args);
+console.log('[toolName] Result:', result);
+\`\`\`
+
+**Test with cURL:**
+\`\`\`bash
+curl -X POST http://localhost:3000/api/chat/stream \\
+  -H "Content-Type: application/json" \\
+  -d '{"messages":[{"role":"user","content":"YOUR QUERY"}],"userId":"test","userTier":"premium"}'
+\`\`\`
+
+**Check logs:** \`local-logs/chat-records/\`
+
+---
+
+**For customer-friendly help, type \`help\` or \`get started\`**
 `;
 
 /**
@@ -317,38 +552,54 @@ Type \`help\` to see the main directory, or just start asking questions!
 `;
 
 /**
- * Detect if user is requesting help/directory
+ * Detect if user is requesting help
+ * Returns the type of help requested or null
  */
 export function isHelpCommand(message: string): string | null {
   const normalized = message.toLowerCase().trim();
 
-  if (normalized === 'help' || normalized === 'ls' || normalized === '?') {
+  // Technical/Developer Help
+  if (normalized === '/**help' || normalized === 'technical help' || normalized === 'dev help' || normalized === 'developer help') {
+    return 'technical';
+  }
+
+  // Customer-Friendly Help (main help)
+  if (normalized === 'help' || normalized === 'get started' || normalized === 'what can you do' || normalized === 'what can you do?' || normalized === '?') {
     return 'help';
   }
 
-  if (normalized === 'tools' || normalized === 'commands') {
-    return 'tools';
+  // Natural language help requests
+  if (normalized.includes('how do i') || normalized.includes('how can i') || normalized.includes('how to use')) {
+    return 'help';
   }
 
-  if (normalized === 'examples' || normalized === 'samples') {
+  // Examples
+  if (normalized === 'examples' || normalized === 'samples' || normalized === 'show examples') {
     return 'examples';
+  }
+
+  // Old tools reference (keep for backwards compatibility)
+  if (normalized === 'tools' || normalized === 'commands' || normalized === 'ls') {
+    return 'tools';
   }
 
   return null;
 }
 
 /**
- * Get the appropriate help content based on command
+ * Get the appropriate help content based on command type
  */
 export function getHelpContent(command: string): string {
   switch (command) {
     case 'help':
-      return HELP_DIRECTORY;
+      return CUSTOMER_HELP;
+    case 'technical':
+      return TECHNICAL_HELP;
     case 'tools':
       return TOOLS_REFERENCE;
     case 'examples':
       return EXAMPLES_GUIDE;
     default:
-      return HELP_DIRECTORY;
+      return CUSTOMER_HELP;
   }
 }

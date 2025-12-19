@@ -33,6 +33,9 @@ interface AppreciationQueryParams {
   lng?: string;
   radius?: string;  // miles
 
+  // Market type
+  marketType?: 'residential' | 'rental';  // NEW: Toggle between residential sales and rental market
+
   // Time period
   period?: '1y' | '3y' | '5y' | '10y';
   yearsBack?: string;
@@ -86,17 +89,28 @@ export async function GET(request: NextRequest) {
     const yearsMap = { '1y': 1, '3y': 3, '5y': 5, '10y': 10 };
     filters.yearsBack = yearsMap[period] || parseInt(params.yearsBack || '5');
 
-    // Property filters
-    if (params.propertyType) {
-      filters.propertyType = params.propertyType;
-    }
+    // Property filters based on market type
+    const marketType = params.marketType || 'residential';  // Default to residential sales
 
-    // IMPORTANT: Default to Single Family Residence for residential (A) to avoid mixing condos/townhouses
-    if (params.propertySubType) {
-      filters.propertySubType = params.propertySubType;
-    } else if (!params.propertyType || params.propertyType === 'A') {
-      // Default to Single Family Residence for residential queries
-      filters.propertySubType = 'Single Family Residence';
+    if (marketType === 'rental') {
+      // RENTAL MARKET: Multi-Family properties (apartments, duplexes, etc.)
+      filters.propertyType = 'B';  // B = Multi-Family/Income properties
+      // Don't set propertySubType - allow all multi-family types
+    } else {
+      // RESIDENTIAL SALES: All Type A residential (SFR, Condos, Townhomes)
+      if (params.propertyType) {
+        filters.propertyType = params.propertyType;
+      } else {
+        // DEFAULT: Residential only (excludes B=Multi-Family, C=Land, D=Business Opportunity)
+        filters.propertyType = 'A';
+      }
+
+      // Optional: Allow filtering by specific property subtype
+      if (params.propertySubType) {
+        filters.propertySubType = params.propertySubType;
+      }
+      // NOTE: No default propertySubType - include all Type A residential
+      // Frontend will group by subtype and display in tabs
     }
 
     if (params.minBeds) {
@@ -129,6 +143,13 @@ export async function GET(request: NextRequest) {
 
     // ========== RETURN RESPONSE ==========
 
+    // Extract unique property subtypes for frontend tab display
+    const propertySubTypes = [...new Set(
+      sales
+        .map(s => s.propertySubType)
+        .filter(Boolean)
+    )].sort();
+
     return NextResponse.json({
       location: {
         subdivision: params.subdivision,
@@ -147,7 +168,9 @@ export async function GET(request: NextRequest) {
         totalSales: sales.length,
         fetchedAt: new Date().toISOString(),
         dataSource: 'unified_closed_listings',
-        mlsSources: [...new Set(sales.map(s => s.mlsSource).filter(Boolean))]
+        mlsSources: [...new Set(sales.map(s => s.mlsSource).filter(Boolean))],
+        propertySubTypes,  // NEW: Available subtypes for tab display
+        marketType: marketType  // Track which market type was queried
       }
     });
 

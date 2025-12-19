@@ -39,6 +39,7 @@ const KNOWN_SUBDIVISIONS = [
   { abbrev: "toscana", full: "Toscana Country Club" },
   { abbrev: "la quinta cc", full: "La Quinta Country Club" },
   { abbrev: "lqcc", full: "La Quinta Country Club" },
+  { abbrev: "la quinta country club", full: "La Quinta Country Club" },
   { abbrev: "mountain view cc", full: "Mountain View Country Club" },
   { abbrev: "ironwood", full: "Ironwood Country Club" },
   { abbrev: "desert falls", full: "Desert Falls Country Club" },

@@ -33,9 +33,14 @@ export function classifyIntent(userMessage: string): IntentResult {
   // If we detect a specific address or subdivision with a data query, prioritize those intents
   const entityResult = identifyEntityType(userMessage);
 
-  // Listing query: Detected address + specific question (not "show me")
+  // Listing query: Detected address + specific question (not "show")
   if (entityResult.type === "listing" && entityResult.confidence > 0.9) {
-    const isVisualQuery = message.includes("show me") || message.includes("find");
+    // Check for search/listing intent keywords - these should trigger search_homes or getListingInfo
+    const isVisualQuery = message.includes("show") ||
+                          message.includes("find") ||
+                          message.includes("search") ||
+                          message.includes("look at") ||
+                          message.includes("see");
     if (!isVisualQuery) {
       return {
         intent: "listing_query",
@@ -47,14 +52,48 @@ export function classifyIntent(userMessage: string): IntentResult {
 
   // Subdivision query: Detected subdivision + specific question (not "show me" or "tell me about")
   if (entityResult.type === "subdivision" && entityResult.confidence > 0.9) {
-    const isVisualQuery = message.includes("show me") || message.includes("find") || message.includes("search");
+    // Check for search/listing intent keywords - these should trigger search_homes, not subdivision_query
+    const isVisualQuery = message.includes("show") ||
+                          message.includes("find") ||
+                          message.includes("search") ||
+                          message.includes("homes") ||
+                          message.includes("properties") ||
+                          message.includes("listings") ||
+                          message.includes("available") ||
+                          message.includes("for sale");
     const isOverviewQuery = message.includes("tell me about") || message.includes("what is");
 
-    if (!isVisualQuery && !isOverviewQuery) {
+    // Don't override if strong trend/appreciation keywords present
+    const hasTrendKeywords = message.includes("appreciation") ||
+                            message.includes("appreciated") ||
+                            message.includes("going up") ||
+                            message.includes("going down") ||
+                            message.includes("market trend") ||
+                            message.includes("investment");
+
+    if (!isVisualQuery && !isOverviewQuery && !hasTrendKeywords) {
       return {
         intent: "subdivision_query",
         confidence: entityResult.confidence,
         detectedPatterns: ["subdivision-detected", entityResult.value]
+      };
+    }
+  }
+
+  // STEP 0.5: PRIORITY CHECK - Appreciation Keywords
+  // These keywords ALWAYS trigger market_trends intent, regardless of other patterns
+  const appreciationKeywords = [
+    "appreciation", "appreciated", "appreciating", "appreciate",
+    "value over time", "grown in value", "growth rate",
+    "roi", "return on investment", "investment return"
+  ];
+
+  for (const keyword of appreciationKeywords) {
+    if (message.includes(keyword)) {
+      return {
+        intent: "market_trends",
+        confidence: 3.0, // High confidence - this is clearly about appreciation
+        detectedPatterns: [`appreciation-keyword: ${keyword}`]
       };
     }
   }
@@ -106,14 +145,13 @@ export function classifyIntent(userMessage: string): IntentResult {
       weight: 1.0
     },
 
-    // Market trends (3%)
+    // Market trends (3%) - secondary patterns (primary handled above)
     {
       intent: "market_trends",
       patterns: [
-        "appreciated", "appreciation", "going up", "going down",
-        "market trends", "investment", "good investment", "market forecast",
-        "price trends", "how fast do homes sell", "days on market",
-        "market velocity", "hot market"
+        "going up", "going down", "market trends", "investment",
+        "good investment", "market forecast", "price trends",
+        "how fast do homes sell", "days on market", "market velocity", "hot market"
       ],
       weight: 1.0
     },
@@ -165,10 +203,27 @@ export function classifyIntent(userMessage: string): IntentResult {
     {
       intent: "search_articles",
       patterns: [
-        "what is", "what are", "how to", "explain", "define",
-        "tell me about", "help me understand", "what does", "meaning of"
+        // Definitional queries (specific to concepts, not locations)
+        "what is an", "what is a", "what are", "how to", "explain", "define",
+        "help me understand", "what does", "meaning of",
+
+        // Cost & utility queries (HIGH PRIORITY - specific patterns)
+        "utility costs", "utility cost", "energy costs", "energy cost",
+        "power costs", "power bills", "electric bills", "electricity costs",
+        "best costs", "cheapest", "most affordable", "expenses",
+        "water costs", "gas costs", "bills", "utilities",
+        "internet costs", "cable costs", "insurance costs",
+
+        // Real estate knowledge
+        "what to know about", "tips for", "guide to", "hidden costs",
+        "first time", "buyer tips", "seller tips", "homeownership",
+        "what's it like to live", "lifestyle",
+
+        // Process & concepts
+        "how does", "process for", "steps to", "requirements for",
+        "pros and cons", "benefits of", "downsides of"
       ],
-      weight: 0.8 // Lower weight to avoid false positives
+      weight: 2.0 // High weight - these are clear article queries (increased from 1.5)
     }
   ];
 
@@ -221,7 +276,7 @@ export function getToolForIntent(intent: UserIntent): string | null {
     new_listings: "searchNewListings",
     market_overview: "getMarketOverview",
     pricing: "getPricing",
-    market_trends: "getMarketTrends",
+    market_trends: "getAppreciation",      // CHANGED: Use simple getAppreciation tool
     compare_locations: "compareLocations",
     find_neighborhoods: "findNeighborhoods",
     subdivision_query: "getSubdivisionInfo",

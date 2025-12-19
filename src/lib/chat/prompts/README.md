@@ -82,12 +82,14 @@ const customPrompt = buildBasePrompt(dates) + buildTextOnlyPrompt();
 
 ### Help Commands (User-Facing)
 
+**Dual Help System:** Customer-friendly and technical help options
+
 ```typescript
 import { isHelpCommand, getHelpContent } from '@/lib/chat/prompts';
 
 // Detect help commands
 const userQuery = "help";
-const helpCommand = isHelpCommand(userQuery); // Returns: 'help'
+const helpCommand = isHelpCommand(userQuery); // Returns: 'help', 'technical', 'tools', or 'examples'
 
 if (helpCommand) {
   const content = getHelpContent(helpCommand);
@@ -95,10 +97,24 @@ if (helpCommand) {
 }
 
 // Supported commands:
-// "help" or "ls" → Main help directory
-// "tools" → Detailed tool reference
-// "examples" → Example queries for each tool
+
+// Customer-Friendly Help (simple, user-focused)
+// "help", "get started", "what can you do" → CUSTOMER_HELP
+// "how do i", "how can i" → CUSTOMER_HELP
+
+// Technical/Developer Help (detailed documentation)
+// "/**help", "technical help", "dev help" → TECHNICAL_HELP
+
+// Reference Materials
+// "tools", "commands", "ls" → TOOLS_REFERENCE (legacy)
+// "examples", "samples" → EXAMPLES_GUIDE
 ```
+
+**Help Content Types:**
+- `CUSTOMER_HELP`: Simple, friendly guide for end users (~80 lines)
+- `TECHNICAL_HELP`: Detailed tool docs for developers (~300 lines)
+- `TOOLS_REFERENCE`: Legacy detailed tool reference
+- `EXAMPLES_GUIDE`: Example queries for each tool
 
 ## Module Reference
 
@@ -165,23 +181,29 @@ interface PromptOptions {
 
 **When to use:** When `textOnly: true` option is set
 
-### `help-commands.ts` - Help Directory System
+### `help-commands.ts` - Dual Help System
 
-**Purpose:** Directory-style command system for tool discovery
+**Purpose:** Dual help system with customer-friendly and technical documentation
 
 **Content:**
-- User-friendly help directory (triggered by `help` or `ls`)
-- Detailed tool reference (triggered by `tools`)
-- Example queries guide (triggered by `examples`)
+- `CUSTOMER_HELP` - Simple, approachable guide for end users
+- `TECHNICAL_HELP` - Detailed tool documentation for developers
+- `TOOLS_REFERENCE` - Legacy detailed tool reference
+- `EXAMPLES_GUIDE` - Example queries guide
 - Command detection utility (`isHelpCommand`)
 
 **Features:**
 - No AI call needed - instant response
-- Organized by use case (Search, Market Analysis, Specialized)
-- Natural language examples for each tool
-- Progressive disclosure (help → tools → examples)
+- Customer help: Simple, friendly, focused on "what can I do"
+- Technical help: Architecture, performance, debugging info
+- Natural language detection ("how do i", "get started")
+- Progressive disclosure (help → examples → technical)
 
-**When to use:** Automatically detected when user types help/ls/tools/examples
+**When to use:**
+- Automatically detected when user types help commands
+- Customer: `help`, `get started`, `what can you do`
+- Technical: `/**help`, `technical help`, `dev help`
+- Legacy: `tools`, `ls`, `examples`
 
 ## Performance Comparison
 

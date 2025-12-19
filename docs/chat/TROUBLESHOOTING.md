@@ -288,17 +288,72 @@ if (chunk.includes('error:')) {
 ### Tool Choice Error
 **Symptom**: `Error: 400 Tool choice is none, but model called a tool`
 
-**Cause**: Mismatch between tool availability and model behavior
+**Cause**: Missing `tool_choice: "none"` parameter in final streaming call after tool execution
 
-**Solution**: Ensure tool is loaded correctly
+**Solution**: Add `tool_choice: "none"` to streaming call
 ```typescript
-// Verify tool is in tools array
-const tools = intentResult.tool
-  ? [getToolByName(intentResult.tool)]
-  : [];
-
-console.log('[DEBUG] Tools loaded:', tools.map(t => t.function.name));
+// src/app/api/chat/stream/route.ts:387
+// After tool execution completes, stream final response
+const streamResponse = await groq.chat.completions.create({
+  messages: messagesWithTools as any,
+  model,
+  temperature: 0.3,
+  max_tokens: 4000,
+  stream: true,
+  tool_choice: "none", // FIX: Explicitly tell Groq not to call tools
+  // NO tools parameter - we only want a text response
+});
 ```
+
+**Why This Happens**:
+- Tool executes in Round 1, adds tool call and tool result to message history
+- System exits tool execution loop
+- Tries to stream final response with tool calls in history
+- Without `tool_choice: "none"`, Groq sees tool calls and gets confused
+
+**Fixed in**: December 19, 2025
+**Documentation**: [SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md](./SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md)
+
+### AI Calling Unavailable Tools
+**Symptom**: `Error: attempted to call tool 'searchArticles' which was not in request.tools`
+
+**Cause**: System prompt contains conflicting instructions that override single-tool loading
+
+**Example Error**:
+```
+[Intent Classifier] Intent: market_overview (1.20 confidence) ✅
+[Intent Classifier] Selected tool: getMarketOverview ✅
+[AI] Loaded tool: getMarketOverview ✅
+ERROR: attempted to call tool 'searchArticles' ❌ AI IGNORED LOADED TOOL
+```
+
+**Solution**: Update system prompt to respect single-tool architecture
+```typescript
+// src/lib/chat/system-prompt.ts:127-145
+// WRONG - Don't do this:
+**PRIORITY 1: Search Articles First**
+1. **CALL searchArticles FIRST** - Check our authoritative content
+
+// CORRECT - Do this:
+**Tool Usage Instructions**
+You have been provided with ONE specific tool selected for this query.
+**USE ONLY THE TOOL THAT IS AVAILABLE IN THIS REQUEST.**
+
+Do NOT attempt to call tools that are not provided.
+
+**IF searchArticles is available** - Use it for information questions
+**IF getMarketOverview is available** - Use it for location information
+```
+
+**Why This Happens**:
+- Intent classifier correctly selects tool based on query patterns
+- System loads ONLY that specific tool
+- System prompt had hardcoded "PRIORITY 1: CALL searchArticles FIRST"
+- AI follows system prompt instruction over available tools
+- Result: AI tries to call unavailable tool → Error
+
+**Fixed in**: December 19, 2025
+**Documentation**: [SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md](./SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md)
 
 ---
 
@@ -373,6 +428,67 @@ useEffect(() => {
 
 ### "Rate limit exceeded"
 **Fix**: Implement rate limiting or upgrade API tier
+
+### "Tool choice is none, but model called a tool"
+**Fix**: Add `tool_choice: "none"` to final streaming call (route.ts:387)
+**Documentation**: [SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md](./SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md)
+
+### "attempted to call tool 'X' which was not in request.tools"
+**Fix**: Update system prompt to respect single-tool architecture
+**Documentation**: [SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md](./SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md)
+
+### Intent classifier not detecting utility/cost queries
+**Fix**: Updated patterns in `intent-classifier.ts` with cost-related keywords
+**Documentation**: [INTENT_CLASSIFICATION_IMPROVEMENTS_DEC19.md](./INTENT_CLASSIFICATION_IMPROVEMENTS_DEC19.md)
+
+### Chat breaks and requires reload after error
+**Fix**: Graceful error recovery - stream errors instead of returning JSON 500
+**Documentation**: [GRACEFUL_ERROR_RECOVERY_DEC19.md](./GRACEFUL_ERROR_RECOVERY_DEC19.md)
+
+---
+
+## Error Recovery
+
+### Graceful Error Handling (December 19, 2025)
+
+The chat system now gracefully recovers from ALL errors without requiring user to reload.
+
+**How It Works:**
+- Errors are caught by outer try-catch in `stream/route.ts`
+- Instead of JSON 500 response, system returns error message as SSE stream
+- User sees polite error message: "I apologize, but I encountered an error..."
+- Chat continues working - no reload needed!
+
+**User Experience:**
+```
+Before: Error → JSON 500 → SSE breaks → User must reload
+After:  Error → Stream error message → Chat continues → User can ask again
+```
+
+**For Developers:**
+```typescript
+// Error is automatically caught and streamed
+try {
+  // Main chat logic
+} catch (error) {
+  // Returns error as SSE stream
+  return errorStream(error);
+}
+```
+
+**Error Types Handled:**
+- Tool execution errors
+- Intent classification errors
+- Streaming errors
+- API errors
+- Any uncaught exceptions
+
+**Monitoring:**
+- Errors logged to console with full details
+- Error metadata sent in stream for debugging
+- Frontend can optionally show details to power users
+
+**See:** [GRACEFUL_ERROR_RECOVERY_DEC19.md](./GRACEFUL_ERROR_RECOVERY_DEC19.md) for full details
 
 ---
 

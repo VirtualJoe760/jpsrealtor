@@ -286,5 +286,29 @@ export const ALL_TOOLS: GroqTool[] = [
         required: ["query"]
       }
     }
+  },
+
+  // Tool 11: getAppreciation (market appreciation queries)
+  {
+    type: "function",
+    function: {
+      name: "getAppreciation",
+      description: "Get historical appreciation data and market trends for a location (city, subdivision, or county)",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description: "Location name - can be a city ('Palm Desert'), subdivision ('PDCC', 'PGA West'), or county ('Riverside County')"
+          },
+          period: {
+            type: "string",
+            enum: ["1y", "3y", "5y", "10y"],
+            description: "Time period for appreciation data (default: 5y)"
+          }
+        },
+        required: ["location"]
+      }
+    }
   }
 ];
