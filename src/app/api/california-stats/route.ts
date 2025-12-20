@@ -22,9 +22,6 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    console.warn('[california-stats] ⚠️ DEPRECATED ENDPOINT: Use /api/stats/california instead');
-    console.log('[california-stats] Calculating California residential sales stats...');
-
     // Calculate stats for residential sales (propertyType=A) in real-time
     // This ensures we show accurate median prices for actual homes
     const UnifiedListing = (await import('@/models/unified-listing')).default;
@@ -74,8 +71,6 @@ export async function GET(request: NextRequest) {
       minPrice: result.minPrice,
       maxPrice: result.maxPrice
     };
-
-    console.log('[california-stats] Residential stats calculated:', californiaStats);
 
     return NextResponse.json(californiaStats, {
       headers: {

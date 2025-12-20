@@ -55,7 +55,7 @@ export async function GET(
       .lean();
 
     if (!listing) {
-      console.log(`[photos API] Listing not found: ${listingKey}`);
+      // Silent - return empty photos array
       return NextResponse.json({
         listingKey,
         mlsSource: "Unknown",
@@ -93,7 +93,7 @@ export async function GET(
     // Note: Using Photos expansion (not Media) - this is the correct field name for Replication API
     const replicationUrl = `https://replication.sparkapi.com/v1/listings?_filter=MlsId Eq '${mlsId}' And ListingKey Eq '${listingKey}'&_expand=Photos&_limit=1`;
 
-    console.log(`[photos API] Fetching from MLS ${mlsSource} (${mlsId}): ${replicationUrl}`);
+    // Verbose logging disabled - only errors logged below
 
     const response = await fetch(replicationUrl, {
       headers: {
@@ -123,7 +123,7 @@ export async function GET(
     const results = data?.D?.Results || [];
 
     if (results.length === 0) {
-      console.log(`[photos API] No listing found for ${listingKey}`);
+      // Silent - listing not found, return empty array
       return NextResponse.json({
         listingKey,
         mlsSource,
@@ -136,8 +136,6 @@ export async function GET(
 
     // Photos are in StandardFields.Photos array (not Media)
     const photosArray = listingData?.StandardFields?.Photos || [];
-
-    console.log(`[photos API] Found ${photosArray.length} photos for ${listingKey} from ${mlsSource}`);
 
     // Transform Photos to photo format
     const photos = photosArray

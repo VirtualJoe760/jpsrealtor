@@ -86,7 +86,7 @@ export default function MapLayer() {
       centerLng: (DEFAULT_BOUNDS.east + DEFAULT_BOUNDS.west) / 2,
       zoom: DEFAULT_BOUNDS.zoom,
     };
-    console.log('🗺️ [MapLayer] Using default viewState:', defaultState);
+    // DEBUG: console.log('�️ [MapLayer] Using default viewState:', defaultState);
     return defaultState;
   }, [contextViewState]); // Update when context changes
 

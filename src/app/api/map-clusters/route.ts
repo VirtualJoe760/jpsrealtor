@@ -14,6 +14,9 @@ import { REGION_BOUNDARIES } from "@/data/region-boundaries";
 import { COUNTY_BOUNDARIES } from "@/data/county-boundaries";
 import { CITY_BOUNDARIES } from "@/data/city-boundaries";
 
+// Debug logging flag - set to true to enable verbose clustering logs
+const DEBUG_CLUSTERING = false;
+
 // AI Context for intent-aware clustering
 interface MapRequestContext {
   source?: 'ai' | 'manual' | 'initial';
@@ -59,7 +62,7 @@ function determineClusteringStrategy(
     const maxIndividualMarkers = 150;
 
     if (actualListingCount <= maxIndividualMarkers) {
-      console.log(`✅ AI-driven search for ${context.locationName || 'location'} with ${actualListingCount} listings → SHOW LISTINGS`);
+      // DEBUG: console.log(`✅ AI-driven search for ${context.locationName || 'location'} with ${actualListingCount} listings → SHOW LISTINGS`);
       return false; // Don't cluster
     }
 
@@ -75,7 +78,7 @@ function determineClusteringStrategy(
     // Filtered searches usually have fewer results - show listings
     const maxForFiltered = 200;
     if (actualListingCount <= maxForFiltered) {
-      console.log(`✅ AI-driven filtered search with ${actualListingCount} listings → SHOW LISTINGS`);
+      // DEBUG: console.log(`✅ AI-driven filtered search with ${actualListingCount} listings → SHOW LISTINGS`);
       return false; // Show listings
     }
   }
@@ -91,14 +94,14 @@ function determineClusteringStrategy(
     // Note: At zoom 7-11, if <600 listings, boundaries are still shown (for hovering),
     // but frontend can decide to also fetch/show listings for better UX
     const shouldCluster = zoom < 12;
-    console.log(`🖱️ Manual exploration at zoom ${zoom} with ${actualListingCount} listings → ${shouldCluster ? 'BOUNDARIES' : 'LISTINGS'}`);
+    // DEBUG: console.log(`🖱️ Manual exploration at zoom ${zoom} with ${actualListingCount} listings → ${shouldCluster ? 'BOUNDARIES' : 'LISTINGS'}`);
     return shouldCluster;
   }
 
   // Rule 4: Initial page load (no AI context yet)
   if (context.source === 'initial') {
     // Always cluster on initial load for performance
-    console.log(`🏁 Initial load at zoom ${zoom} → SHOW CLUSTERS`);
+    // DEBUG: console.log(`🏁 Initial load at zoom ${zoom} → SHOW CLUSTERS`);
     return true;
   }
 
@@ -107,13 +110,13 @@ function determineClusteringStrategy(
   // Zoom 11-12: Show listings if count < 800, otherwise clusters
   // Zoom 12+: Always show individual listings (capped at 500-600)
   if (zoom < 11) {
-    console.log(`🔄 Zoom ${zoom} < 11 → CLUSTERS (hierarchical boundaries)`);
+    // DEBUG: console.log(`🔄 Zoom ${zoom} < 11 → CLUSTERS (hierarchical boundaries)`);
     return true;
   }
 
   if (zoom >= 11 && zoom < 12) {
     const showListings = actualListingCount < 800;
-    console.log(`🔄 Zoom ${zoom} (11-12 transition) → ${showListings ? 'LISTINGS' : 'CLUSTERS'} (count: ${actualListingCount})`);
+    // DEBUG: console.log(`🔄 Zoom ${zoom} (11-12 transition) → ${showListings ? 'LISTINGS' : 'CLUSTERS'} (count: ${actualListingCount})`);
     return !showListings;
   }
 
@@ -331,17 +334,17 @@ export async function GET(req: NextRequest) {
     if (zoom >= 7) {
       // Count listings when we might need to decide between boundaries and individual listings
       listingCount = await UnifiedListing.countDocuments(matchStage);
-      console.log(`📊 Listing count at zoom ${zoom}: ${listingCount} listings in viewport`);
+      // DEBUG: console.log(`📊 Listing count at zoom ${zoom}: ${listingCount} listings in viewport`);
     }
 
     // Decide: clusters or individual listings using context-aware logic
     const returnClusters = determineClusteringStrategy(zoom, context, listingCount);
-    console.log(`🎯 returnClusters decision: ${returnClusters}`);
+    // DEBUG: console.log(`🎯 returnClusters decision: ${returnClusters}`);
 
     if (returnClusters) {
       // ==================== SERVER-SIDE CLUSTERING ====================
       const gridSize = getClusterGridSize(zoom);
-      console.log(`📏 Grid size: ${gridSize}`);
+      // DEBUG: console.log(`📏 Grid size: ${gridSize}`);
 
       // ==================== HIERARCHICAL ZOOM STRATEGY ====================
       // Zoom 5-6: Region-level clustering (Northern CA, Central CA, Southern CA)
@@ -354,7 +357,7 @@ export async function GET(req: NextRequest) {
       const useCountyClustering = zoom >= 7 && zoom <= 9;
       const useCityBasedClustering = zoom >= 10 && zoom <= 11;
 
-      console.log(`🔀 Clustering routing: region=${useRegionClustering}, county=${useCountyClustering}, city=${useCityBasedClustering}`);
+      // DEBUG: console.log(`🔀 Clustering routing: region=${useRegionClustering}, county=${useCountyClustering}, city=${useCityBasedClustering}`);
 
       let clusterPipeline;
       let clusters; // Declare outside to be accessible throughout
@@ -934,7 +937,7 @@ export async function GET(req: NextRequest) {
       }
       // Note: clusters variable is already set above for county/city clustering
 
-      console.log(`📍 Generated ${clusters?.length || 0} ${useCountyClustering ? 'county-based' : useCityBasedClustering ? 'city-based' : 'grid-based'} clusters at zoom ${zoom}`);
+      // DEBUG: console.log(`📍 Generated ${clusters?.length || 0} ${useCountyClustering ? 'county-based' : useCityBasedClustering ? 'city-based' : 'grid-based'} clusters at zoom ${zoom}`);
       if (useCityBasedClustering && clusters && clusters.length > 0) {
         console.log(`🏙️ Cities: ${clusters.slice(0, 5).map((c: any) => c.cityName || 'Unknown').join(', ')}...`);
       }
@@ -1081,7 +1084,7 @@ export async function GET(req: NextRequest) {
       }
 
       // No smart display, just return boundaries
-      console.log(`✅ Returning ${clusters?.length || 0} boundaries (${useCityBasedClustering ? 'city' : useCountyClustering ? 'county' : 'grid'}-based, no listings)`);
+      // DEBUG: console.log(`✅ Returning ${clusters?.length || 0} boundaries (${useCityBasedClustering ? 'city' : useCountyClustering ? 'county' : 'grid'}-based, no listings)`);
 
       // If streaming is requested, send boundaries via streaming metadata
       if (useStreaming) {
@@ -1158,7 +1161,7 @@ export async function GET(req: NextRequest) {
       const streamParam = query.get("stream");
       const useStreaming = streamParam === "true" || streamParam === "1";
 
-      console.log(`📍 Fetching individual listings (zoom ${zoom}, limit: ${limit}, streaming: ${useStreaming})`);
+      // DEBUG: console.log(`📍 Fetching individual listings (zoom ${zoom}, limit: ${limit}, streaming: ${useStreaming})`);
 
       if (useStreaming) {
         // ==================== STREAMING RESPONSE ====================
