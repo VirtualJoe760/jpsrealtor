@@ -62,9 +62,9 @@ export async function GET(
     // Build query for listings - unified collection
     const baseQuery: any = {
       standardStatus: "Active",
-      // DEFAULT: Only residential sale properties (Type A), exclude rentals (Type B)
-      // Include Type A (Residential) but NOT Type B (Rental Lease)
-      propertyType: { $ne: "B" },
+      // Only residential properties (Type A: houses, condos, townhomes)
+      // Excludes: B=Rentals, C=Multifamily, D=Land
+      propertyType: "A",
       // Exclude Co-Ownership properties (fractional ownership/timeshares)
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };

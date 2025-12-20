@@ -73,9 +73,10 @@ export async function GET(
     // Base query for the city - using unified_listings
     const baseQuery: any = {
       city: { $regex: new RegExp(`^${cityName}$`, "i") },
-      listPrice: { $exists: true, $ne: null, $gt: 0 },
-      // Exclude Co-Ownership properties (fractional ownership/timeshares)
+      standardStatus: "Active",  // Only show active listings
+      propertyType: "A",  // Residential only (excludes B=Rentals, C=Multifamily, D=Land)
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
+      listPrice: { $exists: true, $ne: null, $gt: 0 },
     };
 
     // Build $and array to combine all filters properly
@@ -87,17 +88,8 @@ export async function GET(
                        pool || spa || view || fireplace || gatedCommunity || seniorCommunity ||
                        garageSpaces || stories || hasHOA || eastOf || westOf || northOf || southOf;
 
-    // Filter by property type - DEFAULT to excluding rentals (Type B)
-    if (propertyType === "sale") {
-      // EXCLUDE rentals (Type B) - only show sale properties
-      baseQuery.propertyType = { $ne: "B" };
-    } else if (propertyType === "rental") {
-      baseQuery.propertyType = "B";
-    } else if (propertyType === "multifamily") {
-      baseQuery.propertyType = "C";
-    } else if (propertyType === "land") {
-      baseQuery.propertyType = "D";
-    }
+    // Property type is hardcoded to "A" (Residential) in baseQuery
+    // The propertyType URL parameter is ignored to ensure only residential properties are shown
 
     // Apply price filters
     if (minPrice) {
