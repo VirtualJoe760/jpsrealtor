@@ -158,10 +158,11 @@ export async function streamWithToolSupport(
           const secondResponse = await groq.chat.completions.create({
             model: "openai/gpt-oss-120b",
             messages: [...messages, ...toolMessages],
+            tools: ALL_TOOLS, // Still provide tools so AI can call more if needed
+            tool_choice: "none", // But prevent tool calling in final response
             stream: true,
             temperature: 0.7,
             max_tokens: 2048
-            // Don't include tools parameter - prevents tool calling in second response
           });
 
           // Stream the second response (final AI text)
