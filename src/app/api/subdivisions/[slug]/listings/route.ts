@@ -18,6 +18,7 @@ export async function GET(
 
     const limit = parseInt(searchParams.get("limit") || "20");
     const page = parseInt(searchParams.get("page") || "1");
+    const sortParam = searchParams.get("sort") || "auto";
 
     // Price filters
     const minPrice = searchParams.get("minPrice") ? parseInt(searchParams.get("minPrice")!) : undefined;
@@ -221,10 +222,125 @@ export async function GET(
     // Query unified_listings (all 8 MLSs)
     const skip = (page - 1) * limit;
 
+    // Determine sorting strategy based on user preference
+    let sortBy: any;
+    let needsAggregation = false;
+
+    if (sortParam === "auto") {
+      // Default behavior: price high to low
+      sortBy = { listPrice: -1 };
+    } else {
+      switch (sortParam) {
+        case "price-low":
+          sortBy = { listPrice: 1 };
+          break;
+        case "price-high":
+          sortBy = { listPrice: -1 };
+          break;
+        case "sqft-low":
+        case "sqft-high":
+          needsAggregation = true;
+          break;
+        case "newest":
+          sortBy = { onMarketDate: -1 };
+          break;
+        case "oldest":
+          sortBy = { onMarketDate: 1 };
+          break;
+        case "property-type":
+          sortBy = { propertySubType: 1, listPrice: 1 };
+          break;
+        default:
+          sortBy = { listPrice: -1 };
+      }
+    }
+
     // ANALYTICS PATTERN: Get accurate stats from ALL listings, not just the page
-    const [listings, total, stats, propertyTypeStats] = await Promise.all([
-      UnifiedListing.find(baseQuery)
-        .sort({ listPrice: -1 })
+    let listingsQuery;
+
+    if (needsAggregation) {
+      // Use aggregation for price-per-sqft sorting
+      listingsQuery = UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $addFields: {
+            pricePerSqft: {
+              $cond: [
+                { $and: [
+                  { $gt: ["$livingArea", 0] },
+                  { $ne: ["$livingArea", null] }
+                ]},
+                { $divide: ["$listPrice", "$livingArea"] },
+                999999
+              ]
+            }
+          }
+        },
+        { $sort: { pricePerSqft: sortParam === "sqft-low" ? 1 : -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            listingKey: 1,
+            listingId: 1,
+            slugAddress: 1,
+            slug: 1,
+            unparsedAddress: 1,
+            unparsedFirstLineAddress: 1,
+            address: 1,
+            city: 1,
+            stateOrProvince: 1,
+            postalCode: 1,
+            latitude: 1,
+            longitude: 1,
+            listPrice: 1,
+            currentPrice: 1,
+            originalListPrice: 1,
+            associationFee: 1,
+            bedroomsTotal: 1,
+            bedsTotal: 1,
+            bathroomsTotalDecimal: 1,
+            bathroomsTotalInteger: 1,
+            bathroomsFull: 1,
+            bathroomsHalf: 1,
+            livingArea: 1,
+            lotSizeArea: 1,
+            lotSizeSqft: 1,
+            yearBuilt: 1,
+            standardStatus: 1,
+            daysOnMarket: 1,
+            onMarketDate: 1,
+            modificationTimestamp: 1,
+            propertyType: 1,
+            propertySubType: 1,
+            subdivisionName: 1,
+            mlsSource: 1,
+            landType: 1,
+            poolYN: 1,
+            pool: 1,
+            spaYN: 1,
+            spa: 1,
+            viewYN: 1,
+            view: 1,
+            fireplaceYN: 1,
+            fireplacesTotal: 1,
+            seniorCommunityYN: 1,
+            gatedCommunity: 1,
+            associationYN: 1,
+            garageSpaces: 1,
+            parkingTotal: 1,
+            stories: 1,
+            levels: 1,
+            publicRemarks: 1,
+            primaryPhoto: 1,
+            media: 1,
+            pricePerSqft: 1
+          }
+        }
+      ]);
+    } else {
+      listingsQuery = UnifiedListing.find(baseQuery)
+        .sort(sortBy)
         .skip(skip)
         .limit(limit)
         .select({
@@ -303,7 +419,11 @@ export async function GET(
           primaryPhoto: 1,
           media: 1,
         })
-        .lean(),
+        .lean();
+    }
+
+    const [listings, total, stats, propertyTypeStats] = await Promise.all([
+      listingsQuery,
       UnifiedListing.countDocuments(baseQuery),
       // CRITICAL: Calculate stats from ALL listings, not just current page
       UnifiedListing.aggregate([
@@ -410,6 +530,11 @@ export async function GET(
         daysOnMarket: listing.onMarketDate
           ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
           : null,
+        // Price per sqft - calculate if not from aggregation
+        pricePerSqft: listing.pricePerSqft ||
+          (listing.livingArea && listing.livingArea > 0
+            ? Math.round(listing.listPrice / listing.livingArea)
+            : null),
       };
     });
 
@@ -455,6 +580,19 @@ export async function GET(
           max: priceStats.maxPrice
         },
         propertyTypes: propertyTypeBreakdown
+      },
+      // SORTING: Information about applied sorting
+      sorting: {
+        appliedSort: sortParam,
+        availableOptions: [
+          { value: "price-low", label: "Price: Low to High" },
+          { value: "price-high", label: "Price: High to Low" },
+          { value: "sqft-low", label: "Best Value ($/sqft)" },
+          { value: "sqft-high", label: "Premium ($/sqft)" },
+          { value: "newest", label: "Newest Listed" },
+          { value: "oldest", label: "Longest on Market" },
+          { value: "property-type", label: "Group by Property Type" }
+        ]
       }
     });
   } catch (error) {

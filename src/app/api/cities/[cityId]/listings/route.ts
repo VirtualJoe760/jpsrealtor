@@ -17,6 +17,7 @@ export async function GET(
     // DEFAULT to residential sale (Type A) - only show rentals/multifamily/land if explicitly requested
     const propertyType = searchParams.get("propertyType") || "sale";
     const limit = parseInt(searchParams.get("limit") || "100");
+    const sortParam = searchParams.get("sort") || "auto";
 
     // Get filter parameters
     // Price filters
@@ -321,27 +322,114 @@ export async function GET(
       baseQuery.$and = andConditions;
     }
 
-    // Determine sorting strategy
-    const sortBy = !hasFilters
-      ? { onMarketDate: -1 }  // Newest first for general queries
-      : { listPrice: 1 };      // Price ascending for filtered queries
+    // Determine sorting strategy based on user preference
+    let sortBy: any;
+    let needsAggregation = false;
+
+    if (sortParam === "auto") {
+      // Backwards compatible default behavior
+      sortBy = !hasFilters
+        ? { onMarketDate: -1 }  // Newest first for general queries
+        : { listPrice: 1 };      // Price ascending for filtered queries
+    } else {
+      // User-specified sorting
+      switch (sortParam) {
+        case "price-low":
+          sortBy = { listPrice: 1 };
+          break;
+        case "price-high":
+          sortBy = { listPrice: -1 };
+          break;
+        case "sqft-low":
+        case "sqft-high":
+          needsAggregation = true;  // Will use aggregation pipeline
+          break;
+        case "newest":
+          sortBy = { onMarketDate: -1 };
+          break;
+        case "oldest":
+          sortBy = { onMarketDate: 1 };
+          break;
+        case "property-type":
+          sortBy = { propertySubType: 1, listPrice: 1 };
+          break;
+        default:
+          sortBy = { listPrice: 1 };
+      }
+    }
 
     // DEBUG: Log the final query
     console.log('[City API] Final baseQuery:', JSON.stringify(baseQuery, null, 2));
     console.log('[City API] hasFilters:', hasFilters);
+    console.log('[City API] sortParam:', sortParam);
     console.log('[City API] sortBy:', sortBy);
+    console.log('[City API] needsAggregation:', needsAggregation);
 
     // ANALYTICS PATTERN: Fetch listings + accurate stats from ALL listings
-    const [listings, stats, propertyTypeStats] = await Promise.all([
-      // Fetch paginated listings
-      UnifiedListing.find(baseQuery)
+    let listingsQuery;
+
+    if (needsAggregation) {
+      // Use aggregation for price-per-sqft sorting
+      listingsQuery = UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $addFields: {
+            pricePerSqft: {
+              $cond: [
+                { $and: [
+                  { $gt: ["$livingArea", 0] },
+                  { $ne: ["$livingArea", null] }
+                ]},
+                { $divide: ["$listPrice", "$livingArea"] },
+                999999  // Put properties without sqft data at the end
+              ]
+            }
+          }
+        },
+        { $sort: { pricePerSqft: sortParam === "sqft-low" ? 1 : -1 } },
+        { $limit: limit },
+        {
+          $project: {
+            listingId: 1,
+            listingKey: 1,
+            listPrice: 1,
+            unparsedAddress: 1,
+            slugAddress: 1,
+            bedsTotal: 1,
+            bedroomsTotal: 1,
+            bathroomsTotalDecimal: 1,
+            bathroomsTotalInteger: 1,
+            bathroomsFull: 1,
+            yearBuilt: 1,
+            livingArea: 1,
+            lotSizeSquareFeet: 1,
+            lotSizeSqft: 1,
+            propertyType: 1,
+            propertySubType: 1,
+            coordinates: 1,
+            latitude: 1,
+            longitude: 1,
+            mlsSource: 1,
+            primaryPhoto: 1,
+            media: 1,
+            onMarketDate: 1,
+            pricePerSqft: 1  // Include calculated field
+          }
+        }
+      ]);
+    } else {
+      // Standard query with .find()
+      listingsQuery = UnifiedListing.find(baseQuery)
         .select(
           "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathroomsTotalDecimal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource primaryPhoto media onMarketDate"
         )
         .sort(sortBy)
         .limit(limit)
-        .lean({ virtuals: true }) // Include virtual properties like daysOnMarket
-        .exec(),
+        .lean({ virtuals: true }); // Include virtual properties like daysOnMarket
+    }
+
+    const [listings, stats, propertyTypeStats] = await Promise.all([
+      listingsQuery,
 
       // CRITICAL: Calculate stats from ALL listings, not just current page
       UnifiedListing.aggregate([
@@ -486,6 +574,11 @@ export async function GET(
       daysOnMarket: listing.onMarketDate
         ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
         : null,
+      // Price per sqft - calculate if not from aggregation
+      pricePerSqft: listing.pricePerSqft ||
+        (listing.livingArea && listing.livingArea > 0
+          ? Math.round(listing.listPrice / listing.livingArea)
+          : null),
     }));
 
     // Extract stats (aggregation returns array)
@@ -522,6 +615,19 @@ export async function GET(
           max: priceStats.maxPrice
         },
         propertyTypes: propertyTypeBreakdown
+      },
+      // SORTING: Information about applied sorting
+      sorting: {
+        appliedSort: sortParam,
+        availableOptions: [
+          { value: "price-low", label: "Price: Low to High" },
+          { value: "price-high", label: "Price: High to Low" },
+          { value: "sqft-low", label: "Best Value ($/sqft)" },
+          { value: "sqft-high", label: "Premium ($/sqft)" },
+          { value: "newest", label: "Newest Listed" },
+          { value: "oldest", label: "Longest on Market" },
+          { value: "property-type", label: "Group by Property Type" }
+        ]
       }
     });
   } catch (error) {
