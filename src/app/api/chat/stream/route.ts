@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
     // - Forces clearer user intent classification
 
     const currentQuery = messages[messages.length - 1]?.content || "";
-    const { toolName, intent, confidence } = selectToolForQuery(currentQuery);
+    const { toolName, intent, confidence, classificationMethod } = await selectToolForQuery(currentQuery);
 
     // Build tool array (0 or 1 tool)
     const CHAT_TOOLS: GroqTool[] = [];
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
       const tool = getToolByName(toolName);
       if (tool) {
         CHAT_TOOLS.push(tool);
-        console.log(`[AI] 🎯 Loaded tool: ${toolName} (intent: ${intent}, confidence: ${confidence.toFixed(2)})`);
+        console.log(`[AI] 🎯 Loaded tool: ${toolName} (intent: ${intent}, confidence: ${confidence.toFixed(2)}, method: ${classificationMethod})`);
       } else {
         console.warn(`[AI] ⚠️  Tool not found: ${toolName}`);
       }
@@ -376,16 +376,15 @@ export async function POST(req: NextRequest) {
           else {
             console.log(`[AI] Starting final streaming response with ${messagesWithTools.length} messages`);
 
-            // IMPORTANT: Don't pass tools parameter AND explicitly set tool_choice to "none"
-            // This prevents "Tool choice is none, but model called a tool" error
+            // IMPORTANT: Don't pass tools parameter - this prevents tool calling
+            // Omit both 'tools' and 'tool_choice' parameters for text-only response
             const streamResponse = await groq.chat.completions.create({
               messages: messagesWithTools as any,
               model,
               temperature: 0.3,
               max_tokens: 4000,
               stream: true,
-              tool_choice: "none", // Explicitly tell Groq not to call tools
-              // NO tools parameter - we only want a text response
+              // NO tools parameter AND NO tool_choice - prevents "Tool choice is none, but model called a tool" error
             });
 
             // Stream each token as it arrives
