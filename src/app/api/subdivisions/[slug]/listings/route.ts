@@ -18,10 +18,36 @@ export async function GET(
 
     const limit = parseInt(searchParams.get("limit") || "20");
     const page = parseInt(searchParams.get("page") || "1");
+
+    // Price filters
     const minPrice = searchParams.get("minPrice") ? parseInt(searchParams.get("minPrice")!) : undefined;
     const maxPrice = searchParams.get("maxPrice") ? parseInt(searchParams.get("maxPrice")!) : undefined;
+
+    // Bed/Bath filters (exact match)
     const beds = searchParams.get("beds") ? parseInt(searchParams.get("beds")!) : undefined;
     const baths = searchParams.get("baths") ? parseInt(searchParams.get("baths")!) : undefined;
+
+    // Size filters
+    const minSqft = searchParams.get("minSqft") ? parseInt(searchParams.get("minSqft")!) : undefined;
+    const maxSqft = searchParams.get("maxSqft") ? parseInt(searchParams.get("maxSqft")!) : undefined;
+    const minLotSize = searchParams.get("minLotSize") ? parseInt(searchParams.get("minLotSize")!) : undefined;
+    const maxLotSize = searchParams.get("maxLotSize") ? parseInt(searchParams.get("maxLotSize")!) : undefined;
+
+    // Year filters
+    const minYear = searchParams.get("minYear") ? parseInt(searchParams.get("minYear")!) : undefined;
+    const maxYear = searchParams.get("maxYear") ? parseInt(searchParams.get("maxYear")!) : undefined;
+
+    // Amenity filters (boolean)
+    const pool = searchParams.get("pool") === "true";
+    const spa = searchParams.get("spa") === "true";
+    const view = searchParams.get("view") === "true";
+    const fireplace = searchParams.get("fireplace") === "true";
+    const gatedCommunity = searchParams.get("gatedCommunity") === "true";
+    const seniorCommunity = searchParams.get("seniorCommunity") === "true";
+
+    // Garage/Stories
+    const garageSpaces = searchParams.get("garageSpaces") ? parseInt(searchParams.get("garageSpaces")!) : undefined;
+    const stories = searchParams.get("stories") ? parseInt(searchParams.get("stories")!) : undefined;
 
     // Find subdivision
     const subdivision = await Subdivision.findOne({ slug }).lean();
@@ -38,7 +64,9 @@ export async function GET(
       standardStatus: "Active",
       // DEFAULT: Only residential sale properties (Type A), exclude rentals (Type B)
       // Include Type A (Residential) but NOT Type B (Rental Lease)
-      propertyType: { $ne: "B" }
+      propertyType: { $ne: "B" },
+      // Exclude Co-Ownership properties (fractional ownership/timeshares)
+      propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };
 
     // Handle Non-HOA subdivisions differently
@@ -63,50 +91,217 @@ export async function GET(
     if (maxPrice) {
       baseQuery.listPrice = { ...baseQuery.listPrice, $lte: maxPrice };
     }
+
+    // EXACT MATCH for bedrooms (3 beds means exactly 3, not 3+)
     if (beds) {
-      baseQuery.$or = [
-        { bedroomsTotal: { $gte: beds } },
-        { bedsTotal: { $gte: beds } },
-      ];
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { bedroomsTotal: beds },
+          { bedsTotal: beds },
+        ]
+      });
     }
+
+    // EXACT MATCH for bathrooms
     if (baths) {
-      baseQuery.$or = [
-        ...(baseQuery.$or || []),
-        { bathroomsTotalDecimal: { $gte: baths } },
-        { bathroomsTotalInteger: { $gte: baths } },
-      ];
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { bathroomsTotalDecimal: baths },
+          { bathroomsTotalInteger: baths },
+        ]
+      });
+    }
+
+    // Size filters
+    if (minSqft || maxSqft) {
+      const livingAreaFilter: any = {};
+      if (minSqft) livingAreaFilter.$gte = minSqft;
+      if (maxSqft) livingAreaFilter.$lte = maxSqft;
+      baseQuery.livingArea = livingAreaFilter;
+    }
+
+    if (minLotSize || maxLotSize) {
+      const lotSizeFilter: any = {};
+      if (minLotSize) lotSizeFilter.$gte = minLotSize;
+      if (maxLotSize) lotSizeFilter.$lte = maxLotSize;
+      // Check both field names for lot size
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { lotSizeSqft: lotSizeFilter },
+          { lotSizeArea: lotSizeFilter },
+        ]
+      });
+    }
+
+    // Year filters
+    if (minYear || maxYear) {
+      const yearFilter: any = {};
+      if (minYear) yearFilter.$gte = minYear;
+      if (maxYear) yearFilter.$lte = maxYear;
+      baseQuery.yearBuilt = yearFilter;
+    }
+
+    // Amenity filters
+    if (pool) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [{ poolYN: true }, { pool: true }]
+      });
+    }
+
+    if (spa) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [{ spaYN: true }, { spa: true }]
+      });
+    }
+
+    if (view) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [{ viewYN: true }, { view: true }]
+      });
+    }
+
+    if (fireplace) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { fireplacesTotal: { $gte: 1 } },
+          { fireplaceYN: true },
+        ]
+      });
+    }
+
+    if (gatedCommunity) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { gatedCommunity: true },
+          { associationAmenities: { $regex: /gated/i } },
+        ]
+      });
+    }
+
+    if (seniorCommunity) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { seniorCommunityYN: true },
+          { ageRestricted55Plus: true },
+        ]
+      });
+    }
+
+    // Garage/Parking filters
+    if (garageSpaces) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { garageSpaces: { $gte: garageSpaces } },
+          { parkingTotal: { $gte: garageSpaces } },
+        ]
+      });
+    }
+
+    // Stories filter
+    if (stories) {
+      baseQuery.$and = baseQuery.$and || [];
+      baseQuery.$and.push({
+        $or: [
+          { stories: stories },
+          { levels: stories },
+        ]
+      });
     }
 
     // Query unified_listings (all 8 MLSs)
     const skip = (page - 1) * limit;
 
     // ANALYTICS PATTERN: Get accurate stats from ALL listings, not just the page
-    const [listings, total, stats] = await Promise.all([
+    const [listings, total, stats, propertyTypeStats] = await Promise.all([
       UnifiedListing.find(baseQuery)
         .sort({ listPrice: -1 })
         .skip(skip)
         .limit(limit)
         .select({
+          // Identifiers & Links
           listingKey: 1,
+          listingId: 1,
           slugAddress: 1,
+          slug: 1,
+
+          // Addresses
           unparsedAddress: 1,
+          unparsedFirstLineAddress: 1,
           address: 1,
           city: 1,
           stateOrProvince: 1,
           postalCode: 1,
-          listPrice: 1,
-          bedroomsTotal: 1,
-          bathroomsTotalDecimal: 1,
-          livingArea: 1,
-          yearBuilt: 1,
+
+          // Location
           latitude: 1,
           longitude: 1,
+
+          // Pricing
+          listPrice: 1,
+          currentPrice: 1,
+          originalListPrice: 1,
+          associationFee: 1,
+
+          // Property Details - Bedrooms/Bathrooms
+          bedroomsTotal: 1,
+          bedsTotal: 1,
+          bathroomsTotalDecimal: 1,
+          bathroomsTotalInteger: 1,
+          bathroomsFull: 1,
+          bathroomsHalf: 1,
+
+          // Property Details - Size
+          livingArea: 1,
+          lotSizeArea: 1,
+          lotSizeSqft: 1,
+          yearBuilt: 1,
+
+          // Status & Timing
           standardStatus: 1,
+          daysOnMarket: 1,
+          onMarketDate: 1,
+          modificationTimestamp: 1,
+
+          // Property Classification
           propertyType: 1,
           propertySubType: 1,
+          subdivisionName: 1,
           mlsSource: 1,
-          primaryPhoto: 1,  // NEW: Hybrid photo strategy
-          media: 1,         // Keep for backwards compatibility
+          landType: 1,
+
+          // Features
+          poolYN: 1,
+          pool: 1,
+          spaYN: 1,
+          spa: 1,
+          viewYN: 1,
+          view: 1,
+          fireplaceYN: 1,
+          fireplacesTotal: 1,
+          seniorCommunityYN: 1,
+          gatedCommunity: 1,
+          associationYN: 1,
+          garageSpaces: 1,
+          parkingTotal: 1,
+          stories: 1,
+          levels: 1,
+
+          // Description
+          publicRemarks: 1,
+
+          // Photos
+          primaryPhoto: 1,
+          media: 1,
         })
         .lean(),
       UnifiedListing.countDocuments(baseQuery),
@@ -137,6 +332,42 @@ export async function GET(
             }
           }
         }
+      ]),
+      // Property type breakdown with stats
+      UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: "$propertySubType",
+            count: { $sum: 1 },
+            avgPrice: { $avg: "$listPrice" },
+            minPrice: { $min: "$listPrice" },
+            maxPrice: { $max: "$listPrice" },
+            avgPricePerSqft: {
+              $avg: {
+                $cond: [
+                  { $and: [
+                    { $gt: ["$livingArea", 0] },
+                    { $gt: ["$listPrice", 0] }
+                  ]},
+                  { $divide: ["$listPrice", "$livingArea"] },
+                  null
+                ]
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            count: 1,
+            avgPrice: { $round: ["$avgPrice", 0] },
+            minPrice: 1,
+            maxPrice: 1,
+            avgPricePerSqft: { $round: ["$avgPricePerSqft", 0] }
+          }
+        },
+        { $sort: { count: -1 } }
       ])
     ]);
 
@@ -175,6 +406,10 @@ export async function GET(
         slug: listing.slugAddress,
         primaryPhotoUrl: photoUrl,
         mlsSource: listing.mlsSource || "UNKNOWN",
+        // Calculate days on market from onMarketDate
+        daysOnMarket: listing.onMarketDate
+          ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
+          : null,
       };
     });
 
@@ -185,6 +420,16 @@ export async function GET(
       maxPrice: 0,
       medianPrice: 0
     };
+
+    // Format property type stats for response
+    const propertyTypeBreakdown = propertyTypeStats.map((stat: any) => ({
+      propertySubType: stat._id || "Unknown",
+      count: stat.count,
+      avgPrice: stat.avgPrice,
+      minPrice: stat.minPrice,
+      maxPrice: stat.maxPrice,
+      avgPricePerSqft: stat.avgPricePerSqft
+    }));
 
     return NextResponse.json({
       listings: finalListings,
@@ -208,7 +453,8 @@ export async function GET(
         priceRange: {
           min: priceStats.minPrice,
           max: priceStats.maxPrice
-        }
+        },
+        propertyTypes: propertyTypeBreakdown
       }
     });
   } catch (error) {
