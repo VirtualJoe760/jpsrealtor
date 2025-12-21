@@ -110,7 +110,7 @@ export default function MapSearchBar({
     // Set new timeout for autocomplete
     timeoutRef.current = setTimeout(() => {
       fetchAutocomplete(query);
-    }, 300);
+    }, 150);
 
     return () => {
       if (timeoutRef.current) {

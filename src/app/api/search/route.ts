@@ -20,12 +20,12 @@ export async function GET(req: Request) {
 
   // Search all data sources in parallel with smaller limits for better UX
   const [listings, cities, subdivisions, counties, regions] = await Promise.all([
-    // Listings search - limit to 3 for better mix
+    // Listings search - regex with indexes for autocomplete
     UnifiedListing.find(
       {
         $or: [
-          { address: { $regex: q, $options: "i" } },
           { unparsedAddress: { $regex: q, $options: "i" } },
+          { address: { $regex: q, $options: "i" } },
           { slugAddress: { $regex: q, $options: "i" } },
         ],
       },
@@ -145,14 +145,15 @@ export async function GET(req: Request) {
     longitude: parseFloat(r.longitude) || 0,
   }));
 
-  const listingLabels = new Set(
-    listingResults.map((l) => l.label?.toLowerCase())
-  );
+  const normalizedQuery = q.trim().toLowerCase();
+
+  // Only use geocoding as a fallback if we have NO local results
+  const hasLocalResults = cities.length > 0 || subdivisions.length > 0 ||
+                         counties.length > 0 || regions.length > 0;
 
   const geoResults = [];
 
-  const normalizedQuery = q.trim().toLowerCase();
-
+  // Fast city overrides (no API call needed)
   const cityOverrides: Record<string, { label: string; latitude: number; longitude: number }> = {
     "la quinta": {
       label: "La Quinta, California, United States of America",
@@ -167,34 +168,10 @@ export async function GET(req: Request) {
       type: "geocode" as const,
       ...cityOverrides[normalizedQuery],
     });
-  } else if (OPENCAGE_API_KEY) {
-    try {
-      const res = await fetch(
-        `${OPENCAGE_URL}?q=${encodeURIComponent(q)}&key=${OPENCAGE_API_KEY}&limit=1&countrycode=us`
-      );
-      const data = await res.json();
-      const result = data?.results?.[0];
-
-      const label = result?.formatted;
-      const state = result?.components?.state;
-
-      if (
-        result?.geometry?.lat &&
-        result?.geometry?.lng &&
-        state === "California" &&
-        label &&
-        !listingLabels.has(label.toLowerCase())
-      ) {
-        geoResults.push({
-          type: "geocode" as const,
-          label,
-          latitude: result.geometry.lat,
-          longitude: result.geometry.lng,
-        });
-      }
-    } catch (err) {
-    }
   }
+
+  // Skip slow OpenCage API call - we have enough local data for speed
+  // OpenCage adds 100-500ms latency for external HTTP request
 
   // Add "Ask AI" option at the top for general queries
   const askAiOption = {

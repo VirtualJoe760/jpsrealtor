@@ -130,7 +130,7 @@ export default function MapSearchBar({
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 150);
 
     return () => {
       if (debounceRef.current) {

@@ -151,6 +151,20 @@ const UNIFIED_LISTINGS_INDEXES: IndexDefinition[] = [
     name: 'city_onMarketDate_desc',
     keys: { city: 1, onMarketDate: -1 },
   },
+
+  // Search autocomplete indexes (CRITICAL for fast regex search)
+  {
+    name: 'unparsedAddress_1',
+    keys: { unparsedAddress: 1 },
+  },
+  {
+    name: 'address_1',
+    keys: { address: 1 },
+  },
+  {
+    name: 'slugAddress_1',
+    keys: { slugAddress: 1 },
+  },
 ];
 
 /**
