@@ -273,31 +273,28 @@ export function AppreciationContainer({
           </div>
         </div>
 
-        {/* Property Subtype Tabs (only for residential with multiple subtypes) */}
+        {/* Property Subtype Dropdown (only for residential with multiple subtypes) */}
         {selectedMarketType === "residential" && initialSubTypes.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-3">
             <p className={`text-xs font-medium ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>
               Property Type:
             </p>
-            {/* Property Subtype Tabs */}
-            {initialSubTypes.map((subType) => (
-              <button
-                key={subType}
-                onClick={() => setSelectedPropertySubType(subType)}
-                disabled={loading}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                  selectedPropertySubType === subType
-                    ? isLight
-                      ? 'bg-blue-50 text-blue-700 border-blue-300'
-                      : 'bg-emerald-900/30 text-emerald-300 border-emerald-700'
-                    : isLight
-                      ? 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-                      : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-emerald-700 hover:text-emerald-300'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {subType}
-              </button>
-            ))}
+            <select
+              value={selectedPropertySubType || ''}
+              onChange={(e) => setSelectedPropertySubType(e.target.value)}
+              disabled={loading}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                  : 'bg-neutral-800 text-neutral-300 border border-neutral-600 hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-900/50'
+              } ${loading ? 'opacity-50 cursor-not-allowed' : ''} outline-none`}
+            >
+              {initialSubTypes.map((subType) => (
+                <option key={subType} value={subType}>
+                  {subType}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
