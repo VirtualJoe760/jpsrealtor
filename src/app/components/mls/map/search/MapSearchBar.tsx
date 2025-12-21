@@ -145,7 +145,10 @@ export default function MapSearchBar({
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && query.trim().length > 0) {
+    // Use actual input value instead of state (state might be stale when typing fast)
+    const searchValue = e.currentTarget.value.trim();
+
+    if (e.key === "Enter" && searchValue.length > 0) {
       e.preventDefault();
 
       // If we have results already, use the first geocode result
@@ -157,10 +160,10 @@ export default function MapSearchBar({
       }
 
       // Otherwise, fetch geocode immediately (bypass autocomplete delay)
-      console.log('📍 [MapSearchBar] Enter pressed - fetching geocode for:', query);
+      console.log('📍 [MapSearchBar] Enter pressed - fetching geocode for:', searchValue);
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchValue)}`);
         const json = await res.json();
         const geocodeResult = (json.results || []).find((r: SearchResult) => r.type === "geocode");
 
@@ -168,7 +171,7 @@ export default function MapSearchBar({
           console.log('📍 [MapSearchBar] Enter pressed - geocode found:', geocodeResult.label);
           handleSelect(geocodeResult);
         } else {
-          console.log('⚠️ [MapSearchBar] Enter pressed - no geocode result found');
+          console.log('⚠️ [MapSearchBar] Enter pressed - no geocode result found for:', searchValue);
         }
       } catch (err) {
         console.error("Enter search failed:", err);
