@@ -79,7 +79,16 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
     }
   });
 
-  const [viewState, setViewStateInternal] = useState<MapViewState | null>(null);
+  // Initialize viewState from sessionStorage (persists pre-positioned locations)
+  const [viewState, setViewStateInternal] = useState<MapViewState | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = sessionStorage.getItem('mapViewState');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
   const [displayListings, setDisplayListings] = useState<MapListing[]>([]);
@@ -100,6 +109,20 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
       console.error('Failed to persist map visibility:', error);
     }
   }, [isMapVisible]);
+
+  // Persist viewState to sessionStorage on changes
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (viewState) {
+        sessionStorage.setItem('mapViewState', JSON.stringify(viewState));
+      } else {
+        sessionStorage.removeItem('mapViewState');
+      }
+    } catch (error) {
+      console.error('Failed to persist map viewState:', error);
+    }
+  }, [viewState]);
 
   const setMapVisible = useCallback((visible: boolean) => {
     console.log('🗺️ [MapStateContext] Setting map visibility:', visible);

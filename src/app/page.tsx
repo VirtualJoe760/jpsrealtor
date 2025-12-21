@@ -8,6 +8,7 @@ import { MLSProvider } from "@/app/components/mls/MLSProvider";
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useMapState } from "@/app/contexts/MapStateContext";
 import ChatWidget from "@/app/components/chat/ChatWidget";
 import MapLayer from "@/app/components/MapLayer";
 import MapSearchBar from "@/app/components/map/MapSearchBar";
@@ -31,6 +32,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const { viewState } = useMapState();
   const {
     selectedListing,
     selectedFullListing,
@@ -234,8 +236,20 @@ function HomeContent() {
     if (isMapVisible) {
       hideMap();
     } else {
-      // Show map centered on California (entire state view)
-      showMapAtLocation(37.0, -119.5, 5);
+      // Check if map was pre-positioned by chat (viewState exists)
+      if (viewState) {
+        // Use pre-positioned location from chat query
+        console.log('🗺️ [handleToggleMap] Using pre-positioned location:', viewState);
+        showMapAtLocation(
+          viewState.centerLat,
+          viewState.centerLng,
+          viewState.zoom
+        );
+      } else {
+        // Default: Show entire California
+        console.log('🗺️ [handleToggleMap] No pre-positioned location, showing California');
+        showMapAtLocation(37.0, -119.5, 5);
+      }
     }
   };
 
