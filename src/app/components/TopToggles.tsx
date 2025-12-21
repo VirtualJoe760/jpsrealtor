@@ -205,7 +205,7 @@ export default function TopToggles() {
       <div className="hidden md:block">
         <motion.button
           onClick={handleToggleMap}
-          className="pointer-events-auto fixed right-6 top-6 relative"
+          className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}

@@ -10,12 +10,13 @@ const OPENCAGE_API_KEY = process.env.OPENCAGE_API_KEY;
 const OPENCAGE_URL = "https://api.opencagedata.com/geocode/v1/json";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q")?.toLowerCase() || "";
+  try {
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get("q")?.toLowerCase() || "";
 
-  if (!q || q.length < 2) return NextResponse.json({ results: [] });
+    if (!q || q.length < 2) return NextResponse.json({ results: [] });
 
-  await dbConnect();
+    await dbConnect();
 
   // Search all data sources in parallel with smaller limits for better UX
   const [listings, cities, subdivisions, counties, regions] = await Promise.all([
@@ -244,10 +245,15 @@ export async function GET(req: Request) {
     return aPriority - bPriority;
   });
 
-  return NextResponse.json({
-    results: [
-      askAiOption,
-      ...allResults,
-    ],
-  });
+    return NextResponse.json({
+      results: [
+        askAiOption,
+        ...allResults,
+      ],
+    });
+  } catch (error) {
+    console.error("[Search API] Error:", error);
+    // Return empty results instead of 500 error
+    return NextResponse.json({ results: [] });
+  }
 }
