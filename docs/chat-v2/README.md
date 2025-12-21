@@ -332,6 +332,18 @@ See [MIGRATION_FROM_V1.md](./MIGRATION_FROM_V1.md) for a complete migration guid
 
 ## Recent Updates
 
+### December 21, 2025 - Commands System & Appreciation Improvements ✅
+- **Added /help command**: Created `src/lib/chat-v2/commands.ts` for command detection
+  - Warm, buyer-focused help guide with natural language examples
+  - Comprehensive filtering guide (price, beds/baths, amenities, lifestyle filters)
+  - Market insights and pro tips
+  - Integrated into Chat V2 API with pre-AI command detection
+- **Appreciation Tool Enhancements**:
+  - Default property type to Single Family Residence (better UX)
+  - Fixed V1 structure compatibility (returns correct location object format)
+  - Graceful error handling for locations with no sales data (blue info card vs red error)
+  - Educational messaging for exclusive areas with limited transaction history
+
 ### December 19, 2025 - Comprehensive Filtering System ✅
 - Added 20+ filter parameters to `searchHomes` tool
 - Implemented exact match for beds/baths (3 beds = exactly 3, not 3+)

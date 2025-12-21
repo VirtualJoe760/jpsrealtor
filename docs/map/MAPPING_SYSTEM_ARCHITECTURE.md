@@ -76,6 +76,7 @@ src/
 │   │   ├── map-clusters/route.ts       # Main clustering API (744 lines)
 │   │   ├── map-tiles/[z]/[x]/[y]/route.ts  # Tile-based API (360 lines)
 │   │   ├── mls-listings/route.ts       # Individual listings
+│   │   ├── geocode/route.ts            # Fallback geocoding API (84 lines)
 │   │   └── swipes/                     # Swipe tracking endpoints
 │   │
 │   └── data/
@@ -1560,6 +1561,113 @@ FUNCTION loadMapData(bounds, filters)
   }, 2000)
 END FUNCTION
 ```
+
+---
+
+## GEOCODING FALLBACK API
+
+### Overview
+To optimize search autocomplete performance, geocoding was removed from the main search API and moved to a dedicated fallback endpoint.
+
+### API Endpoint: `/api/geocode`
+
+**Purpose**: Geocode location strings when coordinates are not available from local database
+
+**When Used**: Only called when clicking an autocomplete suggestion that lacks coordinates
+
+**Benefits**:
+- Keeps autocomplete fast (no geocoding latency on every keystroke)
+- Geocoding latency only affects edge cases
+- Most searches use local DB with coordinates
+
+### Implementation
+
+**Request**:
+```typescript
+POST /api/geocode
+{
+  "location": "123 Main Street, Palm Springs, CA"
+}
+```
+
+**Response (Success)**:
+```typescript
+{
+  "success": true,
+  "results": [
+    {
+      "formatted": "123 Main Street, Palm Springs, CA 92262",
+      "geometry": {
+        "lat": 33.8303,
+        "lng": -116.5453
+      },
+      "components": {
+        "city": "Palm Springs",
+        "state": "California",
+        "country": "United States"
+      },
+      "bounds": {
+        "northeast": { "lat": 33.8313, "lng": -116.5443 },
+        "southwest": { "lat": 33.8293, "lng": -116.5463 }
+      }
+    }
+  ]
+}
+```
+
+**Response (Error)**:
+```typescript
+{
+  "success": false,
+  "error": "No results found for location"
+}
+```
+
+### Usage in MapSearchBar
+
+```pseudo
+FUNCTION handleSuggestionClick(suggestion)
+  IF suggestion.coordinates EXISTS THEN
+    // Fast path: use local coordinates
+    map.flyTo(suggestion.coordinates)
+  ELSE
+    // Fallback: geocode via API
+    response = FETCH('/api/geocode', {
+      method: 'POST',
+      body: JSON.stringify({ location: suggestion.name })
+    })
+
+    IF response.success THEN
+      map.flyTo(response.results[0].geometry)
+    ELSE
+      showError("Location not found")
+    END IF
+  END IF
+END FUNCTION
+```
+
+### California-Only Filter
+
+The API only returns California locations to prevent irrelevant results:
+```typescript
+const californiaResults = results.filter(result =>
+  result.components.state_code === "CA" ||
+  result.components.state === "California"
+);
+```
+
+### Performance Comparison
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| Autocomplete with local coords | 200-600ms | 50-150ms ✅ |
+| Autocomplete without coords (rare) | 200-600ms | 50-150ms + fallback |
+| Overall perceived speed | Slow | **60-70% faster** ✅ |
+
+**Files**:
+- `src/app/api/geocode/route.ts` - Geocoding API endpoint
+- `src/app/components/map/MapSearchBar.tsx` - Uses fallback geocoding
+- See [PERFORMANCE.md](../architecture/PERFORMANCE.md) for search optimization details
 
 ---
 

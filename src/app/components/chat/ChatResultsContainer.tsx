@@ -32,6 +32,7 @@ export default function ChatResultsContainer({
   const isLight = currentTheme === 'lightgradient';
   const { prePositionMap } = useMapControl();
   const [listingViewMode, setListingViewMode] = useState<'carousel' | 'list'>('carousel');
+  const [sortOption, setSortOption] = useState<string>('price-low');
 
   // Fetch listings for neighborhood queries
   const [neighborhoodListings, setNeighborhoodListings] = useState<Listing[]>([]);
@@ -291,8 +292,57 @@ export default function ChatResultsContainer({
   const hasMarketStats = !!components.marketStats;
   const hasArticles = components.articles && components.articles.results?.length > 0;
 
-  // Use neighborhood listings if available
-  const displayListings = hasNeighborhood ? neighborhoodListings : (components.carousel?.listings || []);
+  // Sorting function
+  const sortListings = (listings: Listing[], sortBy: string): Listing[] => {
+    const sorted = [...listings]; // Create a copy to avoid mutating original
+
+    switch (sortBy) {
+      case 'price-low':
+        return sorted.sort((a, b) => a.price - b.price);
+
+      case 'price-high':
+        return sorted.sort((a, b) => b.price - a.price);
+
+      case 'sqft-low':
+        return sorted.sort((a, b) => {
+          const aPricePerSqft = a.sqft > 0 ? a.price / a.sqft : 999999;
+          const bPricePerSqft = b.sqft > 0 ? b.price / b.sqft : 999999;
+          return aPricePerSqft - bPricePerSqft;
+        });
+
+      case 'sqft-high':
+        return sorted.sort((a, b) => {
+          const aPricePerSqft = a.sqft > 0 ? a.price / a.sqft : 0;
+          const bPricePerSqft = b.sqft > 0 ? b.price / b.sqft : 0;
+          return bPricePerSqft - aPricePerSqft;
+        });
+
+      case 'beds-high':
+        return sorted.sort((a, b) => b.beds - a.beds);
+
+      case 'beds-low':
+        return sorted.sort((a, b) => a.beds - b.beds);
+
+      case 'baths-high':
+        return sorted.sort((a, b) => b.baths - a.baths);
+
+      case 'baths-low':
+        return sorted.sort((a, b) => a.baths - b.baths);
+
+      case 'size-high':
+        return sorted.sort((a, b) => b.sqft - a.sqft);
+
+      case 'size-low':
+        return sorted.sort((a, b) => a.sqft - b.sqft);
+
+      default:
+        return sorted;
+    }
+  };
+
+  // Use neighborhood listings if available and apply sorting
+  const unsortedListings = hasNeighborhood ? neighborhoodListings : (components.carousel?.listings || []);
+  const displayListings = sortListings(unsortedListings, sortOption);
   const hasListings = displayListings.length > 0;
 
   // Get the total count to display (unfiltered total)
@@ -316,10 +366,32 @@ export default function ChatResultsContainer({
                 : components.carousel?.title || "Listings"}
             </p>
             {!loadingNeighborhood && (
-              <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
                 <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>
                   {displayTotalCount} {displayTotalCount === 1 ? 'property' : 'properties'}
                 </p>
+
+                {/* Sort Dropdown */}
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                    isLight
+                      ? 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                      : 'bg-neutral-800 text-neutral-300 border border-neutral-600 hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-900/50'
+                  } outline-none`}
+                >
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="sqft-low">Best Value ($/sqft)</option>
+                  <option value="sqft-high">Premium ($/sqft)</option>
+                  <option value="beds-high">Beds: Most First</option>
+                  <option value="beds-low">Beds: Least First</option>
+                  <option value="baths-high">Baths: Most First</option>
+                  <option value="baths-low">Baths: Least First</option>
+                  <option value="size-high">Size: Largest First</option>
+                  <option value="size-low">Size: Smallest First</option>
+                </select>
 
                 {/* Pill Toggle */}
                 <div className={`inline-flex rounded-full p-0.5 ${
