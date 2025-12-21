@@ -219,7 +219,7 @@ export default function MapSearchBar({
     } else {
       console.warn('🗺️ [MapSearchBar] No valid coordinates, attempting geocoding fallback:', suggestion);
 
-      // Fallback: Try to geocode the location name
+      // Fallback: Call dedicated geocoding API
       try {
         const geocodeQuery = suggestion.city
           ? `${suggestion.name}, ${suggestion.city}, CA`
@@ -227,28 +227,23 @@ export default function MapSearchBar({
 
         console.log('🌍 [MapSearchBar] Geocoding query:', geocodeQuery);
 
-        const geocodeResponse = await fetch(`/api/search?q=${encodeURIComponent(geocodeQuery)}`);
+        const geocodeResponse = await fetch(`/api/geocode?q=${encodeURIComponent(geocodeQuery)}`);
         const geocodeData = await geocodeResponse.json();
 
-        // Look for a geocode result with coordinates
-        const geocoded = geocodeData.results?.find((r: any) =>
-          r.type === 'geocode' && r.latitude && r.longitude
-        );
-
-        if (geocoded) {
-          console.log('🌍 [MapSearchBar] Geocoding success:', geocoded);
+        if (geocodeData.success && geocodeData.result) {
+          console.log('🌍 [MapSearchBar] Geocoding success:', geocodeData.result);
 
           const zoomLevel = suggestion.type === 'subdivision' ? 13 :
                            suggestion.type === 'city' ? 11 :
                            suggestion.type === 'county' ? 9 : 12;
 
-          showMapAtLocation(geocoded.latitude, geocoded.longitude, zoomLevel);
+          showMapAtLocation(geocodeData.result.latitude, geocodeData.result.longitude, zoomLevel);
 
           // Send location to AI for market insights
           console.log('🚀🚀🚀 [MapSearchBar] DISPATCHING requestLocationInsights EVENT', {
             locationName: suggestion.name,
             locationType: suggestion.type,
-            city: suggestion.city,
+            city: suggestion.city || geocodeData.result.city,
             state: suggestion.state || 'CA',
           });
 
@@ -256,14 +251,14 @@ export default function MapSearchBar({
             detail: {
               locationName: suggestion.name,
               locationType: suggestion.type,
-              city: suggestion.city,
+              city: suggestion.city || geocodeData.result.city,
               state: suggestion.state || 'CA',
             }
           }));
 
           console.log('✅ [MapSearchBar] Event dispatched!');
         } else {
-          console.error('🌍 [MapSearchBar] Geocoding failed - no results with coordinates');
+          console.error('🌍 [MapSearchBar] Geocoding failed:', geocodeData.error);
         }
       } catch (error) {
         console.error('🌍 [MapSearchBar] Geocoding error:', error);
