@@ -12,6 +12,7 @@ import type { MapListing } from "@/types/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
 export interface Listing {
+  // Core display fields
   id: string;
   price: number;
   beds: number;
@@ -28,6 +29,35 @@ export interface Listing {
   latitude?: number;
   longitude?: number;
   listingKey?: string;
+
+  // Additional fields for ListingBottomPanel
+  _id?: string;
+  listingId?: string;
+  unparsedAddress?: string;
+  unparsedFirstLineAddress?: string;
+  bedsTotal?: number;
+  bedroomsTotal?: number;
+  bathroomsTotalInteger?: number;
+  bathroomsTotalDecimal?: number;
+  bathroomsFull?: number;
+  bathroomsHalf?: number;
+  livingArea?: number;
+  lotSizeArea?: number;
+  lotSizeSqft?: number;
+  yearBuilt?: number;
+  daysOnMarket?: number;
+  standardStatus?: string;
+  propertySubType?: string;
+  subdivisionName?: string;
+  mlsSource?: string;
+  landType?: string;
+  associationFee?: number;
+  poolYn?: boolean;
+  pool?: boolean;
+  spaYn?: boolean;
+  spa?: boolean;
+  publicRemarks?: string;
+  modificationTimestamp?: string;
 }
 
 interface ListingCarouselProps {

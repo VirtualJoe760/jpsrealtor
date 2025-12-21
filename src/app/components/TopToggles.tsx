@@ -33,6 +33,11 @@ export default function TopToggles() {
     setMounted(true);
   }, []);
 
+  // Debug notification state
+  useEffect(() => {
+    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible, 'mounted:', mounted);
+  }, [hasUnreadMessage, isMapVisible, mounted]);
+
   // Listen for favorites panel state changes
   useEffect(() => {
     const handleFavoritesPanel = (e: CustomEvent) => {

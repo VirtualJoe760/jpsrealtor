@@ -145,6 +145,12 @@ const UNIFIED_LISTINGS_INDEXES: IndexDefinition[] = [
     name: 'coordinates_2dsphere',
     keys: { coordinates: '2dsphere' },
   },
+
+  // Cities: onMarketDate for newest-first sorting
+  {
+    name: 'city_onMarketDate_desc',
+    keys: { city: 1, onMarketDate: -1 },
+  },
 ];
 
 /**

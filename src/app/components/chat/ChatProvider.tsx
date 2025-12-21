@@ -253,7 +253,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   const setUnreadMessage = (unread: boolean) => {
+    console.log('🔔 [ChatProvider] setUnreadMessage called with:', unread);
     setHasUnreadMessage(unread);
+    console.log('🔔 [ChatProvider] hasUnreadMessage state updated to:', unread);
   };
 
   return (

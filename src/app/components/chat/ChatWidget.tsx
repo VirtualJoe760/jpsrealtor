@@ -680,18 +680,28 @@ export default function ChatWidget() {
                       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                       // If user is in map view, notify them of new message
+                      console.log('🔔 [ChatWidget] Checking notification conditions:', {
+                        isMapVisibleState,
+                        hasUnreadMessage,
+                        locationName
+                      });
+
                       if (isMapVisibleState) {
                         console.log('🔔 [ChatWidget] Market Snapshot received while in map view - triggering notification');
                         setUnreadMessage(true);
+                        console.log('🔔 [ChatWidget] setUnreadMessage(true) called');
 
                         // Play notification sound
                         try {
                           const audio = new Audio('/sounds/notification.mp3');
                           audio.volume = 0.5;
                           audio.play().catch(err => console.warn('Failed to play notification sound:', err));
+                          console.log('🔔 [ChatWidget] Notification sound played');
                         } catch (err) {
                           console.warn('Failed to create notification audio:', err);
                         }
+                      } else {
+                        console.log('🔔 [ChatWidget] User in chat view - no notification needed');
                       }
                     }
                   } catch (parseError) {

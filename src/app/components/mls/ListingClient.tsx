@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon } from "lucide-react";
+import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon, Building2, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -296,6 +296,42 @@ export default function ListingClient({
                   <div>
                     <div className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>${listing.associationFee.toLocaleString()}</div>
                     <div className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>HOA/mo</div>
+                  </div>
+                </div>
+              )}
+
+              {listing.yearBuilt && (
+                <div className={`flex items-center gap-3 rounded-xl p-3 ${
+                  isLight
+                    ? 'bg-blue-50 border-2 border-blue-200'
+                    : 'bg-neutral-900/50 border border-neutral-700/30'
+                }`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isLight ? 'bg-blue-100' : 'bg-blue-500/10'
+                  }`}>
+                    <Building2 className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
+                  </div>
+                  <div>
+                    <div className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.yearBuilt}</div>
+                    <div className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Year Built</div>
+                  </div>
+                </div>
+              )}
+
+              {listing.view && (
+                <div className={`flex items-center gap-3 rounded-xl p-3 ${
+                  isLight
+                    ? 'bg-indigo-50 border-2 border-indigo-200'
+                    : 'bg-neutral-900/50 border border-neutral-700/30'
+                }`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isLight ? 'bg-indigo-100' : 'bg-indigo-500/10'
+                  }`}>
+                    <Eye className={`w-5 h-5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
+                  </div>
+                  <div>
+                    <div className={`text-sm font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.view}</div>
+                    <div className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>View</div>
                   </div>
                 </div>
               )}

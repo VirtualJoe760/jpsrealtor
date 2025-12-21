@@ -28,7 +28,7 @@ export interface SwipeQueueHook extends ISwipeQueueHook {
 // MAIN HOOK
 // ============================================================================
 
-export function useSwipeQueue(): SwipeQueueHook {
+export function useSwipeQueue(strategy?: any): SwipeQueueHook {
   const [isReady, setIsReady] = useState(false);
   const [excludeKeys, setExcludeKeys] = useState<Set<string>>(new Set());
   const [isExhausted, setIsExhausted] = useState(false);
@@ -36,6 +36,7 @@ export function useSwipeQueue(): SwipeQueueHook {
   const anonymousIdRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
   const queueManagerRef = useRef<SwipeQueueManager>(new SwipeQueueManager());
+  const strategyRef = useRef(strategy);
 
   // ========================================
   // INITIALIZATION
@@ -49,8 +50,9 @@ export function useSwipeQueue(): SwipeQueueHook {
         const fingerprint = await getOrCreateFingerprint();
         anonymousIdRef.current = fingerprint;
 
-        // Set default strategy to MapQueueStrategy
-        queueManagerRef.current.setStrategy(new MapQueueStrategy());
+        // Set strategy: use provided strategy or default to MapQueueStrategy
+        const queueStrategy = strategyRef.current || new MapQueueStrategy();
+        queueManagerRef.current.setStrategy(queueStrategy);
 
         // Load exclude keys once
         await loadExcludeKeys();

@@ -603,6 +603,16 @@ export default function ListingBottomPanel({
               {enrichedListing.daysOnMarket} {enrichedListing.daysOnMarket === 1 ? 'Day' : 'Days'} on Market
             </span>
           )}
+
+          {enrichedListing.view && (
+            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
+              isLight
+                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>
+              View: {enrichedListing.view}
+            </span>
+          )}
         </div>
 
         {enrichedListing.publicRemarks && (

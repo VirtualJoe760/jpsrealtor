@@ -140,7 +140,9 @@
       "WebFetch(domain:console.groq.com)",
       "Bash(dir /b /o-d F:web-clientsjoseph-sardellajpsrealtorlocal-logschat-records*.json 2)",
       "Bash(git rm:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(else echo \"❌ No Trello credentials - will just output the card details\")",
+      "Bash(timeout 90 npm run build:*)"
     ],
     "deny": [],
     "ask": []
