@@ -33,11 +33,6 @@ export default function NotificationToast({
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
-  // Truncate message to first 120 characters
-  const truncatedMessage = message.length > 120
-    ? message.substring(0, 120) + "..."
-    : message;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: -20, x: 20 }}
@@ -45,8 +40,8 @@ export default function NotificationToast({
       exit={{ opacity: 0, x: 100 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={`
-        fixed top-20 right-6 z-[60] w-96 max-w-[calc(100vw-3rem)]
-        rounded-2xl shadow-2xl backdrop-blur-md border cursor-pointer
+        fixed top-20 right-6 z-[60] w-80 max-w-[calc(100vw-3rem)]
+        rounded-xl shadow-2xl backdrop-blur-md border cursor-pointer
         ${isLight
           ? "bg-white/95 border-gray-200"
           : "bg-gray-900/95 border-gray-700"
@@ -59,17 +54,17 @@ export default function NotificationToast({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between p-3">
+        <div className="flex items-center gap-2">
           <div className={`
-            p-2 rounded-lg
+            p-1.5 rounded-lg
             ${isLight ? "bg-blue-100 text-blue-600" : "bg-emerald-900/40 text-emerald-400"}
           `}>
-            <MessageSquare className="w-5 h-5" />
+            <MessageSquare className="w-4 h-4" />
           </div>
           <div>
             <h3 className={`font-semibold text-sm ${isLight ? "text-gray-900" : "text-white"}`}>
-              Market Snapshot Ready
+              Market Snapshot
             </h3>
             <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
               {locationName}
@@ -82,31 +77,26 @@ export default function NotificationToast({
             onDismiss();
           }}
           className={`
-            p-1.5 rounded-lg transition-colors
+            p-1 rounded-lg transition-colors
             ${isLight
-              ? "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-              : "hover:bg-gray-800 text-gray-400 hover:text-gray-200"
+              ? "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              : "hover:bg-gray-800 text-gray-500 hover:text-gray-300"
             }
           `}
           aria-label="Dismiss notification"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Message Preview */}
-      <div className="p-4 pt-3">
-        <p className={`text-sm leading-relaxed ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-          {truncatedMessage}
+      {/* Minimal Preview */}
+      <div className="px-3 pb-3">
+        <p className={`text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+          Market stats • Active listings • Price trends
         </p>
-      </div>
-
-      {/* Footer CTA */}
-      <div className={`
-        px-4 pb-4 pt-2 text-xs font-medium
-        ${isLight ? "text-blue-600" : "text-emerald-400"}
-      `}>
-        Click to view full details →
+        <p className={`text-xs font-medium mt-1 ${isLight ? "text-blue-600" : "text-emerald-400"}`}>
+          Read for more →
+        </p>
       </div>
 
       {/* Pulsing indicator */}
