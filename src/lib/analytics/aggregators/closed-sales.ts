@@ -11,6 +11,22 @@ import connectDB from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Convert string to Title Case (e.g., "palm desert" -> "Palm Desert")
+ * Handles multi-word city names correctly
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -140,13 +156,13 @@ export async function getClosedSales(filters: ClosedSalesFilters = {}): Promise<
   // ========== LOCATION FILTERS ==========
 
   if (filters.subdivision) {
-    // Case-insensitive subdivision match
-    query.subdivisionName = new RegExp(`^${filters.subdivision}$`, 'i');
+    // Normalize to title case for exact match (faster than regex, uses indexes)
+    query.subdivisionName = toTitleCase(filters.subdivision);
   }
 
   if (filters.city) {
-    // Case-insensitive city match (handles "indio", "Indio", "INDIO", etc.)
-    query.city = new RegExp(`^${filters.city}$`, 'i');
+    // Normalize to title case for exact match (faster than regex, uses indexes)
+    query.city = toTitleCase(filters.city);
   }
 
   if (filters.zip) {
@@ -154,8 +170,8 @@ export async function getClosedSales(filters: ClosedSalesFilters = {}): Promise<
   }
 
   if (filters.county) {
-    // Case-insensitive county match
-    query.countyOrParish = new RegExp(`^${filters.county}$`, 'i');
+    // Normalize to title case for exact match (faster than regex, uses indexes)
+    query.countyOrParish = toTitleCase(filters.county);
   }
 
   if (filters.mlsSource) {
