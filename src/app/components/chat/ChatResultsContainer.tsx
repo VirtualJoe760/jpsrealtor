@@ -9,6 +9,7 @@ import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import MarketStatsCard from "./MarketStatsCard";
 import { ArticleResults } from "./ArticleCard";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useMapControl } from "@/app/hooks/useMapControl";
 import type { ComponentData } from "./ChatProvider";
 import type { Listing } from "./ListingCarousel";
 import type { MapListing } from "@/types/types";
@@ -29,6 +30,7 @@ export default function ChatResultsContainer({
 }: ChatResultsContainerProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
+  const { prePositionMap } = useMapControl();
   const [listingViewMode, setListingViewMode] = useState<'carousel' | 'list'>('carousel');
 
   // Fetch listings for neighborhood queries
@@ -206,6 +208,22 @@ export default function ChatResultsContainer({
       });
 
       setNeighborhoodListings(listings);
+
+      // Pre-position map to neighborhood location
+      if (listings.length > 0 && listings[0].latitude && listings[0].longitude) {
+        console.log('[ChatResultsContainer] 🗺️ Pre-positioning map to:', {
+          lat: listings[0].latitude,
+          lng: listings[0].longitude,
+          neighborhood: components.neighborhood?.name,
+          type: components.neighborhood?.type
+        });
+
+        prePositionMap([], {
+          centerLat: listings[0].latitude,
+          centerLng: listings[0].longitude,
+          zoom: 13
+        });
+      }
     } catch (error) {
       console.error("[ChatResultsContainer] Error fetching neighborhood listings:", error);
       setNeighborhoodListings([]);
