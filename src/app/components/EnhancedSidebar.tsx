@@ -44,6 +44,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
   const [isMobile, setIsMobile] = useState(false);
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch - wait for client-side mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Debug session state
   useEffect(() => {
@@ -193,7 +199,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           <motion.button
             onClick={handleDashboardClick}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              pathname.startsWith("/dashboard")
+              mounted && pathname.startsWith("/dashboard")
                 ? isLight
                   ? "bg-blue-100 text-blue-600"
                   : "bg-purple-600/20 text-purple-400"
@@ -208,9 +214,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             {!effectivelyCollapsed && (
               <>
                 <span className="text-sm font-medium flex-1 text-left">
-                  {status === "loading" ? "Loading..." : session ? `Dashboard` : "Sign In"}
+                  {!mounted || status === "loading" ? "Sign In" : session ? `Dashboard` : "Sign In"}
                 </span>
-                {session && (
+                {mounted && session && (
                   <div onClick={handleDropdownToggle} className="p-1 -m-1">
                     {dashboardDropdownOpen ? (
                       <ChevronUp className="w-4 h-4 flex-shrink-0" />

@@ -22,7 +22,13 @@ export default function TopToggles() {
   const isHomePage = pathname === "/";
   const [isVisible, setIsVisible] = useState(true);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
+
+  // Prevent hydration mismatch - wait for client-side mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Listen for favorites panel state changes
   useEffect(() => {
@@ -143,9 +149,9 @@ export default function TopToggles() {
           className="pointer-events-auto"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
         >
-          {isMapVisible ? (
+          {mounted && isMapVisible ? (
             <MessageSquare
               className="w-9 h-9 transition-colors"
               style={{
@@ -176,9 +182,9 @@ export default function TopToggles() {
           className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
         >
-          {isMapVisible ? (
+          {mounted && isMapVisible ? (
             <MessageSquare
               className="w-11 h-11 transition-colors"
               style={{
