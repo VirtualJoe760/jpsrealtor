@@ -140,11 +140,13 @@ export async function getClosedSales(filters: ClosedSalesFilters = {}): Promise<
   // ========== LOCATION FILTERS ==========
 
   if (filters.subdivision) {
-    query.subdivisionName = filters.subdivision;
+    // Case-insensitive subdivision match
+    query.subdivisionName = new RegExp(`^${filters.subdivision}$`, 'i');
   }
 
   if (filters.city) {
-    query.city = filters.city;
+    // Case-insensitive city match (handles "indio", "Indio", "INDIO", etc.)
+    query.city = new RegExp(`^${filters.city}$`, 'i');
   }
 
   if (filters.zip) {
@@ -152,7 +154,8 @@ export async function getClosedSales(filters: ClosedSalesFilters = {}): Promise<
   }
 
   if (filters.county) {
-    query.countyOrParish = filters.county;
+    // Case-insensitive county match
+    query.countyOrParish = new RegExp(`^${filters.county}$`, 'i');
   }
 
   if (filters.mlsSource) {
