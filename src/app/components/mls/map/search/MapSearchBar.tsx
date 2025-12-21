@@ -144,6 +144,40 @@ export default function MapSearchBar({
     }
   };
 
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && query.trim().length > 0) {
+      e.preventDefault();
+
+      // If we have results already, use the first geocode result
+      const firstGeocodeResult = results.find(r => r.type === "geocode");
+      if (firstGeocodeResult && firstGeocodeResult.type === "geocode") {
+        console.log('📍 [MapSearchBar] Enter pressed - using cached result:', firstGeocodeResult.label);
+        handleSelect(firstGeocodeResult);
+        return;
+      }
+
+      // Otherwise, fetch geocode immediately (bypass autocomplete delay)
+      console.log('📍 [MapSearchBar] Enter pressed - fetching geocode for:', query);
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const json = await res.json();
+        const geocodeResult = (json.results || []).find((r: SearchResult) => r.type === "geocode");
+
+        if (geocodeResult && geocodeResult.type === "geocode") {
+          console.log('📍 [MapSearchBar] Enter pressed - geocode found:', geocodeResult.label);
+          handleSelect(geocodeResult);
+        } else {
+          console.log('⚠️ [MapSearchBar] Enter pressed - no geocode result found');
+        }
+      } catch (err) {
+        console.error("Enter search failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   return (
     <>
       <div className="fixed top-16 z-30 w-full px-2 md:px-4 py-3 bg-zinc-950 text-white shadow-lg border-b border-zinc-800">
@@ -182,6 +216,7 @@ export default function MapSearchBar({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search by address, city, or neighborhood..."
                 className="w-full pl-10 md:pl-11 pr-3 py-2 md:py-2.5 text-base text-white bg-transparent placeholder-gray-400 focus:outline-none"
                 style={{ fontSize: '16px' }}
