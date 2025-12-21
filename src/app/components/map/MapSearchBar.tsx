@@ -186,6 +186,13 @@ export default function MapSearchBar({
           showMapAtLocation(data.flyover.lat, data.flyover.lng, data.flyover.zoom);
 
           // Send location to AI for market insights
+          console.log('🚀🚀🚀 [MapSearchBar] DISPATCHING requestLocationInsights EVENT', {
+            locationName: suggestion.name,
+            locationType: suggestion.type,
+            city: suggestion.city,
+            state: suggestion.state || 'CA',
+          });
+
           window.dispatchEvent(new CustomEvent('requestLocationInsights', {
             detail: {
               locationName: suggestion.name,
@@ -194,6 +201,8 @@ export default function MapSearchBar({
               state: suggestion.state || 'CA',
             }
           }));
+
+          console.log('✅ [MapSearchBar] Event dispatched!');
         } else {
           console.error('🗺️ [MapSearchBar] Flyover API error:', data.error);
         }
@@ -234,6 +243,13 @@ export default function MapSearchBar({
           showMapAtLocation(geocoded.latitude, geocoded.longitude, zoomLevel);
 
           // Send location to AI for market insights
+          console.log('🚀🚀🚀 [MapSearchBar] DISPATCHING requestLocationInsights EVENT', {
+            locationName: suggestion.name,
+            locationType: suggestion.type,
+            city: suggestion.city,
+            state: suggestion.state || 'CA',
+          });
+
           window.dispatchEvent(new CustomEvent('requestLocationInsights', {
             detail: {
               locationName: suggestion.name,
@@ -242,6 +258,8 @@ export default function MapSearchBar({
               state: suggestion.state || 'CA',
             }
           }));
+
+          console.log('✅ [MapSearchBar] Event dispatched!');
         } else {
           console.error('🌍 [MapSearchBar] Geocoding failed - no results with coordinates');
         }
