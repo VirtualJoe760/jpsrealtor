@@ -12,10 +12,13 @@ import { useMapState } from "@/app/contexts/MapStateContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
+import { useChatContext } from "./chat/ChatProvider";
+
 export default function TopToggles() {
   const { currentTheme, setTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
+  const { hasUnreadMessage, setUnreadMessage } = useChatContext();
   const pathname = usePathname();
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
@@ -85,7 +88,9 @@ export default function TopToggles() {
   const handleToggleMap = () => {
     if (isHomePage) {
       if (isMapVisible) {
+        // Switching to chat view - clear notification
         hideMap();
+        setUnreadMessage(false);
       } else {
         // Check if chat has pre-positioned the map
         if (viewState) {
@@ -146,21 +151,37 @@ export default function TopToggles() {
         {/* Map Toggle - Right (Mobile) */}
         <motion.button
           onClick={handleToggleMap}
-          className="pointer-events-auto"
+          className="pointer-events-auto relative"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
         >
           {mounted && isMapVisible ? (
-            <MessageSquare
-              className="w-9 h-9 transition-colors"
-              style={{
-                color: isLight ? '#2563eb' : '#34d399',
-                filter: isLight
-                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
-                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
-              }}
-            />
+            <>
+              <MessageSquare
+                className="w-9 h-9 transition-colors"
+                style={{
+                  color: isLight ? '#2563eb' : '#34d399',
+                  filter: isLight
+                    ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                    : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+                }}
+              />
+              {/* Notification Badge */}
+              {hasUnreadMessage && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-red-500 rounded-full"
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  />
+                </motion.div>
+              )}
+            </>
           ) : (
             <Map
               className="w-9 h-9 transition-colors"
@@ -179,21 +200,37 @@ export default function TopToggles() {
       <div className="hidden md:block">
         <motion.button
           onClick={handleToggleMap}
-          className="pointer-events-auto fixed right-6 top-6"
+          className="pointer-events-auto fixed right-6 top-6 relative"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
         >
           {mounted && isMapVisible ? (
-            <MessageSquare
-              className="w-11 h-11 transition-colors"
-              style={{
-                color: isLight ? '#2563eb' : '#34d399',
-                filter: isLight
-                  ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
-                  : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
-              }}
-            />
+            <>
+              <MessageSquare
+                className="w-11 h-11 transition-colors"
+                style={{
+                  color: isLight ? '#2563eb' : '#34d399',
+                  filter: isLight
+                    ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))'
+                    : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))',
+                }}
+              />
+              {/* Notification Badge */}
+              {hasUnreadMessage && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-red-500 rounded-full"
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  />
+                </motion.div>
+              )}
+            </>
           ) : (
             <Map
               className="w-11 h-11 transition-colors"

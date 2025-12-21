@@ -105,6 +105,51 @@ export interface ComponentData {
       sampleSize: number;
     };
   };
+  neighborhood?: {
+    type: "city" | "subdivision" | "county" | "region";
+    cityId?: string;
+    subdivisionSlug?: string;
+    countyId?: string;
+    name: string;
+    normalizedName?: string;
+    filters?: {
+      // Price
+      minPrice?: number;
+      maxPrice?: number;
+      // Beds/Baths
+      beds?: number;
+      baths?: number;
+      // Size
+      minSqft?: number;
+      maxSqft?: number;
+      minLotSize?: number;
+      maxLotSize?: number;
+      // Year
+      minYear?: number;
+      maxYear?: number;
+      // Amenities
+      pool?: boolean;
+      spa?: boolean;
+      view?: boolean;
+      fireplace?: boolean;
+      gatedCommunity?: boolean;
+      seniorCommunity?: boolean;
+      // Garage/Stories
+      garageSpaces?: number;
+      stories?: number;
+      // Property type
+      propertyType?: string;
+      // Geographic filters
+      eastOf?: string;
+      westOf?: string;
+      northOf?: string;
+      southOf?: string;
+      // HOA filters
+      hasHOA?: boolean;
+      maxHOA?: number;
+      minHOA?: number;
+    };
+  };
 }
 
 export interface ChatMessage {
@@ -120,6 +165,8 @@ interface ChatContextType {
   messages: ChatMessage[];
   addMessage: (content: string, role: "user" | "assistant", listings?: Listing[], components?: ComponentData) => void;
   clearMessages: () => void;
+  hasUnreadMessage: boolean;
+  setUnreadMessage: (unread: boolean) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -131,6 +178,7 @@ const CHAT_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
 
   // Load messages from sessionStorage on mount with expiration check
   useEffect(() => {
@@ -204,8 +252,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem(CHAT_EXPIRATION_KEY);
   };
 
+  const setUnreadMessage = (unread: boolean) => {
+    setHasUnreadMessage(unread);
+  };
+
   return (
-    <ChatContext.Provider value={{ messages, addMessage, clearMessages }}>
+    <ChatContext.Provider value={{ messages, addMessage, clearMessages, hasUnreadMessage, setUnreadMessage }}>
       {children}
     </ChatContext.Provider>
   );

@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useChatContext, ComponentData } from "./ChatProvider";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { useMapState } from "@/app/contexts/MapStateContext";
 import ListingBottomPanel from "../mls/map/ListingBottomPanel";
 import { useMLSContext } from "../mls/MLSProvider";
 import { SourceBubbles } from "./SourceBubble";
@@ -26,6 +27,10 @@ import NewChatModal from "./NewChatModal";
 import TypingAnimation from "./TypingAnimation";
 import { useAutocomplete } from "./hooks/useAutocomplete";
 import { useChatScroll } from "./hooks/useChatScroll";
+import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
+import { ChatQueueStrategy } from "@/app/utils/swipe/ChatQueueStrategy";
+import EndOfQueueModal from "./EndOfQueueModal";
+import type { MapListing } from "@/types/types";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -37,20 +42,29 @@ export default function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const { messages, addMessage, clearMessages } = useChatContext();
+  const { messages, addMessage, clearMessages, setUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Map control for showing listings on background map
   const { showMapWithListings, showMapAtLocation, hideMap, isMapVisible, prePositionMap, setMapVisible } = useMapControl();
+  const { isMapVisible: isMapVisibleState } = useMapState();
 
   // Auto-scroll to bottom on new messages
   const messagesEndRef = useChatScroll(messages);
 
-  // ListingBottomPanel state for swipe functionality
+  // Swipe queue for neighborhood-based chat swipes
+  const swipeQueue = useSwipeQueue(new ChatQueueStrategy());
+  const [isQueueMode, setIsQueueMode] = useState(false); // true when using queue, false when using static array
+  const [currentQueueListing, setCurrentQueueListing] = useState<MapListing | null>(null);
+  const [showEndOfQueueModal, setShowEndOfQueueModal] = useState(false);
+  const [queueSwipedCount, setQueueSwipedCount] = useState(0);
+  const [queueLikedCount, setQueueLikedCount] = useState(0);
+
+  // ListingBottomPanel state for swipe functionality (legacy static array mode)
   const [showListingPanel, setShowListingPanel] = useState(false);
   const [currentListingQueue, setCurrentListingQueue] = useState<Listing[]>([]);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
-  const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike, loadListings } = useMLSContext();
+  const { likedListings, dislikedListings, toggleFavorite, swipeLeft: toggleDislike, removeDislike, loadListings} = useMLSContext();
 
   // Location insights notification states
   const [showNotification, setShowNotification] = useState(false);
@@ -170,7 +184,7 @@ export default function ChatWidget() {
 
     try {
       // Call AI API with Server-Sent Events (SSE) streaming
-      const response = await fetch("/api/chat/stream", {
+      const response = await fetch("/api/chat-v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -218,7 +232,15 @@ export default function ChatWidget() {
                   if (data.token) {
                     // Append token to displayed text in real-time
                     fullText += data.token;
-                    setStreamingText(fullText);
+
+                    // Remove component markers from displayed text
+                    const displayText = fullText
+                      .replace(/\[LISTING_CAROUSEL\]/g, '')
+                      .replace(/\[APPRECIATION\]/g, '')
+                      .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .trim();
+
+                    setStreamingText(displayText);
 
                     // Smooth scroll every 20 characters
                     if (fullText.length % 20 === 0) {
@@ -228,14 +250,24 @@ export default function ChatWidget() {
 
                   if (data.components) {
                     // Received component data
+                    console.log('[ChatWidget] 📦 Received components:', data.components);
                     components = data.components;
                   }
 
                   if (data.done) {
                     // Stream complete
+                    console.log('[ChatWidget] ✅ Stream complete. Components:', components);
                     setIsStreaming(false);
                     setStreamingText("");
-                    addMessage(fullText, "assistant", undefined, components);
+
+                    // Remove component markers from final message
+                    const cleanText = fullText
+                      .replace(/\[LISTING_CAROUSEL\]/g, '')
+                      .replace(/\[APPRECIATION\]/g, '')
+                      .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .trim();
+
+                    addMessage(cleanText, "assistant", undefined, components);
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                     // Pre-position map in background if listings are returned
@@ -370,7 +402,7 @@ export default function ChatWidget() {
 
     // Don't show user message or loading state since this is background
     try {
-      const response = await fetch("/api/chat/stream", {
+      const response = await fetch("/api/chat-v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -418,13 +450,20 @@ export default function ChatWidget() {
                   }
 
                   if (data.done) {
+                    // Remove component markers from message
+                    const cleanText = fullText
+                      .replace(/\[LISTING_CAROUSEL\]/g, '')
+                      .replace(/\[APPRECIATION\]/g, '')
+                      .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .trim();
+
                     // Silently add message to history
                     addMessage(query, "user");
-                    addMessage(fullText, "assistant", undefined, components);
+                    addMessage(cleanText, "assistant", undefined, components);
                     console.log('🤖 [ChatWidget] Background AI query completed, message added to history');
 
                     // Trigger notification for location insights
-                    const preview = fullText.substring(0, 80).replace(/[#*\n]/g, '').trim();
+                    const preview = cleanText.substring(0, 80).replace(/[#*\n]/g, '').trim();
                     setNotificationPreview(preview + '...');
                     setShowNotification(true);
 
@@ -577,7 +616,7 @@ export default function ChatWidget() {
       console.log('🤖 [ChatWidget] Sending location snapshot request to AI (locationSnapshot mode)');
 
       try {
-        const response = await fetch("/api/chat/stream", {
+        const response = await fetch("/api/chat-v2", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -628,10 +667,32 @@ export default function ChatWidget() {
                     }
 
                     if (data.done) {
+                      // Remove component markers from message
+                      const cleanText = fullText
+                        .replace(/\[LISTING_CAROUSEL\]/g, '')
+                        .replace(/\[APPRECIATION\]/g, '')
+                        .replace(/\[ARTICLE_RESULTS\]/g, '')
+                        .trim();
+
                       // Add location snapshot as background digest
                       addMessage(`Tell me about ${locationName}`, "user");
-                      addMessage(fullText, "assistant", undefined, components);
+                      addMessage(cleanText, "assistant", undefined, components);
                       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+                      // If user is in map view, notify them of new message
+                      if (isMapVisibleState) {
+                        console.log('🔔 [ChatWidget] Market Snapshot received while in map view - triggering notification');
+                        setUnreadMessage(true);
+
+                        // Play notification sound
+                        try {
+                          const audio = new Audio('/sounds/notification.mp3');
+                          audio.volume = 0.5;
+                          audio.play().catch(err => console.warn('Failed to play notification sound:', err));
+                        } catch (err) {
+                          console.warn('Failed to create notification audio:', err);
+                        }
+                      }
                     }
                   } catch (parseError) {
                     console.warn('[SSE] Skipped malformed chunk:', parseError);
@@ -716,6 +777,39 @@ export default function ChatWidget() {
   const handleOpenListingPanel = async (listings: Listing[], startIndex: number) => {
     console.log('[ChatWidget] Opening panel for listing:', listings[startIndex]);
 
+    // Check if we're in queue mode (set by ChatResultsContainer)
+    if (isQueueMode) {
+      // Queue mode: Fetch the first listing from the queue
+      console.log('[ChatWidget] Queue mode - getting first listing from queue');
+
+      // Reset stats
+      setQueueSwipedCount(0);
+      setQueueLikedCount(0);
+
+      const { listing: firstQueueItem } = swipeQueue.getNext();
+      if (firstQueueItem) {
+        console.log('🎯 [ChatWidget] First queue item:', firstQueueItem.listingKey, firstQueueItem.slug);
+
+        try {
+          const response = await fetch(`/api/mls-listings/${firstQueueItem.slugAddress || firstQueueItem.slug}`);
+          if (response.ok) {
+            const { listing: fullData } = await response.json();
+            console.log('✅ [ChatWidget] Opening panel with:', fullData.listingKey, fullData.unparsedAddress);
+            setCurrentQueueListing(fullData);
+            setShowListingPanel(true);
+            return;
+          }
+        } catch (error) {
+          console.error('[ChatWidget] Error fetching first queue listing:', error);
+        }
+      }
+
+      // If queue failed, fall back to static mode
+      console.warn('[ChatWidget] Queue failed, falling back to static array mode');
+      setIsQueueMode(false);
+    }
+
+    // Legacy static array mode
     // Extract filters from user's last query
     const lastUserMessage = messages
       .filter(m => m.role === 'user')
@@ -781,73 +875,146 @@ export default function ChatWidget() {
     setShowListingPanel(false);
   };
 
-  const handleSwipeLeft = () => {
-    // Dislike current listing
-    const currentListing = currentListingQueue[currentListingIndex];
-    if (currentListing) {
-      // Convert to MapListing format for toggleDislike
-      const mapListing = {
-        _id: currentListing.id,
-        listingId: currentListing.id,
-        listingKey: currentListing.id,
-        slug: currentListing.url.replace('/mls-listings/', ''),
-        slugAddress: currentListing.url.replace('/mls-listings/', ''),
-        primaryPhotoUrl: currentListing.image || '',
-        unparsedAddress: currentListing.address,
-        address: currentListing.address,
-        latitude: currentListing.latitude || 0,
-        longitude: currentListing.longitude || 0,
-        listPrice: currentListing.price,
-        bedsTotal: currentListing.beds,
-        bathroomsTotalInteger: currentListing.baths,
-        livingArea: currentListing.sqft,
-        city: currentListing.city,
-        subdivisionName: currentListing.subdivision,
-      };
-      toggleDislike(mapListing as any);
-    }
+  const handleSwipeLeft = async () => {
+    if (isQueueMode && currentQueueListing) {
+      // Queue mode: Mark as disliked and get next from queue
+      console.log('👈 [ChatWidget] Swipe LEFT - Current listing:', currentQueueListing.listingKey, currentQueueListing.unparsedAddress);
 
-    // Move to next listing
-    if (currentListingIndex < currentListingQueue.length - 1) {
-      setCurrentListingIndex(currentListingIndex + 1);
+      swipeQueue.markAsDisliked(currentQueueListing.listingKey, currentQueueListing);
+      setQueueSwipedCount(prev => prev + 1);
+
+      // Get next listing from queue
+      const { listing: nextQueueItem, reason } = swipeQueue.getNext();
+
+      if (nextQueueItem) {
+        console.log('➡️ [ChatWidget] Next listing from queue:', nextQueueItem.listingKey, nextQueueItem.slug);
+
+        // Fetch full listing data for the next item
+        try {
+          const response = await fetch(`/api/mls-listings/${nextQueueItem.slugAddress || nextQueueItem.slug}`);
+          if (response.ok) {
+            const { listing: fullData } = await response.json();
+            console.log('✅ [ChatWidget] Fetched full data for:', fullData.listingKey, fullData.unparsedAddress);
+            setCurrentQueueListing(fullData);
+          } else {
+            console.warn('[ChatWidget] Failed to fetch next listing, closing panel');
+            setShowListingPanel(false);
+            setIsQueueMode(false);
+          }
+        } catch (error) {
+          console.error('[ChatWidget] Error fetching next listing:', error);
+          setShowListingPanel(false);
+          setIsQueueMode(false);
+        }
+      } else {
+        // Queue exhausted
+        console.log('[ChatWidget] Queue exhausted:', reason);
+        setShowListingPanel(false);
+        setShowEndOfQueueModal(true);
+        setIsQueueMode(false);
+      }
     } else {
-      // End of queue
-      setShowListingPanel(false);
+      // Legacy static array mode
+      const currentListing = currentListingQueue[currentListingIndex];
+      if (currentListing) {
+        const mapListing = {
+          _id: currentListing.id,
+          listingId: currentListing.id,
+          listingKey: currentListing.id,
+          slug: currentListing.url.replace('/mls-listings/', ''),
+          slugAddress: currentListing.url.replace('/mls-listings/', ''),
+          primaryPhotoUrl: currentListing.image || '',
+          unparsedAddress: currentListing.address,
+          address: currentListing.address,
+          latitude: currentListing.latitude || 0,
+          longitude: currentListing.longitude || 0,
+          listPrice: currentListing.price,
+          bedsTotal: currentListing.beds,
+          bathroomsTotalInteger: currentListing.baths,
+          livingArea: currentListing.sqft,
+          city: currentListing.city,
+          subdivisionName: currentListing.subdivision,
+        };
+        toggleDislike(mapListing as any);
+      }
+
+      if (currentListingIndex < currentListingQueue.length - 1) {
+        setCurrentListingIndex(currentListingIndex + 1);
+      } else {
+        setShowListingPanel(false);
+      }
     }
   };
 
-  const handleSwipeRight = () => {
-    // Like current listing
-    const currentListing = currentListingQueue[currentListingIndex];
-    if (currentListing) {
-      // Convert to MapListing format for toggleFavorite
-      const mapListing = {
-        _id: currentListing.id,
-        listingId: currentListing.id,
-        listingKey: currentListing.id,
-        slug: currentListing.url.replace('/mls-listings/', ''),
-        slugAddress: currentListing.url.replace('/mls-listings/', ''),
-        primaryPhotoUrl: currentListing.image || '',
-        unparsedAddress: currentListing.address,
-        address: currentListing.address,
-        latitude: currentListing.latitude || 0,
-        longitude: currentListing.longitude || 0,
-        listPrice: currentListing.price,
-        bedsTotal: currentListing.beds,
-        bathroomsTotalInteger: currentListing.baths,
-        livingArea: currentListing.sqft,
-        city: currentListing.city,
-        subdivisionName: currentListing.subdivision,
-      };
-      toggleFavorite(mapListing);
-    }
+  const handleSwipeRight = async () => {
+    if (isQueueMode && currentQueueListing) {
+      // Queue mode: Mark as liked and get next from queue
+      console.log('👉 [ChatWidget] Swipe RIGHT - Current listing:', currentQueueListing.listingKey, currentQueueListing.unparsedAddress);
 
-    // Move to next listing
-    if (currentListingIndex < currentListingQueue.length - 1) {
-      setCurrentListingIndex(currentListingIndex + 1);
+      swipeQueue.markAsLiked(currentQueueListing.listingKey, currentQueueListing);
+      setQueueSwipedCount(prev => prev + 1);
+      setQueueLikedCount(prev => prev + 1);
+
+      // Get next listing from queue
+      const { listing: nextQueueItem, reason } = swipeQueue.getNext();
+
+      if (nextQueueItem) {
+        console.log('➡️ [ChatWidget] Next listing from queue:', nextQueueItem.listingKey, nextQueueItem.slug);
+
+        // Fetch full listing data for the next item
+        try {
+          const response = await fetch(`/api/mls-listings/${nextQueueItem.slugAddress || nextQueueItem.slug}`);
+          if (response.ok) {
+            const { listing: fullData } = await response.json();
+            console.log('✅ [ChatWidget] Fetched full data for:', fullData.listingKey, fullData.unparsedAddress);
+            setCurrentQueueListing(fullData);
+          } else {
+            console.warn('[ChatWidget] Failed to fetch next listing, closing panel');
+            setShowListingPanel(false);
+            setIsQueueMode(false);
+          }
+        } catch (error) {
+          console.error('[ChatWidget] Error fetching next listing:', error);
+          setShowListingPanel(false);
+          setIsQueueMode(false);
+        }
+      } else {
+        // Queue exhausted
+        console.log('[ChatWidget] Queue exhausted:', reason);
+        setShowListingPanel(false);
+        setShowEndOfQueueModal(true);
+        setIsQueueMode(false);
+      }
     } else {
-      // End of queue
-      setShowListingPanel(false);
+      // Legacy static array mode
+      const currentListing = currentListingQueue[currentListingIndex];
+      if (currentListing) {
+        const mapListing = {
+          _id: currentListing.id,
+          listingId: currentListing.id,
+          listingKey: currentListing.id,
+          slug: currentListing.url.replace('/mls-listings/', ''),
+          slugAddress: currentListing.url.replace('/mls-listings/', ''),
+          primaryPhotoUrl: currentListing.image || '',
+          unparsedAddress: currentListing.address,
+          address: currentListing.address,
+          latitude: currentListing.latitude || 0,
+          longitude: currentListing.longitude || 0,
+          listPrice: currentListing.price,
+          bedsTotal: currentListing.beds,
+          bathroomsTotalInteger: currentListing.baths,
+          livingArea: currentListing.sqft,
+          city: currentListing.city,
+          subdivisionName: currentListing.subdivision,
+        };
+        toggleFavorite(mapListing);
+      }
+
+      if (currentListingIndex < currentListingQueue.length - 1) {
+        setCurrentListingIndex(currentListingIndex + 1);
+      } else {
+        setShowListingPanel(false);
+      }
     }
   };
 
@@ -1111,6 +1278,8 @@ export default function ChatWidget() {
                   <ChatResultsContainer
                     components={msg.components}
                     onOpenListingPanel={handleOpenListingPanel}
+                    swipeQueue={swipeQueue}
+                    onSetQueueMode={setIsQueueMode}
                   />
                 )}
               </motion.div>
@@ -1207,44 +1376,69 @@ export default function ChatWidget() {
     />
 
     {/* ListingBottomPanel for swipe functionality */}
-    {showListingPanel && currentListingQueue.length > 0 && currentListingIndex < currentListingQueue.length && (
-      <ListingBottomPanel
-        listing={{
-          ...(currentListingQueue[currentListingIndex] as any),
-          _id: currentListingQueue[currentListingIndex].id,
-          listingId: currentListingQueue[currentListingIndex].id,
-          listingKey: (currentListingQueue[currentListingIndex] as any).listingKey || currentListingQueue[currentListingIndex].id,
-          slug: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
-          slugAddress: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
-          primaryPhotoUrl: (currentListingQueue[currentListingIndex] as any).primaryPhotoUrl || currentListingQueue[currentListingIndex].image || '',
-          unparsedAddress: (currentListingQueue[currentListingIndex] as any).unparsedAddress || currentListingQueue[currentListingIndex].address,
-          address: currentListingQueue[currentListingIndex].address,
-          latitude: currentListingQueue[currentListingIndex].latitude || 0,
-          longitude: currentListingQueue[currentListingIndex].longitude || 0,
-          listPrice: (currentListingQueue[currentListingIndex] as any).listPrice || currentListingQueue[currentListingIndex].price,
-          bedsTotal: (currentListingQueue[currentListingIndex] as any).bedsTotal || (currentListingQueue[currentListingIndex] as any).bedroomsTotal || currentListingQueue[currentListingIndex].beds,
-          bathroomsTotalInteger: (currentListingQueue[currentListingIndex] as any).bathroomsTotalInteger || (currentListingQueue[currentListingIndex] as any).bathroomsTotalDecimal || currentListingQueue[currentListingIndex].baths,
-          livingArea: (currentListingQueue[currentListingIndex] as any).livingArea || currentListingQueue[currentListingIndex].sqft,
-          city: currentListingQueue[currentListingIndex].city,
-          subdivisionName: (currentListingQueue[currentListingIndex] as any).subdivisionName || currentListingQueue[currentListingIndex].subdivision,
-        } as any}
-        fullListing={currentListingQueue[currentListingIndex] as any}
-        onClose={handleCloseListingPanel}
-        onSwipeLeft={handleSwipeLeft}
-        onSwipeRight={handleSwipeRight}
-        isSidebarOpen={false}
-        isLeftSidebarCollapsed={false}
-        isDisliked={dislikedListings.some(d => d.listingKey === currentListingQueue[currentListingIndex].id)}
-        onRemoveDislike={() => {
-          const mapListing = {
-            _id: currentListingQueue[currentListingIndex].id,
-            listingKey: currentListingQueue[currentListingIndex].id,
-            slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-            slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-          };
-          removeDislike(mapListing as any);
-        }}
-      />
+    {showListingPanel && (
+      (isQueueMode && currentQueueListing) ? (
+        <ListingBottomPanel
+          key={currentQueueListing.listingKey || currentQueueListing.listingId}
+          listing={currentQueueListing}
+          fullListing={currentQueueListing as any}
+          onClose={handleCloseListingPanel}
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          isSidebarOpen={false}
+          isLeftSidebarCollapsed={false}
+          isDisliked={dislikedListings.some(d => d.listingKey === currentQueueListing.listingKey)}
+          onRemoveDislike={() => {
+            const mapListing = {
+              _id: currentQueueListing.listingId,
+              listingKey: currentQueueListing.listingKey,
+              slug: currentQueueListing.slug,
+              slugAddress: currentQueueListing.slugAddress,
+            };
+            removeDislike(mapListing as any);
+          }}
+        />
+      ) : (
+        currentListingQueue.length > 0 && currentListingIndex < currentListingQueue.length && (
+          <ListingBottomPanel
+            listing={{
+              ...(currentListingQueue[currentListingIndex] as any),
+              _id: currentListingQueue[currentListingIndex].id,
+              listingId: currentListingQueue[currentListingIndex].id,
+              listingKey: (currentListingQueue[currentListingIndex] as any).listingKey || currentListingQueue[currentListingIndex].id,
+              slug: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
+              slugAddress: currentListingQueue[currentListingIndex].slugAddress || currentListingQueue[currentListingIndex].slug || currentListingQueue[currentListingIndex].url?.replace('/mls-listings/', ''),
+              primaryPhotoUrl: (currentListingQueue[currentListingIndex] as any).primaryPhotoUrl || currentListingQueue[currentListingIndex].image || '',
+              unparsedAddress: (currentListingQueue[currentListingIndex] as any).unparsedAddress || currentListingQueue[currentListingIndex].address,
+              address: currentListingQueue[currentListingIndex].address,
+              latitude: currentListingQueue[currentListingIndex].latitude || 0,
+              longitude: currentListingQueue[currentListingIndex].longitude || 0,
+              listPrice: (currentListingQueue[currentListingIndex] as any).listPrice || currentListingQueue[currentListingIndex].price,
+              bedsTotal: (currentListingQueue[currentListingIndex] as any).bedsTotal || (currentListingQueue[currentListingIndex] as any).bedroomsTotal || currentListingQueue[currentListingIndex].beds,
+              bathroomsTotalInteger: (currentListingQueue[currentListingIndex] as any).bathroomsTotalInteger || (currentListingQueue[currentListingIndex] as any).bathroomsTotalDecimal || currentListingQueue[currentListingIndex].baths,
+              livingArea: (currentListingQueue[currentListingIndex] as any).livingArea || currentListingQueue[currentListingIndex].sqft,
+              city: currentListingQueue[currentListingIndex].city,
+              subdivisionName: (currentListingQueue[currentListingIndex] as any).subdivisionName || currentListingQueue[currentListingIndex].subdivision,
+            } as any}
+            fullListing={currentListingQueue[currentListingIndex] as any}
+            onClose={handleCloseListingPanel}
+            onSwipeLeft={handleSwipeLeft}
+            onSwipeRight={handleSwipeRight}
+            isSidebarOpen={false}
+            isLeftSidebarCollapsed={false}
+            isDisliked={dislikedListings.some(d => d.listingKey === currentListingQueue[currentListingIndex].id)}
+            onRemoveDislike={() => {
+              const mapListing = {
+                _id: currentListingQueue[currentListingIndex].id,
+                listingKey: currentListingQueue[currentListingIndex].id,
+                slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+                slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+              };
+              removeDislike(mapListing as any);
+            }}
+          />
+        )
+      )
     )}
 
     {/* Location Insights Notification Toast */}
@@ -1299,6 +1493,22 @@ export default function ChatWidget() {
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* End of Queue Modal */}
+    <EndOfQueueModal
+      isOpen={showEndOfQueueModal}
+      onClose={() => setShowEndOfQueueModal(false)}
+      onViewFavorites={() => {
+        setShowEndOfQueueModal(false);
+        // TODO: Navigate to favorites or open sidebar
+      }}
+      onContinueChat={() => {
+        setShowEndOfQueueModal(false);
+      }}
+      neighborhoodName={messages[messages.length - 1]?.components?.neighborhood?.name}
+      totalSwiped={queueSwipedCount}
+      totalLiked={queueLikedCount}
+    />
 
     <style jsx>{`
       @keyframes shake {
