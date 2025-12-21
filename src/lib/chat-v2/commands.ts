@@ -260,15 +260,21 @@ Don't forget about the interactive map!
 
 /**
  * Detect if a message is a command
+ * Supports multiple formats: /help, help, /get-started, get-started, /get started, get started
  */
 export function detectCommand(message: string): string | null {
   const trimmed = message.trim().toLowerCase();
 
-  if (trimmed === HELP_COMMAND.toLowerCase()) {
+  // Normalize: remove leading slash, replace spaces with hyphens
+  const normalized = trimmed.replace(/^\//, '').replace(/\s+/g, '-');
+
+  // Check for help command
+  if (normalized === 'help') {
     return 'help';
   }
 
-  if (trimmed === GET_STARTED_COMMAND.toLowerCase()) {
+  // Check for get-started command
+  if (normalized === 'get-started') {
     return 'get-started';
   }
 
