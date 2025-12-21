@@ -34,6 +34,8 @@ export default function MapSearchBar({
   onSettingsClick,
   className = "",
 }: MapSearchBarProps) {
+  console.log('🌟🌟🌟 [MapSearchBar] COMPONENT MOUNTED!');
+
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const { showMapAtLocation } = useMapControl();
