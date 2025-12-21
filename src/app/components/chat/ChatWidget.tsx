@@ -608,8 +608,10 @@ export default function ChatWidget() {
 
   // Listen for location insights requests from MapSearchBar
   useEffect(() => {
-    const handleLocationInsights = async (event: CustomEvent) => {
-      const { locationName, locationType, city, state } = event.detail;
+    const handleLocationInsights = async (event: Event) => {
+      console.log('🎯🎯🎯 [ChatWidget] EVENT HANDLER CALLED!', event);
+      const customEvent = event as CustomEvent;
+      const { locationName, locationType, city, state } = customEvent.detail;
       console.log('📍 [ChatWidget] Received location insights request:', { locationName, locationType, city, state });
 
       // Use locationSnapshot mode instead of fake tool
@@ -728,9 +730,13 @@ export default function ChatWidget() {
       }
     };
 
+    console.log('🎯 [ChatWidget] Setting up requestLocationInsights event listener');
     window.addEventListener('requestLocationInsights', handleLocationInsights as EventListener);
-    return () => window.removeEventListener('requestLocationInsights', handleLocationInsights as EventListener);
-  }, [messages]);
+    return () => {
+      console.log('🎯 [ChatWidget] Removing requestLocationInsights event listener');
+      window.removeEventListener('requestLocationInsights', handleLocationInsights as EventListener);
+    };
+  }, [messages, addMessage, isMapVisibleState, setUnreadMessage, setNotificationContent]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     // Autocomplete hook handles its own keyboard navigation (ArrowUp, ArrowDown, Escape, Enter with selection)
