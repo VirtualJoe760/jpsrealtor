@@ -264,15 +264,25 @@ async function executeGetAppreciation(args: {
   // Identify location type
   const entityResult = identifyEntityType(location);
 
+  // Build location object compatible with V1 structure
+  // ChatResultsContainer expects { city?, subdivision?, county? } format
+  const locationObj: any = {};
+  if (entityResult.type === "subdivision") {
+    locationObj.subdivision = entityResult.value;
+  } else if (entityResult.type === "city") {
+    locationObj.city = entityResult.value;
+  } else if (entityResult.type === "county") {
+    locationObj.county = entityResult.value;
+  } else {
+    // Fallback for unknown types
+    locationObj.city = entityResult.value;
+  }
+
   return {
     success: true,
     data: {
       component: "appreciation",
-      location: {
-        name: location,
-        type: entityResult.type,
-        normalized: entityResult.value
-      },
+      location: locationObj,  // Now matches V1 format: { subdivision: "..." } or { city: "..." }
       period
     }
   };
