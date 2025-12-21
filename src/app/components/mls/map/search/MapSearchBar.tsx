@@ -46,6 +46,8 @@ export default function MapSearchBar({
   isSatelliteView,
   allListings,
 }: Props) {
+  console.error('🔴🔴🔴 [MLS MapSearchBar] COMPONENT MOUNTED - THIS IS AN ERROR LOG!');
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
