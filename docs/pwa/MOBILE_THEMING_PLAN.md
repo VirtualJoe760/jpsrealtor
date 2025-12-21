@@ -1,7 +1,7 @@
 # Mobile Browser Theming - Implementation Plan
 
-**Status**: 🔴 Issue Identified - Needs Implementation
-**Priority**: HIGH - Affects Mobile UX
+**Status**: 🔴 Critical Issue - Inconsistent Behavior
+**Priority**: URGENT - Affects Mobile UX & PWA
 **Devices Affected**: iPhone 16 Pro Max, all iOS devices with Dynamic Island, PWA installations
 **Date Identified**: December 21, 2025
 
@@ -11,39 +11,221 @@
 
 ### Issue Description
 
-The native iOS browser controls (Safari UI, Dynamic Island, status bar) do not adapt to the website's theme changes. This creates a jarring visual disconnect:
+**INCONSISTENT browser chrome behavior** - sometimes matches theme, sometimes doesn't:
 
-**Light Mode** ✅:
-- Website background: Light
-- Browser chrome: Light (default)
-- Status bar: Light
-- **Result**: Visual harmony
+**Observed Behavior** (from iPhone 16 Pro Max screenshots):
+- ❌ **Unpredictable**: Safari UI/Dynamic Island area randomly light or dark
+- ❌ **No Pattern**: Can't determine what triggers correct theming
+- ❌ **Both Screenshots**: Show issues in both light AND dark contexts
+- ❌ **PWA Installation**: Same inconsistency in standalone mode
 
-**Dark Mode** ❌:
-- Website background: Dark (#0a0a0a, emerald accents)
-- Browser chrome: **Still light** (doesn't update)
-- Status bar: **Still light**
-- Dynamic Island area: **Light background bleeding**
-- **Result**: Visual mismatch, poor UX
+**This is NOT a simple "dark mode doesn't work" issue** - it's **random/unreliable behavior**
 
-### Root Cause
+### Key Questions to Answer
 
-1. **Static Meta Tags**: Theme-color meta tag is hardcoded in layout.tsx
-2. **No Dynamic Updates**: ThemeContext doesn't communicate with browser chrome
-3. **PWA Manifest Static**: manifest.json has fixed theme_color values
-4. **iOS-Specific Issues**: Apple requires specific meta tags that aren't dynamically updated
+1. **Why is the behavior inconsistent?**
+   - Is it timing-related? (JS loads after initial render)
+   - Is it cache-related? (Service worker serving stale meta tags)
+   - Is it route-related? (Different pages have different meta tags)
 
-### Screenshots Evidence
+2. **What triggers correct theming?**
+   - Hard refresh?
+   - Theme switcher interaction?
+   - Specific routes?
 
-| Device | Issue |
-|--------|-------|
-| iPhone 16 Pro Max | Dynamic Island and Safari top bar remain light in dark mode |
-| Safari Browser | Address bar, status bar don't adapt to theme |
-| PWA Installation | Same issues persist in standalone mode |
+3. **Are meta tags actually updating?**
+   - Need browser console logs to verify
+   - Need to inspect DOM in real-time
+
+### Current Implementation Issues
+
+1. **Static Meta Tags** (`src/app/layout.tsx`):
+   ```typescript
+   appleWebApp: {
+     capable: true,
+     statusBarStyle: "default",  // ❌ Hardcoded - never changes
+     title: "JP Realtor",
+   }
+   ```
+
+2. **Missing viewport-fit**: No `viewport-fit=cover` for Dynamic Island
+   ```html
+   <!-- ❌ MISSING - Needed for safe-area-inset -->
+   <meta name="viewport" content="..., viewport-fit=cover" />
+   ```
+
+3. **No Tailwind Safe Area Utilities** (`tailwind.config.ts`):
+   ```typescript
+   // ❌ MISSING - Can't use padding-safe-top, etc.
+   theme: {
+     extend: {
+       // No safe-area-inset utilities defined
+     }
+   }
+   ```
+
+4. **No Meta Tag Management**: Theme changes don't update browser chrome
+
+5. **Static PWA Manifest**: Can't adapt to user's theme preference
 
 ---
 
-## Current Implementation (Broken)
+## 🔍 PHASE 0: Debugging (DO THIS FIRST!)
+
+Before implementing fixes, we need to **understand the inconsistent behavior** by collecting real data from the iPhone.
+
+### Step 1: Enable Safari Web Inspector
+
+#### On iPhone 16 Pro Max:
+
+1. Open **Settings** → **Safari** → **Advanced**
+2. Toggle **Web Inspector** to ON
+3. Connect iPhone to Mac via USB cable
+
+#### On Mac:
+
+1. Open **Safari** → **Settings** (Cmd + ,)
+2. Click **Advanced** tab
+3. Check **"Show Develop menu in menu bar"** at bottom
+4. Safari menu bar should now show **"Develop"**
+
+### Step 2: Connect and Inspect
+
+1. **On iPhone**: Open Safari and navigate to `jpsrealtor.com`
+2. **On Mac**:
+   - Safari → **Develop** menu
+   - Select your iPhone 16 Pro Max
+   - Click on `jpsrealtor.com`
+   - Web Inspector window opens
+
+### Step 3: Collect Diagnostic Data
+
+Run these checks in Web Inspector Console:
+
+```javascript
+// 1. Check current theme-color meta tag
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+console.log('theme-color:', themeColorMeta?.content);
+
+// 2. Check Apple status bar style
+const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+console.log('statusBarStyle:', statusBarMeta?.content);
+
+// 3. Check viewport meta tag
+const viewport = document.querySelector('meta[name="viewport"]');
+console.log('viewport:', viewport?.content);
+console.log('Has viewport-fit=cover?', viewport?.content?.includes('viewport-fit=cover'));
+
+// 4. Check safe-area-inset values
+const root = document.documentElement;
+const safeTop = getComputedStyle(root).getPropertyValue('--sat') || 'env(safe-area-inset-top)';
+const safeBottom = getComputedStyle(root).getPropertyValue('--sab') || 'env(safe-area-inset-bottom)';
+console.log('safe-area-inset-top:', safeTop);
+console.log('safe-area-inset-bottom:', safeBottom);
+
+// 5. Check ThemeContext current theme
+const bodyClass = document.body.className;
+console.log('body classes:', bodyClass);
+console.log('Current theme from classes:',
+  bodyClass.includes('darkgradient') ? 'darkgradient' :
+  bodyClass.includes('lightgradient') ? 'lightgradient' :
+  'unknown'
+);
+
+// 6. Log all meta tags
+document.querySelectorAll('meta').forEach(meta => {
+  if (meta.name) console.log(`meta[${meta.name}]:`, meta.content);
+});
+```
+
+### Step 4: Test Theme Switching
+
+1. **In Web Inspector Console**, run:
+   ```javascript
+   // Watch for meta tag changes
+   const observer = new MutationObserver(mutations => {
+     mutations.forEach(mutation => {
+       if (mutation.type === 'attributes' && mutation.attributeName === 'content') {
+         console.log('Meta tag changed!', mutation.target);
+       }
+     });
+   });
+
+   // Observe all meta tags
+   document.querySelectorAll('meta').forEach(meta => {
+     observer.observe(meta, { attributes: true });
+   });
+
+   console.log('✅ Watching for meta tag changes...');
+   ```
+
+2. **On iPhone**: Switch theme using your theme picker
+3. **Check Console**: Did meta tags update? What changed?
+
+### Step 5: Document Findings
+
+Create a debugging log with:
+
+```markdown
+## Debugging Session - [Date]
+
+### Initial State
+- theme-color: ________
+- statusBarStyle: ________
+- viewport-fit: ________ (present/missing)
+- Body classes: ________
+- Dynamic Island appearance: ________ (light/dark)
+
+### After Theme Switch (light → dark)
+- theme-color: ________ (changed? Y/N)
+- statusBarStyle: ________ (changed? Y/N)
+- Dynamic Island appearance: ________ (changed? Y/N)
+- Console errors: ________
+
+### After Theme Switch (dark → light)
+- theme-color: ________ (changed? Y/N)
+- statusBarStyle: ________ (changed? Y/N)
+- Dynamic Island appearance: ________ (changed? Y/N)
+
+### After Hard Refresh
+- Does appearance match theme? ________ (Y/N)
+
+### Observations
+- When does it work correctly? ________
+- When does it fail? ________
+- Any pattern? ________
+```
+
+### Alternative: Remote Debugging Without Mac
+
+If you don't have a Mac, use **BrowserStack Live**:
+
+1. Go to [BrowserStack.com](https://www.browserstack.com/live)
+2. Select **iPhone 16 Pro Max** → **Safari**
+3. Enter URL: `jpsrealtor.com`
+4. Click **DevTools** button
+5. Run same diagnostic commands
+
+### What We're Looking For
+
+✅ **If meta tags DO update**:
+- Problem is likely CSS/safe-area related
+- Browser gets the right instructions but can't apply them
+- Solution: Add Tailwind safe-area plugin + viewport-fit
+
+❌ **If meta tags DON'T update**:
+- Problem is JavaScript/React related
+- ThemeContext isn't calling browser APIs
+- Solution: Add MetaThemeManager component
+
+⚠️ **If it's intermittent**:
+- Timing issue (race condition)
+- Service worker caching issue
+- Solution: Add proper lifecycle management
+
+---
+
+## Current Implementation (Before Fixes)
 
 ### 1. Static Meta Tag in Layout
 **File**: `src/app/layout.tsx`
@@ -92,7 +274,146 @@ const [currentTheme, setCurrentTheme] = useState('lightgradient');
 
 ## Solution Architecture
 
-### Phase 1: Dynamic Meta Tag Management
+### Phase 1: Install Tailwind Safe Area Plugin
+
+**CRITICAL**: Must be done BEFORE other fixes for Dynamic Island support
+
+#### 1.1 Install Plugin
+
+```bash
+npm install tailwindcss-safe-area
+```
+
+#### 1.2 Configure Tailwind
+
+**File**: `tailwind.config.ts`
+
+```typescript
+import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
+import safeArea from 'tailwindcss-safe-area'; // ✅ Add this
+
+export default {
+  darkMode: ["class", "class"],
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      // ✅ Add safe area utilities
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      // Existing colors, fonts, etc...
+    },
+  },
+  plugins: [
+    typography,
+    require("tailwindcss-animate"),
+    safeArea, // ✅ Add this
+  ],
+} satisfies Config;
+```
+
+#### 1.3 Update viewport Meta Tag
+
+**File**: `src/app/layout.tsx`
+
+Find the existing viewport meta tag and add `viewport-fit=cover`:
+
+```typescript
+export const metadata: Metadata = {
+  // ... existing metadata ...
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+    viewportFit: 'cover', // ✅ CRITICAL for Dynamic Island
+  },
+  // ... rest of metadata ...
+}
+```
+
+**Or if using Next.js 14+**, add to `layout.tsx` head:
+
+```typescript
+<head>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover"
+  />
+</head>
+```
+
+#### 1.4 Use Safe Area Classes
+
+Now you can use Tailwind classes for Dynamic Island:
+
+```tsx
+// Fixed header that respects Dynamic Island
+<header className="fixed top-0 w-full pt-safe-top bg-white">
+  <nav className="px-safe-left px-safe-right">
+    {/* Header content */}
+  </nav>
+</header>
+
+// Bottom navigation that respects home indicator
+<nav className="fixed bottom-0 w-full pb-safe-bottom bg-white">
+  {/* Nav items */}
+</nav>
+
+// Full viewport height accounting for safe areas
+<div className="h-screen pb-safe-bottom pt-safe-top">
+  {/* Content */}
+</div>
+```
+
+#### 1.5 Alternative: Manual Safe Area CSS
+
+If you prefer not to use a plugin, add to `globals.css`:
+
+```css
+/* Safe area CSS variables */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+}
+
+/* Utility classes */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Combined safe areas */
+.p-safe {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+```
+
+---
+
+### Phase 2: Dynamic Meta Tag Management
 
 #### 1.1 Create MetaThemeManager Component
 
