@@ -229,6 +229,13 @@ export default function ChatWidget() {
                   const jsonStr = line.substring(6); // Remove "data: " prefix
                   const data = JSON.parse(jsonStr);
 
+                  if (data.content) {
+                    // Full content received (e.g., from commands like /help)
+                    fullText = data.content;
+                    setStreamingText(fullText);
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }
+
                   if (data.token) {
                     // Append token to displayed text in real-time
                     fullText += data.token;
@@ -440,6 +447,11 @@ export default function ChatWidget() {
                 try {
                   const jsonStr = line.substring(6);
                   const data = JSON.parse(jsonStr);
+
+                  if (data.content) {
+                    // Full content received (e.g., from commands)
+                    fullText = data.content;
+                  }
 
                   if (data.token) {
                     fullText += data.token;

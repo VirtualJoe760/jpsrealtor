@@ -6,6 +6,7 @@ import Groq from "groq-sdk";
 import { ALL_TOOLS } from "@/lib/chat-v2/tools";
 import { SYSTEM_PROMPT } from "@/lib/chat-v2/system-prompt";
 import { streamWithToolSupport, getSSEHeaders } from "@/lib/chat-v2/streaming";
+import { detectCommand, getCommandResponse } from "@/lib/chat-v2/commands";
 import type { ChatRequest, ChatMessage } from "@/lib/chat-v2/types";
 
 // Initialize Groq client
@@ -37,6 +38,36 @@ export async function POST(req: NextRequest) {
       locationSnapshot,
       lastMessage: messages[messages.length - 1]?.content?.substring(0, 100)
     });
+
+    // Check if the last message is a command (e.g., "help", "/help")
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === "user") {
+      const command = detectCommand(lastMessage.content);
+
+      if (command) {
+        console.log("[Chat V2] Command detected:", command);
+
+        const commandResponse = getCommandResponse(command);
+
+        // Create streaming response with markdown content
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            // Send the markdown content as a single chunk
+            const chunk = `data: ${JSON.stringify({ content: commandResponse })}\n\n`;
+            controller.enqueue(encoder.encode(chunk));
+
+            // Send done event
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+            controller.close();
+          }
+        });
+
+        return new NextResponse(stream, {
+          headers: getSSEHeaders()
+        });
+      }
+    }
 
     // Build full message array with system prompt
     let systemPrompt = SYSTEM_PROMPT;
