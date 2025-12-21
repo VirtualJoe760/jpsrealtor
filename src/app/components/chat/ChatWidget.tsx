@@ -42,7 +42,7 @@ export default function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const { messages, addMessage, clearMessages, setUnreadMessage } = useChatContext();
+  const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Map control for showing listings on background map
@@ -688,8 +688,17 @@ export default function ChatWidget() {
 
                       if (isMapVisibleState) {
                         console.log('🔔 [ChatWidget] Market Snapshot received while in map view - triggering notification');
+
+                        // Set notification badge
                         setUnreadMessage(true);
                         console.log('🔔 [ChatWidget] setUnreadMessage(true) called');
+
+                        // Set notification toast content
+                        setNotificationContent({
+                          message: cleanText,
+                          locationName
+                        });
+                        console.log('🔔 [ChatWidget] Notification toast content set');
 
                         // Play notification sound
                         try {

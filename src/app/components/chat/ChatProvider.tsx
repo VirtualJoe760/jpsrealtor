@@ -161,12 +161,19 @@ export interface ChatMessage {
   components?: ComponentData; // Structured component data
 }
 
+export interface NotificationContent {
+  message: string;
+  locationName: string;
+}
+
 interface ChatContextType {
   messages: ChatMessage[];
   addMessage: (content: string, role: "user" | "assistant", listings?: Listing[], components?: ComponentData) => void;
   clearMessages: () => void;
   hasUnreadMessage: boolean;
   setUnreadMessage: (unread: boolean) => void;
+  notificationContent: NotificationContent | null;
+  setNotificationContent: (content: NotificationContent | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -179,6 +186,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
+  const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
 
   // Load messages from sessionStorage on mount with expiration check
   useEffect(() => {
@@ -259,7 +267,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ChatContext.Provider value={{ messages, addMessage, clearMessages, hasUnreadMessage, setUnreadMessage }}>
+    <ChatContext.Provider value={{
+      messages,
+      addMessage,
+      clearMessages,
+      hasUnreadMessage,
+      setUnreadMessage,
+      notificationContent,
+      setNotificationContent
+    }}>
       {children}
     </ChatContext.Provider>
   );

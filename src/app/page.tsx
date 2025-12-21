@@ -10,6 +10,8 @@ import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import ChatWidget from "@/app/components/chat/ChatWidget";
+import { useChatContext } from "@/app/components/chat/ChatProvider";
+import NotificationToast from "@/app/components/NotificationToast";
 import MapLayer from "@/app/components/MapLayer";
 import MapSearchBar from "@/app/components/map/MapSearchBar";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
@@ -54,6 +56,8 @@ function HomeContent() {
     loadListings,
     swipeQueue,
   } = useMLSContext();
+
+  const { notificationContent, setNotificationContent, setUnreadMessage } = useChatContext();
 
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
@@ -292,6 +296,19 @@ function HomeContent() {
       subdivision: "",
     };
     handleApplyFilters(defaultFilters);
+  };
+
+  // Notification toast handlers
+  const handleDismissNotification = () => {
+    setNotificationContent(null);
+  };
+
+  const handleClickNotification = () => {
+    // Switch to chat view
+    hideMap();
+    // Clear notification badge and toast
+    setUnreadMessage(false);
+    setNotificationContent(null);
   };
 
   return (
@@ -636,6 +653,18 @@ function HomeContent() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notificationContent && (
+          <NotificationToast
+            message={notificationContent.message}
+            locationName={notificationContent.locationName}
+            onDismiss={handleDismissNotification}
+            onClick={handleClickNotification}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
