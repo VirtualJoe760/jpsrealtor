@@ -128,9 +128,11 @@ export function AppreciationContainer({
             setAvailableSubTypes(subtypes);
           }
 
-          // Set default selected subtype to first available if not already set
+          // Set default selected subtype to "Single Family Residence" if available, otherwise first available
           if (!selectedPropertySubType && subtypes.length > 0) {
-            setSelectedPropertySubType(subtypes[0]);
+            const preferredDefault = "Single Family Residence";
+            const defaultSubtype = subtypes.includes(preferredDefault) ? preferredDefault : subtypes[0];
+            setSelectedPropertySubType(defaultSubtype);
           }
         }
       } catch (err: any) {
