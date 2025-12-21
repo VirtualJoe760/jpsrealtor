@@ -53,7 +53,8 @@ export default function MapSearchBar({
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLUListElement | null>(null);
-  
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingEnterRef = useRef<((results: SearchResult[]) => void) | null>(null);
 
 
   useEffect(() => {
@@ -63,26 +64,57 @@ export default function MapSearchBar({
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    const load = async () => {
-      if (query.length < 2) return setResults([]);
+  // Shared autocomplete fetch function
+  const fetchAutocomplete = async (searchQuery: string) => {
+    if (searchQuery.length < 2) {
+      setResults([]);
+      return [];
+    }
 
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        const json = await res.json();
-        setResults(json.results || []);
-        setShowDropdown(true);
-      } catch (err) {
-        console.error("Search failed:", err);
-        setResults([]);
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const json = await res.json();
+      const fetchedResults = json.results || [];
+      setResults(fetchedResults);
+      setShowDropdown(true);
+
+      // If Enter key is waiting for results, notify it
+      if (pendingEnterRef.current) {
+        pendingEnterRef.current(fetchedResults);
+        pendingEnterRef.current = null;
+      }
+
+      return fetchedResults;
+    } catch (err) {
+      console.error("Search failed:", err);
+      setResults([]);
+      if (pendingEnterRef.current) {
+        pendingEnterRef.current([]);
+        pendingEnterRef.current = null;
+      }
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout for autocomplete
+    timeoutRef.current = setTimeout(() => {
+      fetchAutocomplete(query);
+    }, 300);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
-
-    const delay = setTimeout(load, 300);
-    return () => clearTimeout(delay);
   }, [query]);
 
   // Debug: Log results
@@ -159,24 +191,42 @@ export default function MapSearchBar({
         return;
       }
 
-      // Otherwise, fetch geocode immediately (bypass autocomplete delay)
-      console.log('📍 [MapSearchBar] Enter pressed - fetching geocode for:', searchValue);
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchValue)}`);
-        const json = await res.json();
-        const geocodeResult = (json.results || []).find((r: SearchResult) => r.type === "geocode");
+      // No cached results - trigger autocomplete immediately and wait for results
+      console.log('📍 [MapSearchBar] Enter pressed - waiting for autocomplete to complete for:', searchValue);
 
+      // Clear the existing timeout and fetch immediately
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
+      // If already loading, wait for current request to complete
+      if (loading) {
+        console.log('📍 [MapSearchBar] Autocomplete already in progress, waiting...');
+        // Set up a promise that resolves when autocomplete completes
+        const autocompleteResults = await new Promise<SearchResult[]>((resolve) => {
+          pendingEnterRef.current = resolve;
+        });
+
+        const geocodeResult = autocompleteResults.find((r: SearchResult) => r.type === "geocode");
+        if (geocodeResult && geocodeResult.type === "geocode") {
+          console.log('📍 [MapSearchBar] Enter pressed - geocode found after waiting:', geocodeResult.label);
+          handleSelect(geocodeResult);
+        } else {
+          console.log('⚠️ [MapSearchBar] Enter pressed - no geocode result found for:', searchValue);
+        }
+      } else {
+        // Not loading, fetch immediately
+        console.log('📍 [MapSearchBar] Fetching autocomplete immediately...');
+        const autocompleteResults = await fetchAutocomplete(searchValue);
+
+        const geocodeResult = autocompleteResults.find((r: SearchResult) => r.type === "geocode");
         if (geocodeResult && geocodeResult.type === "geocode") {
           console.log('📍 [MapSearchBar] Enter pressed - geocode found:', geocodeResult.label);
           handleSelect(geocodeResult);
         } else {
           console.log('⚠️ [MapSearchBar] Enter pressed - no geocode result found for:', searchValue);
         }
-      } catch (err) {
-        console.error("Enter search failed:", err);
-      } finally {
-        setLoading(false);
       }
     }
   };
