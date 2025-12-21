@@ -42,7 +42,7 @@ export default function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent } = useChatContext();
+  const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent, hasUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Map control for showing listings on background map
