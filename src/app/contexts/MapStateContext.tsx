@@ -68,7 +68,17 @@ interface MapStateProviderProps {
 }
 
 export function MapStateProvider({ children }: MapStateProviderProps) {
-  const [isMapVisible, setIsMapVisible] = useState(false);
+  // Initialize isMapVisible from sessionStorage (persists across refreshes/HMR)
+  const [isMapVisible, setIsMapVisible] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = sessionStorage.getItem('mapVisible');
+      return stored === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [viewState, setViewStateInternal] = useState<MapViewState | null>(null);
 
   const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
@@ -80,6 +90,16 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
   // Pending actions to be executed when map mounts
   const [pendingFlyTo, setPendingFlyTo] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
   const [pendingBounds, setPendingBounds] = useState<MapBounds | null>(null);
+
+  // Persist isMapVisible to sessionStorage on changes
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem('mapVisible', String(isMapVisible));
+    } catch (error) {
+      console.error('Failed to persist map visibility:', error);
+    }
+  }, [isMapVisible]);
 
   const setMapVisible = useCallback((visible: boolean) => {
     console.log('🗺️ [MapStateContext] Setting map visibility:', visible);

@@ -152,8 +152,8 @@ export function MLSProvider({ children }: { children: ReactNode }) {
 
   // Sync mapStyle with theme changes (unless user has manually selected satellite/toner)
   useEffect(() => {
-    // DEBUG: console.log('¨ MLSProvider - Theme changed to:', currentTheme);
-    // DEBUG: console.log('¨ MLSProvider - Current mapStyle:', mapStyle);
+    console.log('ðŸŽ¨ MLSProvider - Theme changed to:', currentTheme);
+    console.log('ðŸŽ¨ MLSProvider - Current mapStyle:', mapStyle);
 
     // Only auto-sync if using dark or bright (don't override satellite/toner)
     if (mapStyle === 'dark' || mapStyle === 'bright') {

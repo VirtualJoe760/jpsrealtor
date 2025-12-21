@@ -121,10 +121,10 @@ async function testAppreciation(options: TestOptions) {
     console.log(`   Cumulative:      ${result.appreciation.cumulative}%`);
     console.log(`   Trend:           ${result.appreciation.trend.toUpperCase()}`);
 
-    console.log(`\n=� Market Data:`);
-    console.log(`   Start Price:     $${result.marketData.startMedianPrice.toLocaleString()}`);
-    console.log(`   End Price:       $${result.marketData.endMedianPrice.toLocaleString()}`);
-    console.log(`   Price Change:    $${(result.marketData.endMedianPrice - result.marketData.startMedianPrice).toLocaleString()}`);
+    console.log(`\n📈 Market Data:`);
+    console.log(`   Start Price:     $${result.marketData.startAvgPrice.toLocaleString()}`);
+    console.log(`   End Price:       $${result.marketData.endAvgPrice.toLocaleString()}`);
+    console.log(`   Price Change:    $${(result.marketData.endAvgPrice - result.marketData.startAvgPrice).toLocaleString()}`);
     console.log(`   Total Sales:     ${result.marketData.totalSales.toLocaleString()}`);
     console.log(`   Confidence:      ${result.marketData.confidence.toUpperCase()}`);
 

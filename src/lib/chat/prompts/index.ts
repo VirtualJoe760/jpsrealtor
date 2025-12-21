@@ -93,4 +93,4 @@ export { buildBasePrompt } from './base';
 export { buildSourcesPrompt } from './sources';
 export { buildTextOnlyPrompt } from './text-only';
 export { buildLocationSnapshotPrompt } from './location-snapshot';
-export { isHelpCommand, getHelpContent, HELP_DIRECTORY, TOOLS_REFERENCE, EXAMPLES_GUIDE } from './help-commands';
+export { isHelpCommand, getHelpContent, TOOLS_REFERENCE, EXAMPLES_GUIDE } from './help-commands';

@@ -69,28 +69,38 @@ function HomeContent() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  // Check for view parameter on initial mount
+  // Check for view parameter on initial mount with conflict resolution
   useEffect(() => {
     const viewParam = searchParams?.get('view');
     const mapParam = searchParams?.get('map');
+    const urlWantsMap = viewParam === 'map' || mapParam === 'open';
 
-    if (viewParam === 'map' || mapParam === 'open') {
-      if (!isMapVisible) {
-        // Check URL for map coordinates
-        const latParam = searchParams?.get('lat');
-        const lngParam = searchParams?.get('lng');
-        const zoomParam = searchParams?.get('zoom');
+    // Conflict resolution: if URL and state disagree, state wins (user's last action)
+    // sessionStorage is already loaded into isMapVisible state
+    if (urlWantsMap && !isMapVisible) {
+      // URL wants map but state says hidden
+      // This means user closed map, then refreshed - respect their choice
+      console.log('🔧 [HomePage] URL/state conflict: Clearing stale ?view=map parameter');
+      router.replace('/', { scroll: false });
+    } else if (!urlWantsMap && isMapVisible) {
+      // State wants map but URL doesn't have it - sync URL
+      console.log('🔧 [HomePage] URL/state conflict: Adding missing ?view=map parameter');
+      router.replace('/?view=map', { scroll: false });
+    } else if (urlWantsMap && isMapVisible) {
+      // Both agree map should be visible - restore position if available
+      const latParam = searchParams?.get('lat');
+      const lngParam = searchParams?.get('lng');
+      const zoomParam = searchParams?.get('zoom');
 
-        if (latParam && lngParam && zoomParam) {
-          const lat = parseFloat(latParam);
-          const lng = parseFloat(lngParam);
-          const zoom = parseFloat(zoomParam);
-          console.log('🗺️ [HomePage] Restoring map view from URL:', { lat, lng, zoom });
-          showMapAtLocation(lat, lng, zoom);
-        } else {
-          // Show entire California on initial map load
-          showMapAtLocation(37.0, -119.5, 5);
-        }
+      if (latParam && lngParam && zoomParam) {
+        const lat = parseFloat(latParam);
+        const lng = parseFloat(lngParam);
+        const zoom = parseFloat(zoomParam);
+        console.log('🗺️ [HomePage] Restoring map view from URL:', { lat, lng, zoom });
+        showMapAtLocation(lat, lng, zoom);
+      } else {
+        // Show entire California on initial map load
+        showMapAtLocation(37.0, -119.5, 5);
       }
     }
 
@@ -104,11 +114,13 @@ function HomeContent() {
     const currentView = searchParams?.get('view');
 
     if (isMapVisible && currentView !== 'map') {
+      console.log('🔧 [HomePage] Syncing URL: Adding ?view=map');
       router.replace('/?view=map', { scroll: false });
     } else if (!isMapVisible && currentView === 'map') {
+      console.log('🔧 [HomePage] Syncing URL: Removing ?view=map');
       router.replace('/', { scroll: false });
     }
-  }, [isMapVisible, initialLoad]);
+  }, [isMapVisible, initialLoad, router, searchParams]);
 
   // Listen for map controls toggle event from ChatWidget
   useEffect(() => {
