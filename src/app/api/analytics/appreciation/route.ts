@@ -144,10 +144,12 @@ export async function GET(request: NextRequest) {
     // ========== RETURN RESPONSE ==========
 
     // Extract unique property subtypes for frontend tab display
+    // Filter out Duplex, Triplex as they're not commonly queried
     const propertySubTypes = [...new Set(
       sales
         .map(s => s.propertySubType)
         .filter(Boolean)
+        .filter(subType => !['Duplex', 'Triplex'].includes(subType))
     )].sort();
 
     return NextResponse.json({
