@@ -160,6 +160,47 @@ export function AppreciationContainer({
 
   // Error state
   if (error) {
+    // Check if it's a "no data" error vs a real error
+    const isNoDataError = error.includes('No closed sales found') || error.includes('no data');
+
+    if (isNoDataError) {
+      return (
+        <div className="w-full rounded-2xl p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+                Limited Historical Data
+              </h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                We don't have enough recent closed sales data for {location} to show appreciation trends. This could mean:
+              </p>
+              <ul className="text-sm text-blue-700 dark:text-blue-300 list-disc list-inside space-y-1">
+                <li>Properties rarely come on the market (exclusive area)</li>
+                <li>New development with limited sales history</li>
+                <li>Very small subdivision with few transactions</li>
+              </ul>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-3">
+                💡 Try asking me to show you current listings instead to see what's available now!
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="w-full rounded-2xl p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
         <div className="flex items-start gap-3">
