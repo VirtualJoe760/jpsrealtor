@@ -108,10 +108,18 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .join(" ");
     });
 
-    // Update theme-color meta tag for PWA/Dynamic Island
+    // Update theme-color meta tag for PWA/Dynamic Island (affects browser chrome)
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
       themeColorMeta.setAttribute('content', isLight ? '#ffffff' : '#000000');
+    }
+
+    // Update status bar style for iOS Safari/PWA
+    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (statusBarMeta) {
+      // 'default' = dark text on light background (light mode)
+      // 'black-translucent' = light text on dark/translucent background (dark mode)
+      statusBarMeta.setAttribute('content', isLight ? 'default' : 'black-translucent');
     }
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
