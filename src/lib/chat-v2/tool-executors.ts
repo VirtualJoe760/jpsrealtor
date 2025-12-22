@@ -120,8 +120,12 @@ async function executeSearchHomes(args: {
   // Fetch stats for AI response
   let stats = null;
   try {
-    // Use relative URL for server-side fetch (works in both dev and production)
-    const baseUrl = typeof window === 'undefined' ? 'http://localhost:3000' : '';
+    // Use proper base URL for both dev and production
+    const baseUrl = typeof window === 'undefined'
+      ? (process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000')
+      : '';
     let apiUrl = '';
 
     if (entityResult.type === 'subdivision') {
