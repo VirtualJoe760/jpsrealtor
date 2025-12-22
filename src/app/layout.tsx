@@ -61,6 +61,7 @@ export const metadata: Metadata = {
   creator: "Joseph Sardella",
   publisher: "JPS Realtor",
   manifest: "/manifest.json",
+  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -132,11 +133,10 @@ export default async function RootLayout({
         {/* PWA Meta Tags - Theme aware for Dynamic Island support */}
         <meta name="application-name" content="JP Realtor" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* theme-color and statusBarStyle handled by metadata object above */}
         <meta name="apple-mobile-web-app-title" content="JP Realtor" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#000000" />
 
         {/* Apple Touch Icons */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
