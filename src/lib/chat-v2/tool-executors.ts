@@ -140,7 +140,16 @@ async function executeSearchHomes(args: {
       await dbConnect();
 
       // Build MongoDB query based on entity type
-      const dbQuery: any = {};
+      const dbQuery: any = {
+        // CRITICAL FILTERS: Only active residential sales (no rentals, no sold/pending)
+        standardStatus: "Active",
+        // Type A = Residential Sale (houses, condos, townhomes)
+        // Type B = Rentals (this was causing $1,750 rental to appear!)
+        // Type C = Multifamily, Type D = Land
+        propertyType: "A",
+        // Exclude Co-Ownership/Timeshares (these have weird pricing)
+        propertySubType: { $nin: ["Co-Ownership", "Timeshare"] }
+      };
 
       if (entityResult.type === 'subdivision') {
         // Case-insensitive subdivision match
@@ -158,7 +167,11 @@ async function executeSearchHomes(args: {
       if (filterArgs.beds) dbQuery.bedroomsTotal = filterArgs.beds;
       if (filterArgs.baths) dbQuery.bathroomsTotalInteger = filterArgs.baths;
       if (filterArgs.pool) dbQuery.poolYn = true;
+      // Don't override propertyType if user doesn't specify (we already set it to "A")
       if (filterArgs.propertyType) dbQuery.propertyType = filterArgs.propertyType;
+
+      // Log the full query for debugging
+      console.log(`[searchHomes] Database query:`, JSON.stringify(dbQuery, null, 2));
 
       // Get total count
       const totalListings = await Listing.countDocuments(dbQuery);
