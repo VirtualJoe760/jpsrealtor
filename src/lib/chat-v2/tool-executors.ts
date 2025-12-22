@@ -122,9 +122,9 @@ async function executeSearchHomes(args: {
   try {
     // Use proper base URL for both dev and production
     const baseUrl = typeof window === 'undefined'
-      ? (process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
+      ? (process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000')
+        : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
       : '';
     let apiUrl = '';
 
