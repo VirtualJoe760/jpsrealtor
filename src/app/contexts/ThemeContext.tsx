@@ -111,29 +111,34 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     });
 
     // Update theme-color meta tag for PWA/Dynamic Island (affects browser chrome)
-    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (!themeColorMeta) {
-      // Create if doesn't exist
-      themeColorMeta = document.createElement('meta');
-      themeColorMeta.setAttribute('name', 'theme-color');
-      document.head.appendChild(themeColorMeta);
-    }
+    // Force iOS to re-read by removing and re-adding the meta tag
     const themeColor = isLight ? '#ffffff' : '#000000';
+    const statusBarStyle = isLight ? 'default' : 'black-translucent';
+
+    // Remove existing theme-color meta tag
+    const existingThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (existingThemeColor) {
+      existingThemeColor.remove();
+    }
+
+    // Create fresh theme-color meta tag
+    const themeColorMeta = document.createElement('meta');
+    themeColorMeta.setAttribute('name', 'theme-color');
     themeColorMeta.setAttribute('content', themeColor);
+    document.head.appendChild(themeColorMeta);
     console.log('[ThemeContext] Set theme-color:', themeColor);
 
-    // Update status bar style for iOS Safari/PWA
-    let statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (!statusBarMeta) {
-      // Create if doesn't exist
-      statusBarMeta = document.createElement('meta');
-      statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-      document.head.appendChild(statusBarMeta);
+    // Remove existing status bar style meta tag
+    const existingStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (existingStatusBar) {
+      existingStatusBar.remove();
     }
-    // 'default' = dark text on light background (light mode)
-    // 'black-translucent' = light text on dark/translucent background (dark mode)
-    const statusBarStyle = isLight ? 'default' : 'black-translucent';
+
+    // Create fresh status bar style meta tag
+    const statusBarMeta = document.createElement('meta');
+    statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
     statusBarMeta.setAttribute('content', statusBarStyle);
+    document.head.appendChild(statusBarMeta);
     console.log('[ThemeContext] Set statusBarStyle:', statusBarStyle);
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
