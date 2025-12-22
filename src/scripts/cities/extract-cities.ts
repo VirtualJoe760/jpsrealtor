@@ -2,7 +2,7 @@
 // Extract all cities from GPS and CRMLS listings and aggregate their data
 
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 import { City } from "../../models/cities";
 import Subdivision from "../../models/subdivisions";
@@ -57,7 +57,7 @@ async function extractCities() {
 
     // Aggregate GPS MLS cities
     console.log("📊 Aggregating GPS MLS cities...");
-    const gpsCities = await Listing.aggregate([
+    const gpsCities = await UnifiedListing.aggregate([
       {
         $match: {
           standardStatus: "Active",
