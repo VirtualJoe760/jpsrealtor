@@ -4,6 +4,8 @@
 import { identifyEntityType } from "../chat/utils/entity-recognition";
 import { trackToolUsage } from "./user-analytics";
 import type { UserBehaviorEvent } from "./types";
+import dbConnect from "@/lib/mongodb";
+import Listing from "@/models/listings";
 
 /**
  * Execute a tool call and return the result
@@ -125,52 +127,106 @@ async function executeSearchHomes(args: {
     console.warn(`[searchHomes] ⚠️ No listings API for type "${entityResult.type}". Skipping stats fetch.`);
   }
 
-  // Fetch stats for AI response
+  // Fetch stats for AI response using DIRECT DATABASE QUERY
+  // This avoids server-to-server HTTP calls which can fail/timeout on production
   let stats = null;
 
   // Only fetch stats if we have a listings API for this type
   if (hasListingsAPI) {
     try {
-      // Use proper base URL for both dev and production
-      const baseUrl = typeof window === 'undefined'
-        ? (process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
-        : '';
-      let apiUrl = '';
+      console.log(`[searchHomes] Fetching stats directly from database...`);
+
+      // Connect to MongoDB
+      await dbConnect();
+
+      // Build MongoDB query based on entity type
+      const dbQuery: any = {};
 
       if (entityResult.type === 'subdivision') {
-        const subdivisionSlug = entityResult.value.toLowerCase().replace(/\s+/g, '-');
-        apiUrl = `${baseUrl}/api/subdivisions/${subdivisionSlug}/listings`;
+        // Case-insensitive subdivision match
+        dbQuery.subdivisionName = new RegExp(`^${entityResult.value}$`, 'i');
+        console.log(`[searchHomes] Querying subdivision: ${entityResult.value}`);
       } else if (entityResult.type === 'city') {
-        const cityId = entityResult.value.toLowerCase().replace(/\s+/g, '-');
-        apiUrl = `${baseUrl}/api/cities/${cityId}/listings`;
+        // Case-insensitive city match
+        dbQuery.city = new RegExp(`^${entityResult.value}$`, 'i');
+        console.log(`[searchHomes] Querying city: ${entityResult.value}`);
       }
 
-      if (apiUrl) {
-      // Add filters to query
-      const params = new URLSearchParams({ limit: '1' }); // Only need stats, not listings
-      Object.entries(filterArgs).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, String(value));
-        }
-      });
+      // Apply any additional filters from user query
+      if (filterArgs.minPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $gte: filterArgs.minPrice };
+      if (filterArgs.maxPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $lte: filterArgs.maxPrice };
+      if (filterArgs.beds) dbQuery.bedroomsTotal = filterArgs.beds;
+      if (filterArgs.baths) dbQuery.bathroomsTotalInteger = filterArgs.baths;
+      if (filterArgs.pool) dbQuery.poolYn = true;
+      if (filterArgs.propertyType) dbQuery.propertyType = filterArgs.propertyType;
 
-      const fullUrl = `${apiUrl}?${params.toString()}`;
-      console.log(`[searchHomes] Fetching stats from: ${fullUrl}`);
+      // Get total count
+      const totalListings = await Listing.countDocuments(dbQuery);
+      console.log(`[searchHomes] Found ${totalListings} listings`);
 
-      const response = await fetch(fullUrl);
-      if (response.ok) {
-        const data = await response.json();
-        stats = data.stats;
-        console.log(`[searchHomes] Stats fetched:`, JSON.stringify(stats, null, 2));
+      if (totalListings > 0) {
+        // Get listings for calculating stats
+        const listings = await Listing.find(dbQuery)
+          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger')
+          .lean()
+          .exec();
+
+        // Calculate price statistics
+        const prices = listings.map(l => l.listPrice).filter(Boolean);
+        const sortedPrices = [...prices].sort((a, b) => a - b);
+
+        // Calculate property type breakdown
+        const propertyTypeCounts: Record<string, number> = {};
+        listings.forEach(listing => {
+          if (listing.propertyType) {
+            propertyTypeCounts[listing.propertyType] = (propertyTypeCounts[listing.propertyType] || 0) + 1;
+          }
+        });
+
+        const propertyTypes = Object.entries(propertyTypeCounts).map(([type, count]) => ({
+          type,
+          count,
+          avgPrice: listings
+            .filter(l => l.propertyType === type && l.listPrice)
+            .reduce((sum, l) => sum + (l.listPrice || 0), 0) / count,
+          avgSqft: listings
+            .filter(l => l.propertyType === type && l.livingArea)
+            .reduce((sum, l) => sum + (l.livingArea || 0), 0) / count
+        }));
+
+        stats = {
+          totalListings,
+          avgPrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
+          medianPrice: sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0,
+          priceRange: {
+            min: prices.length > 0 ? Math.min(...prices) : 0,
+            max: prices.length > 0 ? Math.max(...prices) : 0
+          },
+          propertyTypes
+        };
+
+        console.log(`[searchHomes] Stats calculated:`, JSON.stringify(stats, null, 2));
       } else {
-        console.error(`[searchHomes] Stats fetch failed: ${response.status}`);
-      }
+        // No listings found - return empty stats
+        stats = {
+          totalListings: 0,
+          avgPrice: 0,
+          medianPrice: 0,
+          priceRange: { min: 0, max: 0 },
+          propertyTypes: []
+        };
+        console.log(`[searchHomes] No listings found, returning empty stats`);
       }
     } catch (error) {
-      console.error(`[searchHomes] Error fetching stats:`, error);
-      // Continue without stats - not critical
+      console.error(`[searchHomes] Error querying database:`, error);
+      // Continue without stats - not critical, but log the error
+      stats = {
+        totalListings: 0,
+        avgPrice: 0,
+        medianPrice: 0,
+        priceRange: { min: 0, max: 0 },
+        propertyTypes: []
+      };
     }
   }
 
