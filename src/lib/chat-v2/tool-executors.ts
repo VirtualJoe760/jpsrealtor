@@ -117,26 +117,37 @@ async function executeSearchHomes(args: {
 
   console.log(`[searchHomes] Location: ${location}, Type: ${entityResult.type}, Normalized: ${entityResult.value}`);
 
+  // Only city and subdivision types have listing APIs
+  // For other types (county, region, general, listing), we can't fetch neighborhood listings
+  const hasListingsAPI = entityResult.type === 'city' || entityResult.type === 'subdivision';
+
+  if (!hasListingsAPI) {
+    console.warn(`[searchHomes] ⚠️ No listings API for type "${entityResult.type}". Skipping stats fetch.`);
+  }
+
   // Fetch stats for AI response
   let stats = null;
-  try {
-    // Use proper base URL for both dev and production
-    const baseUrl = typeof window === 'undefined'
-      ? (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
-      : '';
-    let apiUrl = '';
 
-    if (entityResult.type === 'subdivision') {
-      const subdivisionSlug = entityResult.value.toLowerCase().replace(/\s+/g, '-');
-      apiUrl = `${baseUrl}/api/subdivisions/${subdivisionSlug}/listings`;
-    } else if (entityResult.type === 'city') {
-      const cityId = entityResult.value.toLowerCase().replace(/\s+/g, '-');
-      apiUrl = `${baseUrl}/api/cities/${cityId}/listings`;
-    }
+  // Only fetch stats if we have a listings API for this type
+  if (hasListingsAPI) {
+    try {
+      // Use proper base URL for both dev and production
+      const baseUrl = typeof window === 'undefined'
+        ? (process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
+        : '';
+      let apiUrl = '';
 
-    if (apiUrl) {
+      if (entityResult.type === 'subdivision') {
+        const subdivisionSlug = entityResult.value.toLowerCase().replace(/\s+/g, '-');
+        apiUrl = `${baseUrl}/api/subdivisions/${subdivisionSlug}/listings`;
+      } else if (entityResult.type === 'city') {
+        const cityId = entityResult.value.toLowerCase().replace(/\s+/g, '-');
+        apiUrl = `${baseUrl}/api/cities/${cityId}/listings`;
+      }
+
+      if (apiUrl) {
       // Add filters to query
       const params = new URLSearchParams({ limit: '1' }); // Only need stats, not listings
       Object.entries(filterArgs).forEach(([key, value]) => {
@@ -156,10 +167,11 @@ async function executeSearchHomes(args: {
       } else {
         console.error(`[searchHomes] Stats fetch failed: ${response.status}`);
       }
+      }
+    } catch (error) {
+      console.error(`[searchHomes] Error fetching stats:`, error);
+      // Continue without stats - not critical
     }
-  } catch (error) {
-    console.error(`[searchHomes] Error fetching stats:`, error);
-    // Continue without stats - not critical
   }
 
   // Build filters object from all provided arguments
@@ -216,43 +228,63 @@ async function executeSearchHomes(args: {
 
   // Return neighborhood identifier for component-first architecture
   // Frontend SubdivisionListings / CityListings component will fetch its own data
-  return {
-    success: true,
-    data: {
-      component: "neighborhood",
-      neighborhood: {
-        type: entityResult.type,
-        name: location,
-        normalizedName: entityResult.value,
-        // For subdivision queries
-        ...(entityResult.type === "subdivision" && {
-          subdivisionSlug: entityResult.value.toLowerCase().replace(/\s+/g, "-")
-        }),
-        // For city queries
-        ...(entityResult.type === "city" && {
-          cityId: entityResult.value.toLowerCase().replace(/\s+/g, "-")
-        }),
-        // For county queries
-        ...(entityResult.type === "county" && {
-          countyId: entityResult.value.toLowerCase().replace(/\s+/g, "-")
-        }),
-        filters
-      },
-      location: {
-        name: location,
-        type: entityResult.type,
-        normalized: entityResult.value
-      },
-      // Include stats for AI to generate better responses
-      stats: stats || {
-        totalListings: 0,
-        avgPrice: 0,
-        medianPrice: 0,
-        priceRange: { min: 0, max: 0 },
-        propertyTypes: []
+  // Only return neighborhood component for supported types (city, subdivision)
+  if (hasListingsAPI) {
+    return {
+      success: true,
+      data: {
+        component: "neighborhood",
+        neighborhood: {
+          type: entityResult.type,
+          name: location,
+          normalizedName: entityResult.value,
+          // For subdivision queries
+          ...(entityResult.type === "subdivision" && {
+            subdivisionSlug: entityResult.value.toLowerCase().replace(/\s+/g, "-")
+          }),
+          // For city queries
+          ...(entityResult.type === "city" && {
+            cityId: entityResult.value.toLowerCase().replace(/\s+/g, "-")
+          }),
+          filters
+        },
+        location: {
+          name: location,
+          type: entityResult.type,
+          normalized: entityResult.value
+        },
+        // Include stats for AI to generate better responses
+        stats: stats || {
+          totalListings: 0,
+          avgPrice: 0,
+          medianPrice: 0,
+          priceRange: { min: 0, max: 0 },
+          propertyTypes: []
+        }
       }
-    }
-  };
+    };
+  } else {
+    // For unsupported types (county, region, general, listing), just return location info
+    // AI will respond without trying to show a listings component
+    return {
+      success: true,
+      data: {
+        location: {
+          name: location,
+          type: entityResult.type,
+          normalized: entityResult.value
+        },
+        // Return empty stats so AI knows there are no listings available
+        stats: {
+          totalListings: 0,
+          avgPrice: 0,
+          medianPrice: 0,
+          priceRange: { min: 0, max: 0 },
+          propertyTypes: []
+        }
+      }
+    };
+  }
 }
 
 // =========================================================================
