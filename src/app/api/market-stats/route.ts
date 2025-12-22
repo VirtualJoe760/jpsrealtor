@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import Listing from '@/models/listings';
+import UnifiedListing from '@/models/unified-listing';
 import { CRMLSListing } from '@/models/crmls-listings';
 import { GPSClosedListing } from '@/models/gps-closed-listings';
 import { CRMLSClosedListing } from '@/models/crmls-closed-listings';

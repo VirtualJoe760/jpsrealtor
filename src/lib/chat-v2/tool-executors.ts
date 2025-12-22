@@ -5,7 +5,7 @@ import { identifyEntityType } from "../chat/utils/entity-recognition";
 import { trackToolUsage } from "./user-analytics";
 import type { UserBehaviorEvent } from "./types";
 import dbConnect from "@/lib/mongodb";
-import Listing from "@/models/listings";
+import UnifiedListing from "@/models/unified-listing";
 
 /**
  * Execute a tool call and return the result
@@ -174,12 +174,12 @@ async function executeSearchHomes(args: {
       console.log(`[searchHomes] Database query:`, JSON.stringify(dbQuery, null, 2));
 
       // Get total count
-      const totalListings = await Listing.countDocuments(dbQuery);
+      const totalListings = await UnifiedListing.countDocuments(dbQuery);
       console.log(`[searchHomes] Found ${totalListings} listings`);
 
       if (totalListings > 0) {
         // Get listings for calculating stats
-        const listings = await Listing.find(dbQuery)
+        const listings = await UnifiedListing.find(dbQuery)
           .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger')
           .lean()
           .exec();

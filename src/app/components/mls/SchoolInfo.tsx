@@ -2,10 +2,10 @@
 "use client";
 
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
-import { IListing } from '@/models/listings';
+import { IUnifiedListing } from '@/models/unified-listing';
 
 interface Props {
-  listing: IListing;
+  listing: IUnifiedListing;
   className?: string;
 }
 

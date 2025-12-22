@@ -5,7 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import dbConnect from '@/lib/mongoose'
-import { Listing } from '@/models/listings'
+import UnifiedListing from '@/models/unified-listing'
 import { CRMLSListing } from '@/models/crmls-listings'
 
 const baseUrl = 'https://jpsrealtor.com'
@@ -138,7 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await dbConnect()
 
     // Fetch GPS listings with slugAddress
-    const gpsListings = await Listing.find(
+    const gpsListings = await UnifiedListing.find(
       { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
       { slugAddress: 1, modificationTimestamp: 1 }
     )
