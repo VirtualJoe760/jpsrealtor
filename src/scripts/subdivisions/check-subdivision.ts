@@ -2,7 +2,7 @@
 import { config } from "dotenv";
 import * as path from "path";
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 
 const envPath = path.join(__dirname, "../../../.env.local");
@@ -24,7 +24,7 @@ async function checkSubdivision() {
   console.log(`\n🔍 Checking "${subdivisionName}" in ${city}...\n`);
 
   // GPS listings
-  const gpsListings = await Listing.find({
+  const gpsListings = await UnifiedListing.find({
     subdivisionName: { $regex: new RegExp(`^${subdivisionName}$`, "i") },
     city,
     standardStatus: "Active",
@@ -73,7 +73,7 @@ async function checkSubdivision() {
   }
 
   // Check for listings with photos - GPS
-  const gpsWithPhotos = await Listing.find({
+  const gpsWithPhotos = await UnifiedListing.find({
     subdivisionName: { $regex: new RegExp(`^${subdivisionName}$`, "i") },
     city,
     standardStatus: "Active",

@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import * as path from "path";
 import * as fs from "fs";
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 
 // Load environment variables
@@ -66,7 +66,7 @@ async function assignPhotos() {
 
       // Strategy 1: Exact match on subdivisionName and city
       if (sub.mlsSources.includes("GPS")) {
-        listing = await Listing.findOne({
+        listing = await UnifiedListing.findOne({
           subdivisionName: sub.name,
           city: sub.city,
           standardStatus: "Active",
@@ -89,7 +89,7 @@ async function assignPhotos() {
 
       // Strategy 2: Case-insensitive regex match
       if (!listing && sub.mlsSources.includes("GPS")) {
-        listing = await Listing.findOne({
+        listing = await UnifiedListing.findOne({
           subdivisionName: { $regex: new RegExp(`^${escapeRegex(sub.name)}$`, "i") },
           city: { $regex: new RegExp(`^${escapeRegex(sub.city)}$`, "i") },
           standardStatus: "Active",
@@ -115,7 +115,7 @@ async function assignPhotos() {
         const cityName = sub.name.replace("Non-HOA ", "");
 
         if (sub.mlsSources.includes("GPS")) {
-          listing = await Listing.findOne({
+          listing = await UnifiedListing.findOne({
             city: { $regex: new RegExp(`^${escapeRegex(cityName)}$`, "i") },
             standardStatus: "Active",
             primaryPhotoUrl: { $exists: true, $nin: [null, ""] },

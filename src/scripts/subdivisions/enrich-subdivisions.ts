@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import * as path from "path";
 import * as fs from "fs";
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 
 // Load environment variables
@@ -210,7 +210,7 @@ async function enrichSubdivisions() {
         let listing = null;
 
         if (sub.mlsSources.includes("GPS")) {
-          listing = await Listing.findOne({
+          listing = await UnifiedListing.findOne({
             subdivisionName: { $regex: new RegExp(`^${sub.name}$`, "i") },
             city: sub.city,
             standardStatus: "Active",

@@ -2,7 +2,7 @@
 // Extract all unique subdivisions from GPS and CRMLS listings
 
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 import Subdivision from "../../models/subdivisions";
 import * as fs from "fs";
@@ -238,7 +238,7 @@ async function extractSubdivisions() {
 
     // Aggregation to get subdivisions from GPS MLS
     console.log("\n📊 Aggregating GPS MLS subdivisions...");
-    const gpsSubdivisions = await Listing.aggregate([
+    const gpsSubdivisions = await UnifiedListing.aggregate([
       {
         $match: {
           standardStatus: "Active",

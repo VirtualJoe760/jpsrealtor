@@ -1,13 +1,13 @@
 // src/scripts/testListingModel.ts
 import dbConnect from "@/lib/mongoose";
-import { Listing } from "@/models/listings";
+import UnifiedListing from "@/models/unified-listing";
 import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 
 async function testListingModel() {
   await dbConnect();
 
-  const sample = await Listing.findOne({}, null, { lean: true });
+  const sample = await UnifiedListing.findOne({}, null, { lean: true });
   if (!sample) {
     console.error("❌ No listings found in the database.");
     return;

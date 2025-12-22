@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import * as path from "path";
 import * as fs from "fs";
 import mongoose from "mongoose";
-import { Listing } from "../../models/listings";
+import UnifiedListing from "../../models/unified-listing";
 import { CRMLSListing } from "../../models/crmls-listings";
 import { fetchListingPhotos } from "../../app/utils/spark/photos";
 
@@ -140,7 +140,7 @@ async function getHOAData(sub: MergedSubdivision) {
 
   try {
     if (sub.mlsSources.includes("GPS")) {
-      const gpsListings = await Listing.find({
+      const gpsListings = await UnifiedListing.find({
         subdivisionName: sub.name,
         city: sub.city,
         standardStatus: "Active",
@@ -213,7 +213,7 @@ async function fetchPhotoFromSparkAPI(sub: MergedSubdivision): Promise<string | 
     let listing: any = null;
 
     if (sub.mlsSources.includes("GPS")) {
-      listing = await Listing.findOne({
+      listing = await UnifiedListing.findOne({
         subdivisionName: sub.name,
         city: sub.city,
         standardStatus: "Active",
