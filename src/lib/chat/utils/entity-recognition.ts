@@ -49,8 +49,10 @@ const KNOWN_SUBDIVISIONS = [
 
 /**
  * Known cities in our service area
+ * Expanded to include all major California markets we have listings for
  */
 const KNOWN_CITIES = [
+  // Coachella Valley
   "palm desert",
   "la quinta",
   "indian wells",
@@ -64,6 +66,42 @@ const KNOWN_CITIES = [
   "bermuda dunes",
   "thermal",
   "mecca",
+  // San Diego County
+  "san diego",
+  "carlsbad",
+  "oceanside",
+  "encinitas",
+  "del mar",
+  "solana beach",
+  "escondido",
+  "chula vista",
+  "coronado",
+  // Orange County
+  "irvine",
+  "newport beach",
+  "laguna beach",
+  "huntington beach",
+  "costa mesa",
+  "anaheim",
+  "orange",
+  "santa ana",
+  // Los Angeles County
+  "los angeles",
+  "long beach",
+  "pasadena",
+  "santa monica",
+  "beverly hills",
+  "malibu",
+  // Riverside County (outside Coachella Valley)
+  "riverside",
+  "corona",
+  "temecula",
+  "murrieta",
+  // San Bernardino County
+  "san bernardino",
+  "yucca valley",
+  "twentynine palms",
+  "joshua tree",
 ];
 
 /**
