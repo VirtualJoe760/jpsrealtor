@@ -110,36 +110,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .join(" ");
     });
 
-    // Update theme-color meta tag for PWA/Dynamic Island (affects browser chrome)
-    // Force iOS to re-read by removing and re-adding the meta tag
-    const themeColor = isLight ? '#ffffff' : '#000000';
-    const statusBarStyle = isLight ? 'default' : 'black-translucent';
-
-    // Remove existing theme-color meta tag
-    const existingThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (existingThemeColor) {
-      existingThemeColor.remove();
-    }
-
-    // Create fresh theme-color meta tag
-    const themeColorMeta = document.createElement('meta');
-    themeColorMeta.setAttribute('name', 'theme-color');
-    themeColorMeta.setAttribute('content', themeColor);
-    document.head.appendChild(themeColorMeta);
-    console.log('[ThemeContext] Set theme-color:', themeColor);
-
-    // Remove existing status bar style meta tag
-    const existingStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (existingStatusBar) {
-      existingStatusBar.remove();
-    }
-
-    // Create fresh status bar style meta tag
-    const statusBarMeta = document.createElement('meta');
-    statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-    statusBarMeta.setAttribute('content', statusBarStyle);
-    document.head.appendChild(statusBarMeta);
-    console.log('[ThemeContext] Set statusBarStyle:', statusBarStyle);
+    // Browser chrome stays black (handled by static meta tags in layout.tsx)
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
