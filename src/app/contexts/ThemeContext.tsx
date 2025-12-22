@@ -93,6 +93,8 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     const root = document.documentElement;
     const isLight = currentTheme === 'lightgradient';
 
+    console.log('[ThemeContext] Applying theme:', currentTheme, '| isLight:', isLight);
+
     // Apply CSS variables
     Object.entries(theme.colors).forEach(([key, value]) => {
       root.style.setProperty(`--color-${key}`, value);
@@ -109,18 +111,30 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     });
 
     // Update theme-color meta tag for PWA/Dynamic Island (affects browser chrome)
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', isLight ? '#ffffff' : '#000000');
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeColorMeta) {
+      // Create if doesn't exist
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeColorMeta);
     }
+    const themeColor = isLight ? '#ffffff' : '#000000';
+    themeColorMeta.setAttribute('content', themeColor);
+    console.log('[ThemeContext] Set theme-color:', themeColor);
 
     // Update status bar style for iOS Safari/PWA
-    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (statusBarMeta) {
-      // 'default' = dark text on light background (light mode)
-      // 'black-translucent' = light text on dark/translucent background (dark mode)
-      statusBarMeta.setAttribute('content', isLight ? 'default' : 'black-translucent');
+    let statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (!statusBarMeta) {
+      // Create if doesn't exist
+      statusBarMeta = document.createElement('meta');
+      statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+      document.head.appendChild(statusBarMeta);
     }
+    // 'default' = dark text on light background (light mode)
+    // 'black-translucent' = light text on dark/translucent background (dark mode)
+    const statusBarStyle = isLight ? 'default' : 'black-translucent';
+    statusBarMeta.setAttribute('content', statusBarStyle);
+    console.log('[ThemeContext] Set statusBarStyle:', statusBarStyle);
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
