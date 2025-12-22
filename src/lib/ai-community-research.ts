@@ -39,11 +39,11 @@ export async function analyzeListingsForFacts(
     throw new Error(`Subdivision ${subdivisionName} not found`);
   }
 
-  // Import Listing model dynamically to avoid circular dependencies
-  const { Listing } = await import('@/models/listings');
+  // Import UnifiedListing model dynamically to avoid circular dependencies
+  const { default: UnifiedListing } = await import('@/models/unified-listing');
 
   // Get all active listings in this subdivision
-  const listings = await Listing.find({
+  const listings = await UnifiedListing.find({
     subdivisionName: new RegExp(`^${subdivisionName}$`, 'i'),
     ...(city && { city: new RegExp(`^${city}$`, 'i') }),
     status: { $in: ['Active', 'Pending', 'Active Under Contract'] },
@@ -394,11 +394,11 @@ export async function countHomesInSubdivision(
 ): Promise<number> {
   await dbConnect();
 
-  // Import Listing model
-  const { Listing } = await import('@/models/listings');
+  // Import UnifiedListing model
+  const { default: UnifiedListing } = await import('@/models/unified-listing');
 
   // Count unique addresses (both active and sold)
-  const uniqueAddresses = await Listing.distinct('address', {
+  const uniqueAddresses = await UnifiedListing.distinct('address', {
     subdivisionName: new RegExp(`^${subdivisionName}$`, 'i'),
     ...(city && { city: new RegExp(`^${city}$`, 'i') }),
   });
