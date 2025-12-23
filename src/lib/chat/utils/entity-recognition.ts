@@ -131,16 +131,26 @@ async function getEntities(): Promise<EntityCache> {
 
 /**
  * Expand query with common abbreviations
- * "show homes in pdcc" => ["show homes in pdcc", "show homes in palm desert country club"]
+ * Works BOTH ways:
+ * - "pdcc" => ["pdcc", "palm desert country club"]
+ * - "palm desert country club" => ["palm desert country club", "pdcc"]
  */
 function expandAbbreviations(query: string): string[] {
   const lowerQuery = query.toLowerCase();
   const expansions: string[] = [query];
 
   for (const [abbrev, fullForms] of Object.entries(COMMON_ABBREVIATIONS)) {
+    // Direction 1: If query contains abbreviation, expand to full form
     if (lowerQuery.includes(abbrev)) {
       for (const fullForm of fullForms) {
         expansions.push(query.toLowerCase().replace(abbrev, fullForm));
+      }
+    }
+
+    // Direction 2: If query contains full form, add abbreviation variant
+    for (const fullForm of fullForms) {
+      if (lowerQuery.includes(fullForm)) {
+        expansions.push(query.toLowerCase().replace(fullForm, abbrev));
       }
     }
   }
