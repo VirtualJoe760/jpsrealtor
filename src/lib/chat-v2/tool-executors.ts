@@ -241,29 +241,41 @@ async function executeSearchHomes(args: {
         const hoaFees = listings
           .map(l => l.associationFee)
           .filter(fee => fee && fee > 0);
-        const avgHOA = hoaFees.length > 0
-          ? Math.round(hoaFees.reduce((a, b) => a + b, 0) / hoaFees.length)
-          : null;
         const minHOA = hoaFees.length > 0 ? Math.min(...hoaFees) : null;
         const maxHOA = hoaFees.length > 0 ? Math.max(...hoaFees) : null;
 
-        // Count amenities
-        const poolCount = listings.filter(l => l.poolYn === true).length;
-        const spaCount = listings.filter(l => l.spaYn === true).length;
-        const viewCount = listings.filter(l => l.viewYn === true).length;
+        // Count amenities from database fields AND publicRemarks (more comprehensive)
+        let poolCount = listings.filter(l => l.poolYn === true).length;
+        let spaCount = listings.filter(l => l.spaYn === true).length;
+        let viewCount = listings.filter(l => l.viewYn === true).length;
 
-        // Detect gated community (look for "gated" in remarks)
-        const isGated = publicRemarksText.includes('gated');
+        // If fields aren't populated, check publicRemarks
+        if (poolCount === 0) {
+          poolCount = listings.filter(l => l.publicRemarks?.toLowerCase().includes('pool')).length;
+        }
+        if (spaCount === 0) {
+          spaCount = listings.filter(l => l.publicRemarks?.toLowerCase().includes('spa')).length;
+        }
+        if (viewCount === 0) {
+          viewCount = listings.filter(l =>
+            l.publicRemarks?.toLowerCase().includes('view') ||
+            l.publicRemarks?.toLowerCase().includes('mountain')
+          ).length;
+        }
+
+        // Smarter gated detection - check for positive mentions, not just word presence
+        const gatedPositive = publicRemarksText.match(/\b(gated community|gated subdivision|guard gated|24.?hour guard)/gi);
+        const gatedNegative = publicRemarksText.match(/\b(not gated|non.?gated|no gate)/gi);
+        const isGated = gatedPositive && gatedPositive.length > (gatedNegative?.length || 0);
 
         // Detect golf course (look for "golf" in remarks)
         const hasGolf = publicRemarksText.includes('golf');
 
         // Extract common phrases (insights about the area)
         const areaInsights: string[] = [];
-        if (isGated) areaInsights.push('gated community');
-        if (hasGolf) areaInsights.push('golf course community');
-        if (poolCount / listings.length > 0.5) areaInsights.push('many homes have pools');
-        if (viewCount / listings.length > 0.3) areaInsights.push('many homes have views');
+        if (hasGolf) areaInsights.push('golf course nearby');
+        if (poolCount / listings.length > 0.3) areaInsights.push('many properties have pools');
+        if (viewCount / listings.length > 0.3) areaInsights.push('many properties have views');
 
         stats = {
           totalListings,
@@ -279,10 +291,10 @@ async function executeSearchHomes(args: {
           insights: {
             isGated,
             hasGolf,
-            hoa: avgHOA ? {
-              avg: avgHOA,
+            hoa: minHOA && maxHOA ? {
               min: minHOA,
-              max: maxHOA
+              max: maxHOA,
+              count: hoaFees.length  // How many listings have HOA
             } : null,
             amenities: {
               poolPercentage: Math.round((poolCount / listings.length) * 100),
