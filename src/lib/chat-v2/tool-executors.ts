@@ -192,7 +192,7 @@ async function executeSearchHomes(args: {
         // Get listings for calculating stats, city info, AND learning about the area
         // Include publicRemarks, amenities, HOA info so AI can understand the subdivision
         const listings = await UnifiedListing.find(dbQuery)
-          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger city publicRemarks associationFee associationFeeFrequency poolYn spaYn viewYn')
+          .select('listPrice livingArea propertyType propertySubType bedroomsTotal bathroomsTotalInteger city publicRemarks associationFee associationFeeFrequency poolYn spaYn viewYn')
           .limit(50)  // Limit for performance (sample of listings is enough for context)
           .lean()
           .exec();
@@ -201,22 +201,22 @@ async function executeSearchHomes(args: {
         const prices = listings.map(l => l.listPrice).filter(Boolean);
         const sortedPrices = [...prices].sort((a, b) => a - b);
 
-        // Calculate property type breakdown
+        // Calculate property type breakdown (by propertySubType: Single-Family, Condo, Townhouse, etc.)
         const propertyTypeCounts: Record<string, number> = {};
         listings.forEach(listing => {
-          if (listing.propertyType) {
-            propertyTypeCounts[listing.propertyType] = (propertyTypeCounts[listing.propertyType] || 0) + 1;
+          if (listing.propertySubType) {
+            propertyTypeCounts[listing.propertySubType] = (propertyTypeCounts[listing.propertySubType] || 0) + 1;
           }
         });
 
-        const propertyTypes = Object.entries(propertyTypeCounts).map(([type, count]) => ({
-          type,
+        const propertyTypes = Object.entries(propertyTypeCounts).map(([subType, count]) => ({
+          type: subType,  // e.g., "Single Family Residence", "Condominium", "Townhouse"
           count,
           avgPrice: listings
-            .filter(l => l.propertyType === type && l.listPrice)
+            .filter(l => l.propertySubType === subType && l.listPrice)
             .reduce((sum, l) => sum + (l.listPrice || 0), 0) / count,
           avgSqft: listings
-            .filter(l => l.propertyType === type && l.livingArea)
+            .filter(l => l.propertySubType === subType && l.livingArea)
             .reduce((sum, l) => sum + (l.livingArea || 0), 0) / count
         }));
 
