@@ -314,21 +314,24 @@ export async function identifyEntityType(query: string): Promise<EntityRecogniti
   // STEP 2: Load entities from database (cached)
   const entities = await getEntities();
 
-  // STEP 3: Check for subdivisions (database-driven)
+  // STEP 3: Check for EXACT matches first (cities and subdivisions)
+  // This prioritizes exact matches over partial matches, fixing "Beverly Hills" ambiguity
+  const cityMatch = findCityMatch(query, entities.cities);
   const subdivisionMatch = findSubdivisionMatch(query, entities.subdivisions);
-  if (subdivisionMatch) {
-    // Check if this is a subdivision group (multiple subdivisions with same prefix)
-    if (subdivisionMatch.isGroup && subdivisionMatch.groupMembers) {
-      return {
-        type: "subdivision-group",
-        value: subdivisionMatch.name,  // The pattern (e.g., "BDCC")
-        confidence: subdivisionMatch.confidence,
-        original: query,
-        subdivisions: subdivisionMatch.groupMembers  // All matching subdivisions
-      };
-    }
 
-    // Single subdivision match
+  // Priority 1: Exact matches (0.98 confidence) - city or subdivision
+  if (cityMatch && cityMatch.confidence === 0.98) {
+    // Exact city match (whole query = city name)
+    return {
+      type: "city",
+      value: cityMatch.name,
+      confidence: cityMatch.confidence,
+      original: query
+    };
+  }
+
+  if (subdivisionMatch && subdivisionMatch.confidence === 0.98) {
+    // Exact subdivision match (whole query = subdivision name)
     return {
       type: "subdivision",
       value: subdivisionMatch.name,
@@ -337,8 +340,76 @@ export async function identifyEntityType(query: string): Promise<EntityRecogniti
     };
   }
 
-  // STEP 4: Check for cities (database-driven)
-  const cityMatch = findCityMatch(query, entities.cities);
+  // Priority 2: Subdivision groups (multiple subdivisions with same prefix)
+  if (subdivisionMatch && subdivisionMatch.isGroup && subdivisionMatch.groupMembers) {
+    return {
+      type: "subdivision-group",
+      value: subdivisionMatch.name,  // The pattern (e.g., "BDCC")
+      confidence: subdivisionMatch.confidence,
+      original: query,
+      subdivisions: subdivisionMatch.groupMembers  // All matching subdivisions
+    };
+  }
+
+  // Priority 3: Contains matches - prefer BETTER confidence scores
+  // This handles cases like "beverly hills" where:
+  //   - City match: "Beverly Hills" (confidence 0.92 - contains match)
+  //   - Subdivision match: "Little Beverly Hills" (confidence 0.85 - word match)
+  // We want the city match because it's higher confidence
+  if (cityMatch && subdivisionMatch) {
+    // Both found - use the one with higher confidence
+    if (cityMatch.confidence > subdivisionMatch.confidence) {
+      // City has better confidence
+      return {
+        type: "city",
+        value: cityMatch.name,
+        confidence: cityMatch.confidence,
+        original: query
+      };
+    } else if (subdivisionMatch.confidence > cityMatch.confidence) {
+      // Subdivision has better confidence
+      return {
+        type: "subdivision",
+        value: subdivisionMatch.name,
+        confidence: subdivisionMatch.confidence,
+        original: query
+      };
+    } else {
+      // Equal confidence - prefer longer/more specific match
+      // Example: "little beverly hills" → "Little Beverly Hills" (subdivision) over "Beverly Hills" (city)
+      const cityNameLength = cityMatch.name.length;
+      const subdivisionNameLength = subdivisionMatch.name.length;
+
+      if (subdivisionNameLength > cityNameLength) {
+        // Subdivision is more specific
+        return {
+          type: "subdivision",
+          value: subdivisionMatch.name,
+          confidence: subdivisionMatch.confidence,
+          original: query
+        };
+      } else {
+        // City is same length or longer - prefer city
+        return {
+          type: "city",
+          value: cityMatch.name,
+          confidence: cityMatch.confidence,
+          original: query
+        };
+      }
+    }
+  }
+
+  // Priority 4: Single match (subdivision or city)
+  if (subdivisionMatch) {
+    return {
+      type: "subdivision",
+      value: subdivisionMatch.name,
+      confidence: subdivisionMatch.confidence,
+      original: query
+    };
+  }
+
   if (cityMatch) {
     return {
       type: "city",
