@@ -564,10 +564,10 @@ export async function GET(
     return NextResponse.json({
       listings: finalListings,
       subdivision: {
-        name: subdivision.name,
-        city: subdivision.city,
-        region: subdivision.region,
-        slug: subdivision.slug,
+        name: subdivisionName,
+        city: subdivision?.city || null,
+        region: subdivision?.region || null,
+        slug: slug,
       },
       pagination: {
         total,

@@ -150,7 +150,7 @@ function expandAbbreviations(query: string): string[] {
 
 /**
  * Find best match for a subdivision
- * Uses exact and partial matching
+ * Uses exact and partial matching, preferring longer/better matches
  */
 function findSubdivisionMatch(query: string, subdivisions: string[]): { name: string; confidence: number } | null {
   const lowerQuery = query.toLowerCase();
@@ -165,14 +165,34 @@ function findSubdivisionMatch(query: string, subdivisions: string[]): { name: st
     }
   }
 
+  // Collect all potential matches with scores
+  const matches: Array<{ name: string; confidence: number; score: number }> = [];
+
   // Try contains match (medium-high confidence)
   for (const variant of queryVariants) {
+    const lowerVariant = variant.toLowerCase();
+
     for (const sub of subdivisions) {
       const lowerSub = sub.toLowerCase();
-      if (variant.toLowerCase().includes(lowerSub) || lowerSub.includes(variant.toLowerCase())) {
-        return { name: sub, confidence: 0.92 };
+
+      // Check if subdivision is contained in query (prefer longer subdivision names)
+      if (lowerVariant.includes(lowerSub)) {
+        // Score based on how much of the query the subdivision covers
+        const score = lowerSub.length / lowerVariant.length;
+        matches.push({ name: sub, confidence: 0.92, score });
+      }
+      // Check if query is contained in subdivision
+      else if (lowerSub.includes(lowerVariant)) {
+        const score = lowerVariant.length / lowerSub.length;
+        matches.push({ name: sub, confidence: 0.90, score });
       }
     }
+  }
+
+  // Return best match (highest score)
+  if (matches.length > 0) {
+    matches.sort((a, b) => b.score - a.score);
+    return { name: matches[0].name, confidence: matches[0].confidence };
   }
 
   // Try word-by-word match (medium confidence)
