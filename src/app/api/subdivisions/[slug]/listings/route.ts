@@ -16,7 +16,7 @@ export async function GET(
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
 
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = parseInt(searchParams.get("limit") || "100");
     const page = parseInt(searchParams.get("page") || "1");
     const sortParam = searchParams.get("sort") || "auto";
 
@@ -443,13 +443,45 @@ export async function GET(
       UnifiedListing.aggregate([
         { $match: baseQuery },
         {
+          $addFields: {
+            // Calculate days on market for filtering new listings
+            daysOnMarket: {
+              $cond: [
+                { $ne: ["$onMarketDate", null] },
+                {
+                  $floor: {
+                    $divide: [
+                      { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
+                      1000 * 60 * 60 * 24
+                    ]
+                  }
+                },
+                null
+              ]
+            }
+          }
+        },
+        {
           $group: {
             _id: null,
             avgPrice: { $avg: "$listPrice" },
             minPrice: { $min: "$listPrice" },
             maxPrice: { $max: "$listPrice" },
             // Calculate median using percentile
-            prices: { $push: "$listPrice" }
+            prices: { $push: "$listPrice" },
+            // Count "new listings" (past 7 days) from ALL listings
+            newListingsCount: {
+              $sum: {
+                $cond: [
+                  { $and: [
+                    { $ne: ["$daysOnMarket", null] },
+                    { $lte: ["$daysOnMarket", 7] }
+                  ]},
+                  1,
+                  0
+                ]
+              }
+            }
           }
         },
         {
@@ -457,6 +489,7 @@ export async function GET(
             avgPrice: { $round: ["$avgPrice", 0] },
             minPrice: 1,
             maxPrice: 1,
+            newListingsCount: 1,
             // Sort prices and get median
             medianPrice: {
               $arrayElemAt: [
@@ -557,7 +590,8 @@ export async function GET(
       avgPrice: 0,
       minPrice: 0,
       maxPrice: 0,
-      medianPrice: 0
+      medianPrice: 0,
+      newListingsCount: 0
     };
 
     // Format property type stats for response
@@ -569,12 +603,6 @@ export async function GET(
       maxPrice: stat.maxPrice,
       avgPricePerSqft: stat.avgPricePerSqft
     }));
-
-    // Calculate "new listings" metadata (past 7 days)
-    const newListings = finalListings.filter((l: any) =>
-      l.daysOnMarket !== null && l.daysOnMarket <= 7
-    );
-    const newListingsCount = newListings.length;
 
     return NextResponse.json({
       listings: finalListings,
@@ -593,10 +621,9 @@ export async function GET(
       // ANALYTICS: Accurate stats calculated from ALL listings
       stats: {
         totalListings: total,
-        displayedListings: finalListings.length,
-        newListingsCount,  // Count of listings from past 7 days
-        newListingsPct: finalListings.length > 0
-          ? Math.round((newListingsCount / finalListings.length) * 100)
+        newListingsCount: priceStats.newListingsCount,  // Count of listings from past 7 days (from ALL listings)
+        newListingsPct: total > 0
+          ? Math.round((priceStats.newListingsCount / total) * 100)
           : 0,
         avgPrice: priceStats.avgPrice,
         medianPrice: priceStats.medianPrice,

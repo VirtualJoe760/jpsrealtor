@@ -384,12 +384,9 @@ async function executeSearchHomes(args: {
   const hasAnyFilters = Object.keys(filters).length > 0;
   const isGeneralCityQuery = entityResult.type === 'city' && !hasAnyFilters;
 
-  // For general city queries with large datasets, auto-sort by newest
-  // This provides better UX - users see fresh listings instead of random sample
-  if (isGeneralCityQuery && stats && stats.totalListings > 50) {
-    filters.sort = 'newest';
-    filters.limit = 60;  // Cap at 60 listings for performance
-    console.log(`[searchHomes] ⚡ General city query detected (${stats.totalListings} total) - auto-applying newest sort with 60 limit`);
+  // Log for debugging
+  if (isGeneralCityQuery) {
+    console.log(`[searchHomes] ℹ️ General city query detected (${stats?.totalListings || 0} total listings)`);
   }
 
   console.log(`[searchHomes] Filters:`, filters);
@@ -445,8 +442,7 @@ async function executeSearchHomes(args: {
         },
         // Metadata for AI to explain query type
         metadata: {
-          isGeneralCityQuery,  // True if city query with no filters
-          displayLimit: isGeneralCityQuery && stats && stats.totalListings > 50 ? 60 : null
+          isGeneralCityQuery  // True if city query with no filters - AI can suggest adding filters
         }
       }
     };

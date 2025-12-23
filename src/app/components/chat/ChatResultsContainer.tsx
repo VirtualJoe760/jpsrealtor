@@ -138,9 +138,17 @@ export default function ChatResultsContainer({
         if (f.maxHOA) params.append('maxHOA', f.maxHOA.toString());
         if (f.minHOA) params.append('minHOA', f.minHOA.toString());
 
-        // Sorting and limit (for general city queries)
+        // Sorting
         if (f.sort) params.append('sort', f.sort);
-        if (f.limit) params.append('limit', f.limit.toString());
+
+        // Limit: Chat component defaults to 60 for performance
+        // Other components can override by providing explicit limit
+        const chatDefaultLimit = 60;
+        if (f.limit) {
+          params.append('limit', f.limit.toString());
+        } else {
+          params.append('limit', chatDefaultLimit.toString());
+        }
       }
 
       const urlWithParams = params.toString() ? `${apiUrl}?${params.toString()}` : apiUrl;

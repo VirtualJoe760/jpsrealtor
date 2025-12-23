@@ -435,13 +435,45 @@ export async function GET(
       UnifiedListing.aggregate([
         { $match: baseQuery },
         {
+          $addFields: {
+            // Calculate days on market for filtering new listings
+            daysOnMarket: {
+              $cond: [
+                { $ne: ["$onMarketDate", null] },
+                {
+                  $floor: {
+                    $divide: [
+                      { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
+                      1000 * 60 * 60 * 24
+                    ]
+                  }
+                },
+                null
+              ]
+            }
+          }
+        },
+        {
           $group: {
             _id: null,
             totalCount: { $sum: 1 },
             avgPrice: { $avg: "$listPrice" },
             minPrice: { $min: "$listPrice" },
             maxPrice: { $max: "$listPrice" },
-            prices: { $push: "$listPrice" }
+            prices: { $push: "$listPrice" },
+            // Count "new listings" (past 7 days) from ALL listings
+            newListingsCount: {
+              $sum: {
+                $cond: [
+                  { $and: [
+                    { $ne: ["$daysOnMarket", null] },
+                    { $lte: ["$daysOnMarket", 7] }
+                  ]},
+                  1,
+                  0
+                ]
+              }
+            }
           }
         },
         {
@@ -450,6 +482,7 @@ export async function GET(
             avgPrice: { $round: ["$avgPrice", 0] },
             minPrice: 1,
             maxPrice: 1,
+            newListingsCount: 1,
             medianPrice: {
               $arrayElemAt: [
                 { $sortArray: { input: "$prices", sortBy: 1 } },
@@ -587,7 +620,8 @@ export async function GET(
       avgPrice: 0,
       minPrice: 0,
       maxPrice: 0,
-      medianPrice: 0
+      medianPrice: 0,
+      newListingsCount: 0
     };
 
     // Format property type stats for response
@@ -600,23 +634,14 @@ export async function GET(
       avgPricePerSqft: stat.avgPricePerSqft
     }));
 
-    // Calculate "new listings" metadata (past 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const newListings = listingsWithPhotos.filter(l =>
-      l.daysOnMarket !== null && l.daysOnMarket <= 7
-    );
-    const newListingsCount = newListings.length;
-
     return NextResponse.json({
       listings: listingsWithPhotos,
       // ANALYTICS: Accurate stats calculated from ALL listings
       stats: {
         totalListings: priceStats.totalCount,
-        displayedListings: listingsWithPhotos.length,
-        newListingsCount,  // Count of listings from past 7 days
-        newListingsPct: listingsWithPhotos.length > 0
-          ? Math.round((newListingsCount / listingsWithPhotos.length) * 100)
+        newListingsCount: priceStats.newListingsCount,  // Count of listings from past 7 days (from ALL listings)
+        newListingsPct: priceStats.totalCount > 0
+          ? Math.round((priceStats.newListingsCount / priceStats.totalCount) * 100)
           : 0,
         isGeneralQuery: !hasFilters,
         suggestFilters: !hasFilters && priceStats.totalCount > 100,
