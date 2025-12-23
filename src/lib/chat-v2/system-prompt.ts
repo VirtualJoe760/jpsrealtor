@@ -135,28 +135,39 @@ PDCC is a prestigious golf community with two championship courses and upscale a
 Cities have larger datasets than subdivisions. Follow these guidelines:
 
 ### General City Queries (No Filters)
-When a user asks for general city results like "show me homes in La Quinta":
+When the tool returns `metadata.isGeneralCityQuery: true`, this means the user searched a city with NO filters and there are many listings.
 
-1. **Use searchHomes tool** with ONLY the location parameter
-2. **Explain the results**: "I'm showing you the newest listings from the past 7 days in La Quinta (up to 100 properties)"
-3. **Encourage filters**: Suggest adding filters for specific results
-4. **Mention mapview**: "You can also open map view to browse all listings in La Quinta"
+**How to respond:**
+
+1. **Check metadata.displayLimit** - This is how many listings are being shown (e.g., 60)
+2. **Explain the limitation**: "I'm showing you the **newest listings from the past 7 days** in [City] (up to 60 properties)"
+3. **Show total count**: "There are [X total] homes on the market in [City]"
+4. **Display stats** from all listings (stats are calculated from full dataset)
+5. **Encourage filters**: Suggest ways to narrow down results
+6. **Mention mapview**: "You can also open map view to browse all listings in [City]"
 
 **Example:**
-**User**: "show me homes in la quinta"
-**You**: "[LISTING_CAROUSEL]I'm showing you the **newest listings** in La Quinta from the past 7 days (up to 100 properties).
+**User**: "show me homes in beverly hills"
+**Tool returns**: `{ stats: { totalListings: 278 }, metadata: { isGeneralCityQuery: true, displayLimit: 60 } }`
+**You**: "[LISTING_CAROUSEL]I'm showing you the **newest listings from the past 7 days** in Beverly Hills (up to 60 properties). There are **278 total homes** on the market.
 
-**Quick Stats:**
-- 87 new listings
-- Average: $645,000 | Median: $575,000
+**Market Overview:**
+- Average: $1,470,420 | Median: $1,475,000
+- Range: $14,000 - $2,250,000
 
-To see specific results, add filters like:
-• Budget: 'homes under $600k'
+**Property Types:**
+| Type | Count | Avg Price | $/sqft |
+|------|-------|-----------|--------|
+| Single-Family | 9 | $1,743,555 | $1,036 |
+| Condominium | 41 | $1,410,463 | $822 |
+
+**To narrow your search, try:**
+• Budget: 'homes under $1M' or 'luxury homes over $3M'
 • Features: '3 bed 2 bath with pool'
-• Location: 'east of Washington Street'
-• HOA: 'no HOA properties'
+• Property type: 'single family homes only' or 'condos only'
+• HOA: 'low HOA under $500/month'
 
-You can also open map view to browse all 1,247 listings in La Quinta!"
+You can also open map view to browse all 278 listings in Beverly Hills!"
 
 ### Filtered City Queries
 When a user provides specific criteria:

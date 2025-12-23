@@ -380,6 +380,18 @@ async function executeSearchHomes(args: {
   // Sorting
   if (filterArgs.sort) filters.sort = filterArgs.sort;
 
+  // Detect if this is a general city query (no filters)
+  const hasAnyFilters = Object.keys(filters).length > 0;
+  const isGeneralCityQuery = entityResult.type === 'city' && !hasAnyFilters;
+
+  // For general city queries with large datasets, auto-sort by newest
+  // This provides better UX - users see fresh listings instead of random sample
+  if (isGeneralCityQuery && stats && stats.totalListings > 50) {
+    filters.sort = 'newest';
+    filters.limit = 60;  // Cap at 60 listings for performance
+    console.log(`[searchHomes] ⚡ General city query detected (${stats.totalListings} total) - auto-applying newest sort with 60 limit`);
+  }
+
   console.log(`[searchHomes] Filters:`, filters);
 
   // Return neighborhood identifier for component-first architecture
@@ -430,6 +442,11 @@ async function executeSearchHomes(args: {
           medianPrice: 0,
           priceRange: { min: 0, max: 0 },
           propertyTypes: []
+        },
+        // Metadata for AI to explain query type
+        metadata: {
+          isGeneralCityQuery,  // True if city query with no filters
+          displayLimit: isGeneralCityQuery && stats && stats.totalListings > 50 ? 60 : null
         }
       }
     };

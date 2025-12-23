@@ -305,14 +305,15 @@ export async function GET(
       }
     }
 
-    // General query filter: Show newest listings (onMarketDate within past 7 days)
+    // General query: Show newest listings from past 7 days only
+    // This keeps results fresh and manageable for large city datasets
     if (!hasFilters) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       // Format as YYYY-MM-DD
       const dateStr = sevenDaysAgo.toISOString().split('T')[0];
       baseQuery.onMarketDate = { $gte: dateStr };
-      console.log(`[City API] General query - filtering onMarketDate >= ${dateStr}`);
+      console.log(`[City API] General query - filtering onMarketDate >= ${dateStr} (past 7 days)`);
     } else {
       console.log('[City API] Filtered query - no date restriction');
     }
