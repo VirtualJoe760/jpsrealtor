@@ -50,15 +50,16 @@ export async function GET(
     const garageSpaces = searchParams.get("garageSpaces") ? parseInt(searchParams.get("garageSpaces")!) : undefined;
     const stories = searchParams.get("stories") ? parseInt(searchParams.get("stories")!) : undefined;
 
-    // Find subdivision
+    // Find subdivision metadata (optional - may not exist for all subdivisions)
     const subdivision = await Subdivision.findOne({ slug }).lean();
 
-    if (!subdivision) {
-      return NextResponse.json(
-        { error: "Subdivision not found" },
-        { status: 404 }
-      );
-    }
+    // If no metadata, infer subdivision name from slug
+    // Convert "madison-club" → "Madison Club" for database query
+    const subdivisionName = subdivision
+      ? subdivision.name
+      : slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+    console.log(`[Subdivision Listings API] Slug: ${slug}, Subdivision: ${subdivisionName}, Has Metadata: ${!!subdivision}`);
 
     // Build query for listings - unified collection
     const baseQuery: any = {
@@ -71,8 +72,8 @@ export async function GET(
     };
 
     // Handle Non-HOA subdivisions differently
-    if (subdivision.name.startsWith("Non-HOA ")) {
-      const cityName = subdivision.name.replace("Non-HOA ", "");
+    if (subdivisionName.startsWith("Non-HOA ")) {
+      const cityName = subdivisionName.replace("Non-HOA ", "");
       baseQuery.city = cityName;
       baseQuery.$or = [
         { subdivisionName: { $exists: false } },
@@ -81,8 +82,12 @@ export async function GET(
         { subdivisionName: { $regex: /^(not applicable|n\/?\s*a|none)$/i } },
       ];
     } else {
-      baseQuery.subdivisionName = subdivision.name;
-      baseQuery.city = subdivision.city;
+      // Case-insensitive regex match for subdivision name
+      baseQuery.subdivisionName = new RegExp(`^${subdivisionName.replace(/[-\s]/g, '[-\\s]')}$`, 'i');
+      // Only add city filter if we have metadata
+      if (subdivision?.city) {
+        baseQuery.city = subdivision.city;
+      }
     }
 
     // Add filters
