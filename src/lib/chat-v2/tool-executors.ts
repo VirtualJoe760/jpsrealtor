@@ -189,9 +189,11 @@ async function executeSearchHomes(args: {
       console.log(`[searchHomes] Found ${totalListings} listings`);
 
       if (totalListings > 0) {
-        // Get listings for calculating stats and city info
+        // Get listings for calculating stats, city info, AND learning about the area
+        // Include publicRemarks, amenities, HOA info so AI can understand the subdivision
         const listings = await UnifiedListing.find(dbQuery)
-          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger city')
+          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger city publicRemarks associationFee associationFeeFrequency poolYn spaYn viewYn')
+          .limit(50)  // Limit for performance (sample of listings is enough for context)
           .lean()
           .exec();
 
@@ -227,6 +229,42 @@ async function executeSearchHomes(args: {
         });
         const actualCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
+        // Extract insights from publicRemarks and listing data
+        // This gives AI REAL knowledge about the subdivision from actual listings
+        const publicRemarksText = listings
+          .map(l => l.publicRemarks)
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        // Extract HOA info
+        const hoaFees = listings
+          .map(l => l.associationFee)
+          .filter(fee => fee && fee > 0);
+        const avgHOA = hoaFees.length > 0
+          ? Math.round(hoaFees.reduce((a, b) => a + b, 0) / hoaFees.length)
+          : null;
+        const minHOA = hoaFees.length > 0 ? Math.min(...hoaFees) : null;
+        const maxHOA = hoaFees.length > 0 ? Math.max(...hoaFees) : null;
+
+        // Count amenities
+        const poolCount = listings.filter(l => l.poolYn === true).length;
+        const spaCount = listings.filter(l => l.spaYn === true).length;
+        const viewCount = listings.filter(l => l.viewYn === true).length;
+
+        // Detect gated community (look for "gated" in remarks)
+        const isGated = publicRemarksText.includes('gated');
+
+        // Detect golf course (look for "golf" in remarks)
+        const hasGolf = publicRemarksText.includes('golf');
+
+        // Extract common phrases (insights about the area)
+        const areaInsights: string[] = [];
+        if (isGated) areaInsights.push('gated community');
+        if (hasGolf) areaInsights.push('golf course community');
+        if (poolCount / listings.length > 0.5) areaInsights.push('many homes have pools');
+        if (viewCount / listings.length > 0.3) areaInsights.push('many homes have views');
+
         stats = {
           totalListings,
           avgPrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
@@ -236,7 +274,23 @@ async function executeSearchHomes(args: {
             max: prices.length > 0 ? Math.max(...prices) : 0
           },
           propertyTypes,
-          city: actualCity  // ACTUAL city from database listings
+          city: actualCity,  // ACTUAL city from database listings
+          // Area insights from actual listing data (RAG - grounding AI knowledge)
+          insights: {
+            isGated,
+            hasGolf,
+            hoa: avgHOA ? {
+              avg: avgHOA,
+              min: minHOA,
+              max: maxHOA
+            } : null,
+            amenities: {
+              poolPercentage: Math.round((poolCount / listings.length) * 100),
+              spaPercentage: Math.round((spaCount / listings.length) * 100),
+              viewPercentage: Math.round((viewCount / listings.length) * 100)
+            },
+            keywords: areaInsights
+          }
         };
 
         console.log(`[searchHomes] Stats calculated:`, JSON.stringify(stats, null, 2));
