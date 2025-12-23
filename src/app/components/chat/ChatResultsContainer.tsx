@@ -58,6 +58,11 @@ export default function ChatResultsContainer({
       // Build API URL based on neighborhood type
       if (components.neighborhood.type === "subdivision" && components.neighborhood.subdivisionSlug) {
         apiUrl = `/api/subdivisions/${components.neighborhood.subdivisionSlug}/listings`;
+      } else if (components.neighborhood.type === "subdivision-group" && components.neighborhood.subdivisionSlug) {
+        // For subdivision groups, use the first subdivision's slug
+        // We'll pass all subdivision names via query params below
+        apiUrl = `/api/subdivisions/${components.neighborhood.subdivisionSlug}/listings`;
+        console.log('[ChatResultsContainer] 🎯 Subdivision group detected:', components.neighborhood.subdivisions);
       } else if (components.neighborhood.type === "city" && components.neighborhood.cityId) {
         apiUrl = `/api/cities/${components.neighborhood.cityId}/listings`;
       }
@@ -71,6 +76,13 @@ export default function ChatResultsContainer({
 
       // Add filters to query params
       const params = new URLSearchParams();
+
+      // For subdivision groups, add all subdivision names as comma-separated group param
+      if (components.neighborhood.type === 'subdivision-group' && components.neighborhood.subdivisions) {
+        params.append('group', components.neighborhood.subdivisions.join(','));
+        console.log('[ChatResultsContainer] 📋 Adding group param:', components.neighborhood.subdivisions.join(', '));
+      }
+
       if (components.neighborhood.filters) {
         const f = components.neighborhood.filters;
 
@@ -78,13 +90,15 @@ export default function ChatResultsContainer({
         if (f.minPrice) params.append('minPrice', f.minPrice.toString());
         if (f.maxPrice) params.append('maxPrice', f.maxPrice.toString());
 
-        // Subdivision API uses 'beds' (exact match), City API uses 'minBeds' (range)
+        // Subdivision/subdivision-group API uses 'beds' (exact match), City API uses 'minBeds' (range)
         if (f.beds) {
-          const paramName = components.neighborhood.type === 'subdivision' ? 'beds' : 'minBeds';
+          const isSubdivisionLike = components.neighborhood.type === 'subdivision' || components.neighborhood.type === 'subdivision-group';
+          const paramName = isSubdivisionLike ? 'beds' : 'minBeds';
           params.append(paramName, f.beds.toString());
         }
         if (f.baths) {
-          const paramName = components.neighborhood.type === 'subdivision' ? 'baths' : 'minBaths';
+          const isSubdivisionLike = components.neighborhood.type === 'subdivision' || components.neighborhood.type === 'subdivision-group';
+          const paramName = isSubdivisionLike ? 'baths' : 'minBaths';
           params.append(paramName, f.baths.toString());
         }
 

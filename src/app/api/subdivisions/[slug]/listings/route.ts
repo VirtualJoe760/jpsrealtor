@@ -20,6 +20,9 @@ export async function GET(
     const page = parseInt(searchParams.get("page") || "1");
     const sortParam = searchParams.get("sort") || "auto";
 
+    // Subdivision group support - comma-separated list of subdivision names
+    const groupParam = searchParams.get("group");
+
     // Price filters
     const minPrice = searchParams.get("minPrice") ? parseInt(searchParams.get("minPrice")!) : undefined;
     const maxPrice = searchParams.get("maxPrice") ? parseInt(searchParams.get("maxPrice")!) : undefined;
@@ -71,8 +74,14 @@ export async function GET(
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };
 
+    // Handle subdivision group (multiple subdivisions like "BDCC Bellissimo, BDCC Castle, ...")
+    if (groupParam) {
+      const subdivisionNames = groupParam.split(',').map(s => s.trim()).filter(Boolean);
+      console.log(`[Subdivision Listings API] 🎯 Querying subdivision group: ${subdivisionNames.join(', ')}`);
+      baseQuery.subdivisionName = { $in: subdivisionNames };
+    }
     // Handle Non-HOA subdivisions differently
-    if (subdivisionName.startsWith("Non-HOA ")) {
+    else if (subdivisionName.startsWith("Non-HOA ")) {
       const cityName = subdivisionName.replace("Non-HOA ", "");
       baseQuery.city = cityName;
       baseQuery.$or = [
