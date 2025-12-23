@@ -189,9 +189,9 @@ async function executeSearchHomes(args: {
       console.log(`[searchHomes] Found ${totalListings} listings`);
 
       if (totalListings > 0) {
-        // Get listings for calculating stats
+        // Get listings for calculating stats and city info
         const listings = await UnifiedListing.find(dbQuery)
-          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger')
+          .select('listPrice livingArea propertyType bedroomsTotal bathroomsTotalInteger city')
           .lean()
           .exec();
 
@@ -218,6 +218,15 @@ async function executeSearchHomes(args: {
             .reduce((sum, l) => sum + (l.livingArea || 0), 0) / count
         }));
 
+        // Extract city from listings (use most common city if multiple)
+        const cityCounts: Record<string, number> = {};
+        listings.forEach(listing => {
+          if (listing.city) {
+            cityCounts[listing.city] = (cityCounts[listing.city] || 0) + 1;
+          }
+        });
+        const actualCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
         stats = {
           totalListings,
           avgPrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
@@ -226,7 +235,8 @@ async function executeSearchHomes(args: {
             min: prices.length > 0 ? Math.min(...prices) : 0,
             max: prices.length > 0 ? Math.max(...prices) : 0
           },
-          propertyTypes
+          propertyTypes,
+          city: actualCity  // ACTUAL city from database listings
         };
 
         console.log(`[searchHomes] Stats calculated:`, JSON.stringify(stats, null, 2));
@@ -340,6 +350,8 @@ async function executeSearchHomes(args: {
           name: location,
           type: entityResult.type,
           normalized: entityResult.value,
+          // ACTUAL city from database (prevents AI hallucination)
+          city: stats?.city || null,
           // Include subdivision list for AI to explain in response
           ...(entityResult.type === "subdivision-group" && {
             subdivisions: entityResult.subdivisions
