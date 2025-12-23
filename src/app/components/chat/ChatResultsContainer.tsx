@@ -137,6 +137,10 @@ export default function ChatResultsContainer({
         if (f.hasHOA !== undefined) params.append('hasHOA', String(f.hasHOA));
         if (f.maxHOA) params.append('maxHOA', f.maxHOA.toString());
         if (f.minHOA) params.append('minHOA', f.minHOA.toString());
+
+        // Sorting and limit (for general city queries)
+        if (f.sort) params.append('sort', f.sort);
+        if (f.limit) params.append('limit', f.limit.toString());
       }
 
       const urlWithParams = params.toString() ? `${apiUrl}?${params.toString()}` : apiUrl;
