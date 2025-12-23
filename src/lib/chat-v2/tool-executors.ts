@@ -115,7 +115,8 @@ async function executeSearchHomes(args: {
   const { location, ...filterArgs } = args;
 
   // Identify location type (city, subdivision, county, region)
-  const entityResult = identifyEntityType(location);
+  // NOW DATABASE-DRIVEN: Queries actual subdivisions/cities from database
+  const entityResult = await identifyEntityType(location);
 
   console.log(`[searchHomes] Location: ${location}, Type: ${entityResult.type}, Normalized: ${entityResult.value}`);
 
@@ -366,8 +367,8 @@ async function executeGetAppreciation(args: {
 }): Promise<{ success: boolean; data: any }> {
   const { location, period = "5y" } = args;
 
-  // Identify location type
-  const entityResult = identifyEntityType(location);
+  // Identify location type (database-driven)
+  const entityResult = await identifyEntityType(location);
 
   // Build location object compatible with V1 structure
   // ChatResultsContainer expects { city?, subdivision?, county? } format
