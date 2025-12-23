@@ -119,10 +119,13 @@ async function executeSearchHomes(args: {
   const entityResult = await identifyEntityType(location);
 
   console.log(`[searchHomes] Location: ${location}, Type: ${entityResult.type}, Normalized: ${entityResult.value}`);
+  if (entityResult.type === 'subdivision-group') {
+    console.log(`[searchHomes] 🎯 Subdivision Group Detected! Includes: ${entityResult.subdivisions?.join(', ')}`);
+  }
 
-  // Only city and subdivision types have listing APIs
+  // City, subdivision, and subdivision-group types have listing APIs
   // For other types (county, region, general, listing), we can't fetch neighborhood listings
-  const hasListingsAPI = entityResult.type === 'city' || entityResult.type === 'subdivision';
+  const hasListingsAPI = entityResult.type === 'city' || entityResult.type === 'subdivision' || entityResult.type === 'subdivision-group';
 
   if (!hasListingsAPI) {
     console.warn(`[searchHomes] ⚠️ No listings API for type "${entityResult.type}". Skipping stats fetch.`);
@@ -156,6 +159,13 @@ async function executeSearchHomes(args: {
         // Case-insensitive subdivision match
         dbQuery.subdivisionName = new RegExp(`^${entityResult.value}$`, 'i');
         console.log(`[searchHomes] Querying subdivision: ${entityResult.value}`);
+      } else if (entityResult.type === 'subdivision-group') {
+        // Query ALL subdivisions in the group (e.g., all "BDCC *" subdivisions)
+        // Use $in operator with exact matches for each subdivision
+        if (entityResult.subdivisions && entityResult.subdivisions.length > 0) {
+          dbQuery.subdivisionName = { $in: entityResult.subdivisions };
+          console.log(`[searchHomes] Querying subdivision group with ${entityResult.subdivisions.length} subdivisions:`, entityResult.subdivisions);
+        }
       } else if (entityResult.type === 'city') {
         // Case-insensitive city match
         dbQuery.city = new RegExp(`^${entityResult.value}$`, 'i');
@@ -298,7 +308,7 @@ async function executeSearchHomes(args: {
 
   // Return neighborhood identifier for component-first architecture
   // Frontend SubdivisionListings / CityListings component will fetch its own data
-  // Only return neighborhood component for supported types (city, subdivision)
+  // Only return neighborhood component for supported types (city, subdivision, subdivision-group)
   if (hasListingsAPI) {
     return {
       success: true,
@@ -312,6 +322,14 @@ async function executeSearchHomes(args: {
           ...(entityResult.type === "subdivision" && {
             subdivisionSlug: entityResult.value.toLowerCase().replace(/\s+/g, "-")
           }),
+          // For subdivision-group queries (e.g., "BDCC" → multiple BDCC subdivisions)
+          ...(entityResult.type === "subdivision-group" && {
+            isGroup: true,
+            groupPattern: entityResult.value,  // "BDCC"
+            subdivisions: entityResult.subdivisions,  // ["BDCC Bellissimo", "BDCC Castle", ...]
+            // Use the first subdivision's slug as a fallback for component rendering
+            subdivisionSlug: entityResult.subdivisions?.[0]?.toLowerCase().replace(/\s+/g, "-")
+          }),
           // For city queries
           ...(entityResult.type === "city" && {
             cityId: entityResult.value.toLowerCase().replace(/\s+/g, "-")
@@ -321,7 +339,11 @@ async function executeSearchHomes(args: {
         location: {
           name: location,
           type: entityResult.type,
-          normalized: entityResult.value
+          normalized: entityResult.value,
+          // Include subdivision list for AI to explain in response
+          ...(entityResult.type === "subdivision-group" && {
+            subdivisions: entityResult.subdivisions
+          })
         },
         // Include stats for AI to generate better responses
         stats: stats || {

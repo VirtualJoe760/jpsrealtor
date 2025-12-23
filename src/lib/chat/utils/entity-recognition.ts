@@ -5,18 +5,21 @@ import dbConnect from "@/lib/mongodb";
 import UnifiedListing from "@/models/unified-listing";
 
 export type EntityType =
-  | "subdivision"  // "PDCC", "PGA West", "Trilogy"
-  | "listing"      // "82223 Vandenberg", "123 Main St"
-  | "city"         // "Palm Desert", "La Quinta"
-  | "county"       // "Riverside County"
-  | "region"       // "Coachella Valley"
-  | "general";     // General queries
+  | "subdivision"        // "PDCC", "PGA West", "Trilogy"
+  | "subdivision-group"  // "BDCC" (matches multiple: BDCC Bellissimo, BDCC Castle, etc.)
+  | "listing"            // "82223 Vandenberg", "123 Main St"
+  | "city"               // "Palm Desert", "La Quinta"
+  | "county"             // "Riverside County"
+  | "region"             // "Coachella Valley"
+  | "general";           // General queries
 
 export interface EntityRecognitionResult {
   type: EntityType;
-  value: string;          // Normalized entity name
+  value: string;          // Normalized entity name (or pattern for subdivision-group)
   confidence: number;     // 0-1 confidence score
   original: string;       // Original query text
+  // For subdivision-group type: all matching subdivision names
+  subdivisions?: string[];
 }
 
 /**
@@ -161,12 +164,44 @@ function expandAbbreviations(query: string): string[] {
 /**
  * Find best match for a subdivision
  * Uses exact and partial matching, preferring longer/better matches
+ * Can detect subdivision groups (e.g., "BDCC" matching multiple "BDCC *" subdivisions)
  */
-function findSubdivisionMatch(query: string, subdivisions: string[]): { name: string; confidence: number } | null {
+function findSubdivisionMatch(query: string, subdivisions: string[]): {
+  name: string;
+  confidence: number;
+  isGroup?: boolean;
+  groupMembers?: string[]
+} | null {
   const lowerQuery = query.toLowerCase();
   const queryVariants = expandAbbreviations(query);
 
-  // Try exact match first (highest confidence)
+  // STEP 0: Check for subdivision groups (e.g., "BDCC" or "Bermuda Dunes Country Club")
+  // Look for multiple subdivisions that start with the same pattern
+  for (const variant of queryVariants) {
+    const lowerVariant = variant.toLowerCase().trim();
+
+    // Find all subdivisions that start with this pattern
+    const groupMatches = subdivisions.filter(sub => {
+      const lowerSub = sub.toLowerCase();
+      // Match if subdivision starts with the pattern
+      return lowerSub.startsWith(lowerVariant) ||
+             // Or if pattern is an abbreviation at start (e.g., "BDCC " matches "BDCC Bellissimo")
+             lowerSub.startsWith(lowerVariant + " ");
+    });
+
+    // If we found 2+ subdivisions with this prefix, it's a group!
+    if (groupMatches.length >= 2) {
+      console.log(`[Entity Recognition] 🎯 Detected subdivision group: "${variant}" matches ${groupMatches.length} subdivisions:`, groupMatches);
+      return {
+        name: variant,  // Return the pattern (e.g., "bdcc" or "bermuda dunes country club")
+        confidence: 0.95,
+        isGroup: true,
+        groupMembers: groupMatches
+      };
+    }
+  }
+
+  // STEP 1: Try exact match (highest confidence for single subdivisions)
   for (const variant of queryVariants) {
     for (const sub of subdivisions) {
       if (variant.toLowerCase() === sub.toLowerCase()) {
@@ -282,6 +317,18 @@ export async function identifyEntityType(query: string): Promise<EntityRecogniti
   // STEP 3: Check for subdivisions (database-driven)
   const subdivisionMatch = findSubdivisionMatch(query, entities.subdivisions);
   if (subdivisionMatch) {
+    // Check if this is a subdivision group (multiple subdivisions with same prefix)
+    if (subdivisionMatch.isGroup && subdivisionMatch.groupMembers) {
+      return {
+        type: "subdivision-group",
+        value: subdivisionMatch.name,  // The pattern (e.g., "BDCC")
+        confidence: subdivisionMatch.confidence,
+        original: query,
+        subdivisions: subdivisionMatch.groupMembers  // All matching subdivisions
+      };
+    }
+
+    // Single subdivision match
     return {
       type: "subdivision",
       value: subdivisionMatch.name,
