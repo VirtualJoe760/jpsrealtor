@@ -600,12 +600,24 @@ export async function GET(
       avgPricePerSqft: stat.avgPricePerSqft
     }));
 
+    // Calculate "new listings" metadata (past 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const newListings = listingsWithPhotos.filter(l =>
+      l.daysOnMarket !== null && l.daysOnMarket <= 7
+    );
+    const newListingsCount = newListings.length;
+
     return NextResponse.json({
       listings: listingsWithPhotos,
       // ANALYTICS: Accurate stats calculated from ALL listings
       stats: {
         totalListings: priceStats.totalCount,
         displayedListings: listingsWithPhotos.length,
+        newListingsCount,  // Count of listings from past 7 days
+        newListingsPct: listingsWithPhotos.length > 0
+          ? Math.round((newListingsCount / listingsWithPhotos.length) * 100)
+          : 0,
         isGeneralQuery: !hasFilters,
         suggestFilters: !hasFilters && priceStats.totalCount > 100,
         avgPrice: priceStats.avgPrice,

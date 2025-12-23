@@ -570,6 +570,12 @@ export async function GET(
       avgPricePerSqft: stat.avgPricePerSqft
     }));
 
+    // Calculate "new listings" metadata (past 7 days)
+    const newListings = finalListings.filter((l: any) =>
+      l.daysOnMarket !== null && l.daysOnMarket <= 7
+    );
+    const newListingsCount = newListings.length;
+
     return NextResponse.json({
       listings: finalListings,
       subdivision: {
@@ -587,6 +593,11 @@ export async function GET(
       // ANALYTICS: Accurate stats calculated from ALL listings
       stats: {
         totalListings: total,
+        displayedListings: finalListings.length,
+        newListingsCount,  // Count of listings from past 7 days
+        newListingsPct: finalListings.length > 0
+          ? Math.round((newListingsCount / finalListings.length) * 100)
+          : 0,
         avgPrice: priceStats.avgPrice,
         medianPrice: priceStats.medianPrice,
         priceRange: {
