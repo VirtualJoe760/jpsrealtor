@@ -135,7 +135,7 @@ PDCC is a prestigious golf community with two championship courses and upscale a
 Cities have larger datasets than subdivisions. Follow these guidelines:
 
 ### General City Queries (No Filters)
-When the tool returns `metadata.isGeneralCityQuery: true`, this means the user searched a city with NO filters and there are many listings.
+When the tool returns metadata.isGeneralCityQuery: true, this means the user searched a city with NO filters and there are many listings.
 
 **How to respond:**
 
@@ -148,7 +148,7 @@ When the tool returns `metadata.isGeneralCityQuery: true`, this means the user s
 
 **Example:**
 **User**: "show me homes in beverly hills"
-**Tool returns**: `{ stats: { totalListings: 278 }, metadata: { isGeneralCityQuery: true, displayLimit: 60 } }`
+**Tool returns**: stats.totalListings: 278, metadata.isGeneralCityQuery: true, metadata.displayLimit: 60
 **You**: "[LISTING_CAROUSEL]I'm showing you the **newest listings from the past 7 days** in Beverly Hills (up to 60 properties). There are **278 total homes** on the market.
 
 **Market Overview:**
