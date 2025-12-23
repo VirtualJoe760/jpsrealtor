@@ -426,7 +426,10 @@ export async function GET(
     }
 
     const [listings, stats, propertyTypeStats] = await Promise.all([
-      listingsQuery,
+      listingsQuery.then(results => {
+        console.log(`[City API] Query returned ${results.length} listings (limit: ${limit})`);
+        return results;
+      }),
 
       // CRITICAL: Calculate stats from ALL listings, not just current page
       UnifiedListing.aggregate([
