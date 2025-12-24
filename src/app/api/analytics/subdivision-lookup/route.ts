@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
 
     // Search in both active and closed listings
     const [activeDocs, closedDocs] = await Promise.all([
-      db!.collection("unifiedlistings")
+      db!.collection("unified_listings")
         .find(searchCriteria)
         .project({ subdivisionName: 1, city: 1 })
         .limit(1000)
         .toArray(),
-      db!.collection("unifiedclosedlistings")
+      db!.collection("unified_closed_listings")
         .find(searchCriteria)
         .project({ subdivisionName: 1, city: 1 })
         .limit(1000)
