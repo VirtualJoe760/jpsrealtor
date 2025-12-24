@@ -22,12 +22,14 @@
 
 ### Database Collections
 
-Your MongoDB database contains **two** unified listing collections:
+Your MongoDB database had **two** active listing collections:
 
 | Collection Name | Document Count | Status | Usage |
 |----------------|----------------|--------|-------|
 | `unified_listings` (with underscore) | **81,052** | ✅ **CURRENT/ACTIVE** | Used by production APIs |
-| `unifiedlistings` (no underscore) | 4,366 | ❌ **DEPRECATED/STALE** | Old collection, should not be used |
+| `unifiedlistings` (no underscore) | 4,366 | ❌ **DEPRECATED/STALE** | Old collection, archived |
+
+**Note**: `unified_closed_listings` (with underscore) is the CORRECT name for closed listings and was never affected by this issue.
 
 ### The Discrepancy
 
@@ -45,13 +47,14 @@ Your MongoDB database contains **two** unified listing collections:
 
 ### ❌ **CRITICAL - API Routes** (Production Impact)
 
-1. **`src/app/api/analytics/subdivision-lookup/route.ts`** (Line 52)
+1. **`src/app/api/analytics/subdivision-lookup/route.ts`** (Line 52) - **FIXED**
    ```typescript
-   db!.collection("unifiedlistings")  // ❌ WRONG
-   // Should be:
-   db!.collection("unified_listings")  // ✅ CORRECT
+   db!.collection("unifiedlistings")  // ❌ WAS WRONG
+   // Fixed to:
+   db!.collection("unified_listings")  // ✅ NOW CORRECT
    ```
-   **Impact**: Subdivision lookup returns incomplete/stale data
+   **Status**: ✅ Fixed and deployed
+   **Impact**: Subdivision lookup now queries correct collection with 81K documents
 
 ### ❌ **HIGH - Database Scripts** (Infrastructure)
 
@@ -226,17 +229,55 @@ The `unifiedlistings` (no underscore) appears to be from an earlier migration at
 
 ---
 
+## Resolution Summary
+
+### ✅ What Was Done (Dec 24, 2025)
+
+**1. Created Backwards Compatibility**:
+- Created MongoDB view: `unifiedlistings` → `unified_listings`
+- Archived old collection: `unifiedlistings` renamed to `unifiedlistings_deprecated_2025_12_24`
+- Script: `scripts/create-backwards-compatible-views.js`
+
+**2. Fixed Production API**:
+- Updated `src/app/api/analytics/subdivision-lookup/route.ts`
+- Changed collection references to use correct names
+- Deployed to production
+
+**3. View Verification**:
+- View "unifiedlistings" now has 81,052 documents (matches source)
+- View "unifiedclosedlistings" now has 1,299,548 documents (matches source)
+- Irvine query test: ✅ Returns 538 listings through view
+
+### 📋 Impact
+
+**Before**:
+- Scripts queried deprecated collection with 4,366 old documents
+- Irvine: 0 results
+- Missing 76,686 listings (94.6% of data)
+
+**After**:
+- All queries automatically route to correct collection with 81,052 documents
+- Irvine: 1,059 listings (538 active residential)
+- Full California coverage restored
+
+### ⚠️ Remaining Work
+
+**Optional - Not Required (backwards compatibility handles this)**:
+- Infrastructure scripts can be updated to use `unified_listings` directly
+- Diagnostic scripts can be updated for clarity
+- These are low priority since views work transparently
+
 ## Checklist
 
 - [x] Identify all files using wrong collection name
 - [x] Document the issue
-- [ ] Fix Priority 1 files (API routes)
-- [ ] Fix Priority 2 files (infrastructure scripts)
-- [ ] Fix Priority 3 files (diagnostic scripts)
-- [ ] Run verification tests
-- [ ] Monitor for 1 week
-- [ ] Archive old collection
-- [ ] Update this documentation with completion date
+- [x] Fix Priority 1 files (API routes)
+- [x] Create backwards compatible views
+- [x] Run verification tests
+- [x] Archive old collection
+- [x] Update this documentation with completion date
+- [ ] Monitor for 1 week (optional)
+- [ ] Consider updating infrastructure scripts to use correct names directly (optional)
 
 ---
 
