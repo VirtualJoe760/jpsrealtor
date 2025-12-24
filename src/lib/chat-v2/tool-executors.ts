@@ -189,6 +189,40 @@ async function executeSearchHomes(args: {
       console.log(`[searchHomes] Found ${totalListings} listings`);
 
       if (totalListings > 0) {
+        // Get count of new listings (past 7 days) using aggregation - matches API logic
+        const newListingsAggregation = await UnifiedListing.aggregate([
+          { $match: dbQuery },
+          {
+            $addFields: {
+              daysOnMarket: {
+                $cond: [
+                  { $ne: ["$onMarketDate", null] },
+                  {
+                    $floor: {
+                      $divide: [
+                        { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
+                        1000 * 60 * 60 * 24
+                      ]
+                    }
+                  },
+                  null
+                ]
+              }
+            }
+          },
+          {
+            $match: {
+              daysOnMarket: { $lte: 7, $ne: null }
+            }
+          },
+          {
+            $count: "newListingsCount"
+          }
+        ]);
+
+        const newListingsCount = newListingsAggregation[0]?.newListingsCount || 0;
+        console.log(`[searchHomes] Found ${newListingsCount} new listings (past 7 days)`);
+
         // Get listings for calculating stats, city info, AND learning about the area
         // Include publicRemarks, amenities, HOA info so AI can understand the subdivision
         const listings = await UnifiedListing.find(dbQuery)
@@ -279,6 +313,10 @@ async function executeSearchHomes(args: {
 
         stats = {
           totalListings,
+          newListingsCount: newListingsCount,  // Accurate count from past 7 days (from aggregation)
+          newListingsPct: totalListings > 0
+            ? Math.round((newListingsCount / totalListings) * 100)
+            : 0,
           avgPrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
           medianPrice: sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0,
           priceRange: {
@@ -310,6 +348,8 @@ async function executeSearchHomes(args: {
         // No listings found - return empty stats
         stats = {
           totalListings: 0,
+          newListingsCount: 0,
+          newListingsPct: 0,
           avgPrice: 0,
           medianPrice: 0,
           priceRange: { min: 0, max: 0 },
@@ -322,6 +362,8 @@ async function executeSearchHomes(args: {
       // Continue without stats - not critical, but log the error
       stats = {
         totalListings: 0,
+        newListingsCount: 0,
+        newListingsPct: 0,
         avgPrice: 0,
         medianPrice: 0,
         priceRange: { min: 0, max: 0 },
@@ -435,6 +477,8 @@ async function executeSearchHomes(args: {
         // Include stats for AI to generate better responses
         stats: stats || {
           totalListings: 0,
+          newListingsCount: 0,
+          newListingsPct: 0,
           avgPrice: 0,
           medianPrice: 0,
           priceRange: { min: 0, max: 0 },
@@ -460,6 +504,8 @@ async function executeSearchHomes(args: {
         // Return empty stats so AI knows there are no listings available
         stats: {
           totalListings: 0,
+          newListingsCount: 0,
+          newListingsPct: 0,
           avgPrice: 0,
           medianPrice: 0,
           priceRange: { min: 0, max: 0 },

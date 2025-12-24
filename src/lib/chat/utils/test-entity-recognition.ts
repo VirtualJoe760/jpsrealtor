@@ -15,9 +15,11 @@ const testQueries = [
 
 console.log("=== Entity Recognition Tests ===\n");
 
-testQueries.forEach(query => {
-  const result = identifyEntityType(query);
-  console.log(`Query: "${query}"`);
-  console.log(`Type: ${result.type} | Value: "${result.value}" | Confidence: ${result.confidence.toFixed(2)}`);
-  console.log("---");
-});
+(async () => {
+  for (const query of testQueries) {
+    const result = await identifyEntityType(query);
+    console.log(`Query: "${query}"`);
+    console.log(`Type: ${result.type} | Value: "${result.value}" | Confidence: ${result.confidence.toFixed(2)}`);
+    console.log("---");
+  }
+})();

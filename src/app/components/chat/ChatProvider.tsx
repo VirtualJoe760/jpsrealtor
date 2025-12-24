@@ -106,9 +106,10 @@ export interface ComponentData {
     };
   };
   neighborhood?: {
-    type: "city" | "subdivision" | "county" | "region";
+    type: "city" | "subdivision" | "subdivision-group" | "county" | "region";
     cityId?: string;
     subdivisionSlug?: string;
+    subdivisions?: string[];
     countyId?: string;
     name: string;
     normalizedName?: string;
@@ -148,6 +149,8 @@ export interface ComponentData {
       hasHOA?: boolean;
       maxHOA?: number;
       minHOA?: number;
+      // Sorting
+      sort?: string;
     };
   };
 }

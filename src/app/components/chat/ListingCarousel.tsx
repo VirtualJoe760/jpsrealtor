@@ -270,8 +270,8 @@ export default function ListingCarousel({
   }
 
   // Duplicate listings for infinite scroll
-  // Duplicate listings multiple times for true infinite scroll
-  const duplicatedListings = Array(5).fill(listings).flat();
+  // Duplicate 2x for smooth infinite scroll (less duplication since we're paginating)
+  const duplicatedListings = Array(2).fill(listings).flat();
 
   return (
     <div className="my-4 w-full overflow-hidden">

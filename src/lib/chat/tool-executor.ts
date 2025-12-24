@@ -471,7 +471,7 @@ async function executeGetAppreciation(args: any): Promise<any> {
   }
 
   // Use entity recognition to determine location type
-  const entityResult = identifyEntityType(location);
+  const entityResult = await identifyEntityType(location);
   console.log(`[getAppreciation] Entity recognition: ${entityResult.type} - ${entityResult.value}`);
 
   // Return component parameters - frontend will make the API call

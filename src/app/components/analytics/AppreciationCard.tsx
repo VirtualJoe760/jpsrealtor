@@ -2,6 +2,7 @@
 
 import { Card } from "@/app/components/ui/card";
 import { TrendingUp, TrendingDown, Minus, BarChart3, Calendar, MapPin, Building2 } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface YearlyMarketData {
   year: number;
@@ -49,6 +50,8 @@ interface AppreciationCardProps {
 
 export function AppreciationCard({ data }: AppreciationCardProps) {
   const { appreciation, marketData, location, period } = data;
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === 'lightgradient';
 
   // Determine trend icon and color (Bullish/Bearish terminology)
   const getTrendIcon = () => {
@@ -69,23 +72,23 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
   const getTrendColor = () => {
     switch (appreciation.trend) {
       case "bullish":
-        return "text-emerald-600 dark:text-emerald-400";
+        return isLight ? "text-emerald-600" : "text-emerald-400";
       case "bearish":
-        return "text-red-600 dark:text-red-400";
+        return isLight ? "text-red-600" : "text-red-400";
       case "neutral":
-        return "text-blue-600 dark:text-blue-400";
+        return isLight ? "text-blue-600" : "text-blue-400";
       case "mixed":
-        return "text-amber-600 dark:text-amber-400";
+        return isLight ? "text-amber-600" : "text-amber-400";
       default:
-        return "text-slate-600 dark:text-slate-400";
+        return isLight ? "text-slate-600" : "text-slate-400";
     }
   };
 
   const getConfidenceBadge = () => {
     const colors = {
-      high: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-      medium: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-      low: "bg-slate-100 text-slate-800 dark:bg-slate-800/30 dark:text-slate-300"
+      high: isLight ? "bg-emerald-100 text-emerald-800" : "bg-emerald-900/30 text-emerald-300",
+      medium: isLight ? "bg-amber-100 text-amber-800" : "bg-amber-900/30 text-amber-300",
+      low: isLight ? "bg-slate-100 text-slate-800" : "bg-slate-800/30 text-slate-300"
     };
 
     return (
@@ -109,27 +112,30 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
   };
 
   const getLocationDisplay = () => {
+    const iconClass = "h-4 w-4 text-slate-500";
+    const textClass = `font-medium ${isLight ? 'text-slate-700' : 'text-slate-200'}`;
+
     if (location?.subdivision) {
       return (
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-slate-500" />
-          <span className="font-medium">{location.subdivision}</span>
+          <Building2 className={iconClass} />
+          <span className={textClass}>{location.subdivision}</span>
         </div>
       );
     }
     if (location?.city) {
       return (
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-slate-500" />
-          <span className="font-medium">{location.city}</span>
+          <MapPin className={iconClass} />
+          <span className={textClass}>{location.city}</span>
         </div>
       );
     }
     if (location?.county) {
       return (
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-slate-500" />
-          <span className="font-medium">{location.county} County</span>
+          <MapPin className={iconClass} />
+          <span className={textClass}>{location.county} County</span>
         </div>
       );
     }
@@ -151,14 +157,22 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
   const endYear = appreciation.byYear?.[appreciation.byYear.length - 1];
 
   return (
-    <Card className="overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
+    <Card className={`overflow-hidden shadow-lg ${
+      isLight
+        ? 'border-slate-200 bg-white'
+        : 'border-slate-800 bg-slate-900'
+    }`}>
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 p-6 border-b border-slate-200 dark:border-slate-800">
+      <div className={`p-6 border-b ${
+        isLight
+          ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-slate-200'
+          : 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-800'
+      }`}>
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              <BarChart3 className={`h-5 w-5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
+              <h3 className={`text-lg font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 Market Appreciation Analysis
               </h3>
             </div>
@@ -166,7 +180,7 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-slate-500" />
-            <span className="text-sm text-slate-600 dark:text-slate-400">{periodDisplay}</span>
+            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{periodDisplay}</span>
           </div>
         </div>
       </div>
@@ -176,10 +190,14 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
         {/* Appreciation Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Annual Appreciation */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className={`rounded-lg p-4 border ${
+            isLight
+              ? 'bg-slate-50 border-slate-200'
+              : 'bg-slate-800/50 border-slate-700'
+          }`}>
             <div className="flex items-center gap-2 mb-2">
               {getTrendIcon()}
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 Annual Rate
               </span>
             </div>
@@ -189,10 +207,14 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
           </div>
 
           {/* 2-Year Appreciation */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className={`rounded-lg p-4 border ${
+            isLight
+              ? 'bg-slate-50 border-slate-200'
+              : 'bg-slate-800/50 border-slate-700'
+          }`}>
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="h-5 w-5 text-purple-500" />
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 2-Year
               </span>
             </div>
@@ -202,10 +224,14 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
           </div>
 
           {/* 5-Year Appreciation */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className={`rounded-lg p-4 border ${
+            isLight
+              ? 'bg-slate-50 border-slate-200'
+              : 'bg-slate-800/50 border-slate-700'
+          }`}>
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="h-5 w-5 text-blue-500" />
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 5-Year
               </span>
             </div>
@@ -215,10 +241,14 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
           </div>
 
           {/* Trend */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className={`rounded-lg p-4 border ${
+            isLight
+              ? 'bg-slate-50 border-slate-200'
+              : 'bg-slate-800/50 border-slate-700'
+          }`}>
             <div className="flex items-center gap-2 mb-2">
               {getTrendIcon()}
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 Market Trend
               </span>
             </div>
@@ -231,10 +261,16 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
         {/* Year-over-Year Performance Chart */}
         {appreciation.byYear && appreciation.byYear.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+            <h4 className={`text-sm font-semibold uppercase tracking-wide ${
+              isLight ? 'text-slate-700' : 'text-slate-300'
+            }`}>
               Year-over-Year Performance
             </h4>
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <div className={`rounded-lg p-4 border ${
+              isLight
+                ? 'bg-slate-50 border-slate-200'
+                : 'bg-slate-800/50 border-slate-700'
+            }`}>
               {/* Chart Container */}
               <div className="space-y-4">
                 {/* Bar Chart */}
@@ -251,8 +287,8 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
                           <div className="mb-1">
                             <span className={`text-xs font-bold ${
                               isPositive
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-red-600 dark:text-red-400'
+                                ? (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                                : (isLight ? 'text-red-600' : 'text-red-400')
                             }`}>
                               {isPositive ? '+' : ''}{yearData.appreciationRate.toFixed(1)}%
                             </span>
@@ -269,18 +305,25 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
                             >
                               {/* Tooltip on hover */}
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                <div className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-3 py-2 rounded-lg text-xs whitespace-nowrap shadow-xl">
+                                <div className={`px-3 py-2 rounded-lg text-xs whitespace-nowrap shadow-xl ${
+                                  isLight
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-slate-100 text-slate-900'
+                                }`}>
                                   <p className="font-semibold">{yearData.year}</p>
-                                  <p className={isPositive ? 'text-emerald-300 dark:text-emerald-600' : 'text-red-300 dark:text-red-600'}>
+                                  <p className={isPositive
+                                    ? (isLight ? 'text-emerald-300' : 'text-emerald-600')
+                                    : (isLight ? 'text-red-300' : 'text-red-600')
+                                  }>
                                     {isPositive ? '+' : ''}{yearData.appreciationRate.toFixed(1)}% appreciation
                                   </p>
-                                  <p className="text-slate-300 dark:text-slate-700">
+                                  <p className={isLight ? 'text-slate-300' : 'text-slate-700'}>
                                     Avg Sale: {formatCurrency(yearData.avgSalePrice)}
                                   </p>
-                                  <p className="text-slate-300 dark:text-slate-700">
+                                  <p className={isLight ? 'text-slate-300' : 'text-slate-700'}>
                                     Avg/SqFt: {formatCurrency(yearData.avgPricePerSqFt)}
                                   </p>
-                                  <p className="text-slate-400 dark:text-slate-600 text-xs">
+                                  <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>
                                     {formatNumber(yearData.salesCount)} sales
                                   </p>
                                 </div>
@@ -289,7 +332,9 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
                           </div>
 
                           {/* Year Label Below */}
-                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-2">
+                          <span className={`text-xs font-medium mt-2 ${
+                            isLight ? 'text-slate-600' : 'text-slate-400'
+                          }`}>
                             {yearData.year}
                           </span>
                         </div>
@@ -299,14 +344,16 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center justify-center gap-6 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div className={`flex items-center justify-center gap-6 pt-2 border-t ${
+                  isLight ? 'border-slate-200' : 'border-slate-700'
+                }`}>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-gradient-to-t from-emerald-500 to-emerald-400"></div>
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Positive Growth</span>
+                    <span className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Positive Growth</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-gradient-to-t from-red-500 to-red-400"></div>
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Negative Growth</span>
+                    <span className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Negative Growth</span>
                   </div>
                 </div>
               </div>
@@ -316,26 +363,40 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
 
         {/* Average Price Data */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          <h4 className={`text-sm font-semibold uppercase tracking-wide ${
+            isLight ? 'text-slate-700' : 'text-slate-300'
+          }`}>
             Average Price Metrics
           </h4>
 
           {/* Overall Price Change Highlight */}
-          <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className={`p-4 rounded-lg border ${
+            isLight
+              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200'
+              : 'bg-gradient-to-br from-blue-900/20 to-indigo-900/20 border-blue-800'
+          }`}>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                <span className={`text-sm font-medium ${
+                  isLight ? 'text-blue-900' : 'text-blue-100'
+                }`}>
                   Average Price Change
                 </span>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                <p className={`text-xs mt-1 ${
+                  isLight ? 'text-blue-700' : 'text-blue-300'
+                }`}>
                   {formatCurrency(marketData.startAvgPrice)} → {formatCurrency(marketData.endAvgPrice)}
                 </p>
               </div>
               <div className="text-right">
-                <p className={`text-2xl font-bold ${priceChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                <p className={`text-2xl font-bold ${
+                  priceChange >= 0
+                    ? (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                    : (isLight ? 'text-red-600' : 'text-red-400')
+                }`}>
                   {priceChange >= 0 ? "+" : ""}{formatCurrency(priceChange)}
                 </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
+                <p className={`text-sm ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
                   ({priceChange >= 0 ? "+" : ""}{priceChangePercent}%)
                 </p>
               </div>
@@ -346,25 +407,49 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
           {endYear && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Average List Price */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                <span className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">Avg List Price</span>
-                <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+              <div className={`rounded-lg p-4 border ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200'
+                  : 'bg-slate-800/50 border-slate-700'
+              }`}>
+                <span className={`text-xs uppercase tracking-wide ${
+                  isLight ? 'text-slate-600' : 'text-slate-400'
+                }`}>Avg List Price</span>
+                <p className={`text-lg font-bold mt-1 ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
                   {formatCurrency(endYear.avgListPrice)}
                 </p>
               </div>
 
               {/* Average Sale Price */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                <span className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">Avg Sale Price</span>
-                <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+              <div className={`rounded-lg p-4 border ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200'
+                  : 'bg-slate-800/50 border-slate-700'
+              }`}>
+                <span className={`text-xs uppercase tracking-wide ${
+                  isLight ? 'text-slate-600' : 'text-slate-400'
+                }`}>Avg Sale Price</span>
+                <p className={`text-lg font-bold mt-1 ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
                   {formatCurrency(endYear.avgSalePrice)}
                 </p>
               </div>
 
               {/* Average Price per SqFt */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                <span className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">Avg Price/SqFt</span>
-                <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+              <div className={`rounded-lg p-4 border ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200'
+                  : 'bg-slate-800/50 border-slate-700'
+              }`}>
+                <span className={`text-xs uppercase tracking-wide ${
+                  isLight ? 'text-slate-600' : 'text-slate-400'
+                }`}>Avg Price/SqFt</span>
+                <p className={`text-lg font-bold mt-1 ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
                   {formatCurrency(endYear.avgPricePerSqFt)}
                 </p>
               </div>
@@ -373,26 +458,32 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
 
           {/* Reference Data (Min/Max/Median) */}
           {endYear && (
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-              <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-3">
+            <div className={`rounded-lg p-4 border ${
+              isLight
+                ? 'bg-slate-50 border-slate-200'
+                : 'bg-slate-800/50 border-slate-700'
+            }`}>
+              <h5 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${
+                isLight ? 'text-slate-600' : 'text-slate-400'
+              }`}>
                 Reference Data (Most Recent Year)
               </h5>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <span className="text-xs text-slate-500 dark:text-slate-500">Minimum</span>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="text-xs text-slate-500">Minimum</span>
+                  <p className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {formatCurrency(endYear.minPrice)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500 dark:text-slate-500">Median</span>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="text-xs text-slate-500">Median</span>
+                  <p className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {formatCurrency(endYear.medianPrice)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500 dark:text-slate-500">Maximum</span>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="text-xs text-slate-500">Maximum</span>
+                  <p className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {formatCurrency(endYear.maxPrice)}
                   </p>
                 </div>
@@ -403,23 +494,31 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
 
         {/* Market Data */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          <h4 className={`text-sm font-semibold uppercase tracking-wide ${
+            isLight ? 'text-slate-700' : 'text-slate-300'
+          }`}>
             Market Data
           </h4>
-          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-            <span className="text-sm text-slate-600 dark:text-slate-400">Total Sales</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
+          <div className={`flex items-center justify-between p-3 rounded-lg ${
+            isLight ? 'bg-slate-50' : 'bg-slate-800/50'
+          }`}>
+            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Total Sales</span>
+            <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
               {formatNumber(marketData.totalSales)}
             </span>
           </div>
-          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-            <span className="text-sm text-slate-600 dark:text-slate-400">Data Confidence</span>
+          <div className={`flex items-center justify-between p-3 rounded-lg ${
+            isLight ? 'bg-slate-50' : 'bg-slate-800/50'
+          }`}>
+            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Data Confidence</span>
             {getConfidenceBadge()}
           </div>
           {data.metadata?.mlsSources && data.metadata.mlsSources.length > 0 && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <span className="text-sm text-slate-600 dark:text-slate-400">MLS Sources</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">
+            <div className={`flex items-center justify-between p-3 rounded-lg ${
+              isLight ? 'bg-slate-50' : 'bg-slate-800/50'
+            }`}>
+              <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>MLS Sources</span>
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 {data.metadata.mlsSources.join(", ")}
               </span>
             </div>
@@ -429,8 +528,12 @@ export function AppreciationCard({ data }: AppreciationCardProps) {
 
       {/* Footer Note */}
       <div className="px-6 pb-6">
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <p className="text-xs text-amber-800 dark:text-amber-200">
+        <div className={`p-3 border rounded-lg ${
+          isLight
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-amber-900/20 border-amber-800'
+        }`}>
+          <p className={`text-xs ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
             <strong>Note:</strong> {marketData.confidence === "low"
               ? "Small sample size - results may vary with more data."
               : marketData.confidence === "medium"

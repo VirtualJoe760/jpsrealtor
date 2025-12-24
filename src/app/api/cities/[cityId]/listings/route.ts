@@ -18,6 +18,7 @@ export async function GET(
     const propertyType = searchParams.get("propertyType") || "sale";
     const limit = parseInt(searchParams.get("limit") || "100");
     const sortParam = searchParams.get("sort") || "auto";
+    const skipStats = searchParams.get("skipStats") === "true"; // Skip expensive stats aggregations for pagination
 
     // Get filter parameters
     // Price filters
@@ -425,6 +426,7 @@ export async function GET(
         .lean({ virtuals: true }); // Include virtual properties like daysOnMarket
     }
 
+    // Conditionally run stats aggregations (skip for pagination to improve performance)
     const [listings, stats, propertyTypeStats] = await Promise.all([
       listingsQuery.then(results => {
         console.log(`[City API] Query returned ${results.length} listings (limit: ${limit})`);
@@ -432,7 +434,8 @@ export async function GET(
       }),
 
       // CRITICAL: Calculate stats from ALL listings, not just current page
-      UnifiedListing.aggregate([
+      // Skip this expensive aggregation when paginating (skipStats=true)
+      skipStats ? Promise.resolve([]) : UnifiedListing.aggregate([
         { $match: baseQuery },
         {
           $addFields: {
@@ -493,7 +496,8 @@ export async function GET(
         }
       ]),
       // Property type breakdown with stats
-      UnifiedListing.aggregate([
+      // Skip this expensive aggregation when paginating (skipStats=true)
+      skipStats ? Promise.resolve([]) : UnifiedListing.aggregate([
         { $match: baseQuery },
         {
           $group: {
@@ -634,10 +638,14 @@ export async function GET(
       avgPricePerSqft: stat.avgPricePerSqft
     }));
 
-    return NextResponse.json({
+    // Build response - conditionally include stats if they were calculated
+    const response: any = {
       listings: listingsWithPhotos,
-      // ANALYTICS: Accurate stats calculated from ALL listings
-      stats: {
+    };
+
+    // Only include stats if they were calculated (not skipped for pagination)
+    if (!skipStats) {
+      response.stats = {
         totalListings: priceStats.totalCount,
         newListingsCount: priceStats.newListingsCount,  // Count of listings from past 7 days (from ALL listings)
         newListingsPct: priceStats.totalCount > 0
@@ -652,21 +660,23 @@ export async function GET(
           max: priceStats.maxPrice
         },
         propertyTypes: propertyTypeBreakdown
-      },
-      // SORTING: Information about applied sorting
-      sorting: {
-        appliedSort: sortParam,
-        availableOptions: [
-          { value: "price-low", label: "Price: Low to High" },
-          { value: "price-high", label: "Price: High to Low" },
-          { value: "sqft-low", label: "Best Value ($/sqft)" },
-          { value: "sqft-high", label: "Premium ($/sqft)" },
-          { value: "newest", label: "Newest Listed" },
-          { value: "oldest", label: "Longest on Market" },
-          { value: "property-type", label: "Group by Property Type" }
-        ]
-      }
-    });
+      };
+    }
+
+    response.sorting = {
+      appliedSort: sortParam,
+      availableOptions: [
+        { value: "price-low", label: "Price: Low to High" },
+        { value: "price-high", label: "Price: High to Low" },
+        { value: "sqft-low", label: "Best Value ($/sqft)" },
+        { value: "sqft-high", label: "Premium ($/sqft)" },
+        { value: "newest", label: "Newest Listed" },
+        { value: "oldest", label: "Longest on Market" },
+        { value: "property-type", label: "Group by Property Type" }
+      ]
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching city listings:", error);
     return NextResponse.json(

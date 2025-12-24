@@ -34,18 +34,31 @@ export default function ChatResultsContainer({
   const [listingViewMode, setListingViewMode] = useState<'carousel' | 'list'>('carousel');
   const [sortOption, setSortOption] = useState<string>('price-low');
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 30; // Show 30 listings per page
+
   // Fetch listings for neighborhood queries
   const [neighborhoodListings, setNeighborhoodListings] = useState<Listing[]>([]);
   const [neighborhoodTotalCount, setNeighborhoodTotalCount] = useState(0);
   const [loadingNeighborhood, setLoadingNeighborhood] = useState(false);
+  const [cachedStats, setCachedStats] = useState<any>(null); // Cache stats to avoid recalculating on pagination
 
-  // Fetch listings when neighborhood component is present
+  // Reset pagination and cached stats when neighborhood changes
   useEffect(() => {
     if (components.neighborhood) {
       console.log('[ChatResultsContainer] 🏘️ Neighborhood component detected:', components.neighborhood);
-      fetchNeighborhoodListings();
+      setCurrentPage(1); // Reset to page 1 for new query
+      setCachedStats(null); // Clear cached stats for new query
     }
   }, [components.neighborhood]);
+
+  // Fetch listings when neighborhood, page, or sort changes
+  useEffect(() => {
+    if (components.neighborhood) {
+      fetchNeighborhoodListings();
+    }
+  }, [components.neighborhood, currentPage, sortOption]);
 
   const fetchNeighborhoodListings = async () => {
     if (!components.neighborhood) return;
@@ -137,18 +150,20 @@ export default function ChatResultsContainer({
         if (f.hasHOA !== undefined) params.append('hasHOA', String(f.hasHOA));
         if (f.maxHOA) params.append('maxHOA', f.maxHOA.toString());
         if (f.minHOA) params.append('minHOA', f.minHOA.toString());
+      }
 
-        // Sorting
-        if (f.sort) params.append('sort', f.sort);
+      // Sorting - use sortOption from state, or fallback to filter sort
+      params.append('sort', components.neighborhood.filters?.sort || sortOption);
 
-        // Limit: Chat component defaults to 60 for performance
-        // Other components can override by providing explicit limit
-        const chatDefaultLimit = 60;
-        if (f.limit) {
-          params.append('limit', f.limit.toString());
-        } else {
-          params.append('limit', chatDefaultLimit.toString());
-        }
+      // Pagination: Server-side pagination with page size of 30
+      params.append('limit', pageSize.toString());
+      params.append('page', currentPage.toString());
+
+      // Performance optimization: Skip expensive stats aggregations if we already have cached stats
+      // Stats don't change between pages, so only calculate on first page
+      if (cachedStats && currentPage > 1) {
+        params.append('skipStats', 'true');
+        console.log('[ChatResultsContainer] ⚡ Skipping stats calculation for page', currentPage);
       }
 
       const urlWithParams = params.toString() ? `${apiUrl}?${params.toString()}` : apiUrl;
@@ -161,11 +176,20 @@ export default function ChatResultsContainer({
       console.log('[ChatResultsContainer] ✅ API Response:', {
         listingsCount: data.listings?.length || 0,
         total: data.pagination?.total || data.total || 0,
-        stats: data.stats
+        stats: data.stats,
+        statsSkipped: !data.stats
       });
 
+      // Cache stats if they were returned (first page or when sort changes)
+      if (data.stats) {
+        setCachedStats(data.stats);
+        console.log('[ChatResultsContainer] 💾 Cached stats for future pagination');
+      }
+
       // Store total count from API response (subdivision API returns pagination.total)
-      const totalCount = data.pagination?.total || data.total || data.totalCount || data.stats?.totalListings || (data.listings || []).length;
+      // Use cached stats if available
+      const stats = data.stats || cachedStats;
+      const totalCount = data.pagination?.total || data.total || data.totalCount || stats?.totalListings || (data.listings || []).length;
       setNeighborhoodTotalCount(totalCount);
 
       // Transform API response to Listing format
@@ -366,13 +390,19 @@ export default function ChatResultsContainer({
     }
   };
 
-  // Use neighborhood listings if available and apply sorting
-  const unsortedListings = hasNeighborhood ? neighborhoodListings : (components.carousel?.listings || []);
-  const displayListings = sortListings(unsortedListings, sortOption);
+  // Use neighborhood listings if available (already sorted and paginated by API)
+  // For carousel component, apply client-side sorting
+  const displayListings = hasNeighborhood
+    ? neighborhoodListings
+    : sortListings(components.carousel?.listings || [], sortOption);
+
   const hasListings = displayListings.length > 0;
 
-  // Get the total count to display (unfiltered total)
-  const displayTotalCount = hasNeighborhood ? neighborhoodTotalCount : (components.carousel?.listings?.length || 0);
+  // Get the total count and calculate pagination info
+  const totalCount = hasNeighborhood ? neighborhoodTotalCount : (components.carousel?.listings?.length || 0);
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalCount);
 
   // If no components, don't render anything
   if (!hasCarousel && !hasMapView && !hasAppreciation && !hasComparison && !hasMarketStats && !hasArticles && !hasNeighborhood) {
@@ -394,13 +424,17 @@ export default function ChatResultsContainer({
             {!loadingNeighborhood && (
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>
-                  {displayTotalCount} {displayTotalCount === 1 ? 'property' : 'properties'}
+                  Showing {startIndex}-{endIndex} of {totalCount} {totalCount === 1 ? 'property' : 'properties'}
                 </p>
 
                 {/* Sort Dropdown */}
                 <select
                   value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
+                  onChange={(e) => {
+                    setSortOption(e.target.value);
+                    setCurrentPage(1); // Reset to page 1 when sorting changes
+                    setCachedStats(null); // Clear cached stats when sorting changes
+                  }}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
                     isLight
                       ? 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
@@ -541,6 +575,39 @@ export default function ChatResultsContainer({
         <ChatMapView
           listings={displayListings}
         />
+      )}
+
+      {/* Pagination Controls - below map, only show if we have neighborhood listings with pagination */}
+      {hasNeighborhood && totalPages > 1 && (
+        <div className={`mt-6 flex items-center justify-center gap-4 pb-4`}>
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+              isLight
+                ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:hover:bg-blue-500'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:hover:bg-emerald-600'
+            }`}
+          >
+            ← Previous
+          </button>
+
+          <span className={`text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+              isLight
+                ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:hover:bg-blue-500'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:hover:bg-emerald-600'
+            }`}
+          >
+            Next →
+          </button>
+        </div>
       )}
 
       {/* Appreciation Card */}
