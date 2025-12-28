@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
@@ -11,15 +13,24 @@ interface Article {
   date: string;
   slug: string;
   topics?: string[];
+  authorId?: string;
+  authorName?: string;
 }
 
 /**
  * GET /api/articles/list
  *
- * Returns all published articles (non-drafts) from MDX files
+ * Returns published articles (non-drafts) from MDX files
+ * For agents: returns only their own articles (filtered by authorId)
+ * For admins: returns all articles
  */
 export async function GET() {
   try {
+    // Check session for agent scoping
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.isAdmin;
+    const userId = session?.user?.id;
+
     const postsDirectory = path.join(process.cwd(), 'src/posts');
 
     if (!fs.existsSync(postsDirectory)) {
@@ -43,6 +54,11 @@ export async function GET() {
       // Skip drafts
       if (data.draft === true) continue;
 
+      // Agent scoping: skip articles not authored by this agent (unless admin)
+      if (!isAdmin && userId && data.authorId && data.authorId !== userId) {
+        continue;
+      }
+
       articles.push({
         title: data.title || '',
         excerpt: data.metaDescription || '',
@@ -51,6 +67,8 @@ export async function GET() {
         date: data.date || '',
         slug: data.slugId || filename.replace('.mdx', ''),
         topics: data.keywords || [],
+        authorId: data.authorId,
+        authorName: data.authorName,
       });
     }
 

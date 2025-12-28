@@ -25,6 +25,8 @@ export interface ArticleFormData {
   content: string;
   category: string;
   draft?: boolean;  // Optional draft flag
+  authorId?: string;  // User ID of article author (for agent scoping)
+  authorName?: string;  // Display name of article author
   featuredImage: {
     url: string;
     publicId: string;
@@ -189,6 +191,8 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
     `date: "${date}"`,
     `section: "${article.category}"`, // category → section mapping
     article.draft ? `draft: true` : null,  // Add draft flag if true
+    article.authorId ? `authorId: "${article.authorId}"` : null,  // Agent scoping
+    article.authorName ? `authorName: "${escapeYAML(article.authorName)}"` : null,  // Display name
     `image: "${article.featuredImage.url}"`,
     `metaTitle: "${escapeYAML(article.seo.title || article.title)}"`,
     `metaDescription: "${escapeYAML(article.seo.description || article.excerpt)}"`,

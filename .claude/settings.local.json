@@ -3,7 +3,21 @@
     "allow": [
       "Bash(npm run build:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(node scripts/test-agent-routes.js:*)",
+      "Bash(node -r dotenv/config scripts/init-default-team.js:*)",
+      "Bash(node -r dotenv/config scripts/check-user-roles.js:*)",
+      "Bash(node scripts/check-user-roles.js:*)",
+      "Bash(set -a)",
+      "Bash(source:*)",
+      "Bash(set +a)",
+      "Bash(node scripts/make-admin-agent.js:*)",
+      "Bash(node scripts/make-team-leader.js:*)",
+      "Bash(npm run build:check:*)"
     ],
     "deny": [],
     "ask": []

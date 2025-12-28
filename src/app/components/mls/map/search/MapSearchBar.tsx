@@ -244,6 +244,7 @@ export default function MapSearchBar({
               onClick={onToggleFilters}
               aria-label="Toggle Filters"
               className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+              data-tour="map-filters-button"
             >
               <SlidersHorizontal className="w-5 h-5 md:w-6 md:h-6 text-emerald-400" />
             </button>
@@ -275,6 +276,7 @@ export default function MapSearchBar({
                 placeholder="Search by address, city, or neighborhood..."
                 className="w-full pl-10 md:pl-11 pr-3 py-2 md:py-2.5 text-base text-white bg-transparent placeholder-gray-400 focus:outline-none"
                 style={{ fontSize: '16px' }}
+                data-tour="map-search-button"
               />
             </div>
 

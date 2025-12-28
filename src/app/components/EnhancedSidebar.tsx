@@ -20,6 +20,8 @@ import {
   Shield,
   LogOut,
   Map,
+  Briefcase,
+  Users,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
@@ -110,6 +112,8 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
   const dashboardItems = [
     { label: "Settings", icon: Settings, href: "/dashboard/settings" },
+    ...((session?.user as any)?.roles?.includes('realEstateAgent') ? [{ label: "Agent", icon: Briefcase, href: "/agent/dashboard" }] : []),
+    ...((session?.user as any)?.isTeamLeader ? [{ label: "Team", icon: Users, href: "/agent/create-team" }] : []),
     ...((session?.user as any)?.isAdmin ? [{ label: "Admin", icon: Shield, href: "/admin" }] : []),
   ];
 
@@ -311,6 +315,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              data-tour={item.action === "map" ? (isMobile ? "mobile-menu-map" : "map-mode-button") : undefined}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!effectivelyCollapsed && <span className="text-sm font-medium">{item.label}</span>}

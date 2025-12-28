@@ -1,0 +1,485 @@
+[
+  {
+    "_id": "Palm Desert",
+    "count": 462,
+    "avgPrice": 965896.0346320346,
+    "minPrice": 205000,
+    "maxPrice": 62000000
+  },
+  {
+    "_id": "Indio",
+    "count": 323,
+    "avgPrice": 619979.0835913313,
+    "minPrice": 35000,
+    "maxPrice": 5500000
+  },
+  {
+    "_id": "La Quinta",
+    "count": 319,
+    "avgPrice": 1641732.7554858935,
+    "minPrice": 270000,
+    "maxPrice": 27995000
+  },
+  {
+    "_id": "Palm Springs",
+    "count": 285,
+    "avgPrice": 944805.6807017544,
+    "minPrice": 177900,
+    "maxPrice": 7500000
+  },
+  {
+    "_id": "Rancho Mirage",
+    "count": 230,
+    "avgPrice": 1531164.1391304347,
+    "minPrice": 165000,
+    "maxPrice": 9999000
+  },
+  {
+    "_id": "Cathedral City",
+    "count": 111,
+    "avgPrice": 528495.900900901,
+    "minPrice": 229000,
+    "maxPrice": 1249000
+  },
+  {
+    "_id": "Indian Wells",
+    "count": 72,
+    "avgPrice": 2085495.138888889,
+    "minPrice": 325000,
+    "maxPrice": 10000000
+  },
+  {
+    "_id": "Desert Hot Springs",
+    "count": 71,
+    "avgPrice": 474101.8309859155,
+    "minPrice": 105000,
+    "maxPrice": 2495000
+  },
+  {
+    "_id": "Idyllwild",
+    "count": 44,
+    "avgPrice": 623088.0454545454,
+    "minPrice": 279000,
+    "maxPrice": 2299000
+  },
+  {
+    "_id": "Yucca Valley",
+    "count": 37,
+    "avgPrice": 506894.5945945946,
+    "minPrice": 239500,
+    "maxPrice": 1350000
+  },
+  {
+    "_id": "Bermuda Dunes",
+    "count": 36,
+    "avgPrice": 796611.1111111111,
+    "minPrice": 258500,
+    "maxPrice": 2990000
+  },
+  {
+    "_id": "Thermal",
+    "count": 31,
+    "avgPrice": 1211627.677419355,
+    "minPrice": 99950,
+    "maxPrice": 7500000
+  },
+  {
+    "_id": "Coachella",
+    "count": 30,
+    "avgPrice": 600085.2666666667,
+    "minPrice": 140000,
+    "maxPrice": 2195000
+  },
+  {
+    "_id": "Joshua Tree",
+    "count": 18,
+    "avgPrice": 693477.7777777778,
+    "minPrice": 285000,
+    "maxPrice": 1847700
+  },
+  {
+    "_id": "Big Bear Lake",
+    "count": 16,
+    "avgPrice": 723143.6875,
+    "minPrice": 424900,
+    "maxPrice": 1299000
+  },
+  {
+    "_id": "Big Bear City",
+    "count": 16,
+    "avgPrice": 703593.6875,
+    "minPrice": 279900,
+    "maxPrice": 4199900
+  },
+  {
+    "_id": "Mountain Center",
+    "count": 14,
+    "avgPrice": 870464.2857142857,
+    "minPrice": 299000,
+    "maxPrice": 2395000
+  },
+  {
+    "_id": "Blythe",
+    "count": 14,
+    "avgPrice": 294657.0714285714,
+    "minPrice": 149800,
+    "maxPrice": 599800
+  },
+  {
+    "_id": "29 Palms",
+    "count": 8,
+    "avgPrice": 390987.5,
+    "minPrice": 80000,
+    "maxPrice": 849000
+  },
+  {
+    "_id": "Morongo Valley",
+    "count": 6,
+    "avgPrice": 405832.3333333333,
+    "minPrice": 216000,
+    "maxPrice": 515000
+  },
+  {
+    "_id": "Sugarloaf",
+    "count": 6,
+    "avgPrice": 299633.3333333333,
+    "minPrice": 189000,
+    "maxPrice": 549900
+  },
+  {
+    "_id": "Thousand Palms",
+    "count": 5,
+    "avgPrice": 313580,
+    "minPrice": 220000,
+    "maxPrice": 469000
+  },
+  {
+    "_id": "Landers",
+    "count": 5,
+    "avgPrice": 570979.8,
+    "minPrice": 230000,
+    "maxPrice": 1100000
+  },
+  {
+    "_id": "Lake Arrowhead",
+    "count": 5,
+    "avgPrice": 656599.8,
+    "minPrice": 170000,
+    "maxPrice": 996000
+  },
+  {
+    "_id": "Los Angeles",
+    "count": 3,
+    "avgPrice": 2193000,
+    "minPrice": 799000,
+    "maxPrice": 3480000
+  },
+  {
+    "_id": "Riverside",
+    "count": 3,
+    "avgPrice": 572333.3333333334,
+    "minPrice": 559000,
+    "maxPrice": 599000
+  },
+  {
+    "_id": "Cherry Valley",
+    "count": 3,
+    "avgPrice": 502520,
+    "minPrice": 310000,
+    "maxPrice": 859000
+  },
+  {
+    "_id": "San Jacinto",
+    "count": 2,
+    "avgPrice": 568950,
+    "minPrice": 549900,
+    "maxPrice": 588000
+  },
+  {
+    "_id": "Mecca",
+    "count": 2,
+    "avgPrice": 292500,
+    "minPrice": 260000,
+    "maxPrice": 325000
+  },
+  {
+    "_id": "Banning",
+    "count": 2,
+    "avgPrice": 311450,
+    "minPrice": 265000,
+    "maxPrice": 357900
+  },
+  {
+    "_id": "Pioneertown",
+    "count": 2,
+    "avgPrice": 1240000,
+    "minPrice": 995000,
+    "maxPrice": 1485000
+  },
+  {
+    "_id": "Redlands",
+    "count": 2,
+    "avgPrice": 296000,
+    "minPrice": 252000,
+    "maxPrice": 340000
+  },
+  {
+    "_id": "Angelus Oaks",
+    "count": 1,
+    "avgPrice": 2649900,
+    "minPrice": 2649900,
+    "maxPrice": 2649900
+  },
+  {
+    "_id": "Winchester",
+    "count": 1,
+    "avgPrice": 585000,
+    "minPrice": 585000,
+    "maxPrice": 585000
+  },
+  {
+    "_id": "Altadena",
+    "count": 1,
+    "avgPrice": 1995000,
+    "minPrice": 1995000,
+    "maxPrice": 1995000
+  },
+  {
+    "_id": "Phelan",
+    "count": 1,
+    "avgPrice": 295000,
+    "minPrice": 295000,
+    "maxPrice": 295000
+  },
+  {
+    "_id": "Santa Ana",
+    "count": 1,
+    "avgPrice": 399000,
+    "minPrice": 399000,
+    "maxPrice": 399000
+  },
+  {
+    "_id": "Fawnskin",
+    "count": 1,
+    "avgPrice": 949900,
+    "minPrice": 949900,
+    "maxPrice": 949900
+  },
+  {
+    "_id": "Upland",
+    "count": 1,
+    "avgPrice": 545000,
+    "minPrice": 545000,
+    "maxPrice": 545000
+  },
+  {
+    "_id": "San Diego",
+    "count": 1,
+    "avgPrice": 675000,
+    "minPrice": 675000,
+    "maxPrice": 675000
+  },
+  {
+    "_id": "Long Beach",
+    "count": 1,
+    "avgPrice": 625000,
+    "minPrice": 625000,
+    "maxPrice": 625000
+  },
+  {
+    "_id": "Huntington Beach",
+    "count": 1,
+    "avgPrice": 1495000,
+    "minPrice": 1495000,
+    "maxPrice": 1495000
+  },
+  {
+    "_id": "Rosamond",
+    "count": 1,
+    "avgPrice": 225000,
+    "minPrice": 225000,
+    "maxPrice": 225000
+  },
+  {
+    "_id": "Orangevale",
+    "count": 1,
+    "avgPrice": 618000,
+    "minPrice": 618000,
+    "maxPrice": 618000
+  },
+  {
+    "_id": "Playa del Rey",
+    "count": 1,
+    "avgPrice": 565000,
+    "minPrice": 565000,
+    "maxPrice": 565000
+  },
+  {
+    "_id": "West Hollywood",
+    "count": 1,
+    "avgPrice": 2299900,
+    "minPrice": 2299900,
+    "maxPrice": 2299900
+  },
+  {
+    "_id": "Corona",
+    "count": 1,
+    "avgPrice": 629500,
+    "minPrice": 629500,
+    "maxPrice": 629500
+  },
+  {
+    "_id": "Anza",
+    "count": 1,
+    "avgPrice": 299000,
+    "minPrice": 299000,
+    "maxPrice": 299000
+  },
+  {
+    "_id": "Alhambra",
+    "count": 1,
+    "avgPrice": 699000,
+    "minPrice": 699000,
+    "maxPrice": 699000
+  },
+  {
+    "_id": "Warner Springs",
+    "count": 1,
+    "avgPrice": 374900,
+    "minPrice": 374900,
+    "maxPrice": 374900
+  },
+  {
+    "_id": "Whitewater",
+    "count": 1,
+    "avgPrice": 675000,
+    "minPrice": 675000,
+    "maxPrice": 675000
+  },
+  {
+    "_id": "Susanville",
+    "count": 1,
+    "avgPrice": 190000,
+    "minPrice": 190000,
+    "maxPrice": 190000
+  },
+  {
+    "_id": "Lake Elsinore",
+    "count": 1,
+    "avgPrice": 688000,
+    "minPrice": 688000,
+    "maxPrice": 688000
+  },
+  {
+    "_id": "Ocotillo",
+    "count": 1,
+    "avgPrice": 190000,
+    "minPrice": 190000,
+    "maxPrice": 190000
+  },
+  {
+    "_id": "Carlsbad",
+    "count": 1,
+    "avgPrice": 1299999,
+    "minPrice": 1299999,
+    "maxPrice": 1299999
+  },
+  {
+    "_id": "La Verne",
+    "count": 1,
+    "avgPrice": 1625000,
+    "minPrice": 1625000,
+    "maxPrice": 1625000
+  },
+  {
+    "_id": "Hesperia",
+    "count": 1,
+    "avgPrice": 535000,
+    "minPrice": 535000,
+    "maxPrice": 535000
+  },
+  {
+    "_id": "Needles",
+    "count": 1,
+    "avgPrice": 624900,
+    "minPrice": 624900,
+    "maxPrice": 624900
+  },
+  {
+    "_id": "San Bernardino",
+    "count": 1,
+    "avgPrice": 969500,
+    "minPrice": 969500,
+    "maxPrice": 969500
+  },
+  {
+    "_id": "Big Bear",
+    "count": 1,
+    "avgPrice": 1199000,
+    "minPrice": 1199000,
+    "maxPrice": 1199000
+  },
+  {
+    "_id": "Hacienda Heights",
+    "count": 1,
+    "avgPrice": 589000,
+    "minPrice": 589000,
+    "maxPrice": 589000
+  },
+  {
+    "_id": "Apple Valley",
+    "count": 1,
+    "avgPrice": 375000,
+    "minPrice": 375000,
+    "maxPrice": 375000
+  },
+  {
+    "_id": "Johnson Valley",
+    "count": 1,
+    "avgPrice": 349000,
+    "minPrice": 349000,
+    "maxPrice": 349000
+  },
+  {
+    "_id": "Temecula",
+    "count": 1,
+    "avgPrice": 739900,
+    "minPrice": 739900,
+    "maxPrice": 739900
+  },
+  {
+    "_id": "Newport Beach",
+    "count": 1,
+    "avgPrice": 4950000,
+    "minPrice": 4950000,
+    "maxPrice": 4950000
+  },
+  {
+    "_id": "Beaumont",
+    "count": 1,
+    "avgPrice": 600000,
+    "minPrice": 600000,
+    "maxPrice": 600000
+  },
+  {
+    "_id": "Hemet",
+    "count": 1,
+    "avgPrice": 11999000,
+    "minPrice": 11999000,
+    "maxPrice": 11999000
+  },
+  {
+    "_id": "Borrego Springs",
+    "count": 1,
+    "avgPrice": 239000,
+    "minPrice": 239000,
+    "maxPrice": 239000
+  },
+  {
+    "_id": "Trabuco Canyon",
+    "count": 1,
+    "avgPrice": 699000,
+    "minPrice": 699000,
+    "maxPrice": 699000
+  }
+]

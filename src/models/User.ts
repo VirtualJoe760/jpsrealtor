@@ -45,6 +45,82 @@ export interface IUser extends Document {
   // Anonymous Identification (for pre-login users)
   anonymousId?: string; // Browser fingerprint
 
+  // CLIENT TYPE (for users who signed agreements)
+  clientType?: "buyer" | "seller" | "both";
+  buyerAgreement?: {
+    signed: boolean;
+    signedAt: Date;
+    documentUrl?: string; // S3 URL if stored
+    expiresAt?: Date;
+  };
+  sellerAgreement?: {
+    signed: boolean;
+    signedAt: Date;
+    documentUrl?: string; // S3 URL if stored
+    expiresAt?: Date;
+  };
+
+  // AGENT APPLICATION (two-phase application system)
+  agentApplication?: {
+    // Application Phase
+    phase:
+      | "inquiry_pending"
+      | "inquiry_approved"
+      | "inquiry_rejected"
+      | "verification_pending"
+      | "verification_complete"
+      | "verification_failed"
+      | "final_approved"
+      | "final_rejected";
+
+    submittedAt: Date;
+
+    // Phase 1: Basic Info (text-only, no documents)
+    licenseNumber: string;
+    licenseState: string;
+    mlsId: string;
+    mlsAssociation: string;
+    brokerageName: string;
+    brokerageAddress: string;
+    yearsExperience: number;
+
+    // Team Preference
+    preferredTeam?: mongoose.Types.ObjectId; // Reference to Team (null = default team)
+
+    // Motivation
+    whyJoin: string;
+    references?: string; // Optional professional references
+
+    // Documents
+    resumeUrl?: string; // Cloudinary URL for resume
+    coverLetterUrl?: string; // Cloudinary URL for cover letter
+
+    // Phase 1 Review
+    phase1ReviewedBy?: mongoose.Types.ObjectId;
+    phase1ReviewedAt?: Date;
+    phase1ReviewNotes?: string;
+
+    // Phase 2: Identity Verification (Stripe)
+    stripeIdentitySessionId?: string;
+    stripeIdentityVerificationId?: string;
+    identityVerified: boolean;
+    identityVerifiedAt?: Date;
+    identityStatus?: "pending" | "verified" | "failed" | "requires_input";
+
+    // Final Review
+    finalReviewedBy?: mongoose.Types.ObjectId;
+    finalReviewedAt?: Date;
+    finalReviewNotes?: string;
+    finalApprovedAt?: Date;
+
+    // Assignment
+    assignedTeam?: mongoose.Types.ObjectId;
+  };
+
+  // TEAM ASSIGNMENT (for approved agents)
+  team?: mongoose.Types.ObjectId; // Reference to Team
+  isTeamLeader: boolean;
+
   // User Preferences & Activity
   likedListings: Array<{
     listingKey: string;
@@ -229,6 +305,90 @@ const UserSchema = new Schema<IUser>(
     // Anonymous Identification
     anonymousId: { type: String, index: true }, // Browser fingerprint for pre-login users
 
+    // CLIENT TYPE (for users who signed agreements)
+    clientType: {
+      type: String,
+      enum: ["buyer", "seller", "both"],
+    },
+    buyerAgreement: {
+      signed: { type: Boolean, default: false },
+      signedAt: Date,
+      documentUrl: String,
+      expiresAt: Date,
+    },
+    sellerAgreement: {
+      signed: { type: Boolean, default: false },
+      signedAt: Date,
+      documentUrl: String,
+      expiresAt: Date,
+    },
+
+    // AGENT APPLICATION
+    agentApplication: {
+      phase: {
+        type: String,
+        enum: [
+          "inquiry_pending",
+          "inquiry_approved",
+          "inquiry_rejected",
+          "verification_pending",
+          "verification_complete",
+          "verification_failed",
+          "final_approved",
+          "final_rejected",
+        ],
+      },
+      submittedAt: Date,
+
+      // Phase 1: Basic Info
+      licenseNumber: String,
+      licenseState: String,
+      mlsId: String,
+      mlsAssociation: String,
+      brokerageName: String,
+      brokerageAddress: String,
+      yearsExperience: Number,
+
+      // Team Preference
+      preferredTeam: { type: Schema.Types.ObjectId, ref: "Team" },
+
+      // Motivation
+      whyJoin: String,
+      references: String,
+
+      // Documents
+      resumeUrl: String,
+      coverLetterUrl: String,
+
+      // Phase 1 Review
+      phase1ReviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      phase1ReviewedAt: Date,
+      phase1ReviewNotes: String,
+
+      // Phase 2: Identity Verification
+      stripeIdentitySessionId: String,
+      stripeIdentityVerificationId: String,
+      identityVerified: { type: Boolean, default: false },
+      identityVerifiedAt: Date,
+      identityStatus: {
+        type: String,
+        enum: ["pending", "verified", "failed", "requires_input"],
+      },
+
+      // Final Review
+      finalReviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      finalReviewedAt: Date,
+      finalReviewNotes: String,
+      finalApprovedAt: Date,
+
+      // Assignment
+      assignedTeam: { type: Schema.Types.ObjectId, ref: "Team" },
+    },
+
+    // TEAM ASSIGNMENT
+    team: { type: Schema.Types.ObjectId, ref: "Team" },
+    isTeamLeader: { type: Boolean, default: false },
+
     // User Preferences & Activity
     likedListings: [{
       listingKey: { type: String, required: true },
@@ -332,6 +492,10 @@ UserSchema.index({ "activityMetrics.lastActivityAt": -1 }); // For sorting by re
 UserSchema.index({ "activityMetrics.engagementScore": -1 }); // For sorting by engagement
 UserSchema.index({ isAdmin: 1 });
 UserSchema.index({ serviceCategory: 1, serviceAreas: 1 }); // For service provider search
+UserSchema.index({ "agentApplication.phase": 1 }); // For filtering applications by phase
+UserSchema.index({ team: 1 }); // For team member queries
+UserSchema.index({ isTeamLeader: 1 }); // For team leader queries
+UserSchema.index({ clientType: 1 }); // For client queries
 
 // Helper methods
 UserSchema.methods.hasRole = function(role: UserRole): boolean {

@@ -20,6 +20,7 @@ interface ChatResultsContainerProps {
   onOpenListingPanel: (listings: any[], startIndex: number) => void;
   swipeQueue: SwipeQueueHook;
   onSetQueueMode: (isQueue: boolean) => void;
+  onListViewSelected?: () => void;
 }
 
 export default function ChatResultsContainer({
@@ -27,6 +28,7 @@ export default function ChatResultsContainer({
   onOpenListingPanel,
   swipeQueue,
   onSetQueueMode,
+  onListViewSelected,
 }: ChatResultsContainerProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
@@ -435,6 +437,7 @@ export default function ChatResultsContainer({
                     setCurrentPage(1); // Reset to page 1 when sorting changes
                     setCachedStats(null); // Clear cached stats when sorting changes
                   }}
+                  data-tour="sort-dropdown"
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
                     isLight
                       ? 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
@@ -454,11 +457,14 @@ export default function ChatResultsContainer({
                 </select>
 
                 {/* Pill Toggle */}
-                <div className={`inline-flex rounded-full p-0.5 ${
-                  isLight
-                    ? 'bg-gray-200'
-                    : 'bg-neutral-700'
-                }`}>
+                <div
+                  className={`inline-flex rounded-full p-0.5 ${
+                    isLight
+                      ? 'bg-gray-200'
+                      : 'bg-neutral-700'
+                  }`}
+                  data-tour="results-view-toggle"
+                >
                   <button
                     onClick={() => setListingViewMode('carousel')}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
@@ -477,7 +483,11 @@ export default function ChatResultsContainer({
                     <span>Panels</span>
                   </button>
                   <button
-                    onClick={() => setListingViewMode('list')}
+                    onClick={() => {
+                      setListingViewMode('list');
+                      onListViewSelected?.();
+                    }}
+                    data-tour="list-view-button"
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
                       listingViewMode === 'list'
                         ? isLight

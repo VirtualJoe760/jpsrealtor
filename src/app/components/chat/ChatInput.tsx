@@ -93,6 +93,7 @@ export default function ChatInput({
                   ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
                   : "bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
               }`}
+              data-tour="new-chat-button"
             >
               <SquarePen className="w-5 h-5" />
             </button>
@@ -225,6 +226,7 @@ export default function ChatInput({
                   ? "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700"
                   : "bg-neutral-700 hover:bg-neutral-600 active:bg-neutral-500 text-neutral-300"
               }`}
+              data-tour="new-chat-button"
             >
               <SquarePen className="w-5 h-5 sm:w-5 sm:h-5" />
             </button>

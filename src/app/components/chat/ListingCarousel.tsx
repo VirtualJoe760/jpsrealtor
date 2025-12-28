@@ -406,6 +406,7 @@ export default function ListingCarousel({
                       ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                       : 'bg-neutral-700 text-white hover:bg-neutral-600'
                   }`}
+                  data-tour={index === 0 ? "view-listing-button" : undefined}
                 >
                   View Details
                 </button>
@@ -418,6 +419,7 @@ export default function ListingCarousel({
                       ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                       : 'bg-neutral-700 text-white hover:bg-neutral-600'
                   }`}
+                  data-tour={index === 0 ? "view-listing-button" : undefined}
                 >
                   View Details
                 </Link>

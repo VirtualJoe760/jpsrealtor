@@ -31,6 +31,7 @@ import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { ChatQueueStrategy } from "@/app/utils/swipe/ChatQueueStrategy";
 import EndOfQueueModal from "./EndOfQueueModal";
 import type { MapListing } from "@/types/types";
+import { useChatTutorial, ToastyMascot, SpeechBubble, TutorialOverlay, getTutorialSteps } from "./useChatTutorial";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -69,6 +70,16 @@ export default function ChatWidget() {
   // Location insights notification states
   const [showNotification, setShowNotification] = useState(false);
   const [notificationPreview, setNotificationPreview] = useState("");
+
+  // Chat tutorial hook
+  const tutorial = useChatTutorial();
+
+  // Debug: Log message changes during tutorial
+  useEffect(() => {
+    if (tutorial.run) {
+      console.log('🎓 [Tutorial] Message state changed:', message);
+    }
+  }, [message, tutorial.run]);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -276,6 +287,12 @@ export default function ChatWidget() {
 
                     addMessage(cleanText, "assistant", undefined, components);
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+                    // Tutorial mode: notify when results received
+                    if (tutorial.waitingForResults) {
+                      console.log('🎓 [ChatWidget] AI results received, waiting for render...');
+                      setTimeout(() => tutorial.onResultsReceived(), 2000);
+                    }
 
                     // Pre-position map in background if listings are returned
                     if (components?.carousel?.listings && components.carousel.listings.length > 0) {
@@ -611,6 +628,19 @@ export default function ChatWidget() {
     const userMessage = message;
     setMessage("");
     autocomplete.clear();
+
+    // Check if user typed "get started" to trigger tutorial
+    if (userMessage.toLowerCase().trim() === "get started") {
+      console.log('🎓 [ChatWidget] Triggering tutorial');
+      tutorial.startTutorial();
+      return; // Don't send to AI
+    }
+
+    // Tutorial mode: track when user sends practice query
+    if (tutorial.waitingForQuery) {
+      console.log('🎓 [ChatWidget] User sent practice query, waiting for results...');
+      tutorial.onQuerySent();
+    }
 
     // Chat-only behavior: just send to AI
     // If user wants map view, they can use the map toggle or autocomplete
@@ -1116,6 +1146,7 @@ export default function ChatWidget() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 className="w-full max-w-[700px] relative"
+                data-tour="chat-input"
               >
                 <ChatInput
                   message={message}
@@ -1127,7 +1158,13 @@ export default function ChatWidget() {
                   isLoading={isLoading}
                   variant="landing"
                   showNewChatButton={messages.length > 0}
+                  placeholder={
+                    !tutorial.hasSeenTutorial && messages.length === 0
+                      ? "Type 'get started' to meet Toasty! 🐕"
+                      : "Ask me anything about real estate..."
+                  }
                 />
+
 
                 {/* Autocomplete Suggestions Dropdown */}
                 <AutocompleteDropdown
@@ -1317,6 +1354,7 @@ export default function ChatWidget() {
                     onOpenListingPanel={handleOpenListingPanel}
                     swipeQueue={swipeQueue}
                     onSetQueueMode={setIsQueueMode}
+                    onListViewSelected={tutorial.run && tutorial.stepIndex === 4 ? tutorial.onListViewSelected : undefined}
                   />
                 )}
               </motion.div>
@@ -1381,17 +1419,24 @@ export default function ChatWidget() {
       {/* Chat Input - Only show in conversation mode when map is NOT visible */}
       {!showLanding && !isMapVisible && (
         <>
-          <ChatInput
-            message={message}
-            setMessage={setMessage}
-            onSend={handleSend}
-            onNewChat={handleNewChat}
-            onKeyPress={handleKeyPress}
-            onKeyDown={handleKeyDown}
-            isLoading={isLoading}
-            variant="conversation"
-            showNewChatButton={true}
-          />
+          <div data-tour="chat-input">
+            <ChatInput
+              message={message}
+              setMessage={setMessage}
+              onSend={handleSend}
+              onNewChat={handleNewChat}
+              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
+              isLoading={isLoading}
+              variant="conversation"
+              showNewChatButton={true}
+              placeholder={
+                !tutorial.hasSeenTutorial && messages.length === 0
+                  ? "Type 'get started' for a quick tour..."
+                  : "Ask me anything about real estate..."
+              }
+            />
+          </div>
 
           <AutocompleteDropdown
             suggestions={autocomplete.suggestions}
@@ -1554,6 +1599,77 @@ export default function ChatWidget() {
         20%, 40%, 60%, 80% { transform: translateX(5px); }
       }
     `}</style>
+
+    {/* Custom Tutorial System - MUST be at root level with highest z-index */}
+    <AnimatePresence>
+      {tutorial.run && (
+        <>
+          {/* Dark Backdrop + Spotlight Overlay */}
+          <TutorialOverlay
+            target={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]?.target}
+            hideOverlay={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]?.hideOverlay}
+          />
+
+          {/* Toasty Mascot - hide while user is actively scrolling */}
+          {!tutorial.isScrolling && (
+            <ToastyMascot
+              stepIndex={tutorial.stepIndex}
+              isMobile={tutorial.isMobile}
+            />
+          )}
+
+          {/* Speech Bubble - hide while user is actively scrolling */}
+          {!tutorial.isScrolling && (
+            <SpeechBubble
+            step={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]}
+            isMobile={tutorial.isMobile}
+            isLight={isLight}
+            onNext={() => {
+              const currentStep = getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex];
+              if (tutorial.stepIndex === 14) {
+                // Last step - complete tutorial
+                tutorial.completeTutorial();
+              } else if (tutorial.stepIndex === 1) {
+                // Step 1: If message is filled (auto-filled), submit it and advance to scroll step
+                if (message.trim()) {
+                  console.log('🎓 [Tutorial] Submitting auto-filled message');
+                  handleSend(); // Submit the message
+                  tutorial.onQuerySent(); // Mark query as sent
+                  // Advance to scroll step immediately
+                  tutorial.nextStep();
+                } else {
+                  console.log('🎓 [Tutorial] Please fill in the search first');
+                }
+              } else if (tutorial.stepIndex === 2) {
+                // Step 2: Scroll to read step - user clicks Continue button to advance
+                console.log('🎓 [Tutorial] User clicked Continue, advancing to step 3');
+                tutorial.nextStep();
+              } else {
+                tutorial.nextStep();
+              }
+            }}
+            onPrev={tutorial.prevStep}
+            onSkip={tutorial.completeTutorial}
+            canGoNext={
+              tutorial.stepIndex === 1
+                ? message.trim().length > 0
+                : tutorial.stepIndex === 2
+                  ? !tutorial.waitingForResults
+                  : tutorial.stepIndex === 4
+                    ? !tutorial.waitingForListView
+                    : true
+            }
+            isFirstStep={tutorial.stepIndex === 0}
+            isLastStep={tutorial.stepIndex === 14}
+            onAutoFill={() => {
+              console.log('🎓 [Tutorial] Auto-fill clicked');
+              setMessage("show me homes in Indian Wells Country Club");
+            }}
+          />
+          )}
+        </>
+      )}
+    </AnimatePresence>
 
     </>
   );

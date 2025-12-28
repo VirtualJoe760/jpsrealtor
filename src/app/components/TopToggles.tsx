@@ -209,6 +209,7 @@ export default function TopToggles() {
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
+          data-tour="top-map-toggle"
         >
           {mounted && isMapVisible ? (
             <>

@@ -633,10 +633,10 @@ export default function ListingBottomPanel({
 
         {/* Swipe Buttons */}
         <div className="flex justify-center gap-8 py-4">
-          <button onClick={() => swipeOut("left")} className="transition-transform hover:scale-110 active:scale-95">
+          <button onClick={() => swipeOut("left")} className="transition-transform hover:scale-110 active:scale-95" data-tour="swipe-left-button">
             <Image src="/images/swipe-left.png" alt="Dislike" width={64} height={64} />
           </button>
-          <button onClick={() => swipeOut("right")} className="transition-transform hover:scale-110 active:scale-95">
+          <button onClick={() => swipeOut("right")} className="transition-transform hover:scale-110 active:scale-95" data-tour="swipe-right-button">
             <Image src="/images/swipe-right.png" alt="Like" width={64} height={64} />
           </button>
         </div>

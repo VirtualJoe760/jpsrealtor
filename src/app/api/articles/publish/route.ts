@@ -11,17 +11,21 @@ import { publishArticle, validateForPublish, type ArticleFormData } from '@/lib/
  */
 export async function POST(req: Request) {
   try {
-    // Check auth
+    // Check auth - allow both admins and agents
     const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 403 }
+        { error: 'Unauthorized. Please sign in.' },
+        { status: 401 }
       );
     }
 
     const body = await req.json();
     const { article, slugId, autoDeploy = true } = body; // autoDeploy defaults to true
+
+    // Add author information from session
+    article.authorId = session.user.id;
+    article.authorName = session.user.name || session.user.email;
 
     // Validate request
     if (!article) {

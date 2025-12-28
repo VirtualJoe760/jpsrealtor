@@ -97,6 +97,7 @@ export default function MobileBottomNav() {
                     ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                     : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
+              data-tour={isChatMapButton ? "mobile-map-button" : undefined}
             >
               <div className="relative w-8 h-8 mb-1 flex items-center justify-center">
                 {/* Layered icons for Chat/Map button */}

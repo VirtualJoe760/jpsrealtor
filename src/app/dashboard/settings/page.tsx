@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Lock, Upload, Loader2, Mail } from "lucide-react";
+import { User, Lock, Upload, Loader2, Mail, Briefcase } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
@@ -19,6 +19,16 @@ export default function SettingsPage() {
 
   // Security state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  // Agent state
+  const [isAgent, setIsAgent] = useState(false);
+  const [agentInfo, setAgentInfo] = useState({
+    name: "",
+    agentId: "",
+    team: "",
+    licenseNumber: "",
+    brokerageName: "",
+  });
 
   // Profile state
   const [profile, setProfile] = useState({
@@ -37,7 +47,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "marketing">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "marketing" | "joinus">("profile");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -55,6 +65,21 @@ export default function SettingsPage() {
       if (authResponse.ok) {
         const authData = await authResponse.json();
         setTwoFactorEnabled(authData.twoFactorEnabled || false);
+
+        // Check if user is an agent
+        const isRealEstateAgent = authData.roles?.includes("realEstateAgent") || false;
+        setIsAgent(isRealEstateAgent);
+
+        if (isRealEstateAgent) {
+          // Fetch agent-specific data
+          setAgentInfo({
+            name: authData.name || "",
+            agentId: authData._id || "",
+            team: authData.teamName || "ChatRealty",
+            licenseNumber: authData.licenseNumber || "",
+            brokerageName: authData.brokerageName || "",
+          });
+        }
       }
 
       // Fetch profile data
@@ -295,6 +320,21 @@ export default function SettingsPage() {
           >
             <Mail className="w-5 h-5 inline mr-2" />
             Marketing Consent
+          </button>
+          <button
+            onClick={() => setActiveTab("joinus")}
+            className={`px-6 py-3 font-medium transition-all ${
+              activeTab === "joinus"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Briefcase className="w-5 h-5 inline mr-2" />
+            Join Us
           </button>
         </div>
 
@@ -639,6 +679,187 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Join Us Tab */}
+        {activeTab === "joinus" && (
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
+            {isAgent ? (
+              // Agent Information Display
+              <>
+                <h2 className={`text-2xl font-semibold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>Agent Profile</h2>
+                <p className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                  Your ChatRealty agent information
+                </p>
+
+                <div className="space-y-6">
+                  {/* Agent Info Card */}
+                  <div className={`rounded-lg p-6 ${
+                    isLight
+                      ? "bg-blue-50 border border-blue-200"
+                      : "bg-blue-900/20 border border-blue-700"
+                  }`}>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className={`w-6 h-6 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                        <h3 className={`text-lg font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+                          Agent Details
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className={`text-xs font-medium uppercase tracking-wide ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                            Full Name
+                          </label>
+                          <p className={`mt-1 text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+                            {agentInfo.name || "Not provided"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className={`text-xs font-medium uppercase tracking-wide ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                            Agent ID
+                          </label>
+                          <p className={`mt-1 text-sm font-mono ${isLight ? "text-gray-900" : "text-white"}`}>
+                            {agentInfo.agentId ? agentInfo.agentId.substring(0, 8).toUpperCase() : "N/A"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className={`text-xs font-medium uppercase tracking-wide ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                            Team
+                          </label>
+                          <p className={`mt-1 text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+                            {agentInfo.team || "ChatRealty"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className={`text-xs font-medium uppercase tracking-wide ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                            License Number
+                          </label>
+                          <p className={`mt-1 text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+                            {agentInfo.licenseNumber || "Not provided"}
+                          </p>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className={`text-xs font-medium uppercase tracking-wide ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                            Brokerage
+                          </label>
+                          <p className={`mt-1 text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+                            {agentInfo.brokerageName || "Not provided"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <Link
+                          href="/contact"
+                          className={`inline-flex items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 ${
+                            isLight
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                          }`}
+                        >
+                          <Mail className="w-5 h-5 mr-2" />
+                          Update Agent Information
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className={`rounded-lg p-4 border ${
+                    isLight
+                      ? "bg-green-50 border-green-200"
+                      : "bg-green-900/20 border-green-700"
+                  }`}>
+                    <p className={`text-sm ${isLight ? "text-green-700" : "text-green-300"}`}>
+                      <strong>Active Agent:</strong> You are currently an active ChatRealty agent. To update your information, please contact our support team.
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              // Join Us Content (for non-agents)
+              <>
+                <h2 className={`text-2xl font-semibold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>Join Our Team</h2>
+                <p className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                  Interested in becoming a ChatRealty agent? Join our team and take your real estate career to the next level.
+                </p>
+
+                <div className="space-y-6">
+                  {/* Info Card */}
+                  <div className={`rounded-lg p-6 ${
+                    isLight
+                      ? "bg-blue-50 border border-blue-200"
+                      : "bg-blue-900/20 border border-blue-700"
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <Briefcase className={`w-6 h-6 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                      <div>
+                        <h3 className={`text-lg font-medium mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+                          Why Join ChatRealty?
+                        </h3>
+                        <ul className={`text-sm mb-4 space-y-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                          <li className="flex items-start">
+                            <span className={`mr-2 ${isLight ? "text-blue-600" : "text-blue-400"}`}>✓</span>
+                            Access to cutting-edge AI technology to serve your clients better
+                          </li>
+                          <li className="flex items-start">
+                            <span className={`mr-2 ${isLight ? "text-blue-600" : "text-blue-400"}`}>✓</span>
+                            Collaborative team environment with experienced professionals
+                          </li>
+                          <li className="flex items-start">
+                            <span className={`mr-2 ${isLight ? "text-blue-600" : "text-blue-400"}`}>✓</span>
+                            Competitive commission structure and support
+                          </li>
+                          <li className="flex items-start">
+                            <span className={`mr-2 ${isLight ? "text-blue-600" : "text-blue-400"}`}>✓</span>
+                            Marketing and lead generation resources
+                          </li>
+                        </ul>
+                        <Link
+                          href="/dashboard/settings/join-us"
+                          className={`inline-flex items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 ${
+                            isLight
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                          }`}
+                        >
+                          <Briefcase className="w-5 h-5 mr-2" />
+                          Apply Now
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Requirements Notice */}
+                  <div className={`rounded-lg p-4 border ${
+                    isLight
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-gray-800/50 border-gray-700"
+                  }`}>
+                    <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                      <strong>Requirements:</strong> Active real estate license, MLS membership, and current brokerage affiliation required.
+                      Our application process includes a brief application review and identity verification.
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
