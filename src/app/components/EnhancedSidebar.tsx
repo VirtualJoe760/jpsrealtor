@@ -283,11 +283,11 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
         {/* Regular Menu Items */}
         {menuItems.map((item) => {
-          const isActive = item.action === "map"
+          const isActive = mounted && (item.action === "map"
             ? isMapVisible
             : item.action === "chat"
               ? isHomePage && !isMapVisible
-              : pathname === item.href;
+              : pathname === item.href);
           const Icon = item.icon;
 
           const handleClick = () => {

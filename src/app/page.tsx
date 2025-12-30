@@ -72,6 +72,12 @@ function HomeContent() {
   });
   const [initialLoad, setInitialLoad] = useState(true);
   const isClosingRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch - wait for client-side mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Notify TopToggles when favorites panel opens/closes
   useEffect(() => {
@@ -340,17 +346,18 @@ function HomeContent() {
         className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
         style={{
           zIndex: 1,
-          clipPath: isMapVisible
+          clipPath: mounted && isMapVisible
             ? 'inset(0% 0% 0% 0%)' // Fully visible
             : 'inset(50% 0% 50% 0%)', // Clipped to center horizontal line (hidden)
-          pointerEvents: isMapVisible ? 'auto' : 'none',
+          pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
         }}
+        suppressHydrationWarning
       >
         <MapLayer />
       </div>
 
       {/* Map Search Bar - Only visible when map is active */}
-      {isMapVisible && (
+      {mounted && isMapVisible && (
         <MapSearchBar
           onSearch={(query) => {
             console.log('🗺️ [Map Search]:', query);
@@ -362,7 +369,7 @@ function HomeContent() {
       )}
 
       {/* Favorites Button - Under info panel (when map is visible and has favorites) */}
-      {isMapVisible && likedListings.length > 0 && (
+      {mounted && isMapVisible && likedListings.length > 0 && (
         <button
           onClick={() => setFavoritesPannelOpen(true)}
           className={`fixed top-32 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
@@ -385,12 +392,12 @@ function HomeContent() {
 
       {/* Chat Widget - renders above both backgrounds */}
       {/* When map is visible, only the input bar should capture clicks */}
-      <div className="relative z-20" style={{ pointerEvents: isMapVisible ? 'none' : 'auto' }}>
+      <div className="relative z-20" style={{ pointerEvents: mounted && isMapVisible ? 'none' : 'auto' }} suppressHydrationWarning>
         <ChatWidget />
       </div>
 
       {/* Favorites Panel - only show when map is visible */}
-      {isMapVisible && (
+      {mounted && isMapVisible && (
         <FavoritesPannel
           visibleListings={visibleListings}
           favorites={likedListings}
