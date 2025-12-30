@@ -8,6 +8,7 @@ export default function useDislikes() {
   const { data: session } = useSession();
   const [dislikes, setDislikes] = useState<MapListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [migrationCount, setMigrationCount] = useState<number>(0);
 
   // Load dislikes from user database on mount
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function useDislikes() {
             // Set merged dislikes
             const mergedDislikes = [...dbDislikes.map((dis: any) => dis.listingData).filter(Boolean), ...newDislikes];
             setDislikes(mergedDislikes);
+            setMigrationCount(newDislikes.length); // Track migration count for notification
           } else {
             console.log('[useDislikes] ℹ️ No new dislikes to migrate (all already in database)');
             localStorage.removeItem("dislikedListings");
@@ -225,5 +227,6 @@ export default function useDislikes() {
     removeDislike,
     clearDislikes,
     isLoading,
+    migrationCount,
   };
 }

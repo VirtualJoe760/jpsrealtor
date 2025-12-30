@@ -8,6 +8,7 @@ export default function useFavorites() {
   const { data: session } = useSession();
   const [favorites, setFavorites] = useState<MapListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [migrationCount, setMigrationCount] = useState<number>(0);
 
   // Load favorites from user database on mount
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function useFavorites() {
             // Set merged favorites
             const mergedFavorites = [...dbFavorites.map((fav: any) => fav.listingData), ...newFavorites];
             setFavorites(mergedFavorites);
+            setMigrationCount(newFavorites.length); // Track migration count for notification
           } else {
             console.log('[useFavorites] ℹ️ No new favorites to migrate (all already in database)');
             localStorage.removeItem("likedListings");
@@ -225,5 +227,6 @@ export default function useFavorites() {
     removeFavorite,
     clearFavorites,
     isLoading,
+    migrationCount,
   };
 }

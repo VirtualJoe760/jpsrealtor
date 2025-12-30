@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import type { MapListing, Filters } from "@/types/types";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { useServerClusters, isServerCluster, MapMarker } from "@/app/utils/map/useServerClusters";
@@ -9,6 +10,7 @@ import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import useFavorites from "@/app/utils/map/useFavorites";
 import useDislikes from "@/app/utils/map/useDislikes";
+import MigrationToast from "@/app/components/MigrationToast";
 
 // Default filter state
 const defaultFilterState: Filters = {
@@ -173,7 +175,8 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     addFavorite,
     removeFavorite: removeFavoriteFromHook,
     clearFavorites: clearFavoritesFromHook,
-    isLoading: isLoadingFavorites
+    isLoading: isLoadingFavorites,
+    migrationCount: favoritesMigrationCount
   } = useFavorites();
 
   const {
@@ -181,8 +184,12 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     addDislike,
     removeDislike,
     clearDislikes,
-    isLoading: isLoadingDislikes
+    isLoading: isLoadingDislikes,
+    migrationCount: dislikesMigrationCount
   } = useDislikes();
+
+  // Migration toast state
+  const [showMigrationToast, setShowMigrationToast] = useState(false);
 
   // Derive listings from markers (filter out clusters for visibleListings)
   const allListings = React.useMemo(() => markers.filter((m): m is MapListing => !isServerCluster(m)), [markers]);
@@ -517,6 +524,13 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     [swipeQueue, addFavorite, dislikedListings, removeDislike]
   );
 
+  // Show migration toast when migration completes
+  useEffect(() => {
+    if (!isLoadingFavorites && !isLoadingDislikes && (favoritesMigrationCount > 0 || dislikesMigrationCount > 0)) {
+      setShowMigrationToast(true);
+    }
+  }, [favoritesMigrationCount, dislikesMigrationCount, isLoadingFavorites, isLoadingDislikes]);
+
   const value: MLSContextValue = {
     allListings,
     visibleListings,
@@ -552,7 +566,22 @@ export function MLSProvider({ children }: { children: ReactNode }) {
     totalCount: totalCount?.total ?? 0,
   };
 
-  return <MLSContext.Provider value={value}>{children}</MLSContext.Provider>;
+  return (
+    <MLSContext.Provider value={value}>
+      {children}
+
+      {/* Migration Toast */}
+      <AnimatePresence>
+        {showMigrationToast && (
+          <MigrationToast
+            favoritesCount={favoritesMigrationCount}
+            dislikesCount={dislikesMigrationCount}
+            onDismiss={() => setShowMigrationToast(false)}
+          />
+        )}
+      </AnimatePresence>
+    </MLSContext.Provider>
+  );
 }
 
 export function useMLSContext() {
