@@ -419,8 +419,8 @@ export default function ListingBottomPanel({
       exit={{ opacity: 0, y: 36, transition: { duration: 0.15 } }}
       className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden ${
         isPWA
-          ? 'max-h-[100vh]' // PWA: Full viewport (no browser chrome)
-          : 'max-h-[90vh]'  // Browser: 90vh to account for address bar
+          ? 'max-h-[95vh]' // PWA: 95vh to prevent top cutoff
+          : 'max-h-[85vh]'  // Browser: 85vh to account for address bar
       } sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${
         isLight ? 'text-gray-900' : 'text-white'
       }`}
