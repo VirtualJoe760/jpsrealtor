@@ -15,6 +15,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import type { MapListing } from "@/types/types";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import UnifiedListingBottomPanel from "./ListingBottomPanel";
+import { useChatTutorial } from "@/app/components/tutorial";
 
 /* ======================================================
    CONSTANTS
@@ -56,6 +57,7 @@ export default function SwipeableListingStack({
 }: Props) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const tutorial = useChatTutorial();
 
   const [listings, setListings] = useState<MapListing[]>(initialListings);
   const [history, setHistory] = useState<SwipeHistoryItem[]>([]);
@@ -248,6 +250,7 @@ export default function SwipeableListingStack({
                   }}
                   isSidebarOpen={isSidebarOpen}
                   isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+                  onPanelClosedForTutorial={tutorial.run && tutorial.stepIndex === 9 ? tutorial.onPanelClosed : undefined}
                 />
               </motion.div>
             );

@@ -7,6 +7,11 @@ export type UserRole = "admin" | "endUser" | "vacationRentalHost" | "realEstateA
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
+  // Helper methods
+  hasRole(role: UserRole): boolean;
+  addRole(role: UserRole): void;
+  removeRole(role: UserRole): void;
+
   // Basic Info
   email: string;
   emailVerified: Date | null;
@@ -243,6 +248,9 @@ export interface IUser extends Document {
     photo: string | null;
   };
 
+  // Tutorial Preferences
+  tutorialAvatarId?: string; // Which avatar to use for tutorial (e.g., "toasty", "default")
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -476,6 +484,9 @@ const UserSchema = new Schema<IUser>(
       html: { type: String, default: '' },
       photo: { type: String, default: null },
     },
+
+    // Tutorial Preferences
+    tutorialAvatarId: { type: String, default: 'toasty' }, // Default to Toasty for all users
 
     // Metadata
     lastLoginAt: Date,

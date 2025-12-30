@@ -21,6 +21,7 @@ interface ChatResultsContainerProps {
   swipeQueue: SwipeQueueHook;
   onSetQueueMode: (isQueue: boolean) => void;
   onListViewSelected?: () => void;
+  onViewClick?: () => void; // Tutorial callback for View button click
 }
 
 export default function ChatResultsContainer({
@@ -29,6 +30,7 @@ export default function ChatResultsContainer({
   swipeQueue,
   onSetQueueMode,
   onListViewSelected,
+  onViewClick,
 }: ChatResultsContainerProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
@@ -573,6 +575,7 @@ export default function ChatResultsContainer({
                   totalCount={displayListings.length}
                   hasMore={false}
                   onOpenPanel={handleOpenListingPanelWithQueue}
+                  onViewClick={onViewClick}
                 />
               )}
             </>

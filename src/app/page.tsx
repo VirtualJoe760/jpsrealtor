@@ -18,6 +18,7 @@ import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground"
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import type { Filters } from "@/types/types";
+import { useChatTutorial } from "@/app/components/tutorial";
 
 // Dynamic imports for map panels (client-side only)
 const ListingBottomPanel = dynamic(
@@ -58,6 +59,7 @@ function HomeContent() {
   } = useMLSContext();
 
   const { notificationContent, setNotificationContent, setUnreadMessage } = useChatContext();
+  const tutorial = useChatTutorial();
 
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
@@ -411,6 +413,7 @@ function HomeContent() {
             isSidebarOpen={false}
             isDisliked={dislikedListings.some(l => l.listingKey === selectedFullListing.listingKey)}
             onRemoveDislike={() => selectedListing && removeDislike(selectedListing)}
+            onPanelClosedForTutorial={tutorial.run && tutorial.stepIndex === 9 ? tutorial.onPanelClosed : undefined}
           />
         )}
       </AnimatePresence>

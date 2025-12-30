@@ -89,6 +89,7 @@ type Props = {
   isDisliked?: boolean;
   dislikedTimestamp?: number | null;
   onRemoveDislike?: () => void;
+  onPanelClosedForTutorial?: () => void; // Tutorial callback for close button click
 };
 
 export default function ListingBottomPanel({
@@ -103,6 +104,7 @@ export default function ListingBottomPanel({
   isDisliked = false,
   dislikedTimestamp = null,
   onRemoveDislike,
+  onPanelClosedForTutorial,
 }: Props) {
 
   const controls = useAnimationControls();
@@ -427,7 +429,11 @@ export default function ListingBottomPanel({
     >
       {/* Close Button */}
       <button
-        onClick={onClose}
+        onClick={() => {
+          onClose();
+          onPanelClosedForTutorial?.(); // Notify tutorial system
+        }}
+        data-tour="close-listing-panel"
         className={`absolute top-4 right-4 z-50 p-2.5 rounded-xl border transition-all backdrop-blur-sm ${
           isLight
             ? 'bg-white/90 border-gray-200 hover:bg-white hover:shadow-lg text-gray-700 hover:text-gray-900'

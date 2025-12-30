@@ -13,12 +13,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 import { useChatContext } from "./chat/ChatProvider";
+import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
   const { currentTheme, setTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
   const { hasUnreadMessage, setUnreadMessage } = useChatContext();
+  const tutorial = useChatTutorial();
   const pathname = usePathname();
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
@@ -91,6 +93,10 @@ export default function TopToggles() {
   };
 
   const handleToggleMap = () => {
+    // Notify tutorial system if on step 10
+    if (tutorial.run && tutorial.stepIndex === 10) {
+      tutorial.onMapToggleClicked();
+    }
     if (isHomePage) {
       if (isMapVisible) {
         // Switching to chat view - clear notification
@@ -156,6 +162,7 @@ export default function TopToggles() {
         {/* Map Toggle - Right (Mobile) */}
         <motion.button
           onClick={handleToggleMap}
+          data-tour="top-map-toggle-mobile"
           className="pointer-events-auto relative"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
@@ -209,7 +216,7 @@ export default function TopToggles() {
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
-          data-tour="top-map-toggle"
+          data-tour="top-map-toggle-desktop"
         >
           {mounted && isMapVisible ? (
             <>

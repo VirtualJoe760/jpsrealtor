@@ -17,7 +17,9 @@
       "Bash(set +a)",
       "Bash(node scripts/make-admin-agent.js:*)",
       "Bash(node scripts/make-team-leader.js:*)",
-      "Bash(npm run build:check:*)"
+      "Bash(npm run build:check:*)",
+      "Bash(git commit:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

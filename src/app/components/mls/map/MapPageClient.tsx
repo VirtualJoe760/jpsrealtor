@@ -15,6 +15,7 @@ import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import useFavorites from "@/app/utils/map/useFavorites";
+import { useChatTutorial } from "@/app/components/tutorial";
 import {
   parseFiltersFromURL,
   serializeFiltersToURL,
@@ -78,6 +79,7 @@ export default function MapPageClient() {
   const fetchingRef = useRef<Set<string>>(new Set());
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const tutorial = useChatTutorial();
 
   const [isSidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
@@ -193,6 +195,9 @@ export default function MapPageClient() {
   };
 
   const toggleFilters = () => {
+    // Tutorial callback - auto-advance if on step 11
+    tutorial.onFiltersClicked();
+
     setFiltersOpen((prev) => {
       const next = !prev;
       if (next && selectedFullListing && isSidebarOpen) setSidebarOpen(false);
@@ -584,6 +589,7 @@ export default function MapPageClient() {
             advanceToNextListing();
           }}
           isSidebarOpen={isSidebarOpen}
+          onPanelClosedForTutorial={tutorial.run && tutorial.stepIndex === 9 ? tutorial.onPanelClosed : undefined}
         />
       )}
 

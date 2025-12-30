@@ -68,6 +68,7 @@ interface ListingListViewProps {
   onSelectionChange?: (selectedListings: Listing[]) => void;
   selectedListings?: Listing[];
   onOpenPanel?: (listings: Listing[], startIndex: number) => void;
+  onViewClick?: () => void; // Tutorial callback for View button click
 }
 
 const ITEMS_PER_PAGE = 4;
@@ -79,7 +80,8 @@ export default function ListingListView({
   hasMore,
   onSelectionChange,
   selectedListings = [],
-  onOpenPanel
+  onOpenPanel,
+  onViewClick
 }: ListingListViewProps) {
   const { likedListings, toggleFavorite } = useMLSContext();
   const { currentTheme } = useTheme();
@@ -322,7 +324,11 @@ export default function ListingListView({
                 {/* View Details Button */}
                 {onOpenPanel ? (
                   <button
-                    onClick={() => onOpenPanel(listings, startIndex + index)}
+                    onClick={() => {
+                      onOpenPanel(listings, startIndex + index);
+                      onViewClick?.(); // Notify tutorial system
+                    }}
+                    data-tour={index === 0 ? "view-listing-button" : undefined}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs transition-colors ${
                       isLight
                         ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
@@ -335,6 +341,8 @@ export default function ListingListView({
                   <Link
                     href={listing.url}
                     target="_blank"
+                    onClick={() => onViewClick?.()} // Notify tutorial system
+                    data-tour={index === 0 ? "view-listing-button" : undefined}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs transition-colors ${
                       isLight
                         ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'

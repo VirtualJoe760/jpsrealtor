@@ -31,7 +31,7 @@ import { useSwipeQueue } from "@/app/utils/map/useSwipeQueue";
 import { ChatQueueStrategy } from "@/app/utils/swipe/ChatQueueStrategy";
 import EndOfQueueModal from "./EndOfQueueModal";
 import type { MapListing } from "@/types/types";
-import { useChatTutorial, ToastyMascot, SpeechBubble, TutorialOverlay, getTutorialSteps } from "./useChatTutorial";
+import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -943,6 +943,9 @@ export default function ChatWidget() {
   };
 
   const handleSwipeLeft = async () => {
+    // Tutorial callback - auto-advance if on step 8
+    tutorial.onSwipeLeftClicked();
+
     if (isQueueMode && currentQueueListing) {
       // Queue mode: Mark as disliked and get next from queue
       console.log('👈 [ChatWidget] Swipe LEFT - Current listing:', currentQueueListing.listingKey, currentQueueListing.unparsedAddress);
@@ -1014,6 +1017,9 @@ export default function ChatWidget() {
   };
 
   const handleSwipeRight = async () => {
+    // Tutorial callback - auto-advance if on step 7
+    tutorial.onSwipeRightClicked();
+
     if (isQueueMode && currentQueueListing) {
       // Queue mode: Mark as liked and get next from queue
       console.log('👉 [ChatWidget] Swipe RIGHT - Current listing:', currentQueueListing.listingKey, currentQueueListing.unparsedAddress);
@@ -1355,6 +1361,7 @@ export default function ChatWidget() {
                     swipeQueue={swipeQueue}
                     onSetQueueMode={setIsQueueMode}
                     onListViewSelected={tutorial.run && tutorial.stepIndex === 4 ? tutorial.onListViewSelected : undefined}
+                    onViewClick={tutorial.run && tutorial.stepIndex === 6 ? tutorial.onViewListingClicked : undefined}
                   />
                 )}
               </motion.div>
@@ -1479,6 +1486,7 @@ export default function ChatWidget() {
             };
             removeDislike(mapListing as any);
           }}
+          onPanelClosedForTutorial={tutorial.run && tutorial.stepIndex === 9 ? tutorial.onPanelClosed : undefined}
         />
       ) : (
         currentListingQueue.length > 0 && currentListingIndex < currentListingQueue.length && (
@@ -1518,6 +1526,7 @@ export default function ChatWidget() {
               };
               removeDislike(mapListing as any);
             }}
+            onPanelClosedForTutorial={tutorial.run && tutorial.stepIndex === 9 ? tutorial.onPanelClosed : undefined}
           />
         )
       )
@@ -1600,76 +1609,45 @@ export default function ChatWidget() {
       }
     `}</style>
 
-    {/* Custom Tutorial System - MUST be at root level with highest z-index */}
-    <AnimatePresence>
-      {tutorial.run && (
-        <>
-          {/* Dark Backdrop + Spotlight Overlay */}
-          <TutorialOverlay
-            target={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]?.target}
-            hideOverlay={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]?.hideOverlay}
-          />
-
-          {/* Toasty Mascot - hide while user is actively scrolling */}
-          {!tutorial.isScrolling && (
-            <ToastyMascot
-              stepIndex={tutorial.stepIndex}
-              isMobile={tutorial.isMobile}
-            />
-          )}
-
-          {/* Speech Bubble - hide while user is actively scrolling */}
-          {!tutorial.isScrolling && (
-            <SpeechBubble
-            step={getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex]}
-            isMobile={tutorial.isMobile}
-            isLight={isLight}
-            onNext={() => {
-              const currentStep = getTutorialSteps(tutorial.isMobile)[tutorial.stepIndex];
-              if (tutorial.stepIndex === 14) {
-                // Last step - complete tutorial
-                tutorial.completeTutorial();
-              } else if (tutorial.stepIndex === 1) {
-                // Step 1: If message is filled (auto-filled), submit it and advance to scroll step
-                if (message.trim()) {
-                  console.log('🎓 [Tutorial] Submitting auto-filled message');
-                  handleSend(); // Submit the message
-                  tutorial.onQuerySent(); // Mark query as sent
-                  // Advance to scroll step immediately
-                  tutorial.nextStep();
-                } else {
-                  console.log('🎓 [Tutorial] Please fill in the search first');
-                }
-              } else if (tutorial.stepIndex === 2) {
-                // Step 2: Scroll to read step - user clicks Continue button to advance
-                console.log('🎓 [Tutorial] User clicked Continue, advancing to step 3');
-                tutorial.nextStep();
-              } else {
-                tutorial.nextStep();
-              }
-            }}
-            onPrev={tutorial.prevStep}
-            onSkip={tutorial.completeTutorial}
-            canGoNext={
-              tutorial.stepIndex === 1
-                ? message.trim().length > 0
-                : tutorial.stepIndex === 2
-                  ? !tutorial.waitingForResults
-                  : tutorial.stepIndex === 4
-                    ? !tutorial.waitingForListView
-                    : true
-            }
-            isFirstStep={tutorial.stepIndex === 0}
-            isLastStep={tutorial.stepIndex === 14}
-            onAutoFill={() => {
-              console.log('🎓 [Tutorial] Auto-fill clicked');
-              setMessage("show me homes in Indian Wells Country Club");
-            }}
-          />
-          )}
-        </>
-      )}
-    </AnimatePresence>
+    {/* Refactored Tutorial System - Avatar-Agnostic */}
+    <TutorialManager
+      tutorial={tutorial}
+      message={message}
+      onAutoFill={(stepIndex) => {
+        console.log('🎓 [Tutorial] Auto-fill clicked for step', stepIndex);
+        if (stepIndex === 1) {
+          // Step 1: Fill chat input
+          setMessage("show me homes in Indian Wells Country Club");
+        } else if (stepIndex === 11) {
+          // Step 11: Fill map search input
+          // TODO: Implement map search auto-fill with "palm springs"
+          console.log('🎓 [Tutorial] Would auto-fill map search with "palm springs"');
+        }
+      }}
+      onNext={() => {
+        if (tutorial.stepIndex === 14) {
+          // Last step - complete tutorial
+          tutorial.completeTutorial();
+        } else if (tutorial.stepIndex === 1) {
+          // Step 1: If message is filled (auto-filled), submit it and advance to scroll step
+          if (message.trim()) {
+            console.log('🎓 [Tutorial] Submitting auto-filled message');
+            handleSend(); // Submit the message
+            tutorial.onQuerySent(); // Mark query as sent
+            // Advance to scroll step immediately
+            tutorial.nextStep();
+          } else {
+            console.log('🎓 [Tutorial] Please fill in the search first');
+          }
+        } else if (tutorial.stepIndex === 2) {
+          // Step 2: Scroll to read step - user clicks Continue button to advance
+          console.log('🎓 [Tutorial] User clicked Continue, advancing to step 3');
+          tutorial.nextStep();
+        } else {
+          tutorial.nextStep();
+        }
+      }}
+    />
 
     </>
   );
