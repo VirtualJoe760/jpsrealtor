@@ -63,7 +63,13 @@ function HomeContent() {
 
   const [favoritesPannelOpen, setFavoritesPannelOpen] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [filterSections, setFilterSections] = useState({
+    listingType: true,  // Open by default
+    propertyAttributes: false,
+    hoa: false,
+    communityFeatures: false
+  });
   const [initialLoad, setInitialLoad] = useState(true);
   const isClosingRef = useRef(false);
 
@@ -464,32 +470,6 @@ function HomeContent() {
                 </button>
               </div>
 
-              {/* Map Style Options */}
-              <div className={`p-3 sm:p-4 border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
-                <div className="mb-2">
-                  <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>MAP STYLE</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['dark', 'bright', 'satellite', 'toner'] as const).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => {
-                        if (setMapStyle) setMapStyle(style);
-                      }}
-                      className={`px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all touch-manipulation ${
-                        mapStyle === style
-                          ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
-                          : (isLight
-                              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
-                              : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-600')
-                      }`}
-                    >
-                      {style === 'dark' ? 'Dark Matter' : style === 'bright' ? 'Bright' : style === 'satellite' ? 'Satellite' : 'Black & White'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Filters Section */}
               <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
                 <button
@@ -519,14 +499,37 @@ function HomeContent() {
                       exit={{ height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className={`p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-[60vh] overflow-y-auto ${
+                      <div className={`max-h-[60vh] overflow-y-auto ${
                         isLight ? 'scrollbar-light' : 'scrollbar-dark'
                       }`}>
-                        {/* Listing Type */}
-                        <div>
-                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
-                            Listing Type
-                          </label>
+                        {/* Listing Type Accordion */}
+                        <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
+                          <button
+                            onClick={() => setFilterSections({ listingType: !filterSections.listingType, propertyAttributes: false, hoa: false, communityFeatures: false })}
+                            className={`w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between transition-colors touch-manipulation ${
+                              isLight
+                                ? 'hover:bg-gray-100 active:bg-gray-200'
+                                : 'hover:bg-neutral-800/50 active:bg-neutral-800'
+                            }`}
+                          >
+                            <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+                              LISTING TYPE
+                            </span>
+                            {filterSections.listingType ? (
+                              <ChevronUp className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {filterSections.listingType && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: "auto" }}
+                                exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-3 sm:p-4">
                           <div className="grid grid-cols-2 gap-2">
                             {[
                               { value: "sale", label: "For Sale" },
@@ -549,8 +552,40 @@ function HomeContent() {
                               </button>
                             ))}
                           </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
 
+                        {/* Property Attributes Accordion */}
+                        <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
+                          <button
+                            onClick={() => setFilterSections({ listingType: false, propertyAttributes: !filterSections.propertyAttributes, hoa: false, communityFeatures: false })}
+                            className={`w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between transition-colors touch-manipulation ${
+                              isLight
+                                ? 'hover:bg-gray-100 active:bg-gray-200'
+                                : 'hover:bg-neutral-800/50 active:bg-neutral-800'
+                            }`}
+                          >
+                            <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+                              PROPERTY ATTRIBUTES
+                            </span>
+                            {filterSections.propertyAttributes ? (
+                              <ChevronUp className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {filterSections.propertyAttributes && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: "auto" }}
+                                exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                         {/* Price Range */}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -587,44 +622,551 @@ function HomeContent() {
                           </div>
                         </div>
 
-                        {/* Beds/Baths */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
-                              Min Beds
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Any"
-                              value={filters.beds}
-                              onChange={(e) => setFilters({ ...filters, beds: e.target.value })}
-                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
-                                isLight
-                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
-                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
-                              }`}
-                            />
-                          </div>
-                          <div>
-                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
-                              Min Baths
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Any"
-                              value={filters.baths}
-                              onChange={(e) => setFilters({ ...filters, baths: e.target.value })}
-                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
-                                isLight
-                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
-                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
-                              }`}
-                            />
+                        {/* Bedrooms */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Bedrooms
+                          </label>
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {['Any', '1', '2', '3', '4', '5+'].map((bed) => (
+                              <button
+                                key={bed}
+                                onClick={() => setFilters({ ...filters, beds: bed === 'Any' ? '' : bed === '5+' ? '5' : bed })}
+                                className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                  (bed === 'Any' && !filters.beds) || (bed === '5+' && filters.beds === '5') || filters.beds === bed
+                                    ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                    : (isLight
+                                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                                }`}
+                              >
+                                {bed}
+                              </button>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-2">
+                        {/* Bathrooms */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Bathrooms
+                          </label>
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {['Any', '1', '2', '3', '4', '5+'].map((bath) => (
+                              <button
+                                key={bath}
+                                onClick={() => setFilters({ ...filters, baths: bath === 'Any' ? '' : bath === '5+' ? '5' : bath })}
+                                className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                  (bath === 'Any' && !filters.baths) || (bath === '5+' && filters.baths === '5') || filters.baths === bath
+                                    ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                    : (isLight
+                                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                                }`}
+                              >
+                                {bath}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Square Footage */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Min Sqft
+                            </label>
+                            <select
+                              value={filters.minSqft}
+                              onChange={(e) => setFilters({ ...filters, minSqft: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="500">500+ sqft</option>
+                              <option value="750">750+ sqft</option>
+                              <option value="1000">1,000+ sqft</option>
+                              <option value="1250">1,250+ sqft</option>
+                              <option value="1500">1,500+ sqft</option>
+                              <option value="1750">1,750+ sqft</option>
+                              <option value="2000">2,000+ sqft</option>
+                              <option value="2500">2,500+ sqft</option>
+                              <option value="3000">3,000+ sqft</option>
+                              <option value="3500">3,500+ sqft</option>
+                              <option value="4000">4,000+ sqft</option>
+                              <option value="5000">5,000+ sqft</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Max Sqft
+                            </label>
+                            <select
+                              value={filters.maxSqft}
+                              onChange={(e) => setFilters({ ...filters, maxSqft: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="500">500 sqft</option>
+                              <option value="750">750 sqft</option>
+                              <option value="1000">1,000 sqft</option>
+                              <option value="1250">1,250 sqft</option>
+                              <option value="1500">1,500 sqft</option>
+                              <option value="1750">1,750 sqft</option>
+                              <option value="2000">2,000 sqft</option>
+                              <option value="2500">2,500 sqft</option>
+                              <option value="3000">3,000 sqft</option>
+                              <option value="3500">3,500 sqft</option>
+                              <option value="4000">4,000 sqft</option>
+                              <option value="5000">5,000 sqft</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Lot Size */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Min Lot Size
+                            </label>
+                            <select
+                              value={filters.minLotSize}
+                              onChange={(e) => setFilters({ ...filters, minLotSize: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="2000">2,000+ sqft</option>
+                              <option value="3000">3,000+ sqft</option>
+                              <option value="4000">4,000+ sqft</option>
+                              <option value="5000">5,000+ sqft</option>
+                              <option value="7500">7,500+ sqft</option>
+                              <option value="10000">10,000+ sqft (0.23 acres)</option>
+                              <option value="21780">21,780+ sqft (0.5 acres)</option>
+                              <option value="43560">43,560+ sqft (1 acre)</option>
+                              <option value="87120">87,120+ sqft (2 acres)</option>
+                              <option value="217800">217,800+ sqft (5 acres)</option>
+                              <option value="435600">435,600+ sqft (10 acres)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Max Lot Size
+                            </label>
+                            <select
+                              value={filters.maxLotSize}
+                              onChange={(e) => setFilters({ ...filters, maxLotSize: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="2000">2,000 sqft</option>
+                              <option value="3000">3,000 sqft</option>
+                              <option value="4000">4,000 sqft</option>
+                              <option value="5000">5,000 sqft</option>
+                              <option value="7500">7,500 sqft</option>
+                              <option value="10000">10,000 sqft (0.23 acres)</option>
+                              <option value="21780">21,780 sqft (0.5 acres)</option>
+                              <option value="43560">43,560 sqft (1 acre)</option>
+                              <option value="87120">87,120 sqft (2 acres)</option>
+                              <option value="217800">217,800 sqft (5 acres)</option>
+                              <option value="435600">435,600 sqft (10 acres)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Year Built */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Min Year Built
+                            </label>
+                            <select
+                              value={filters.minYear}
+                              onChange={(e) => setFilters({ ...filters, minYear: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="1900">1900+</option>
+                              <option value="1950">1950+</option>
+                              <option value="1960">1960+</option>
+                              <option value="1970">1970+</option>
+                              <option value="1980">1980+</option>
+                              <option value="1990">1990+</option>
+                              <option value="2000">2000+</option>
+                              <option value="2005">2005+</option>
+                              <option value="2010">2010+</option>
+                              <option value="2015">2015+</option>
+                              <option value="2020">2020+</option>
+                              <option value="2024">2024+</option>
+                              <option value="2025">2025 (New)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                              Max Year Built
+                            </label>
+                            <select
+                              value={filters.maxYear}
+                              onChange={(e) => setFilters({ ...filters, maxYear: e.target.value })}
+                              className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                                isLight
+                                  ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                  : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                              }`}
+                            >
+                              <option value="">Any</option>
+                              <option value="1900">1900</option>
+                              <option value="1950">1950</option>
+                              <option value="1960">1960</option>
+                              <option value="1970">1970</option>
+                              <option value="1980">1980</option>
+                              <option value="1990">1990</option>
+                              <option value="2000">2000</option>
+                              <option value="2005">2005</option>
+                              <option value="2010">2010</option>
+                              <option value="2015">2015</option>
+                              <option value="2020">2020</option>
+                              <option value="2024">2024</option>
+                              <option value="2025">2025</option>
+                            </select>
+                          </div>
+                        </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* HOA Accordion */}
+                        <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
+                          <button
+                            onClick={() => setFilterSections({ listingType: false, propertyAttributes: false, hoa: !filterSections.hoa, communityFeatures: false })}
+                            className={`w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between transition-colors touch-manipulation ${
+                              isLight
+                                ? 'hover:bg-gray-100 active:bg-gray-200'
+                                : 'hover:bg-neutral-800/50 active:bg-neutral-800'
+                            }`}
+                          >
+                            <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+                              HOA
+                            </span>
+                            {filterSections.hoa ? (
+                              <ChevronUp className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {filterSections.hoa && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: "auto" }}
+                                exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                        {/* HOA Presence */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            HOA
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => setFilters({ ...filters, associationYN: undefined })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.associationYN === undefined
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Any
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, associationYN: true })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.associationYN === true
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, associationYN: false })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.associationYN === false
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Max HOA Fee */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-1.5 block ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Max HOA Fee ($/month)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Any"
+                            value={filters.hoa}
+                            onChange={(e) => setFilters({ ...filters, hoa: e.target.value })}
+                            className={`w-full border rounded px-3 py-2 sm:py-1.5 text-xs sm:text-sm focus:outline-none touch-manipulation ${
+                              isLight
+                                ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'
+                                : 'bg-neutral-800 border-neutral-700 text-white focus:border-emerald-500'
+                            }`}
+                          />
+                        </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Community Features Accordion */}
+                        <div className={`border-b ${isLight ? 'border-gray-200' : 'border-neutral-700'}`}>
+                          <button
+                            onClick={() => setFilterSections({ listingType: false, propertyAttributes: false, hoa: false, communityFeatures: !filterSections.communityFeatures })}
+                            className={`w-full px-3 sm:px-4 py-3 sm:py-2.5 flex items-center justify-between transition-colors touch-manipulation ${
+                              isLight
+                                ? 'hover:bg-gray-100 active:bg-gray-200'
+                                : 'hover:bg-neutral-800/50 active:bg-neutral-800'
+                            }`}
+                          >
+                            <span className={`text-xs sm:text-sm font-medium ${isLight ? 'text-gray-700' : 'text-neutral-300'}`}>
+                              COMMUNITY FEATURES
+                            </span>
+                            {filterSections.communityFeatures ? (
+                              <ChevronUp className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`} />
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {filterSections.communityFeatures && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: "auto" }}
+                                exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                        {/* Pool */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Pool
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => setFilters({ ...filters, poolYn: undefined })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.poolYn === undefined
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Any
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, poolYn: true })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.poolYn === true
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, poolYn: false })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.poolYn === false
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Spa */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Spa
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => setFilters({ ...filters, spaYn: undefined })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.spaYn === undefined
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Any
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, spaYn: true })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.spaYn === true
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, spaYn: false })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.spaYn === false
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Gated Community */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Gated Community
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => setFilters({ ...filters, gatedCommunity: undefined })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.gatedCommunity === undefined
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Any
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, gatedCommunity: true })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.gatedCommunity === true
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, gatedCommunity: false })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.gatedCommunity === false
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Senior Community */}
+                        <div>
+                          <label className={`text-xs sm:text-sm mb-2 block font-medium ${isLight ? 'text-gray-700' : 'text-neutral-400'}`}>
+                            Senior Community (55+)
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => setFilters({ ...filters, seniorCommunity: undefined })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.seniorCommunity === undefined
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Any
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, seniorCommunity: true })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.seniorCommunity === true
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setFilters({ ...filters, seniorCommunity: false })}
+                              className={`px-2 py-2 sm:py-1.5 rounded text-xs sm:text-sm touch-manipulation transition-all ${
+                                filters.seniorCommunity === false
+                                  ? (isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white')
+                                  : (isLight
+                                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                                      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 active:bg-neutral-600')
+                              }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Action Buttons - Always visible */}
+                        <div className="p-3 sm:p-4">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleApplyFilters(filters)}
                             className={`flex-1 px-3 py-2.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
@@ -645,6 +1187,7 @@ function HomeContent() {
                           >
                             Reset
                           </button>
+                        </div>
                         </div>
                       </div>
                     </motion.div>
