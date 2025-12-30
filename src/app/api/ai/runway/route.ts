@@ -5,9 +5,16 @@ import dbConnect from "@/lib/mongoose";
 import { RunwayTask } from "@/models/RunwayTask";
 import RunwayML from "@runwayml/sdk";
 
-const client = new RunwayML({
-  apiKey: process.env.RUNWAY_API_KEY,
-});
+// Lazy-load client to prevent build errors when API key is missing
+let client: RunwayML | null = null;
+function getClient() {
+  if (!client) {
+    client = new RunwayML({
+      apiKey: process.env.RUNWAY_API_KEY || "placeholder-key",
+    });
+  }
+  return client;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +26,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Image URL required" }, { status: 400 });
     }
 
+    // Check if API key is configured
+    if (!process.env.RUNWAY_API_KEY) {
+      return NextResponse.json({ error: "Runway API not configured" }, { status: 503 });
+    }
+
     // Create local task entry
     const task = await RunwayTask.create({
       imageUrl,
@@ -27,7 +39,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create a Runway task
-    const runwayTask = await client.imageToVideo.create({
+    const runwayTask = await getClient().imageToVideo.create({
       model: "gen4_turbo",
       promptImage: imageUrl,
       promptText: prompt || "Cinematic real estate animation",
