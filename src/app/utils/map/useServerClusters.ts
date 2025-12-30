@@ -114,21 +114,21 @@ export function useServerClusters() {
           if (filters.propertySubType) params.propertySubType = filters.propertySubType;
 
           // Amenities
-          if (filters.poolYn !== undefined) params.pool = String(filters.poolYn);
-          if (filters.spaYn !== undefined) params.spa = String(filters.spaYn);
-          if (filters.viewYn !== undefined) params.view = String(filters.viewYn);
-          if (filters.garageYn !== undefined) params.garage = String(filters.garageYn);
+          if (filters.poolYn !== undefined) params.poolYn = String(filters.poolYn);
+          if (filters.spaYn !== undefined) params.spaYn = String(filters.spaYn);
+          if (filters.viewYn !== undefined) params.viewYn = String(filters.viewYn);
+          if (filters.garageYn !== undefined) params.garageYn = String(filters.garageYn);
 
           // Garage count
           if (filters.minGarages) params.minGarages = filters.minGarages;
 
           // HOA
           if (filters.hoa) params.hoa = filters.hoa;
-          if (filters.associationYN !== undefined) params.hasHOA = String(filters.associationYN);
+          if (filters.associationYN !== undefined) params.associationYN = String(filters.associationYN);
 
           // Community
-          if (filters.gatedCommunity !== undefined) params.gated = String(filters.gatedCommunity);
-          if (filters.seniorCommunity !== undefined) params.senior = String(filters.seniorCommunity);
+          if (filters.gatedCommunity !== undefined) params.gatedCommunity = String(filters.gatedCommunity);
+          if (filters.seniorCommunity !== undefined) params.seniorCommunity = String(filters.seniorCommunity);
 
           // Land Type
           if (filters.landType) params.landType = filters.landType;
