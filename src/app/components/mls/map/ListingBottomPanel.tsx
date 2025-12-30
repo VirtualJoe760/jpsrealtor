@@ -643,6 +643,11 @@ export default function ListingBottomPanel({
           )}
         </div>
 
+        {/* Listing Treatment - Moved up for MLS compliance (always visible) */}
+        <div className="mb-4">
+          <UnifiedListingAttribution listing={fullListing} />
+        </div>
+
         {enrichedListing.publicRemarks && (
           <div className={`p-4 rounded-xl mb-4 ${
             isLight
@@ -654,10 +659,6 @@ export default function ListingBottomPanel({
             }`}>{enrichedListing.publicRemarks}</p>
           </div>
         )}
-
-        <div className="mb-4">
-          <UnifiedListingAttribution listing={fullListing} />
-        </div>
 
         {/* Swipe Buttons */}
         <div className="flex justify-center gap-8 py-4">
