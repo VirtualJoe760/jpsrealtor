@@ -115,17 +115,20 @@ export default function ListingBottomPanel({
   const [isLoading, setIsLoading] = useState(false);
 
   // Detect if running as PWA (standalone mode)
+  // Start with false to match server-side render, then update on client
   const [isPWA, setIsPWA] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    const checkPWA = () => {
-      // Check if running in standalone mode (PWA)
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                          (window.navigator as any).standalone ||
-                          document.referrer.includes('android-app://');
-      setIsPWA(isStandalone);
-      console.log('[ListingBottomPanel] Running in PWA mode:', isStandalone);
-    };
-    checkPWA();
+    // Mark as hydrated first
+    setHydrated(true);
+
+    // Check if running in standalone mode (PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        (window.navigator as any).standalone ||
+                        document.referrer.includes('android-app://');
+    setIsPWA(isStandalone);
+    console.log('[ListingBottomPanel] Running in PWA mode:', isStandalone);
   }, []);
 
   // Fetch full listing data from API using slugAddress or listingKey
@@ -418,12 +421,13 @@ export default function ListingBottomPanel({
       animate={controls}
       exit={{ opacity: 0, y: 36, transition: { duration: 0.15 } }}
       className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden ${
-        isPWA
+        hydrated && isPWA
           ? 'max-h-[95vh]' // PWA: 95vh - PERFECT
-          : 'max-h-[88vh]'  // Browser: 88vh for better fit
+          : 'max-h-[88vh]'  // Browser: 88vh for better fit (also SSR default)
       } sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${
         isLight ? 'text-gray-900' : 'text-white'
       }`}
+      suppressHydrationWarning
       style={{
         width: layout.width,
         left: layout.left,
