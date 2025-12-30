@@ -16,27 +16,100 @@ export default function useFavorites() {
         // Not logged in - load from localStorage
         try {
           const saved = localStorage.getItem("likedListings");
-          setFavorites(saved ? JSON.parse(saved) : []);
-        } catch {
+          const localFavorites = saved ? JSON.parse(saved) : [];
+          console.log(`[useFavorites] 💾 Loaded ${localFavorites.length} favorites from localStorage (guest mode)`);
+          setFavorites(localFavorites);
+        } catch (error) {
+          console.error('[useFavorites] ❌ Failed to parse localStorage favorites:', error);
           setFavorites([]);
         }
         setIsLoading(false);
         return;
       }
 
-      // Logged in - fetch from database
+      // Logged in - fetch from database AND migrate localStorage if present
       try {
-        const res = await fetch('/api/user/favorites');
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[useFavorites] Loaded', data.favorites?.length || 0, 'favorites from database');
+        // Check for localStorage favorites to migrate
+        let localFavorites: any[] = [];
+        try {
+          const saved = localStorage.getItem("likedListings");
+          localFavorites = saved ? JSON.parse(saved) : [];
+          if (localFavorites.length > 0) {
+            console.log(`[useFavorites] 🔄 Found ${localFavorites.length} favorites in localStorage - will migrate to database`);
+          }
+        } catch (error) {
+          console.error('[useFavorites] ⚠️ Failed to read localStorage for migration:', error);
+        }
 
-          // Map likedListings to favorites array
-          const dbFavorites = data.favorites || [];
+        // Fetch from database
+        const res = await fetch('/api/user/favorites');
+        if (!res.ok) {
+          if (res.status === 401) {
+            console.error('[useFavorites] ❌ Unauthorized - session may be invalid');
+          } else if (res.status === 404) {
+            console.error('[useFavorites] ❌ User not found in database');
+          } else {
+            console.error(`[useFavorites] ❌ HTTP ${res.status} fetching favorites`);
+          }
+          setFavorites([]);
+          setIsLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+        const dbFavorites = data.favorites || [];
+        console.log(`[useFavorites] ✅ Loaded ${dbFavorites.length} favorites from database for ${session.user.email}`);
+
+        // Merge localStorage favorites with database favorites (deduplication by listingKey)
+        if (localFavorites.length > 0) {
+          const dbKeys = new Set(dbFavorites.map((fav: any) =>
+            fav.listingKey || fav.listingData?.listingKey || fav.listingData?.slug
+          ));
+
+          const newFavorites = localFavorites.filter(local => {
+            const key = local.listingKey || local.slug || local.slugAddress;
+            return !dbKeys.has(key);
+          });
+
+          if (newFavorites.length > 0) {
+            console.log(`[useFavorites] 🔄 Migrating ${newFavorites.length} new favorites from localStorage to database`);
+
+            // Migrate each new favorite to database
+            for (const favorite of newFavorites) {
+              try {
+                const listingKey = favorite.listingKey || favorite.slug || favorite.slugAddress;
+                await fetch(`/api/user/favorites/${listingKey}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ listingData: favorite })
+                });
+              } catch (err) {
+                console.error('[useFavorites] ⚠️ Failed to migrate favorite:', err);
+              }
+            }
+
+            console.log('[useFavorites] ✅ Migration complete - clearing localStorage');
+            localStorage.removeItem("likedListings");
+
+            // Set merged favorites
+            const mergedFavorites = [...dbFavorites.map((fav: any) => fav.listingData), ...newFavorites];
+            setFavorites(mergedFavorites);
+          } else {
+            console.log('[useFavorites] ℹ️ No new favorites to migrate (all already in database)');
+            localStorage.removeItem("likedListings");
+            setFavorites(dbFavorites.map((fav: any) => fav.listingData));
+          }
+        } else {
+          // No localStorage favorites - just use database
           setFavorites(dbFavorites.map((fav: any) => fav.listingData));
+
+          if (dbFavorites.length === 0) {
+            console.log('[useFavorites] ℹ️ Database returned 0 favorites');
+          }
         }
       } catch (error) {
-        console.error('[useFavorites] Failed to load favorites from database:', error);
+        console.error('[useFavorites] ❌ Failed to load favorites from database:', error);
+        setFavorites([]);
       }
       setIsLoading(false);
     };
@@ -60,11 +133,11 @@ export default function useFavorites() {
     const listingKey = listing.listingKey || listing.slug || listing.slugAddress;
 
     if (favorites.some((fav) => (fav.listingKey || fav.slug || fav.slugAddress) === listingKey)) {
-      console.log(`[useFavorites] Listing already in favorites: ${listingKey}`);
+      console.log(`[useFavorites] ℹ️ Listing already in favorites: ${listingKey}`);
       return;
     }
 
-    console.log(`[useFavorites] ➕ Adding favorite: ${listingKey}`);
+    console.log(`[useFavorites] ➕ Adding favorite: ${listingKey}`, session?.user ? '(will sync to database)' : '(localStorage only)');
 
     // Optimistically update UI
     setFavorites((prev) => [...prev, listing]);
@@ -79,12 +152,15 @@ export default function useFavorites() {
         });
 
         if (!res.ok) {
-          console.error('[useFavorites] Failed to save favorite to database');
+          const errorText = await res.text();
+          console.error(`[useFavorites] ❌ Failed to save favorite to database (HTTP ${res.status}):`, errorText);
           // Rollback on failure
           setFavorites((prev) => prev.filter(fav => (fav.listingKey || fav.slug || fav.slugAddress) !== listingKey));
+        } else {
+          console.log(`[useFavorites] ✅ Favorite saved to database: ${listingKey}`);
         }
       } catch (error) {
-        console.error('[useFavorites] Error saving favorite:', error);
+        console.error('[useFavorites] ❌ Error saving favorite:', error);
         setFavorites((prev) => prev.filter(fav => (fav.listingKey || fav.slug || fav.slugAddress) !== listingKey));
       }
     }
