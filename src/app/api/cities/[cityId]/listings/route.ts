@@ -425,6 +425,16 @@ export async function GET(
     const [listings, stats, propertyTypeStats] = await Promise.all([
       listingsQuery.then(results => {
         console.log(`[City API] Query returned ${results.length} listings (limit: ${limit})`);
+        if (results.length > 0) {
+          console.log('[City API] First listing fields:', {
+            listingId: results[0].listingId,
+            bedsTotal: results[0].bedsTotal,
+            bathsTotal: results[0].bathsTotal,
+            bathroomsTotalDecimal: results[0].bathroomsTotalDecimal,
+            bathroomsTotalInteger: results[0].bathroomsTotalInteger,
+            livingArea: results[0].livingArea
+          });
+        }
         return results;
       }),
 
@@ -573,45 +583,63 @@ export async function GET(
     });
 
     // Combine listings with photos
-    const listingsWithPhotos = listings.map((listing: any) => ({
-      listingId: listing.listingId,
-      listingKey: listing.listingKey,
-      listPrice: listing.listPrice,
-      address: listing.unparsedAddress,
-      unparsedAddress: listing.unparsedAddress,
-      slugAddress: listing.slugAddress,
-      beds: listing.bedsTotal || 0,
-      baths:
-        listing.bathsTotal ||
-        listing.bathroomsTotalDecimal ||
-        listing.bathroomsTotalInteger ||
-        0,
-      yearBuilt: listing.yearBuilt,
-      livingArea: listing.livingArea,
-      lotSize: listing.lotSizeSquareFeet || listing.lotSizeSqft,
-      propertyType: listing.propertyType,
-      propertySubType: listing.propertySubType,
-      // Include both formats for compatibility
-      coordinates: listing.coordinates || {
-        latitude: listing.latitude,
-        longitude: listing.longitude,
-      },
-      latitude: listing.latitude || listing.coordinates?.latitude,
-      longitude: listing.longitude || listing.coordinates?.longitude,
-      photoUrl: photoMap.get(listing.listingId) || null,
-      primaryPhotoUrl: photoMap.get(listing.listingId) || null,
-      mlsSource: listing.mlsSource || "UNKNOWN",
-      // Days on market - calculated from onMarketDate
-      onMarketDate: listing.onMarketDate,
-      daysOnMarket: listing.onMarketDate
-        ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
-        : null,
-      // Price per sqft - calculate if not from aggregation
-      pricePerSqft: listing.pricePerSqft ||
-        (listing.livingArea && listing.livingArea > 0
-          ? Math.round(listing.listPrice / listing.livingArea)
-          : null),
-    }));
+    const listingsWithPhotos = listings.map((listing: any, index: number) => {
+      const mapped = {
+        listingId: listing.listingId,
+        listingKey: listing.listingKey,
+        listPrice: listing.listPrice,
+        address: listing.unparsedAddress,
+        unparsedAddress: listing.unparsedAddress,
+        slugAddress: listing.slugAddress,
+        beds: listing.bedsTotal || 0,
+        baths:
+          listing.bathsTotal ||
+          listing.bathroomsTotalDecimal ||
+          listing.bathroomsTotalInteger ||
+          0,
+        yearBuilt: listing.yearBuilt,
+        livingArea: listing.livingArea,
+        lotSize: listing.lotSizeSquareFeet || listing.lotSizeSqft,
+        propertyType: listing.propertyType,
+        propertySubType: listing.propertySubType,
+        // Include both formats for compatibility
+        coordinates: listing.coordinates || {
+          latitude: listing.latitude,
+          longitude: listing.longitude,
+        },
+        latitude: listing.latitude || listing.coordinates?.latitude,
+        longitude: listing.longitude || listing.coordinates?.longitude,
+        photoUrl: photoMap.get(listing.listingId) || null,
+        primaryPhotoUrl: photoMap.get(listing.listingId) || null,
+        mlsSource: listing.mlsSource || "UNKNOWN",
+        // Days on market - calculated from onMarketDate
+        onMarketDate: listing.onMarketDate,
+        daysOnMarket: listing.onMarketDate
+          ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+        // Price per sqft - calculate if not from aggregation
+        pricePerSqft: listing.pricePerSqft ||
+          (listing.livingArea && listing.livingArea > 0
+            ? Math.round(listing.listPrice / listing.livingArea)
+            : null),
+      };
+
+      // Log first mapped listing
+      if (index === 0) {
+        console.log('[City API] First mapped listing:', {
+          listingId: mapped.listingId,
+          beds: mapped.beds,
+          baths: mapped.baths,
+          livingArea: mapped.livingArea,
+          source_bedsTotal: listing.bedsTotal,
+          source_bathsTotal: listing.bathsTotal,
+          source_bathroomsTotalDecimal: listing.bathroomsTotalDecimal,
+          source_bathroomsTotalInteger: listing.bathroomsTotalInteger
+        });
+      }
+
+      return mapped;
+    });
 
     // Extract stats (aggregation returns array)
     const priceStats = stats[0] || {
