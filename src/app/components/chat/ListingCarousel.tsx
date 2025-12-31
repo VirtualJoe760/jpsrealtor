@@ -378,15 +378,15 @@ export default function ListingCarousel({
               }`}>
                 <div className="flex items-center gap-1">
                   <Bed className="w-4 h-4" />
-                  <span>{listing.beds} bd</span>
+                  <span>{listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal ?? 0} bd</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Bath className="w-4 h-4" />
-                  <span>{listing.baths} ba</span>
+                  <span>{listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull ?? 0} ba</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Maximize2 className="w-4 h-4" />
-                  <span>{listing.sqft?.toLocaleString() ?? 0} sqft</span>
+                  <span>{listing.sqft?.toLocaleString() ?? listing.livingArea?.toLocaleString() ?? 0} sqft</span>
                 </div>
               </div>
 
