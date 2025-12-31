@@ -19,6 +19,9 @@ interface Listing {
   address?: string;
   beds?: number;
   baths?: number;
+  bedsTotal?: number;
+  bathsTotal?: number;
+  bathroomsTotalInteger?: number;
   photoUrl?: string;
   propertyType?: string;
   propertySubType?: string;

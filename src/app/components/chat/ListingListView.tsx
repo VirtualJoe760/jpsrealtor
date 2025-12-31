@@ -37,11 +37,13 @@ export interface Listing {
   unparsedFirstLineAddress?: string;
   bedsTotal?: number;
   bedroomsTotal?: number;
+  bathsTotal?: number;
   bathroomsTotalInteger?: number;
   bathroomsTotalDecimal?: number;
   bathroomsFull?: number;
   bathroomsHalf?: number;
   livingArea?: number;
+  buildingAreaTotal?: number;
   lotSizeArea?: number;
   lotSizeSqft?: number;
   yearBuilt?: number;

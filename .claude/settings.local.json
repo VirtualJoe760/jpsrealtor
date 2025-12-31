@@ -22,7 +22,8 @@
       "Bash(test:*)",
       "Bash(git push:*)",
       "Bash(node scripts/create-performance-indexes.js:*)",
-      "Bash(node scripts/inspect-listing-fields.js:*)"
+      "Bash(node scripts/inspect-listing-fields.js:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
