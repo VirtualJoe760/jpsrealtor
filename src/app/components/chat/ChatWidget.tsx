@@ -32,6 +32,7 @@ import { ChatQueueStrategy } from "@/app/utils/swipe/ChatQueueStrategy";
 import EndOfQueueModal from "./EndOfQueueModal";
 import type { MapListing } from "@/types/types";
 import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
+import YouTube from "@/app/components/mdx/YouTube";
 
 export default function ChatWidget() {
   const { data: session } = useSession();
@@ -45,6 +46,15 @@ export default function ChatWidget() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent, hasUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Cycling placeholder text
+  const placeholders = [
+    "Get started by typing 'tutorial' in the chat",
+    "Show homes in...",
+    "Market trends in...",
+    "Type help for a list of commands"
+  ];
+  const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
 
   // Map control for showing listings on background map
   const { showMapWithListings, showMapAtLocation, hideMap, isMapVisible, prePositionMap, setMapVisible } = useMapControl();
@@ -80,6 +90,15 @@ export default function ChatWidget() {
       console.log('🎓 [Tutorial] Message state changed:', message);
     }
   }, [message, tutorial.run]);
+
+  // Cycling placeholder effect
+  useEffect(() => {
+    const cycleInterval = setInterval(() => {
+      setCurrentPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+    }, 3000); // Change every 3 seconds
+
+    return () => clearInterval(cycleInterval);
+  }, [placeholders.length]);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -629,13 +648,6 @@ export default function ChatWidget() {
     setMessage("");
     autocomplete.clear();
 
-    // Check if user typed "get started" to trigger tutorial
-    if (userMessage.toLowerCase().trim() === "get started") {
-      console.log('🎓 [ChatWidget] Triggering tutorial');
-      tutorial.startTutorial();
-      return; // Don't send to AI
-    }
-
     // Tutorial mode: track when user sends practice query
     if (tutorial.waitingForQuery) {
       console.log('🎓 [ChatWidget] User sent practice query, waiting for results...');
@@ -1164,11 +1176,7 @@ export default function ChatWidget() {
                   isLoading={isLoading}
                   variant="landing"
                   showNewChatButton={messages.length > 0}
-                  placeholder={
-                    !tutorial.hasSeenTutorial && messages.length === 0
-                      ? "Type 'get started' to meet Toasty! 🐕"
-                      : "Ask me anything about real estate..."
-                  }
+                  placeholder={placeholders[currentPlaceholderIndex]}
                 />
 
 
@@ -1226,9 +1234,162 @@ export default function ChatWidget() {
                       <div className={`text-base sm:text-[20px] leading-relaxed font-medium tracking-[-0.01em] select-text [&>p]:my-1.5 [&>ul]:my-2.5 [&>ul]:ml-4 [&>ul]:list-disc [&>ol]:my-2.5 [&>ol]:ml-4 [&>ol]:list-decimal [&>li]:my-1 [&>strong]:font-semibold [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mb-2 [&>h3]:font-semibold [&>h3]:mb-1 ${
                         msg.role === "user" ? "text-white" : ""
                       }`}>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
+                        {(() => {
+                          // Check if message contains YouTube marker
+                          const youtubeMatch = msg.content.match(/\[YOUTUBE:([^\]]+)\]/);
+
+                          if (youtubeMatch) {
+                            const videoId = youtubeMatch[1];
+                            const parts = msg.content.split(/\[YOUTUBE:[^\]]+\]/);
+
+                            return (
+                              <>
+                                {parts[0] && (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      table: ({ node, ...props }) => (
+                                        <div className={`overflow-x-auto my-6 ${
+                                          isLight
+                                            ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
+                                            : '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-emerald-600'
+                                        }`}>
+                                          <table className={`min-w-full border-collapse rounded-xl overflow-hidden shadow-lg ${
+                                            isLight
+                                              ? 'bg-white border border-gray-200'
+                                              : 'bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700'
+                                          }`} {...props} />
+                                        </div>
+                                      ),
+                                      thead: ({ node, ...props }) => (
+                                        <thead className={
+                                          isLight
+                                            ? 'bg-gradient-to-r from-blue-50 to-blue-100/80'
+                                            : 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30'
+                                        } {...props} />
+                                      ),
+                                      tbody: ({ node, ...props }) => (
+                                        <tbody className={isLight ? '' : 'divide-y divide-neutral-700/50'} {...props} />
+                                      ),
+                                      tr: ({ node, ...props }) => (
+                                        <tr className={`transition-colors ${
+                                          isLight
+                                            ? 'hover:bg-blue-50/50 border-b border-gray-100 last:border-b-0'
+                                            : 'hover:bg-emerald-500/5 border-b border-neutral-700/30 last:border-b-0'
+                                        }`} {...props} />
+                                      ),
+                                      th: ({ node, ...props }) => (
+                                        <th className={`px-6 py-4 text-left font-bold tracking-tight ${
+                                          isLight
+                                            ? 'text-blue-900'
+                                            : 'text-emerald-300'
+                                        }`} {...props} />
+                                      ),
+                                      td: ({ node, ...props }) => (
+                                        <td className={`px-6 py-4 font-medium ${
+                                          isLight
+                                            ? 'text-gray-700'
+                                            : 'text-neutral-200'
+                                        }`} {...props} />
+                                      ),
+                                      code: ({ node, inline, ...props }: any) =>
+                                        inline ? (
+                                          <code className={`px-2 py-1 rounded-md text-sm font-mono font-semibold ${
+                                            isLight
+                                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                              : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                                          }`} {...props} />
+                                        ) : (
+                                          <code className={`block px-5 py-4 rounded-xl my-3 text-sm font-mono overflow-x-auto shadow-inner ${
+                                            isLight
+                                              ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border border-gray-200'
+                                              : 'bg-gradient-to-br from-neutral-900 to-neutral-800 text-neutral-200 border border-neutral-700'
+                                          }`} {...props} />
+                                        )
+                                    }}
+                                  >
+                                    {cleanResponseText(parts[0])}
+                                  </ReactMarkdown>
+                                )}
+                                <div className="my-4">
+                                  <YouTube id={videoId} />
+                                </div>
+                                {parts[1] && (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      table: ({ node, ...props }) => (
+                                        <div className={`overflow-x-auto my-6 ${
+                                          isLight
+                                            ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
+                                            : '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-emerald-600'
+                                        }`}>
+                                          <table className={`min-w-full border-collapse rounded-xl overflow-hidden shadow-lg ${
+                                            isLight
+                                              ? 'bg-white border border-gray-200'
+                                              : 'bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700'
+                                          }`} {...props} />
+                                        </div>
+                                      ),
+                                      thead: ({ node, ...props }) => (
+                                        <thead className={
+                                          isLight
+                                            ? 'bg-gradient-to-r from-blue-50 to-blue-100/80'
+                                            : 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30'
+                                        } {...props} />
+                                      ),
+                                      tbody: ({ node, ...props }) => (
+                                        <tbody className={isLight ? '' : 'divide-y divide-neutral-700/50'} {...props} />
+                                      ),
+                                      tr: ({ node, ...props }) => (
+                                        <tr className={`transition-colors ${
+                                          isLight
+                                            ? 'hover:bg-blue-50/50 border-b border-gray-100 last:border-b-0'
+                                            : 'hover:bg-emerald-500/5 border-b border-neutral-700/30 last:border-b-0'
+                                        }`} {...props} />
+                                      ),
+                                      th: ({ node, ...props }) => (
+                                        <th className={`px-6 py-4 text-left font-bold tracking-tight ${
+                                          isLight
+                                            ? 'text-blue-900'
+                                            : 'text-emerald-300'
+                                        }`} {...props} />
+                                      ),
+                                      td: ({ node, ...props }) => (
+                                        <td className={`px-6 py-4 font-medium ${
+                                          isLight
+                                            ? 'text-gray-700'
+                                            : 'text-neutral-200'
+                                        }`} {...props} />
+                                      ),
+                                      code: ({ node, inline, ...props }: any) =>
+                                        inline ? (
+                                          <code className={`px-2 py-1 rounded-md text-sm font-mono font-semibold ${
+                                            isLight
+                                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                              : 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                                          }`} {...props} />
+                                        ) : (
+                                          <code className={`block px-5 py-4 rounded-xl my-3 text-sm font-mono overflow-x-auto shadow-inner ${
+                                            isLight
+                                              ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border border-gray-200'
+                                              : 'bg-gradient-to-br from-neutral-900 to-neutral-800 text-neutral-200 border border-neutral-700'
+                                          }`} {...props} />
+                                        )
+                                    }}
+                                  >
+                                    {cleanResponseText(parts[1])}
+                                  </ReactMarkdown>
+                                )}
+                              </>
+                            );
+                          }
+
+                          // No YouTube marker, render normally
+                          return (
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
                             table: ({ node, ...props }) => (
                               <div className={`overflow-x-auto my-6 ${
                                 isLight
@@ -1291,6 +1452,8 @@ export default function ChatWidget() {
                         >
                           {cleanResponseText(msg.content)}
                         </ReactMarkdown>
+                          );
+                        })()}
                       </div>
                     </div>
                     {/* Copy, Share buttons, and Sources for assistant messages */}
@@ -1437,11 +1600,7 @@ export default function ChatWidget() {
               isLoading={isLoading}
               variant="conversation"
               showNewChatButton={true}
-              placeholder={
-                !tutorial.hasSeenTutorial && messages.length === 0
-                  ? "Type 'get started' for a quick tour..."
-                  : "Ask me anything about real estate..."
-              }
+              placeholder={placeholders[currentPlaceholderIndex]}
             />
           </div>
 

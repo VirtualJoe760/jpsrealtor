@@ -147,6 +147,24 @@ I'm listening and ready to help! 🎯
 `;
 
 /**
+ * Tutorial Command Response
+ * Shows YouTube tutorial video
+ */
+export const TUTORIAL_RESPONSE = `# 🎓 Welcome to jpsrealtor.com!
+
+Here's a quick video tutorial to help you get started finding your dream home:
+
+[YOUTUBE:HOJAy74Fovg]
+
+Feel free to ask me anything about properties, neighborhoods, or search for homes! Try asking me something like:
+- *"Show me 3 bedroom homes in Palm Springs under $500k"*
+- *"What's the market like in Indian Wells?"*
+- *"I want a pool home in a gated community"*
+
+I'm here to help! 🏡
+`;
+
+/**
  * Detect if a message is a command
  * Returns the command name if detected, null otherwise
  */
@@ -164,6 +182,11 @@ export function detectCommand(message: string): string | null {
     return 'help';
   }
 
+  // Check for tutorial command
+  if (cleaned === 'tutorial' || normalized === 'tutorial') {
+    return 'tutorial';
+  }
+
   return null;
 }
 
@@ -174,6 +197,8 @@ export function getCommandResponse(command: string): string {
   switch (command) {
     case 'help':
       return HELP_RESPONSE;
+    case 'tutorial':
+      return TUTORIAL_RESPONSE;
     default:
       return 'Unknown command';
   }
