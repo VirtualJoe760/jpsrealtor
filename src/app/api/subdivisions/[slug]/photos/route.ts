@@ -40,7 +40,7 @@ export async function GET(
 
     // Get listings from unified collection
     const listings = await UnifiedListing.find(listingQuery)
-      .select("listingKey unparsedAddress slugAddress listPrice bedroomsTotal bathroomsTotalDecimal primaryPhotoUrl city stateOrProvince postalCode")
+      .select("listingKey unparsedAddress slugAddress listPrice bedsTotal bathroomsTotalDecimal primaryPhotoUrl city stateOrProvince postalCode")
       .limit(limit)
       .lean();
 
@@ -71,7 +71,7 @@ export async function GET(
             thumb: listing.primaryPhotoUrl || "",
             address: listing.unparsedAddress || "Address not available",
             listPrice: listing.listPrice || 0,
-            bedroomsTotal: listing.bedroomsTotal || 0,
+            bedsTotal: listing.bedsTotal || 0,
             bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
           };
         }
@@ -92,7 +92,7 @@ export async function GET(
             thumb: listing.primaryPhotoUrl || "",
             address: listing.unparsedAddress || "Address not available",
             listPrice: listing.listPrice || 0,
-            bedroomsTotal: listing.bedroomsTotal || 0,
+            bedsTotal: listing.bedsTotal || 0,
             bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
           };
         }
@@ -115,7 +115,7 @@ export async function GET(
           thumb: firstPhoto.uriThumb || firstPhoto.uri300 || "",
           address: fullAddress || "Address not available",
           listPrice: listing.listPrice || 0,
-          bedroomsTotal: listing.bedroomsTotal || 0,
+          bedsTotal: listing.bedsTotal || 0,
           bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
         };
       } catch (err) {
@@ -130,7 +130,7 @@ export async function GET(
           thumb: listing.primaryPhotoUrl || "",
           address: listing.unparsedAddress || "Address not available",
           listPrice: listing.listPrice || 0,
-          bedroomsTotal: listing.bedroomsTotal || 0,
+          bedsTotal: listing.bedsTotal || 0,
           bathroomsTotalDecimal: listing.bathroomsTotalDecimal || 0,
         };
       }

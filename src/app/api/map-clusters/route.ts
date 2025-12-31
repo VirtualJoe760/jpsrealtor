@@ -187,10 +187,7 @@ export async function GET(req: NextRequest) {
   // Beds/baths
   const beds = Number(query.get("beds") || "0");
   if (beds > 0) {
-    matchStage.$or = [
-      { bedroomsTotal: { $gte: beds } },
-      { bedsTotal: { $gte: beds } },
-    ];
+    matchStage.bedsTotal = { $gte: beds };
   }
 
   const baths = Number(query.get("baths") || "0");
@@ -594,7 +591,7 @@ export async function GET(req: NextRequest) {
                       latitude: 1,
                       longitude: 1,
                       listPrice: 1,
-                      bedroomsTotal: 1,
+                      bedsTotal: 1,
                       bedsTotal: 1,
                       bathroomsTotalDecimal: 1,
                       livingArea: 1,
@@ -672,7 +669,7 @@ export async function GET(req: NextRequest) {
                 latitude: 1,
                 longitude: 1,
                 listPrice: 1,
-                bedroomsTotal: 1,
+                bedsTotal: 1,
                 bedsTotal: 1,
                 bathroomsTotalDecimal: 1,
                 livingArea: 1,
@@ -812,7 +809,7 @@ export async function GET(req: NextRequest) {
               latitude: 1,
               longitude: 1,
               listPrice: 1,
-              bedroomsTotal: 1,
+              bedsTotal: 1,
               bedsTotal: 1,
               bathroomsTotalDecimal: 1,
               livingArea: 1,
@@ -976,7 +973,7 @@ export async function GET(req: NextRequest) {
                     latitude: 1,
                     longitude: 1,
                     listPrice: 1,
-                    bedroomsTotal: 1,
+                    bedsTotal: 1,
                     bedsTotal: 1,
                     bathroomsTotalDecimal: 1,
                     livingArea: 1,
@@ -1040,7 +1037,7 @@ export async function GET(req: NextRequest) {
               latitude: 1,
               longitude: 1,
               listPrice: 1,
-              bedroomsTotal: 1,
+              bedsTotal: 1,
               bedsTotal: 1,
               bathroomsTotalDecimal: 1,
               livingArea: 1,
@@ -1193,7 +1190,7 @@ export async function GET(req: NextRequest) {
                   latitude: 1,
                   longitude: 1,
                   listPrice: 1,
-                  bedroomsTotal: 1,
+                  bedsTotal: 1,
                   bedsTotal: 1,
                   bathroomsTotalDecimal: 1,
                   livingArea: 1,
@@ -1283,7 +1280,7 @@ export async function GET(req: NextRequest) {
             latitude: 1,
             longitude: 1,
             listPrice: 1,
-            bedroomsTotal: 1,
+            bedsTotal: 1,
             bedsTotal: 1,
             bathroomsTotalDecimal: 1,
             livingArea: 1,

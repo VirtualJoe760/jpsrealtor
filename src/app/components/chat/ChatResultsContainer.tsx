@@ -207,8 +207,8 @@ export default function ChatResultsContainer({
 
           // Carousel/List view display
           price: listing.listPrice || 0,
-          beds: listing.bedroomsTotal || listing.bedsTotal || 0,
-          baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger || 0,
+          beds: listing.bedsTotal || 0,
+          baths: listing.bathsTotal || listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger || 0,
           sqft: listing.livingArea || 0,
           city: listing.city || "",
           address: listing.unparsedAddress || listing.unparsedFirstLineAddress || listing.address || "",
@@ -225,11 +225,9 @@ export default function ChatResultsContainer({
           unparsedAddress: listing.unparsedAddress,
           unparsedFirstLineAddress: listing.unparsedFirstLineAddress,
           bedsTotal: listing.bedsTotal,
-          bedroomsTotal: listing.bedroomsTotal,
+          bathsTotal: listing.bathsTotal,
           bathroomsTotalInteger: listing.bathroomsTotalInteger,
           bathroomsTotalDecimal: listing.bathroomsTotalDecimal,
-          bathroomsFull: listing.bathroomsFull,
-          bathroomsHalf: listing.bathroomsHalf,
           livingArea: listing.livingArea,
           lotSizeArea: listing.lotSizeArea,
           lotSizeSqft: listing.lotSizeSqft,

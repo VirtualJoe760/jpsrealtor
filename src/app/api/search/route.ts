@@ -34,10 +34,8 @@ export async function GET(req: Request) {
         slugAddress: 1,
         unparsedAddress: 1,
         listPrice: 1,
-        bedroomsTotal: 1,
         bedsTotal: 1,
-        bathroomsFull: 1,
-        bathroomsHalf: 1,
+        bathsTotal: 1,
         bathroomsTotalDecimal: 1,
         bathroomsTotalInteger: 1,
         livingArea: 1,
@@ -84,11 +82,8 @@ export async function GET(req: Request) {
   ]);
 
   const listingResults = listings.map((l: any) => {
-    const bedrooms = l.bedroomsTotal ?? l.bedsTotal ?? 0;
-    const bathrooms =
-      l.bathroomsFull != null
-        ? l.bathroomsFull + (l.bathroomsHalf ? 0.5 : 0)
-        : l.bathroomsTotalDecimal ?? 0;
+    const bedrooms = l.bedsTotal ?? 0;
+    const bathrooms = l.bathsTotal ?? l.bathroomsTotalInteger ?? l.bathroomsTotalDecimal ?? 0;
 
     // Get primary photo from media array
     const media = l.media || [];

@@ -57,10 +57,7 @@ export async function GET(req: NextRequest) {
   // ==================== BEDS/BATHS FILTERS ====================
   const beds = Number(query.get("beds") || "0");
   if (beds > 0) {
-    matchStage.$or = [
-      { bedroomsTotal: { $gte: beds } },
-      { bedsTotal: { $gte: beds } },
-    ];
+    matchStage.bedsTotal = { $gte: beds };
   }
 
   const baths = Number(query.get("baths") || "0");
@@ -243,9 +240,8 @@ export async function GET(req: NextRequest) {
           slug: 1,
           slugAddress: 1,
           listPrice: 1,
-          bedroomsTotal: 1,
           bedsTotal: 1,
-          bathroomsFull: 1,
+          bathsTotal: 1,
           bathroomsTotalInteger: 1,
           bathroomsTotalDecimal: 1,
           livingArea: 1,

@@ -110,13 +110,7 @@ export async function GET(
 
     // EXACT MATCH for bedrooms (3 beds means exactly 3, not 3+)
     if (beds) {
-      baseQuery.$and = baseQuery.$and || [];
-      baseQuery.$and.push({
-        $or: [
-          { bedroomsTotal: beds },
-          { bedsTotal: beds },
-        ]
-      });
+      baseQuery.bedsTotal = beds;
     }
 
     // EXACT MATCH for bathrooms
@@ -312,12 +306,10 @@ export async function GET(
             currentPrice: 1,
             originalListPrice: 1,
             associationFee: 1,
-            bedroomsTotal: 1,
             bedsTotal: 1,
+            bathsTotal: 1,
             bathroomsTotalDecimal: 1,
             bathroomsTotalInteger: 1,
-            bathroomsFull: 1,
-            bathroomsHalf: 1,
             livingArea: 1,
             lotSizeArea: 1,
             lotSizeSqft: 1,
@@ -384,12 +376,10 @@ export async function GET(
           associationFee: 1,
 
           // Property Details - Bedrooms/Bathrooms
-          bedroomsTotal: 1,
           bedsTotal: 1,
+          bathsTotal: 1,
           bathroomsTotalDecimal: 1,
           bathroomsTotalInteger: 1,
-          bathroomsFull: 1,
-          bathroomsHalf: 1,
 
           // Property Details - Size
           livingArea: 1,
