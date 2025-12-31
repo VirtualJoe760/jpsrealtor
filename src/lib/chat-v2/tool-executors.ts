@@ -175,8 +175,30 @@ async function executeSearchHomes(args: {
       // Apply any additional filters from user query
       if (filterArgs.minPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $gte: filterArgs.minPrice };
       if (filterArgs.maxPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $lte: filterArgs.maxPrice };
-      if (filterArgs.beds) dbQuery.bedroomsTotal = filterArgs.beds;
-      if (filterArgs.baths) dbQuery.bathroomsTotalInteger = filterArgs.baths;
+
+      // Bed filter - check BOTH field name variants (some listings use bedsTotal, others use bedroomsTotal)
+      if (filterArgs.beds) {
+        dbQuery.$and = dbQuery.$and || [];
+        dbQuery.$and.push({
+          $or: [
+            { bedsTotal: filterArgs.beds },
+            { bedroomsTotal: filterArgs.beds }
+          ]
+        });
+      }
+
+      // Bath filter - check ALL three field name variants
+      if (filterArgs.baths) {
+        dbQuery.$and = dbQuery.$and || [];
+        dbQuery.$and.push({
+          $or: [
+            { bathsTotal: filterArgs.baths },
+            { bathroomsTotalInteger: filterArgs.baths },
+            { bathroomsFull: filterArgs.baths }
+          ]
+        });
+      }
+
       if (filterArgs.pool) dbQuery.poolYn = true;
       // Don't override propertyType if user doesn't specify (we already set it to "A")
       if (filterArgs.propertyType) dbQuery.propertyType = filterArgs.propertyType;
