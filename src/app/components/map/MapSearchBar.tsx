@@ -309,6 +309,7 @@ export default function MapSearchBar({
             }}
             placeholder="Search cities, neighborhoods, addresses..."
             autoComplete="off"
+            data-tour="map-search-button"
             className={`w-full px-6 py-4 pr-24 bg-transparent outline-none rounded-2xl text-base font-medium tracking-[-0.01em] ${
               isLight ? "text-gray-900 placeholder-gray-400" : "text-white placeholder-neutral-400"
             }`}
@@ -322,6 +323,7 @@ export default function MapSearchBar({
                 e.stopPropagation();
                 onSettingsClick();
               }}
+              data-tour="map-filters-button"
               className={`absolute right-14 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all hover:scale-110 active:scale-95 ${
                 isLight
                   ? "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
