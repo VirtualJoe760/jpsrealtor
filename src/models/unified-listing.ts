@@ -537,6 +537,19 @@ UnifiedListingSchema.index({ propertyType: 1, standardStatus: 1 });
 // Optimized index for city stats queries (city + propertyType + listPrice)
 UnifiedListingSchema.index({ city: 1, propertyType: 1, listPrice: 1 });
 
+// Performance indexes for bed/bath filtering (CRITICAL for search performance)
+// These support queries like "4 beds in Indian Wells" which filter by city + status + beds
+UnifiedListingSchema.index({ city: 1, standardStatus: 1, propertyType: 1, bedsTotal: 1 });
+UnifiedListingSchema.index({ city: 1, standardStatus: 1, propertyType: 1, bedroomsTotal: 1 });
+UnifiedListingSchema.index({ city: 1, standardStatus: 1, propertyType: 1, bathsTotal: 1 });
+UnifiedListingSchema.index({ city: 1, standardStatus: 1, propertyType: 1, bathroomsTotalInteger: 1 });
+
+// Similar indexes for subdivision queries
+UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bedsTotal: 1 });
+UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bedroomsTotal: 1 });
+UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bathsTotal: 1 });
+UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bathroomsTotalInteger: 1 });
+
 // -----------------------------
 // Model Export
 // -----------------------------

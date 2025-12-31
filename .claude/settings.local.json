@@ -20,7 +20,8 @@
       "Bash(npm run build:check:*)",
       "Bash(git commit:*)",
       "Bash(test:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(node scripts/create-performance-indexes.js:*)"
     ],
     "deny": [],
     "ask": []
