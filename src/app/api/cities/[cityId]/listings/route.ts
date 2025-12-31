@@ -580,11 +580,11 @@ export async function GET(
       address: listing.unparsedAddress,
       unparsedAddress: listing.unparsedAddress,
       slugAddress: listing.slugAddress,
-      beds: listing.bedsTotal || listing.bedroomsTotal || 0,
+      beds: listing.bedsTotal || 0,
       baths:
+        listing.bathsTotal ||
         listing.bathroomsTotalDecimal ||
         listing.bathroomsTotalInteger ||
-        listing.bathroomsFull ||
         0,
       yearBuilt: listing.yearBuilt,
       livingArea: listing.livingArea,
