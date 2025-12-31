@@ -390,10 +390,9 @@ export async function GET(
             unparsedAddress: 1,
             slugAddress: 1,
             bedsTotal: 1,
-            bedroomsTotal: 1,
+            bathsTotal: 1,
             bathroomsTotalDecimal: 1,
             bathroomsTotalInteger: 1,
-            bathroomsFull: 1,
             yearBuilt: 1,
             livingArea: 1,
             lotSizeSquareFeet: 1,
@@ -415,7 +414,7 @@ export async function GET(
       // Standard query with .find()
       listingsQuery = UnifiedListing.find(baseQuery)
         .select(
-          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bedroomsTotal bathroomsTotalDecimal bathroomsTotalInteger bathroomsFull yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource primaryPhoto media onMarketDate"
+          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bathsTotal bathroomsTotalDecimal bathroomsTotalInteger yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource primaryPhoto media onMarketDate"
         )
         .sort(sortBy)
         .limit(limit)
