@@ -370,6 +370,7 @@ export default function ListingBottomPanel({
     await Promise.all([animX.finished, animOther]);
 
     dir === "left" ? onSwipeLeft?.() : onSwipeRight?.();
+    onPanelClosedForTutorial?.(); // Notify tutorial system that swipe completed
 
     dragX.set(0);
   };
