@@ -222,7 +222,10 @@ export default function TopToggles() {
       {/* Desktop: Map toggle on far right edge of screen */}
       <div className="hidden md:block">
         <motion.button
-          onClick={handleToggleMap}
+          onClick={(e) => {
+            console.log('🖱️ [TopToggles] Desktop button onClick fired!', e);
+            handleToggleMap();
+          }}
           className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
