@@ -61,6 +61,7 @@ export function SpeechBubble({
 }: SpeechBubbleProps) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [arrowPosition, setArrowPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('right');
+  const [arrowAlign, setArrowAlign] = useState<'center' | 'right'>('center'); // Arrow horizontal alignment
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -161,6 +162,9 @@ export function SpeechBubble({
     let left = 0;
     let arrow: 'top' | 'bottom' | 'left' | 'right' = 'top';
 
+    // Special handling for top map toggle (top-right corner button)
+    const isTopMapToggle = step.target === '[data-tour="top-map-toggle-desktop"]' && step.placement === 'bottom';
+
     switch (step.placement) {
       case 'top':
         // For chat input, move bubble higher to not cover it
@@ -171,7 +175,14 @@ export function SpeechBubble({
         break;
       case 'bottom':
         top = rect.bottom + 20;
-        left = rect.left + (rect.width / 2) - (bubbleWidth / 2);
+        if (isTopMapToggle) {
+          // Position bubble to the left of the button, aligned to button's right edge
+          left = rect.right - bubbleWidth - 10;
+          setArrowAlign('right'); // Align arrow to right side of bubble
+        } else {
+          left = rect.left + (rect.width / 2) - (bubbleWidth / 2);
+          setArrowAlign('center');
+        }
         arrow = 'top';
         break;
       case 'left':
@@ -253,6 +264,7 @@ export function SpeechBubble({
         className={`absolute w-0 h-0 ${
           arrowPosition === 'left' ? '-left-3 top-1/2 -translate-y-1/2 border-t-[12px] border-b-[12px] border-r-[12px] border-t-transparent border-b-transparent' :
           arrowPosition === 'right' ? '-right-3 top-1/2 -translate-y-1/2 border-t-[12px] border-b-[12px] border-l-[12px] border-t-transparent border-b-transparent' :
+          arrowPosition === 'top' && arrowAlign === 'right' ? '-top-3 right-6 border-l-[12px] border-r-[12px] border-b-[12px] border-l-transparent border-r-transparent' :
           arrowPosition === 'top' ? '-top-3 left-1/2 -translate-x-1/2 border-l-[12px] border-r-[12px] border-b-[12px] border-l-transparent border-r-transparent' :
           '-bottom-3 left-1/2 -translate-x-1/2 border-l-[12px] border-r-[12px] border-t-[12px] border-l-transparent border-r-transparent'
         } ${
