@@ -93,10 +93,21 @@ export default function TopToggles() {
   };
 
   const handleToggleMap = () => {
+    console.log('🗺️ [TopToggles] handleToggleMap called', {
+      tutorialRun: tutorial.run,
+      tutorialStep: tutorial.stepIndex,
+      waitingForMapToggle: tutorial.waitingForMapToggle,
+      isMapVisible,
+      isHomePage
+    });
+
     // Notify tutorial system if on step 10
     if (tutorial.run && tutorial.stepIndex === 10) {
+      console.log('🎓 [TopToggles] Calling tutorial.onMapToggleClicked()');
       tutorial.onMapToggleClicked();
+      console.log('🎓 [TopToggles] After onMapToggleClicked, waitingForMapToggle:', tutorial.waitingForMapToggle);
     }
+
     if (isHomePage) {
       if (isMapVisible) {
         // Switching to chat view - clear notification

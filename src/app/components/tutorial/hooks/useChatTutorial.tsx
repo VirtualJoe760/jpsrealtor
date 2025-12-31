@@ -140,13 +140,26 @@ export function useChatTutorial(): UseTutorial {
   }, [waitingForPanelClose]);
 
   const onMapToggleClicked = useCallback(() => {
+    console.log('🎓 [Tutorial] onMapToggleClicked callback triggered', {
+      waitingForMapToggle,
+      currentStep: stepIndex,
+      run
+    });
     if (waitingForMapToggle) {
       console.log('🎓 [Tutorial] Map toggle clicked, auto-advancing to next step');
       setWaitingForMapToggle(false);
       // Auto-advance to next step
-      setTimeout(() => setStepIndex(prev => prev + 1), 300);
+      setTimeout(() => {
+        console.log('🎓 [Tutorial] Timeout executing, advancing step');
+        setStepIndex(prev => {
+          console.log('🎓 [Tutorial] Step advancing from', prev, 'to', prev + 1);
+          return prev + 1;
+        });
+      }, 300);
+    } else {
+      console.log('⚠️ [Tutorial] onMapToggleClicked called but waitingForMapToggle is false');
     }
-  }, [waitingForMapToggle]);
+  }, [waitingForMapToggle, stepIndex, run]);
 
   const onSwipeRightClicked = useCallback(() => {
     // Step 7 - swipe right (not blocking, but auto-advance if clicked)
@@ -211,9 +224,15 @@ export function useChatTutorial(): UseTutorial {
   // Enable map toggle waiting when entering step 10
   useEffect(() => {
     if (run && stepIndex === 10) {
+      console.log('🎓 [Tutorial] Entering step 10, setting waitingForMapToggle to true');
       setWaitingForMapToggle(true);
     }
   }, [run, stepIndex]);
+
+  // Debug: Log when waitingForMapToggle changes
+  useEffect(() => {
+    console.log('🎓 [Tutorial] waitingForMapToggle changed:', waitingForMapToggle, 'stepIndex:', stepIndex);
+  }, [waitingForMapToggle, stepIndex]);
 
   // Scroll detection for step 2
   useEffect(() => {
