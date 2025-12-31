@@ -68,27 +68,37 @@ interface MapStateProviderProps {
 }
 
 export function MapStateProvider({ children }: MapStateProviderProps) {
-  // Initialize isMapVisible from sessionStorage (persists across refreshes/HMR)
-  const [isMapVisible, setIsMapVisible] = useState(() => {
-    if (typeof window === 'undefined') return false;
+  // Initialize isMapVisible - always start with false for SSR consistency
+  // Client will read from sessionStorage in useEffect after mount
+  const [isMapVisible, setIsMapVisible] = useState(false);
+
+  // Read from sessionStorage after mount (client-only)
+  React.useEffect(() => {
     try {
       const stored = sessionStorage.getItem('mapVisible');
-      return stored === 'true';
+      if (stored === 'true') {
+        setIsMapVisible(true);
+      }
     } catch {
-      return false;
+      // Ignore sessionStorage errors
     }
-  });
+  }, []);
 
-  // Initialize viewState from sessionStorage (persists pre-positioned locations)
-  const [viewState, setViewStateInternal] = useState<MapViewState | null>(() => {
-    if (typeof window === 'undefined') return null;
+  // Initialize viewState - always start with null for SSR consistency
+  // Client will read from sessionStorage in useEffect after mount
+  const [viewState, setViewStateInternal] = useState<MapViewState | null>(null);
+
+  // Read viewState from sessionStorage after mount (client-only)
+  React.useEffect(() => {
     try {
       const stored = sessionStorage.getItem('mapViewState');
-      return stored ? JSON.parse(stored) : null;
+      if (stored) {
+        setViewStateInternal(JSON.parse(stored));
+      }
     } catch {
-      return null;
+      // Ignore sessionStorage errors
     }
-  });
+  }, []);
 
   const [selectedListing, setSelectedListing] = useState<MapListing | null>(null);
   const [displayListings, setDisplayListings] = useState<MapListing[]>([]);
