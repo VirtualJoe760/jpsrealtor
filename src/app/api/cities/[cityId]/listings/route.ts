@@ -74,7 +74,7 @@ export async function GET(
 
     // Base query for the city - using unified_listings
     const baseQuery: any = {
-      city: { $regex: new RegExp(`^${cityName}$`, "i") },
+      city: cityName,  // Exact match - uses index (city names are stored in Title Case)
       standardStatus: "Active",  // Only show active listings
       propertyType: "A",  // Residential only (excludes B=Rentals, C=Multifamily, D=Land)
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
