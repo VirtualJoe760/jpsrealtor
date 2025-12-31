@@ -241,26 +241,26 @@ export default function CityMap({
                 ${listing.address || "Address not available"}
               </div>
               ${
-                (listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal) !== undefined || (listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull) !== undefined
+                listing.bedsTotal !== undefined || listing.bathsTotal !== undefined
                   ? `<div class="flex gap-2.5 text-xs text-gray-600">
                       ${
-                        (listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal) !== undefined && (listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal) !== null
+                        listing.bedsTotal !== undefined && listing.bedsTotal !== null
                           ? `<div class="flex items-center gap-1">
                               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                               </svg>
-                              <span>${listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal ?? 0}bd</span>
+                              <span>${listing.bedsTotal}bd</span>
                             </div>`
                           : ""
                       }
                       ${
-                        (listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull) !== undefined && (listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull) !== null
+                        (listing.bathsTotal ?? listing.bathroomsTotalInteger) !== undefined && (listing.bathsTotal ?? listing.bathroomsTotalInteger) !== null
                           ? `<div class="flex items-center gap-1">
                               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
                                 <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5.586l-2.293-2.293A1 1 0 0014.586 7H14z"/>
                               </svg>
-                              <span>${listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull ?? 0}ba</span>
+                              <span>${listing.bathsTotal ?? listing.bathroomsTotalInteger}ba</span>
                             </div>`
                           : ""
                       }

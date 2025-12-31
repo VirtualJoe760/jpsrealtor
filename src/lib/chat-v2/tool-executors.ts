@@ -176,25 +176,18 @@ async function executeSearchHomes(args: {
       if (filterArgs.minPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $gte: filterArgs.minPrice };
       if (filterArgs.maxPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $lte: filterArgs.maxPrice };
 
-      // Bed filter - check BOTH field name variants (some listings use bedsTotal, others use bedroomsTotal)
+      // Bed filter - use actual database field (bedsTotal is always present)
       if (filterArgs.beds) {
-        dbQuery.$and = dbQuery.$and || [];
-        dbQuery.$and.push({
-          $or: [
-            { bedsTotal: filterArgs.beds },
-            { bedroomsTotal: filterArgs.beds }
-          ]
-        });
+        dbQuery.bedsTotal = filterArgs.beds;
       }
 
-      // Bath filter - check ALL three field name variants
+      // Bath filter - use actual database fields (bathsTotal and bathroomsTotalInteger are always present)
       if (filterArgs.baths) {
         dbQuery.$and = dbQuery.$and || [];
         dbQuery.$and.push({
           $or: [
             { bathsTotal: filterArgs.baths },
-            { bathroomsTotalInteger: filterArgs.baths },
-            { bathroomsFull: filterArgs.baths }
+            { bathroomsTotalInteger: filterArgs.baths }
           ]
         });
       }

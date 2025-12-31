@@ -359,15 +359,15 @@ export default function ListingListView({
               }`}>
                 <div className="flex items-center gap-1">
                   <Bed className="w-3.5 h-3.5" />
-                  <span>{listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal ?? 0} bd</span>
+                  <span>{listing.bedsTotal ?? 0} bd</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Bath className="w-3.5 h-3.5" />
-                  <span>{listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull ?? 0} ba</span>
+                  <span>{listing.bathsTotal ?? listing.bathroomsTotalInteger ?? 0} ba</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Maximize2 className="w-3.5 h-3.5" />
-                  <span>{listing.sqft?.toLocaleString() ?? listing.livingArea?.toLocaleString() ?? 0} sqft</span>
+                  <span>{listing.livingArea?.toLocaleString() ?? listing.buildingAreaTotal?.toLocaleString() ?? 0} sqft</span>
                 </div>
               </div>
             </div>

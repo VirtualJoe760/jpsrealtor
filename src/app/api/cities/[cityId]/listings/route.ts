@@ -103,6 +103,7 @@ export async function GET(
 
     // Apply bed filters
     // EXACT MATCH: "3 beds" means exactly 3, not 3+
+    // Database inspection shows bedsTotal is always present (100% of listings)
     if (minBeds || maxBeds) {
       const bedFilters: any = {};
       if (minBeds && !maxBeds) {
@@ -113,16 +114,12 @@ export async function GET(
         if (minBeds) bedFilters.$gte = parseInt(minBeds);
         if (maxBeds) bedFilters.$lte = parseInt(maxBeds);
       }
-      andConditions.push({
-        $or: [
-          { bedsTotal: bedFilters },
-          { bedroomsTotal: bedFilters },
-        ],
-      });
+      andConditions.push({ bedsTotal: bedFilters });
     }
 
     // Apply bath filters
     // EXACT MATCH: "2 baths" means exactly 2, not 2+
+    // Database inspection shows bathsTotal and bathroomsTotalInteger are always present (100% of listings)
     if (minBaths || maxBaths) {
       const bathFilters: any = {};
       if (minBaths && !maxBaths) {
@@ -137,7 +134,6 @@ export async function GET(
         $or: [
           { bathsTotal: bathFilters },
           { bathroomsTotalInteger: bathFilters },
-          { bathroomsFull: bathFilters },
         ],
       });
     }

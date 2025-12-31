@@ -340,7 +340,7 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
                       <p className={`text-xs ${
                         isLight ? 'text-gray-600' : 'text-neutral-300'
                       }`}>
-                        {listing.beds ?? listing.bedsTotal ?? listing.bedroomsTotal ?? 0}bd • {listing.baths ?? listing.bathsTotal ?? listing.bathroomsTotalInteger ?? listing.bathroomsFull ?? 0}ba • {listing.sqft?.toLocaleString() ?? listing.livingArea?.toLocaleString() ?? 0} sqft
+                        {listing.bedsTotal ?? 0}bd • {listing.bathsTotal ?? listing.bathroomsTotalInteger ?? 0}ba • {listing.livingArea?.toLocaleString() ?? listing.buildingAreaTotal?.toLocaleString() ?? 0} sqft
                       </p>
                     </div>
                     {/* Arrow pointer */}
