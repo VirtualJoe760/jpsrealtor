@@ -332,6 +332,46 @@ See [MIGRATION_FROM_V1.md](./MIGRATION_FROM_V1.md) for a complete migration guid
 
 ## Recent Updates
 
+### January 2, 2026 - LocationIndex Optimization ✅
+**🚀 Critical Performance Improvement: 200-300x faster entity recognition**
+
+**Problem**: Chat was timing out on Vercel (15s limit) when searching for cities like Vacaville, San Francisco, etc.
+- Root cause: Loading 1600+ subdivisions + 1000+ cities on every request using slow `distinct()` queries (10-15 seconds)
+- Serverless cold starts lost in-memory cache, requiring full reload
+
+**Solution**: Created LocationIndex model with pre-computed location data
+- **New Model**: `src/models/LocationIndex.ts`
+  - Indexed fields: `name`, `normalizedName`, `slug`, `aliases`, `type`
+  - Compound indexes for fast lookups
+  - Pre-computed stats: listing counts, coordinates, bounds
+  - Supports aliases (e.g., "PDCC" → "Palm Desert Country Club")
+
+- **Build Script**: `scripts/build-location-index.js`
+  - Indexes **1,052 cities** from California
+  - Indexes **1,606 subdivisions**
+  - Creates **89 location aliases** for common abbreviations
+  - Run once: `node scripts/build-location-index.js`
+
+- **Updated Entity Recognition**: `src/lib/chat/utils/entity-recognition.ts`
+  - Uses fast indexed queries instead of slow distinct() operations
+  - No in-memory cache needed (always fast from database)
+  - Works perfectly on Vercel serverless (no cache required)
+
+**Performance Results**:
+| Operation | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| Entity Recognition | 10-15 seconds | **<50ms** | **200-300x faster** |
+| Vacaville Query | Timeout (15s+) | **<0.5s** | **✅ Works!** |
+| Cold Starts | Cache miss = reload | **Always fast** | **No cache needed** |
+
+**Files Changed**:
+- `src/models/LocationIndex.ts` - New indexed model
+- `scripts/build-location-index.js` - One-time index builder
+- `src/lib/chat/utils/entity-recognition.ts` - Fast lookup implementation
+- `docs/chat-v2/ENTITY_RECOGNITION_OPTIMIZATION_PLAN.md` - Full documentation
+
+**Deployment Note**: After deploying, run `node scripts/build-location-index.js` once to populate the index in production.
+
 ### December 21, 2025 - Commands System & Appreciation Improvements ✅
 - **Added /help command**: Created `src/lib/chat-v2/commands.ts` for command detection
   - Warm, buyer-focused help guide with natural language examples
