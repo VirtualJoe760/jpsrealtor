@@ -11,11 +11,11 @@ node_modules/
 # Build artifacts
 *.tsbuildinfo
 
-# Screenshots and large media files
-*.png
-*.jpg
-*.jpeg
-*.gif
+# Screenshots (root level only - exclude development screenshots, keep public assets)
+Screenshot*.png
+Screenshot*.jpg
+
+# Development media folders
 photoshop/
 post-photos/
 
