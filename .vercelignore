@@ -1,0 +1,53 @@
+# Vercel ignore - exclude large files and directories from deployment
+
+# Local logs (21GB+ - too large for deployment)
+local-logs/
+
+# Development artifacts
+node_modules/
+.next/
+.turbo/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Screenshots and large media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+photoshop/
+post-photos/
+
+# Test and development files
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# JSON data files
+bighorn_active_listings.json
+ca_cities.json
+
+# Python installer
+get-pip.py
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git/
+.gitignore
+
+# Documentation (deploy only what's needed)
+docs/
