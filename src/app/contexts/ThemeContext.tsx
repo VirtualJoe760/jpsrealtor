@@ -110,7 +110,10 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .join(" ");
     });
 
-    // Browser chrome stays black (handled by static meta tags in layout.tsx)
+    // Set actual background color to match browser chrome
+    const backgroundColor = isLight ? '#ffffff' : '#0a0a0a';
+    document.documentElement.style.backgroundColor = backgroundColor;
+    document.body.style.backgroundColor = backgroundColor;
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
