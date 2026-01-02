@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   creator: "Joseph Sardella",
   publisher: "JPS Realtor",
   manifest: "/manifest.json",
-  themeColor: "#000000",
+  // themeColor removed - now handled dynamically by DynamicThemeColor component
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
