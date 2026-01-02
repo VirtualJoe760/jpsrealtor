@@ -9,6 +9,7 @@ import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
+import { MetaThemeManager } from "./MetaThemeManager";
 
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
@@ -141,6 +142,7 @@ export default function ClientLayoutWrapper({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
+      <MetaThemeManager />
       <MapStateProvider>
         <Providers>
           <SidebarProvider>

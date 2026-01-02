@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -115,6 +115,21 @@ export const metadata: Metadata = {
   category: "Real Estate",
 };
 
+// Viewport configuration for mobile browsers
+// Provides initial theme colors based on OS preference
+// MetaThemeManager component will override these dynamically when user switches themes
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover', // Critical for Dynamic Island/notch support on iOS
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' }
+  ]
+};
+
 export default async function RootLayout({
   children,
 }: {
@@ -127,7 +142,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`theme-${serverTheme}`} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
+        {/* viewport meta tag now handled by viewport export above */}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
         {/* PWA Meta Tags - Theme aware for Dynamic Island support */}
