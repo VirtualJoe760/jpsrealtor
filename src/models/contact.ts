@@ -5,6 +5,7 @@
  */
 
 import mongoose, { Document, Schema } from 'mongoose';
+import type { CampaignType } from './Campaign';
 
 export interface IContact extends Document {
   // Owner
@@ -94,6 +95,25 @@ export interface IContact extends Document {
 
   // Assigned To
   assignedAgent?: string;  // User ID of assigned agent
+
+  // Drop Cowboy Campaign History
+  campaignHistory?: {
+    totalCampaigns: number;
+    lastCampaignDate?: Date;
+    campaigns: Array<{
+      campaignId: mongoose.Types.ObjectId;
+      campaignName: string;
+      campaignType: CampaignType;
+      sentAt: Date;
+      delivered: boolean;
+      listened: boolean;
+    }>;
+  };
+
+  // Anti-Spam Flags
+  doNotContact?: boolean;
+  unsubscribedAt?: Date;
+  voicemailOptOut?: boolean;
 
   // Metadata
   createdAt: Date;
@@ -240,6 +260,49 @@ const ContactSchema: Schema = new Schema(
 
     // Assigned To
     assignedAgent: String,
+
+    // Drop Cowboy Campaign History
+    campaignHistory: {
+      totalCampaigns: {
+        type: Number,
+        default: 0,
+      },
+      lastCampaignDate: Date,
+      campaigns: [
+        {
+          campaignId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Campaign',
+          },
+          campaignName: String,
+          campaignType: {
+            type: String,
+            enum: [
+              'sphere_of_influence',
+              'past_clients',
+              'neighborhood_expireds',
+              'high_equity',
+              'custom',
+            ],
+          },
+          sentAt: Date,
+          delivered: Boolean,
+          listened: Boolean,
+        },
+      ],
+    },
+
+    // Anti-Spam Flags
+    doNotContact: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    unsubscribedAt: Date,
+    voicemailOptOut: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

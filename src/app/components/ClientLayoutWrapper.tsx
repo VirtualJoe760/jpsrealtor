@@ -34,11 +34,19 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     // '/dashboard', // Dashboard with map background
   ];
 
+  // Pages where we DON'T want TopToggles
+  const pagesWithoutTopToggles = [
+    '/agent', // Agent dashboard and all agent sub-pages
+  ];
+
   // Determine which background to show
   const shouldShowSpatialBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page))
     && !pagesWithMapBackground.some(page => pathname?.startsWith(page));
 
   const shouldShowMapBackground = pagesWithMapBackground.some(page => pathname?.startsWith(page));
+
+  // Determine whether to show TopToggles
+  const shouldShowTopToggles = !pagesWithoutTopToggles.some(page => pathname?.startsWith(page));
 
   return (
     <>
@@ -61,8 +69,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <EnhancedSidebar />
       </div>
 
-      {/* Top Toggles - Theme (left) and Map (right) */}
-      <TopToggles />
+      {/* Top Toggles - Theme (left) and Map (right) - Hidden on agent pages */}
+      {shouldShowTopToggles && <TopToggles />}
 
       {/* Main content with sidebar spacing on desktop */}
       <div

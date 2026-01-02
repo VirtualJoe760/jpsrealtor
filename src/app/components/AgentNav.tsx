@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileCheck, Briefcase, FileText, Phone } from "lucide-react";
+import { LayoutDashboard, Users, FileCheck, Briefcase, FileText, Phone, Megaphone } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useSession } from "next-auth/react";
 
@@ -28,6 +28,13 @@ export default function AgentNav() {
       href: "/agent/crm",
       label: "CRM",
       icon: Phone,
+      exact: false,
+      show: true,
+    },
+    {
+      href: "/agent/campaigns",
+      label: "Campaigns",
+      icon: Megaphone,
       exact: false,
       show: true,
     },
