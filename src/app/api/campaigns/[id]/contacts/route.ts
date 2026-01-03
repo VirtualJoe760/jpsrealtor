@@ -10,7 +10,7 @@ import Campaign from '@/models/Campaign';
 // GET - Fetch contacts for a campaign
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,7 +23,7 @@ export async function GET(
 
     const user = session.user as any;
     const userId = user.id;
-    const campaignId = params.id;
+    const { id: campaignId } = await params;
 
     await dbConnect();
 
@@ -73,7 +73,7 @@ export async function GET(
 // POST - Add contacts to campaign
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -86,7 +86,7 @@ export async function POST(
 
     const user = session.user as any;
     const userId = user.id;
-    const campaignId = params.id;
+    const { id: campaignId } = await params;
 
     await dbConnect();
 
@@ -166,7 +166,7 @@ export async function POST(
 // DELETE - Remove contacts from campaign
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -179,7 +179,7 @@ export async function DELETE(
 
     const user = session.user as any;
     const userId = user.id;
-    const campaignId = params.id;
+    const { id: campaignId } = await params;
 
     await dbConnect();
 
