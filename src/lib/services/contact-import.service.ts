@@ -103,7 +103,7 @@ export class ContactImportService {
   ): Promise<ImportResult> {
     try {
       // Create import batch record
-      const batch = await ImportBatch.create({
+      const batch = await (ImportBatch as any).create({
         userId,
         campaignId,
         source,
@@ -121,7 +121,7 @@ export class ContactImportService {
         data = await this.parseFileBuffer(file, fileName);
       } else {
         // Parse File object
-        data = await this.parseFile(file);
+        data = await this.parseFile(file as File);
       }
 
       // Get field mapping for source
@@ -181,7 +181,7 @@ export class ContactImportService {
   ): Promise<ImportResult> {
     try {
       // Create import batch
-      const batch = await ImportBatch.create({
+      const batch = await (ImportBatch as any).create({
         userId,
         campaignId,
         source: 'google_contacts',
@@ -241,7 +241,7 @@ export class ContactImportService {
     campaignId: Types.ObjectId
   ): Promise<ImportResult> {
     try {
-      const batch = await ImportBatch.create({
+      const batch = await (ImportBatch as any).create({
         userId,
         campaignId,
         source: 'mojo_dialer',
@@ -301,7 +301,7 @@ export class ContactImportService {
   ): Promise<ImportResult> {
     try {
       // Verify all contacts belong to this user
-      const contacts = await Contact.find({
+      const contacts = await (Contact as any).find({
         _id: { $in: contactIds },
         userId,
       });
@@ -313,7 +313,7 @@ export class ContactImportService {
       // Create ContactCampaign records
       const contactCampaigns = await Promise.all(
         contacts.map((contact) =>
-          ContactCampaign.create({
+          (ContactCampaign as any).create({
             contactId: contact._id,
             campaignId,
             userId,
@@ -324,7 +324,7 @@ export class ContactImportService {
       );
 
       // Update campaign stats
-      const campaign = await Campaign.findById(campaignId);
+      const campaign = await (Campaign as any).findById(campaignId);
       if (campaign) {
         campaign.stats.totalContacts += contacts.length;
         await campaign.save();

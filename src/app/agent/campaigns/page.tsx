@@ -24,7 +24,7 @@ const mockCampaigns = [
     name: 'PDCC Expired Listings - Q1 2026',
     type: 'neighborhood_expireds',
     neighborhood: 'PDCC',
-    status: 'active',
+    status: 'active' as const,
     totalContacts: 150,
     activeStrategies: {
       voicemail: true,
@@ -47,7 +47,7 @@ const mockCampaigns = [
     id: '2',
     name: 'Sphere of Influence - Monthly Update',
     type: 'sphere_of_influence',
-    status: 'active',
+    status: 'active' as const,
     totalContacts: 250,
     activeStrategies: {
       voicemail: false,
@@ -72,7 +72,7 @@ const mockCampaigns = [
     name: 'Indian Wells High Equity',
     type: 'high_equity',
     neighborhood: 'Indian Wells',
-    status: 'paused',
+    status: 'paused' as const,
     totalContacts: 89,
     activeStrategies: {
       voicemail: true,
@@ -95,7 +95,7 @@ const mockCampaigns = [
     id: '4',
     name: 'Past Clients - Quarterly Check-in',
     type: 'past_clients',
-    status: 'completed',
+    status: 'completed' as const,
     totalContacts: 320,
     activeStrategies: {
       voicemail: true,

@@ -16,6 +16,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import AgentNav from '@/app/components/AgentNav';
+import ContactSelector from '@/app/components/campaigns/ContactSelector';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 
 // Campaign Types
@@ -449,8 +450,16 @@ export default function NewCampaignPage() {
               </div>
             )}
 
-            {/* Step 4: Review & Launch */}
+            {/* Step 4: Select Contacts */}
             {currentStep === 4 && (
+              <ContactSelector
+                selectedContactIds={formData.contactIds}
+                onContactsChange={(contactIds) => setFormData({ ...formData, contactIds })}
+              />
+            )}
+
+            {/* Step 5: Review & Launch */}
+            {currentStep === 5 && (
               <div className="space-y-6">
                 <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>
                   Review & Launch
@@ -510,6 +519,13 @@ export default function NewCampaignPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  <div className={`border-t ${border} pt-6`}>
+                    <h3 className={`text-sm font-medium ${textSecondary} mb-2`}>Selected Contacts</h3>
+                    <p className={`text-lg ${textPrimary} mb-6`}>
+                      {formData.contactIds.length} contact{formData.contactIds.length !== 1 ? 's' : ''} selected
+                    </p>
                   </div>
 
                   <div className={`border-t ${border} pt-6`}>

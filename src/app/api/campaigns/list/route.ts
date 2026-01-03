@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch campaigns
-    const campaigns = await Campaign.find(query)
+    const campaigns = await (Campaign as any).find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
       id: campaign._id.toString(),
       name: campaign.name,
       description: campaign.description,
-      type: campaign.type,
+      type: campaign.type as string,
       neighborhood: campaign.neighborhood,
-      status: campaign.status,
+      status: campaign.status as 'draft' | 'active' | 'completed' | 'paused',
       totalContacts: campaign.stats?.totalContacts || 0,
       activeStrategies: campaign.activeStrategies || {
         voicemail: false,
@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
         responses: 0, // TODO: Calculate from all channels
         conversions: 0, // TODO: Track conversions
       },
-      createdAt: campaign.createdAt?.toISOString(),
-      lastActivity: campaign.updatedAt?.toISOString(),
+      createdAt: campaign.createdAt?.toISOString() || new Date().toISOString(),
+      lastActivity: campaign.updatedAt?.toISOString() || new Date().toISOString(),
     }));
 
     return NextResponse.json({

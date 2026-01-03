@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch contacts
-    const contacts = await Contact.find(query)
+    const contacts = await (Contact as any).find(query)
       .select('firstName lastName email phone tags status campaignHistory')
       .sort({ firstName: 1, lastName: 1 })
       .limit(500)

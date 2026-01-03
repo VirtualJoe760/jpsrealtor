@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import Campaign from '@/models/Campaign';
+import ContactCampaign from '@/models/ContactCampaign';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { name, description, type, neighborhood, strategies, schedule } = body;
+    const { name, description, type, neighborhood, strategies, schedule, contactIds } = body;
 
     // Validate required fields
     if (!name || !type) {
@@ -42,11 +43,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate at least one contact is selected
+    if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'At least one contact must be selected' },
+        { status: 400 }
+      );
+    }
+
     // Determine initial status based on schedule
     const initialStatus = schedule === 'immediate' ? 'active' : 'draft';
 
     // Create campaign
-    const campaign = await Campaign.create({
+    const campaign = await (Campaign as any).create({
       userId,
       teamId: user.teamId || null,
       name,
@@ -60,7 +69,7 @@ export async function POST(request: NextRequest) {
       },
       status: initialStatus,
       stats: {
-        totalContacts: 0,
+        totalContacts: contactIds.length,
         scriptsGenerated: 0,
         audioGenerated: 0,
         sent: 0,
@@ -72,6 +81,20 @@ export async function POST(request: NextRequest) {
         retryAttempts: 3,
       },
     });
+
+    // Create ContactCampaign records for each selected contact
+    const contactCampaignPromises = contactIds.map((contactId: string) =>
+      (ContactCampaign as any).create({
+        contactId,
+        campaignId: campaign._id,
+        userId,
+        source: 'manual',
+        status: 'pending',
+        isDuplicate: false,
+      })
+    );
+
+    await Promise.all(contactCampaignPromises);
 
     return NextResponse.json({
       success: true,
