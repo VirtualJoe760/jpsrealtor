@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
+import CampaignContactsManager from './CampaignContactsManager';
 
 interface Campaign {
   id: string;
@@ -290,26 +291,20 @@ function OverviewTab({ campaign }: { campaign: Campaign }) {
 }
 
 function ContactsTab({ campaign }: { campaign: Campaign }) {
-  const { textPrimary, textSecondary } = useThemeClasses();
-  const { currentTheme } = useTheme();
-  const isLight = currentTheme === 'lightgradient';
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleContactsChange = () => {
+    setRefreshKey(prev => prev + 1);
+    // TODO: Refresh campaign data to update totalContacts count
+  };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className={`text-lg font-semibold ${textPrimary}`}>
-          Contacts ({campaign.totalContacts})
-        </h3>
-        <button className={`text-sm ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-emerald-400 hover:text-emerald-300'} font-medium`}>
-          Manage Contacts
-        </button>
-      </div>
-      <div className={`${isLight ? 'bg-gray-50' : 'bg-slate-800'} rounded-lg p-8 text-center`}>
-        <UserGroupIcon className={`w-12 h-12 ${textSecondary} mx-auto mb-3`} />
-        <p className={textSecondary}>
-          Contact management coming soon. Click "Open in full page" for full contact list.
-        </p>
-      </div>
+      <CampaignContactsManager
+        key={refreshKey}
+        campaignId={campaign.id}
+        onContactsChange={handleContactsChange}
+      />
     </div>
   );
 }
