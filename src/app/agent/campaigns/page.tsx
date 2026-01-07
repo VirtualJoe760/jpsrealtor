@@ -15,7 +15,9 @@ import AgentNav from '@/app/components/AgentNav';
 import CampaignCard from '@/app/components/campaigns/CampaignCard';
 import CampaignDetailPanel from '@/app/components/campaigns/CampaignDetailPanel';
 import CampaignFilters from '@/app/components/campaigns/CampaignFilters';
+import DeleteCampaignModal from '@/app/components/campaigns/DeleteCampaignModal';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
+import { toast } from 'react-toastify';
 
 // Mock data - used as fallback
 const mockCampaigns = [
@@ -132,6 +134,15 @@ export default function CampaignsPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<typeof mockCampaigns[0] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Function to refresh campaigns
+  const refreshCampaigns = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   // Fetch campaigns from API
   useEffect(() => {
@@ -143,6 +154,11 @@ export default function CampaignsPage() {
 
         if (data.success) {
           setCampaigns(data.campaigns);
+          console.log('[CampaignsPage] Loaded campaigns with analytics:', data.campaigns.map((c: any) => ({
+            name: c.name,
+            voicemailsSent: c.analytics.voicemailsSent,
+            voicemailsListened: c.analytics.voicemailsListened
+          })));
         } else {
           console.error('Failed to fetch campaigns:', data.error);
           // Keep mock data as fallback
@@ -156,7 +172,7 @@ export default function CampaignsPage() {
     };
 
     fetchCampaigns();
-  }, []);
+  }, [refreshTrigger]);
 
   // Filter campaigns
   const filteredCampaigns = campaigns.filter((campaign) => {
@@ -169,6 +185,52 @@ export default function CampaignsPage() {
   });
 
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
+
+  // Delete handlers
+  const handleDeleteClick = (campaign: typeof mockCampaigns[0]) => {
+    setCampaignToDelete(campaign);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!campaignToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/campaigns/${campaignToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Remove campaign from list
+        setCampaigns(campaigns.filter((c) => c.id !== campaignToDelete.id));
+        // Close modal
+        setDeleteModalOpen(false);
+        setCampaignToDelete(null);
+        // Close detail panel if this campaign was selected
+        if (selectedCampaignId === campaignToDelete.id) {
+          setSelectedCampaignId(null);
+        }
+        // Show success toast
+        toast.success('Campaign deleted successfully');
+      } else {
+        console.error('Failed to delete campaign:', data.error);
+        toast.error('Failed to delete campaign: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      toast.error('Error deleting campaign. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setCampaignToDelete(null);
+  };
 
   return (
     <div className="min-h-screen py-8" data-page="campaigns">
@@ -325,7 +387,12 @@ export default function CampaignsPage() {
                   campaign={campaign}
                   viewMode={viewMode}
                   isSelected={selectedCampaignId === campaign.id}
-                  onClick={() => setSelectedCampaignId(campaign.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedCampaignId(campaign.id);
+                  }}
+                  onDelete={() => handleDeleteClick(campaign)}
                 />
               ))}
             </div>
@@ -338,9 +405,19 @@ export default function CampaignsPage() {
             <CampaignDetailPanel
               campaign={selectedCampaign}
               onClose={() => setSelectedCampaignId(null)}
+              onRefresh={refreshCampaigns}
             />
           )}
         </AnimatePresence>
+
+        {/* Delete Campaign Modal */}
+        <DeleteCampaignModal
+          isOpen={deleteModalOpen}
+          campaignName={campaignToDelete?.name || ''}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          isDeleting={isDeleting}
+        />
       </div>
     </div>
   );

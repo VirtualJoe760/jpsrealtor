@@ -326,6 +326,7 @@ export default function CampaignContactsManager({ campaignId, onContactsChange }
                 <ContactSelector
                   selectedContactIds={modalSelectedContacts}
                   onContactsChange={setModalSelectedContacts}
+                  campaignId={campaignId}
                 />
               </div>
 

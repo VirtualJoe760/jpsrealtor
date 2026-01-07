@@ -1,8 +1,9 @@
 // app/components/campaigns/CampaignDetailPanel.tsx
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import {
   XMarkIcon,
   ArrowTopRightOnSquareIcon,
@@ -12,12 +13,18 @@ import {
   TrashIcon,
   UserGroupIcon,
   ChartBarIcon,
-  BoltIcon,
   ClockIcon,
+  ChatBubbleLeftIcon,
+  MicrophoneIcon,
 } from '@heroicons/react/24/outline';
+import { FileText, Volume2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 import CampaignContactsManager from './CampaignContactsManager';
+import ProfileCompletionModal from './ProfileCompletionModal';
+import GenerationProgressTracker from './GenerationProgressTracker';
+import VoiceRecorder from './VoiceRecorder';
+import CampaignOverview from './CampaignOverview';
 
 interface Campaign {
   id: string;
@@ -47,17 +54,19 @@ interface Campaign {
 interface CampaignDetailPanelProps {
   campaign: Campaign;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-type Tab = 'overview' | 'contacts' | 'strategies' | 'analytics';
+type Tab = 'overview' | 'contacts' | 'history' | 'analytics';
 
-export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetailPanelProps) {
+export default function CampaignDetailPanel({ campaign, onClose, onRefresh }: CampaignDetailPanelProps) {
   const router = useRouter();
   const { cardBg, cardBorder, textPrimary, textSecondary, border } = useThemeClasses();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [backdropClickable, setBackdropClickable] = useState(false);
 
   const handleOpenFullPage = () => {
     router.push(`/agent/campaigns/${campaign.id}`);
@@ -66,7 +75,7 @@ export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetai
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'overview', label: 'Overview', icon: ChartBarIcon },
     { id: 'contacts', label: 'Contacts', icon: UserGroupIcon },
-    { id: 'strategies', label: 'Strategies', icon: BoltIcon },
+    { id: 'history', label: 'History', icon: ClockIcon },
     { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
   ];
 
@@ -77,8 +86,13 @@ export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetai
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+        onAnimationComplete={() => setBackdropClickable(true)}
+        onClick={(e) => {
+          if (backdropClickable) {
+            onClose();
+          }
+        }}
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 ${!backdropClickable ? 'pointer-events-none' : ''}`}
       />
 
       {/* Side Panel */}
@@ -87,10 +101,11 @@ export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetai
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
         className={`fixed right-0 top-0 h-full w-full max-w-2xl ${cardBg} shadow-2xl z-50 overflow-hidden flex flex-col`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+        <div className={`p-6 text-white ${isLight ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gradient-to-r from-emerald-600 to-teal-600'}`}>
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1 min-w-0 pr-4">
               <h2 className="text-2xl font-bold mb-2">{campaign.name}</h2>
@@ -168,10 +183,10 @@ export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetai
         </div>
 
         {/* Content Area - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'overview' && <OverviewTab campaign={campaign} />}
+        <div className="flex-1 overflow-y-auto p-6 select-text">
+          {activeTab === 'overview' && <OverviewTab campaign={campaign} onRefresh={onRefresh} />}
           {activeTab === 'contacts' && <ContactsTab campaign={campaign} />}
-          {activeTab === 'strategies' && <StrategiesTab campaign={campaign} />}
+          {activeTab === 'history' && <HistoryTab campaign={campaign} />}
           {activeTab === 'analytics' && <AnalyticsTab campaign={campaign} />}
         </div>
 
@@ -207,87 +222,8 @@ export default function CampaignDetailPanel({ campaign, onClose }: CampaignDetai
 }
 
 // Tab Components
-function OverviewTab({ campaign }: { campaign: Campaign }) {
-  const { textPrimary, textSecondary } = useThemeClasses();
-
-  return (
-    <div className="space-y-6">
-      {/* Active Strategies */}
-      <div>
-        <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>
-          Active Strategies
-        </h3>
-        <div className="grid grid-cols-3 gap-4">
-          <StrategyStatusCard
-            name="Voicemail"
-            active={campaign.activeStrategies.voicemail}
-            sent={campaign.analytics.voicemailsSent}
-            engaged={campaign.analytics.voicemailsListened}
-            color="purple"
-          />
-          <StrategyStatusCard
-            name="Email"
-            active={campaign.activeStrategies.email}
-            sent={campaign.analytics.emailsSent}
-            engaged={campaign.analytics.emailsOpened}
-            color="blue"
-          />
-          <StrategyStatusCard
-            name="Text"
-            active={campaign.activeStrategies.text}
-            sent={campaign.analytics.textsSent}
-            engaged={undefined}
-            color="green"
-          />
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div>
-        <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>
-          Recent Activity
-        </h3>
-        <div className="space-y-3">
-          <ActivityItem
-            time="2 hours ago"
-            text="Sarah Johnson listened to voicemail"
-            type="success"
-          />
-          <ActivityItem time="4 hours ago" text="Mike Davis opened email" type="info" />
-          <ActivityItem
-            time="Yesterday"
-            text="Campaign sent to 150 contacts"
-            type="neutral"
-          />
-        </div>
-      </div>
-
-      {/* Campaign Details */}
-      <div>
-        <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Details</h3>
-        <dl className="space-y-3">
-          <div className="flex justify-between">
-            <dt className={textSecondary}>Created</dt>
-            <dd className={`${textPrimary} font-medium`}>
-              {new Date(campaign.createdAt).toLocaleDateString()}
-            </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className={textSecondary}>Last Activity</dt>
-            <dd className={`${textPrimary} font-medium`}>
-              {new Date(campaign.lastActivity).toLocaleDateString()}
-            </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className={textSecondary}>Type</dt>
-            <dd className={`${textPrimary} font-medium capitalize`}>
-              {campaign.type.replace(/_/g, ' ')}
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  );
+function OverviewTab({ campaign, onRefresh }: { campaign: Campaign; onRefresh?: () => void }) {
+  return <CampaignOverview campaign={campaign} onRefresh={onRefresh} />;
 }
 
 function ContactsTab({ campaign }: { campaign: Campaign }) {
@@ -309,50 +245,142 @@ function ContactsTab({ campaign }: { campaign: Campaign }) {
   );
 }
 
-function StrategiesTab({ campaign }: { campaign: Campaign }) {
-  const { textPrimary, textSecondary } = useThemeClasses();
+function HistoryTab({ campaign }: { campaign: Campaign }) {
+  const { textPrimary, textSecondary, cardBg, cardBorder } = useThemeClasses();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/${campaign.id}/history`);
+        if (response.ok) {
+          const data = await response.json();
+          setHistory(data.history || []);
+        }
+      } catch (error) {
+        console.error('[HistoryTab] Error fetching history:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [campaign.id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isLight ? 'border-blue-600' : 'border-emerald-500'} mx-auto mb-4`}></div>
+          <p className={textSecondary}>Loading campaign history...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className={`${cardBg} ${cardBorder} rounded-lg p-8 text-center`}>
+        <ClockIcon className={`w-12 h-12 ${textSecondary} mx-auto mb-3`} />
+        <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
+          No Activity Yet
+        </h3>
+        <p className={`text-sm ${textSecondary}`}>
+          Campaign activities will appear here once you start sending voicemails, texts, or emails.
+        </p>
+      </div>
+    );
+  }
+
+  const getStrategyIcon = (strategy: string) => {
+    switch (strategy) {
+      case 'voicemail':
+        return <MicrophoneIcon className="w-5 h-5" />;
+      case 'text':
+        return <ChatBubbleLeftIcon className="w-5 h-5" />;
+      case 'email':
+        return <ChatBubbleLeftIcon className="w-5 h-5" />;
+      default:
+        return <ClockIcon className="w-5 h-5" />;
+    }
+  };
+
+  const getStrategyColor = (strategy: string) => {
+    switch (strategy) {
+      case 'voicemail':
+        return isLight ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-purple-900/30 text-purple-400 border-purple-700/50';
+      case 'text':
+        return isLight ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-blue-900/30 text-blue-400 border-blue-700/50';
+      case 'email':
+        return isLight ? 'bg-green-100 text-green-700 border-green-200' : 'bg-green-900/30 text-green-400 border-green-700/50';
+      default:
+        return isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-gray-900/30 text-gray-400 border-gray-700/50';
+    }
+  };
+
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - d.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return d.toLocaleDateString('en-US', { weekday: 'long' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <div>
       <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>
-        Deployed Strategies
+        Campaign Activity Timeline
       </h3>
-      <div className="space-y-4">
-        {campaign.activeStrategies.voicemail && (
-          <div className={`p-4 border-2 ${isLight ? 'border-purple-200' : 'border-purple-900/30'} rounded-lg`}>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className={`font-semibold ${textPrimary}`}>Voicemail Drop</h4>
-              <span className={`px-2 py-1 ${isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400'} text-xs font-medium rounded`}>
-                Active
-              </span>
-            </div>
-            <p className={`text-sm ${textSecondary} mb-2`}>
-              AI-generated personalized voicemails via Drop Cowboy
-            </p>
-            <div className={`text-sm ${textPrimary}`}>
-              Sent: {campaign.analytics.voicemailsSent} • Listened:{' '}
-              {campaign.analytics.voicemailsListened}
+      <div className="space-y-3">
+        {history.map((item, index) => (
+          <div
+            key={index}
+            className={`${cardBg} ${cardBorder} rounded-lg p-4 border-l-4 ${getStrategyColor(item.strategy)}`}
+          >
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-lg ${getStrategyColor(item.strategy)}`}>
+                {getStrategyIcon(item.strategy)}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className={`font-semibold ${textPrimary} capitalize`}>
+                    {item.strategy === 'voicemail' ? 'Voicemail Drop' : `${item.strategy} Campaign`}
+                  </h4>
+                  <span className={`text-xs ${textSecondary}`}>
+                    {formatDate(item.date)}
+                  </span>
+                </div>
+                <p className={`text-sm ${textSecondary} mb-2`}>
+                  {item.description || `Sent ${item.count || 0} ${item.strategy}${(item.count || 0) !== 1 ? 's' : ''} to contacts`}
+                </p>
+                {item.stats && (
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className={textSecondary}>
+                      Sent: <span className={`font-medium ${textPrimary}`}>{item.stats.sent || 0}</span>
+                    </span>
+                    {item.stats.delivered !== undefined && (
+                      <span className={textSecondary}>
+                        Delivered: <span className={`font-medium ${textPrimary}`}>{item.stats.delivered}</span>
+                      </span>
+                    )}
+                    {item.stats.opened !== undefined && (
+                      <span className={textSecondary}>
+                        Opened: <span className={`font-medium ${textPrimary}`}>{item.stats.opened}</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
-        {campaign.activeStrategies.email && (
-          <div className={`p-4 border-2 ${isLight ? 'border-blue-200' : 'border-blue-900/30'} rounded-lg`}>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className={`font-semibold ${textPrimary}`}>Email Campaign</h4>
-              <span className={`px-2 py-1 ${isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400'} text-xs font-medium rounded`}>
-                Active
-              </span>
-            </div>
-            <p className={`text-sm ${textSecondary} mb-2`}>
-              Personalized emails via SendGrid
-            </p>
-            <div className={`text-sm ${textPrimary}`}>
-              Sent: {campaign.analytics.emailsSent} • Opened: {campaign.analytics.emailsOpened}
-            </div>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -493,30 +521,3 @@ function StrategyStatusCard({
   );
 }
 
-function ActivityItem({ time, text, type }: { time: string; text: string; type: string }) {
-  const { textPrimary, textSecondary } = useThemeClasses();
-  const { currentTheme } = useTheme();
-  const isLight = currentTheme === 'lightgradient';
-
-  const getColors = () => {
-    const colorMap = {
-      success: isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400',
-      info: isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400',
-      neutral: isLight ? 'bg-gray-100 text-gray-700' : 'bg-slate-700 text-gray-300',
-    };
-    return colorMap[type as keyof typeof colorMap];
-  };
-
-  return (
-    <div className="flex items-start gap-3">
-      <div className={`w-2 h-2 rounded-full mt-2 ${getColors()}`} />
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm ${textPrimary}`}>{text}</p>
-        <p className={`text-xs ${textSecondary} flex items-center gap-1 mt-0.5`}>
-          <ClockIcon className="w-3 h-3" />
-          {time}
-        </p>
-      </div>
-    </div>
-  );
-}

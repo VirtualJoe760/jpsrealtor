@@ -4,9 +4,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import Team from "@/models/Team";
+
+// Ensure Team model is registered
+const ensureModelsLoaded = () => {
+  Team; // Reference to ensure the model is loaded
+};
 
 export async function GET(request: NextRequest) {
   try {
+    ensureModelsLoaded();
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -20,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     const user = await User.findOne({ email: session.user.email })
       .populate('significantOther', 'name email')
+      .populate('team', 'name description')
       .select('-password');
 
     if (!user) {
@@ -41,6 +49,10 @@ export async function GET(request: NextRequest) {
         currentAddress: user.currentAddress,
         homeownerStatus: user.homeownerStatus,
         significantOther: user.significantOther,
+        brokerageName: user.brokerageName,
+        licenseNumber: user.licenseNumber,
+        team: user.team,
+        isTeamLeader: user.isTeamLeader,
       },
     });
   } catch (error) {
@@ -54,6 +66,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    ensureModelsLoaded();
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -73,6 +86,8 @@ export async function PUT(request: NextRequest) {
       currentAddress,
       homeownerStatus,
       image,
+      brokerageName,
+      licenseNumber,
     } = body;
 
     await dbConnect();
@@ -95,8 +110,13 @@ export async function PUT(request: NextRequest) {
     if (currentAddress !== undefined) user.currentAddress = currentAddress;
     if (homeownerStatus !== undefined) user.homeownerStatus = homeownerStatus;
     if (image !== undefined) user.image = image;
+    if (brokerageName !== undefined) user.brokerageName = brokerageName;
+    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
 
     await user.save();
+
+    // Populate team info for response
+    await user.populate('team', 'name description');
 
     return NextResponse.json({
       success: true,
@@ -111,6 +131,10 @@ export async function PUT(request: NextRequest) {
         realEstateGoals: user.realEstateGoals,
         currentAddress: user.currentAddress,
         homeownerStatus: user.homeownerStatus,
+        brokerageName: user.brokerageName,
+        licenseNumber: user.licenseNumber,
+        team: user.team,
+        isTeamLeader: user.isTeamLeader,
       },
     });
   } catch (error) {

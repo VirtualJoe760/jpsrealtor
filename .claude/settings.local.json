@@ -1,30 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(git checkout:*)",
-      "Bash(git add:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(npm run dev:*)",
-      "Bash(npm install:*)",
-      "Bash(curl:*)",
-      "Bash(node scripts/test-agent-routes.js:*)",
-      "Bash(node -r dotenv/config scripts/init-default-team.js:*)",
-      "Bash(node -r dotenv/config scripts/check-user-roles.js:*)",
-      "Bash(node scripts/check-user-roles.js:*)",
-      "Bash(set -a)",
-      "Bash(source:*)",
-      "Bash(set +a)",
-      "Bash(node scripts/make-admin-agent.js:*)",
-      "Bash(node scripts/make-team-leader.js:*)",
-      "Bash(npm run build:check:*)",
-      "Bash(git commit:*)",
-      "Bash(test:*)",
-      "Bash(git push:*)",
-      "Bash(node scripts/create-performance-indexes.js:*)",
-      "Bash(node scripts/inspect-listing-fields.js:*)",
-      "Bash(git rm:*)",
-      "Bash(npx tsc:*)"
+      "Bash(for file in PipelineContactsStep.tsx PipelineScriptsStep.tsx PipelineAudioStep.tsx PipelineSendStep.tsx)",
+      "Bash(do sed -i \"/import { ICampaign } from ''@\\/models\\/Campaign'';/d\" \"$file\")",
+      "Bash(for file in PipelineScriptsStep.tsx PipelineAudioStep.tsx PipelineSendStep.tsx)",
+      "Bash(do sed -i \"s/from ''react-hot-toast''/from ''react-toastify''/g\" \"$file\")",
+      "Bash(done)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

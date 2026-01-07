@@ -3259,7 +3259,7 @@ axe-core@^4.10.0:
   resolved "https://registry.npmjs.org/axe-core/-/axe-core-4.10.2.tgz"
   integrity sha512-RE3mdQ7P3FRSe7eqCWoeQ/Z9QXrtniSjp1wUjt5nRC3WIpz5rSCve6o3fsZ2aCpJtrZjSZgjwXAoTO5k4tEI0w==
 
-axios@^1.12.0, axios@^1.8.4:
+axios@^1.12.0, axios@^1.4.0, axios@^1.8.4:
   version "1.13.2"
   resolved "https://registry.npmjs.org/axios/-/axios-1.13.2.tgz"
   integrity sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==
@@ -3721,10 +3721,10 @@ cliui@^8.0.1:
     strip-ansi "^6.0.1"
     wrap-ansi "^7.0.0"
 
-cloudinary@^2.5.1:
-  version "2.5.1"
-  resolved "https://registry.npmjs.org/cloudinary/-/cloudinary-2.5.1.tgz"
-  integrity sha512-CNg6uU53Hl4FEVynkTGpt5bQEAQWDHi3H+Sm62FzKf5uQHipSN2v7qVqS8GRVqeb0T1WNV+22+75DOJeRXYeSQ==
+cloudinary@^2.8.0:
+  version "2.8.0"
+  resolved "https://registry.npmjs.org/cloudinary/-/cloudinary-2.8.0.tgz"
+  integrity sha512-s7frvR0HnQXeJsQSIsbLa/I09IMb1lOnVLEDH5b5E53WTiCYgrNNOBGV/i/nLHwrcEOUkqjfSwP1+enXWNYmdw==
   dependencies:
     lodash "^4.17.21"
     q "^1.5.1"
@@ -4444,6 +4444,14 @@ electron-to-chromium@^1.5.73:
   resolved "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.74.tgz"
   integrity sha512-ck3//9RC+6oss/1Bh9tiAVFy5vfSKbRHAFh7Z3/eTRkEqJeWgymloShB17Vg3Z4nmDNp35vAd1BZ6CMW4Wt6Iw==
 
+elevenlabs-node@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.npmjs.org/elevenlabs-node/-/elevenlabs-node-2.0.3.tgz"
+  integrity sha512-BB6JopTDT+dJ/yNMhqPBzu2yz5Pooos86c8/CFZT6PRnx2in9wh3z560ae/6qpv5XRbpNOOhi/aC51CTdYJr5A==
+  dependencies:
+    axios "^1.4.0"
+    fs-extra "^11.1.1"
+
 elevenlabs@^1.59.0:
   version "1.59.0"
   resolved "https://registry.npmjs.org/elevenlabs/-/elevenlabs-1.59.0.tgz"
@@ -4458,6 +4466,11 @@ elevenlabs@^1.59.0:
     qs "^6.13.1"
     readable-stream "^4.5.2"
     url-join "4.0.1"
+
+email-validator@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.npmjs.org/email-validator/-/email-validator-2.0.4.tgz"
+  integrity sha512-gYCwo7kh5S3IDyZPLZf6hSS0MnZT8QmJFqYvbqlDZSbwdZlY6QZWxJ4i/6UhITOJ4XzyI647Bm2MXKCLqnJ4nQ==
 
 emoji-regex@^8.0.0:
   version "8.0.0"
@@ -5383,6 +5396,15 @@ fresh@0.5.2:
   version "0.5.2"
   resolved "https://registry.npmjs.org/fresh/-/fresh-0.5.2.tgz"
   integrity sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==
+
+fs-extra@^11.1.1:
+  version "11.3.3"
+  resolved "https://registry.npmjs.org/fs-extra/-/fs-extra-11.3.3.tgz"
+  integrity sha512-VWSRii4t0AFm6ixFFmLLx1t7wS1gh+ckoa84aOeapGum0h+EZd1EhEumSB+ZdDLnEPuucsVB9oB7cxJHap6Afg==
+  dependencies:
+    graceful-fs "^4.2.0"
+    jsonfile "^6.0.1"
+    universalify "^2.0.0"
 
 fs-extra@^9.0.1:
   version "9.1.0"
@@ -6850,6 +6872,11 @@ levn@^0.4.1:
   dependencies:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
+
+libphonenumber-js@^1.12.33:
+  version "1.12.33"
+  resolved "https://registry.npmjs.org/libphonenumber-js/-/libphonenumber-js-1.12.33.tgz"
+  integrity sha512-r9kw4OA6oDO4dPXkOrXTkArQAafIKAU71hChInV4FxZ69dxCfbwQGDPzqR5/vea94wU705/3AZroEbSoeVWrQw==
 
 lie@^3.0.2:
   version "3.1.1"
@@ -10177,6 +10204,11 @@ string_decoder@~1.1.1:
   integrity sha512-n/ShnvDi6FHbbVfviro+WojiFzv+s8MPMHBczVePfUpDJLwoLT0ht1l4YwBCbi8pJAveEEdnkHyPyTP/mzRfwg==
   dependencies:
     safe-buffer "~5.1.0"
+
+string-similarity@^4.0.4:
+  version "4.0.4"
+  resolved "https://registry.npmjs.org/string-similarity/-/string-similarity-4.0.4.tgz"
+  integrity sha512-/q/8Q4Bl4ZKAPjj8WerIBJWALKkaPRfrvhfF8k/B23i4nzrlRj2/go1m90In7nG/3XDSbOo0+pu6RvCTM9RGMQ==
 
 "string-width-cjs@npm:string-width@^4.2.0":
   version "4.2.3"

@@ -35,7 +35,10 @@ export interface IUser extends Document {
   // Real Estate Agent/Broker specific
   licenseNumber?: string;
   brokerageName?: string;
+  teamName?: string; // e.g., "The Sardella Team"
   website?: string;
+  voicePersonality?: string; // AI training prompt for script generation personality
+  voiceTrainingResponses?: Record<string, string>; // Raw questionnaire responses
 
   // Service Provider specific
   businessName?: string;
@@ -298,7 +301,10 @@ const UserSchema = new Schema<IUser>(
     // Real Estate Agent/Broker specific
     licenseNumber: String,
     brokerageName: String,
+    teamName: String,
     website: String,
+    voicePersonality: String,
+    voiceTrainingResponses: Schema.Types.Mixed,
 
     // Service Provider specific
     businessName: String,

@@ -9,16 +9,19 @@ import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
-import { ThemeProvider, type ThemeName } from "../contexts/ThemeContext";
+import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
+  const { currentTheme } = useTheme();
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -84,6 +87,20 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       <MobileBottomNav />
+
+      {/* Toast Notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={currentTheme === 'blackspace' ? 'dark' : 'light'}
+      />
     </>
   );
 }

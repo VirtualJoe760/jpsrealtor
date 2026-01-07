@@ -114,9 +114,9 @@ export default function NewCampaignPage() {
     description: '',
     neighborhood: '',
     strategies: {
-      voicemail: false,
-      email: false,
-      text: false,
+      voicemail: true,
+      email: true,
+      text: true,
     },
     contactIds: [],
     schedule: 'immediate',
@@ -172,7 +172,7 @@ export default function NewCampaignPage() {
       case 2:
         return formData.name.trim() !== '';
       case 3:
-        return formData.strategies.voicemail || formData.strategies.email || formData.strategies.text;
+        return true; // All strategies are always enabled
       case 4:
         return formData.contactIds.length > 0;
       case 5:
@@ -365,38 +365,27 @@ export default function NewCampaignPage() {
               </div>
             )}
 
-            {/* Step 3: Strategy Selection */}
+            {/* Step 3: Multi-Channel Strategy Overview */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>
-                  Select Communication Strategies
+                  Multi-Channel Communication Strategy
                 </h2>
                 <p className={`${textSecondary} mb-6`}>
-                  Choose one or more communication channels for this campaign
+                  Your campaign will use all available communication channels for maximum reach and effectiveness
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {strategies.map((strategy) => {
                     const Icon = strategy.icon;
-                    const isSelected = formData.strategies[strategy.id as keyof typeof formData.strategies];
 
                     return (
-                      <motion.button
+                      <motion.div
                         key={strategy.id}
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            strategies: {
-                              ...formData.strategies,
-                              [strategy.id]: !isSelected,
-                            },
-                          })
-                        }
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={`${cardBg} rounded-xl border-2 p-6 text-left transition-all ${
-                          isSelected
-                            ? `${isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'}`
-                            : `${cardBorder} hover:${isLight ? 'border-blue-300' : 'border-emerald-700'}`
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: strategies.indexOf(strategy) * 0.1 }}
+                        className={`${cardBg} rounded-xl border-2 p-6 ${
+                          isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-4">
@@ -431,21 +420,27 @@ export default function NewCampaignPage() {
                               }`}
                             />
                           </div>
-                          {isSelected && (
-                            <div className={`p-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                              <CheckIcon className="w-4 h-4 text-white" />
-                            </div>
-                          )}
+                          <div className={`p-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                            <CheckIcon className="w-4 h-4 text-white" />
+                          </div>
                         </div>
                         <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
                           {strategy.label}
                         </h3>
-                        <p className={`text-sm ${textSecondary}`}>
+                        <p className={`text-sm ${textSecondary} mb-3`}>
                           {strategy.description}
                         </p>
-                      </motion.button>
+                        <div className={`text-xs font-semibold ${isLight ? 'text-green-600' : 'text-green-400'}`}>
+                          ✓ Always Enabled
+                        </div>
+                      </motion.div>
                     );
                   })}
+                </div>
+                <div className={`${isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/20 border-blue-700/50'} rounded-lg border p-4 mt-6`}>
+                  <p className={`text-sm ${textPrimary}`}>
+                    <strong>Multi-Channel Approach:</strong> All communication channels work together to maximize your campaign's reach. Contacts will receive touchpoints across voicemail, email, and SMS for the best engagement results.
+                  </p>
                 </div>
               </div>
             )}

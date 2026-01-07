@@ -12,7 +12,11 @@ import {
   ClockIcon,
   UserGroupIcon,
   ChartBarIcon,
-  EllipsisVerticalIcon,
+  TrashIcon,
+  ArrowPathIcon,
+  DocumentTextIcon,
+  MicrophoneIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
@@ -22,7 +26,7 @@ interface Campaign {
   name: string;
   type: string;
   neighborhood?: string;
-  status: 'draft' | 'active' | 'paused' | 'completed';
+  status: 'draft' | 'active' | 'paused' | 'completed' | 'generating_scripts' | 'generating_audio' | 'review';
   totalContacts: number;
   activeStrategies: {
     voicemail: boolean;
@@ -47,7 +51,8 @@ interface CampaignCardProps {
   campaign: Campaign;
   viewMode: 'grid' | 'list';
   isSelected: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
+  onDelete: () => void;
 }
 
 const getStatusConfig = (isLight: boolean) => ({
@@ -55,6 +60,21 @@ const getStatusConfig = (isLight: boolean) => ({
     label: 'Draft',
     color: isLight ? 'bg-gray-100 text-gray-700' : 'bg-gray-800 text-gray-300',
     icon: ClockIcon,
+  },
+  generating_scripts: {
+    label: 'Generating Scripts',
+    color: isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-900/30 text-purple-400',
+    icon: DocumentTextIcon,
+  },
+  generating_audio: {
+    label: 'Generating Audio',
+    color: isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/30 text-indigo-400',
+    icon: MicrophoneIcon,
+  },
+  review: {
+    label: 'Review',
+    color: isLight ? 'bg-orange-100 text-orange-700' : 'bg-orange-900/30 text-orange-400',
+    icon: EyeIcon,
   },
   active: {
     label: 'Active',
@@ -86,6 +106,7 @@ export default function CampaignCard({
   viewMode,
   isSelected,
   onClick,
+  onDelete,
 }: CampaignCardProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary } = useThemeClasses();
   const { currentTheme } = useTheme();
@@ -102,7 +123,7 @@ export default function CampaignCard({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         whileHover={{ scale: 1.01 }}
-        onClick={onClick}
+        onClick={(e) => onClick(e)}
         className={`relative ${cardBg} rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${
           isSelected
             ? `${isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'}`
@@ -187,11 +208,12 @@ export default function CampaignCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Open menu
+                  onDelete();
                 }}
-                className={`p-2 ${isLight ? 'hover:bg-gray-100' : 'hover:bg-slate-700'} rounded-lg transition-colors`}
+                className={`p-2 ${isLight ? 'hover:bg-red-100' : 'hover:bg-red-900/30'} rounded-lg transition-colors group`}
+                title="Delete campaign"
               >
-                <EllipsisVerticalIcon className={`w-5 h-5 ${textSecondary}`} />
+                <TrashIcon className={`w-5 h-5 ${textSecondary} ${isLight ? 'group-hover:text-red-600' : 'group-hover:text-red-400'}`} />
               </button>
             </div>
           </div>
@@ -208,13 +230,25 @@ export default function CampaignCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ scale: 1.02, y: -4 }}
-      onClick={onClick}
-      className={`relative ${cardBg} rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
+      onClick={(e) => onClick(e)}
+      className={`group relative ${cardBg} rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
         isSelected
           ? `${isLight ? 'border-blue-500 shadow-2xl shadow-blue-500/20' : 'border-emerald-500 shadow-2xl shadow-emerald-500/20'}`
           : `${cardBorder} ${isLight ? 'hover:border-blue-300' : 'hover:border-emerald-700'} shadow-lg hover:shadow-xl`
       }`}
     >
+      {/* Delete Button - Top Left */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className={`absolute top-4 left-4 z-10 p-2 ${cardBg} ${isLight ? 'hover:bg-red-100' : 'hover:bg-red-900/30'} rounded-lg shadow-md transition-all`}
+        title="Delete campaign"
+      >
+        <TrashIcon className={`w-4 h-4 ${isLight ? 'text-gray-600 hover:text-red-600' : 'text-gray-400 hover:text-red-400'}`} />
+      </button>
+
       {/* Status Badge - Top Right */}
       <div className="absolute top-4 right-4 z-10">
         <span

@@ -12,6 +12,8 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
+import { toast } from 'react-toastify';
+import ContactSyncModal from '@/app/components/crm/ContactSyncModal';
 
 interface Contact {
   _id: string;
@@ -30,9 +32,10 @@ interface Contact {
 interface ContactSelectorProps {
   selectedContactIds: string[];
   onContactsChange: (contactIds: string[]) => void;
+  campaignId?: string; // Optional campaign ID for tagging imported contacts
 }
 
-export default function ContactSelector({ selectedContactIds, onContactsChange }: ContactSelectorProps) {
+export default function ContactSelector({ selectedContactIds, onContactsChange, campaignId }: ContactSelectorProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary, buttonPrimary, bgSecondary, border } = useThemeClasses();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
@@ -43,6 +46,7 @@ export default function ContactSelector({ selectedContactIds, onContactsChange }
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Fetch contacts
   useEffect(() => {
@@ -99,6 +103,52 @@ export default function ContactSelector({ selectedContactIds, onContactsChange }
 
   const deselectAll = () => {
     onContactsChange([]);
+  };
+
+  const handleImportSuccess = (importedContactIds?: string[]) => {
+    console.log('[ContactSelector] Import success - received contact IDs:', importedContactIds);
+
+    // Refresh contacts list and auto-select imported contacts
+    const fetchContacts = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (selectedTags.length > 0) {
+          params.append('tags', selectedTags.join(','));
+        }
+        if (selectedStatus !== 'all') {
+          params.append('status', selectedStatus);
+        }
+
+        const response = await fetch(`/api/contacts/list?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setContacts(data.contacts);
+
+          // Auto-select imported contacts using IDs from API
+          if (importedContactIds && importedContactIds.length > 0) {
+            const updatedSelection = [...new Set([...selectedContactIds, ...importedContactIds])];
+            console.log('[ContactSelector] Auto-selecting contacts:', updatedSelection);
+            onContactsChange(updatedSelection);
+            toast.success(`Imported and selected ${importedContactIds.length} contact${importedContactIds.length !== 1 ? 's' : ''}!`);
+          } else {
+            console.log('[ContactSelector] No imported contact IDs to select');
+            toast.success('Contacts imported successfully!');
+          }
+
+          // Close the import modal
+          setShowImportModal(false);
+        }
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+        toast.error('Failed to refresh contacts list');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContacts();
   };
 
   // Get unique tags from all contacts
@@ -323,17 +373,25 @@ export default function ContactSelector({ selectedContactIds, onContactsChange }
               Upload a CSV file to add multiple contacts at once
             </p>
           </div>
-          <label>
-            <input type="file" accept=".csv" className="hidden" onChange={(e) => {
-              // TODO: Handle CSV upload
-              console.log('CSV file selected:', e.target.files?.[0]);
-            }} />
-            <span className={`px-4 py-2 ${isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-white'} rounded-lg text-sm font-medium cursor-pointer transition-colors inline-block`}>
-              Upload CSV
-            </span>
-          </label>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className={`px-4 py-2 ${isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-white'} rounded-lg text-sm font-medium transition-colors`}
+          >
+            Upload CSV
+          </button>
         </div>
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <ContactSyncModal
+          isLight={isLight}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={handleImportSuccess}
+          campaignId={campaignId}
+          context="campaign"
+        />
+      )}
     </div>
   );
 }

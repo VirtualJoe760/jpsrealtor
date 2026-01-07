@@ -14,12 +14,13 @@ export type DeliveryStatus =
 export interface IVoicemailScript extends Document {
   _id: Types.ObjectId;
   campaignId: Types.ObjectId;
-  contactId: Types.ObjectId;
+  contactId?: Types.ObjectId; // Optional for general scripts
   userId: Types.ObjectId;
 
   // Script Content
   script: string;
   scriptVersion: number;
+  isGeneral?: boolean; // True if this is a general script for all contacts
 
   // Script Generation
   generatedBy: ScriptGeneratedBy;
@@ -68,7 +69,7 @@ const VoicemailScriptSchema = new Schema<IVoicemailScript>(
     contactId: {
       type: Schema.Types.ObjectId,
       ref: 'Contact',
-      required: true,
+      required: false, // Optional for general scripts
       index: true,
     },
     userId: {
@@ -86,6 +87,10 @@ const VoicemailScriptSchema = new Schema<IVoicemailScript>(
     scriptVersion: {
       type: Number,
       default: 1,
+    },
+    isGeneral: {
+      type: Boolean,
+      default: false,
     },
 
     // Script Generation

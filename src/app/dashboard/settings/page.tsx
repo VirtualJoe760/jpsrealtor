@@ -40,6 +40,7 @@ export default function SettingsPage() {
     currentAddress: "",
     homeownerStatus: "",
     image: "",
+    brokerageName: "",
   });
 
   // UI state
@@ -95,6 +96,7 @@ export default function SettingsPage() {
           currentAddress: profileData.profile.currentAddress || "",
           homeownerStatus: profileData.profile.homeownerStatus || "",
           image: profileData.profile.image || "",
+          brokerageName: profileData.profile.brokerageName || "",
         });
       }
     } catch (error) {
@@ -440,6 +442,28 @@ export default function SettingsPage() {
                   }`}
                   placeholder="(555) 123-4567"
                 />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                  Brokerage Name {isAgent && <span className="text-blue-600">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={profile.brokerageName}
+                  onChange={(e) => setProfile({ ...profile, brokerageName: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? "bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500"
+                      : "bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:ring-emerald-500"
+                  }`}
+                  placeholder="Your brokerage or company name"
+                />
+                {isAgent && (
+                  <p className={`text-xs mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                    Required for voicemail script generation
+                  </p>
+                )}
               </div>
 
               <div>

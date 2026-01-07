@@ -28,7 +28,7 @@ export interface IImportBatch extends Document {
 
   // Results
   importedContactIds: Types.ObjectId[];
-  errors?: Array<{
+  importErrors?: Array<{
     row: number;
     error: string;
     data?: any;
@@ -112,7 +112,7 @@ const ImportBatchSchema = new Schema<IImportBatch>(
         ref: 'Contact',
       },
     ],
-    errors: [
+    importErrors: [
       {
         row: Number,
         error: String,
@@ -164,8 +164,8 @@ ImportBatchSchema.methods.markAsCompleted = function () {
 ImportBatchSchema.methods.markAsFailed = function (error: string) {
   this.status = 'failed';
   this.completedAt = new Date();
-  if (!this.errors) this.errors = [];
-  this.errors.push({
+  if (!this.importErrors) this.importErrors = [];
+  this.importErrors.push({
     row: -1,
     error,
     data: null,
@@ -178,8 +178,8 @@ ImportBatchSchema.methods.addError = function (
   error: string,
   data?: any
 ) {
-  if (!this.errors) this.errors = [];
-  this.errors.push({ row, error, data });
+  if (!this.importErrors) this.importErrors = [];
+  this.importErrors.push({ row, error, data });
   return this.save();
 };
 
@@ -202,7 +202,7 @@ ImportBatchSchema.methods.getSummary = function () {
     status: this.status,
     progress: this.progress,
     successRate: this.getSuccessRate(),
-    errorCount: this.errors?.length || 0,
+    errorCount: this.importErrors?.length || 0,
     createdAt: this.createdAt,
     completedAt: this.completedAt,
     duration: this.completedAt
@@ -219,7 +219,7 @@ ImportBatchSchema.statics.findByUserId = function (
   return this.find({ userId })
     .sort({ createdAt: -1 })
     .limit(limit)
-    .select('-fieldMapping -errors');
+    .select('-fieldMapping -importErrors');
 };
 
 ImportBatchSchema.statics.findByCampaign = function (campaignId: Types.ObjectId) {
@@ -238,7 +238,7 @@ ImportBatchSchema.statics.getRecentImports = function (
     createdAt: { $gte: cutoffDate },
   })
     .sort({ createdAt: -1 })
-    .select('-fieldMapping -errors');
+    .select('-fieldMapping -importErrors');
 };
 
 export default models.ImportBatch ||
