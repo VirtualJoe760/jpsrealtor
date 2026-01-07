@@ -543,7 +543,9 @@ async function sendVoicemail(params: {
     const { phone, audioUrl, forwardingNumber, campaignName, contactName, scriptId } = params;
 
     // Step 1: Upload audio to Drop Cowboy
-    const filename = `${scriptId}.mp3`;
+    // Add timestamp to prevent Drop Cowboy from caching old recordings
+    const timestamp = Date.now();
+    const filename = `${scriptId}_${timestamp}.mp3`;
     const uploadResult = await uploadAudioToDropCowboy(audioUrl, filename);
 
     if (!uploadResult.success || !uploadResult.recordingId) {
