@@ -236,7 +236,9 @@ export default function AdminUsersPage() {
                           <div className={`text-sm font-medium ${textPrimary} flex items-center gap-2`}>
                             {user.name || "No name"}
                             {user.isAdmin && (
-                              <Shield className="w-4 h-4 text-red-500" title="Admin" />
+                              <span title="Admin">
+                                <Shield className="w-4 h-4 text-red-500" />
+                              </span>
                             )}
                           </div>
                           <div className={`text-sm ${textSecondary}`}>{user.email}</div>
