@@ -31,6 +31,19 @@ interface Team {
   description?: string;
 }
 
+interface UserFormData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  roles?: string[];
+  isAdmin?: boolean;
+  isTeamLeader?: boolean;
+  team?: string; // Team ID as string, not the full object
+  brokerageName?: string;
+  licenseNumber?: string;
+  profileDescription?: string;
+}
+
 export default function AdminUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -42,7 +55,7 @@ export default function AdminUsersPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState<Partial<User>>({});
+  const [formData, setFormData] = useState<UserFormData>({});
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 

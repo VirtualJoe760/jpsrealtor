@@ -13,6 +13,7 @@ import { Types } from 'mongoose';
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
 const DROP_COWBOY_SECRET = process.env.DROP_COWBOY_SECRET;
+const DROP_COWBOY_BRAND_ID = process.env.DROP_COWBOY_BRAND_ID;
 const DROP_COWBOY_API_URL = 'https://api.dropcowboy.com/v1';
 
 interface SendResult {
@@ -57,7 +58,7 @@ export async function POST(
     console.log('   Scheduled Date:', scheduledDate);
 
     // Validate Drop Cowboy credentials
-    if (!DROP_COWBOY_TEAM_ID || !DROP_COWBOY_SECRET) {
+    if (!DROP_COWBOY_TEAM_ID || !DROP_COWBOY_SECRET || !DROP_COWBOY_BRAND_ID) {
       console.error('❌ Drop Cowboy credentials not configured');
       return NextResponse.json(
         { success: false, error: 'Drop Cowboy API credentials not configured. Please contact support.' },
@@ -555,6 +556,7 @@ async function sendVoicemail(params: {
     const payload: any = {
       team_id: DROP_COWBOY_TEAM_ID,
       secret: DROP_COWBOY_SECRET,
+      brand_id: DROP_COWBOY_BRAND_ID,
       phone_number: phone,
       forwarding_number: forwardingNumber,
       recording_id: recordingId, // Use the uploaded recording ID
@@ -565,6 +567,7 @@ async function sendVoicemail(params: {
       phone_number: phone,
       forwarding_number: forwardingNumber,
       recording_id: recordingId,
+      brand_id: DROP_COWBOY_BRAND_ID,
       foreign_id: payload.foreign_id,
     });
 

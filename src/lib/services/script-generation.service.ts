@@ -1006,7 +1006,7 @@ Generate the script now:`;
           },
         ],
         temperature: 0.7,
-        max_tokens: 600, // Increased from 300 to accommodate longer prompts
+        max_tokens: 2048, // Increased to handle edge cases with token counting
       });
 
       console.log('[callGroq] API response:', {
@@ -1019,6 +1019,12 @@ Generate the script now:`;
       });
 
       const content = completion.choices?.[0]?.message?.content;
+      const finishReason = completion.choices?.[0]?.finish_reason;
+
+      // Handle specific finish reasons
+      if (finishReason === 'length' && (!content || content.trim().length === 0)) {
+        throw new Error('Groq API hit token limit before generating response. Try using a shorter prompt or switch to Claude.');
+      }
 
       if (!content || content.trim().length === 0) {
         throw new Error('Groq API returned empty response. This may be due to rate limiting or API issues.');
