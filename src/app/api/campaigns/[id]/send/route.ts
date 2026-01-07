@@ -484,6 +484,22 @@ async function uploadAudioToDropCowboy(audioUrl: string, filename: string): Prom
     const audioArrayBuffer = await audioResponse.arrayBuffer();
     const audioBase64 = Buffer.from(audioArrayBuffer).toString('base64');
     console.log('         Audio size (base64):', audioBase64.length, 'bytes');
+    console.log('         Audio size (original):', audioArrayBuffer.byteLength, 'bytes');
+
+    // Prepare upload payload
+    const uploadPayload = {
+      team_id: DROP_COWBOY_TEAM_ID,
+      secret: DROP_COWBOY_SECRET,
+      filename,
+      audio_data: audioBase64,
+    };
+
+    console.log('         📦 Upload payload:', {
+      team_id: DROP_COWBOY_TEAM_ID,
+      secret: DROP_COWBOY_SECRET?.substring(0, 10) + '...',
+      filename,
+      audio_data_length: audioBase64.length
+    });
 
     // Upload to Drop Cowboy
     const uploadResponse = await fetch(`${DROP_COWBOY_API_URL}/media`, {
@@ -493,12 +509,7 @@ async function uploadAudioToDropCowboy(audioUrl: string, filename: string): Prom
         'x-secret': DROP_COWBOY_SECRET!,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        team_id: DROP_COWBOY_TEAM_ID,
-        secret: DROP_COWBOY_SECRET,
-        filename,
-        audio_data: audioBase64,
-      }),
+      body: JSON.stringify(uploadPayload),
     });
 
     console.log('         Upload response status:', uploadResponse.status);
@@ -510,17 +521,38 @@ async function uploadAudioToDropCowboy(audioUrl: string, filename: string): Prom
     }
 
     const data = await uploadResponse.json();
-    console.log('         Upload response data:', data);
+    console.log('         Upload response data (full):', JSON.stringify(data, null, 2));
 
     // Drop Cowboy returns an array with media object
     const mediaObject = Array.isArray(data) ? data[0] : data;
+    console.log('         Media object extracted:', JSON.stringify(mediaObject, null, 2));
+    console.log('         Available fields:', Object.keys(mediaObject || {}));
+
     const recordingId = mediaObject.media_id || mediaObject.recording_id || mediaObject.id;
+    console.log('         Extracted recording ID:', recordingId);
+    console.log('         Field used:', mediaObject.media_id ? 'media_id' : (mediaObject.recording_id ? 'recording_id' : 'id'));
 
     if (!recordingId) {
+      console.error('         ❌ No recording ID found in response!');
+      console.error('         Full mediaObject:', JSON.stringify(mediaObject, null, 2));
       return { success: false, error: 'No recording ID returned from Drop Cowboy' };
     }
 
     console.log('         ✅ Audio uploaded! Recording ID:', recordingId);
+    console.log('         ⚠️  VERIFY: This recording ID should match the audio we just uploaded, not a "test" file!');
+    console.log('         ⚠️  Filename sent:', filename);
+    console.log('         ⚠️  Expected: Recording ID should be tied to file named:', filename);
+
+    // Check if response includes filename to verify it matches
+    if (mediaObject.filename) {
+      console.log('         ✅ Response includes filename:', mediaObject.filename);
+      if (mediaObject.filename !== filename) {
+        console.error('         ❌ FILENAME MISMATCH! Sent:', filename, 'Got:', mediaObject.filename);
+      }
+    } else {
+      console.log('         ⚠️  Response does not include filename field');
+    }
+
     return { success: true, recordingId };
   } catch (error: any) {
     console.error('         ❌ Upload exception:', error.message);
@@ -553,6 +585,8 @@ async function sendVoicemail(params: {
     }
 
     const recordingId = uploadResult.recordingId;
+    console.log('      🔍 Using recording ID from upload:', recordingId);
+    console.log('      🔍 This should match the recording ID logged above from Drop Cowboy /media response');
 
     // Step 2: Send RVM with the recording ID
     const payload: any = {
@@ -565,13 +599,16 @@ async function sendVoicemail(params: {
       foreign_id: `${campaignName}-${scriptId}`,
     };
 
-    console.log('      📦 Drop Cowboy RVM Payload:', {
+    console.log('      📦 Drop Cowboy RVM Payload (FULL):', JSON.stringify(payload, null, 2));
+    console.log('      📦 Drop Cowboy RVM Payload (summary):', {
       phone_number: phone,
       forwarding_number: forwardingNumber,
       recording_id: recordingId,
       brand_id: DROP_COWBOY_BRAND_ID,
       foreign_id: payload.foreign_id,
     });
+    console.log('      ⚠️  CRITICAL: Drop Cowboy support says they receive recording_id for "test" file');
+    console.log('      ⚠️  VERIFY: The recording_id above should NOT be for "test" file');
 
     const response = await fetch(`${DROP_COWBOY_API_URL}/rvm`, {
       method: 'POST',
