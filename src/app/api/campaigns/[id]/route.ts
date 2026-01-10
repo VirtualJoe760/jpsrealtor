@@ -35,6 +35,7 @@ export async function DELETE(
     }
 
     // Find campaign and verify ownership
+    // @ts-expect-error Mongoose typing issue with overloaded findById() signatures
     const campaign = await Campaign.findById(campaignId);
 
     if (!campaign) {
@@ -58,12 +59,15 @@ export async function DELETE(
 
     // Delete all associated data
     // 1. Delete ContactCampaign junction records
+    // @ts-expect-error Mongoose typing issue with overloaded deleteMany() signatures
     await ContactCampaign.deleteMany({ campaignId: campaign._id });
 
     // 2. Delete VoicemailScript records
+    // @ts-expect-error Mongoose typing issue with overloaded deleteMany() signatures
     await VoicemailScript.deleteMany({ campaignId: campaign._id });
 
     // 3. Delete the campaign itself
+    // @ts-expect-error Mongoose typing issue with overloaded findByIdAndDelete() signatures
     await Campaign.findByIdAndDelete(campaign._id);
 
     return NextResponse.json({

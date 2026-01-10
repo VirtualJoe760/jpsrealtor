@@ -1,0 +1,66 @@
+{
+  "drop_cowboy": {
+    "name": "Drop Cowboy RVM",
+    "description": "Ringless voicemail platform for real estate agents",
+    "requiredFields": ["Phone"],
+    "mapping": {
+      "First Name": ["firstName", "first_name", "fname", "First Name"],
+      "Last Name": ["lastName", "last_name", "lname", "Last Name"],
+      "Phone": ["_cleanedPhone"],
+      "Email": ["email", "email_address", "Email"],
+      "Address": ["address", "street", "Address", "Street Address"],
+      "City": ["city", "City"],
+      "State": ["state", "province", "State"],
+      "ZIP": ["zip", "zipCode", "postal_code", "ZIP", "Zip Code"]
+    },
+    "phoneFormat": "national",
+    "defaultCountryCode": "US"
+  },
+  "sendfox": {
+    "name": "SendFox Email Marketing",
+    "description": "Email marketing platform",
+    "requiredFields": ["email"],
+    "mapping": {
+      "email": ["email", "email_address", "Email"],
+      "first_name": ["firstName", "first_name", "fname", "First Name"],
+      "last_name": ["lastName", "last_name", "lname", "Last Name"]
+    },
+    "phoneFormat": null,
+    "defaultCountryCode": null
+  },
+  "mojo_dialer": {
+    "name": "MOJO Dialer",
+    "description": "Power dialer for real estate prospecting",
+    "requiredFields": ["Primary Phone"],
+    "mapping": {
+      "First Name": ["firstName", "first_name", "fname", "First Name"],
+      "Last Name": ["lastName", "last_name", "lname", "Last Name"],
+      "Primary Phone": ["_cleanedPhone"],
+      "Address": ["address", "street", "Address", "Street Address"],
+      "City": ["city", "City"],
+      "State": ["state", "province", "State"],
+      "Zip": ["zip", "zipCode", "postal_code", "ZIP", "Zip Code"]
+    },
+    "phoneFormat": "raw",
+    "defaultCountryCode": "US"
+  },
+  "google_contacts": {
+    "name": "Google Contacts",
+    "description": "Google Contacts import format",
+    "requiredFields": [],
+    "mapping": {
+      "Name": ["fullName", "name", "Name"],
+      "Given Name": ["firstName", "first_name", "First Name"],
+      "Family Name": ["lastName", "last_name", "Last Name"],
+      "Phone 1 - Value": ["_cleanedPhone"],
+      "E-mail 1 - Value": ["email", "Email"],
+      "Address 1 - Street": ["address", "street", "Address"],
+      "Address 1 - City": ["city", "City"],
+      "Address 1 - Region": ["state", "State"],
+      "Address 1 - Postal Code": ["zip", "zipCode", "ZIP"],
+      "Organization 1 - Name": ["organization", "company", "Organization"]
+    },
+    "phoneFormat": "national",
+    "defaultCountryCode": "US"
+  }
+}

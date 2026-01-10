@@ -7,7 +7,15 @@
       "Bash(do sed -i \"s/from ''react-hot-toast''/from ''react-toastify''/g\" \"$file\")",
       "Bash(done)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:drop-cowboy.gitbook.io)",
+      "Bash(wc:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

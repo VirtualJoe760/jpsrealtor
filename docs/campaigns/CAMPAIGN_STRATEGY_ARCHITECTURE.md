@@ -113,11 +113,25 @@ This document outlines the new **Campaign-Strategy** architecture for the agent 
 - **Opt-out handling**
 
 #### B. Voicemail Strategy
+
+⚠️ **IMPORTANT UPDATE (2026-01-07):** Drop Cowboy API limitations require dual-route implementation. See [Drop Cowboy API Limitations](./DROP_COWBOY_API_LIMITATIONS.md) for details.
+
+**Two Modes Available:**
+
+**Simple Mode (Current - Standard Accounts):**
+- User manually uploads recordings to Drop Cowboy web portal
+- System fetches list of available recording_id's
+- User selects recording for campaign
+- Direct RVM submission with recording_id
+- ✅ **Active now**
+
+**Full Mode (Future - BYOC Accounts):**
 - **Script generation** (AI or manual)
 - **Voice selection** (11 Labs voices)
 - **Audio generation**
-- **Drop Cowboy integration**
+- **Drop Cowboy integration** via audio_url parameter
 - **Delivery tracking**
+- ⏳ **Preserved for BYOC activation**
 
 #### C. Email Strategy
 - **Email template** (HTML/plain text)
@@ -989,14 +1003,128 @@ interface StrategyExecution {
 
 ---
 
+## Voicemail Dual-Route Implementation (Updated 2026-01-07)
+
+### Background
+
+On 2026-01-07, we discovered that Drop Cowboy's `/media` POST endpoint does **NOT** upload audio files. Instead, it returns a list of existing recordings in the account. This fundamentally impacts our voicemail campaign architecture.
+
+See detailed documentation:
+- [Drop Cowboy API Limitations](./DROP_COWBOY_API_LIMITATIONS.md)
+- [Simplified Workflow Action Plan](./VOICEMAIL_CAMPAIGN_SIMPLIFIED_ACTION_PLAN.md)
+- [Full Pipeline Preserved](./VOICEMAIL_FULL_PIPELINE_PRESERVED.md)
+
+### Dual-Route Strategy
+
+We maintain **two parallel voicemail campaign routes**:
+
+#### Route 1: Simple Mode (Active Now)
+**Path:** `/api/campaigns/[id]/send-simple`
+
+**Workflow:** Contacts → Audio Selection → Send
+
+**Features:**
+- Fetch existing Drop Cowboy recordings via API
+- User selects from available recording_id's
+- Direct RVM submission
+- No script generation
+- No audio generation
+- ✅ **Works with standard Drop Cowboy accounts**
+
+**Use Case:**
+- Standard Drop Cowboy accounts (no BYOC)
+- Quick campaign deployment
+- Pre-recorded general messages
+- Cost-effective ($0.10/voicemail)
+
+#### Route 2: Full Mode (Preserved for BYOC)
+**Path:** `/api/campaigns/[id]/send`
+
+**Workflow:** Contacts → Scripts → Audio → Preview → Send
+
+**Features:**
+- AI script generation (Groq/Claude)
+- 11Labs audio synthesis
+- Cloudinary storage
+- Dynamic audio via `audio_url` parameter
+- ⏳ **Requires BYOC Drop Cowboy account**
+
+**Use Case:**
+- BYOC Drop Cowboy accounts
+- Personalized campaigns
+- Dynamic content per contact
+- Premium quality ($0.05-0.08/voicemail + AI costs)
+
+### Implementation Status
+
+**Completed:**
+- ✅ Full pipeline (scripts, audio, preview)
+- ✅ Script generation service
+- ✅ 11Labs integration
+- ✅ Cloudinary storage
+- ✅ All frontend components
+
+**In Progress:**
+- 🔄 Simplified route implementation
+- 🔄 Recording list endpoint
+- 🔄 Recording selector component
+
+**Future (BYOC Activation):**
+- ⏳ Enable audio_url parameter
+- ⏳ Activate full pipeline
+- ⏳ User mode selection (simple vs full)
+
+### Migration Plan
+
+When BYOC account is activated:
+
+1. **Update configuration:**
+   ```typescript
+   DROP_COWBOY_ACCOUNT_TYPE=byoc
+   ```
+
+2. **Enable full pipeline:**
+   - Change `useFullPipeline = true` in UI
+   - Use `/api/campaigns/[id]/send` route
+   - Pass `audio_url` instead of `recording_id`
+
+3. **Optional: Keep both modes:**
+   - Simple mode for quick campaigns
+   - Full mode for personalized campaigns
+   - User chooses per campaign
+
+### Files Preserved
+
+All full pipeline code is **preserved and functional**:
+- API routes: `/send`, `/scripts`, `/upload-audio`
+- Services: `script-generation.service.ts`
+- Components: `PipelineScriptsStep`, `PipelineAudioStep`, `PipelinePreviewStep`
+- Models: `VoicemailScript`
+
+**Do not delete!** These will be reactivated when BYOC is available.
+
+---
+
 ## Next Steps
 
-1. **Review this architecture** with stakeholders
-2. **Prioritize features** for MVP
-3. **Create detailed wireframes** for UI
-4. **Begin Phase 1** implementation (Database & Models)
-5. **Set up project timeline** with milestones
-6. **Allocate resources** (developers, designers, QA)
+1. **Immediate (Week 1):**
+   - ✅ Review this architecture with stakeholders
+   - ✅ Document Drop Cowboy limitations
+   - 🔄 Implement simplified voicemail route
+   - 🔄 Build recording selector UI
+
+2. **Short-term (Week 2-4):**
+   - Test simplified workflow end-to-end
+   - Deploy to production
+   - User documentation
+   - Contact Drop Cowboy about BYOC
+
+3. **Long-term (Post-BYOC):**
+   - **Prioritize features** for MVP
+   - **Create detailed wireframes** for full campaign system
+   - **Begin Phase 1** implementation (Database & Models)
+   - **Set up project timeline** with milestones
+   - **Allocate resources** (developers, designers, QA)
 
 ---
 
@@ -1011,7 +1139,10 @@ interface StrategyExecution {
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2026-01-02
+**Document Version:** 1.1
+**Last Updated:** 2026-01-07
 **Author:** AI Architecture Team
-**Status:** Draft - Pending Review
+**Status:** In Progress - Voicemail Dual-Route Implementation
+**Change Log:**
+- v1.1 (2026-01-07): Added Voicemail Dual-Route Implementation section
+- v1.0 (2026-01-02): Initial document

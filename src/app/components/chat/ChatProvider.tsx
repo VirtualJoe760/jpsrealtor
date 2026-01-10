@@ -157,11 +157,14 @@ export interface ComponentData {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   timestamp: Date;
   listings?: Listing[];
   components?: ComponentData; // Structured component data
+  tool_calls?: any[]; // For assistant messages that call tools
+  tool_call_id?: string; // For tool response messages
+  name?: string; // For tool messages
 }
 
 export interface NotificationContent {
@@ -171,7 +174,15 @@ export interface NotificationContent {
 
 interface ChatContextType {
   messages: ChatMessage[];
-  addMessage: (content: string, role: "user" | "assistant", listings?: Listing[], components?: ComponentData) => void;
+  addMessage: (
+    content: string,
+    role: "user" | "assistant" | "tool",
+    listings?: Listing[],
+    components?: ComponentData,
+    tool_calls?: any[],
+    tool_call_id?: string,
+    name?: string
+  ) => void;
   clearMessages: () => void;
   hasUnreadMessage: boolean;
   setUnreadMessage: (unread: boolean) => void;
@@ -245,7 +256,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [messages, isHydrated]);
 
-  const addMessage = (content: string, role: "user" | "assistant", listings?: Listing[], components?: ComponentData) => {
+  const addMessage = (
+    content: string,
+    role: "user" | "assistant" | "tool",
+    listings?: Listing[],
+    components?: ComponentData,
+    tool_calls?: any[],
+    tool_call_id?: string,
+    name?: string
+  ) => {
     const newMessage: ChatMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       role,
@@ -253,6 +272,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       timestamp: new Date(),
       listings,
       components,
+      tool_calls,
+      tool_call_id,
+      name,
     };
     setMessages((prev) => [...prev, newMessage]);
   };

@@ -594,7 +594,7 @@ async function sendVoicemail(params: {
       team_id: DROP_COWBOY_TEAM_ID,
       secret: DROP_COWBOY_SECRET,
       brand_id: DROP_COWBOY_BRAND_ID,
-      number_pool_id: DROP_COWBOY_NUMBER_POOL_ID,
+      pool_id: DROP_COWBOY_NUMBER_POOL_ID,  // ← Fixed: API expects "pool_id" not "number_pool_id"
       phone_number: phone,
       forwarding_number: forwardingNumber,
       recording_id: recordingId, // Use the uploaded recording ID
@@ -607,7 +607,7 @@ async function sendVoicemail(params: {
       forwarding_number: forwardingNumber,
       recording_id: recordingId,
       brand_id: DROP_COWBOY_BRAND_ID,
-      number_pool_id: DROP_COWBOY_NUMBER_POOL_ID,
+      pool_id: DROP_COWBOY_NUMBER_POOL_ID,  // ← Fixed: showing correct parameter name
       foreign_id: payload.foreign_id,
     });
     console.log('      ⚠️  CRITICAL: Drop Cowboy support says they receive recording_id for "test" file');

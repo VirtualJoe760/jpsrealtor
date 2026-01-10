@@ -436,7 +436,7 @@ export class ContactImportService {
   /**
    * Parse Excel from Buffer
    */
-  private static parseExcelBuffer(buffer: Buffer): Promise<any[]> {
+  private static parseExcelBuffer(buffer: Buffer): any[] {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     return XLSX.utils.sheet_to_json(firstSheet);
@@ -479,6 +479,7 @@ export class ContactImportService {
           duplicates++;
         } else {
           // Create new contact
+          // @ts-expect-error Mongoose typing issue with overloaded signatures
           const contact = await Contact.create({
             ...normalizedData,
             userId,
@@ -490,6 +491,7 @@ export class ContactImportService {
         }
 
         // Create ContactCampaign record
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
         await ContactCampaign.create({
           contactId,
           campaignId,
@@ -505,6 +507,7 @@ export class ContactImportService {
         failed++;
 
         // Log error to batch
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const batch = await ImportBatch.findById(batchId);
         if (batch) {
           await batch.addError(processed, error.message, row);
@@ -513,6 +516,7 @@ export class ContactImportService {
     }
 
     // Update campaign stats
+    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const campaign = await Campaign.findById(campaignId);
     if (campaign) {
       campaign.stats.totalContacts += successful;
@@ -607,6 +611,7 @@ export class ContactImportService {
   ): Promise<DuplicateCheck> {
     // Check by phone first (most reliable)
     if (contactData.phone) {
+      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingByPhone = await Contact.findOne({
         userId,
         phone: contactData.phone,
@@ -623,6 +628,7 @@ export class ContactImportService {
 
     // Check by email (if no phone match)
     if (contactData.email) {
+      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingByEmail = await Contact.findOne({
         userId,
         email: contactData.email,
@@ -697,5 +703,231 @@ export class ContactImportService {
   }> {
     // TODO: Implement Mojo contacts processing
     throw new Error('Mojo Dialer processing not yet implemented');
+  }
+}
+
+// ============================================================================
+// CHAT-BASED IMPORT FUNCTIONS (for Groq assistant workflow)
+// ============================================================================
+
+/**
+ * Import options for chat-based workflow
+ */
+export interface ChatImportOptions {
+  listId?: string; // Existing list to assign contacts to
+  listName?: string; // Create new list with this name
+  skipDuplicates?: boolean; // Skip if phone/email already exists
+  userId?: string; // Future enhancement for multi-user support
+}
+
+/**
+ * Import result for chat-based workflow
+ */
+export interface ChatImportResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  listId?: string;
+  listName?: string;
+  contacts?: Array<any>; // First 10 contacts for display
+  errors: Array<{ row: number; error: string }>;
+}
+
+/**
+ * Import cleaned contacts into CRM database (chat workflow)
+ *
+ * This function is designed for the chat-based import system.
+ * It takes pre-cleaned contact data from the contact-cleaner service
+ * and inserts it into the CRM database.
+ *
+ * @param cleanedData - Array of cleaned contact objects
+ * @param options - Import configuration
+ */
+export async function importContactsForChat(
+  cleanedData: any[],
+  options: ChatImportOptions
+): Promise<ChatImportResult> {
+  const Label = (await import('@/models/Label')).default;
+  const connectDB = (await import('@/lib/mongodb')).default;
+
+  await connectDB();
+
+  let imported = 0;
+  let skipped = 0;
+  let duplicates = 0;
+  const errors: Array<{ row: number; error: string }> = [];
+
+  // Step 1: Resolve or create list (label)
+  let listId = options.listId;
+  if (!listId && options.listName) {
+    try {
+      // @ts-expect-error Mongoose typing issue with overloaded signatures
+      const label = await Label.create({
+        name: options.listName,
+        contactCount: 0,
+        isSystem: false,
+        isArchived: false,
+        color: '#3B82F6', // Default blue
+      });
+      listId = label._id.toString();
+    } catch (error: any) {
+      errors.push({ row: 0, error: `Failed to create list: ${error.message}` });
+      return {
+        success: false,
+        imported: 0,
+        skipped: 0,
+        duplicates: 0,
+        errors,
+      };
+    }
+  }
+
+  // Step 2: Import each contact
+  for (let i = 0; i < cleanedData.length; i++) {
+    const contactData = cleanedData[i];
+
+    try {
+      // Check for duplicates
+      if (options.skipDuplicates !== false) { // Default to true
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
+        const existing = await Contact.findOne({
+          $or: [
+            contactData.phone ? { phone: contactData.phone } : null,
+            contactData.email ? { email: contactData.email } : null,
+          ].filter(Boolean),
+        });
+
+        if (existing) {
+          duplicates++;
+          continue;
+        }
+      }
+
+      // Create contact with all available fields
+      const newContact = {
+        firstName: contactData.firstName || contactData['First Name'] || '',
+        lastName: contactData.lastName || contactData['Last Name'] || '',
+        phone: contactData.phone || contactData.Phone || '',
+        phone2: contactData.phone2 || '',
+        phone3: contactData.phone3 || '',
+        email: contactData.email || contactData.Email || '',
+        email2: contactData.email2 || '',
+        email3: contactData.email3 || '',
+        address: {
+          street: contactData.address || contactData.Address || '',
+          city: contactData.city || contactData.City || '',
+          state: contactData.state || contactData.State || '',
+          zip: contactData.zip || contactData.ZIP || contactData.Zip || '',
+        },
+        organization: contactData.organization || contactData.Organization || '',
+        labels: listId ? [listId] : [], // Labels field, not lists
+      };
+
+      // @ts-expect-error Mongoose typing issue with overloaded signatures
+      await Contact.create(newContact);
+      imported++;
+
+    } catch (error: any) {
+      errors.push({ row: i + 1, error: error.message });
+      skipped++;
+    }
+  }
+
+  // Step 3: Update list (label) contact count
+  if (listId && imported > 0) {
+    try {
+      // @ts-expect-error Mongoose typing issue with overloaded signatures
+      await Label.findByIdAndUpdate(listId, {
+        $inc: { contactCount: imported },
+      });
+    } catch (error) {
+      // Non-fatal error, just log it
+      console.error('Failed to update list count:', error);
+    }
+  }
+
+  const result = {
+    success: errors.length === 0,
+    imported,
+    skipped,
+    duplicates,
+    listId,
+    listName: options.listName,
+    contacts: cleanedData.slice(0, 10), // First 10 contacts for display
+    errors,
+  };
+
+  // Log results
+  console.log('\n📊 [importContactsForChat] Import complete:');
+  console.log('  ✅ Imported:', imported);
+  console.log('  ⏭️  Skipped:', skipped);
+  console.log('  🔄 Duplicates:', duplicates);
+  console.log('  ❌ Errors:', errors.length);
+  if (errors.length > 0) {
+    console.log('\n❌ [importContactsForChat] Errors encountered:');
+    errors.forEach((err, idx) => {
+      console.log(`  ${idx + 1}. Row ${err.row}: ${err.error}`);
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Import contacts tool wrapper for Groq
+ * This is for the chat-based import workflow
+ * Re-reads and cleans the file before importing (since Groq is stateless)
+ */
+export async function importContactsTool(args: {
+  filePath: string;
+  options?: ChatImportOptions & {
+    phoneFields?: string[];
+    phoneFormat?: 'e164' | 'national' | 'raw';
+    skipDuplicates?: boolean;
+  };
+}): Promise<ChatImportResult> {
+  console.log('\n📥 [importContactsTool] Starting import...');
+  console.log('📁 File path:', args.filePath);
+  console.log('⚙️ Options:', JSON.stringify(args.options, null, 2));
+
+  // Re-read and clean the file
+  const { cleanContacts } = await import('./contact-cleaner.service');
+  const cleanResult = await cleanContacts(args.filePath, undefined, {
+    phoneFields: args.options?.phoneFields || ['Phone'],
+    phoneFormat: args.options?.phoneFormat || 'national',
+    skipDuplicates: args.options?.skipDuplicates ?? true,
+    previewMode: true, // Get data in-memory
+  });
+
+  if (!cleanResult.success || !cleanResult.cleanedData) {
+    console.error('❌ Failed to clean contacts:', cleanResult.error);
+    return {
+      success: false,
+      imported: 0,
+      duplicates: 0,
+      skipped: 0,
+      errors: [{ row: 0, error: `Failed to clean contacts: ${cleanResult.error}` }],
+    };
+  }
+
+  console.log('✅ Cleaned data:', cleanResult.cleanedData.length, 'contacts');
+
+  // Import the cleaned data
+  try {
+    console.log('📥 [importContactsTool] Calling importContactsForChat...');
+    const result = await importContactsForChat(cleanResult.cleanedData, args.options || {});
+    console.log('✅ [importContactsTool] Import complete:', result);
+    return result;
+  } catch (error: any) {
+    console.error('❌ [importContactsTool] Error during import:', error);
+    console.error('❌ [importContactsTool] Error stack:', error.stack);
+    return {
+      success: false,
+      imported: 0,
+      duplicates: 0,
+      skipped: 0,
+      errors: [{ row: 0, error: `Import failed: ${error.message}` }],
+    };
   }
 }

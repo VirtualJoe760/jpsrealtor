@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
-const PHRASES = [
+const MLS_PHRASES = [
   "Searching for homes in the MLS...",
   "Finding the best homes...",
   "Levitating to your dream home...",
@@ -21,9 +21,31 @@ const PHRASES = [
   "Testing smart home features...",
 ];
 
-export default function TypingAnimation() {
+const CONTACT_IMPORT_PHRASES = [
+  "Importing contacts...",
+  "Finding new potential clients...",
+  "Hanging up open house signs...",
+  "Farming the neighborhood...",
+  "Building your sphere of influence...",
+  "Organizing contact lists...",
+  "Preparing marketing materials...",
+  "Scheduling door knocking routes...",
+  "Printing farming postcards...",
+  "Updating CRM database...",
+  "Analyzing property ownership data...",
+  "Identifying absentee owners...",
+];
+
+interface TypingAnimationProps {
+  mode?: 'general' | 'contact_import';
+}
+
+export default function TypingAnimation({ mode = 'general' }: TypingAnimationProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Select phrase set based on mode
+  const PHRASES = mode === 'contact_import' ? CONTACT_IMPORT_PHRASES : MLS_PHRASES;
 
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");

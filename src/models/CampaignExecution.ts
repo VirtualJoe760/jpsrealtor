@@ -113,7 +113,7 @@ export interface ICampaignExecution extends Document {
   lastUpdatedAt: Date;
 
   // Error Tracking
-  errors?: Array<{
+  executionErrors?: Array<{
     contactId: Types.ObjectId;
     error: string;
     timestamp: Date;
@@ -262,7 +262,7 @@ const CampaignExecutionSchema = new Schema<ICampaignExecution>(
       default: Date.now,
     },
 
-    errors: [{
+    executionErrors: [{
       contactId: {
         type: Schema.Types.ObjectId,
         ref: 'Contact',
@@ -323,8 +323,8 @@ CampaignExecutionSchema.methods.markFailed = function (error: string) {
   this.status = 'failed';
   this.lastUpdatedAt = new Date();
   if (error) {
-    this.errors = this.errors || [];
-    this.errors.push({
+    this.executionErrors = this.executionErrors || [];
+    this.executionErrors.push({
       contactId: null,
       error,
       timestamp: new Date(),

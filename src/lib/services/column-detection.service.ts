@@ -14,22 +14,79 @@ import * as EmailValidator from 'email-validator';
 
 // Target field types
 export type TargetField =
+  // Contact Info
   | 'firstName'
   | 'lastName'
   | 'fullName'
   | 'phone'
+  | 'phone2'
+  | 'phone3'
+  | 'phone4'
+  | 'phone5'
+  | 'phone6'
+  | 'lineType'
+  | 'lineType1'
+  | 'lineType2'
+  | 'lineType3'
+  | 'lineType4'
+  | 'lineType5'
   | 'email'
+  | 'email2'
+  | 'email3'
+  // Address
   | 'address.street'
   | 'address.city'
   | 'address.state'
   | 'address.zip'
   | 'address.country'
+  | 'address'
+  // Professional
   | 'organization'
   | 'jobTitle'
   | 'website'
+  // Personal
   | 'birthday'
   | 'notes'
   | 'photo'
+  // Property Data
+  | 'apn'
+  | 'longitude'
+  | 'latitude'
+  | 'bedrooms'
+  | 'bedroomsTotal'
+  | 'bathrooms'
+  | 'bathroomsFull'
+  | 'bathroomsTotalDecimal'
+  | 'sqft'
+  | 'lotSize'
+  | 'yearBuilt'
+  | 'propertyType'
+  | 'price'
+  | 'soldPrice'
+  | 'purchaseDate'
+  | 'purchasePrice'
+  | 'salePrice'
+  | 'homeValue'
+  | 'propertyValue'
+  | 'subdivision'
+  | 'legalDescription'
+  | 'zoning'
+  | 'assessedValue'
+  | 'marketValue'
+  | 'county'
+  | 'ownerOccupied'
+  | 'numberOfUnits'
+  | 'numberOfStories'
+  | 'garage'
+  | 'fireplace'
+  | 'pool'
+  | 'view'
+  | 'acreage'
+  // Mailing Info
+  | 'mailingAddress'
+  | 'mailingCity'
+  | 'mailingState'
+  | 'mailingZip'
   | 'ignore';
 
 // Pattern types for content detection
@@ -63,6 +120,10 @@ const FIELD_VARIATIONS: Record<TargetField, string[]> = {
     'givenname',
     'contact first name',
     'first',
+    '1st owner\'s first name',
+    '1st owners first name',
+    'owner first name',
+    'primary owner first name',
   ],
   lastName: [
     'last name',
@@ -75,6 +136,10 @@ const FIELD_VARIATIONS: Record<TargetField, string[]> = {
     'familyname',
     'contact last name',
     'last',
+    '1st owner\'s last name',
+    '1st owners last name',
+    'owner last name',
+    'primary owner last name',
   ],
   fullName: [
     'full name',
@@ -192,6 +257,331 @@ const FIELD_VARIATIONS: Record<TargetField, string[]> = {
     'avatar',
     'profile picture',
     'profile_picture',
+  ],
+  // Property Data
+  apn: [
+    'apn',
+    'parcel number',
+    'parcel_number',
+    'parcelnumber',
+    'apn / parcel number',
+    'tax id',
+    'assessor parcel number',
+  ],
+  longitude: [
+    'longitude',
+    'long',
+    'lng',
+    'lon',
+  ],
+  latitude: [
+    'latitude',
+    'lat',
+  ],
+  bedrooms: [
+    'beds',
+    'bedrooms',
+    'bedroom',
+    'bed',
+    'num beds',
+    'number of bedrooms',
+    'bedrooms total',
+  ],
+  bedroomsTotal: [
+    'bedrooms total',
+    'total bedrooms',
+    'total beds',
+  ],
+  bathrooms: [
+    'baths',
+    'bathrooms',
+    'bathroom',
+    'bath',
+    'num baths',
+    'number of bathrooms',
+  ],
+  bathroomsFull: [
+    'bathrooms full',
+    'full baths',
+    'full bathrooms',
+  ],
+  bathroomsTotalDecimal: [
+    'bathrooms total decimal',
+    'total baths',
+    'total bathrooms',
+  ],
+  sqft: [
+    'sqft',
+    'square feet',
+    'square_feet',
+    'building size',
+    'building_size',
+    'buildingsize',
+    'living area',
+    'living_area',
+    'sq ft',
+    'sf',
+  ],
+  lotSize: [
+    'lot size',
+    'lot_size',
+    'lotsize',
+    'lot sqft',
+    'lot area',
+  ],
+  yearBuilt: [
+    'year built',
+    'year_built',
+    'yearbuilt',
+    'year',
+    'built year',
+  ],
+  propertyType: [
+    'property type',
+    'property_type',
+    'propertytype',
+    'type',
+    'prop type',
+  ],
+  price: [
+    'price',
+    'list price',
+    'listing price',
+    'asking price',
+  ],
+  soldPrice: [
+    'sold price',
+    'sold_price',
+    'soldprice',
+    'sale price',
+    'sales price',
+  ],
+  purchaseDate: [
+    'purchase date',
+    'purchase_date',
+    'purchasedate',
+    'sale date',
+    'sold date',
+    'closing date',
+  ],
+  purchasePrice: [
+    'purchase price',
+    'purchase_price',
+    'purchaseprice',
+  ],
+  salePrice: [
+    'sale price',
+    'sale_price',
+    'saleprice',
+    'sales price',
+  ],
+  homeValue: [
+    'home value',
+    'home_value',
+    'homevalue',
+    'house value',
+  ],
+  propertyValue: [
+    'property value',
+    'property_value',
+    'propertyvalue',
+    'value',
+  ],
+  subdivision: [
+    'subdivision',
+    'sub division',
+    'neighborhood',
+    'development',
+  ],
+  legalDescription: [
+    'legal description',
+    'legal_description',
+    'legaldescription',
+    'legal',
+  ],
+  zoning: [
+    'zoning',
+    'zone',
+    'zoning code',
+  ],
+  assessedValue: [
+    'assessed value',
+    'assessed_value',
+    'assessedvalue',
+    'tax value',
+  ],
+  marketValue: [
+    'market value',
+    'market_value',
+    'marketvalue',
+    'fair market value',
+  ],
+  county: [
+    'county',
+  ],
+  ownerOccupied: [
+    'owner occupied',
+    'owner_occupied',
+    'owneroccupied',
+  ],
+  numberOfUnits: [
+    'number of units',
+    'number_of_units',
+    'units',
+    'unit count',
+  ],
+  numberOfStories: [
+    'number of stories',
+    'number_of_stories',
+    'stories',
+    'floors',
+  ],
+  garage: [
+    'garage',
+    'garage type',
+    'primary garage type',
+  ],
+  fireplace: [
+    'fireplace',
+    'fireplaces',
+    'has fireplace',
+  ],
+  pool: [
+    'pool',
+    'swimming pool',
+    'has pool',
+  ],
+  view: [
+    'view',
+    'has view',
+  ],
+  acreage: [
+    'acreage',
+    'acres',
+    'acre',
+  ],
+  // Mailing Info
+  mailingAddress: [
+    'mailing address',
+    'mailing_address',
+    'mailingaddress',
+    'mail address',
+  ],
+  mailingCity: [
+    'mailing city',
+    'mailing_city',
+    'mailingcity',
+  ],
+  mailingState: [
+    'mailing state',
+    'mailing_state',
+    'mailingstate',
+  ],
+  mailingZip: [
+    'mailing zip',
+    'mailing_zip',
+    'mailingzip',
+    'mailing zip code',
+    'mailing postal code',
+  ],
+  // Additional phone/email fields
+  phone2: [
+    'phone 2',
+    'phone2',
+    'phone_2',
+    'alternate phone',
+    'alternate phone 1',
+    'secondary phone',
+  ],
+  phone3: [
+    'phone 3',
+    'phone3',
+    'phone_3',
+    'alternate phone 2',
+  ],
+  phone4: [
+    'phone 4',
+    'phone4',
+    'phone_4',
+    'alternate phone 3',
+  ],
+  phone5: [
+    'phone 5',
+    'phone5',
+    'phone_5',
+    'alternate phone 4',
+  ],
+  phone6: [
+    'phone 6',
+    'phone6',
+    'phone_6',
+    'alternate phone 5',
+  ],
+  lineType: [
+    'line type',
+    'linetype',
+    'line_type',
+    'phone type',
+    'phonetype',
+    'phone_type',
+    'type',
+  ],
+  lineType1: [
+    'line type 1',
+    'linetype1',
+    'line_type_1',
+    'phone type 1',
+    'phonetype1',
+    'phone_type_1',
+  ],
+  lineType2: [
+    'line type 2',
+    'linetype2',
+    'line_type_2',
+    'phone type 2',
+    'phonetype2',
+    'phone_type_2',
+  ],
+  lineType3: [
+    'line type 3',
+    'linetype3',
+    'line_type_3',
+    'phone type 3',
+    'phonetype3',
+    'phone_type_3',
+  ],
+  lineType4: [
+    'line type 4',
+    'linetype4',
+    'line_type_4',
+    'phone type 4',
+    'phonetype4',
+    'phone_type_4',
+  ],
+  lineType5: [
+    'line type 5',
+    'linetype5',
+    'line_type_5',
+    'phone type 5',
+    'phonetype5',
+    'phone_type_5',
+  ],
+  email2: [
+    'email 2',
+    'email2',
+    'email_2',
+    'alternate email',
+    'secondary email',
+  ],
+  email3: [
+    'email 3',
+    'email3',
+    'email_3',
+    'alternate email 2',
+  ],
+  address: [
+    'full address',
+    'complete address',
   ],
   ignore: [],
 };

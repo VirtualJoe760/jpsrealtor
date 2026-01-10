@@ -1,10 +1,26 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle, Loader2, ArrowLeft, ArrowRight, Zap } from 'lucide-react';
-import PreviewData, { PreviewDataProps } from './PreviewData';
 import ColumnMapper, { ColumnMapping } from './ColumnMapper';
 import ImportProgress, { ImportProgressData } from './ImportProgress';
+import ContactReviewSwipe from './ContactReviewSwipe';
+import ContactReviewList from './ContactReviewList';
+
+// Preview data interface for API response
+interface PreviewDataProps {
+  fileName: string;
+  fileSize: number;
+  headers: string[];
+  sampleRows: any[];
+  stats: {
+    totalRows: number;
+    totalColumns: number;
+    mappedColumns: number;
+    unmappedColumns: number;
+    avgConfidence: number;
+  };
+}
 
 interface ContactSyncModalProps {
   isLight: boolean;
@@ -14,8 +30,16 @@ interface ContactSyncModalProps {
   context?: 'campaign' | 'regular'; // Import context: 'campaign' = allow duplicates for campaign selection, 'regular' = skip duplicates
 }
 
-type WizardStep = 'upload' | 'preview' | 'mapping' | 'importing' | 'results';
+type WizardStep = 'upload' | 'map' | 'review' | 'importing' | 'results';
 type Provider = 'google_contacts' | 'mojo_dialer' | 'title_rep' | 'outlook' | null;
+
+interface ReviewContact {
+  rowIndex: number;
+  data: any;
+  issues: string[];
+  confidence: number;
+  action?: 'keep' | 'skip' | 'edit';
+}
 
 export default function ContactSyncModal({ isLight, onClose, onSuccess, campaignId, context }: ContactSyncModalProps) {
   // Wizard state
@@ -25,14 +49,20 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
   // File state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider>(null);
+  const [contactLabel, setContactLabel] = useState<string>(''); // Label for the batch
 
   // Preview state
-  const [previewData, setPreviewData] = useState<PreviewDataProps['preview'] | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewDataProps | null>(null);
   const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<string[]>([]);
 
   // Mapping state
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
+
+  // Review state
+  const [reviewContacts, setReviewContacts] = useState<ReviewContact[]>([]);
+  const [reviewDecisions, setReviewDecisions] = useState<Map<number, 'keep' | 'skip'>>(new Map());
+  const [editedContacts, setEditedContacts] = useState<Map<number, any>>(new Map());
 
   // Import state
   const [importProgress, setImportProgress] = useState<ImportProgressData | null>(null);
@@ -44,8 +74,148 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ============================================================================
+  // POLLING FOR IMPORT PROGRESS
+  // ============================================================================
+
+  useEffect(() => {
+    // Only poll if we have a batchId and we're in the importing step
+    if (!batchId || currentStep !== 'importing') {
+      return;
+    }
+
+    // Poll for progress updates every 1.5 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/crm/contacts/import/status/${batchId}`);
+        const data = await response.json();
+
+        if (data.success && data.progress) {
+          setImportProgress(data.progress);
+
+          // If import completed or failed, stop polling and move to results
+          if (data.progress.status === 'completed' || data.progress.status === 'failed') {
+            clearInterval(pollInterval);
+            setCurrentStep('results');
+
+            // If successful, trigger parent refresh
+            if (data.progress.status === 'completed' && data.progress.successful > 0) {
+              setTimeout(() => {
+                onSuccess();
+              }, 3000);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Import Polling] Error fetching progress:', error);
+      }
+    }, 1500);
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [batchId, currentStep, onSuccess]);
+
+  // ============================================================================
+  // HELPERS
+  // ============================================================================
+
+  /**
+   * Map raw CSV row to contact data using column mappings
+   */
+  const mapRowToContact = (row: any, mappings: ColumnMapping[]): any => {
+    const contactData: any = {};
+
+    // Map each CSV column to target field
+    mappings.forEach(mapping => {
+      if (mapping.suggestedField !== 'ignore' && row[mapping.csvColumn]) {
+        const value = row[mapping.csvColumn];
+        if (value && String(value).trim()) {
+          contactData[mapping.suggestedField] = String(value).trim();
+        }
+      }
+    });
+
+    return contactData;
+  };
+
+  /**
+   * Analyze contacts to identify which need review
+   * Returns contacts with confidence < 90% or identified issues
+   */
+  const analyzeContactsForReview = (sampleRows: any[], mappings: ColumnMapping[]): ReviewContact[] => {
+    const contactsNeedingReview: ReviewContact[] = [];
+
+    sampleRows.forEach((row, index) => {
+      const issues: string[] = [];
+      let confidence = 1.0;
+
+      // Map raw CSV row to contact data
+      const contactData = mapRowToContact(row, mappings);
+
+      // Check for problematic patterns
+      const firstName = contactData.firstName || '';
+      const lastName = contactData.lastName || '';
+      const phone = contactData.phone || '';
+      const email = contactData.email || '';
+
+      // Check for invalid first name patterns
+      const invalidPatterns = ['/', '\\', '...', '___'];
+      if (firstName && invalidPatterns.some(p => firstName.trim().startsWith(p))) {
+        issues.push('Invalid first name pattern');
+        confidence *= 0.3;
+      }
+
+      // Check for missing critical fields
+      if (!firstName && !lastName && !contactData.organization) {
+        issues.push('Missing name and organization');
+        confidence *= 0.5;
+      }
+
+      // Check for missing contact methods
+      if (!phone && !email) {
+        issues.push('Missing phone and email');
+        confidence *= 0.6;
+      }
+
+      // Check for emoji in names
+      const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/u;
+      if (emojiRegex.test(firstName) || emojiRegex.test(lastName)) {
+        issues.push('Contains emoji in name');
+        confidence *= 0.4;
+      }
+
+      // If confidence is below 90% or has issues, add to review list
+      if (confidence < 0.9 || issues.length > 0) {
+        contactsNeedingReview.push({
+          rowIndex: index,
+          data: contactData, // Use mapped contact data
+          issues,
+          confidence,
+        });
+      }
+    });
+
+    return contactsNeedingReview;
+  };
+
+  // ============================================================================
   // HANDLERS
   // ============================================================================
+
+  // Extract label from filename
+  const extractLabelFromFilename = (filename: string): string => {
+    let name = filename.replace(/\.(csv|xlsx|xls)$/i, '');
+    name = name.replace(/_/g, ' ');
+    name = name.replace(/\s*-+\s*\d+$/g, ''); // Remove trailing dashes and numbers
+    name = name.replace(/\s+\d+$/g, ''); // Remove trailing numbers
+    name = name.trim();
+    // Capitalize each word
+    name = name.split(' ').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+    return name || 'Imported Contacts';
+  };
 
   // Handle CSV/Excel file selection
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,6 +223,9 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
     if (!file) return;
 
     setUploadedFile(file);
+    // Auto-extract label from filename
+    const autoLabel = extractLabelFromFilename(file.name);
+    setContactLabel(autoLabel);
     setProcessing(true);
 
     try {
@@ -82,13 +255,17 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
       setRecommendations(data.recommendations);
       setMappings(data.mappings);
 
+      // Analyze contacts for review step
+      const contactsForReview = analyzeContactsForReview(data.preview.sampleRows, data.mappings);
+      setReviewContacts(contactsForReview);
+
       // Move to next step based on quickImport setting
       if (quickImport) {
-        // Skip preview and mapping, go straight to import
+        // Skip map and review, go straight to import
         await handleConfirmImport(file, data.mappings);
       } else {
-        // Show preview
-        setCurrentStep('preview');
+        // Show map step
+        setCurrentStep('map');
       }
     } catch (error: any) {
       console.error('[Smart Import] Preview error:', error);
@@ -111,11 +288,11 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
     setCurrentStep('importing');
     setImportProgress({
       status: 'processing',
-      totalRows: previewData?.stats.totalRows || 0,
-      processedRows: 0,
-      successCount: 0,
-      errorCount: 0,
-      skipCount: 0,
+      total: previewData?.stats.totalRows || 0,
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      duplicates: 0,
     });
 
     try {
@@ -132,6 +309,10 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
       if (context) {
         formData.append('context', context);
       }
+      // Send contact label to be applied to imported contacts
+      if (contactLabel) {
+        formData.append('label', contactLabel);
+      }
 
       const response = await fetch('/api/crm/contacts/import/confirm', {
         method: 'POST',
@@ -143,37 +324,31 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
       if (!data.success) {
         setImportProgress({
           status: 'failed',
-          totalRows: previewData?.stats.totalRows || 0,
-          processedRows: 0,
-          successCount: 0,
-          errorCount: 1,
-          skipCount: 0,
+          total: previewData?.stats.totalRows || 0,
+          processed: 0,
+          successful: 0,
+          failed: 1,
+          duplicates: 0,
           importErrors: [{ row: 0, field: 'system', value: '', error: data.error }],
         });
         setCurrentStep('results');
         return;
       }
 
-      // Update progress with final results
+      // Set batchId to start polling for progress
       setBatchId(data.batchId);
-      setImportProgress(data.progress);
-      setCurrentStep('results');
 
-      // If successful, trigger parent refresh after a moment
-      if (data.progress.status === 'completed' && data.progress.successful > 0) {
-        setTimeout(() => {
-          onSuccess(data.importedContactIds || []);
-        }, 3000);
-      }
+      // Note: The polling useEffect will handle progress updates
+      // and transition to results when complete
     } catch (error: any) {
       console.error('[Smart Import] Confirm error:', error);
       setImportProgress({
         status: 'failed',
-        totalRows: previewData?.stats.totalRows || 0,
-        processedRows: 0,
-        successCount: 0,
-        errorCount: 1,
-        skipCount: 0,
+        total: previewData?.stats.totalRows || 0,
+        processed: 0,
+        successful: 0,
+        failed: 1,
+        duplicates: 0,
         importErrors: [{ row: 0, field: 'system', value: '', error: error.message }],
       });
       setCurrentStep('results');
@@ -187,8 +362,8 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
   const getStepTitle = () => {
     switch (currentStep) {
       case 'upload': return 'Import Contacts';
-      case 'preview': return 'Preview Data';
-      case 'mapping': return 'Review Column Mapping';
+      case 'map': return 'Map Columns';
+      case 'review': return 'Review Problematic Contacts';
       case 'importing': return 'Importing Contacts';
       case 'results': return 'Import Complete';
     }
@@ -197,8 +372,8 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
   const renderStepIndicator = () => {
     const steps = [
       { key: 'upload', label: 'Upload' },
-      { key: 'preview', label: 'Preview' },
-      { key: 'mapping', label: 'Map' },
+      { key: 'map', label: 'Map' },
+      { key: 'review', label: 'Review' },
       { key: 'importing', label: 'Import' },
     ];
 
@@ -374,25 +549,94 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
           </div>
         );
 
-      case 'preview':
+      case 'map':
         if (!previewData) return null;
         return (
-          <PreviewData
-            preview={previewData}
-            mappings={mappings}
-            detectedProvider={detectedProvider}
-            recommendations={recommendations}
-            isLight={isLight}
-          />
+          <div className="space-y-4">
+            <ColumnMapper
+              mappings={mappings}
+              sampleRows={previewData.sampleRows}
+              isLight={isLight}
+              onMappingsChange={setMappings}
+            />
+
+            {/* Label Input */}
+            <div className={`p-4 rounded-lg border ${
+              isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/20 border-blue-700/50'
+            }`}>
+              <label className="block">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Label for this batch
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={contactLabel}
+                  onChange={(e) => setContactLabel(e.target.value)}
+                  placeholder="e.g., Old Town 247, Farm Owners, etc."
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    isLight
+                      ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      : 'bg-gray-800 border-gray-600 text-white placeholder-gray-500'
+                  }`}
+                />
+                <p className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                  This label will be applied to all kept contacts from this import.
+                </p>
+              </label>
+            </div>
+
+            {reviewContacts.length > 0 && (
+              <div className={`p-4 rounded-lg border ${
+                isLight ? 'bg-amber-50 border-amber-200' : 'bg-amber-900/20 border-amber-500/50'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                    isLight ? 'text-amber-600' : 'text-amber-400'
+                  }`} />
+                  <div className={`text-sm ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
+                    <p className="font-semibold mb-1">Review Required</p>
+                    <p>
+                      {reviewContacts.length} contacts have low confidence or issues and will need your review on the next step.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         );
 
-      case 'mapping':
+      case 'review':
+        if (reviewContacts.length === 0) {
+          // Skip review if no problematic contacts
+          return (
+            <div className="text-center py-12">
+              <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
+              <h3 className={`text-xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                All Contacts Look Good!
+              </h3>
+              <p className={`mt-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                No contacts require review. Click Next to continue.
+              </p>
+            </div>
+          );
+        }
         return (
-          <ColumnMapper
-            mappings={mappings}
-            sampleRows={previewData?.sampleRows || []}
+          <ContactReviewList
+            contacts={reviewContacts}
             isLight={isLight}
-            onMappingsChange={setMappings}
+            onComplete={(decisions, edited) => {
+              setReviewDecisions(decisions);
+              setEditedContacts(edited);
+              // After review, proceed directly to import
+              handleConfirmImport();
+            }}
+            onBack={() => setCurrentStep('map')}
+            contactLabel={contactLabel}
           />
         );
 
@@ -407,6 +651,11 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
   };
 
   const renderFooter = () => {
+    // Hide footer for review step (it has its own controls)
+    if (currentStep === 'review') {
+      return null;
+    }
+
     return (
       <div className={`p-6 border-t flex items-center justify-between ${
         isLight ? 'border-slate-200 bg-slate-50' : 'border-gray-700 bg-gray-800/50'
@@ -415,8 +664,7 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
           {currentStep !== 'upload' && currentStep !== 'importing' && currentStep !== 'results' && (
             <button
               onClick={() => {
-                if (currentStep === 'preview') setCurrentStep('upload');
-                if (currentStep === 'mapping') setCurrentStep('preview');
+                if (currentStep === 'map') setCurrentStep('upload');
               }}
               className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
                 isLight
@@ -447,30 +695,23 @@ export default function ContactSyncModal({ isLight, onClose, onSuccess, campaign
             </button>
           )}
 
-          {currentStep === 'preview' && (
+          {currentStep === 'map' && (
             <button
-              onClick={() => setCurrentStep('mapping')}
-              className={`px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                isLight
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              Next
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {currentStep === 'mapping' && (
-            <button
-              onClick={() => handleConfirmImport()}
+              onClick={() => {
+                // Go to review if there are contacts to review, otherwise start import
+                if (reviewContacts.length > 0) {
+                  setCurrentStep('review');
+                } else {
+                  handleConfirmImport();
+                }
+              }}
               className={`px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
                 isLight
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                   : 'bg-emerald-600 text-white hover:bg-emerald-700'
               }`}
             >
-              Start Import
+              {reviewContacts.length > 0 ? 'Next: Review' : 'Start Import'}
               <ArrowRight className="w-4 h-4" />
             </button>
           )}

@@ -34,7 +34,19 @@ import type { MapListing } from "@/types/types";
 import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
 import YouTube from "@/app/components/mdx/YouTube";
 
-export default function ChatWidget() {
+// Contact import props
+interface ContactImportContext {
+  filePath: string;
+  originalFileName: string;
+}
+
+interface ChatWidgetProps {
+  mode?: 'general' | 'contact_import';
+  initialContext?: ContactImportContext;
+  autoSendMessage?: string;
+}
+
+export default function ChatWidget({ mode = 'general', initialContext, autoSendMessage }: ChatWidgetProps = {}) {
   const { data: session } = useSession();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -47,13 +59,15 @@ export default function ChatWidget() {
   const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent, hasUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Cycling placeholder text
-  const placeholders = [
-    "Get started by typing 'tutorial' in the chat",
-    "Show homes in...",
-    "Market trends in...",
-    "Type help for a list of commands"
-  ];
+  // Cycling placeholder text (conditional based on mode)
+  const placeholders = mode === 'contact_import'
+    ? ["How do you want to modify the contacts?"]
+    : [
+        "Get started by typing 'tutorial' in the chat",
+        "Show homes in...",
+        "Market trends in...",
+        "Type help for a list of commands"
+      ];
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
 
   // Map control for showing listings on background map
@@ -99,6 +113,23 @@ export default function ChatWidget() {
 
     return () => clearInterval(cycleInterval);
   }, [placeholders.length]);
+
+  // Contact import: Auto-inject initial message on mount
+  useEffect(() => {
+    if (mode === 'contact_import' && initialContext && messages.length === 0) {
+      console.log('[ChatWidget] Contact import mode - auto-starting preview');
+      const initialMessage = `I uploaded a contact file at ${initialContext.filePath} (${initialContext.originalFileName})`;
+      handleAIQuery(initialMessage);
+    }
+  }, []); // Empty deps - run once on mount
+
+  // Auto-send message when triggered from parent component
+  useEffect(() => {
+    if (autoSendMessage && !isLoading && !isStreaming) {
+      console.log('[ChatWidget] Auto-sending message:', autoSendMessage);
+      handleAIQuery(autoSendMessage);
+    }
+  }, [autoSendMessage]);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -213,13 +244,24 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
+      // Determine endpoint based on mode
+      const endpoint = mode === 'contact_import' ? '/api/contact-cleaning/assistant' : '/api/chat-v2';
+
       // Call AI API with Server-Sent Events (SSE) streaming
-      const response = await fetch("/api/chat-v2", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          message: query, // Contact import API uses 'message', general chat uses 'messages'
           messages: [
-            ...messages.map((m) => ({ role: m.role, content: m.content })),
+            // Preserve full message objects including tool_calls for conversation context
+            ...messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+              ...(m.tool_calls && { tool_calls: m.tool_calls }),
+              ...(m.tool_call_id && { tool_call_id: m.tool_call_id }),
+              ...(m.name && { name: m.name }),
+            })),
             { role: "user", content: query },
           ],
           userId: "demo-user",
@@ -236,6 +278,7 @@ export default function ChatWidget() {
       setIsStreaming(true);
       let fullText = "";
       let components: ComponentData | undefined;
+      let receivedToolCalls: any[] | undefined;
 
       // Read SSE stream
       const reader = response.body?.getReader();
@@ -275,6 +318,7 @@ export default function ChatWidget() {
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')
                       .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .replace(/\[CONTACT_IMPORT_PREVIEW\]/g, '')
                       .trim();
 
                     setStreamingText(displayText);
@@ -291,6 +335,12 @@ export default function ChatWidget() {
                     components = data.components;
                   }
 
+                  if (data.tool_calls) {
+                    // Received tool calls metadata for conversation context
+                    console.log('[ChatWidget] 🔧 Received tool_calls:', data.tool_calls);
+                    receivedToolCalls = data.tool_calls;
+                  }
+
                   if (data.done) {
                     // Stream complete
                     console.log('[ChatWidget] ✅ Stream complete. Components:', components);
@@ -302,9 +352,12 @@ export default function ChatWidget() {
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')
                       .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .replace(/\[CONTACT_IMPORT_PREVIEW\]/g, '')
+                      .replace(/\[CONTACT_IMPORT_SUCCESS\]/g, '')
                       .trim();
 
-                    addMessage(cleanText, "assistant", undefined, components);
+                    // Add message with tool_calls for conversation context
+                    addMessage(cleanText, "assistant", undefined, components, receivedToolCalls);
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                     // Tutorial mode: notify when results received
@@ -511,8 +564,10 @@ export default function ChatWidget() {
                     console.log('🤖 [ChatWidget] Background AI query completed, message added to history');
 
                     // Trigger notification for location insights
-                    const preview = cleanText.substring(0, 80).replace(/[#*\n]/g, '').trim();
-                    setNotificationPreview(preview + '...');
+                    const preview = mode === 'contact_import'
+                      ? 'Analyzing contact data...'
+                      : cleanText.substring(0, 80).replace(/[#*\n]/g, '').trim() + '...';
+                    setNotificationPreview(preview);
                     setShowNotification(true);
 
                     // Play notification sound
@@ -1116,7 +1171,7 @@ export default function ChatWidget() {
       data-page={showLanding ? "chat-landing" : "chat"}
       style={{
         fontFamily: `'${chatFont}', sans-serif`,
-        height: '100dvh' // Use dynamic viewport height for iOS keyboard compatibility
+        height: mode === 'contact_import' ? '100%' : '100dvh' // Use 100% in contact_import to respect parent, 100dvh otherwise for iOS keyboard compatibility
       }}
     >
       {/* Landing View - hide when map is visible */}
@@ -1175,7 +1230,7 @@ export default function ChatWidget() {
                   onKeyDown={handleKeyDown}
                   isLoading={isLoading}
                   variant="landing"
-                  showNewChatButton={messages.length > 0}
+                  showNewChatButton={mode !== 'contact_import' && messages.length > 0}
                   placeholder={placeholders[currentPlaceholderIndex]}
                 />
 
@@ -1197,7 +1252,9 @@ export default function ChatWidget() {
 
       {/* Conversation View - Hide when map is visible */}
       {!showLanding && !isMapVisible && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pt-40 md:pt-28 pb-[12rem] md:pb-2 relative">
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 pb-[12rem] md:pb-2 relative ${
+          mode === 'contact_import' ? 'pt-4' : 'pt-40 md:pt-28'
+        }`}>
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 overflow-hidden">
             {messages.map((msg, index) => (
               <motion.div
@@ -1548,7 +1605,7 @@ export default function ChatWidget() {
                     ? "bg-white/90 shadow-md border border-gray-200/50"
                     : "bg-neutral-900/80 shadow-lg border border-neutral-700/50 backdrop-blur-sm"
                 }`}>
-                  <TypingAnimation />
+                  <TypingAnimation mode={mode} />
                 </div>
               </motion.div>
             )}
@@ -1574,7 +1631,7 @@ export default function ChatWidget() {
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <TypingAnimation />
+                      <TypingAnimation mode={mode} />
                     </div>
                   </div>
                 </div>
@@ -1599,7 +1656,7 @@ export default function ChatWidget() {
               onKeyDown={handleKeyDown}
               isLoading={isLoading}
               variant="conversation"
-              showNewChatButton={true}
+              showNewChatButton={mode !== 'contact_import'}
               placeholder={placeholders[currentPlaceholderIndex]}
             />
           </div>

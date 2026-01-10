@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import "@fontsource/raleway";
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/500.css";

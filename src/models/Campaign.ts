@@ -62,6 +62,11 @@ export interface ICampaign extends Document {
     };
   };
 
+  // Voicemail Mode (Simple vs Full Pipeline)
+  voicemailMode?: 'simple' | 'full';
+  selectedRecordingId?: string;
+  selectedRecordingName?: string;
+
   // Analytics
   stats: {
     totalContacts: number;
@@ -190,6 +195,14 @@ const CampaignSchema = new Schema<ICampaign>(
         ],
       },
     },
+
+    // Voicemail Mode (Simple vs Full Pipeline)
+    voicemailMode: {
+      type: String,
+      enum: ['simple', 'full'],
+    },
+    selectedRecordingId: String,
+    selectedRecordingName: String,
 
     // Analytics
     stats: {

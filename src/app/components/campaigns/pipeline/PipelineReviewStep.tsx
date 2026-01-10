@@ -52,7 +52,7 @@ export default function PipelineReviewStep({
           setScripts(fetchedScripts);
 
           // Auto-expand all scripts initially
-          const allScriptIds = new Set(fetchedScripts.map((s: Script) => s._id));
+          const allScriptIds = new Set<string>(fetchedScripts.map((s: Script) => s._id as string));
           setExpandedScripts(allScriptIds);
         } else {
           console.error('[PipelineReviewStep] Failed to fetch scripts:', data.error);

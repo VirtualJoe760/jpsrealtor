@@ -8,23 +8,29 @@ import PipelineScriptsStep from './PipelineScriptsStep';
 import PipelineReviewStep from './PipelineReviewStep';
 import PipelineAudioStep from './PipelineAudioStep';
 import PipelineSendStep from './PipelineSendStep';
+import PipelineAudioSimpleStep from './PipelineAudioSimpleStep';
+import PipelineSendSimpleStep from './PipelineSendSimpleStep';
 
 interface CampaignPipelineWizardProps {
   campaign: any; // Accepts any campaign object with an id
   initialStrategy?: 'voicemail' | 'text' | 'email';
   onRefresh?: () => void;
+  voicemailMode?: 'simple' | 'full'; // New prop for voicemail mode
 }
 
 interface PipelineData {
   contactCount: number;
   scriptCount: number;
   audioCount: number;
+  recordingId?: string;
+  recordingName?: string;
 }
 
 export default function CampaignPipelineWizard({
   campaign,
   initialStrategy,
   onRefresh,
+  voicemailMode = 'simple', // Default to simple mode (no BYOC yet)
 }: CampaignPipelineWizardProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
@@ -34,10 +40,15 @@ export default function CampaignPipelineWizard({
     contactCount: 0,
     scriptCount: 0,
     audioCount: 0,
+    recordingId: campaign.selectedRecordingId || undefined,
+    recordingName: campaign.selectedRecordingName || undefined,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [hasCheckedResume, setHasCheckedResume] = useState(false);
+
+  // Determine if we're using simple or full pipeline
+  const isSimpleMode = voicemailMode === 'simple';
 
   // Fetch campaign stats
   const fetchCampaignStats = async () => {
@@ -105,22 +116,38 @@ export default function CampaignPipelineWizard({
   useEffect(() => {
     if (isLoading) return;
 
-    if (data.contactCount === 0) {
-      setCurrentStep('contacts');
-      setHasCheckedResume(true);
-    } else if (data.scriptCount === 0) {
-      setCurrentStep('scripts');
-      setHasCheckedResume(true);
-    } else if (data.audioCount === 0) {
-      setCurrentStep('review');
-      setHasCheckedResume(true);
+    if (isSimpleMode) {
+      // Simple mode: Contacts → Audio → Send
+      if (data.contactCount === 0) {
+        setCurrentStep('contacts');
+        setHasCheckedResume(true);
+      } else if (!data.recordingId) {
+        setCurrentStep('audio');
+        setHasCheckedResume(true);
+      } else {
+        // Recording selected - ready to send
+        setCurrentStep('send');
+        setHasCheckedResume(true);
+      }
     } else {
-      // Everything is ready - check if user wants to resume or start fresh
-      if (!hasCheckedResume) {
-        setShowResumeModal(true);
+      // Full mode: Contacts → Scripts → Review → Audio → Send
+      if (data.contactCount === 0) {
+        setCurrentStep('contacts');
+        setHasCheckedResume(true);
+      } else if (data.scriptCount === 0) {
+        setCurrentStep('scripts');
+        setHasCheckedResume(true);
+      } else if (data.audioCount === 0) {
+        setCurrentStep('review');
+        setHasCheckedResume(true);
+      } else {
+        // Everything is ready - check if user wants to resume or start fresh
+        if (!hasCheckedResume) {
+          setShowResumeModal(true);
+        }
       }
     }
-  }, [data, isLoading, hasCheckedResume]);
+  }, [data, isLoading, hasCheckedResume, isSimpleMode]);
 
   const handleNext = (fromStep: PipelineStep) => {
     // Mark current step as completed if it has required data
@@ -128,8 +155,11 @@ export default function CampaignPipelineWizard({
       setCompletedSteps([...completedSteps, fromStep]);
     }
 
-    // Move to next step
-    const steps: PipelineStep[] = ['contacts', 'scripts', 'review', 'audio', 'send'];
+    // Move to next step - different flow for simple vs full mode
+    const steps: PipelineStep[] = isSimpleMode
+      ? ['contacts', 'audio', 'send']  // Simple mode: 3 steps
+      : ['contacts', 'scripts', 'review', 'audio', 'send'];  // Full mode: 5 steps
+
     const currentIndex = steps.indexOf(fromStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -137,11 +167,22 @@ export default function CampaignPipelineWizard({
   };
 
   const handleBack = (fromStep: PipelineStep) => {
-    const steps: PipelineStep[] = ['contacts', 'scripts', 'review', 'audio', 'send'];
+    const steps: PipelineStep[] = isSimpleMode
+      ? ['contacts', 'audio', 'send']  // Simple mode: 3 steps
+      : ['contacts', 'scripts', 'review', 'audio', 'send'];  // Full mode: 5 steps
+
     const currentIndex = steps.indexOf(fromStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
     }
+  };
+
+  const handleRecordingSelected = (recordingId: string, recordingName: string) => {
+    setData({
+      ...data,
+      recordingId,
+      recordingName,
+    });
   };
 
   const handleDataUpdate = () => {
@@ -187,8 +228,11 @@ export default function CampaignPipelineWizard({
               Campaign Ready to Send
             </h3>
             <p className={`text-sm mb-6 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-              This campaign has {data.contactCount} contacts, {data.scriptCount} scripts, and {data.audioCount} audio files ready.
-              What would you like to do?
+              {isSimpleMode ? (
+                <>This campaign has {data.contactCount} contacts and a recording selected. What would you like to do?</>
+              ) : (
+                <>This campaign has {data.contactCount} contacts, {data.scriptCount} scripts, and {data.audioCount} audio files ready. What would you like to do?</>
+              )}
             </p>
             <div className="flex flex-col gap-3">
               <button
@@ -234,7 +278,30 @@ export default function CampaignPipelineWizard({
           />
         )}
 
-        {currentStep === 'scripts' && (
+        {/* Simple Mode Steps */}
+        {isSimpleMode && currentStep === 'audio' && (
+          <PipelineAudioSimpleStep
+            campaign={campaign}
+            onNext={() => handleNext('audio')}
+            onBack={() => handleBack('audio')}
+            onRecordingSelected={handleRecordingSelected}
+            initialRecordingId={data.recordingId}
+          />
+        )}
+
+        {isSimpleMode && currentStep === 'send' && (
+          <PipelineSendSimpleStep
+            campaign={campaign}
+            contactCount={data.contactCount}
+            recordingId={data.recordingId}
+            recordingName={data.recordingName}
+            onBack={() => handleBack('send')}
+            onRefresh={onRefresh}
+          />
+        )}
+
+        {/* Full Mode Steps */}
+        {!isSimpleMode && currentStep === 'scripts' && (
           <PipelineScriptsStep
             campaign={campaign}
             contactCount={data.contactCount}
@@ -245,7 +312,7 @@ export default function CampaignPipelineWizard({
           />
         )}
 
-        {currentStep === 'review' && (
+        {!isSimpleMode && currentStep === 'review' && (
           <PipelineReviewStep
             campaign={campaign}
             scriptCount={data.scriptCount}
@@ -255,7 +322,7 @@ export default function CampaignPipelineWizard({
           />
         )}
 
-        {currentStep === 'audio' && (
+        {!isSimpleMode && currentStep === 'audio' && (
           <PipelineAudioStep
             campaign={campaign}
             scriptCount={data.scriptCount}
@@ -266,7 +333,7 @@ export default function CampaignPipelineWizard({
           />
         )}
 
-        {currentStep === 'send' && (
+        {!isSimpleMode && currentStep === 'send' && (
           <PipelineSendStep
             campaign={campaign}
             contactCount={data.contactCount}
