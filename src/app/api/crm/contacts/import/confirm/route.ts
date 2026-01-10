@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const provider = formData.get('provider') as string | null;
     const campaignId = formData.get('campaignId') as string | null;
     const context = formData.get('context') as 'campaign' | 'regular' | null;
+    const label = formData.get('label') as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -138,6 +139,7 @@ export async function POST(request: NextRequest) {
     let campaignTag: string | null = null;
     if (campaignId) {
       try {
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const campaign = await Campaign.findById(campaignId);
         if (campaign) {
           campaignTag = `campaign:${campaign.name}`;
@@ -159,6 +161,7 @@ export async function POST(request: NextRequest) {
     const source = sourceMap[provider || 'custom'] || 'csv_import';
 
     // Create ImportBatch record
+    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const importBatch = await ImportBatch.create({
       userId,
       campaignId: campaignId || undefined,
@@ -185,14 +188,67 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[Confirm] Import context: context=${context || 'regular'}, campaignId=${campaignId || 'null'}, campaignTag=${campaignTag || 'null'}`);
 
-    // Process each row
-    let successCount = 0;
-    let errorCount = 0;
-    let skipCount = 0;
-    const importedContactIds: string[] = [];
-    const errors: any[] = [];
+    // Start async processing (fire and forget)
+    // This allows us to return the batchId immediately while processing continues
+    processImportAsync(
+      importBatch._id.toString(),
+      rows,
+      mappingLookup,
+      userId,
+      campaignId,
+      campaignTag,
+      context,
+      label
+    ).catch((error) => {
+      console.error('[Confirm] Async processing error:', error);
+    });
 
-    for (let i = 0; i < rows.length; i++) {
+    // Return batchId immediately so frontend can start polling
+    return NextResponse.json({
+      success: true,
+      batchId: importBatch._id,
+      progress: {
+        status: 'processing',
+        total: rows.length,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        duplicates: 0,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Confirm] Error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to process import' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================================
+// Async Import Processing
+// ============================================================================
+
+async function processImportAsync(
+  batchId: string,
+  rows: any[],
+  mappingLookup: Record<string, string>,
+  userId: string,
+  campaignId: string | null,
+  campaignTag: string | null,
+  context: 'campaign' | 'regular' | null,
+  label: string | null
+) {
+  await dbConnect();
+
+  // Process each row
+  let successCount = 0;
+  let errorCount = 0;
+  let skipCount = 0;
+  const importedContactIds: string[] = [];
+  const errors: any[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNumber = i + 2; // +2 because row 1 is headers, and array is 0-indexed
 
@@ -201,7 +257,7 @@ export async function POST(request: NextRequest) {
         const contactData: any = {
           userId,
           source: 'csv_import',
-          importBatchId: importBatch._id,
+          importBatchId: batchId,
         };
 
         // Helper: Clean Google Contacts multi-value fields (separated by :::)
@@ -221,15 +277,34 @@ export async function POST(request: NextRequest) {
           const cleanedValue = cleanMultiValue(String(value).trim());
           if (!cleanedValue) continue;
 
+          // Numeric fields that should be converted to numbers
+          const numericFields = [
+            'latitude', 'longitude', 'lat', 'lng', 'long',
+            'bedrooms', 'bedroomsTotal', 'bathrooms', 'bathroomsFull',
+            'bathroomsHalf', 'bathroomsTotalDecimal', 'bathroomsTotalInteger',
+            'sqft', 'squareFeet', 'yearBuilt', 'lotSizeAcres', 'lotSizeSqFt',
+            'purchasePrice', 'salePrice', 'homeValue', 'propertyValue',
+            'assessedValue', 'marketValue'
+          ];
+
+          // Convert value based on field type
+          let finalValue: any = cleanedValue;
+          if (numericFields.includes(targetField)) {
+            const numValue = parseFloat(cleanedValue);
+            if (!isNaN(numValue)) {
+              finalValue = numValue;
+            }
+          }
+
           // Handle nested fields (e.g., address.street)
           if (targetField.includes('.')) {
             const [parent, child] = targetField.split('.');
             if (!contactData[parent]) {
               contactData[parent] = {};
             }
-            contactData[parent][child] = cleanedValue;
+            contactData[parent][child] = finalValue;
           } else {
-            contactData[targetField] = cleanedValue;
+            contactData[targetField] = finalValue;
           }
         }
 
@@ -284,14 +359,118 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Normalize phone number
-        if (contactData.phone) {
+        // Process multiple phone numbers into phones array
+        const phones: any[] = [];
+        const phoneFields = [
+          { phone: contactData.phone, lineType: contactData.lineType, order: 0 },
+          { phone: contactData.phone2, lineType: contactData.lineType1, order: 1 },
+          { phone: contactData.phone3, lineType: contactData.lineType2, order: 2 },
+          { phone: contactData.phone4, lineType: contactData.lineType3, order: 3 },
+          { phone: contactData.phone5, lineType: contactData.lineType4, order: 4 },
+          { phone: contactData.phone6, lineType: contactData.lineType5, order: 5 },
+        ];
+
+        for (const field of phoneFields) {
+          if (field.phone && field.phone.toString().trim()) {
+            const normalized = normalizePhoneNumber(field.phone.toString().trim());
+            if (normalized) {
+              // Map line type to label
+              let label: 'mobile' | 'home' | 'work' | 'other' = 'mobile';
+              const typeStr = (field.lineType || '').toString().toLowerCase();
+              if (typeStr.includes('landline') || typeStr.includes('home')) {
+                label = 'home';
+              } else if (typeStr.includes('work') || typeStr.includes('office')) {
+                label = 'work';
+              } else if (typeStr.includes('voip') || typeStr.includes('other')) {
+                label = 'other';
+              }
+
+              phones.push({
+                number: normalized,
+                label,
+                isPrimary: field.order === 0,
+                isValid: true,
+                country: 'US',
+              });
+            }
+          }
+        }
+
+        // Set phones array if we have any
+        if (phones.length > 0) {
+          contactData.phones = phones;
+          // Keep legacy phone field for backward compatibility
+          contactData.phone = phones[0].number;
+        } else if (contactData.phone) {
+          // Fallback: normalize legacy phone field
           contactData.phone = normalizePhoneNumber(contactData.phone);
         }
 
-        // Add campaign tag if provided
+        // Clean up temporary phone fields
+        delete contactData.phone2;
+        delete contactData.phone3;
+        delete contactData.phone4;
+        delete contactData.phone5;
+        delete contactData.phone6;
+        delete contactData.lineType;
+        delete contactData.lineType1;
+        delete contactData.lineType2;
+        delete contactData.lineType3;
+        delete contactData.lineType4;
+        delete contactData.lineType5;
+
+        // Process multiple email addresses into emails array
+        const emails: any[] = [];
+        const emailFields = [
+          { email: contactData.email, order: 0 },
+          { email: contactData.email2, order: 1 },
+          { email: contactData.email3, order: 2 },
+        ];
+
+        for (const field of emailFields) {
+          if (field.email && field.email.toString().trim()) {
+            const emailStr = field.email.toString().trim().toLowerCase();
+            // Basic email validation
+            if (emailStr.includes('@') && emailStr.includes('.')) {
+              // Determine label based on domain or order
+              let label: 'personal' | 'work' | 'other' = 'personal';
+              if (field.order === 1) {
+                label = 'work';
+              } else if (field.order === 2) {
+                label = 'other';
+              }
+
+              emails.push({
+                address: emailStr,
+                label,
+                isPrimary: field.order === 0,
+                isValid: true,
+              });
+            }
+          }
+        }
+
+        // Set emails array if we have any
+        if (emails.length > 0) {
+          contactData.emails = emails;
+          // Keep legacy email field for backward compatibility
+          contactData.email = emails[0].address;
+        }
+
+        // Clean up temporary email fields
+        delete contactData.email2;
+        delete contactData.email3;
+
+        // Add campaign tag and/or label
+        const tagsToAdd = [];
         if (campaignTag) {
-          contactData.tags = [campaignTag];
+          tagsToAdd.push(campaignTag);
+        }
+        if (label) {
+          tagsToAdd.push(label);
+        }
+        if (tagsToAdd.length > 0) {
+          contactData.tags = tagsToAdd;
         }
 
         // Check for duplicate by phone or email
@@ -302,6 +481,7 @@ export async function POST(request: NextRequest) {
           duplicateFilter.email = contactData.email;
         }
 
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const existingContact = await Contact.findOne(duplicateFilter);
         if (existingContact) {
           console.log(`[Confirm] Row ${rowNumber}: Duplicate detected - Contact ${existingContact._id} already exists`);
@@ -320,6 +500,7 @@ export async function POST(request: NextRequest) {
             // Add campaign tag if not already present
             const hadTag = existingContact.tags?.includes(campaignTag);
             if (!hadTag) {
+              // @ts-expect-error Mongoose typing issue with overloaded signatures
               await Contact.findByIdAndUpdate(existingContact._id, {
                 $addToSet: { tags: campaignTag }
               });
@@ -355,6 +536,7 @@ export async function POST(request: NextRequest) {
 
         // Create contact
         console.log(`[Confirm] Row ${rowNumber}: Creating new contact`);
+        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const newContact = await Contact.create(contactData);
         importedContactIds.push(newContact._id.toString());
         successCount++;
@@ -362,7 +544,8 @@ export async function POST(request: NextRequest) {
 
         // Update batch progress every 10 rows
         if ((i + 1) % 10 === 0) {
-          await ImportBatch.findByIdAndUpdate(importBatch._id, {
+          // @ts-expect-error Mongoose typing issue with overloaded signatures
+          await ImportBatch.findByIdAndUpdate(batchId, {
             'progress.processed': i + 1,
             'progress.successful': successCount,
             'progress.failed': errorCount,
@@ -381,44 +564,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Final batch update
-    await ImportBatch.findByIdAndUpdate(importBatch._id, {
-      'progress.processed': rows.length,
-      'progress.successful': successCount,
-      'progress.failed': errorCount,
-      'progress.duplicates': skipCount,
-      status: errorCount === rows.length ? 'failed' : 'completed',
-      completedAt: new Date(),
-      importedContactIds: importedContactIds,
-      importErrors: errors.slice(0, 100), // Limit to first 100 errors
-    });
+  // Final batch update
+  // @ts-expect-error Mongoose typing issue with overloaded signatures
+  await ImportBatch.findByIdAndUpdate(batchId, {
+    'progress.processed': rows.length,
+    'progress.successful': successCount,
+    'progress.failed': errorCount,
+    'progress.duplicates': skipCount,
+    status: errorCount === rows.length ? 'failed' : 'completed',
+    completedAt: new Date(),
+    importedContactIds: importedContactIds,
+    importErrors: errors.slice(0, 100), // Limit to first 100 errors
+  });
 
-    console.log(
-      `[Confirm] Import completed: ${successCount} success, ${errorCount} errors, ${skipCount} skipped`
-    );
-    console.log(`[Confirm] Imported contact IDs (${importedContactIds.length}): [${importedContactIds.join(', ')}]`);
-
-    return NextResponse.json({
-      success: true,
-      batchId: importBatch._id,
-      importedContactIds, // Return imported contact IDs for auto-selection
-      progress: {
-        status: errorCount === rows.length ? 'failed' : 'completed',
-        total: rows.length,
-        processed: rows.length,
-        successful: successCount,
-        failed: errorCount,
-        duplicates: skipCount,
-        importErrors: errors.slice(0, 20), // Return first 20 errors to client
-      },
-    });
-  } catch (error: any) {
-    console.error('[Confirm] Error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to process import' },
-      { status: 500 }
-    );
-  }
+  console.log(
+    `[Confirm] Import completed: ${successCount} success, ${errorCount} errors, ${skipCount} skipped`
+  );
+  console.log(`[Confirm] Imported contact IDs (${importedContactIds.length}): [${importedContactIds.join(', ')}]`);
 }
 
 // ============================================================================

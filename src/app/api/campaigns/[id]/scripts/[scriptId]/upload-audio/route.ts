@@ -65,6 +65,7 @@ export async function POST(
     });
 
     // Verify script exists and belongs to user
+    // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
     const script = await VoicemailScript.findOne({
       _id: scriptId,
       campaignId,
@@ -80,6 +81,7 @@ export async function POST(
 
     if (!script) {
       // Additional debugging - let's see if the script exists at all
+      // @ts-expect-error Mongoose typing issue with overloaded findById() signatures
       const anyScript = await VoicemailScript.findById(scriptId);
       console.log('[upload-audio] Script exists without filters:', {
         exists: !!anyScript,

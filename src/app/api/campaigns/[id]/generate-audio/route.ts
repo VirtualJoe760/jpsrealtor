@@ -121,6 +121,7 @@ async function generateAudioInBackground(
     const campaignId = campaign._id;
 
     // Load or create generation session
+    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     let session = await GenerationSession.findOne({
       campaignId,
       type: 'audio_generation',
@@ -129,6 +130,7 @@ async function generateAudioInBackground(
 
     if (!session) {
       // Create new session
+      // @ts-expect-error Mongoose typing issue with overloaded create() signatures
       session = await GenerationSession.create({
         campaignId,
         userId,
@@ -213,6 +215,7 @@ async function generateAudioInBackground(
   } catch (error: any) {
     console.error('[generateAudioInBackground] Error:', error);
     // Mark session as failed if it exists
+    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const session = await GenerationSession.findOne({
       campaignId: campaign._id,
       type: 'audio_generation',

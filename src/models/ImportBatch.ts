@@ -1,17 +1,19 @@
 import mongoose, { Schema, model, models, Document, Types } from 'mongoose';
 import { ContactSource } from './ContactCampaign';
 
-export type ImportBatchStatus = 'uploading' | 'processing' | 'completed' | 'failed';
+export type ImportBatchStatus = 'uploading' | 'analyzing' | 'ready' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface IImportBatch extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   campaignId?: Types.ObjectId;
+  teamId?: Types.ObjectId;  // Team reference for shared imports
 
   // Import Details
   source: ContactSource;
   fileName?: string;
   fileUrl?: string;
+  fileSize?: number;  // File size in bytes
 
   // Processing Status
   status: ImportBatchStatus;
@@ -23,7 +25,64 @@ export interface IImportBatch extends Document {
     duplicates: number;
   };
 
-  // Normalization Config
+  // Prospect Discovery - Data Quality Analysis
+  analysis?: {
+    totalRows: number;
+
+    dataQualityIssues: {
+      noName: number;
+      noPhone: number;
+      multiplePhones: number;
+      multipleEmails: number;
+      invalidPhoneFormat: number;
+      emojiInName: number;
+      organizationOnly: number;
+      duplicates: number;
+      junkEntries: number;
+      specialCharactersInName: number;
+    };
+
+    // Examples for UI display
+    phoneFormatExamples: string[];
+    emailFormatExamples: string[];
+    organizationOnlyExamples: string[];
+    multiplePhoneExamples: Array<{
+      contact: string;
+      phones: string[];
+    }>;
+    emojiExamples: string[];
+    junkExamples: string[];
+
+    // Summary
+    qualityScore?: number;  // 0-100 overall quality score
+    recommendedActions?: string[];  // List of recommended cleanup actions
+  };
+
+  // Prospect Discovery - Import Configuration
+  config?: {
+    skipEmoji: boolean;  // Skip contacts with emoji in name
+    skipOrganizationOnly: boolean;  // Skip organization-only contacts
+    skipDuplicates: boolean;  // Skip duplicate phone numbers
+    skipJunk: boolean;  // Skip junk entries
+    autoCleanNames: boolean;  // Automatically clean names
+    normalizePhones: boolean;  // Normalize phones to E.164
+    mergeStrategy?: 'skip' | 'update' | 'create_duplicate';  // How to handle existing contacts
+  };
+
+  // Prospect Discovery - Detailed Results
+  detailedResults?: {
+    skippedByReason: {
+      emoji: number;
+      organizationOnly: number;
+      duplicate: number;
+      junk: number;
+      noPhone: number;
+      validation: number;
+    };
+    updated: number;  // Updated existing contacts
+  };
+
+  // Normalization Config (Legacy)
   fieldMapping?: Record<string, string>;
 
   // Results
@@ -36,6 +95,8 @@ export interface IImportBatch extends Document {
 
   // Timestamps
   createdAt: Date;
+  analyzedAt?: Date;  // When analysis completed
+  importedAt?: Date;  // When import started
   completedAt?: Date;
 }
 
@@ -50,6 +111,11 @@ const ImportBatchSchema = new Schema<IImportBatch>(
     campaignId: {
       type: Schema.Types.ObjectId,
       ref: 'Campaign',
+      index: true,
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Team',
       index: true,
     },
 
@@ -69,11 +135,12 @@ const ImportBatchSchema = new Schema<IImportBatch>(
     },
     fileName: String,
     fileUrl: String,
+    fileSize: Number,
 
     // Processing Status
     status: {
       type: String,
-      enum: ['uploading', 'processing', 'completed', 'failed'],
+      enum: ['uploading', 'analyzing', 'ready', 'processing', 'completed', 'failed', 'cancelled'],
       default: 'uploading',
       index: true,
     },
@@ -100,7 +167,70 @@ const ImportBatchSchema = new Schema<IImportBatch>(
       },
     },
 
-    // Normalization Config
+    // Prospect Discovery - Data Quality Analysis
+    analysis: {
+      totalRows: Number,
+
+      dataQualityIssues: {
+        noName: { type: Number, default: 0 },
+        noPhone: { type: Number, default: 0 },
+        multiplePhones: { type: Number, default: 0 },
+        multipleEmails: { type: Number, default: 0 },
+        invalidPhoneFormat: { type: Number, default: 0 },
+        emojiInName: { type: Number, default: 0 },
+        organizationOnly: { type: Number, default: 0 },
+        duplicates: { type: Number, default: 0 },
+        junkEntries: { type: Number, default: 0 },
+        specialCharactersInName: { type: Number, default: 0 },
+      },
+
+      phoneFormatExamples: [String],
+      emailFormatExamples: [String],
+      organizationOnlyExamples: [String],
+      multiplePhoneExamples: [{
+        contact: String,
+        phones: [String],
+      }],
+      emojiExamples: [String],
+      junkExamples: [String],
+
+      qualityScore: {
+        type: Number,
+        min: 0,
+        max: 100,
+      },
+      recommendedActions: [String],
+    },
+
+    // Prospect Discovery - Import Configuration
+    config: {
+      skipEmoji: { type: Boolean, default: true },
+      skipOrganizationOnly: { type: Boolean, default: false },
+      skipDuplicates: { type: Boolean, default: true },
+      skipJunk: { type: Boolean, default: true },
+      autoCleanNames: { type: Boolean, default: true },
+      normalizePhones: { type: Boolean, default: true },
+      mergeStrategy: {
+        type: String,
+        enum: ['skip', 'update', 'create_duplicate'],
+        default: 'skip',
+      },
+    },
+
+    // Prospect Discovery - Detailed Results
+    detailedResults: {
+      skippedByReason: {
+        emoji: { type: Number, default: 0 },
+        organizationOnly: { type: Number, default: 0 },
+        duplicate: { type: Number, default: 0 },
+        junk: { type: Number, default: 0 },
+        noPhone: { type: Number, default: 0 },
+        validation: { type: Number, default: 0 },
+      },
+      updated: { type: Number, default: 0 },
+    },
+
+    // Normalization Config (Legacy)
     fieldMapping: {
       type: Schema.Types.Mixed,
     },
@@ -121,6 +251,8 @@ const ImportBatchSchema = new Schema<IImportBatch>(
     ],
 
     // Timestamps
+    analyzedAt: Date,
+    importedAt: Date,
     completedAt: Date,
   },
   {

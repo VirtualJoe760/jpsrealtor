@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     // Query parameters
     const search = searchParams.get('search');
     const status = searchParams.get('status');
+    const labelId = searchParams.get('labelId');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
 
@@ -41,6 +42,11 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query.status = status;
+    }
+
+    if (labelId) {
+      // Filter by label ID
+      query.labels = labelId;
     }
 
     if (search) {
