@@ -37,9 +37,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     // '/dashboard', // Dashboard with map background
   ];
 
-  // Pages where we DON'T want TopToggles
-  const pagesWithoutTopToggles = [
-    '/agent', // Agent dashboard and all agent sub-pages
+  // Pages where we WANT TopToggles (whitelist approach)
+  const pagesWithTopToggles = [
+    '/', // Root page (map/chat)
   ];
 
   // Determine which background to show
@@ -48,8 +48,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const shouldShowMapBackground = pagesWithMapBackground.some(page => pathname?.startsWith(page));
 
-  // Determine whether to show TopToggles
-  const shouldShowTopToggles = !pagesWithoutTopToggles.some(page => pathname?.startsWith(page));
+  // Determine whether to show TopToggles - only on root page
+  const shouldShowTopToggles = pathname === '/';
 
   return (
     <>
