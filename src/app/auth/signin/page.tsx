@@ -159,14 +159,26 @@ function SignInForm() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className={`block text-sm font-medium mb-2 ${
-                  isLight ? "text-gray-700" : "text-gray-300"
-                }`}
-              >
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="password"
+                  className={`text-sm font-medium ${
+                    isLight ? "text-gray-700" : "text-gray-300"
+                  }`}
+                >
+                  Password
+                </label>
+                <Link
+                  href="/auth/forgot-password"
+                  className={`text-sm transition-colors ${
+                    isLight
+                      ? "text-blue-600 hover:text-blue-700"
+                      : "text-blue-400 hover:text-blue-300"
+                  }`}
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 id="password"
                 type="password"

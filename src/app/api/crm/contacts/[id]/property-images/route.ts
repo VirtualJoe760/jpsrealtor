@@ -199,11 +199,11 @@ export async function GET(
           console.log(`[Property Images API] ✅ Extracted ${images.length} images from closed listing`);
         }
         // Fall back to photos array (older format)
-        else if (closedListing.photos && Array.isArray(closedListing.photos)) {
+        else if ((closedListing as any).photos && Array.isArray((closedListing as any).photos)) {
           console.log(`[Property Images API]   Format: Photos array (older format)`);
-          console.log(`[Property Images API]   Total Photos: ${closedListing.photos.length}`);
+          console.log(`[Property Images API]   Total Photos: ${(closedListing as any).photos.length}`);
           console.log(`[Property Images API] Extracting images from photos array...`);
-          closedListing.photos.forEach((photoUrl: string, index: number) => {
+          (closedListing as any).photos.forEach((photoUrl: string, index: number) => {
             if (photoUrl) {
               console.log(`[Property Images API]   Photo ${index + 1}: Direct URL`);
               images.push({

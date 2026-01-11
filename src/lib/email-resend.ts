@@ -313,3 +313,153 @@ export async function send2FACode(
     throw error;
   }
 }
+
+export async function sendPasswordResetEmail(
+  email: string,
+  resetUrl: string,
+  name: string
+) {
+  console.log('📧 Sending password reset email via Resend to:', email);
+  console.log('🔗 Reset URL:', resetUrl);
+
+  try {
+    const resend = getResendClient();
+    const data = await resend.emails.send({
+      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      to: [email],
+      replyTo: 'noreply@jpsrealtor.com',
+      subject: 'Reset your password',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                max-width: 600px;
+                margin: 40px auto;
+                background-color: #ffffff;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 40px 20px;
+                text-align: center;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
+              }
+              .content {
+                padding: 40px 30px;
+              }
+              .content h2 {
+                color: #2d3748;
+                font-size: 22px;
+                margin-bottom: 20px;
+              }
+              .content p {
+                color: #4a5568;
+                font-size: 16px;
+                margin-bottom: 20px;
+              }
+              .button {
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white !important;
+                text-decoration: none;
+                padding: 14px 32px;
+                border-radius: 6px;
+                font-weight: 600;
+                margin: 20px 0;
+                text-align: center;
+              }
+              .button:hover {
+                opacity: 0.9;
+              }
+              .info-box {
+                background-color: #f7fafc;
+                border-left: 4px solid #4299e1;
+                padding: 16px;
+                margin: 20px 0;
+                border-radius: 4px;
+              }
+              .info-box p {
+                margin: 0;
+                font-size: 14px;
+                color: #2d3748;
+              }
+              .footer {
+                background-color: #f7fafc;
+                padding: 30px;
+                text-align: center;
+                border-top: 1px solid #e2e8f0;
+              }
+              .footer p {
+                margin: 5px 0;
+                font-size: 14px;
+                color: #718096;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Password Reset Request</h1>
+              </div>
+              <div class="content">
+                <h2>Hi ${name},</h2>
+                <p>
+                  We received a request to reset your password for your Joey Sardella Real Estate account.
+                </p>
+                <p>
+                  Click the button below to reset your password:
+                </p>
+                <div style="text-align: center;">
+                  <a href="${resetUrl}" class="button">Reset Password</a>
+                </div>
+                <div class="info-box">
+                  <p><strong>⏰ This link will expire in 1 hour</strong></p>
+                </div>
+                <p>
+                  If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.
+                </p>
+                <p style="font-size: 14px; color: #718096; margin-top: 30px;">
+                  If the button doesn't work, copy and paste this link into your browser:<br>
+                  <a href="${resetUrl}" style="color: #4299e1; word-break: break-all;">${resetUrl}</a>
+                </p>
+              </div>
+              <div class="footer">
+                <p><strong>Joey Sardella Real Estate</strong></p>
+                <p>Your trusted partner in real estate</p>
+                <p style="font-size: 12px; margin-top: 20px;">
+                  This is an automated email. Please do not reply to this message.
+                </p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    console.log('✅ Password reset email sent successfully via Resend:', data);
+    return data;
+  } catch (error) {
+    console.error("❌ Error sending password reset email via Resend:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+    }
+    throw error;
+  }
+}
