@@ -230,6 +230,13 @@ export interface IUser extends Document {
   // Two-Factor Authentication
   twoFactorEnabled: boolean;
   twoFactorEmail?: string; // Email for 2FA (usually same as login email)
+  twoFactorMethod?: 'email' | 'sms'; // Preferred 2FA method
+  twoFactorPhone?: string; // Phone number for SMS 2FA (E.164 format)
+  phoneVerified?: boolean; // Whether phone number is verified
+
+  // Password Reset
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 
   // Marketing Consent (TCPA Compliant)
   smsConsent?: {
@@ -470,6 +477,13 @@ const UserSchema = new Schema<IUser>(
     // Two-Factor Authentication
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorEmail: String,
+    twoFactorMethod: { type: String, enum: ['email', 'sms'], default: 'email' },
+    twoFactorPhone: String,
+    phoneVerified: { type: Boolean, default: false },
+
+    // Password Reset
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
 
     // Marketing Consent (TCPA Compliant)
     smsConsent: {
@@ -550,6 +564,5 @@ UserSchema.pre("save", function(next) {
 });
 
 // Export model
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
-
-export default User;
+export default (mongoose.models.User ||
+  mongoose.model<IUser>("User", UserSchema)) as Model<IUser>;

@@ -56,14 +56,10 @@ interface Contact {
   lastModified?: string;
 }
 
-interface Label {
-  _id: string;
+interface Tag {
   name: string;
-  description?: string;
   color: string;
-  icon?: string;
   contactCount: number;
-  isSystem: boolean;
 }
 
 interface ContactStats {
@@ -78,7 +74,7 @@ interface ContactsTabProps {
 export default function ContactsTab({ isLight }: ContactsTabProps) {
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [labels, setLabels] = useState<Label[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [stats, setStats] = useState<ContactStats>({ total: 0, byStatus: {} });
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -96,29 +92,33 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filterBy, setFilterBy] = useState<'all' | 'no-email' | 'no-phone' | 'no-address' | 'buyers' | 'sellers'>('all');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card'); // New: card or list view
-  const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null); // New: filter by label
+  const [selectedTag, setSelectedTag] = useState<string | null>(null); // New: filter by tag
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null); // New: filter by status
 
-  // Fetch labels and stats on mount
+  // Fetch tags and stats on mount
   useEffect(() => {
-    fetchLabels();
+    fetchTags();
     fetchStats();
   }, []);
 
   // Fetch contacts when filters change
   useEffect(() => {
     fetchContacts(true);
-  }, [searchQuery, selectedLabelId, selectedStatus]);
+  }, [searchQuery, selectedTag, selectedStatus]);
 
-  const fetchLabels = async () => {
+  const fetchTags = async () => {
     try {
-      const response = await fetch('/api/crm/labels');
+      const response = await fetch('/api/crm/contacts/tags');
       const data = await response.json();
+      console.log('[ContactsTab] Tags API response:', data);
       if (data.success) {
-        setLabels(data.labels || []);
+        console.log('[ContactsTab] Setting tags:', data.tags);
+        setTags(data.tags || []);
+      } else {
+        console.error('[ContactsTab] Tags API error:', data.error);
       }
     } catch (error) {
-      console.error('[Contacts] Error fetching labels:', error);
+      console.error('[Contacts] Error fetching tags:', error);
     }
   };
 
@@ -126,8 +126,12 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
     try {
       const response = await fetch('/api/crm/contacts/stats');
       const data = await response.json();
+      console.log('[ContactsTab] Stats API response:', data);
       if (data.success) {
+        console.log('[ContactsTab] Setting stats:', data.stats);
         setStats(data.stats);
+      } else {
+        console.error('[ContactsTab] Stats API error:', data.error);
       }
     } catch (error) {
       console.error('[Contacts] Error fetching stats:', error);
@@ -150,8 +154,8 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
       if (searchQuery) {
         url += `&search=${encodeURIComponent(searchQuery)}`;
       }
-      if (selectedLabelId) {
-        url += `&labelId=${selectedLabelId}`;
+      if (selectedTag) {
+        url += `&tag=${encodeURIComponent(selectedTag)}`;
       }
       if (selectedStatus) {
         url += `&status=${selectedStatus}`;
@@ -248,10 +252,20 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   // Sort contacts
   const sortedContacts = [...filteredContacts].sort((a, b) => {
     switch (sortBy) {
+      case 'status':
+        const statusPriority: { [key: string]: number } = {
+          'uncontacted': 0,
+          'contacted': 1,
+          'qualified': 2,
+          'nurturing': 3,
+          'client': 4,
+          'inactive': 5,
+        };
+        return (statusPriority[a.status || 'uncontacted'] || 99) - (statusPriority[b.status || 'uncontacted'] || 99);
       case 'a-z':
         return `${a.firstName} ${a.lastName}`.toLowerCase().localeCompare(`${b.firstName} ${b.lastName}`.toLowerCase());
       case 'z-a':
-        return `${b.firstName} ${b.lastName}`.toLowerCase().localeCompare(`${a.firstName} ${a.lastName}`.toLowerCase());
+        return `${b.firstName} ${b.lastName}`.toLowerCase().localeCompare(`${a.firstName} ${b.lastName}`.toLowerCase());
       case 'oldest':
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       case 'newest':
@@ -385,303 +399,198 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   return (
     <div>
       {/* Header with Search and Add Button */}
-      <div className="mb-6 flex items-center gap-4">
-        {/* Search */}
-        <div className="flex-1 relative">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
-            isLight ? 'text-slate-400' : 'text-gray-500'
-          }`} />
-          <input
-            type="text"
-            placeholder="Search contacts by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border transition-all ${
+      <div className="mb-6 space-y-3">
+        {/* Row 1: Search and Add Button */}
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+              isLight ? 'text-slate-400' : 'text-gray-500'
+            }`} />
+            <input
+              type="text"
+              placeholder="Search contacts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border transition-all text-sm sm:text-base ${
+                isLight
+                  ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                  : 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+              }`}
+            />
+          </div>
+
+          {/* Add Contact Button - Primary action */}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
               isLight
-                ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                : 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-            }`}
-          />
-        </div>
-
-        {/* View Toggle */}
-        <div className={`flex items-center gap-1 p-1 rounded-lg border ${
-          isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-700'
-        }`}>
-          <button
-            onClick={() => {
-              setViewMode('card');
-              setSelectedLabelId(null);
-              setSelectedStatus(null);
-            }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all ${
-              viewMode === 'card'
-                ? isLight
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-emerald-600 text-white'
-                : isLight
-                ? 'text-slate-600 hover:bg-slate-100'
-                : 'text-gray-400 hover:bg-gray-700'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
             }`}
           >
-            <Grid3x3 className="w-4 h-4" />
-            Cards
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all ${
-              viewMode === 'list'
-                ? isLight
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-emerald-600 text-white'
-                : isLight
-                ? 'text-slate-600 hover:bg-slate-100'
-                : 'text-gray-400 hover:bg-gray-700'
-            }`}
-          >
-            <List className="w-4 h-4" />
-            List
+            <Plus className="w-4 h-4" />
+            <span className="hidden xs:inline">Add</span>
           </button>
         </div>
 
-        {/* Import Button */}
-        <button
-          onClick={() => setShowSyncModal(true)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all border ${
-            isLight
-              ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-              : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          <Download className="w-4 h-4" />
-          Import
-        </button>
+        {/* Row 2: View Toggle and Import Button */}
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className={`flex items-center gap-1 p-1 rounded-lg border ${
+            isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-700'
+          }`}>
+            <button
+              onClick={() => {
+                setViewMode('card');
+                setSelectedTag(null);
+                setSelectedStatus(null);
+              }}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md font-medium transition-all text-xs sm:text-sm ${
+                viewMode === 'card'
+                  ? isLight
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-emerald-600 text-white'
+                  : isLight
+                  ? 'text-slate-600 hover:bg-slate-100'
+                  : 'text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              <Grid3x3 className="w-4 h-4" />
+              <span className="hidden xs:inline">Cards</span>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md font-medium transition-all text-xs sm:text-sm ${
+                viewMode === 'list'
+                  ? isLight
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-emerald-600 text-white'
+                  : isLight
+                  ? 'text-slate-600 hover:bg-slate-100'
+                  : 'text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span className="hidden xs:inline">List</span>
+            </button>
+          </div>
 
-        {/* Add Contact Button */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
-            isLight
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-emerald-600 text-white hover:bg-emerald-700'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          Add Contact
-        </button>
+          {/* Import Button */}
+          <button
+            onClick={() => setShowSyncModal(true)}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all border text-sm sm:text-base ${
+              isLight
+                ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter and Sort Bar - Only in List View */}
+      {/* Unified Toolbar - Only in List View */}
       {viewMode === 'list' && (
-        <div className={`mb-4 flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
-          isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800 border-gray-700'
-        }`}>
-        {/* Filter */}
-        <div className="flex items-center gap-2">
-          <Filter className={`w-4 h-4 ${isLight ? 'text-slate-600' : 'text-gray-400'}`} />
-          <select
-            value={filterBy}
-            onChange={(e) => setFilterBy(e.target.value as any)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              isLight
-                ? 'bg-white border-slate-300 text-slate-900'
-                : 'bg-gray-900 border-gray-600 text-gray-100'
-            }`}
-          >
-            <option value="all">All Contacts</option>
-            <option value="no-email">No Email</option>
-            <option value="no-phone">No Phone</option>
-            <option value="no-address">No Address</option>
-            <option value="buyers">Buyers</option>
-            <option value="sellers">Sellers</option>
-          </select>
-        </div>
-
-        {/* Sort */}
-        <div className="flex items-center gap-2">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              isLight
-                ? 'bg-white border-slate-300 text-slate-900'
-                : 'bg-gray-900 border-gray-600 text-gray-100'
-            }`}
-          >
-            <option value="a-z">A-Z</option>
-            <option value="z-a">Z-A</option>
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-          </select>
-        </div>
-
-        {/* Results Count */}
-        <div className={`ml-auto text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-          Showing {sortedContacts.length} of {pagination.total} contacts
-        </div>
-        </div>
-      )}
-
-      {/* Stats Bar - Only in List View */}
-      {viewMode === 'list' && (
-        <div className={`mb-4 p-4 rounded-lg border ${
-          isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/20 border-blue-500/30'
-        }`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div>
-              <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                Total Contacts:
-              </span>
-              <span className={`ml-2 text-lg font-bold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
-                {pagination.total.toLocaleString()}
-              </span>
-            </div>
-            <div>
-              <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                Showing:
-              </span>
-              <span className={`ml-2 text-lg font-bold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
-                {contacts.length.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-        </div>
-      )}
-
-      {/* Bulk Actions Bar & Filters - Only in List View */}
-      {viewMode === 'list' && (
-        <div className={`mb-4 flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
+        <div className={`mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border ${
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800/50 border-gray-700'
         }`}>
-        {/* Select All Checkbox */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={sortedContacts.length > 0 && selectedContactIds.size === sortedContacts.length}
-            onChange={toggleSelectAll}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-            Select Page {sortedContacts.length > 0 && `(${sortedContacts.length})`}
-          </span>
-        </label>
+          {/* Left: Bulk Actions */}
+          <div className="flex items-center gap-3">
+            {/* Select All Checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sortedContacts.length > 0 && selectedContactIds.size === sortedContacts.length}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
+                Select ({sortedContacts.length})
+              </span>
+            </label>
 
-        {/* Selected Count */}
-        {selectedContactIds.size > 0 && (
-          <span className={`text-sm font-bold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
-            {selectedContactIds.size} selected
-          </span>
-        )}
+            {/* Delete Buttons - Show when items selected */}
+            {selectedContactIds.size > 0 && (
+              <>
+                <button
+                  onClick={bulkDeleteContacts}
+                  disabled={isDeleting}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+                    isLight
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  } disabled:opacity-50`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                  {isDeleting ? 'Deleting...' : `Delete (${selectedContactIds.size})`}
+                </button>
+              </>
+            )}
+          </div>
 
-        {/* Delete Selected Button */}
-        {selectedContactIds.size > 0 && (
-          <button
-            onClick={bulkDeleteContacts}
-            disabled={isDeleting}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              isLight
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-red-600 text-white hover:bg-red-700'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            <Trash2 className="w-4 h-4" />
-            {isDeleting ? 'Deleting...' : `Delete Selected`}
-          </button>
-        )}
+          {/* Center: Stats */}
+          <div className="flex items-center gap-4 px-3 border-l border-r border-slate-300 dark:border-gray-600">
+            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+              <span className="font-semibold">{ sortedContacts.length}</span> of <span className="font-semibold">{pagination.total}</span> contacts
+            </span>
+          </div>
 
-        {/* Delete Current Page Button */}
-        <button
-          onClick={deleteCurrentPage}
-          disabled={isDeleting || sortedContacts.length === 0}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-            isLight
-              ? 'bg-orange-600 text-white hover:bg-orange-700'
-              : 'bg-orange-600 text-white hover:bg-orange-700'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete Page ({sortedContacts.length})
-        </button>
+          {/* Right: Filter & Sort */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Filter by Age */}
+            <select
+              value={contactAgeFilter}
+              onChange={(e) => {
+                setContactAgeFilter(e.target.value);
+                setSelectedContactIds(new Set());
+              }}
+              className={`px-2 py-1 rounded border text-xs ${
+                isLight
+                  ? 'bg-white border-slate-300 text-slate-900'
+                  : 'bg-gray-700 border-gray-600 text-white'
+              }`}
+            >
+              <option value="all">All Ages</option>
+              <option value="recent">Recent (0-30d)</option>
+              <option value="old">Old (31-365d)</option>
+              <option value="ancient">Ancient (1y+)</option>
+            </select>
 
-        {/* Delete ALL Button */}
-        <button
-          onClick={deleteAllContacts}
-          disabled={isDeleting || pagination.total === 0}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-            isLight
-              ? 'bg-red-900 text-white hover:bg-red-950'
-              : 'bg-red-900 text-white hover:bg-red-950'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete ALL ({pagination.total.toLocaleString()})
-        </button>
-
-        {/* Spacer */}
-        <div className="flex-1"></div>
-
-        {/* Contact Age Filter */}
-        <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-            Filter:
-          </span>
-          <select
-            value={contactAgeFilter}
-            onChange={(e) => {
-              setContactAgeFilter(e.target.value);
-              setSelectedContactIds(new Set());  // Clear selection when filter changes
-            }}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              isLight
-                ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                : 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-            }`}
-          >
-            <option value="all">All Contacts</option>
-            <option value="recent">Recent (0-30 days)</option>
-            <option value="old">Old (31-365 days)</option>
-            <option value="ancient">Ancient (1+ year)</option>
-          </select>
-        </div>
-
-        {/* Sort By Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-            Sort:
-          </span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              isLight
-                ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                : 'bg-gray-700 border-gray-600 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-            }`}
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="a-z">A-Z (First Name)</option>
-            <option value="z-a">Z-A (First Name)</option>
-          </select>
-        </div>
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={`px-2 py-1 rounded border text-xs ${
+                isLight
+                  ? 'bg-white border-slate-300 text-slate-900'
+                  : 'bg-gray-700 border-gray-600 text-white'
+              }`}
+            >
+              <option value="status">Priority (Uncontacted First)</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="a-z">A-Z (First Name)</option>
+              <option value="z-a">Z-A (First Name)</option>
+            </select>
+          </div>
         </div>
       )}
 
       {/* Card View - Organized by Sections */}
       {viewMode === 'card' && (
         <div className="space-y-8">
-          {/* All Contacts Section */}
+          {/* Contacts Section */}
           <div>
             <h2 className={`text-2xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              All Contacts
+              Contacts
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus(null);
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -694,7 +603,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   <Users className={`w-8 h-8 ${isLight ? 'text-blue-600' : 'text-emerald-500'}`} />
                 </div>
                 <h3 className={`text-lg font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  All Contacts
+                  Contacts
                 </h3>
                 <p className={`text-3xl font-bold ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
                   {stats.total}
@@ -703,6 +612,36 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   View all contacts
                 </p>
               </button>
+
+              {/* Tag Cards - Inline with Contacts Card */}
+              {tags.map((tag) => (
+                <button
+                  key={tag.name}
+                  onClick={() => {
+                    setViewMode('list');
+                    setSelectedTag(tag.name);
+                    setSelectedStatus(null);
+                  }}
+                  className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                    isLight
+                      ? 'bg-white border-slate-300 hover:border-blue-500'
+                      : 'bg-gray-800 border-gray-700 hover:border-emerald-500'
+                  }`}
+                  style={{
+                    borderColor: selectedTag === tag.name ? tag.color : undefined,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <Tag className="w-8 h-8" style={{ color: tag.color }} />
+                  </div>
+                  <h3 className={`text-lg font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    {tag.name}
+                  </h3>
+                  <p className="text-3xl font-bold" style={{ color: tag.color }}>
+                    {tag.contactCount}
+                  </p>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -716,7 +655,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('uncontacted');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -743,7 +682,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('contacted');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -770,7 +709,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('qualified');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -797,7 +736,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('nurturing');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -824,7 +763,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('client');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -851,7 +790,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <button
                 onClick={() => {
                   setViewMode('list');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus('inactive');
                 }}
                 className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
@@ -875,59 +814,6 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               </button>
             </div>
           </div>
-
-          {/* By Label Section */}
-          {labels.length > 0 && (
-            <div>
-              <h2 className={`text-2xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                By Label
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-
-                {/* Label Cards */}
-                {labels.map((label) => (
-                  <button
-                    key={label._id}
-                    onClick={() => {
-                      setViewMode('list');
-                      setSelectedLabelId(label._id);
-                      setSelectedStatus(null);
-                    }}
-                    className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
-                      isLight
-                        ? 'bg-white border-slate-300 hover:border-blue-500'
-                        : 'bg-gray-800 border-gray-700 hover:border-emerald-500'
-                    }`}
-                    style={{
-                      borderColor: selectedLabelId === label._id ? label.color : undefined,
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <Tag className="w-8 h-8" style={{ color: label.color }} />
-                      {label.isSystem && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'
-                        }`}>
-                          System
-                        </span>
-                      )}
-                    </div>
-                    <h3 className={`text-lg font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                      {label.name}
-                    </h3>
-                    <p className="text-3xl font-bold" style={{ color: label.color }}>
-                      {label.contactCount}
-                    </p>
-                    {label.description && (
-                      <p className={`text-sm mt-2 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                        {label.description}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -935,22 +821,22 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
       {viewMode === 'list' && (
         <>
           {/* Breadcrumb for filtered view */}
-          {(selectedLabelId || selectedStatus) && (
+          {(selectedTag || selectedStatus) && (
             <div className={`mb-4 flex items-center gap-2 text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
               <button
                 onClick={() => {
                   setViewMode('card');
-                  setSelectedLabelId(null);
+                  setSelectedTag(null);
                   setSelectedStatus(null);
                 }}
                 className={`hover:underline ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}
               >
-                {selectedStatus ? 'All Status' : 'All Labels'}
+                {selectedStatus ? 'All Status' : 'All Tags'}
               </button>
               <span>/</span>
               <span className="font-medium">
-                {selectedLabelId
-                  ? labels.find(l => l._id === selectedLabelId)?.name || 'Unknown Label'
+                {selectedTag
+                  ? selectedTag
                   : selectedStatus ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1) : ''
                 }
               </span>
@@ -998,22 +884,22 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                     setPanelContact(contact);
                     setIsPanelOpen(true);
                   }}
-                  className="p-4 cursor-pointer flex items-center justify-between"
+                  className="p-3 sm:p-4 cursor-pointer"
                 >
-                  <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-start gap-3">
                     {/* Checkbox - Stop propagation so it doesn't trigger expand */}
                     <input
                       type="checkbox"
                       checked={selectedContactIds.has(contact._id)}
                       onChange={() => toggleContactSelection(contact._id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="w-5 h-5 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
 
                     {/* Name and Quick Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className={`text-base font-semibold ${
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className={`text-sm sm:text-base font-semibold ${
                           isLight ? 'text-slate-900' : 'text-white'
                         }`}>
                           {contact.firstName} {contact.lastName}
@@ -1038,8 +924,8 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                           </span>
                         )}
 
-                        {/* Age Badge */}
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        {/* Age Badge - Hidden on very small screens */}
+                        <span className={`hidden xs:inline-block px-2 py-0.5 text-xs font-medium rounded-full ${
                           ageCategory === 'recent'
                             ? isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-900/30 text-emerald-400'
                             : ageCategory === 'old'
@@ -1051,45 +937,45 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                       </div>
 
                       {/* Quick Contact Info */}
-                      <div className={`flex items-center gap-4 mt-1 text-sm ${
+                      <div className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm ${
                         isLight ? 'text-slate-600' : 'text-gray-400'
                       }`}>
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          {contact.phone}
+                          <span className="truncate">{contact.phone}</span>
                         </span>
                         {contact.email && (
                           <span className="flex items-center gap-1">
                             <Mail className="w-3 h-3" />
-                            {contact.email}
+                            <span className="truncate">{contact.email}</span>
                           </span>
                         )}
                       </div>
+
+                      {/* Tags Preview - Hidden on mobile, shown on tablet+ */}
+                      {contact.tags && contact.tags.length > 0 && (
+                        <div className="hidden md:flex items-center gap-1 flex-wrap mt-2">
+                          {contact.tags.slice(0, 3).map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className={`px-2 py-0.5 text-xs rounded-full ${
+                                isLight ? 'bg-slate-100 text-slate-600' : 'bg-gray-700 text-gray-300'
+                              }`}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {contact.tags.length > 3 && (
+                            <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+                              +{contact.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Tags Preview */}
-                    {contact.tags && contact.tags.length > 0 && (
-                      <div className="flex items-center gap-1 flex-wrap max-w-xs">
-                        {contact.tags.slice(0, 3).map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className={`px-2 py-0.5 text-xs rounded-full ${
-                              isLight ? 'bg-slate-100 text-slate-600' : 'bg-gray-700 text-gray-300'
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {contact.tags.length > 3 && (
-                          <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                            +{contact.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
                     {/* Quick Actions */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex sm:items-center gap-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1100,7 +986,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                         }`}
                         title="Send Message"
                       >
-                        <MessageSquare className="w-4 h-4" />
+                        <MessageSquare className="w-5 h-5 sm:w-4 sm:h-4" />
                       </button>
                       <button
                         onClick={(e) => {
@@ -1108,7 +994,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                           setSelectedContact(contact);
                           setShowAddModal(true);
                         }}
-                        className={`p-2 rounded-lg transition-all ${
+                        className={`hidden sm:block p-2 rounded-lg transition-all ${
                           isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-gray-400 hover:bg-gray-700'
                         }`}
                         title="Edit Contact"

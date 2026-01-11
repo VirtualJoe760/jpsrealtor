@@ -1,0 +1,46 @@
+
+> jpsrealtor@0.1.0 build
+> next build
+
+ ⚠ `skipMiddlewareUrlNormalize` is deprecated. Please use `skipProxyUrlNormalize` instead in next.config.mjs.
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 16.0.7 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ? turbo (invalid experimental key)
+
+   Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./src/app/api/crm/contacts/analyze/route.ts:21:14
+Next.js can't recognize the exported `config` field in route. Page config in `config` is deprecated and ignored, use individual exports instead.
+[0m [90m 19 |[39m
+ [90m 20 |[39m [90m// Disable body parsing to handle file uploads[39m
+[31m[1m>[22m[39m[90m 21 |[39m [36mexport[39m [36mconst[39m config [33m=[39m {
+ [90m    |[39m              [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 22 |[39m   api[33m:[39m {
+ [90m 23 |[39m     bodyParser[33m:[39m [36mfalse[39m[33m,[39m
+ [90m 24 |[39m   }[33m,[39m[0m
+
+The exported configuration object in a source file needs to have a very specific format from which some properties can be statically parsed at compiled-time.
+
+https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config
+
+
+ ✓ Compiled successfully in 19.9s
+   Running TypeScript ...
+Failed to compile.
+
+./src/app/api/campaigns/[id]/route.ts:61:27
+Type error: This expression is not callable.
+  Each member of the union type '{ (filter?: RootFilterQuery<any>, options?: DeleteOptions & Pick<QueryOptions<any>, MongooseBaseQueryOptionKeys> & { ...; }): Query<...>; (filter: RootFilterQuery<...>): Query<...>; } | { ...; }' has signatures, but none of those signatures are compatible with each other.
+
+[0m [90m 59 |[39m     [90m// Delete all associated data[39m
+ [90m 60 |[39m     [90m// 1. Delete ContactCampaign junction records[39m
+[31m[1m>[22m[39m[90m 61 |[39m     [36mawait[39m [33mContactCampaign[39m[33m.[39mdeleteMany({ campaignId[33m:[39m campaign[33m.[39m_id })[33m;[39m
+ [90m    |[39m                           [31m[1m^[22m[39m
+ [90m 62 |[39m
+ [90m 63 |[39m     [90m// 2. Delete VoicemailScript records[39m
+ [90m 64 |[39m     [36mawait[39m [33mVoicemailScript[39m[33m.[39mdeleteMany({ campaignId[33m:[39m campaign[33m.[39m_id })[33m;[39m[0m
+Next.js build worker exited with code: 1 and signal: null

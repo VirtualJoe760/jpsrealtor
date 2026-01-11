@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Label from '@/models/Label';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import Campaign from '@/models/Campaign';
 import dbConnect from '@/lib/db';
 import { Types } from 'mongoose';
@@ -44,7 +44,6 @@ export async function POST(
     }
 
     // Find label and verify ownership
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const label = await Label.findOne({
       _id: params.id,
       userId: session.user.id,
@@ -55,7 +54,6 @@ export async function POST(
     }
 
     // Get all contacts with this label
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const contacts = await Contact.find({
       userId: session.user.id,
       labels: params.id,
@@ -111,7 +109,7 @@ export async function POST(
       campaign: {
         _id: campaign._id,
         name: campaign.name,
-        contactCount: campaign.contactCount,
+        contactCount: contacts.length,
         status: campaign.status,
       },
       message: `Campaign created with ${contacts.length} contacts from "${label.name}"`,

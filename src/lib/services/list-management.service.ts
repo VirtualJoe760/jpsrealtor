@@ -34,7 +34,6 @@ export interface UserList {
 export async function getUserLists(userId?: string): Promise<UserList[]> {
   await connectDB();
 
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   const lists = await Label.find({ isArchived: false })
     .select('_id name contactCount createdAt')
     .sort({ name: 1 })
@@ -59,13 +58,11 @@ export async function createList(name: string, userId?: string): Promise<string>
   await connectDB();
 
   // Check if list with this name already exists
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   const existing = await Label.findOne({ name, isArchived: false });
   if (existing) {
     return existing._id.toString();
   }
 
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   const list = await Label.create({
     name,
     contactCount: 0,
@@ -86,7 +83,6 @@ export async function createList(name: string, userId?: string): Promise<string>
 export async function findListByName(name: string): Promise<string | null> {
   await connectDB();
 
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   const list = await Label.findOne({ name, isArchived: false }).select('_id');
   return list ? list._id.toString() : null;
 }
@@ -100,7 +96,6 @@ export async function findListByName(name: string): Promise<string | null> {
 export async function getListById(listId: string): Promise<UserList | null> {
   await connectDB();
 
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   const list = await Label.findById(listId)
     .select('_id name contactCount createdAt')
     .lean();
@@ -124,7 +119,6 @@ export async function getListById(listId: string): Promise<UserList | null> {
 export async function updateListCount(listId: string, increment: number): Promise<void> {
   await connectDB();
 
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   await Label.findByIdAndUpdate(listId, {
     $inc: { contactCount: increment },
   });

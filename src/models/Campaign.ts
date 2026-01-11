@@ -349,4 +349,5 @@ CampaignSchema.methods.updateStats = async function () {
   await this.save();
 };
 
-export default models.Campaign || model<ICampaign>('Campaign', CampaignSchema);
+export default (models.Campaign ||
+  model<ICampaign>('Campaign', CampaignSchema)) as mongoose.Model<ICampaign>;

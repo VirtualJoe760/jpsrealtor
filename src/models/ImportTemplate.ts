@@ -147,5 +147,5 @@ ImportTemplateSchema.statics.getMostUsed = function (
     .limit(limit);
 };
 
-export default models.ImportTemplate ||
-  model<IImportTemplate>('ImportTemplate', ImportTemplateSchema);
+export default (models.ImportTemplate ||
+  model<IImportTemplate>('ImportTemplate', ImportTemplateSchema)) as mongoose.Model<IImportTemplate>;

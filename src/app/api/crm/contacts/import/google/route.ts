@@ -9,7 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { google } from 'googleapis';
 import connectDB from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 // ============================================================================
 // GET /api/crm/contacts/import/google
@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
         const primaryAddress = addresses?.find((a) => a.metadata?.primary) || addresses?.[0];
 
         // Check if contact already exists FOR THIS USER
-        // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
         const existingContact = await Contact.findOne({
           userId: session.user.id,
           phone
@@ -131,7 +130,6 @@ export async function GET(request: NextRequest) {
         }
 
         // Create contact with userId
-        // @ts-expect-error Mongoose typing issue with overloaded create() signatures
         const contact = await Contact.create({
           userId: session.user.id,
           firstName: name.givenName || 'Unknown',

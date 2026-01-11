@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Label from '@/models/Label';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import dbConnect from '@/lib/db';
 
 /**
@@ -29,7 +29,6 @@ export async function GET(
 
     await dbConnect();
 
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const label = await Label.findOne({
       _id: params.id,
       userId: session.user.id,
@@ -72,7 +71,6 @@ export async function PATCH(
     const { name, description, color, icon, isArchived } = body;
 
     // Find label and check ownership
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const label = await Label.findOne({
       _id: params.id,
       userId: session.user.id,
@@ -92,7 +90,6 @@ export async function PATCH(
 
     // Check for duplicate name if renaming
     if (name && name.trim() !== label.name) {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingLabel = await Label.findOne({
         userId: session.user.id,
         name: name.trim(),
@@ -147,7 +144,6 @@ export async function DELETE(
     await dbConnect();
 
     // Find label and check ownership
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const label = await Label.findOne({
       _id: params.id,
       userId: session.user.id,

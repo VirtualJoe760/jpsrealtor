@@ -29,7 +29,6 @@ export async function GET(
     const { batchId } = await params;
 
     // Find the import batch
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const batch = await ImportBatch.findOne({
       _id: batchId,
       userId: session.user.id,

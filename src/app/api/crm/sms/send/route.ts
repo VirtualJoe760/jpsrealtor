@@ -9,8 +9,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // POST /api/crm/sms/send
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { to, body: messageBody, contactId } = body;
+    let { to, body: messageBody, contactId } = body;
 
     // Validate required fields
     if (!to || !messageBody) {
@@ -50,6 +51,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If no contactId provided, try to find contact by phone number
+    if (!contactId) {
+      console.log('[SMS API] No contactId provided, looking up by phone:', formattedPhone);
+      const contact = await Contact.findOne({
+        userId: session.user.id,
+        phone: formattedPhone,
+      });
+      if (contact) {
+        contactId = contact._id.toString();
+        console.log('[SMS API] Found matching contact:', contactId);
+      } else {
+        console.log('[SMS API] No matching contact found for phone:', formattedPhone);
+      }
+    }
+
     // Send SMS via Twilio
     const twilioResult = await sendSMS({
       to: formattedPhone,
@@ -63,10 +79,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert session.user.id (string) to ObjectId for message creation
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Save to database with userId
-    // @ts-expect-error Mongoose typing issue with overloaded create() signatures
-    const smsMessage = await SMSMessage.create({
-      userId: session.user.id,
+    const messageData = {
+      userId: userObjectId,
       twilioMessageSid: twilioResult.messageSid,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: formattedPhone,
@@ -76,18 +94,32 @@ export async function POST(request: NextRequest) {
       contactId,
       sentBy: session.user.id,
       twilioCreatedAt: new Date(),
+    };
+
+    console.log(`[SMS API] Saving message to DB with data:`, messageData);
+
+    const smsMessage = await SMSMessage.create(messageData);
+
+    console.log(`[SMS API] Saved message to DB:`, {
+      _id: smsMessage._id,
+      userId: smsMessage.userId,
+      contactId: smsMessage.contactId,
+      to: smsMessage.to,
+      from: smsMessage.from,
     });
 
     // Update contact's last contact date (verify it belongs to this user)
     if (contactId) {
-      // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
-      await Contact.findOneAndUpdate(
+      console.log(`[SMS API] Updating contact ${contactId} last contact date`);
+      const updatedContact = await Contact.findOneAndUpdate(
         { _id: contactId, userId: session.user.id },
         {
           lastContactDate: new Date(),
           lastContactMethod: 'sms',
-        }
+        },
+        { new: true }
       );
+      console.log(`[SMS API] Contact update result:`, updatedContact ? 'Success' : 'Not found');
     }
 
     console.log(`[SMS API] Sent SMS: ${twilioResult.messageSid}`);

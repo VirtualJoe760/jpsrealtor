@@ -16,6 +16,5 @@ const VirtualTourSchema: Schema<IVirtualTour> = new Schema({
   type: String,
 });
 
-const VirtualTour: Model<IVirtualTour> = mongoose.models.VirtualTour || mongoose.model<IVirtualTour>('VirtualTour', VirtualTourSchema);
-
-export default VirtualTour;
+export default (mongoose.models.VirtualTour ||
+  mongoose.model<IVirtualTour>('VirtualTour', VirtualTourSchema)) as Model<IVirtualTour>;

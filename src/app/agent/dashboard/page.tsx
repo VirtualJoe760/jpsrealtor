@@ -235,17 +235,17 @@ export default function AgentDashboard() {
   ];
 
   return (
-    <div className={`min-h-screen ${isLight ? "bg-gray-50" : "bg-black"}`}>
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Agent Navigation */}
         <AgentNav />
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className={`text-3xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+          <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
             Agent Dashboard
           </h1>
-          <p className={`${isLight ? "text-gray-600" : "text-gray-400"}`}>
+          <p className={`text-sm sm:text-base ${isLight ? "text-gray-600" : "text-gray-400"}`}>
             Welcome back, {user?.name || user?.email}
           </p>
           {user?.isTeamLeader && (
@@ -258,20 +258,20 @@ export default function AgentDashboard() {
         {/* Agent Profile Card */}
         {!isLoadingProfile && (
           <div
-            className={`rounded-xl p-6 mb-8 shadow-lg ${
+            className={`rounded-xl p-4 sm:p-6 mb-8 shadow-lg ${
               isLight
                 ? "bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100"
                 : "bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700"
             }`}
           >
-            <div className="flex items-start justify-between mb-6">
-              <h2 className={`text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+              <h2 className={`text-xl sm:text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
                 Agent Profile
               </h2>
               {!isEditMode ? (
                 <button
                   onClick={() => setIsEditMode(true)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
                     isLight
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
@@ -281,10 +281,10 @@ export default function AgentDashboard() {
                   Edit Profile
                 </button>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <button
                     onClick={handleCancelEdit}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
                       isLight
                         ? "bg-gray-200 hover:bg-gray-300 text-gray-900"
                         : "bg-slate-700 hover:bg-slate-600 text-white"
@@ -295,7 +295,7 @@ export default function AgentDashboard() {
                   <button
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 ${
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 text-sm sm:text-base ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700 text-white"
                         : "bg-blue-600 hover:bg-blue-700 text-white"
@@ -594,11 +594,11 @@ export default function AgentDashboard() {
 
         {/* Quick Actions */}
         <div
-          className={`rounded-lg p-6 ${
+          className={`rounded-lg p-4 sm:p-6 ${
             isLight ? "bg-white shadow-sm border border-gray-200" : "bg-neutral-900 border border-neutral-800"
           }`}
         >
-          <h2 className={`text-xl font-bold mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
+          <h2 className={`text-lg sm:text-xl font-bold mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

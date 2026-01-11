@@ -209,5 +209,5 @@ ContactCampaignSchema.statics.getContactCampaigns = async function (
     .sort({ addedAt: -1 });
 };
 
-export default models.ContactCampaign ||
-  model<IContactCampaign>('ContactCampaign', ContactCampaignSchema);
+export default (models.ContactCampaign ||
+  model<IContactCampaign>('ContactCampaign', ContactCampaignSchema)) as mongoose.Model<IContactCampaign>;

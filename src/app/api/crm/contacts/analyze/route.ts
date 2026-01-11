@@ -16,6 +16,7 @@ import { authOptions } from '@/lib/auth';
 import { ContactAnalysisService } from '@/lib/services/contact-analysis.service';
 import formidable from 'formidable';
 import fs from 'fs';
+import { Types } from 'mongoose';
 
 // Disable body parsing to handle file uploads
 export const config = {
@@ -69,8 +70,7 @@ export async function POST(req: NextRequest) {
 
     // Optionally save to ImportBatch for tracking
     const importBatch = await ContactAnalysisService.saveAnalysisToImportBatch(
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
-      session.user.id,
+      new Types.ObjectId(session.user.id),
       file.name,
       file.size,
       analysis
@@ -124,7 +124,6 @@ export async function GET(req: NextRequest) {
 
     // Fetch the import batch
     const ImportBatch = (await import('@/models/ImportBatch')).default;
-    // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
     const batch = await ImportBatch.findOne({
       _id: batchId,
       userId: session.user.id,  // Ensure user owns this batch

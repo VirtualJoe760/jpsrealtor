@@ -127,4 +127,5 @@ EmailMetadataSchema.index({ userId: 1, contactId: 1 });
 // Unique constraint: one metadata entry per email per user
 EmailMetadataSchema.index({ userId: 1, resendEmailId: 1 }, { unique: true });
 
-export default mongoose.models.EmailMetadata || mongoose.model<IEmailMetadata>('EmailMetadata', EmailMetadataSchema);
+export default (mongoose.models.EmailMetadata ||
+  mongoose.model<IEmailMetadata>('EmailMetadata', EmailMetadataSchema)) as mongoose.Model<IEmailMetadata>;

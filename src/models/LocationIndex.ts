@@ -45,5 +45,5 @@ locationIndexSchema.index({ type: 1, normalizedName: 1 });
 locationIndexSchema.index({ type: 1, listingCount: -1 });
 locationIndexSchema.index({ normalizedName: 1, type: 1 });
 
-export default mongoose.models.LocationIndex ||
-  mongoose.model('LocationIndex', locationIndexSchema);
+export default (mongoose.models.LocationIndex ||
+  mongoose.model('LocationIndex', locationIndexSchema)) as mongoose.Model<any>;

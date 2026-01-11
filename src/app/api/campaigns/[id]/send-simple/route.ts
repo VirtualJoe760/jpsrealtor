@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import Campaign from '@/models/Campaign';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import ContactCampaign from '@/models/ContactCampaign';
 import User from '@/models/User';
 import CampaignExecution from '@/models/CampaignExecution';

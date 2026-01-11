@@ -18,6 +18,5 @@ const VideoSchema: Schema<IVideo> = new Schema({
   objectHtml: String,
 });
 
-const Video: Model<IVideo> = mongoose.models.Video || mongoose.model<IVideo>('Video', VideoSchema);
-
-export default Video;
+export default (mongoose.models.Video ||
+  mongoose.model<IVideo>('Video', VideoSchema)) as Model<IVideo>;

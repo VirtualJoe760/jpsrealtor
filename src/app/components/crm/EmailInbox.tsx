@@ -553,53 +553,53 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <h2 className={`text-2xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <h2 className={`text-xl sm:text-2xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
             Email
           </h2>
-          <span className={`text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+          <span className={`text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
             {filteredAndSortedEmails.length} {filteredAndSortedEmails.length === 1 ? 'email' : 'emails'}
             {selectedEmails.size > 0 && (
-              <span className={`ml-2 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
+              <span className={`ml-1 sm:ml-2 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
                 ({selectedEmails.size} selected)
               </span>
             )}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleNewCompose}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
               isLight
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-emerald-600 text-white hover:bg-emerald-700'
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span className="text-sm">Compose</span>
+            <span className="hidden xs:inline">Compose</span>
           </button>
           <button
             onClick={fetchEmails}
             disabled={loading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base ${
               isLight
                 ? 'text-slate-700 hover:bg-slate-100'
                 : 'text-gray-300 hover:bg-gray-700'
             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="text-sm">Refresh</span>
+            <span className="hidden xs:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Search, Filter, Sort Bar */}
-      <div className={`flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
+      <div className={`flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border ${
         isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800 border-gray-700'
       }`}>
         {/* Search */}
-        <div className="flex-1 min-w-[200px]">
+        <div className="w-full sm:flex-1 sm:min-w-[200px]">
           <div className="relative">
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
               isLight ? 'text-slate-400' : 'text-gray-500'
@@ -609,7 +609,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search emails..."
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border transition-all ${
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border transition-all text-sm sm:text-base ${
                 isLight
                   ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
                   : 'bg-gray-900 border-gray-600 text-gray-100 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
@@ -633,7 +633,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
+            className={`px-2 sm:px-3 py-2 rounded-lg border text-xs sm:text-sm ${
               isLight
                 ? 'bg-white border-slate-300 text-slate-900'
                 : 'bg-gray-900 border-gray-600 text-gray-100'
@@ -660,7 +660,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
         <select
           value={filterBy}
           onChange={(e) => setFilterBy(e.target.value as any)}
-          className={`px-3 py-2 rounded-lg border text-sm ${
+          className={`px-2 sm:px-3 py-2 rounded-lg border text-xs sm:text-sm ${
             isLight
               ? 'bg-white border-slate-300 text-slate-900'
               : 'bg-gray-900 border-gray-600 text-gray-100'
@@ -672,8 +672,8 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           <option value="attachments">Has Attachments</option>
         </select>
 
-        {/* Tag Filters */}
-        <div className="flex items-center gap-2">
+        {/* Tag Filters - Hide on very small screens */}
+        <div className="hidden sm:flex items-center gap-2">
           <Filter className={`w-4 h-4 ${isLight ? 'text-slate-600' : 'text-gray-400'}`} />
           <div className="flex flex-wrap gap-1">
             {availableTags.slice(0, 4).map((tag) => {

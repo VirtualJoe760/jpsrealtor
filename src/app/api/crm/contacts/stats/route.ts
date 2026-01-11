@@ -8,7 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
+import mongoose from 'mongoose';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,12 +23,18 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
+    console.log('[Stats API] Fetching stats for userId:', session.user.id);
+
+    // Convert userId to ObjectId for proper matching
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Get total contacts
-    const total = await Contact.countDocuments({ userId: session.user.id });
+    const total = await Contact.countDocuments({ userId: userObjectId });
+    console.log('[Stats API] Total contacts:', total);
 
     // Get counts by status
     const statusCounts = await Contact.aggregate([
-      { $match: { userId: session.user.id } },
+      { $match: { userId: userObjectId } },
       {
         $group: {
           _id: '$status',
@@ -35,6 +42,7 @@ export async function GET(request: NextRequest) {
         },
       },
     ]);
+    console.log('[Stats API] Status counts from aggregation:', statusCounts);
 
     // Format status counts as an object
     const statuses: Record<string, number> = {};
@@ -50,6 +58,8 @@ export async function GET(request: NextRequest) {
         statuses[status] = 0;
       }
     });
+
+    console.log('[Stats API] Final formatted statuses:', statuses);
 
     return NextResponse.json({
       success: true,

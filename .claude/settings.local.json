@@ -15,7 +15,18 @@
       "Bash(npx tsx:*)",
       "Bash(npm install:*)",
       "Bash(node -e:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(find:*)",
+      "WebSearch",
+      "Bash(xargs sed -i \"s|from ''''@/models/contact''''|from ''''@/models/Contact''''|g\")",
+      "Bash(for:*)",
+      "Bash(do sed -i \"s|from ''@/models/contact''|from ''@/models/Contact''|g\" \"$file\")",
+      "Bash(tee:*)",
+      "Bash(node test-twilio-history.js:*)",
+      "Bash(node test-db-messages.js:*)",
+      "Bash(node test-contacts.js:*)",
+      "Bash(node add-test-contacts.js:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

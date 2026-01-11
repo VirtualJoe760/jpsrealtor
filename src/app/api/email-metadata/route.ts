@@ -9,7 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/db';
 import EmailMetadata from '@/models/email-metadata';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 // GET: Fetch metadata for emails
 export async function GET(req: NextRequest) {
@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch metadata for all requested emails
-    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const metadata = await EmailMetadata.find({
       userId: session.user.id,
       resendEmailId: { $in: emailIds },
@@ -84,7 +83,6 @@ export async function POST(req: NextRequest) {
     let cachedSenderPhoto = null;
 
     if (senderEmail) {
-      // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
       const contact = await Contact.findOne({
         userId: session.user.id,
         $or: [
@@ -132,7 +130,6 @@ export async function POST(req: NextRequest) {
       update.cachedSenderPhoto = cachedSenderPhoto;
     }
 
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
     const metadata = await EmailMetadata.findOneAndUpdate(
       {
         userId: session.user.id,

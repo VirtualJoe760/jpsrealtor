@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 export async function GET(request: NextRequest) {
   try {

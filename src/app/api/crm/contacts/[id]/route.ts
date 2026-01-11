@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 export async function PATCH(
   request: NextRequest,
@@ -46,7 +46,6 @@ export async function PATCH(
     }
 
     // Update contact
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
     const contact = await Contact.findOneAndUpdate(
       {
         _id: id,

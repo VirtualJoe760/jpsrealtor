@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/db';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Search by name or email
-    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const contacts = await Contact.find({
       userId: session.user.id,
       $or: [

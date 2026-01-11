@@ -233,25 +233,25 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className="min-h-screen py-8" data-page="campaigns">
+    <div className="min-h-screen py-4 sm:py-8" data-page="campaigns">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Agent Navigation */}
         <AgentNav />
 
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
-              <h1 className={`text-3xl font-bold ${textPrimary}`}>
+              <h1 className={`text-2xl sm:text-3xl font-bold ${textPrimary}`}>
                 Campaigns
               </h1>
-              <p className={`${textSecondary} mt-1`}>
+              <p className={`${textSecondary} mt-1 text-sm sm:text-base`}>
                 Manage your marketing campaigns across all channels
               </p>
             </div>
             <button
               onClick={() => router.push('/agent/campaigns/new')}
-              className={`flex items-center gap-2 px-4 py-2.5 ${buttonPrimary} rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 ${buttonPrimary} rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base self-start sm:self-auto`}
             >
               <PlusIcon className="w-5 h-5" />
               New Campaign
@@ -273,14 +273,14 @@ export default function CampaignsPage() {
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
               {/* Status Filter Tabs */}
-              <div className={`flex items-center gap-1 ${cardBg} ${cardBorder} rounded-lg p-1`}>
+              <div className={`flex items-center gap-1 ${cardBg} ${cardBorder} rounded-lg p-1 flex-shrink-0`}>
                 {(['all', 'active', 'paused', 'completed'] as FilterStatus[]).map((status) => (
                   <button
                     key={status}
                     onClick={() => setFilterStatus(status)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                       filterStatus === status
                         ? `${isLight ? 'bg-blue-600' : 'bg-emerald-600'} text-white shadow-sm`
                         : `${textSecondary} ${isLight ? 'hover:bg-blue-50' : 'hover:bg-emerald-900/20'}`

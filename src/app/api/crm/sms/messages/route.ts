@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // GET /api/crm/sms/messages
@@ -37,8 +38,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const skip = parseInt(searchParams.get('skip') || '0');
 
+    // Convert session.user.id (string) to ObjectId for querying
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Build query - ALWAYS filter by userId
-    const query: any = { userId: session.user.id };
+    const query: any = { userId: userObjectId };
 
     if (contactId) {
       query.contactId = contactId;
@@ -55,16 +59,32 @@ export async function GET(request: NextRequest) {
       query.direction = direction;
     }
 
+    console.log('[SMS Messages API] Query:', JSON.stringify(query));
+    console.log('[SMS Messages API] User ID:', session.user.id);
+    console.log('[SMS Messages API] Contact ID filter:', contactId);
+
     // Fetch messages
-    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const messages = await SMSMessage.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(skip)
       .lean();
 
+    console.log('[SMS Messages API] Found messages:', messages.length);
+    if (messages.length > 0) {
+      console.log('[SMS Messages API] Sample message:', {
+        _id: messages[0]._id,
+        userId: messages[0].userId,
+        contactId: messages[0].contactId,
+        direction: messages[0].direction,
+        to: messages[0].to,
+        from: messages[0].from,
+      });
+    }
+
     // Get total count
     const total = await SMSMessage.countDocuments(query);
+    console.log('[SMS Messages API] Total count:', total);
 
     return NextResponse.json({
       success: true,

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 // ============================================================================
 // GET /api/crm/contacts
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Query parameters
     const search = searchParams.get('search');
     const status = searchParams.get('status');
-    const labelId = searchParams.get('labelId');
+    const tag = searchParams.get('tag');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
 
@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
       query.status = status;
     }
 
-    if (labelId) {
-      // Filter by label ID
-      query.labels = labelId;
+    if (tag) {
+      // Filter by tag
+      query.tags = tag;
     }
 
     if (search) {
@@ -60,7 +60,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch contacts
-    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const contacts = await Contact.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if contact with same phone already exists FOR THIS USER
-    // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
     const existing = await Contact.findOne({
       userId: session.user.id,
       phone: body.phone
@@ -131,7 +129,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create contact with userId
-    // @ts-expect-error Mongoose typing issue with overloaded create() signatures
     const contact = await Contact.create({
       ...body,
       userId: session.user.id,
@@ -182,7 +179,6 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update contact - ONLY if it belongs to this user
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
     const contact = await Contact.findOneAndUpdate(
       { _id, userId: session.user.id },
       { $set: updates },
@@ -237,7 +233,6 @@ export async function DELETE(request: NextRequest) {
 
     // Bulk delete ALL contacts for this user
     if (deleteAll === 'true') {
-      // @ts-expect-error Mongoose typing issue with overloaded deleteMany() signatures
       const result = await Contact.deleteMany({ userId: session.user.id });
       console.log(`[Contacts API] Deleted ALL contacts: ${result.deletedCount} contacts`);
 
@@ -259,7 +254,6 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      // @ts-expect-error Mongoose typing issue with overloaded deleteMany() signatures
       const result = await Contact.deleteMany({
         _id: { $in: idArray },
         userId: session.user.id
@@ -283,7 +277,6 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete contact - ONLY if it belongs to this user
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndDelete() signatures
     const contact = await Contact.findOneAndDelete({
       _id: id,
       userId: session.user.id

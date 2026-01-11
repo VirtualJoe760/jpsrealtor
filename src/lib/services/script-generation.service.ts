@@ -8,7 +8,7 @@
 import { Types } from 'mongoose';
 import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
-import Contact, { IContact } from '@/models/contact';
+import Contact, { IContact } from '@/models/Contact';
 import Campaign, { ICampaign } from '@/models/Campaign';
 import VoicemailScript from '@/models/VoicemailScript';
 import ContactCampaign from '@/models/ContactCampaign';
@@ -55,9 +55,7 @@ export class ScriptGenerationService {
   ): Promise<ScriptGenerationResult> {
     try {
       // Fetch contact and campaign
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const contact = await Contact.findOne({ _id: contactId, userId });
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const campaign = await Campaign.findOne({ _id: campaignId, userId });
 
       if (!contact || !campaign) {
@@ -68,7 +66,6 @@ export class ScriptGenerationService {
       }
 
       // Check if script already exists
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingScript = await VoicemailScript.findOne({
         contactId,
         campaignId,
@@ -114,7 +111,6 @@ export class ScriptGenerationService {
           script: scriptText,
         };
       } else {
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const newScript = await VoicemailScript.create({
           contactId,
           campaignId,
@@ -166,7 +162,6 @@ export class ScriptGenerationService {
   }> {
     try {
       // Verify campaign ownership
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const campaign = await Campaign.findOne({ _id: campaignId, userId });
       if (!campaign) {
         return {
@@ -179,7 +174,6 @@ export class ScriptGenerationService {
       // Delete all existing scripts for this campaign before regenerating
       // This ensures users get fresh scripts when regenerating
       console.log(`[ScriptGenerationService] Deleting existing scripts for campaign: ${campaignId}`);
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const deleteResult = await VoicemailScript.deleteMany({
         campaignId,
         userId,
@@ -191,7 +185,6 @@ export class ScriptGenerationService {
       await campaign.save();
 
       // Get all contacts for this campaign
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const contactCampaigns = await ContactCampaign.find({
         campaignId,
         userId,
@@ -225,7 +218,6 @@ export class ScriptGenerationService {
         console.log('[generateScriptsForCampaign] Raw AI output (first 200 chars):', rawScriptText.substring(0, 200));
 
         // Create one VoicemailScript that applies to all contacts
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const generalScript = await VoicemailScript.create({
           campaignId,
           userId,
@@ -263,7 +255,6 @@ export class ScriptGenerationService {
       // Handle PERSONALIZED script generation (one per contact)
       // Create GenerationSession BEFORE starting background processing
       // This ensures the progress tracker can immediately start polling
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const session = await GenerationSession.create({
         campaignId,
         userId,
@@ -390,7 +381,6 @@ export class ScriptGenerationService {
     } catch (error: any) {
       console.error('[ScriptGenerationService] processBatchGeneration error:', error);
       // Mark session as failed if it exists
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const session = await GenerationSession.findOne({
         campaignId,
         type: 'script_generation',
@@ -414,7 +404,6 @@ export class ScriptGenerationService {
     model?: AIModel
   ): Promise<ScriptGenerationResult> {
     try {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const script = await VoicemailScript.findOne({ _id: scriptId, userId });
       if (!script) {
         return {
@@ -444,7 +433,6 @@ export class ScriptGenerationService {
   static async getBatchProgress(
     campaignId: Types.ObjectId
   ): Promise<BatchGenerationProgress> {
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const campaign = await Campaign.findById(campaignId);
     const totalContacts = campaign?.stats.totalContacts || 0;
     const scriptsGenerated = campaign?.stats.scriptsGenerated || 0;

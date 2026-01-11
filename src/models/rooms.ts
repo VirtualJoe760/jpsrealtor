@@ -12,6 +12,5 @@ const RoomSchema: Schema<IRoom> = new Schema({
   fields: Schema.Types.Mixed, // flexible to store array or object
 });
 
-const Room: Model<IRoom> = mongoose.models.Room || mongoose.model<IRoom>('Room', RoomSchema);
-
-export default Room;
+export default (mongoose.models.Room ||
+  mongoose.model<IRoom>('Room', RoomSchema)) as Model<IRoom>;

@@ -29,6 +29,5 @@ const PhotoSchema: Schema<IPhoto> = new Schema({
 PhotoSchema.index({ listingKey: 1, order: 1 });
 
 // ✅ Avoid model recompilation in development
-const Photo: Model<IPhoto> = mongoose.models.Photo || mongoose.model<IPhoto>('Photo', PhotoSchema);
-
-export default Photo;
+export default (mongoose.models.Photo ||
+  mongoose.model<IPhoto>('Photo', PhotoSchema)) as Model<IPhoto>;

@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import Campaign from '@/models/Campaign';
 import VoicemailScript from '@/models/VoicemailScript';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import ContactCampaign from '@/models/ContactCampaign';
 import User from '@/models/User';
 import CampaignExecution from '@/models/CampaignExecution';

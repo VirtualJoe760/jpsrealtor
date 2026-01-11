@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Edit, Trash2, MessageSquare, Mail, Phone, MapPin, Briefcase, Calendar, Tag, Home, Plus, ChevronDown, ChevronUp, Pencil, Save, X } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, Mail, Phone, MapPin, Briefcase, Calendar, Tag, Home, Plus, ChevronDown, ChevronUp, Pencil, Save, X, Upload, User, Camera } from 'lucide-react';
 import Map, { Marker } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import ContactPropertyCarousel from './ContactPropertyCarousel';
 
 // MapTiler API Key for map styling
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
@@ -117,6 +118,11 @@ export default function ContactViewPanel({
   const [currentStatus, setCurrentStatus] = useState(contact.status || 'uncontacted');
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Photo state
+  const [currentPhoto, setCurrentPhoto] = useState(contact.photo || '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update layout on window resize
   useEffect(() => {
@@ -387,6 +393,80 @@ export default function ContactViewPanel({
     setExpandedNoteId(expandedNoteId === noteId ? null : noteId);
   };
 
+  // Photo handlers
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await fetch(`/api/crm/contacts/${contact._id}/photo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setCurrentPhoto(data.photo);
+        console.log('[ContactViewPanel] Photo uploaded successfully');
+      } else {
+        console.error('[ContactViewPanel] Failed to upload photo:', data.error);
+        alert('Failed to upload photo: ' + data.error);
+      }
+    } catch (error) {
+      console.error('[ContactViewPanel] Error uploading photo:', error);
+      alert('Error uploading photo');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!confirm('Are you sure you want to delete this photo?')) return;
+
+    setUploadingPhoto(true);
+    try {
+      const response = await fetch(`/api/crm/contacts/${contact._id}/photo`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setCurrentPhoto('');
+        console.log('[ContactViewPanel] Photo deleted successfully');
+      } else {
+        console.error('[ContactViewPanel] Failed to delete photo:', data.error);
+        alert('Failed to delete photo: ' + data.error);
+      }
+    } catch (error) {
+      console.error('[ContactViewPanel] Error deleting photo:', error);
+      alert('Error deleting photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -422,73 +502,156 @@ export default function ContactViewPanel({
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 140px)' }}>
-          <div className="p-6 space-y-6">
-            {/* STATUS BADGE - Top of Card */}
-            <div className="flex justify-end">
-              {isEditingStatus ? (
-                <select
-                  value={currentStatus}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  onBlur={() => setIsEditingStatus(false)}
-                  disabled={updatingStatus}
-                  autoFocus
-                  className={`px-3 py-1 rounded-full text-sm font-semibold border-2 cursor-pointer ${
-                    isLight
-                      ? 'bg-white border-blue-500 text-gray-900'
-                      : 'bg-gray-800 border-blue-400 text-white'
-                  }`}
-                >
-                  <option value="uncontacted">Uncontacted</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="nurturing">Nurturing</option>
-                  <option value="client">Client</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              ) : (
-                <button
-                  onClick={() => setIsEditingStatus(true)}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition-all hover:ring-2 hover:ring-blue-500 ${
-                    currentStatus === 'client'
-                      ? 'bg-green-100 text-green-700'
-                      : currentStatus === 'qualified'
-                      ? 'bg-blue-100 text-blue-700'
-                      : currentStatus === 'contacted'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : currentStatus === 'nurturing'
-                      ? 'bg-purple-100 text-purple-700'
-                      : currentStatus === 'inactive'
-                      ? 'bg-red-100 text-red-700'
-                      : isLight
-                      ? 'bg-slate-100 text-slate-600'
-                      : 'bg-gray-700 text-gray-300'
-                  }`}
-                >
-                  {currentStatus ? currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1) : 'Uncontacted'}
-                </button>
-              )}
-            </div>
-
-            {/* HEADER */}
-            <div className={`p-4 rounded-lg ${isLight ? 'bg-gray-50' : 'bg-gray-800'}`}>
-              <div className="flex items-start justify-between mb-2">
-                <h2 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                  {displayName}
-                </h2>
-              </div>
-
-              {/* Organization */}
-              {contact.organization && (
-                <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
-                  <Briefcase className="w-4 h-4" />
-                  <span>{contact.organization}</span>
-                  {contact.jobTitle && <span>• {contact.jobTitle}</span>}
+          <div className="space-y-6">
+            {/* HEADER WITH BANNER - Full width, no top spacing */}
+            <div className="relative overflow-hidden">
+              {/* Property Banner Background */}
+              {fullAddress ? (
+                <div className="relative h-48 sm:h-56 md:h-64">
+                  <ContactPropertyCarousel contactId={contact._id} isLight={isLight} />
+                  {/* Gradient Overlay for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/60"></div>
                 </div>
+              ) : (
+                <div className={`h-48 sm:h-56 md:h-64 ${
+                  isLight
+                    ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500'
+                    : 'bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900'
+                }`}></div>
               )}
+
+              {/* Profile Content - Overlapping Banner */}
+              <div className={`relative ${fullAddress ? '-mt-16 sm:-mt-20' : '-mt-10'} px-4 pb-4`}>
+                <div className="flex items-start gap-4">
+                  {/* Profile Photo */}
+                  <div className="flex-shrink-0">
+                    <div className="relative group">
+                      <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 ${
+                        isLight ? 'border-white' : 'border-gray-900'
+                      } ${currentPhoto ? 'bg-white' : 'bg-gradient-to-br from-blue-500 to-purple-600'} shadow-xl`}>
+                        {currentPhoto ? (
+                          <img
+                            src={currentPhoto}
+                            alt={displayName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="w-12 h-12 sm:w-14 sm:h-14 text-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Photo Upload/Delete Overlay */}
+                      <div className={`absolute inset-0 rounded-full bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 ${
+                        uploadingPhoto ? 'opacity-100' : ''
+                      }`}>
+                        {uploadingPhoto ? (
+                          <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors shadow-lg"
+                              title="Upload Photo"
+                            >
+                              <Camera className="w-4 h-4 text-white" />
+                            </button>
+                            {currentPhoto && (
+                              <button
+                                onClick={handlePhotoDelete}
+                                className="p-2 bg-red-600 hover:bg-red-700 rounded-full transition-colors shadow-lg"
+                                title="Delete Photo"
+                              >
+                                <Trash2 className="w-4 h-4 text-white" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name and Organization */}
+                  <div className={`flex-1 min-w-0 pt-12 sm:pt-14 px-2 py-3 rounded-lg backdrop-blur-sm ${
+                    isLight ? 'bg-white/90' : 'bg-gray-900/90'
+                  }`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h2 className={`text-xl sm:text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                        {displayName}
+                      </h2>
+
+                      {/* Status Badge */}
+                      <div className="flex-shrink-0">
+                        {isEditingStatus ? (
+                          <select
+                            value={currentStatus}
+                            onChange={(e) => handleStatusChange(e.target.value)}
+                            onBlur={() => setIsEditingStatus(false)}
+                            disabled={updatingStatus}
+                            autoFocus
+                            className={`px-3 py-1 rounded-full text-xs sm:text-sm font-semibold border-2 cursor-pointer ${
+                              isLight
+                                ? 'bg-white border-blue-500 text-gray-900'
+                                : 'bg-gray-800 border-blue-400 text-white'
+                            }`}
+                          >
+                            <option value="uncontacted">Uncontacted</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="qualified">Qualified</option>
+                            <option value="nurturing">Nurturing</option>
+                            <option value="client">Client</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditingStatus(true)}
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold transition-all hover:ring-2 hover:ring-blue-500 ${
+                              currentStatus === 'client'
+                                ? 'bg-green-100 text-green-700'
+                                : currentStatus === 'qualified'
+                                ? 'bg-blue-100 text-blue-700'
+                                : currentStatus === 'contacted'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : currentStatus === 'nurturing'
+                                ? 'bg-purple-100 text-purple-700'
+                                : currentStatus === 'inactive'
+                                ? 'bg-red-100 text-red-700'
+                                : isLight
+                                ? 'bg-slate-100 text-slate-600'
+                                : 'bg-gray-700 text-gray-300'
+                            }`}
+                          >
+                            {currentStatus ? currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1) : 'Uncontacted'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Organization */}
+                    {contact.organization && (
+                      <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
+                        <Briefcase className="w-4 h-4" />
+                        <span>{contact.organization}</span>
+                        {contact.jobTitle && <span>• {contact.jobTitle}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* CONTACT INFORMATION */}
-            <div>
+            {/* Rest of content with padding */}
+            <div className="px-6 space-y-6">
+              {/* CONTACT INFORMATION */}
+              <div>
               <h3
                 className={`text-lg font-semibold mb-3 flex items-center ${
                   isLight ? 'text-gray-900' : 'text-white'
@@ -1319,6 +1482,8 @@ export default function ContactViewPanel({
                 </div>
               </div>
             )}
+            </div>
+            {/* End of padded content wrapper */}
           </div>
         </div>
 

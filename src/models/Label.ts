@@ -113,4 +113,5 @@ LabelSchema.virtual('isActive').get(function (this: ILabel) {
 LabelSchema.set('toJSON', { virtuals: true });
 LabelSchema.set('toObject', { virtuals: true });
 
-export default mongoose.models.Label || mongoose.model<ILabel>('Label', LabelSchema);
+export default (mongoose.models.Label ||
+  mongoose.model<ILabel>('Label', LabelSchema)) as mongoose.Model<ILabel>;

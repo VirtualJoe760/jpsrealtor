@@ -14,6 +14,5 @@ const DocumentSchema: Schema<IDocument> = new Schema({
   uri: String,
 });
 
-const DocumentModel: Model<IDocument> = mongoose.models.Document || mongoose.model<IDocument>('Document', DocumentSchema);
-
-export default DocumentModel;
+export default (mongoose.models.Document ||
+  mongoose.model<IDocument>('Document', DocumentSchema)) as Model<IDocument>;

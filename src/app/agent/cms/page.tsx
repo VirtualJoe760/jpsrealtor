@@ -1,10 +1,5 @@
-// src/app/agent/cms/page.tsx
+// src/app/admin/articles/page.tsx
 "use client";
-
-// Agent CMS Dashboard - scoped to agent's own articles
-// Articles are automatically filtered by authorId in /api/articles/list
-// Agents can create and publish articles directly (no admin approval needed)
-// Each article includes authorId and authorName in MDX frontmatter for scoping
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -24,11 +19,9 @@ type Article = {
   draft?: boolean;
   image?: string;
   keywords?: string[];
-  authorId?: string; // Tracks article author for scoping
-  authorName?: string; // Author display name
 };
 
-export default function AgentCMSPage() {
+export default function ArticlesAdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { currentTheme } = useTheme();
@@ -55,18 +48,26 @@ export default function AgentCMSPage() {
   // Auto-scroll carousel every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentStatIndex((prev) => (prev + 1) % 3);
+      setCurrentStatIndex((prev) => (prev + 1) % 6);
     }, 3000);
 
     return () => clearInterval(interval);
   }, []);
-
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
+  const [showClaudeModal, setShowClaudeModal] = useState(false);
+  const [claudePrompt, setClaudePrompt] = useState("");
+  const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
+  const [claudeCategory, setClaudeCategory] = useState<"articles" | "market-insights" | "real-estate-tips">("articles");
+  const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString());
   const [stats, setStats] = useState({
     total: 0,
     published: 0,
     draft: 0,
+    views: 0,
+    articles: 0,
+    marketInsights: 0,
+    realEstateTips: 0,
   });
 
   useEffect(() => {
@@ -82,11 +83,14 @@ export default function AgentCMSPage() {
     }
   }, [status, page, filterCategory, searchTerm]);
 
+  // Poll for new draft articles every 30 seconds
+  
+
   const fetchArticles = async () => {
     try {
       setIsLoading(true);
 
-      // Fetch articles - automatically filtered by authorId for agents
+      // Fetch from MDX files (source of truth)
       const response = await fetch('/api/articles/list');
       const data = await response.json();
 
@@ -124,15 +128,19 @@ export default function AgentCMSPage() {
 
   const fetchStats = async () => {
     try {
-      // Fetch articles - automatically filtered by authorId for agents
+      // Fetch all articles from MDX files (source of truth)
       const response = await fetch('/api/articles/list');
       const data = await response.json();
-      const myArticles = data.articles || [];
+      const allArticles = data.articles || [];
 
       setStats({
-        total: myArticles.length,
-        published: myArticles.length, // All fetched articles are published (drafts are excluded)
-        draft: 0, // Drafts are not shown in the list
+        total: allArticles.length,
+        published: allArticles.length, // All MDX files are published
+        draft: 0, // Drafts are filtered out by /api/articles/list
+        views: 0, // MDX files don't track views
+        articles: allArticles.filter((a: Article) => a.category === "articles").length,
+        marketInsights: allArticles.filter((a: Article) => a.category === "market-insights").length,
+        realEstateTips: allArticles.filter((a: Article) => a.category === "real-estate-tips").length,
       });
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -140,10 +148,9 @@ export default function AgentCMSPage() {
   };
 
   const handleDelete = async (slug: string) => {
-    if (!confirm("⚠️ DELETE DRAFT\n\nThis will remove your article draft.\nThis action cannot be undone.\n\nAre you sure?")) return;
+    if (!confirm("⚠️ PERMANENT DELETE\n\nThis will completely remove the article MDX file from GitHub.\nThis action cannot be undone.\n\nAre you absolutely sure?")) return;
 
     try {
-      // TODO: Only allow deleting own articles
       const response = await fetch(`/api/articles/unpublish?slugId=${slug}`, {
         method: "DELETE",
       });
@@ -151,7 +158,7 @@ export default function AgentCMSPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Article deleted!");
+        alert(`Article deleted permanently!\n\nThe MDX file has been removed from src/posts/ and will be pushed to GitHub.`);
         fetchArticles();
       } else {
         alert(`Failed to delete:\n\n${data.error || 'Unknown error'}`);
@@ -162,11 +169,33 @@ export default function AgentCMSPage() {
     }
   };
 
-  const handleSubmitForReview = async (slug: string) => {
-    // TODO: Implement submit for review workflow
-    alert("Submit for Review feature coming soon!\n\nThis will send your article to an admin for approval before publishing.");
+  const handleUnpublish = async (slug: string) => {
+    if (!confirm("This will set the article to DRAFT mode (draft: true).\n\nThe article will remain in the system but won't appear on the website.\n\nContinue?")) return;
+
+    try {
+      const response = await fetch(`/api/articles/set-draft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ slugId: slug, draft: true }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Article set to draft mode!\n\nIt will no longer appear on the website but can be re-published later.`);
+        fetchArticles();
+      } else {
+        alert(`Failed to set draft mode:\n\n${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Failed to set draft mode:", error);
+      alert("Network error while setting draft mode");
+    }
   };
 
+    
   if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -179,59 +208,81 @@ export default function AgentCMSPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" data-page="agent-cms">
+    <div className="min-h-screen py-6 sm:py-12 px-4" data-page="admin-articles">
       <div className="max-w-7xl mx-auto">
         <AgentNav />
 
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <h1 className={`text-2xl md:text-4xl font-bold ${textPrimary} flex items-center space-between`}>
-              <FileText className={`w-8 h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-              My Articles
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 className={`text-xl sm:text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2`}>
+              <FileText className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+              Articles Management
             </h1>
             <button
-              onClick={() => router.push("/admin/cms/new")}
-              className={`p-2 rounded-lg transition-colors ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
+              onClick={() => router.push("/agent/cms/new")}
+              className={`p-2 rounded-lg transition-colors self-start ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
               aria-label="New Article"
             >
-              <Plus className={`w-10 h-10 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
+              <Plus className={`w-8 h-8 sm:w-10 sm:h-10 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
             </button>
           </div>
-          <p className={`${textSecondary} mt-2`}>Create and manage your content</p>
+          <p className={`${textSecondary} mt-2 text-sm sm:text-base`}>Manage your blog articles and content</p>
         </div>
 
-        {/* Stats Carousel - Agent-specific stats */}
-        <div className="mb-8">
-          <div className="py-6">
+        {/* Stats Carousel */}
+        <div className="mb-6 sm:mb-8">
+          <div className="py-4 sm:py-6">
             {/* Stat Display - Centered */}
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
+              {/* Icon, Label, and Data on same line */}
               {currentStatIndex === 0 && (
                 <>
-                  <FileText className={`w-12 h-12 flex-shrink-0 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                  <h3 className={`${textSecondary} text-xl font-medium whitespace-nowrap`}>My Total Articles</h3>
-                  <p className={`text-5xl font-bold ${textPrimary}`}>{stats.total}</p>
+                  <FileText className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>All Published Articles</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.total}</p>
                 </>
               )}
               {currentStatIndex === 1 && (
                 <>
-                  <Eye className="w-12 h-12 flex-shrink-0 text-green-500" />
-                  <h3 className={`${textSecondary} text-xl font-medium whitespace-nowrap`}>Published & Live</h3>
-                  <p className={`text-5xl font-bold ${textPrimary}`}>{stats.published}</p>
+                  <Eye className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 text-green-500" />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Live on Website</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.published}</p>
                 </>
               )}
               {currentStatIndex === 2 && (
                 <>
-                  <Edit className="w-12 h-12 flex-shrink-0 text-yellow-500" />
-                  <h3 className={`${textSecondary} text-xl font-medium whitespace-nowrap`}>Draft Articles</h3>
-                  <p className={`text-5xl font-bold ${textPrimary}`}>{stats.draft}</p>
+                  <Edit className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 text-yellow-500" />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Draft Articles</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.draft}</p>
+                </>
+              )}
+              {currentStatIndex === 3 && (
+                <>
+                  <Newspaper className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>General Articles</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
+                </>
+              )}
+              {currentStatIndex === 4 && (
+                <>
+                  <TrendingUp className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Market Insights</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
+                </>
+              )}
+              {currentStatIndex === 5 && (
+                <>
+                  <Lightbulb className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-purple-600" : "text-purple-400"}`} />
+                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Real Estate Tips</h3>
+                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
                 </>
               )}
             </div>
 
             {/* Indicator Dots */}
             <div className="flex items-center justify-center gap-2 mt-6">
-              {[0, 1, 2].map((index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentStatIndex(index)}
@@ -260,7 +311,7 @@ export default function AgentCMSPage() {
                     setSearchTerm(e.target.value);
                     setPage(1);
                   }}
-                  placeholder="Search my articles..."
+                  placeholder="Search articles..."
                   className={`w-full pl-10 pr-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none focus:${isLight ? "border-blue-500" : "border-emerald-500"}`}
                 />
               </div>
@@ -282,25 +333,26 @@ export default function AgentCMSPage() {
           </div>
         </div>
 
-        {/* Articles List - Similar to admin but with different actions */}
+        {/* Articles List */}
         <div>
-          {/* Mobile/Desktop Responsive List */}
-          <div>
+          {/* Desktop View */}
+          <div className="hidden lg:block">
             {articles.map((article, index) => (
               <div key={article.slug}>
                 {index > 0 && <hr className={`${border}`} />}
-                <div className={`py-4 px-4 ${isLight ? "bg-white/40 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm"}`}>
-                  <div className="flex gap-3 mb-3">
+                <div className={`flex items-center px-6 py-6 ${isLight ? "bg-white/40 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm"}`}>
+                  {/* Article Column (with thumbnail) */}
+                  <div className="flex-1 flex gap-4 items-center">
                     {/* Thumbnail */}
                     {article.image && (
                       <div className="flex-shrink-0">
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+                        <div className="relative w-16 h-16 rounded-lg overflow-hidden">
                           <Image
                             src={article.image}
                             alt={article.title}
                             fill
                             className="object-cover"
-                            sizes="80px"
+                            sizes="64px"
                             quality={100}
                             unoptimized={true}
                           />
@@ -309,50 +361,139 @@ export default function AgentCMSPage() {
                     )}
                     {/* Title and Excerpt */}
                     <div className="flex-1 min-w-0">
-                      <h3 className={`${textPrimary} font-semibold text-base mb-1 line-clamp-2`}>
-                        {article.title}
-                      </h3>
-                      <p className={`text-sm ${textSecondary} line-clamp-2`}>
-                        {article.excerpt}
-                      </p>
+                      <p className={`${textPrimary} font-medium`}>{article.title}</p>
+                      <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>{article.excerpt}</p>
                     </div>
                   </div>
 
-                  <div className={`flex items-center gap-4 text-xs ${textMuted} mb-3`}>
-                    <span className="capitalize">{article.category.replace("-", " ")}</span>
-                    <span>•</span>
-                    <span>{article.date}</span>
+                  {/* Category Column */}
+                  <div className="w-48">
+                    <span className={`text-sm ${textSecondary} capitalize`}>
+                      {article.category.replace("-", " ")}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {/* Date Column */}
+                  <div className="w-32">
+                    <span className={`text-sm ${textSecondary}`}>
+                      {article.date}
+                    </span>
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="w-48 flex items-center justify-end gap-2">
                     <button
                       onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
-                      className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
-                        isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"
-                      } text-sm flex items-center justify-center gap-2`}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"}`}
+                      title="View on Website"
                     >
                       <Eye className="w-4 h-4" />
-                      View
                     </button>
                     <button
-                      onClick={() => router.push(`/admin/cms/edit/${article.slug}`)}
-                      className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
-                        isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"
-                      } text-sm flex items-center justify-center gap-2`}
+                      onClick={() => router.push(`/agent/cms/edit/${article.slug}`)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"}`}
+                      title="Edit Article"
                     >
                       <Edit className="w-4 h-4" />
-                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleUnpublish(article.slug)}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"}`}
+                      title="Unpublish from Website"
+                    >
+                      <EyeOff className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(article.slug)}
-                      className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
-                        isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
-                      } text-sm flex items-center justify-center gap-2`}
+                      className={`p-2 rounded-lg transition-colors ${textSecondary} ${isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"}`}
+                      title="Permanently Delete from GitHub"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Delete
                     </button>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile View */}
+          <div className="lg:hidden">
+            {articles.map((article, index) => (
+              <div key={article.slug}>
+                {index > 0 && <hr className={`${border}`} />}
+                <div className={`py-4 px-4 ${isLight ? "bg-white/40 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm"}`}>
+                <div className="flex gap-3 mb-3">
+                  {/* Thumbnail */}
+                  {article.image && (
+                    <div className="flex-shrink-0">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+                        <Image
+                          src={article.image}
+                          alt={article.title}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                          quality={100}
+                          unoptimized={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Title and Excerpt */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`${textPrimary} font-semibold text-base mb-1 line-clamp-2`}>
+                      {article.title}
+                    </h3>
+                    <p className={`text-sm ${textSecondary} line-clamp-2`}>
+                      {article.excerpt}
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`flex items-center gap-4 text-xs ${textMuted} mb-3`}>
+                  <span className="capitalize">{article.category.replace("-", " ")}</span>
+                  <span>•</span>
+                  <span>{article.date}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(`/insights/${article.category}/${article.slug}`)}
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-gray-900" : "hover:bg-gray-700 hover:text-white"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    View
+                  </button>
+                  <button
+                    onClick={() => router.push(`/agent/cms/edit/${article.slug}`)}
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-emerald-600" : "hover:bg-gray-700 hover:text-emerald-400"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleUnpublish(article.slug)}
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-orange-600" : "hover:bg-gray-700 hover:text-orange-400"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <EyeOff className="w-4 h-4" />
+                    Unpublish
+                  </button>
+                  <button
+                    onClick={() => handleDelete(article.slug)}
+                    className={`flex-1 p-2 rounded-lg transition-colors ${textSecondary} ${
+                      isLight ? "hover:bg-gray-100 hover:text-red-600" : "hover:bg-gray-700 hover:text-red-400"
+                    } text-sm flex items-center justify-center gap-2`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
                 </div>
               </div>
             ))}
@@ -362,7 +503,6 @@ export default function AgentCMSPage() {
             <div className={`text-center py-12 ${textSecondary}`}>
               <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p>No articles found</p>
-              <p className="text-sm mt-2">Create your first article to get started!</p>
             </div>
           )}
         </div>
@@ -390,6 +530,7 @@ export default function AgentCMSPage() {
           </div>
         )}
       </div>
-    </div>
+
+          </div>
   );
 }

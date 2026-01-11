@@ -151,4 +151,5 @@ SMSMessageSchema.index({ body: 'text' });
 // Uncomment if you want automatic deletion:
 // SMSMessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
 
-export default mongoose.models.SMSMessage || mongoose.model<ISMSMessage>('SMSMessage', SMSMessageSchema);
+export default (mongoose.models.SMSMessage ||
+  mongoose.model<ISMSMessage>('SMSMessage', SMSMessageSchema)) as mongoose.Model<ISMSMessage>;

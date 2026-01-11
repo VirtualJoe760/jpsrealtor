@@ -385,7 +385,6 @@ export class ContactAnalysisService {
     batchId: Types.ObjectId,
     analysis: AnalysisReport
   ): Promise<IImportBatch | null> {
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const batch = await ImportBatch.findByIdAndUpdate(
       batchId,
       {

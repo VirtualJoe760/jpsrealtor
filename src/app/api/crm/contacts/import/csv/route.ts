@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 
 // ============================================================================
 // POST /api/crm/contacts/import/csv
@@ -199,7 +199,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all existing phone numbers for this user in one query
-    // @ts-expect-error Mongoose typing issue with overloaded find() signatures
     const existingPhones = await Contact.find(
       { userId: session.user.id },
       { phone: 1 }
@@ -229,7 +228,6 @@ export async function POST(request: NextRequest) {
         // If bulk insert fails, try one by one (slower but more resilient)
         for (const contact of newContacts) {
           try {
-            // @ts-expect-error Mongoose typing issue with overloaded create() signatures
             const inserted = await Contact.create(contact);
             importedContacts.push(inserted);
           } catch (err: any) {

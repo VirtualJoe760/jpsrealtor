@@ -141,6 +141,5 @@ TeamSchema.statics.getTeamHierarchy = async function (teamId: mongoose.Types.Obj
 };
 
 // Export model
-const Team: Model<ITeam> = mongoose.models.Team || mongoose.model<ITeam>("Team", TeamSchema);
-
-export default Team;
+export default (mongoose.models.Team ||
+  mongoose.model<ITeam>("Team", TeamSchema)) as Model<ITeam>;

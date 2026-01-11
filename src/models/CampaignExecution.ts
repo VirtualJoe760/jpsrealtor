@@ -407,5 +407,5 @@ CampaignExecutionSchema.statics.getAnalyticsByTimeRange = async function (
   ]);
 };
 
-export default models.CampaignExecution ||
-  model<ICampaignExecution>('CampaignExecution', CampaignExecutionSchema);
+export default (models.CampaignExecution ||
+  model<ICampaignExecution>('CampaignExecution', CampaignExecutionSchema)) as mongoose.Model<ICampaignExecution>;

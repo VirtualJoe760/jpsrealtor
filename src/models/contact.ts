@@ -560,4 +560,5 @@ ContactSchema.virtual('fullName').get(function (this: IContact) {
 ContactSchema.set('toJSON', { virtuals: true });
 ContactSchema.set('toObject', { virtuals: true });
 
-export default mongoose.models.Contact || mongoose.model<IContact>('Contact', ContactSchema);
+export default (mongoose.models.Contact ||
+  mongoose.model<IContact>('Contact', ContactSchema)) as mongoose.Model<IContact>;

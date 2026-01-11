@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import mongoose from 'mongoose';
 
 // ============================================================================
@@ -40,7 +40,6 @@ export async function POST(
       );
     }
 
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
     const contact = await Contact.findOneAndUpdate(
       {
         _id: id,
@@ -108,7 +107,6 @@ export async function PATCH(
       );
     }
 
-    // @ts-expect-error Mongoose typing issue with overloaded findOne() signatures
     const contact = await Contact.findOne({
       _id: id,
       userId: session.user.id,
@@ -183,7 +181,6 @@ export async function DELETE(
       );
     }
 
-    // @ts-expect-error Mongoose typing issue with overloaded findOneAndUpdate() signatures
     const contact = await Contact.findOneAndUpdate(
       {
         _id: id,

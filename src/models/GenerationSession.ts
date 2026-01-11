@@ -120,7 +120,7 @@ GenerationSessionSchema.index(
   { expireAfterSeconds: 7 * 24 * 60 * 60, sparse: true }
 );
 
-const GenerationSession =
-  models.GenerationSession || model<IGenerationSession>('GenerationSession', GenerationSessionSchema);
+const GenerationSession = (models.GenerationSession ||
+  model<IGenerationSession>('GenerationSession', GenerationSessionSchema)) as mongoose.Model<IGenerationSession>;
 
 export default GenerationSession;

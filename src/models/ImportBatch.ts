@@ -98,6 +98,11 @@ export interface IImportBatch extends Document {
   analyzedAt?: Date;  // When analysis completed
   importedAt?: Date;  // When import started
   completedAt?: Date;
+
+  // Methods
+  markAsCompleted(): Promise<this>;
+  markAsFailed(error: string): Promise<this>;
+  addError(row: number, error: string, data?: any): Promise<this>;
 }
 
 const ImportBatchSchema = new Schema<IImportBatch>(
@@ -373,5 +378,5 @@ ImportBatchSchema.statics.getRecentImports = function (
     .select('-fieldMapping -importErrors');
 };
 
-export default models.ImportBatch ||
-  model<IImportBatch>('ImportBatch', ImportBatchSchema);
+export default (models.ImportBatch ||
+  model<IImportBatch>('ImportBatch', ImportBatchSchema)) as mongoose.Model<IImportBatch>;

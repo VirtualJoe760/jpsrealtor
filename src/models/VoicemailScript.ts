@@ -238,5 +238,5 @@ VoicemailScriptSchema.statics.findReadyToSend = function (campaignId: Types.Obje
   });
 };
 
-export default models.VoicemailScript ||
-  model<IVoicemailScript>('VoicemailScript', VoicemailScriptSchema);
+export default (models.VoicemailScript ||
+  model<IVoicemailScript>('VoicemailScript', VoicemailScriptSchema)) as mongoose.Model<IVoicemailScript>;

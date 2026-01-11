@@ -243,35 +243,62 @@ export async function validatePhoneNumber(phoneNumber: string) {
 // ============================================================================
 
 /**
- * Fetch message history for a phone number
+ * Fetch full message history (conversation) with a phone number
+ * Gets both sent and received messages
  *
- * @param phoneNumber - Phone number to fetch history for
- * @param limit - Number of messages to fetch (default: 50)
+ * @param phoneNumber - Phone number to fetch conversation for
+ * @param limit - Number of messages to fetch (default: 100)
  * @returns Array of messages
  */
-export async function getMessageHistory(phoneNumber: string, limit: number = 50) {
+export async function getMessageHistory(phoneNumber: string, limit: number = 100) {
   try {
-    if (!accountSid || !authToken) {
+    if (!accountSid || !authToken || !twilioPhoneNumber) {
       throw new Error('Twilio not configured');
     }
 
-    const messages = await client.messages.list({
+    console.log(`[Twilio] Fetching message history for: ${phoneNumber}`);
+
+    // Fetch messages sent TO the phone number (outbound from us)
+    const sentMessages = await client.messages.list({
+      from: twilioPhoneNumber,
       to: phoneNumber,
       limit,
     });
 
-    return {
-      success: true,
-      messages: messages.map((msg) => ({
+    // Fetch messages received FROM the phone number (inbound to us)
+    const receivedMessages = await client.messages.list({
+      from: phoneNumber,
+      to: twilioPhoneNumber,
+      limit,
+    });
+
+    // Combine and sort by date
+    const allMessages = [...sentMessages, ...receivedMessages]
+      .sort((a, b) => {
+        const dateA = a.dateSent || a.dateCreated;
+        const dateB = b.dateSent || b.dateCreated;
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map((msg) => ({
         sid: msg.sid,
         from: msg.from,
         to: msg.to,
         body: msg.body,
         status: msg.status,
         direction: msg.direction,
-        dateSent: msg.dateSent,
+        dateSent: msg.dateSent || msg.dateCreated,
+        dateCreated: msg.dateCreated,
         price: msg.price,
-      })),
+        priceUnit: msg.priceUnit,
+        numMedia: msg.numMedia,
+        accountSid: msg.accountSid,
+      }));
+
+    console.log(`[Twilio] Found ${allMessages.length} messages in conversation with ${phoneNumber}`);
+
+    return {
+      success: true,
+      messages: allMessages,
     };
   } catch (error: any) {
     console.error('[Twilio] Error fetching message history:', error);

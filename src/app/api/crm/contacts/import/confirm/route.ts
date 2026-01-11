@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import ImportBatch from '@/models/ImportBatch';
 import Campaign from '@/models/Campaign';
 import * as Papa from 'papaparse';
@@ -139,7 +139,6 @@ export async function POST(request: NextRequest) {
     let campaignTag: string | null = null;
     if (campaignId) {
       try {
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const campaign = await Campaign.findById(campaignId);
         if (campaign) {
           campaignTag = `campaign:${campaign.name}`;
@@ -161,7 +160,6 @@ export async function POST(request: NextRequest) {
     const source = sourceMap[provider || 'custom'] || 'csv_import';
 
     // Create ImportBatch record
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const importBatch = await ImportBatch.create({
       userId,
       campaignId: campaignId || undefined,
@@ -481,7 +479,6 @@ async function processImportAsync(
           duplicateFilter.email = contactData.email;
         }
 
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const existingContact = await Contact.findOne(duplicateFilter);
         if (existingContact) {
           console.log(`[Confirm] Row ${rowNumber}: Duplicate detected - Contact ${existingContact._id} already exists`);
@@ -500,7 +497,6 @@ async function processImportAsync(
             // Add campaign tag if not already present
             const hadTag = existingContact.tags?.includes(campaignTag);
             if (!hadTag) {
-              // @ts-expect-error Mongoose typing issue with overloaded signatures
               await Contact.findByIdAndUpdate(existingContact._id, {
                 $addToSet: { tags: campaignTag }
               });
@@ -536,7 +532,6 @@ async function processImportAsync(
 
         // Create contact
         console.log(`[Confirm] Row ${rowNumber}: Creating new contact`);
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const newContact = await Contact.create(contactData);
         importedContactIds.push(newContact._id.toString());
         successCount++;
@@ -544,7 +539,6 @@ async function processImportAsync(
 
         // Update batch progress every 10 rows
         if ((i + 1) % 10 === 0) {
-          // @ts-expect-error Mongoose typing issue with overloaded signatures
           await ImportBatch.findByIdAndUpdate(batchId, {
             'progress.processed': i + 1,
             'progress.successful': successCount,
@@ -565,7 +559,6 @@ async function processImportAsync(
     }
 
   // Final batch update
-  // @ts-expect-error Mongoose typing issue with overloaded signatures
   await ImportBatch.findByIdAndUpdate(batchId, {
     'progress.processed': rows.length,
     'progress.successful': successCount,

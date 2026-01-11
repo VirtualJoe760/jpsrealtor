@@ -11,7 +11,7 @@
 import { Types } from 'mongoose';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import Contact, { IContact } from '@/models/contact';
+import Contact, { IContact } from '@/models/Contact';
 import ContactCampaign, { ContactSource } from '@/models/ContactCampaign';
 import ImportBatch, { IImportBatch } from '@/models/ImportBatch';
 import Campaign from '@/models/Campaign';
@@ -479,19 +479,17 @@ export class ContactImportService {
           duplicates++;
         } else {
           // Create new contact
-          // @ts-expect-error Mongoose typing issue with overloaded signatures
           const contact = await Contact.create({
             ...normalizedData,
             userId,
             source,
             importedAt: new Date(),
           });
-          contactId = contact._id;
+          contactId = contact._id as Types.ObjectId;
           successful++;
         }
 
         // Create ContactCampaign record
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         await ContactCampaign.create({
           contactId,
           campaignId,
@@ -507,7 +505,6 @@ export class ContactImportService {
         failed++;
 
         // Log error to batch
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const batch = await ImportBatch.findById(batchId);
         if (batch) {
           await batch.addError(processed, error.message, row);
@@ -516,7 +513,6 @@ export class ContactImportService {
     }
 
     // Update campaign stats
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const campaign = await Campaign.findById(campaignId);
     if (campaign) {
       campaign.stats.totalContacts += successful;
@@ -611,7 +607,6 @@ export class ContactImportService {
   ): Promise<DuplicateCheck> {
     // Check by phone first (most reliable)
     if (contactData.phone) {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingByPhone = await Contact.findOne({
         userId,
         phone: contactData.phone,
@@ -620,7 +615,7 @@ export class ContactImportService {
       if (existingByPhone) {
         return {
           isDuplicate: true,
-          existingContactId: existingByPhone._id,
+          existingContactId: existingByPhone._id as Types.ObjectId,
           matchedOn: 'phone',
         };
       }
@@ -628,7 +623,6 @@ export class ContactImportService {
 
     // Check by email (if no phone match)
     if (contactData.email) {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const existingByEmail = await Contact.findOne({
         userId,
         email: contactData.email,
@@ -637,7 +631,7 @@ export class ContactImportService {
       if (existingByEmail) {
         return {
           isDuplicate: true,
-          existingContactId: existingByEmail._id,
+          existingContactId: existingByEmail._id as Types.ObjectId,
           matchedOn: 'email',
         };
       }
@@ -762,7 +756,6 @@ export async function importContactsForChat(
   let listId = options.listId;
   if (!listId && options.listName) {
     try {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       const label = await Label.create({
         name: options.listName,
         contactCount: 0,
@@ -790,7 +783,6 @@ export async function importContactsForChat(
     try {
       // Check for duplicates
       if (options.skipDuplicates !== false) { // Default to true
-        // @ts-expect-error Mongoose typing issue with overloaded signatures
         const existing = await Contact.findOne({
           $or: [
             contactData.phone ? { phone: contactData.phone } : null,
@@ -824,7 +816,6 @@ export async function importContactsForChat(
         labels: listId ? [listId] : [], // Labels field, not lists
       };
 
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       await Contact.create(newContact);
       imported++;
 
@@ -837,7 +828,6 @@ export async function importContactsForChat(
   // Step 3: Update list (label) contact count
   if (listId && imported > 0) {
     try {
-      // @ts-expect-error Mongoose typing issue with overloaded signatures
       await Label.findByIdAndUpdate(listId, {
         $inc: { contactCount: imported },
       });

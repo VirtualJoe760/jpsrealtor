@@ -18,6 +18,11 @@ import {
   BarChart3,
   Sun,
   Moon,
+  Menu,
+  X,
+  Settings,
+  LogOut,
+  Shield,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useThemeClasses } from "../contexts/ThemeContext";
@@ -217,6 +222,9 @@ export default function DashboardPage() {
   const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Mobile menu
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Mobile pagination
   const [mobilePage, setMobilePage] = useState(1);
@@ -425,6 +433,265 @@ export default function DashboardPage() {
             Welcome back, {user.name || "User"}!
           </h1>
           <p className={`${textSecondary} text-xs sm:text-sm md:text-base`}>Your personalized dashboard with favorites and insights</p>
+        </motion.div>
+
+        {/* Account Info - Moved to top for easy access to dashboards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className={`${cardBg} ${cardBorder} border rounded-2xl ${shadow} p-4 sm:p-6 mb-8 relative`}
+        >
+          {/* Header with Profile and Controls */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 ${textPrimary} text-xl sm:text-2xl font-bold ${
+                isLight ? 'bg-gradient-to-br from-emerald-400 to-cyan-400' : 'bg-gradient-to-br from-gray-700 to-gray-900'
+              }`}>
+                {user.image ? (
+                  <Image
+                    src={user.image}
+                    alt={user.name || "Profile"}
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user.name?.[0]?.toUpperCase() || "U"
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className={`text-lg sm:text-xl font-semibold ${textPrimary} truncate`}>{user.name || "User"}</h2>
+                <p className={`${textSecondary} text-xs sm:text-sm truncate`}>{user.email}</p>
+              </div>
+            </div>
+
+            {/* Controls: Theme Toggle + Mobile Menu */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  isLight
+                    ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                }`}
+                aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              >
+                {isLight ? (
+                  <Moon className="w-5 h-5" />
+                ) : (
+                  <Sun className="w-5 h-5" />
+                )}
+              </button>
+
+              {/* Mobile Menu Toggle - Only on mobile */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`md:hidden p-2 rounded-lg transition-all duration-200 ${
+                  isLight
+                    ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                }`}
+                aria-label="Menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Dropdown Menu */}
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`md:hidden mb-4 p-3 rounded-lg border ${
+                isLight ? 'bg-gray-50 border-gray-200' : 'bg-gray-800/50 border-gray-700'
+              }`}
+            >
+              <div className="space-y-2">
+                {/* Agent Dashboard - Only for real estate agents or team leaders */}
+                {(user.roles?.includes('realEstateAgent') || (user as any).isTeamLeader) && (
+                  <Link
+                    href="/agent/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isLight
+                        ? 'bg-white hover:bg-blue-50 text-gray-900 border border-gray-200'
+                        : 'bg-gray-900 hover:bg-gray-800 text-white border border-gray-700'
+                    }`}
+                  >
+                    <BarChart3 className="w-5 h-5 text-blue-500" />
+                    <span className="font-medium">Agent Dashboard</span>
+                  </Link>
+                )}
+
+                {/* Admin Dashboard - Only for admins */}
+                {user.isAdmin && (
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isLight
+                        ? 'bg-white hover:bg-purple-50 text-gray-900 border border-gray-200'
+                        : 'bg-gray-900 hover:bg-gray-800 text-white border border-gray-700'
+                    }`}
+                  >
+                    <Shield className="w-5 h-5 text-purple-500" />
+                    <span className="font-medium">Admin Dashboard</span>
+                  </Link>
+                )}
+
+                {/* Settings */}
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isLight
+                      ? 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-200'
+                      : 'bg-gray-900 hover:bg-gray-800 text-white border border-gray-700'
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="font-medium">Settings</span>
+                </Link>
+
+                {/* Sign Out */}
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    signOut({ callbackUrl: "/" });
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isLight
+                      ? 'bg-white hover:bg-red-50 text-red-600 border border-red-200'
+                      : 'bg-gray-900 hover:bg-red-500/10 text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="font-medium">Sign Out</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Desktop Action Buttons - Hidden on mobile */}
+          <div className="hidden md:flex md:flex-wrap gap-2 mb-6">
+            {/* Agent Dashboard - Only for real estate agents or team leaders */}
+            {(user.roles?.includes('realEstateAgent') || (user as any).isTeamLeader) && (
+              <Link
+                href="/agent/dashboard"
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  isLight
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Agent Dashboard</span>
+              </Link>
+            )}
+
+            {/* Admin Dashboard - Only for admins */}
+            {user.isAdmin && (
+              <Link
+                href="/admin/dashboard"
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  isLight
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Admin Dashboard</span>
+              </Link>
+            )}
+
+            {/* Settings */}
+            <Link
+              href="/dashboard/settings"
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border text-sm font-medium ${
+                isLight
+                  ? 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-900'
+                  : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-white'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </Link>
+
+            {/* Sign Out */}
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border text-sm font-medium ${
+                isLight
+                  ? 'bg-red-50 hover:bg-red-100 border-red-300 text-red-600'
+                  : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/50 text-red-400'
+              }`}
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+
+          {/* Roles */}
+          {(user.isAdmin ||
+            user.roles?.includes("vacationRentalHost") ||
+            user.roles?.includes("realEstateAgent") ||
+            user.roles?.includes("serviceProvider")) && (
+            <div className={`mb-4 pb-4 border-b ${isLight ? 'border-gray-300' : 'border-gray-800'}`}>
+              <h3 className={`text-sm font-semibold ${textPrimary} mb-2`}>Roles</h3>
+              <div className="flex flex-wrap gap-2">
+                {user.roles?.map((role: string) => (
+                  <span
+                    key={role}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium ${
+                      isLight
+                        ? 'bg-gray-200 text-gray-700'
+                        : 'bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {formatRoleName(role)}
+                  </span>
+                ))}
+                {user.isAdmin && (
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${
+                    isLight
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-purple-900/40 text-purple-300'
+                  }`}>
+                    Admin
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Security */}
+          <div>
+            <h3 className={`text-sm font-semibold ${textPrimary} mb-2`}>Security</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`${textSecondary} text-xs`}>2FA:</span>
+              <span
+                className={`px-2.5 py-1 rounded-md text-xs font-medium ${
+                  twoFactorEnabled
+                    ? isLight
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-green-900/40 text-green-300'
+                    : isLight
+                      ? 'bg-gray-200 text-gray-600'
+                      : 'bg-gray-700 text-gray-400'
+                }`}
+              >
+                {twoFactorEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+          </div>
         </motion.div>
 
         {/* Statistics Cards */}
@@ -903,120 +1170,6 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </motion.div>
-
-        {/* Account Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          className={`${cardBg} ${cardBorder} border rounded-2xl ${shadow} p-6`}
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4 mb-6">
-            <div className="flex items-center space-x-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center overflow-hidden ${textPrimary} text-2xl font-bold ${
-                isLight ? 'bg-gradient-to-br from-emerald-400 to-cyan-400' : 'bg-gradient-to-br from-gray-700 to-gray-900'
-              }`}>
-                {user.image ? (
-                  <Image
-                    src={user.image}
-                    alt={user.name || "Profile"}
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  user.name?.[0]?.toUpperCase() || "U"
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h2 className={`text-2xl font-semibold ${textPrimary}`}>{user.name || "User"}</h2>
-                  {/* Theme Toggle Icons */}
-                  <button
-                    onClick={toggleTheme}
-                    className={`p-2 rounded-lg transition-all duration-200 ${
-                      isLight
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                        : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
-                    }`}
-                    aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
-                  >
-                    {isLight ? (
-                      <Moon className="w-5 h-5" />
-                    ) : (
-                      <Sun className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-                <p className={textSecondary}>{user.email}</p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <Link
-                href="/dashboard/settings"
-                className={`flex items-center justify-center gap-2 px-4 py-2 ${textPrimary} rounded-lg transition-colors border text-sm sm:text-base ${
-                  isLight
-                    ? "bg-gray-200 hover:bg-gray-300 border-gray-300"
-                    : "bg-gray-800 hover:bg-gray-700 border-gray-700"
-                }`}
-              >
-                Settings
-              </Link>
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className={`flex items-center justify-center gap-2 px-4 py-2 ${textPrimary} rounded-lg transition-colors border text-sm sm:text-base ${
-                isLight
-                  ? "bg-red-50 hover:bg-red-100 border-red-300 text-red-600"
-                  : "bg-red-500/10 hover:bg-red-500/20 border-red-500/50 text-red-400"
-              }`}
-            >
-              Sign Out
-            </button>
-            </div>
-          </div>
-
-          {/* Roles */}
-          {(user.isAdmin ||
-            user.roles?.includes("vacationRentalHost") ||
-            user.roles?.includes("realEstateAgent") ||
-            user.roles?.includes("serviceProvider")) && (
-            <div className="mb-6">
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>Your Roles</h3>
-              <div className="flex flex-wrap gap-2">
-                {user.roles?.map((role: string) => (
-                  <span
-                    key={role}
-                    className={`px-4 py-2 bg-gray-600/20 border border-gray-500/50 ${textSecondary} rounded-full text-sm font-medium`}
-                  >
-                    {formatRoleName(role)}
-                  </span>
-                ))}
-                {user.isAdmin && (
-                  <span className="px-4 py-2 bg-purple-600/20 border border-purple-500/50 text-purple-300 rounded-full text-sm font-medium">
-                    Admin Access
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Security */}
-          <div className={`pt-6 border-t ${isLight ? "border-gray-300" : "border-gray-800"}`}>
-            <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>Security</h3>
-            <div className="flex items-center space-x-3">
-              <span className={textSecondary}>Two-Factor Authentication:</span>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  twoFactorEnabled
-                    ? "bg-green-500/20 border border-green-500/50 text-green-300"
-                    : `bg-gray-700/50 border border-gray-600 ${textSecondary}`
-                }`}
-              >
-                {twoFactorEnabled ? "Enabled" : "Disabled"}
-              </span>
-            </div>
-          </div>
         </motion.div>
 
         {/* AI Chat Assistant */}

@@ -9,8 +9,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Label from '@/models/Label';
-import Contact from '@/models/contact';
+import Contact from '@/models/Contact';
 import dbConnect from '@/lib/db';
+import mongoose from 'mongoose';
 
 /**
  * GET /api/crm/labels
@@ -25,22 +26,38 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
+    // Convert userId to ObjectId for proper matching
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     const { searchParams } = new URL(req.url);
     const includeArchived = searchParams.get('includeArchived') === 'true';
 
-    const query: any = { userId: session.user.id };
+    const query: any = { userId: userObjectId };
     if (!includeArchived) {
       query.isArchived = false;
     }
 
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const labels = await Label.find(query)
       .sort({ isSystem: -1, name: 1 })
       .lean();
 
+    // Calculate actual contact counts for each label
+    const labelsWithCounts = await Promise.all(
+      labels.map(async (label) => {
+        const contactCount = await Contact.countDocuments({
+          userId: userObjectId,
+          labels: label._id,
+        });
+        return {
+          ...label,
+          contactCount,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      labels,
+      labels: labelsWithCounts,
     });
   } catch (error: any) {
     console.error('Error fetching labels:', error);
@@ -64,6 +81,9 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
+    // Convert userId to ObjectId for proper matching
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     const body = await req.json();
     const { name, description, color, icon } = body;
 
@@ -76,9 +96,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate name
-    // @ts-expect-error Mongoose typing issue with overloaded signatures
     const existingLabel = await Label.findOne({
-      userId: session.user.id,
+      userId: userObjectId,
       name: name.trim(),
       isArchived: false,
     });
@@ -92,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     // Create label
     const label = new Label({
-      userId: session.user.id,
+      userId: userObjectId,
       name: name.trim(),
       description: description?.trim(),
       color: color || '#3B82F6',
