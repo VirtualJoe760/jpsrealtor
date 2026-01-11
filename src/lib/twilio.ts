@@ -310,6 +310,34 @@ export async function getMessageHistory(phoneNumber: string, limit: number = 100
   }
 }
 
+// ============================================================================
+// SEND 2FA CODE VIA SMS
+// ============================================================================
+
+/**
+ * Send 2FA verification code via SMS
+ *
+ * @param phoneNumber - Phone number in E.164 format
+ * @param code - 6-digit verification code
+ * @param userName - User's name for personalization
+ * @returns SMS send result
+ */
+export async function send2FACodeSMS(
+  phoneNumber: string,
+  code: string,
+  userName?: string
+): Promise<TwilioSMSResponse> {
+  const greeting = userName ? `Hi ${userName}, y` : 'Y';
+  const body = `${greeting}our JPSRealtor verification code is: ${code}\n\nThis code will expire in 10 minutes. If you didn't request this code, please ignore this message.`;
+
+  console.log(`[Twilio] Sending 2FA code via SMS to ${phoneNumber}`);
+
+  return await sendSMS({
+    to: phoneNumber,
+    body,
+  });
+}
+
 export default {
   sendSMS,
   sendBulkSMS,
@@ -317,4 +345,5 @@ export default {
   formatPhoneNumber,
   validatePhoneNumber,
   getMessageHistory,
+  send2FACodeSMS,
 };

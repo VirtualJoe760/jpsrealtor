@@ -14,6 +14,8 @@ function TwoFactorForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [email, setEmail] = useState("");
+  const [method, setMethod] = useState<'email' | 'sms'>('email');
+  const [destination, setDestination] = useState("");
 
   const callbackUrl = searchParams.get("from") || "/dashboard";
 
@@ -46,6 +48,8 @@ function TwoFactorForm() {
       }
 
       setCodeSent(true);
+      setMethod(data.method || 'email');
+      setDestination(data.message || '');
     } catch (error) {
       setError("An unexpected error occurred");
     }
@@ -115,7 +119,7 @@ function TwoFactorForm() {
             </h1>
             <p className="text-gray-400">
               {codeSent
-                ? "Enter the 6-digit code sent to your email"
+                ? `Enter the 6-digit code sent via ${method === 'sms' ? 'SMS' : 'email'}`
                 : "Sending verification code..."}
             </p>
           </div>
@@ -131,7 +135,7 @@ function TwoFactorForm() {
           {codeSent && !error && (
             <div className="mb-6 p-4 bg-green-500/10 border border-green-500/50 rounded-lg">
               <p className="text-green-400 text-sm">
-                Verification code sent to your email
+                {destination || `Verification code sent via ${method === 'sms' ? 'SMS' : 'email'}`}
               </p>
             </div>
           )}
