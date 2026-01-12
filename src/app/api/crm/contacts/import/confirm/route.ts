@@ -12,6 +12,7 @@ import dbConnect from '@/lib/mongodb';
 import Contact from '@/models/Contact';
 import ImportBatch from '@/models/ImportBatch';
 import Campaign from '@/models/Campaign';
+import Label from '@/models/Label';
 import * as Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -463,9 +464,13 @@ async function processImportAsync(
         const tagsToAdd = [];
         if (campaignTag) {
           tagsToAdd.push(campaignTag);
+          // Ensure label exists for campaign tag
+          await ensureLabelExists(campaignTag, userId);
         }
         if (label) {
           tagsToAdd.push(label);
+          // Ensure label exists for import label
+          await ensureLabelExists(label, userId);
         }
         if (tagsToAdd.length > 0) {
           contactData.tags = tagsToAdd;
@@ -574,6 +579,38 @@ async function processImportAsync(
     `[Confirm] Import completed: ${successCount} success, ${errorCount} errors, ${skipCount} skipped`
   );
   console.log(`[Confirm] Imported contact IDs (${importedContactIds.length}): [${importedContactIds.join(', ')}]`);
+}
+
+// ============================================================================
+// Helper: Ensure label exists, create if it doesn't
+// ============================================================================
+
+async function ensureLabelExists(labelName: string, userId: string): Promise<void> {
+  try {
+    // Check if label already exists for this user
+    const existingLabel = await Label.findOne({ userId, name: labelName });
+
+    if (!existingLabel) {
+      // Generate a random color for the label
+      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+      // Create new label
+      await Label.create({
+        userId,
+        name: labelName,
+        color: randomColor,
+        icon: 'Tag',
+        contactCount: 0,
+        isSystem: false,
+        isArchived: false,
+      });
+
+      console.log(`[ensureLabelExists] Created new label "${labelName}" for user ${userId}`);
+    }
+  } catch (error) {
+    console.error(`[ensureLabelExists] Error ensuring label "${labelName}":`, error);
+  }
 }
 
 // ============================================================================
