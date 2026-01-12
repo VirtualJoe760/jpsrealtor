@@ -12,6 +12,7 @@ import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
+import { emitNewMessage } from '@/server/socket';
 
 // ============================================================================
 // POST /api/crm/sms/webhook
@@ -42,39 +43,47 @@ export async function POST(request: NextRequest) {
       Body: twilioData.Body?.substring(0, 50),
     });
 
-    // Find the user who owns this Twilio number
-    const user = await User.findOne({
-      // Assuming you have a field for Twilio phone number in User model
-      // If not, we'll need to use an environment variable or config
-    });
-
-    // For now, let's find contacts across all users and link to the right one
-    // Better approach: Store Twilio number -> User mapping
+    // Find contact by phone number to determine user
     let contact = await Contact.findOne({
       phone: twilioData.From,
     });
 
     let userId = contact?.userId;
 
-    // If no contact exists, we need to determine which user this belongs to
-    // This could be based on the Twilio number they texted
+    // If no contact exists, find the first user (for single-user systems)
+    // or create an unassigned message queue
     if (!userId) {
-      console.log('[Twilio Webhook] No existing contact found for:', twilioData.From);
-      // For now, we'll create an "unknown" contact
-      // In production, you'd want to assign this to the correct user
-      // based on which Twilio number received the message
+      console.log('[Twilio Webhook] ⚠️ No existing contact found for:', twilioData.From);
 
-      // Skip creating message if we can't determine the user
-      return new NextResponse(
-        `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Message>Thank you for your message. We'll get back to you soon!</Message>
-</Response>`,
-        {
-          status: 200,
-          headers: { 'Content-Type': 'text/xml' },
-        }
-      );
+      // For single-user systems, assign to first user
+      const firstUser = await User.findOne();
+      if (firstUser) {
+        userId = firstUser._id.toString();
+        console.log('[Twilio Webhook] Assigning to first user:', userId);
+
+        // Optionally create contact on-the-fly
+        // This allows messages from unknown numbers to still be received
+        contact = await Contact.create({
+          userId: firstUser._id,
+          phone: twilioData.From,
+          firstName: 'Unknown',
+          lastName: 'Contact',
+          source: 'inbound_sms',
+          status: 'lead',
+        });
+        console.log('[Twilio Webhook] Created new contact:', contact._id);
+      } else {
+        console.log('[Twilio Webhook] ❌ No users found in system');
+        // Still acknowledge to Twilio but don't save
+        return new NextResponse(
+          `<?xml version="1.0" encoding="UTF-8"?>
+<Response></Response>`,
+          {
+            status: 200,
+            headers: { 'Content-Type': 'text/xml' },
+          }
+        );
+      }
     }
 
     // Check if message already exists (prevent duplicates)
@@ -120,7 +129,7 @@ export async function POST(request: NextRequest) {
       twilioCreatedAt: new Date(),
     });
 
-    console.log('[Twilio Webhook] Saved inbound message:', {
+    console.log('[Twilio Webhook] ✅ Saved inbound message:', {
       _id: smsMessage._id,
       contactId: smsMessage.contactId,
       from: smsMessage.from,
@@ -134,6 +143,10 @@ export async function POST(request: NextRequest) {
       });
       console.log('[Twilio Webhook] Updated contact last contact date');
     }
+
+    // 🔥 EMIT WEBSOCKET EVENT - Push message to client instantly!
+    emitNewMessage(userId, smsMessage);
+    console.log('[Twilio Webhook] 📤 Emitted WebSocket event to user:', userId);
 
     // Return TwiML response (optional auto-reply)
     // For now, we'll just acknowledge receipt with an empty response
