@@ -219,6 +219,21 @@ export default function MessagesPage() {
     e.preventDefault();
     if (!selectedConversation || !messageBody.trim()) return;
 
+    const messageText = messageBody;
+
+    // Optimistically add message to UI immediately
+    const optimisticMessage: SMSMessage = {
+      _id: `temp-${Date.now()}`,
+      from: 'me',
+      to: selectedConversation.phoneNumber,
+      body: messageText,
+      direction: 'outbound',
+      status: 'sending',
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setMessageBody('');
     setSending(true);
 
     try {
@@ -227,7 +242,7 @@ export default function MessagesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: selectedConversation.phoneNumber,
-          body: messageBody,
+          body: messageText,
           contactId: selectedConversation.contactId,
         }),
       });
@@ -235,14 +250,17 @@ export default function MessagesPage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessageBody('');
-        // Refresh messages and conversations
+        // Replace optimistic message with real one
         fetchMessages(selectedConversation.phoneNumber, selectedConversation.contactId);
         fetchConversations();
       } else {
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m._id !== optimisticMessage._id));
         alert(data.error || 'Failed to send message');
       }
     } catch (error) {
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m._id !== optimisticMessage._id));
       console.error('[Messages] Send error:', error);
       alert('Failed to send message');
     } finally {
@@ -366,8 +384,10 @@ export default function MessagesPage() {
   // Fetch messages when conversation selected
   useEffect(() => {
     if (selectedConversation) {
-      // Clear messages first for immediate feedback
-      setMessages([]);
+      // Only set loading if messages are empty (first load)
+      if (messages.length === 0) {
+        setLoading(true);
+      }
       // First fetch from database (fast)
       fetchMessages(selectedConversation.phoneNumber, selectedConversation.contactId);
       // Then sync from Twilio in background (slower, but gets any new messages)
@@ -387,23 +407,23 @@ export default function MessagesPage() {
     }
   }, [messages.length]);
 
-  // Poll for new messages every 3 seconds
+  // Poll for new messages every 5 seconds (less aggressive)
   useEffect(() => {
     if (!selectedConversation) return;
 
     const pollInterval = setInterval(() => {
       // Use fetchMessages for fast polling, sync from Twilio less frequently
       fetchMessages(selectedConversation.phoneNumber, selectedConversation.contactId);
-    }, 3000);
+    }, 5000); // Changed from 3s to 5s
 
     return () => clearInterval(pollInterval);
   }, [selectedConversation, fetchMessages]);
 
-  // Poll for new conversations every 10 seconds
+  // Poll for new conversations every 15 seconds (less aggressive)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchConversations();
-    }, 10000);
+    }, 15000); // Changed from 10s to 15s
 
     return () => clearInterval(interval);
   }, [fetchConversations]);
@@ -709,6 +729,8 @@ export default function MessagesPage() {
                                       <Check className="w-3.5 h-3.5" />
                                     ) : message.status === 'failed' ? (
                                       <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                                    ) : message.status === 'sending' ? (
+                                      <div className="w-3.5 h-3.5 border border-gray-400 border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       <Clock className="w-3.5 h-3.5" />
                                     )}

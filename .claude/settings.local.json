@@ -26,7 +26,8 @@
       "Bash(node test-db-messages.js:*)",
       "Bash(node test-contacts.js:*)",
       "Bash(node add-test-contacts.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(timeout 5 curl:*)"
     ],
     "deny": [],
     "ask": []
