@@ -12,6 +12,7 @@ import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
 import mongoose from 'mongoose';
+import { emitNewMessage } from '@/server/socket';
 
 // ============================================================================
 // POST /api/crm/sms/send
@@ -123,6 +124,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[SMS API] Sent SMS: ${twilioResult.messageSid}`);
+
+    // Emit WebSocket event to notify client instantly
+    emitNewMessage(session.user.id, smsMessage);
 
     return NextResponse.json({
       success: true,

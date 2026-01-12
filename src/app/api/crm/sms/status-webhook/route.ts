@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
+import { emitStatusUpdate } from '@/server/socket';
 
 // ============================================================================
 // POST /api/crm/sms/status-webhook
@@ -70,8 +71,8 @@ export async function POST(request: NextRequest) {
       to: message.to,
     });
 
-    // TODO: Emit WebSocket event to notify client (Phase 2)
-    // emitStatusUpdate(message.userId, message._id, message.status);
+    // Emit WebSocket event to notify client in real-time
+    emitStatusUpdate(message.userId.toString(), message._id.toString(), message.status);
 
     return new NextResponse('OK', { status: 200 });
   } catch (error: any) {

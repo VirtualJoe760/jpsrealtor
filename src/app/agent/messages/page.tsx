@@ -25,9 +25,13 @@ import {
   CheckCircle,
   XCircle,
   ChevronLeft,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 import AgentNav from '@/app/components/AgentNav';
+import { useSocket, socketEvents } from '@/hooks/useSocket';
+import { useSession } from 'next-auth/react';
 
 // Types
 interface SMSMessage {
@@ -77,6 +81,10 @@ interface Contact {
 }
 
 export default function MessagesPage() {
+  // Session and WebSocket
+  const { data: session } = useSession();
+  const { socket, connected, error: socketError } = useSocket(session?.user?.id);
+
   // Theme
   const { currentTheme } = useTheme();
   const { border, cardBg, textPrimary, textSecondary } = useThemeClasses();
@@ -407,26 +415,46 @@ export default function MessagesPage() {
     }
   }, [messages.length]);
 
-  // Poll for new messages every 5 seconds (less aggressive)
+  // WebSocket: Listen for real-time updates (NO MORE POLLING!)
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!socket || !connected) return;
 
-    const pollInterval = setInterval(() => {
-      // Use fetchMessages for fast polling, sync from Twilio less frequently
-      fetchMessages(selectedConversation.phoneNumber, selectedConversation.contactId);
-    }, 5000); // Changed from 3s to 5s
+    console.log('[Messages] Setting up WebSocket listeners');
 
-    return () => clearInterval(pollInterval);
-  }, [selectedConversation, fetchMessages]);
-
-  // Poll for new conversations every 15 seconds (less aggressive)
-  useEffect(() => {
-    const interval = setInterval(() => {
+    // Listen for new messages
+    socket.on('message:new', (message: SMSMessage) => {
+      console.log('[Messages] Received new message via WebSocket:', message._id);
+      setMessages(prev => {
+        // Avoid duplicates
+        if (prev.some(m => m._id === message._id)) return prev;
+        return [...prev, message];
+      });
+      // Refresh conversation list to update last message
       fetchConversations();
-    }, 15000); // Changed from 10s to 15s
+    });
 
-    return () => clearInterval(interval);
-  }, [fetchConversations]);
+    // Listen for status updates
+    socket.on('message:status', ({ messageId, status }: { messageId: string, status: string }) => {
+      console.log('[Messages] Status update via WebSocket:', messageId, status);
+      setMessages(prev => prev.map(m =>
+        m._id === messageId ? { ...m, status } : m
+      ));
+    });
+
+    // Listen for conversation updates
+    socket.on('conversation:update', (conversation: Conversation) => {
+      console.log('[Messages] Conversation update via WebSocket');
+      fetchConversations(); // Refresh conversation list
+    });
+
+    // Cleanup
+    return () => {
+      console.log('[Messages] Cleaning up WebSocket listeners');
+      socket.off('message:new');
+      socket.off('message:status');
+      socket.off('conversation:update');
+    };
+  }, [socket, connected, fetchConversations]);
 
   // ============================================================================
   // Computed Values
@@ -468,13 +496,27 @@ export default function MessagesPage() {
         <div className="mb-4 sm:mb-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${
-                isLight ? 'text-slate-900' : 'text-white'
-              }`}>
-                Messages
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
+                  Messages
+                </h1>
+                {/* Connection Status Indicator */}
+                {connected ? (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium">
+                    <Wifi className="w-3 h-3" />
+                    <span>Live</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-medium">
+                    <WifiOff className="w-3 h-3" />
+                    <span>Connecting...</span>
+                  </div>
+                )}
+              </div>
               <p className={`text-sm sm:text-base ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                SMS conversations via Twilio
+                SMS conversations via Twilio • Real-time updates
               </p>
             </div>
             {/* Desktop Contacts Button */}
