@@ -124,6 +124,16 @@ export default function ContactViewPanel({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Contact info editing state
+  const [isEditingContactInfo, setIsEditingContactInfo] = useState(false);
+  const [editedPhones, setEditedPhones] = useState<Array<{ number: string; label: string; isPrimary: boolean }>>(
+    (contact as any).phones || (contact.phone ? [{ number: contact.phone, label: 'mobile', isPrimary: true }] : [])
+  );
+  const [editedEmails, setEditedEmails] = useState<Array<{ address: string; label: string; isPrimary: boolean }>>(
+    (contact as any).emails || (contact.email ? [{ address: contact.email, label: 'personal', isPrimary: true }] : [])
+  );
+  const [savingContactInfo, setSavingContactInfo] = useState(false);
+
   // Update layout on window resize
   useEffect(() => {
     const updateLayout = () => {
@@ -467,6 +477,89 @@ export default function ContactViewPanel({
     }
   };
 
+  // Contact info editing handlers
+  const handleAddPhone = () => {
+    setEditedPhones([...editedPhones, { number: '', label: 'mobile', isPrimary: false }]);
+  };
+
+  const handleRemovePhone = (index: number) => {
+    setEditedPhones(editedPhones.filter((_, i) => i !== index));
+  };
+
+  const handlePhoneChange = (index: number, field: 'number' | 'label' | 'isPrimary', value: string | boolean) => {
+    const updated = [...editedPhones];
+    if (field === 'isPrimary' && value === true) {
+      // Set all other phones to not primary
+      updated.forEach((p, i) => {
+        p.isPrimary = i === index;
+      });
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setEditedPhones(updated);
+  };
+
+  const handleAddEmail = () => {
+    setEditedEmails([...editedEmails, { address: '', label: 'personal', isPrimary: false }]);
+  };
+
+  const handleRemoveEmail = (index: number) => {
+    setEditedEmails(editedEmails.filter((_, i) => i !== index));
+  };
+
+  const handleEmailChange = (index: number, field: 'address' | 'label' | 'isPrimary', value: string | boolean) => {
+    const updated = [...editedEmails];
+    if (field === 'isPrimary' && value === true) {
+      // Set all other emails to not primary
+      updated.forEach((e, i) => {
+        e.isPrimary = i === index;
+      });
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setEditedEmails(updated);
+  };
+
+  const handleSaveContactInfo = async () => {
+    setSavingContactInfo(true);
+    try {
+      const response = await fetch(`/api/crm/contacts/${contact._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phones: editedPhones.filter(p => p.number.trim()),
+          emails: editedEmails.filter(e => e.address.trim()),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setIsEditingContactInfo(false);
+        console.log('[ContactViewPanel] Contact info updated successfully');
+        // Optionally refresh the page or update parent
+        window.location.reload();
+      } else {
+        console.error('[ContactViewPanel] Failed to update contact info:', data.error);
+        alert('Failed to update contact info: ' + data.error);
+      }
+    } catch (error) {
+      console.error('[ContactViewPanel] Error updating contact info:', error);
+      alert('Error updating contact info');
+    } finally {
+      setSavingContactInfo(false);
+    }
+  };
+
+  const handleCancelContactInfoEdit = () => {
+    setEditedPhones(
+      (contact as any).phones || (contact.phone ? [{ number: contact.phone, label: 'mobile', isPrimary: true }] : [])
+    );
+    setEditedEmails(
+      (contact as any).emails || (contact.email ? [{ address: contact.email, label: 'personal', isPrimary: true }] : [])
+    );
+    setIsEditingContactInfo(false);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -652,14 +745,25 @@ export default function ContactViewPanel({
             <div className="px-6 space-y-6">
               {/* CONTACT INFORMATION */}
               <div>
-              <h3
-                className={`text-lg font-semibold mb-3 flex items-center ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}
-              >
-                <Phone className="w-5 h-5 mr-2" />
-                Contact Information
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className={`text-lg font-semibold flex items-center ${
+                    isLight ? 'text-gray-900' : 'text-white'
+                  }`}
+                >
+                  <Phone className="w-5 h-5 mr-2" />
+                  Contact Information
+                </h3>
+                {!isEditingContactInfo && (
+                  <button
+                    onClick={() => setIsEditingContactInfo(true)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </button>
+                )}
+              </div>
               <div
                 className={`p-4 rounded-lg space-y-3 ${
                   isLight ? 'bg-gray-50' : 'bg-gray-800'
@@ -667,122 +771,247 @@ export default function ContactViewPanel({
               >
                 {/* Phone Numbers - Grid Layout */}
                 <div>
-                  <label
-                    className={`text-xs font-medium block mb-2 ${
-                      isLight ? 'text-gray-500' : 'text-gray-400'
-                    }`}
-                  >
-                    Phone Numbers
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {/* Enhanced phones array */}
-                    {(contact as any).phones && (contact as any).phones.length > 0 ? (
-                      (contact as any).phones.map((phoneObj: any, idx: number) => (
-                        <a
-                          key={idx}
-                          href={`tel:${phoneObj.number}`}
-                          className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                        >
-                          <Phone className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{phoneObj.number}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded capitalize flex-shrink-0 ${
-                            phoneObj.isPrimary
-                              ? isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'
-                              : isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
-                          }`}>
-                            {phoneObj.isPrimary ? 'Primary' : phoneObj.label}
-                          </span>
-                        </a>
-                      ))
-                    ) : (
+                  <div className="flex items-center justify-between mb-2">
+                    <label
+                      className={`text-xs font-medium ${
+                        isLight ? 'text-gray-500' : 'text-gray-400'
+                      }`}
+                    >
+                      Phone Numbers
+                    </label>
+                    {isEditingContactInfo && (
+                      <button
+                        onClick={handleAddPhone}
+                        className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Phone
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {isEditingContactInfo ? (
                       <>
-                        {/* Fallback to legacy phone field */}
-                        {contact.phone && (
-                          <a
-                            href={`tel:${contact.phone}`}
-                            className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                          >
-                            <Phone className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{contact.phone}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'}`}>
-                              Primary
-                            </span>
-                          </a>
-                        )}
-
-                        {/* Alternate Phones (legacy) */}
-                        {contact.alternatePhones && contact.alternatePhones.length > 0 && contact.alternatePhones.map((phone, idx) => (
-                          <a
-                            key={idx}
-                            href={`tel:${phone}`}
-                            className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                          >
-                            <Phone className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{phone}</span>
-                          </a>
+                        {editedPhones.map((phoneObj, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="tel"
+                              value={phoneObj.number}
+                              onChange={(e) => handlePhoneChange(idx, 'number', e.target.value)}
+                              placeholder="Phone number"
+                              className={`flex-1 px-3 py-2 rounded border text-sm ${
+                                isLight
+                                  ? 'bg-white border-gray-300 text-gray-900'
+                                  : 'bg-gray-700 border-gray-600 text-white'
+                              }`}
+                            />
+                            <select
+                              value={phoneObj.label}
+                              onChange={(e) => handlePhoneChange(idx, 'label', e.target.value)}
+                              className={`px-2 py-2 rounded border text-sm ${
+                                isLight
+                                  ? 'bg-white border-gray-300 text-gray-900'
+                                  : 'bg-gray-700 border-gray-600 text-white'
+                              }`}
+                            >
+                              <option value="mobile">Mobile</option>
+                              <option value="home">Home</option>
+                              <option value="work">Work</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={phoneObj.isPrimary}
+                                onChange={(e) => handlePhoneChange(idx, 'isPrimary', e.target.checked)}
+                                className="rounded"
+                              />
+                              <span className={isLight ? 'text-gray-700' : 'text-gray-300'}>Primary</span>
+                            </label>
+                            <button
+                              onClick={() => handleRemovePhone(idx)}
+                              className="p-2 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         ))}
+                        {editedPhones.length === 0 && (
+                          <p className={`text-sm ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
+                            No phone numbers. Click "Add Phone" to add one.
+                          </p>
+                        )}
                       </>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {(contact as any).phones && (contact as any).phones.length > 0 ? (
+                          (contact as any).phones.map((phoneObj: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={`tel:${phoneObj.number}`}
+                              className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                            >
+                              <Phone className="w-4 h-4 flex-shrink-0" />
+                              <span className="truncate">{phoneObj.number}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded capitalize flex-shrink-0 ${
+                                phoneObj.isPrimary
+                                  ? isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'
+                                  : isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
+                              }`}>
+                                {phoneObj.isPrimary ? 'Primary' : phoneObj.label}
+                              </span>
+                            </a>
+                          ))
+                        ) : (
+                          <>
+                            {contact.phone && (
+                              <a
+                                href={`tel:${contact.phone}`}
+                                className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                              >
+                                <Phone className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{contact.phone}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'}`}>
+                                  Primary
+                                </span>
+                              </a>
+                            )}
+                            {contact.alternatePhones && contact.alternatePhones.length > 0 && contact.alternatePhones.map((phone, idx) => (
+                              <a
+                                key={idx}
+                                href={`tel:${phone}`}
+                                className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                              >
+                                <Phone className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{phone}</span>
+                              </a>
+                            ))}
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Email Addresses - Grid Layout */}
                 <div>
-                  <label
-                    className={`text-xs font-medium block mb-2 ${
-                      isLight ? 'text-gray-500' : 'text-gray-400'
-                    }`}
-                  >
-                    Email Addresses
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {/* Enhanced emails array */}
-                    {(contact as any).emails && (contact as any).emails.length > 0 ? (
-                      (contact as any).emails.map((emailObj: any, idx: number) => (
-                        <a
-                          key={idx}
-                          href={`mailto:${emailObj.address}`}
-                          className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                        >
-                          <Mail className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{emailObj.address}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded capitalize flex-shrink-0 ${
-                            emailObj.isPrimary
-                              ? isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'
-                              : isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
-                          }`}>
-                            {emailObj.isPrimary ? 'Primary' : emailObj.label}
-                          </span>
-                        </a>
-                      ))
-                    ) : (
+                  <div className="flex items-center justify-between mb-2">
+                    <label
+                      className={`text-xs font-medium ${
+                        isLight ? 'text-gray-500' : 'text-gray-400'
+                      }`}
+                    >
+                      Email Addresses
+                    </label>
+                    {isEditingContactInfo && (
+                      <button
+                        onClick={handleAddEmail}
+                        className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Email
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {isEditingContactInfo ? (
                       <>
-                        {/* Fallback to legacy email field */}
-                        {contact.email && (
-                          <a
-                            href={`mailto:${contact.email}`}
-                            className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                          >
-                            <Mail className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{contact.email}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'}`}>
-                              Primary
-                            </span>
-                          </a>
-                        )}
-
-                        {/* Alternate Emails (legacy) */}
-                        {contact.alternateEmails && contact.alternateEmails.length > 0 && contact.alternateEmails.map((email, idx) => (
-                          <a
-                            key={idx}
-                            href={`mailto:${email}`}
-                            className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                          >
-                            <Mail className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{email}</span>
-                          </a>
+                        {editedEmails.map((emailObj, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="email"
+                              value={emailObj.address}
+                              onChange={(e) => handleEmailChange(idx, 'address', e.target.value)}
+                              placeholder="Email address"
+                              className={`flex-1 px-3 py-2 rounded border text-sm ${
+                                isLight
+                                  ? 'bg-white border-gray-300 text-gray-900'
+                                  : 'bg-gray-700 border-gray-600 text-white'
+                              }`}
+                            />
+                            <select
+                              value={emailObj.label}
+                              onChange={(e) => handleEmailChange(idx, 'label', e.target.value)}
+                              className={`px-2 py-2 rounded border text-sm ${
+                                isLight
+                                  ? 'bg-white border-gray-300 text-gray-900'
+                                  : 'bg-gray-700 border-gray-600 text-white'
+                              }`}
+                            >
+                              <option value="personal">Personal</option>
+                              <option value="work">Work</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={emailObj.isPrimary}
+                                onChange={(e) => handleEmailChange(idx, 'isPrimary', e.target.checked)}
+                                className="rounded"
+                              />
+                              <span className={isLight ? 'text-gray-700' : 'text-gray-300'}>Primary</span>
+                            </label>
+                            <button
+                              onClick={() => handleRemoveEmail(idx)}
+                              className="p-2 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         ))}
+                        {editedEmails.length === 0 && (
+                          <p className={`text-sm ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
+                            No email addresses. Click "Add Email" to add one.
+                          </p>
+                        )}
                       </>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {(contact as any).emails && (contact as any).emails.length > 0 ? (
+                          (contact as any).emails.map((emailObj: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={`mailto:${emailObj.address}`}
+                              className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                            >
+                              <Mail className="w-4 h-4 flex-shrink-0" />
+                              <span className="truncate">{emailObj.address}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded capitalize flex-shrink-0 ${
+                                emailObj.isPrimary
+                                  ? isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'
+                                  : isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
+                              }`}>
+                                {emailObj.isPrimary ? 'Primary' : emailObj.label}
+                              </span>
+                            </a>
+                          ))
+                        ) : (
+                          <>
+                            {contact.email && (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                              >
+                                <Mail className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{contact.email}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'}`}>
+                                  Primary
+                                </span>
+                              </a>
+                            )}
+                            {contact.alternateEmails && contact.alternateEmails.length > 0 && contact.alternateEmails.map((email, idx) => (
+                              <a
+                                key={idx}
+                                href={`mailto:${email}`}
+                                className={`flex items-center gap-2 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                              >
+                                <Mail className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{email}</span>
+                              </a>
+                            ))}
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -805,6 +1034,31 @@ export default function ContactViewPanel({
                     >
                       {contact.website}
                     </a>
+                  </div>
+                )}
+
+                {/* Save/Cancel Buttons */}
+                {isEditingContactInfo && (
+                  <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={handleSaveContactInfo}
+                      disabled={savingContactInfo}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                    >
+                      <Save className="w-4 h-4" />
+                      {savingContactInfo ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={handleCancelContactInfoEdit}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium ${
+                        isLight
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-gray-700 text-white hover:bg-gray-600'
+                      } flex items-center justify-center gap-1`}
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
                   </div>
                 )}
               </div>
