@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AgentNav from "@/app/components/AgentNav";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { Briefcase, Users, TrendingUp, FileCheck, User as UserIcon, Phone, Building2, CreditCard, Edit2, Camera, Mail } from "lucide-react";
+import { Briefcase, Users, TrendingUp, FileCheck, User as UserIcon, Phone, Building2, CreditCard, Settings, Camera, Mail } from "lucide-react";
 import { toast } from "react-toastify";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
 
@@ -235,13 +235,15 @@ export default function AgentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 md:py-4 md:py-8">
         {/* Agent Navigation */}
-        <AgentNav />
+        <div className="flex-shrink-0">
+          <AgentNav />
+        </div>
 
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 flex-shrink-0 px-4 md:px-6">
           <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
             Agent Dashboard
           </h1>
@@ -255,36 +257,36 @@ export default function AgentDashboard() {
           )}
         </div>
 
-        {/* Agent Profile Card */}
-        {!isLoadingProfile && (
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-0 px-4 md:px-6">
+          {/* Agent Profile Card */}
+          {!isLoadingProfile && (
           <div
-            className={`rounded-xl p-4 sm:p-6 mb-8 shadow-lg ${
+            className={`rounded-xl p-4 sm:p-6 mb-8 relative ${
               isLight
-                ? "bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100"
-                : "bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700"
+                ? "bg-gradient-to-r from-blue-50/50 to-indigo-50/50 shadow-2xl"
+                : "bg-gradient-to-r from-slate-900/50 to-slate-800/50"
             }`}
           >
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-              <h2 className={`text-xl sm:text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-                Agent Profile
-              </h2>
+            {/* Settings Icon - Absolutely Positioned */}
+            <div className="absolute top-4 right-4 z-10">
               {!isEditMode ? (
                 <button
                   onClick={() => setIsEditMode(true)}
-                  className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
+                  className={`p-2 rounded-lg transition-all ${
                     isLight
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                      ? "hover:bg-gray-100 text-gray-700"
+                      : "hover:bg-slate-700 text-gray-300"
                   }`}
+                  aria-label="Edit Profile"
                 >
-                  <Edit2 className="w-4 h-4" />
-                  Edit Profile
+                  <Settings className="w-6 h-6" />
                 </button>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="flex gap-2">
                   <button
                     onClick={handleCancelEdit}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
+                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
                       isLight
                         ? "bg-gray-200 hover:bg-gray-300 text-gray-900"
                         : "bg-slate-700 hover:bg-slate-600 text-white"
@@ -295,7 +297,7 @@ export default function AgentDashboard() {
                   <button
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 text-sm sm:text-base ${
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 text-sm ${
                       isLight
                         ? "bg-blue-600 hover:bg-blue-700 text-white"
                         : "bg-blue-600 hover:bg-blue-700 text-white"
@@ -307,12 +309,25 @@ export default function AgentDashboard() {
               )}
             </div>
 
-            <div className="flex flex-col md:flex-row gap-6">
+            {/* Name and Email Above Photo */}
+            <div className="mb-3">
+              <h3 className={`text-xl sm:text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+                {agentProfile.name || "Not set"}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Mail className={`w-4 h-4 ${isLight ? "text-gray-500" : "text-gray-400"}`} />
+                <span className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                  {agentProfile.email}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-3 md:gap-6 items-start">
               {/* Profile Photo */}
               <div className="flex-shrink-0">
-                <div className="relative">
+                <div className="relative w-24 h-24 sm:w-32 sm:h-32">
                   <div
-                    className={`w-32 h-32 rounded-full overflow-hidden border-4 ${
+                    className={`w-full h-full rounded-full overflow-hidden border-4 ${
                       isLight ? "border-white" : "border-slate-700"
                     } shadow-lg`}
                   >
@@ -335,7 +350,7 @@ export default function AgentDashboard() {
                     )}
                   </div>
                   <label
-                    className={`absolute bottom-0 right-0 p-2 rounded-full cursor-pointer shadow-lg transition-all ${
+                    className={`absolute bottom-1 right-1 p-2 rounded-full cursor-pointer shadow-lg transition-all ${
                       isUploadingImage ? "opacity-50 cursor-not-allowed" : ""
                     } ${
                       isLight
@@ -363,29 +378,9 @@ export default function AgentDashboard() {
               <div className="flex-1">
                 {!isEditMode ? (
                   // Display Mode
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className={`text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-                        {agentProfile.name || "Not set"}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Mail className={`w-4 h-4 ${isLight ? "text-gray-500" : "text-gray-400"}`} />
-                        <span className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-                          {agentProfile.email}
-                        </span>
-                      </div>
-                    </div>
-
-                    {agentProfile.profileDescription && (
-                      <p className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"} leading-relaxed`}>
-                        {agentProfile.profileDescription}
-                      </p>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                        isLight ? "bg-white/60" : "bg-slate-800/60"
-                      }`}>
+                  <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex items-center gap-3 p-3">
                         <Phone className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
                         <div>
                           <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
@@ -397,9 +392,7 @@ export default function AgentDashboard() {
                         </div>
                       </div>
 
-                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                        isLight ? "bg-white/60" : "bg-slate-800/60"
-                      }`}>
+                      <div className="flex items-center gap-3 p-3">
                         <Building2 className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
                         <div>
                           <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
@@ -411,9 +404,7 @@ export default function AgentDashboard() {
                         </div>
                       </div>
 
-                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                        isLight ? "bg-white/60" : "bg-slate-800/60"
-                      }`}>
+                      <div className="flex items-center gap-3 p-3">
                         <CreditCard className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
                         <div>
                           <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
@@ -425,9 +416,7 @@ export default function AgentDashboard() {
                         </div>
                       </div>
 
-                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                        isLight ? "bg-white/60" : "bg-slate-800/60"
-                      }`}>
+                      <div className="flex items-center gap-3 p-3">
                         <Users className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
                         <div>
                           <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
@@ -565,94 +554,33 @@ export default function AgentDashboard() {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                className={`rounded-lg p-6 ${
-                  isLight ? "bg-white shadow-sm border border-gray-200" : "bg-neutral-900 border border-neutral-800"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-4">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={stat.label}
+                  className={`rounded-lg p-6 flex items-center justify-between ${
+                    isLight ? "bg-white/30 shadow-2xl" : "bg-neutral-900/30"
+                  }`}
+                >
+                  <div className="flex flex-col items-start text-left">
+                    <p className={`text-sm font-medium mb-1 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                      {stat.label}
+                    </p>
+                    <p className={`text-3xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+                      {stat.value}
+                    </p>
+                  </div>
                   <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                     <Icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
                 </div>
-                <p className={`text-sm font-medium ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-                  {stat.label}
-                </p>
-                <p className={`text-3xl font-bold mt-2 ${isLight ? "text-gray-900" : "text-white"}`}>
-                  {stat.value}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Quick Actions */}
-        <div
-          className={`rounded-lg p-4 sm:p-6 ${
-            isLight ? "bg-white shadow-sm border border-gray-200" : "bg-neutral-900 border border-neutral-800"
-          }`}
-        >
-          <h2 className={`text-lg sm:text-xl font-bold mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <button
-              onClick={() => router.push("/agent/clients")}
-              className={`p-4 rounded-lg text-left transition-colors ${
-                isLight
-                  ? "bg-blue-50 hover:bg-blue-100 text-blue-900"
-                  : "bg-blue-900/20 hover:bg-blue-900/30 text-blue-400"
-              }`}
-            >
-              <Briefcase className="w-5 h-5 mb-2" />
-              <p className="font-semibold">Manage Clients</p>
-              <p className={`text-sm mt-1 ${isLight ? "text-blue-700" : "text-blue-300"}`}>
-                View and manage your client list
-              </p>
-            </button>
-
-            {user?.isTeamLeader && (
-              <>
-                <button
-                  onClick={() => router.push("/agent/applications")}
-                  className={`p-4 rounded-lg text-left transition-colors ${
-                    isLight
-                      ? "bg-green-50 hover:bg-green-100 text-green-900"
-                      : "bg-green-900/20 hover:bg-green-900/30 text-green-400"
-                  }`}
-                >
-                  <FileCheck className="w-5 h-5 mb-2" />
-                  <p className="font-semibold">Review Applications</p>
-                  <p className={`text-sm mt-1 ${isLight ? "text-green-700" : "text-green-300"}`}>
-                    Manage pending agent applications
-                  </p>
-                </button>
-
-                <button
-                  onClick={() => router.push("/agent/team")}
-                  className={`p-4 rounded-lg text-left transition-colors ${
-                    isLight
-                      ? "bg-purple-50 hover:bg-purple-100 text-purple-900"
-                      : "bg-purple-900/20 hover:bg-purple-900/30 text-purple-400"
-                  }`}
-                >
-                  <Users className="w-5 h-5 mb-2" />
-                  <p className="font-semibold">Manage Team</p>
-                  <p className={`text-sm mt-1 ${isLight ? "text-purple-700" : "text-purple-300"}`}>
-                    View and manage your team members
-                  </p>
-                </button>
-              </>
-            )}
+              );
+            })}
           </div>
         </div>
-
       </div>
     </div>
   );

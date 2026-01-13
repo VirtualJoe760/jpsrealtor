@@ -95,6 +95,66 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null); // New: filter by tag
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null); // New: filter by status
 
+  // Restore state from sessionStorage on mount
+  useEffect(() => {
+    const savedState = sessionStorage.getItem('contactsPageState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        if (state.searchQuery) setSearchQuery(state.searchQuery);
+        if (state.viewMode) setViewMode(state.viewMode);
+        if (state.selectedTag) setSelectedTag(state.selectedTag);
+        if (state.selectedStatus) setSelectedStatus(state.selectedStatus);
+        if (state.sortBy) setSortBy(state.sortBy);
+        if (state.filterBy) setFilterBy(state.filterBy);
+        if (state.contactAgeFilter) setContactAgeFilter(state.contactAgeFilter);
+
+        // Restore scroll position after a short delay to ensure content is loaded
+        if (state.scrollPosition) {
+          setTimeout(() => {
+            window.scrollTo(0, state.scrollPosition);
+          }, 100);
+        }
+      } catch (error) {
+        console.error('[ContactsTab] Error restoring state:', error);
+      }
+    }
+  }, []);
+
+  // Save state to sessionStorage whenever it changes
+  useEffect(() => {
+    const stateToSave = {
+      searchQuery,
+      viewMode,
+      selectedTag,
+      selectedStatus,
+      sortBy,
+      filterBy,
+      contactAgeFilter,
+      scrollPosition: window.scrollY,
+    };
+    sessionStorage.setItem('contactsPageState', JSON.stringify(stateToSave));
+  }, [searchQuery, viewMode, selectedTag, selectedStatus, sortBy, filterBy, contactAgeFilter]);
+
+  // Save scroll position before navigation
+  useEffect(() => {
+    const handleScroll = () => {
+      const savedState = sessionStorage.getItem('contactsPageState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          state.scrollPosition = window.scrollY;
+          sessionStorage.setItem('contactsPageState', JSON.stringify(state));
+        } catch (error) {
+          console.error('[ContactsTab] Error saving scroll position:', error);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Fetch tags and stats on mount
   useEffect(() => {
     fetchTags();
@@ -397,11 +457,24 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   };
 
   return (
-    <div>
-      {/* Header with Search and Add Button */}
-      <div className="mb-6 space-y-3">
-        {/* Row 1: Search and Add Button */}
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header with Search and View Controls */}
+      <div className="mb-6 px-4 md:px-0 flex-shrink-0">
+        {/* Single Row: Import Button, Search, and View Toggle */}
         <div className="flex items-center gap-3">
+          {/* Import Button */}
+          <button
+            onClick={() => setShowSyncModal(true)}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${
+              isLight
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            }`}
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+
           {/* Search */}
           <div className="flex-1 relative">
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
@@ -420,22 +493,6 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
             />
           </div>
 
-          {/* Add Contact Button - Primary action */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all whitespace-nowrap text-sm sm:text-base ${
-              isLight
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden xs:inline">Add</span>
-          </button>
-        </div>
-
-        {/* Row 2: View Toggle and Import Button */}
-        <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className={`flex items-center gap-1 p-1 rounded-lg border ${
             isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-700'
@@ -475,19 +532,6 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <span className="hidden xs:inline">List</span>
             </button>
           </div>
-
-          {/* Import Button */}
-          <button
-            onClick={() => setShowSyncModal(true)}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all border text-sm sm:text-base ${
-              isLight
-                ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Import</span>
-          </button>
         </div>
       </div>
 
@@ -496,49 +540,21 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
         <div className={`mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border ${
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800/50 border-gray-700'
         }`}>
-          {/* Left: Bulk Actions */}
-          <div className="flex items-center gap-3">
-            {/* Select All Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sortedContacts.length > 0 && selectedContactIds.size === sortedContacts.length}
-                onChange={toggleSelectAll}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-                Select ({sortedContacts.length})
-              </span>
-            </label>
-
-            {/* Delete Buttons - Show when items selected */}
-            {selectedContactIds.size > 0 && (
-              <>
-                <button
-                  onClick={bulkDeleteContacts}
-                  disabled={isDeleting}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                    isLight
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-red-600 text-white hover:bg-red-700'
-                  } disabled:opacity-50`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                  {isDeleting ? 'Deleting...' : `Delete (${selectedContactIds.size})`}
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Center: Stats */}
-          <div className="flex items-center gap-4 px-3 border-l border-r border-slate-300 dark:border-gray-600">
-            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-              <span className="font-semibold">{ sortedContacts.length}</span> of <span className="font-semibold">{pagination.total}</span> contacts
+          {/* Select Checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sortedContacts.length > 0 && selectedContactIds.size === sortedContacts.length}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
+              Select ({sortedContacts.length})
             </span>
-          </div>
+          </label>
 
-          {/* Right: Filter & Sort */}
-          <div className="flex items-center gap-2 ml-auto">
+          {/* Filter & Sort */}
+          <div className="flex items-center gap-2">
             {/* Filter by Age */}
             <select
               value={contactAgeFilter}
@@ -575,6 +591,22 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               <option value="z-a">Z-A (First Name)</option>
             </select>
           </div>
+
+          {/* Delete Buttons - Show when items selected */}
+          {selectedContactIds.size > 0 && (
+            <button
+              onClick={bulkDeleteContacts}
+              disabled={isDeleting}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ml-auto ${
+                isLight
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-red-600 text-white hover:bg-red-700'
+              } disabled:opacity-50`}
+            >
+              <Trash2 className="w-3 h-3" />
+              {isDeleting ? 'Deleting...' : `Delete (${selectedContactIds.size})`}
+            </button>
+          )}
         </div>
       )}
 
@@ -583,9 +615,6 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
         <div className="space-y-8">
           {/* Contacts Section */}
           <div>
-            <h2 className={`text-2xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              Contacts
-            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <button
                 onClick={() => {
@@ -593,18 +622,15 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus(null);
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-blue-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-emerald-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <Users className={`w-8 h-8 ${isLight ? 'text-blue-600' : 'text-emerald-500'}`} />
                 </div>
-                <h3 className={`text-lg font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  Contacts
-                </h3>
                 <p className={`text-3xl font-bold ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
                   {stats.total}
                 </p>
@@ -622,10 +648,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                     setSelectedTag(tag.name);
                     setSelectedStatus(null);
                   }}
-                  className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                  className={`p-6 rounded-lg transition-all text-left ${
                     isLight
-                      ? 'bg-white border-slate-300 hover:border-blue-500'
-                      : 'bg-gray-800 border-gray-700 hover:border-emerald-500'
+                      ? 'bg-white/30'
+                      : 'bg-neutral-900/30'
                   }`}
                   style={{
                     borderColor: selectedTag === tag.name ? tag.color : undefined,
@@ -658,10 +684,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('uncontacted');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-slate-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-gray-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -685,10 +711,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('contacted');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-yellow-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-yellow-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -712,10 +738,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('qualified');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-blue-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-blue-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -739,10 +765,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('nurturing');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-purple-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-purple-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -766,10 +792,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('client');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-green-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-green-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -793,10 +819,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                   setSelectedTag(null);
                   setSelectedStatus('inactive');
                 }}
-                className={`p-6 rounded-lg border-2 transition-all text-left hover:shadow-lg ${
+                className={`p-6 rounded-lg transition-all text-left ${
                   isLight
-                    ? 'bg-white border-slate-300 hover:border-red-500'
-                    : 'bg-gray-800 border-gray-700 hover:border-red-500'
+                    ? 'bg-white/30'
+                    : 'bg-neutral-900/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -819,7 +845,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
 
       {/* List View - Contacts List */}
       {viewMode === 'list' && (
-        <>
+        <div className="flex-1 overflow-y-auto px-4 md:px-6">
           {/* Breadcrumb for filtered view */}
           {(selectedTag || selectedStatus) && (
             <div className={`mb-4 flex items-center gap-2 text-sm ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
@@ -871,10 +897,10 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                 className={`rounded-lg border transition-all ${
                   selectedContactIds.has(contact._id)
                     ? isLight
-                      ? 'bg-blue-50 border-blue-300 shadow-md'
+                      ? 'bg-blue-50 border-blue-300 shadow-xl'
                       : 'bg-emerald-900/20 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
                     : isLight
-                    ? 'bg-white border-slate-200 hover:border-blue-300'
+                    ? 'bg-white border-slate-200 hover:border-blue-300 shadow-lg hover:shadow-xl'
                     : 'bg-gray-800 border-gray-700 hover:border-emerald-500/50'
                 }`}
               >
@@ -979,7 +1005,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedContact(contact);
+                          router.push(`/agent/messages?contactId=${contact._id}&phone=${encodeURIComponent(contact.phone)}&name=${encodeURIComponent(`${contact.firstName} ${contact.lastName}`)}`);
                         }}
                         className={`p-2 rounded-lg transition-all ${
                           isLight ? 'text-blue-600 hover:bg-blue-50' : 'text-emerald-400 hover:bg-emerald-900/20'
@@ -1036,9 +1062,9 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
               </button>
             </div>
           )}
-          </div>
-        )}
-        </>
+        </div>
+      )}
+        </div>
       )}
 
       {/* Contact View Panel */}

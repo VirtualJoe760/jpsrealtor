@@ -13,6 +13,7 @@ import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
 import { emitNewMessage } from '@/server/socket';
+import { sendSMSNotification } from '@/services/pushNotificationService';
 
 // ============================================================================
 // POST /api/crm/sms/webhook
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       phone: twilioData.From,
     });
 
-    let userId = contact?.userId;
+    let userId: string | undefined = contact?.userId?.toString();
 
     // If no contact exists, find the first user (for single-user systems)
     // or create an unassigned message queue
@@ -147,6 +148,19 @@ export async function POST(request: NextRequest) {
     // 🔥 EMIT WEBSOCKET EVENT - Push message to client instantly!
     emitNewMessage(userId, smsMessage);
     console.log('[Twilio Webhook] 📤 Emitted WebSocket event to user:', userId);
+
+    // 📱 SEND PUSH NOTIFICATION - Alert user on mobile devices!
+    sendSMSNotification(userId, {
+      from: twilioData.From,
+      body: twilioData.Body || '',
+      contactName: contact?.firstName && contact?.lastName
+        ? `${contact.firstName} ${contact.lastName}`
+        : undefined,
+      messageId: smsMessage._id.toString(),
+    }).catch(err => {
+      console.error('[Twilio Webhook] Push notification error:', err);
+      // Don't fail the webhook if push fails
+    });
 
     // Return TwiML response (optional auto-reply)
     // For now, we'll just acknowledge receipt with an empty response

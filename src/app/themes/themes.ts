@@ -181,8 +181,8 @@ export function getThemeClasses(themeName: ThemeName) {
 
     // Cards and surfaces
     cardBg: isLight
-      ? "bg-white/95 backdrop-blur-md"
-      : "bg-gray-900/50 backdrop-blur-sm",
+      ? "bg-white/95"
+      : "bg-gray-900/50",
     cardBorder: isLight ? "border-slate-300" : "border-gray-800",
     cardHover: isLight
       ? "hover:bg-white hover:border-slate-400"

@@ -43,16 +43,6 @@ export default function ArticlesAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [page, setPage] = useState(1);
-  const [currentStatIndex, setCurrentStatIndex] = useState(0);
-
-  // Auto-scroll carousel every 3 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStatIndex((prev) => (prev + 1) % 6);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
   const [showClaudeModal, setShowClaudeModal] = useState(false);
@@ -208,20 +198,23 @@ export default function ArticlesAdminPage() {
   }
 
   return (
-    <div className="min-h-screen py-6 sm:py-12 px-4" data-page="admin-articles">
-      <div className="max-w-7xl mx-auto">
-        <AgentNav />
+    <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:py-6 md:py-12 overflow-hidden" data-page="admin-articles">
+      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 px-4">
+        {/* Agent Navigation */}
+        <div className="flex-shrink-0">
+          <AgentNav />
+        </div>
 
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="mb-6 sm:mb-8 flex-shrink-0">
+          <div className="flex items-center justify-between gap-4">
             <h1 className={`text-xl sm:text-2xl md:text-4xl font-bold ${textPrimary} flex items-center gap-2`}>
               <FileText className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-              Articles Management
+              Content Engine
             </h1>
             <button
               onClick={() => router.push("/agent/cms/new")}
-              className={`p-2 rounded-lg transition-colors self-start ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
+              className={`p-2 rounded-lg transition-colors ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
               aria-label="New Article"
             >
               <Plus className={`w-8 h-8 sm:w-10 sm:h-10 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
@@ -230,76 +223,8 @@ export default function ArticlesAdminPage() {
           <p className={`${textSecondary} mt-2 text-sm sm:text-base`}>Manage your blog articles and content</p>
         </div>
 
-        {/* Stats Carousel */}
-        <div className="mb-6 sm:mb-8">
-          <div className="py-4 sm:py-6">
-            {/* Stat Display - Centered */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
-              {/* Icon, Label, and Data on same line */}
-              {currentStatIndex === 0 && (
-                <>
-                  <FileText className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>All Published Articles</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.total}</p>
-                </>
-              )}
-              {currentStatIndex === 1 && (
-                <>
-                  <Eye className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 text-green-500" />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Live on Website</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.published}</p>
-                </>
-              )}
-              {currentStatIndex === 2 && (
-                <>
-                  <Edit className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 text-yellow-500" />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Draft Articles</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${textPrimary}`}>{stats.draft}</p>
-                </>
-              )}
-              {currentStatIndex === 3 && (
-                <>
-                  <Newspaper className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>General Articles</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-blue-600" : "text-blue-400"}`}>{stats.articles}</p>
-                </>
-              )}
-              {currentStatIndex === 4 && (
-                <>
-                  <TrendingUp className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Market Insights</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>{stats.marketInsights}</p>
-                </>
-              )}
-              {currentStatIndex === 5 && (
-                <>
-                  <Lightbulb className={`w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 ${isLight ? "text-purple-600" : "text-purple-400"}`} />
-                  <h3 className={`${textSecondary} text-base sm:text-xl font-medium whitespace-nowrap`}>Real Estate Tips</h3>
-                  <p className={`text-3xl sm:text-5xl font-bold ${isLight ? "text-purple-600" : "text-purple-400"}`}>{stats.realEstateTips}</p>
-                </>
-              )}
-            </div>
-
-            {/* Indicator Dots */}
-            <div className="flex items-center justify-center gap-2 mt-6">
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentStatIndex(index)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    currentStatIndex === index
-                      ? isLight ? "bg-blue-500 w-8" : "bg-blue-400 w-8"
-                      : isLight ? "bg-gray-300 w-2" : "bg-gray-600 w-2"
-                  }`}
-                  aria-label={`Go to stat ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Filters */}
-        <div className="mb-6">
+        <div className="mb-6 flex-shrink-0">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <div className="relative">
@@ -333,8 +258,8 @@ export default function ArticlesAdminPage() {
           </div>
         </div>
 
-        {/* Articles List */}
-        <div>
+        {/* Articles List - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
           {/* Desktop View */}
           <div className="hidden lg:block">
             {articles.map((article, index) => (
@@ -505,32 +430,31 @@ export default function ArticlesAdminPage() {
               <p>No articles found</p>
             </div>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-gray-200 hover:bg-gray-300 border border-gray-300" : "bg-gray-800 hover:bg-gray-700 border border-gray-700"}`}
+              >
+                Previous
+              </button>
+              <span className={`${textSecondary}`}>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-gray-200 hover:bg-gray-300 border border-gray-300" : "bg-gray-800 hover:bg-gray-700 border border-gray-700"}`}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-gray-200 hover:bg-gray-300 border border-gray-300" : "bg-gray-800 hover:bg-gray-700 border border-gray-700"}`}
-            >
-              Previous
-            </button>
-            <span className={`${textSecondary}`}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className={`px-4 py-2 ${textPrimary} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? "bg-gray-200 hover:bg-gray-300 border border-gray-300" : "bg-gray-800 hover:bg-gray-700 border border-gray-700"}`}
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
-
-          </div>
+    </div>
   );
 }

@@ -130,8 +130,97 @@ export default function CampaignCard({
             : `${cardBorder} ${isLight ? 'hover:border-blue-300' : 'hover:border-emerald-700'} shadow-sm hover:shadow-md`
         }`}
       >
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4">
+        <div className="p-4 md:p-6">
+          {/* Mobile Layout - Stacked */}
+          <div className="md:hidden space-y-3">
+            {/* Top: Name & Status */}
+            <div className="flex items-start justify-between gap-2">
+              <h3 className={`text-base font-semibold ${textPrimary} flex-1`}>
+                {campaign.name}
+              </h3>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                  statusConfig[campaign.status].color
+                }`}
+              >
+                <StatusIcon className="w-3 h-3" />
+                {statusConfig[campaign.status].label}
+              </span>
+            </div>
+
+            {/* Contact Count & Type */}
+            <div className={`flex items-center gap-2 text-xs ${textSecondary} flex-wrap`}>
+              <span className="flex items-center gap-1">
+                <UserGroupIcon className="w-3.5 h-3.5" />
+                {campaign.totalContacts} contacts
+              </span>
+              <span>•</span>
+              <span>{campaignTypeLabels[campaign.type] || campaign.type}</span>
+              {campaign.neighborhood && (
+                <>
+                  <span>•</span>
+                  <span>{campaign.neighborhood}</span>
+                </>
+              )}
+            </div>
+
+            {/* Active Strategies */}
+            <div className="flex items-center gap-2">
+              {campaign.activeStrategies.voicemail && (
+                <div
+                  className={`p-1.5 ${isLight ? 'bg-purple-100' : 'bg-purple-900/30'} rounded-lg`}
+                  title="Voicemail"
+                >
+                  <PhoneIcon className={`w-4 h-4 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
+                </div>
+              )}
+              {campaign.activeStrategies.email && (
+                <div
+                  className={`p-1.5 ${isLight ? 'bg-blue-100' : 'bg-blue-900/30'} rounded-lg`}
+                  title="Email"
+                >
+                  <EnvelopeIcon className={`w-4 h-4 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
+                </div>
+              )}
+              {campaign.activeStrategies.text && (
+                <div
+                  className={`p-1.5 ${isLight ? 'bg-green-100' : 'bg-green-900/30'} rounded-lg`}
+                  title="Text"
+                >
+                  <ChatBubbleLeftIcon className={`w-4 h-4 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-center">
+                <div className={`text-lg font-bold ${textPrimary}`}>
+                  {campaign.analytics.responses}
+                </div>
+                <div className={`text-xs ${textSecondary}`}>Responses</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-lg font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>
+                  {campaign.analytics.conversions}
+                </div>
+                <div className={`text-xs ${textSecondary}`}>Conversions</div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className={`p-2 ${isLight ? 'hover:bg-red-100' : 'hover:bg-red-900/30'} rounded-lg transition-colors group`}
+                title="Delete"
+              >
+                <TrashIcon className={`w-5 h-5 ${textSecondary} ${isLight ? 'group-hover:text-red-600' : 'group-hover:text-red-400'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Horizontal */}
+          <div className="hidden md:flex items-start justify-between gap-4">
             {/* Left: Name & Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">

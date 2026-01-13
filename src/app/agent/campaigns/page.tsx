@@ -139,6 +139,23 @@ export default function CampaignsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Set default view mode based on screen size
+  useEffect(() => {
+    const handleResize = () => {
+      // Only auto-set to list view on mobile (< 768px)
+      if (window.innerWidth < 768) {
+        setViewMode('list');
+      }
+    };
+
+    // Set initial view mode
+    handleResize();
+
+    // Listen for resize events
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Function to refresh campaigns
   const refreshCampaigns = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -233,14 +250,16 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className="min-h-screen py-4 sm:py-8" data-page="campaigns">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:py-4 md:py-8 overflow-hidden" data-page="campaigns">
+      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 px-4 sm:px-6 lg:px-8">
         {/* Agent Navigation */}
-        <AgentNav />
+        <div className="flex-shrink-0">
+          <AgentNav />
+        </div>
 
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <div className="mb-6 sm:mb-8 flex-shrink-0">
+          <div className="flex items-center justify-between gap-4 mb-4">
             <div>
               <h1 className={`text-2xl sm:text-3xl font-bold ${textPrimary}`}>
                 Campaigns
@@ -251,17 +270,17 @@ export default function CampaignsPage() {
             </div>
             <button
               onClick={() => router.push('/agent/campaigns/new')}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 ${buttonPrimary} rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base self-start sm:self-auto`}
+              className={`p-2 rounded-lg transition-colors ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"}`}
+              aria-label="New Campaign"
             >
-              <PlusIcon className="w-5 h-5" />
-              New Campaign
+              <PlusIcon className={`w-8 h-8 sm:w-10 sm:h-10 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
             </button>
           </div>
 
           {/* Search and Controls */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             {/* Search */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-md w-full">
               <MagnifyingGlassIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
               <input
                 type="text"
@@ -336,15 +355,15 @@ export default function CampaignsPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mb-6"
+              className="mb-6 flex-shrink-0"
             >
               <CampaignFilters />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Campaign Grid/List */}
-        <div className="relative">
+        {/* Campaign Grid/List - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className={`text-center`}>

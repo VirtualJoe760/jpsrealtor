@@ -551,52 +551,10 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
   }, [emails, emailMetadata, searchQuery, filterBy, filterTags, sortBy, sortOrder]);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <h2 className={`text-xl sm:text-2xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            Email
-          </h2>
-          <span className={`text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-            {filteredAndSortedEmails.length} {filteredAndSortedEmails.length === 1 ? 'email' : 'emails'}
-            {selectedEmails.size > 0 && (
-              <span className={`ml-1 sm:ml-2 ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
-                ({selectedEmails.size} selected)
-              </span>
-            )}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={handleNewCompose}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base ${
-              isLight
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden xs:inline">Compose</span>
-          </button>
-          <button
-            onClick={fetchEmails}
-            disabled={loading}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base ${
-              isLight
-                ? 'text-slate-700 hover:bg-slate-100'
-                : 'text-gray-300 hover:bg-gray-700'
-            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden xs:inline">Refresh</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Search, Filter, Sort Bar */}
-      <div className={`flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border ${
-        isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800 border-gray-700'
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Search, Filter, Sort Bar with Actions */}
+      <div className={`flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg flex-shrink-0 px-4 md:px-0 mb-4 ${
+        isLight ? 'bg-white/30' : 'bg-neutral-900/30'
       }`}>
         {/* Search */}
         <div className="w-full sm:flex-1 sm:min-w-[200px]">
@@ -704,14 +662,39 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
             })}
           </div>
         </div>
+
+        {/* Action Buttons */}
+        <button
+          onClick={handleNewCompose}
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+            isLight
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-emerald-600 text-white hover:bg-emerald-700'
+          }`}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Compose</span>
+        </button>
+        <button
+          onClick={fetchEmails}
+          disabled={loading}
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all text-sm ${
+            isLight
+              ? 'text-slate-700 hover:bg-slate-100'
+              : 'text-gray-300 hover:bg-gray-700'
+          } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {/* Bulk Actions Bar */}
       {selectedEmails.size > 0 && (
-        <div className={`flex items-center justify-between p-4 rounded-lg border ${
+        <div className={`flex items-center justify-between p-4 rounded-lg flex-shrink-0 px-4 md:px-0 ${
           isLight
-            ? 'bg-blue-50 border-blue-200'
-            : 'bg-emerald-900/20 border-emerald-800'
+            ? 'bg-white/30'
+            : 'bg-neutral-900/30'
         }`}>
           <span className={`text-sm font-medium ${isLight ? 'text-blue-900' : 'text-emerald-300'}`}>
             {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''} selected
@@ -811,7 +794,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
       )}
 
       {/* Folder Tabs */}
-      <div className={`flex items-center gap-2 border-b ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
+      <div className={`flex items-center gap-2 border-b flex-shrink-0 px-4 md:px-0 ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
         {folders.map((folder) => {
           const Icon = folder.icon;
           const active = activeFolder === folder.id;
@@ -841,7 +824,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
 
       {/* Sent Subfolders */}
       {activeFolder === 'sent' && (
-        <div className={`flex items-center gap-2 px-4 py-2 ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
+        <div className={`flex items-center gap-2 px-4 py-2 flex-shrink-0 ${isLight ? 'bg-white/30' : 'bg-neutral-900/30'}`}>
           {sentSubfolders.map((subfolder) => {
             const active = sentSubfolder === subfolder.id;
 
@@ -868,7 +851,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
 
       {/* Error Message */}
       {error && (
-        <div className={`p-4 rounded-lg ${
+        <div className={`p-4 rounded-lg flex-shrink-0 px-4 md:px-0 ${
           isLight
             ? 'bg-red-50 border border-red-200 text-red-700'
             : 'bg-red-900/20 border border-red-800 text-red-400'
@@ -878,7 +861,8 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
         </div>
       )}
 
-      {/* Email List */}
+      {/* Email List - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-0">
       {loading && emails.length === 0 ? (
         <div className={`text-center py-12 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
           <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -890,11 +874,11 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           <p>No emails found</p>
         </div>
       ) : (
-        <div className={`rounded-lg border ${isLight ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-800'}`}>
+        <div className={`rounded-lg ${isLight ? 'bg-white/30' : 'bg-neutral-900/30'}`}>
           {/* Select All Checkbox */}
           {filteredAndSortedEmails.length > 0 && (
             <div className={`px-6 py-3 border-b flex items-center gap-3 ${
-              isLight ? 'bg-slate-50 border-slate-200' : 'bg-gray-800 border-gray-700'
+              isLight ? 'border-slate-200/30' : 'border-gray-700/30'
             }`}>
               <input
                 type="checkbox"
@@ -927,8 +911,8 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                       : 'hover:bg-gray-700/50 border-gray-700'
                   } ${index !== 0 ? 'border-t' : ''} ${isExpanded ? (isLight ? 'bg-slate-50' : 'bg-gray-700/30') : ''} ${isUnread ? (isLight ? 'bg-blue-50/30' : 'bg-emerald-900/10') : ''} ${isSelected ? (isLight ? 'bg-blue-100/50' : 'bg-emerald-900/30') : ''}`}
                 >
-                  {/* Collapsed View */}
-                  <div className="w-full px-6 py-4 flex items-center gap-4">
+                  {/* Collapsed View - Desktop */}
+                  <div className="hidden md:flex w-full px-6 py-4 items-center gap-4">
                     {/* Checkbox */}
                     <input
                       type="checkbox"
@@ -971,12 +955,12 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                       )}
                     </div>
 
-                    {/* From/Sender Name */}
+                    {/* From/Sender Name + Subject (double-line) */}
                     <button
                       onClick={() => toggleEmail(email.id, email)}
-                      className="flex-1 flex items-center gap-4 text-left"
+                      className="flex-1 flex items-center gap-4 text-left min-w-0"
                     >
-                      <div className="w-44 flex-shrink-0">
+                      <div className="flex-1 min-w-0">
                         <p className={`text-sm truncate ${
                           isUnread ? 'font-bold' : 'font-semibold'
                         } ${
@@ -987,20 +971,24 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                               ? email.from.split('<')[0].trim()
                               : email.from.split('@')[0])}
                         </p>
+                        <p className={`text-xs truncate ${
+                          isLight ? 'text-slate-600' : 'text-gray-400'
+                        }`}>
+                          {email.subject}
+                        </p>
                       </div>
 
-                      {/* Subject + Preview */}
+                      {/* Preview - Desktop only */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm truncate ${
-                          isLight ? 'text-slate-900' : 'text-gray-200'
-                        }`}>
-                          <span className={isUnread ? 'font-bold' : 'font-semibold'}>{email.subject}</span>
-                          {!isExpanded && (
-                            <span className={`${isUnread ? 'font-medium' : ''} ${isLight ? 'text-slate-600 ml-2' : 'text-gray-400 ml-2'}`}>
-                              - {getEmailPreview(email)}
-                            </span>
-                          )}
-                        </p>
+                        {!isExpanded && (
+                          <p className={`text-sm truncate ${
+                            isUnread ? 'font-medium' : ''
+                          } ${
+                            isLight ? 'text-slate-600' : 'text-gray-400'
+                          }`}>
+                            {getEmailPreview(email)}
+                          </p>
+                        )}
                       </div>
 
                       {/* Attachment & Tags Indicators */}
@@ -1062,6 +1050,95 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                       }`} />
                     </button>
                   </div>
+
+                  {/* Collapsed View - Mobile (Optimized) */}
+                  <button
+                    onClick={() => toggleEmail(email.id, email)}
+                    className="md:hidden w-full px-4 py-3 flex items-start gap-3 text-left"
+                  >
+                    {/* Profile Photo */}
+                    <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                      isLight ? 'bg-slate-200' : 'bg-gray-700'
+                    }`}>
+                      {metadata?.cachedSenderPhoto ? (
+                        <Image
+                          src={metadata.cachedSenderPhoto}
+                          alt={metadata.cachedSenderName || 'Sender'}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className={`w-5 h-5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                      )}
+                    </div>
+
+                    {/* Email Info */}
+                    <div className="flex-1 min-w-0">
+                      {/* Sender Name & Date */}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className={`text-sm truncate ${
+                          isUnread ? 'font-bold' : 'font-semibold'
+                        } ${
+                          isLight ? 'text-slate-900' : 'text-white'
+                        }`}>
+                          {metadata?.cachedSenderName ||
+                           (email.from.includes('<')
+                              ? email.from.split('<')[0].trim()
+                              : email.from.split('@')[0])}
+                        </p>
+                        <span className={`text-xs flex-shrink-0 ${
+                          isLight ? 'text-slate-500' : 'text-gray-400'
+                        }`}>
+                          {formatDate(email.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Subject */}
+                      <p className={`text-sm truncate mb-1 ${
+                        isUnread ? 'font-semibold' : ''
+                      } ${
+                        isLight ? 'text-slate-700' : 'text-gray-300'
+                      }`}>
+                        {email.subject}
+                      </p>
+
+                      {/* Icons (attachment, tags, star) */}
+                      <div className="flex items-center gap-2">
+                        {isFavorited && (
+                          <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                        )}
+                        {email.attachments && email.attachments.length > 0 && (
+                          <Paperclip className={`w-3.5 h-3.5 ${
+                            isLight ? 'text-slate-400' : 'text-gray-500'
+                          }`} />
+                        )}
+                        {metadata?.tags && metadata.tags.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {metadata.tags.slice(0, 1).map((tag) => (
+                              <span
+                                key={tag}
+                                className={`px-1.5 py-0.5 rounded-full text-xs ${
+                                  isLight
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-emerald-900/30 text-emerald-400'
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Unread Indicator */}
+                    {isUnread && (
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${
+                        isLight ? 'bg-blue-600' : 'bg-emerald-500'
+                      }`} />
+                    )}
+                  </button>
 
                   {/* Expanded View */}
                   {isExpanded && (
@@ -1152,7 +1229,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
 
                           {/* Email Body */}
                           <div className={`mt-4 p-4 rounded-lg ${
-                            isLight ? 'bg-white border border-slate-200' : 'bg-gray-800 border border-gray-700'
+                            isLight ? 'bg-white/30' : 'bg-neutral-900/30'
                           }`}>
                             {(() => {
                               const fullEmail = expandedEmailContent[email.id];
@@ -1334,11 +1411,12 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           })}
         </div>
       )}
+      </div>
 
       {/* Tag Management Modal */}
       {showTagModal && tagModalEmailId && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`w-full max-w-md rounded-xl shadow-2xl ${isLight ? 'bg-white' : 'bg-gray-800'}`}>
+          <div className={`w-full max-w-md rounded-xl shadow-2xl ${isLight ? 'bg-white/30 backdrop-blur-md' : 'bg-neutral-900/30 backdrop-blur-md'}`}>
             <div className={`flex items-center justify-between px-6 py-4 border-b ${
               isLight ? 'border-slate-200' : 'border-gray-700'
             }`}>

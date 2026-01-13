@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Users, FileCheck, FileText, Phone, Megaphone, MessageSquare, Menu, X, Mail, UserCircle } from "lucide-react";
+import { LayoutDashboard, Users, FileCheck, FileText, Phone, Megaphone, MessageSquare, Menu, X, Mail, UserCircle, ArrowLeft } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useSession } from "next-auth/react";
 
 export default function AgentNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentTheme } = useTheme();
   const { textSecondary, textPrimary, border, cardBg } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
@@ -86,15 +87,30 @@ export default function AgentNav() {
   };
 
   return (
-    <nav className="pt-4 sm:pt-6 mb-6 sm:mb-8">
-      {/* Mobile hamburger button */}
-      <div className="md:hidden flex justify-end mb-4">
+    <nav className="mb-2 md:mb-4">
+      {/* Back button - fixed on mobile, static on desktop */}
+      <div className="fixed md:static top-4 left-4 md:top-auto md:left-auto z-30 md:z-auto md:mb-2">
+        <button
+          onClick={() => router.back()}
+          className={`p-2.5 rounded-lg transition-all ${
+            isLight
+              ? "text-blue-600 hover:bg-blue-50 hover:shadow-lg hover:shadow-blue-500/50"
+              : "text-emerald-400 hover:bg-emerald-900/30 hover:shadow-lg hover:shadow-emerald-500/50"
+          }`}
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Mobile hamburger button - fixed positioned */}
+      <div className="md:hidden fixed top-4 right-4 z-30">
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-2.5 rounded-lg transition-all ${
             isLight
-              ? "hover:bg-gray-100 text-gray-700"
-              : "hover:bg-gray-800 text-gray-300"
+              ? "text-blue-600 hover:bg-blue-50 hover:shadow-lg hover:shadow-blue-500/50"
+              : "text-emerald-400 hover:bg-emerald-900/30 hover:shadow-lg hover:shadow-emerald-500/50"
           }`}
           aria-label="Toggle menu"
         >

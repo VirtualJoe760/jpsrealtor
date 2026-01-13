@@ -133,6 +133,7 @@
     "unist-util-visit": "^5.0.0",
     "use-supercluster": "^1.2.0",
     "validator": "^13.12.0",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "xml": "^1.0.1",
     "zod": "^4.1.13"
