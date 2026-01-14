@@ -3,8 +3,13 @@
 // Re-export Contact type from shared contacts module
 export type { Contact } from '../../contacts/types';
 
-// Export enums
-export * from './enums';
+// Export enums explicitly
+export {
+  ContactViewTab,
+  ContactInfoField,
+  ContactPhotoUploadStatus,
+  NoteAction,
+} from './enums';
 
 // Layout state
 export interface PanelLayout {

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ContactViewTab, type Contact } from './contact-view/types';
-import { isMobileView } from './contact-view/utils';
+import { ContactViewTab, type Contact } from './contact-view/types/index';
+import { isMobileView } from './contact-view/utils/index';
 import {
   usePanelLayout,
   useContactPhoto,

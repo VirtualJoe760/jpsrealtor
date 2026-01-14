@@ -1,6 +1,6 @@
 // ContactTabs - Tab navigation for contact view
 import React from 'react';
-import { ContactViewTab } from '../../types';
+import { ContactViewTab } from '../../types/index';
 
 interface ContactTabsProps {
   activeTab: ContactViewTab;
