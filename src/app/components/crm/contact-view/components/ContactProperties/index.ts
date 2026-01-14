@@ -1,0 +1,1 @@
+export { ContactProperties } from './ContactProperties';
