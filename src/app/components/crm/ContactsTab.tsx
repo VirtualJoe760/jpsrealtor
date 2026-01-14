@@ -11,6 +11,7 @@ import {
   useContactSelection,
   useContactStats,
   useRestoreContactState,
+  useContactPersistence,
 } from './contacts/hooks';
 import {
   StatsCardGrid,
@@ -31,6 +32,12 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const [panelContact, setPanelContact] = useState<Contact | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  // UI state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.CARD);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+
   // Custom hooks for state management
   const {
     contacts,
@@ -45,25 +52,50 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const { tags, stats, refetch: refetchStats } = useContactStats();
 
   const {
-    searchQuery,
-    setSearchQuery,
-    viewMode,
-    setViewMode,
     sortBy,
     setSortBy,
     filterBy,
     setFilterBy,
     contactAgeFilter,
     setContactAgeFilter,
-    selectedTag,
-    setSelectedTag,
-    selectedStatus,
-    setSelectedStatus,
-    filteredContacts,
+    filteredContacts: baseFilteredContacts,
     resetAll,
   } = useContactFilters(contacts);
 
+  // Additional filtering for search, tag, and status
+  const filteredContacts = React.useMemo(() => {
+    let result = baseFilteredContacts;
+
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(contact =>
+        `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(query) ||
+        contact.email?.toLowerCase().includes(query) ||
+        contact.phone?.includes(query) ||
+        contact.organization?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by selected tag
+    if (selectedTag) {
+      result = result.filter(contact =>
+        contact.tags?.includes(selectedTag)
+      );
+    }
+
+    // Filter by selected status
+    if (selectedStatus) {
+      result = result.filter(contact =>
+        contact.status === selectedStatus
+      );
+    }
+
+    return result;
+  }, [baseFilteredContacts, searchQuery, selectedTag, selectedStatus]);
+
   const {
+    selectedContactIds,
     selectedIds,
     toggleContactSelection,
     toggleSelectAll,
@@ -74,14 +106,30 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   } = useContactSelection();
 
   // Restore saved state on mount
-  useRestoreContactState({
-    setSearchQuery,
-    setViewMode,
-    setSelectedTag,
-    setSelectedStatus,
-    setSortBy,
-    setFilterBy,
-    setContactAgeFilter,
+  const { restoreState } = useRestoreContactState();
+
+  React.useEffect(() => {
+    const savedState = restoreState();
+    if (savedState) {
+      if (savedState.searchQuery) setSearchQuery(savedState.searchQuery);
+      if (savedState.viewMode) setViewMode(savedState.viewMode as ViewMode);
+      if (savedState.selectedTag !== undefined) setSelectedTag(savedState.selectedTag);
+      if (savedState.selectedStatus !== undefined) setSelectedStatus(savedState.selectedStatus);
+      if (savedState.sortBy) setSortBy(savedState.sortBy as SortBy);
+      if (savedState.filterBy) setFilterBy(savedState.filterBy as FilterBy);
+      if (savedState.contactAgeFilter) setContactAgeFilter(savedState.contactAgeFilter as any);
+    }
+  }, [restoreState]);
+
+  // Persist state
+  useContactPersistence({
+    searchQuery,
+    viewMode,
+    selectedTag,
+    selectedStatus,
+    sortBy,
+    filterBy,
+    contactAgeFilter,
   });
 
   // Handlers
@@ -147,6 +195,9 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   };
 
   const handleViewAll = () => {
+    setSearchQuery('');
+    setSelectedTag(null);
+    setSelectedStatus(null);
     resetAll();
   };
 
@@ -158,9 +209,8 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
           stats={stats}
           tags={tags}
           selectedTag={selectedTag}
-          selectedStatus={selectedStatus}
-          onTagClick={handleTagClick}
-          onStatusClick={handleStatusClick}
+          onSelectTag={handleTagClick}
+          onSelectStatus={handleStatusClick}
           onViewAll={handleViewAll}
           isLight={isLight}
         />
@@ -194,7 +244,7 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
           viewMode={viewMode}
           isLight={isLight}
           loading={loading}
-          selectedContactIds={selectedIds}
+          selectedContactIds={selectedContactIds}
           onSelectContact={toggleContactSelection}
           onContactClick={handleContactClick}
           loadingCount={8}
@@ -232,6 +282,14 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
           contact={panelContact}
           isOpen={isPanelOpen}
           onClose={handlePanelClose}
+          onEdit={() => {/* TODO: Implement edit */}}
+          onDelete={async () => {
+            await deleteContact(panelContact._id);
+            handlePanelClose();
+            fetchContacts({});
+            refetchStats();
+          }}
+          onMessage={() => {/* TODO: Implement message */}}
           isLight={isLight}
         />
       )}

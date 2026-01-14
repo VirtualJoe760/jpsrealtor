@@ -173,13 +173,13 @@ export function ContactCard({
           </span>
         </div>
 
-        {contact.noteHistory && contact.noteHistory.length > 0 && (
+        {contact.notes && (
           <div className="flex items-center gap-1 text-xs">
             <MessageSquare className={`w-3 h-3 ${
               isLight ? 'text-gray-400' : 'text-gray-500'
             }`} />
             <span className={isLight ? 'text-gray-500' : 'text-gray-400'}>
-              {contact.noteHistory.length} {contact.noteHistory.length === 1 ? 'note' : 'notes'}
+              Has notes
             </span>
           </div>
         )}
