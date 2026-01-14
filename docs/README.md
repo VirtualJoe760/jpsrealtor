@@ -84,12 +84,24 @@ AI-powered tools including ChatGPT, Groq, and intelligent features.
 
 ---
 
-### [👥 CRM](./crm/) - Customer Relationship Management
-Lead management, user tracking, and marketing automation.
+### [👥 CRM](./crm/) - Customer Relationship Management ⭐ **UPDATED JAN 14**
+Lead management, user tracking, and marketing automation. **Major refactoring initiative in progress**.
 
 **Files**:
-- **CRM_OVERVIEW.md** - Complete CRM system overview
-- **CONTACT_SYNC.md** ⭐ **New** - Google contacts synchronization
+- **CRM_DOCUMENTATION_INDEX.md** ⭐ **NEW** - Complete CRM documentation hub
+- **CRM_REFACTOR_PRIORITIES.md** ⭐ **NEW** - Refactoring roadmap & analysis
+- **CONTACTSTAB_REFACTOR_PLAN.md** - ContactsTab refactor (1,416→300 lines)
+- **CONTACTSTAB_REFACTOR_PROGRESS.md** - Progress tracking (60% complete)
+- **CONTACTVIEWPANEL_REFACTOR_PLAN.md** ⭐ **NEW** - ContactViewPanel (1,780→250 lines)
+- **EMAILINBOX_REFACTOR_PLAN.md** ⭐ **NEW** - EmailInbox (1,562→300 lines)
+- **COMPOSEPANEL_REFACTOR_PLAN.md** ⭐ **NEW** - ComposePanel (730→200 lines)
+- **PWA_PUSH_NOTIFICATIONS_COMPLETE_GUIDE.md** - PWA push notifications
+- **PWA_PUSH_TESTING_GUIDE.md** - Testing guide
+- **SMS_PHASE2_TESTING.md** - SMS system testing
+- **MESSAGES_REFACTOR_PLAN.md** - Messages page refactor (complete)
+- **CONTACT_SYNC.md** - Google contacts synchronization
+
+**Refactoring Initiative**: 7 components, 8,836 lines → target 77% reduction, 12-15 weeks
 
 ---
 
@@ -236,7 +248,19 @@ Completed work sessions, migration reports, and archived documentation.
 
 ## 🔄 Recent Changes
 
-### December 19, 2025 ⭐ **LATEST**
+### January 14, 2026 ⭐ **LATEST**
+- ✅ **CRM Documentation Overhaul** - Comprehensive refactoring documentation
+  - Created `CRM_DOCUMENTATION_INDEX.md` - Complete CRM system hub
+  - Created `CRM_REFACTOR_PRIORITIES.md` - Analysis of 7 components (8,836 lines)
+  - Detailed refactor plans for ContactViewPanel, EmailInbox, ComposePanel
+  - 77% code reduction target across all components
+  - 12-15 week refactoring roadmap established
+- ✅ **ContactsTab Refactor** - 60% complete
+  - Phase 1-3 done: Types, hooks, UI components
+  - 16 useState hooks → 5 custom hooks
+  - StatsCards and ContactToolbar components extracted
+
+### December 19, 2025
 - ✅ **Chat System Reorganization** - Complete documentation restructure
   - Created new `docs/chat/` directory with 6 comprehensive guides
   - Migrated from backend query system to component-first architecture
