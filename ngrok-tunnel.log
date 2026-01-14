@@ -1,0 +1,24 @@
+t=2026-01-12T13:30:19-0800 lvl=info msg="no configuration paths supplied"
+t=2026-01-12T13:30:19-0800 lvl=info msg="using configuration at default config path" path=C:\\Users\\DellaMSI\\AppData\\Local/ngrok/ngrok.yml
+t=2026-01-12T13:30:19-0800 lvl=info msg="open config file" path=C:\\Users\\DellaMSI\\AppData\\Local\\ngrok\\ngrok.yml err=nil
+t=2026-01-12T13:30:19-0800 lvl=info msg="FIPS 140 mode" enabled=false
+t=2026-01-12T13:30:19-0800 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2026-01-12T13:30:20-0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="authentication failed: The authtoken you specified is properly formed, but it is invalid.\nYour authtoken: 2BAtsmRjLHwwuHljEp9x5mK10F_6DvujYWrPlm8lKS6aagQh\nThis usually happens when:\n    - You reset your authtoken\n    - Your authtoken was for a team account that you were removed from\n    - You are using ngrok link and this credential was explicitly revoked\nGo to your ngrok dashboard and double check that your authtoken is correct:\nhttps://dashboard.ngrok.com/get-started/your-authtoken\r\n\r\nERR_NGROK_107\r\n"
+t=2026-01-12T13:30:20-0800 lvl=eror msg="session closing" obj=tunnels.session err="authentication failed: The authtoken you specified is properly formed, but it is invalid.\nYour authtoken: 2BAtsmRjLHwwuHljEp9x5mK10F_6DvujYWrPlm8lKS6aagQh\nThis usually happens when:\n    - You reset your authtoken\n    - Your authtoken was for a team account that you were removed from\n    - You are using ngrok link and this credential was explicitly revoked\nGo to your ngrok dashboard and double check that your authtoken is correct:\nhttps://dashboard.ngrok.com/get-started/your-authtoken\r\n\r\nERR_NGROK_107\r\n"
+t=2026-01-12T13:30:20-0800 lvl=info msg="received stop request" obj=app stopReq="{err:{Remote:true Inner:{Inner:0xc000187510}} restart:false}"
+t=2026-01-12T13:30:20-0800 lvl=eror msg="terminating with error" obj=app err="authentication failed: The authtoken you specified is properly formed, but it is invalid.\nYour authtoken: 2BAtsmRjLHwwuHljEp9x5mK10F_6DvujYWrPlm8lKS6aagQh\nThis usually happens when:\n    - You reset your authtoken\n    - Your authtoken was for a team account that you were removed from\n    - You are using ngrok link and this credential was explicitly revoked\nGo to your ngrok dashboard and double check that your authtoken is correct:\nhttps://dashboard.ngrok.com/get-started/your-authtoken\r\n\r\nERR_NGROK_107\r\n"
+t=2026-01-12T13:30:20-0800 lvl=warn msg="failed to check for update" obj=updater err="Post \"https://update.equinox.io/check\": context canceled"
+t=2026-01-12T13:30:20-0800 lvl=crit msg="command failed" err="authentication failed: The authtoken you specified is properly formed, but it is invalid.\nYour authtoken: 2BAtsmRjLHwwuHljEp9x5mK10F_6DvujYWrPlm8lKS6aagQh\nThis usually happens when:\n    - You reset your authtoken\n    - Your authtoken was for a team account that you were removed from\n    - You are using ngrok link and this credential was explicitly revoked\nGo to your ngrok dashboard and double check that your authtoken is correct:\nhttps://dashboard.ngrok.com/get-started/your-authtoken\r\n\r\nERR_NGROK_107\r\n"
+ERROR:  authentication failed: The authtoken you specified is properly formed, but it is invalid.
+ERROR:  Your authtoken: 2BAtsmRjLHwwuHljEp9x5mK10F_6DvujYWrPlm8lKS6aagQh
+ERROR:  This usually happens when:
+ERROR:      - You reset your authtoken
+ERROR:      - Your authtoken was for a team account that you were removed from
+ERROR:      - You are using ngrok link and this credential was explicitly revoked
+ERROR:  Go to your ngrok dashboard and double check that your authtoken is correct:
+ERROR:  https://dashboard.ngrok.com/get-started/your-authtoken
+ERROR:  
+ERROR:  ERR_NGROK_107
+ERROR:  https://ngrok.com/docs/errors/err_ngrok_107
+ERROR:  
+t=2026-01-12T13:30:20-0800 lvl=info msg="no more state changes" obj=tunnels.session

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { User } from 'lucide-react';
-import { getContactInitials } from '../../utils';
 
 interface ContactAvatarProps {
   photo?: string;
@@ -18,6 +17,12 @@ const SIZE_CLASSES = {
   lg: 'w-16 h-16 text-lg',
 };
 
+function getInitials(firstName?: string, lastName?: string): string {
+  const firstInitial = firstName?.charAt(0) || '';
+  const lastInitial = lastName?.charAt(0) || '';
+  return `${firstInitial}${lastInitial}`.toUpperCase();
+}
+
 export function ContactAvatar({
   photo,
   firstName,
@@ -25,7 +30,7 @@ export function ContactAvatar({
   size = 'md',
   className = '',
 }: ContactAvatarProps) {
-  const initials = getContactInitials(firstName, lastName);
+  const initials = getInitials(firstName, lastName);
   const sizeClass = SIZE_CLASSES[size];
 
   if (photo) {

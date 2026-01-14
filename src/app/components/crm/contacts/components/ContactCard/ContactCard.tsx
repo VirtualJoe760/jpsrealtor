@@ -24,7 +24,7 @@ export function ContactCard({
 }: ContactCardProps) {
   const displayName = getContactDisplayName(contact);
   const statusConfig = getStatusConfig(contact.status as ContactStatus);
-  const daysSince = getDaysSinceImport(contact.importedAt);
+  const daysSince = getDaysSinceImport(contact);
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
