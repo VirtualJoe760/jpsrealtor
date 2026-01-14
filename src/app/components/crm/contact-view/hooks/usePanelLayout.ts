@@ -1,101 +1,98 @@
-import { useState, useEffect, useRef } from 'react';
-import { calculateLayout } from '../utils/layoutUtils';
-import type { LayoutState } from '../types';
+// usePanelLayout hook - Manages panel width and drag/resize behavior
 
-export function usePanelLayout(isOpen: boolean, onClose: () => void) {
-  const [layout, setLayout] = useState<LayoutState>(() =>
-    typeof window !== 'undefined' ? calculateLayout() : { width: 900, left: 0 }
-  );
+import { useState, useCallback, useEffect } from 'react';
+import { PanelLayout } from '../types';
+import { getOptimalPanelWidth, calculatePanelWidth } from '../utils';
 
-  const panelRef = useRef<HTMLDivElement>(null);
-  const dragHandleRef = useRef<HTMLDivElement>(null);
+export function usePanelLayout() {
+  const [layout, setLayout] = useState<PanelLayout>({
+    width: typeof window !== 'undefined' ? getOptimalPanelWidth() : 900,
+    dragStartX: 0,
+    isDragging: false,
+  });
 
-  // Update layout on window resize
-  useEffect(() => {
-    const updateLayout = () => {
-      setLayout(calculateLayout());
-    };
-
-    updateLayout();
-    window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
+  /**
+   * Start dragging
+   */
+  const startDrag = useCallback((clientX: number) => {
+    setLayout((prev) => ({
+      ...prev,
+      dragStartX: clientX,
+      isDragging: true,
+    }));
   }, []);
 
-  // Close panel on escape key
+  /**
+   * Handle drag movement
+   */
+  const onDrag = useCallback(
+    (clientX: number) => {
+      if (!layout.isDragging) return;
+
+      const newWidth = calculatePanelWidth(layout.width, layout.dragStartX, clientX);
+
+      setLayout((prev) => ({
+        ...prev,
+        width: newWidth,
+        dragStartX: clientX,
+      }));
+    },
+    [layout.isDragging, layout.width, layout.dragStartX]
+  );
+
+  /**
+   * Stop dragging
+   */
+  const stopDrag = useCallback(() => {
+    setLayout((prev) => ({
+      ...prev,
+      isDragging: false,
+    }));
+  }, []);
+
+  /**
+   * Handle window resize to adjust optimal width
+   */
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+    const handleResize = () => {
+      if (!layout.isDragging) {
+        setLayout((prev) => ({
+          ...prev,
+          width: getOptimalPanelWidth(),
+        }));
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [layout.isDragging]);
 
-  // Drag to close functionality
+  /**
+   * Set up global drag listeners
+   */
   useEffect(() => {
-    const handle = dragHandleRef.current;
-    const panel = panelRef.current;
-    if (!handle || !panel) return;
+    if (!layout.isDragging) return;
 
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
-    const onDragStart = (e: MouseEvent | TouchEvent) => {
-      isDragging = true;
-      startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-      currentY = startY;
-      panel.style.transition = 'none';
+    const handleMouseMove = (e: MouseEvent) => {
+      onDrag(e.clientX);
     };
 
-    const onDragMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging) return;
-      currentY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-      const diff = currentY - startY;
-
-      // Only allow dragging down
-      if (diff > 0) {
-        panel.style.transform = `translateY(${diff}px)`;
-      }
+    const handleMouseUp = () => {
+      stopDrag();
     };
 
-    const onDragEnd = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      panel.style.transition = 'transform 0.3s ease-out';
-
-      const diff = currentY - startY;
-
-      // Close if dragged down more than 150px
-      if (diff > 150) {
-        onClose();
-      } else {
-        panel.style.transform = 'translateY(0)';
-      }
-    };
-
-    handle.addEventListener('mousedown', onDragStart);
-    handle.addEventListener('touchstart', onDragStart);
-    document.addEventListener('mousemove', onDragMove);
-    document.addEventListener('touchmove', onDragMove);
-    document.addEventListener('mouseup', onDragEnd);
-    document.addEventListener('touchend', onDragEnd);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      handle.removeEventListener('mousedown', onDragStart);
-      handle.removeEventListener('touchstart', onDragStart);
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('touchmove', onDragMove);
-      document.removeEventListener('mouseup', onDragEnd);
-      document.removeEventListener('touchend', onDragEnd);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [onClose]);
+  }, [layout.isDragging, onDrag, stopDrag]);
 
   return {
     layout,
-    panelRef,
-    dragHandleRef,
+    startDrag,
+    stopDrag,
   };
 }
