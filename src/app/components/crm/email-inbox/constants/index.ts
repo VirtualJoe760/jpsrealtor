@@ -60,7 +60,8 @@ export const EMAIL_SORT_OPTIONS = [
 
 // API endpoints
 export const EMAIL_API_ENDPOINTS = {
-  fetchEmails: '/api/emails',
+  fetchEmails: '/api/resend/inbox',
+  fetchEmailContent: '/api/resend/email',
   fetchMetadata: '/api/email-metadata',
   updateMetadata: '/api/email-metadata',
   sendEmail: '/api/send',

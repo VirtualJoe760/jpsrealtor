@@ -1,8 +1,8 @@
 // ContactInfo - Display and edit phone, email, address information
 import React from 'react';
-import { Contact, ContactPhone, ContactEmail } from '../../types';
-import { formatPhoneDisplay, formatAddress } from '../../utils';
-import { PHONE_LABELS, EMAIL_LABELS } from '../../constants';
+import { Contact, ContactPhone, ContactEmail } from '../../types/index';
+import { formatPhoneDisplay, formatAddress } from '../../utils/index';
+import { PHONE_LABELS, EMAIL_LABELS } from '../../constants/index';
 
 interface ContactInfoProps {
   contact: Contact;
@@ -35,7 +35,7 @@ export function ContactInfo({
   onPhoneChange,
   onEmailChange,
 }: ContactInfoProps) {
-  const address = formatAddress(contact);
+  const address = formatAddress(contact.address);
 
   if (isEditing) {
     return (

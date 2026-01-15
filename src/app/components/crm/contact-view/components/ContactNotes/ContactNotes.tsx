@@ -1,7 +1,7 @@
 // ContactNotes - Notes list with add/edit/delete functionality
 import React from 'react';
-import { ContactNote } from '../../types';
-import { formatDateTime, getRelativeTime } from '../../utils';
+import { ContactNote } from '../../types/index';
+import { formatDateTime, getRelativeTime } from '../../utils/index';
 
 interface ContactNotesProps {
   notes: ContactNote[];

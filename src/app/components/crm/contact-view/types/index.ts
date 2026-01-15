@@ -18,7 +18,7 @@ export interface PanelLayout {
   isDragging: boolean;
 }
 
-// Contact note
+// Contact note - exported
 export interface ContactNote {
   _id: string;
   content: string;
@@ -27,21 +27,21 @@ export interface ContactNote {
   author?: string;
 }
 
-// Contact phone
+// Contact phone - exported
 export interface ContactPhone {
   number: string;
   label: string;
   isPrimary: boolean;
 }
 
-// Contact email
+// Contact email - exported
 export interface ContactEmail {
   address: string;
   label: string;
   isPrimary: boolean;
 }
 
-// Comparable property
+// Comparable property - exported
 export interface ContactComparable {
   _id: string;
   address: string;

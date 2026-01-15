@@ -3,7 +3,7 @@
 import React from 'react';
 import { Inbox, Send, LucideIcon } from 'lucide-react';
 import type { FolderType, SentSubfolder } from '../../types';
-import { EMAIL_FOLDERS, SENT_SUBFOLDERS } from '../../constants';
+import { EMAIL_FOLDERS, EMAIL_SENT_SUBFOLDERS } from '../../constants';
 
 export interface EmailFolderNavProps {
   activeFolder: FolderType;
@@ -56,7 +56,7 @@ export function EmailFolderNav({
                 {/* Sent Subfolders */}
                 {folder.id === 'sent' && activeFolder === 'sent' && (
                   <div className="ml-6 mt-1 space-y-1">
-                    {SENT_SUBFOLDERS.map((sub) => {
+                    {EMAIL_SENT_SUBFOLDERS.map((sub) => {
                       const isSubActive = sentSubfolder === sub.id;
                       return (
                         <button
