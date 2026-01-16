@@ -1,7 +1,7 @@
 // usePanelLayout hook - Manages panel width and drag/resize behavior
 
 import { useState, useCallback, useEffect } from 'react';
-import { PanelLayout } from '../types';
+import { PanelLayout } from '../types/index';
 import { getOptimalPanelWidth, calculatePanelWidth } from '../utils';
 
 export function usePanelLayout() {
