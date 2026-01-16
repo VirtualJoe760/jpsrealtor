@@ -1,7 +1,7 @@
 // RecipientFields component - To/Cc/Bcc recipient fields
 
 import { X } from 'lucide-react';
-import ContactAutocomplete from '@/app/components/ContactAutocomplete';
+import ContactAutocomplete from '../../../ContactAutocomplete';
 
 interface RecipientFieldsProps {
   isLight: boolean;

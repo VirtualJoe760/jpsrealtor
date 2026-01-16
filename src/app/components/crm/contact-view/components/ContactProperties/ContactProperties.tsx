@@ -1,6 +1,6 @@
 // ContactProperties - Display property comparables
 import React from 'react';
-import { ContactComparable } from '../../types';
+import { ContactComparable } from '../../types/index';
 
 interface ContactPropertiesProps {
   comparables: ContactComparable[];

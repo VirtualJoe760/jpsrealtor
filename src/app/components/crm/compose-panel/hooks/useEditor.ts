@@ -17,7 +17,7 @@ import {
 export function useEditor() {
   const editorRef = useRef<HTMLDivElement>(null);
   const [currentFont, setCurrentFont] = useState(DEFAULT_FORMATTING.font);
-  const [currentFontSize, setCurrentFontSize] = useState(DEFAULT_FORMATTING.fontSize);
+  const [currentFontSize, setCurrentFontSize] = useState<string>(DEFAULT_FORMATTING.fontSize);
   const [currentColor, setCurrentColor] = useState(DEFAULT_FORMATTING.color);
 
   // Set initial content if provided

@@ -6,7 +6,7 @@
 
 import { Send, X, Minus, Maximize2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { ComposeMode, type ComposePanelProps } from './types';
+import { ComposeMode, type ComposePanelProps } from './compose-panel/types';
 import {
   useCompose,
   useEditor,
@@ -16,7 +16,7 @@ import {
   usePanelState,
   useSendEmail,
   useLinkModal,
-} from './hooks';
+} from './compose-panel/hooks';
 import {
   RichTextToolbar,
   TemplateSelector,
@@ -24,8 +24,8 @@ import {
   LinkModal,
   AttachmentList,
   RecipientFields,
-} from './components';
-import { PanelState } from './types';
+} from './compose-panel/components';
+import { PanelState } from './compose-panel/types';
 
 export default function ComposePanelRefactored({
   isLight,
@@ -340,7 +340,7 @@ export default function ComposePanelRefactored({
           onInsertLink={openLinkModal}
           onAttach={() => document.getElementById('attachment-input')?.click()}
           onAI={openAIModal}
-          onSend={handleSubmit}
+          onSend={() => handleSubmit(new Event('submit') as any)}
           sending={sending}
         />
 

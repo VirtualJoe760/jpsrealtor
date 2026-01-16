@@ -340,7 +340,7 @@ export default function ComposePanelRefactored({
           onInsertLink={openLinkModal}
           onAttach={() => document.getElementById('attachment-input')?.click()}
           onAI={openAIModal}
-          onSend={handleSubmit}
+          onSend={() => handleSubmit(new Event('submit') as any)}
           sending={sending}
         />
 
