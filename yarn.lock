@@ -1775,6 +1775,11 @@
   resolved "https://registry.npmjs.org/@standard-schema/spec/-/spec-1.0.0.tgz"
   integrity sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==
 
+"@stripe/stripe-js@^8.6.1":
+  version "8.6.1"
+  resolved "https://registry.npmjs.org/@stripe/stripe-js/-/stripe-js-8.6.1.tgz"
+  integrity sha512-UJ05U2062XDgydbUcETH1AoRQLNhigQ2KmDn1BG8sC3xfzu6JKg95Qt6YozdzFpxl1Npii/02m2LEWFt1RYjVA==
+
 "@surma/rollup-plugin-off-main-thread@^2.2.3":
   version "2.2.3"
   resolved "https://registry.npmjs.org/@surma/rollup-plugin-off-main-thread/-/rollup-plugin-off-main-thread-2.2.3.tgz"
@@ -9152,10 +9157,10 @@ qrcode.react@^4.2.0:
   resolved "https://registry.npmjs.org/qrcode.react/-/qrcode.react-4.2.0.tgz"
   integrity sha512-QpgqWi8rD9DsS9EP3z7BT+5lY5SFhsqGjpgW5DY/i3mK4M9DTBNz3ErMi8BWYEfI3L0d8GIbGmcdFAS1uIRGjA==
 
-qs@^6.11.0, qs@^6.13.1, qs@^6.7.0, qs@^6.9.4:
-  version "6.14.0"
-  resolved "https://registry.npmjs.org/qs/-/qs-6.14.0.tgz"
-  integrity sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==
+qs@^6.13.1, qs@^6.14.1, qs@^6.7.0, qs@^6.9.4:
+  version "6.14.1"
+  resolved "https://registry.npmjs.org/qs/-/qs-6.14.1.tgz"
+  integrity sha512-4EK3+xJl8Ts67nLYNwqw/dsFVnCf+qR7RgXSK9jEEm9unao3njwMDdmsdvoKBKHzxd7tCYz5e5M+SnMjdtXGQQ==
   dependencies:
     side-channel "^1.1.0"
 
@@ -10520,12 +10525,12 @@ strip-json-comments@^3.1.1:
   resolved "https://registry.npmjs.org/strip-json-comments/-/strip-json-comments-3.1.1.tgz"
   integrity sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==
 
-stripe@^20.1.0:
-  version "20.1.0"
-  resolved "https://registry.npmjs.org/stripe/-/stripe-20.1.0.tgz"
-  integrity sha512-o1VNRuMkY76ZCq92U3EH3/XHm/WHp7AerpzDs4Zyo8uE5mFL4QUcv/2SudWsSnhBSp4moO2+ZoGCZ7mT8crPmQ==
+stripe@^20.2.0:
+  version "20.2.0"
+  resolved "https://registry.npmjs.org/stripe/-/stripe-20.2.0.tgz"
+  integrity sha512-m8niTfdm3nPP/yQswRWMwQxqEUcTtB3RTJQ9oo6NINDzgi7aPOadsH/fPXIIfL1Sc5+lqQFKSk7WiO6CXmvaeA==
   dependencies:
-    qs "^6.11.0"
+    qs "^6.14.1"
 
 style-to-object@^1.0.0:
   version "1.0.8"
