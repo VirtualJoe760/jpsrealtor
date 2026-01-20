@@ -48,6 +48,10 @@ export default function ChatResultsContainer({
   const [loadingNeighborhood, setLoadingNeighborhood] = useState(false);
   const [cachedStats, setCachedStats] = useState<any>(null); // Cache stats to avoid recalculating on pagination
 
+  // Fetch articles for article queries (component-first architecture)
+  const [articleResults, setArticleResults] = useState<any[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(false);
+
   // Reset pagination and cached stats when neighborhood changes
   useEffect(() => {
     if (components.neighborhood) {
@@ -63,6 +67,13 @@ export default function ChatResultsContainer({
       fetchNeighborhoodListings();
     }
   }, [components.neighborhood, currentPage, sortOption]);
+
+  // Fetch articles when article query changes (component-first architecture)
+  useEffect(() => {
+    if (components.articles?.query) {
+      fetchArticles(components.articles.query);
+    }
+  }, [components.articles?.query]);
 
   const fetchNeighborhoodListings = async () => {
     if (!components.neighborhood) return;
@@ -285,6 +296,41 @@ export default function ChatResultsContainer({
     }
   };
 
+  /**
+   * Fetch articles from API (component-first architecture)
+   * Tool returns query parameter, component fetches data
+   */
+  const fetchArticles = async (query: string) => {
+    console.log('[ChatResultsContainer] 📰 Fetching articles for query:', query);
+    setLoadingArticles(true);
+
+    try {
+      const response = await fetch('/api/articles/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, limit: 6 })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Article search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[ChatResultsContainer] ✅ Article search response:', {
+        success: data.success,
+        resultsCount: data.results?.length || 0,
+        method: data.method
+      });
+
+      setArticleResults(data.results || []);
+    } catch (error) {
+      console.error('[ChatResultsContainer] ❌ Article fetch error:', error);
+      setArticleResults([]);
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
   // Check if we have neighborhood component
   const hasNeighborhood = !!components.neighborhood;
 
@@ -342,7 +388,7 @@ export default function ChatResultsContainer({
   const hasAppreciation = !!components.appreciation;
   const hasComparison = !!components.comparison;
   const hasMarketStats = !!components.marketStats;
-  const hasArticles = components.articles && components.articles.results?.length > 0;
+  const hasArticles = articleResults.length > 0; // Use fetched article results
 
   // Sorting function
   const sortListings = (listings: Listing[], sortBy: string): Listing[] => {
@@ -652,8 +698,8 @@ export default function ChatResultsContainer({
       {/* Article Results */}
       {hasArticles && (
         <ArticleResults
-          results={components.articles.results}
-          query={components.articles.query || ""}
+          results={articleResults}
+          query={components.articles?.query || ""}
         />
       )}
     </div>
