@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Search, Download, Plus, Grid3x3, List as ListIcon, Trash2 } from 'lucide-react';
-import { ViewMode, SortBy, FilterBy } from '../../types';
+import { ViewMode, SortBy, FilterBy, ContactAge } from '../../types';
 
 interface ContactToolbarProps {
   // Search
@@ -20,10 +20,17 @@ interface ContactToolbarProps {
   // Filtering
   filterBy: FilterBy;
   onFilterChange: (filter: FilterBy) => void;
+  contactAgeFilter: ContactAge | 'all';
+  onContactAgeFilterChange: (filter: ContactAge | 'all') => void;
 
   // Bulk actions
   selectedCount: number;
   onBulkDelete: () => void;
+
+  // Select all
+  totalContacts: number;
+  areAllSelected: boolean;
+  onSelectAll: () => void;
 
   // Actions
   onImport: () => void;
@@ -42,8 +49,13 @@ export function ContactToolbar({
   onSortChange,
   filterBy,
   onFilterChange,
+  contactAgeFilter,
+  onContactAgeFilterChange,
   selectedCount,
   onBulkDelete,
+  totalContacts,
+  areAllSelected,
+  onSelectAll,
   onImport,
   onAdd,
   isLight
@@ -98,13 +110,34 @@ export function ContactToolbar({
       </div>
 
       {/* Filters, Sort, and View Toggle */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-2">
+        {/* Select All Checkbox - Only show in LIST view */}
+        {viewMode === ViewMode.LIST && (
+          <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={areAllSelected}
+              onChange={onSelectAll}
+              className={`w-4 h-4 rounded border transition-colors ${
+                isLight
+                  ? 'border-gray-300 text-blue-600 focus:ring-blue-500'
+                  : 'border-gray-600 text-emerald-600 focus:ring-emerald-500'
+              }`}
+            />
+            <span className={`text-sm font-medium ${
+              isLight ? 'text-gray-700' : 'text-gray-300'
+            }`}>
+              All ({totalContacts})
+            </span>
+          </label>
+        )}
+
+        <div className="flex gap-2 flex-1 min-w-0">
           {/* Filter Dropdown */}
           <select
             value={filterBy}
             onChange={(e) => onFilterChange(e.target.value as FilterBy)}
-            className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+            className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-sm transition-colors ${
               isLight
                 ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 : 'bg-gray-800 border border-gray-700 text-white hover:bg-gray-700'
@@ -120,11 +153,31 @@ export function ContactToolbar({
             <option value={FilterBy.SELLERS}>Sellers</option>
           </select>
 
+          {/* Age Filter Dropdown - Only show in LIST view */}
+          {viewMode === ViewMode.LIST && (
+            <select
+              value={contactAgeFilter}
+              onChange={(e) => onContactAgeFilterChange(e.target.value as ContactAge | 'all')}
+              className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-sm transition-colors ${
+                isLight
+                  ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
+                  : 'bg-gray-800 border border-gray-700 text-white hover:bg-gray-700'
+              } focus:outline-none focus:ring-2 ${
+                isLight ? 'focus:ring-blue-500' : 'focus:ring-emerald-500'
+              }`}
+            >
+              <option value="all">All Ages</option>
+              <option value="recent">Recent (0-30d)</option>
+              <option value="old">Old (31-365d)</option>
+              <option value="ancient">Ancient (1y+)</option>
+            </select>
+          )}
+
           {/* Sort Dropdown */}
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as SortBy)}
-            className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+            className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-sm transition-colors ${
               isLight
                 ? 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 : 'bg-gray-800 border border-gray-700 text-white hover:bg-gray-700'
@@ -140,8 +193,8 @@ export function ContactToolbar({
           </select>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className={`flex gap-1 p-1 rounded-lg ${
+        {/* View Mode Toggle - Always visible */}
+        <div className={`flex gap-1 p-1 rounded-lg flex-shrink-0 ${
           isLight ? 'bg-gray-100' : 'bg-gray-800'
         }`}>
           <button

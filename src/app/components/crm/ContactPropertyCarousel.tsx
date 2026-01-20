@@ -77,6 +77,8 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
         return 'bg-green-600 text-white';
       case 'closed':
         return 'bg-blue-600 text-white';
+      case 'comps':
+        return 'bg-orange-600 text-white';
       case 'streetview':
         return 'bg-purple-600 text-white';
       default:

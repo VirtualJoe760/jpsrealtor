@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import Contact from '@/models/Contact';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // GET /api/crm/contacts
@@ -37,8 +38,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
 
+    // Convert userId to ObjectId for proper matching (like stats API does)
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Build query - ALWAYS filter by userId
-    const query: any = { userId: session.user.id };
+    const query: any = { userId: userObjectId };
 
     if (status) {
       query.status = status;
@@ -116,9 +120,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Check if contact with same phone already exists FOR THIS USER
     const existing = await Contact.findOne({
-      userId: session.user.id,
+      userId: userObjectId,
       phone: body.phone
     });
     if (existing) {
@@ -131,7 +138,7 @@ export async function POST(request: NextRequest) {
     // Create contact with userId
     const contact = await Contact.create({
       ...body,
-      userId: session.user.id,
+      userId: userObjectId,
     });
 
     console.log(`[Contacts API] Created contact: ${contact._id}`);
@@ -178,9 +185,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Convert userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Update contact - ONLY if it belongs to this user
     const contact = await Contact.findOneAndUpdate(
-      { _id, userId: session.user.id },
+      { _id, userId: userObjectId },
       { $set: updates },
       { new: true, runValidators: true }
     );
@@ -231,9 +241,12 @@ export async function DELETE(request: NextRequest) {
     const ids = searchParams.get('ids'); // Comma-separated IDs for bulk delete
     const deleteAll = searchParams.get('deleteAll'); // Delete all contacts
 
+    // Convert userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
     // Bulk delete ALL contacts for this user
     if (deleteAll === 'true') {
-      const result = await Contact.deleteMany({ userId: session.user.id });
+      const result = await Contact.deleteMany({ userId: userObjectId });
       console.log(`[Contacts API] Deleted ALL contacts: ${result.deletedCount} contacts`);
 
       return NextResponse.json({
@@ -256,7 +269,7 @@ export async function DELETE(request: NextRequest) {
 
       const result = await Contact.deleteMany({
         _id: { $in: idArray },
-        userId: session.user.id
+        userId: userObjectId
       });
 
       console.log(`[Contacts API] Bulk deleted ${result.deletedCount} contacts`);
@@ -279,7 +292,7 @@ export async function DELETE(request: NextRequest) {
     // Delete contact - ONLY if it belongs to this user
     const contact = await Contact.findOneAndDelete({
       _id: id,
-      userId: session.user.id
+      userId: userObjectId
     });
 
     if (!contact) {

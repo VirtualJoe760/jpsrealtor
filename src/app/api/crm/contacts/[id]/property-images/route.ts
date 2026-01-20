@@ -73,10 +73,11 @@ export async function GET(
     console.log(`[Property Images API]   State:  ${state}`);
     console.log(`[Property Images API]   Zip:    ${zip}`);
     console.log('');
-    console.log(`[Property Images API] 🔍 THREE-TIER SEARCH STRATEGY:`);
+    console.log(`[Property Images API] 🔍 FOUR-TIER SEARCH STRATEGY:`);
     console.log(`[Property Images API]   1. Active MLS Listings (unified_listings)`);
     console.log(`[Property Images API]   2. Closed MLS Listings (unified_closed_listings)`);
-    console.log(`[Property Images API]   3. Google Street View (fallback)`);
+    console.log(`[Property Images API]   3. Neighborhood Comparables (nearby properties)`);
+    console.log(`[Property Images API]   4. Google Street View (final fallback)`);
     console.log('');
 
     // Strategy 1: Search active listings (unified_listings)
@@ -223,11 +224,77 @@ export async function GET(
       }
     }
 
-    // Strategy 3: Google Street View fallback
+    // Strategy 3: Neighborhood Comparables fallback
+    if (images.length === 0 && city && state) {
+      console.log('');
+      console.log(`[Property Images API] ━━━ STRATEGY 3: Neighborhood Comparables ━━━`);
+      console.log(`[Property Images API] No exact property match found, searching for comparable properties in ${city}, ${state}...`);
+
+      // Search for recent sold properties in the same city/neighborhood
+      const neighborhoodQuery: any = {
+        city: { $regex: city, $options: 'i' },
+        stateOrProvince: { $regex: state, $options: 'i' }
+      };
+
+      // Add zip code if available for more accurate neighborhood matching
+      if (zip) {
+        neighborhoodQuery.postalCode = { $regex: zip.substring(0, 5), $options: 'i' };
+      }
+
+      console.log(`[Property Images API] Query:`, JSON.stringify(neighborhoodQuery, null, 2));
+
+      // Try to find comparables from active listings first
+      const neighborhoodListings = await UnifiedListing.find(neighborhoodQuery)
+        .select({ media: 1, unparsedAddress: 1, listingKey: 1, listPrice: 1, standardStatus: 1 })
+        .limit(5)
+        .lean();
+
+      if (neighborhoodListings && neighborhoodListings.length > 0) {
+        console.log(`[Property Images API] ✅ Found ${neighborhoodListings.length} comparable properties in neighborhood`);
+        source = 'comps';
+
+        neighborhoodListings.forEach((listing: any, listingIdx: number) => {
+          if (listing.media && listing.media.length > 0) {
+            console.log(`[Property Images API]   Comparable ${listingIdx + 1}: ${listing.unparsedAddress}`);
+            console.log(`[Property Images API]   Price: $${listing.listPrice?.toLocaleString() || 'N/A'}, Status: ${listing.standardStatus || 'N/A'}`);
+
+            // Get first 3 photos from each comparable
+            const photosToAdd = listing.media.slice(0, 3);
+            photosToAdd.forEach((mediaItem: any, photoIdx: number) => {
+              const imageUrl = mediaItem.Uri1280 ||
+                              mediaItem.Uri1024 ||
+                              mediaItem.Uri800 ||
+                              mediaItem.Uri640 ||
+                              mediaItem.MediaURL;
+
+              if (imageUrl) {
+                const selectedSize = mediaItem.Uri1280 ? '1280px' :
+                                    mediaItem.Uri1024 ? '1024px' :
+                                    mediaItem.Uri800 ? '800px' :
+                                    mediaItem.Uri640 ? '640px' : 'MediaURL';
+                console.log(`[Property Images API]     Photo ${photoIdx + 1}: Using ${selectedSize} version`);
+                images.push({
+                  url: imageUrl,
+                  source: 'Neighborhood Comp',
+                  caption: `${listing.unparsedAddress} - $${listing.listPrice?.toLocaleString() || 'N/A'}`,
+                  order: (listingIdx * 10) + photoIdx, // Group by listing
+                });
+              }
+            });
+          }
+        });
+
+        console.log(`[Property Images API] ✅ Extracted ${images.length} images from ${neighborhoodListings.length} comparable properties`);
+      } else {
+        console.log(`[Property Images API] ❌ No comparable properties found in neighborhood`);
+      }
+    }
+
+    // Strategy 4: Google Street View fallback (final fallback)
     if (images.length === 0 && street && city && state) {
       console.log('');
-      console.log(`[Property Images API] ━━━ STRATEGY 3: Google Street View Fallback ━━━`);
-      console.log(`[Property Images API] No MLS images found, attempting Street View...`);
+      console.log(`[Property Images API] ━━━ STRATEGY 4: Google Street View Fallback ━━━`);
+      console.log(`[Property Images API] No property or comparable images found, attempting Street View...`);
       const fullAddress = `${street}, ${city}, ${state} ${zip}`.trim();
       const encodedAddress = encodeURIComponent(fullAddress);
       console.log(`[Property Images API] Full Address: ${fullAddress}`);

@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(node -e:*)",
       "Bash(node check-listing.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:jpsrealtor.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

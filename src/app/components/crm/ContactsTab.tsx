@@ -42,11 +42,8 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const {
     contacts,
     loading,
-    loadingMore,
     fetchContacts,
     deleteContact,
-    loadMore,
-    pagination,
   } = useContacts();
 
   const { tags, stats, refetch: refetchStats } = useContactStats();
@@ -59,11 +56,12 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
     contactAgeFilter,
     setContactAgeFilter,
     filteredContacts: baseFilteredContacts,
+    sortedContacts: baseSortedContacts,
     resetAll,
   } = useContactFilters(contacts);
 
-  // Additional filtering for search, tag, and status
-  const filteredContacts = React.useMemo(() => {
+  // Additional filtering for search, tag, and status, then apply sorting
+  const { filteredContacts, sortedContacts } = React.useMemo(() => {
     let result = baseFilteredContacts;
 
     // Filter by search query
@@ -91,8 +89,11 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
       );
     }
 
-    return result;
-  }, [baseFilteredContacts, searchQuery, selectedTag, selectedStatus]);
+    // Apply sorting to filtered results
+    const sorted = baseSortedContacts.filter(contact => result.includes(contact));
+
+    return { filteredContacts: result, sortedContacts: sorted };
+  }, [baseFilteredContacts, baseSortedContacts, searchQuery, selectedTag, selectedStatus]);
 
   const {
     selectedContactIds,
@@ -102,8 +103,19 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
     clearSelection,
     selectedCount,
     hasSelection,
-    areAllSelected,
+    areAllSelected: checkAreAllSelected,
   } = useContactSelection();
+
+  // Check if all sorted contacts are selected
+  const areAllSelected = React.useMemo(() =>
+    checkAreAllSelected(sortedContacts.map(c => c._id)),
+    [checkAreAllSelected, sortedContacts]
+  );
+
+  // Toggle select all handler for toolbar
+  const handleToggleSelectAll = React.useCallback(() => {
+    toggleSelectAll(sortedContacts.map(c => c._id));
+  }, [toggleSelectAll, sortedContacts]);
 
   // Restore saved state on mount
   const { restoreState } = useRestoreContactState();
@@ -111,14 +123,20 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   React.useEffect(() => {
     const savedState = restoreState();
     if (savedState) {
+      // DON'T restore selectedTag or selectedStatus - they cause filter issues
+      // User should start with clean state (all contacts visible)
       if (savedState.searchQuery) setSearchQuery(savedState.searchQuery);
       if (savedState.viewMode) setViewMode(savedState.viewMode as ViewMode);
-      if (savedState.selectedTag !== undefined) setSelectedTag(savedState.selectedTag);
-      if (savedState.selectedStatus !== undefined) setSelectedStatus(savedState.selectedStatus);
+      // if (savedState.selectedTag !== undefined) setSelectedTag(savedState.selectedTag);
+      // if (savedState.selectedStatus !== undefined) setSelectedStatus(savedState.selectedStatus);
       if (savedState.sortBy) setSortBy(savedState.sortBy as SortBy);
       if (savedState.filterBy) setFilterBy(savedState.filterBy as FilterBy);
       if (savedState.contactAgeFilter) setContactAgeFilter(savedState.contactAgeFilter as any);
     }
+
+    // IMPORTANT: Always clear tag/status filters on mount to ensure all contacts load
+    setSelectedTag(null);
+    setSelectedStatus(null);
   }, [restoreState]);
 
   // Persist state
@@ -179,18 +197,22 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   const handleTagClick = (tagName: string) => {
     if (selectedTag === tagName) {
       setSelectedTag(null);
+      setViewMode(ViewMode.CARD); // Go back to card view when deselecting
     } else {
       setSelectedTag(tagName);
       setSelectedStatus(null); // Clear status filter
+      setViewMode(ViewMode.LIST); // Switch to list view
     }
   };
 
   const handleStatusClick = (status: string) => {
     if (selectedStatus === status) {
       setSelectedStatus(null);
+      setViewMode(ViewMode.CARD); // Go back to card view when deselecting
     } else {
       setSelectedStatus(status);
       setSelectedTag(null); // Clear tag filter
+      setViewMode(ViewMode.LIST); // Switch to list view
     }
   };
 
@@ -199,34 +221,34 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
     setSelectedTag(null);
     setSelectedStatus(null);
     resetAll();
+    setViewMode(ViewMode.LIST); // Switch to list view to show all contacts
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    // Clear filters when switching to CARD view
+    if (mode === ViewMode.CARD) {
+      setSelectedTag(null);
+      setSelectedStatus(null);
+      setSearchQuery('');
+    }
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Stats Cards Section */}
-      <div className="flex-shrink-0 px-4 md:px-0 mb-6">
-        <StatsCardGrid
-          stats={stats}
-          tags={tags}
-          selectedTag={selectedTag}
-          onSelectTag={handleTagClick}
-          onSelectStatus={handleStatusClick}
-          onViewAll={handleViewAll}
-          isLight={isLight}
-        />
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex-shrink-0 px-4 md:px-0">
+    <div className="flex flex-col">
+      {/* Toolbar - Always visible */}
+      <div className="px-4 md:px-0">
         <ContactToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           sortBy={sortBy}
           onSortChange={setSortBy}
           filterBy={filterBy}
           onFilterChange={setFilterBy}
+          contactAgeFilter={contactAgeFilter}
+          onContactAgeFilterChange={setContactAgeFilter}
           selectedCount={selectedCount}
           onBulkDelete={handleBulkDelete}
           onImport={() => setShowSyncModal(true)}
@@ -234,39 +256,46 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
             /* TODO: Add contact modal */
           }}
           isLight={isLight}
+          // Select all functionality
+          totalContacts={sortedContacts.length}
+          areAllSelected={areAllSelected}
+          onSelectAll={handleToggleSelectAll}
         />
       </div>
 
-      {/* Contact List - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-0">
-        <ContactList
-          contacts={filteredContacts}
-          viewMode={viewMode}
-          isLight={isLight}
-          loading={loading}
-          selectedContactIds={selectedContactIds}
-          onSelectContact={toggleContactSelection}
-          onContactClick={handleContactClick}
-          loadingCount={8}
-        />
+      {/* Stats Cards Section - ONLY show in CARD view */}
+      {viewMode === ViewMode.CARD && (
+        <div className="px-4 md:px-0 mb-6">
+          <StatsCardGrid
+            stats={stats}
+            tags={tags}
+            selectedTag={selectedTag}
+            onSelectTag={handleTagClick}
+            onSelectStatus={handleStatusClick}
+            onViewAll={handleViewAll}
+            isLight={isLight}
+          />
+        </div>
+      )}
 
-        {/* Load More */}
-        {pagination.hasMore && !loading && (
-          <div className="flex justify-center py-8">
-            <button
-              onClick={loadMore}
-              disabled={loadingMore}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                isLight
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300'
-              }`}
-            >
-              {loadingMore ? 'Loading...' : `Load More (${pagination.total - filteredContacts.length} remaining)`}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Contact List - ONLY show in LIST view */}
+      {viewMode === ViewMode.LIST && (
+        <div className="px-4 md:px-0 pb-24 md:pb-0">
+          <ContactList
+            contacts={sortedContacts}
+            viewMode={viewMode}
+            isLight={isLight}
+            loading={loading}
+            selectedContactIds={selectedContactIds}
+            onSelectContact={toggleContactSelection}
+            onContactClick={handleContactClick}
+            loadingCount={8}
+          />
+
+          {/* No "Load More" button - all contacts loaded upfront */}
+          {/* Front-end pagination happens in ContactList component */}
+        </div>
+      )}
 
       {/* Modals */}
       {showSyncModal && (

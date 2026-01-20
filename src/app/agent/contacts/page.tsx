@@ -13,8 +13,8 @@ export default function AgentContactsPage() {
   const isLight = currentTheme === 'lightgradient';
 
   return (
-    <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:p-4 md:p-8 overflow-hidden">
-      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0">
+    <div className="min-h-screen flex flex-col md:p-4 md:p-8">
+      <div className="max-w-7xl mx-auto w-full flex flex-col pt-16 md:pt-0">
         {/* Agent Navigation */}
         <div className="flex-shrink-0">
           <AgentNav />
@@ -32,8 +32,8 @@ export default function AgentContactsPage() {
           </p>
         </div>
 
-        {/* Contacts Component - Scrollable */}
-        <div className="flex-1 overflow-hidden">
+        {/* Contacts Component - Takes remaining space */}
+        <div className="flex-1">
           <ContactsTab isLight={isLight} />
         </div>
       </div>

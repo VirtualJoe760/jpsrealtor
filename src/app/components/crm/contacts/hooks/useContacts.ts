@@ -1,6 +1,6 @@
 // useContacts hook - Handles contact CRUD operations and pagination
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Contact, ContactPagination } from '../types';
 
 interface FetchContactsParams {
@@ -13,59 +13,48 @@ interface FetchContactsParams {
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [pagination, setPagination] = useState<ContactPagination>({
     total: 0,
-    limit: 50,
+    limit: 9999, // Load ALL contacts initially
     skip: 0,
     hasMore: false
   });
 
   /**
-   * Fetch contacts with optional filters
+   * Fetch ALL contacts (no server-side pagination/filtering)
+   * Filtering and pagination will be done client-side
    */
   const fetchContacts = useCallback(async (params: FetchContactsParams = {}) => {
-    const { reset = false, search, tag, status } = params;
+    const { reset = false } = params;
+    // Ignore search, tag, status - we'll filter client-side
 
     try {
-      if (reset) {
-        setLoading(true);
-        setPagination(prev => ({ ...prev, skip: 0 }));
-      } else {
-        setLoadingMore(true);
-      }
+      setLoading(true);
 
-      const skip = reset ? 0 : pagination.skip + pagination.limit;
-
-      // Build query params
+      // Fetch ALL contacts in one request
       const queryParams = new URLSearchParams({
-        limit: pagination.limit.toString(),
-        skip: skip.toString(),
+        limit: '9999', // Load all contacts
+        skip: '0',
       });
-
-      if (search) queryParams.append('search', search);
-      if (tag) queryParams.append('tag', tag);
-      if (status) queryParams.append('status', status);
 
       const response = await fetch(`/api/crm/contacts?${queryParams}`);
       const data = await response.json();
 
       if (data.success) {
-        setContacts(prev => reset ? data.contacts : [...prev, ...data.contacts]);
+        setContacts(data.contacts); // Always replace with all contacts
         setPagination({
           total: data.pagination.total,
           limit: data.pagination.limit,
-          skip: skip,
-          hasMore: data.pagination.hasMore
+          skip: 0,
+          hasMore: false // No more to load - we have everything
         });
       }
     } catch (error) {
       console.error('[useContacts] Fetch error:', error);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
-  }, [pagination.skip, pagination.limit]);
+  }, []); // No dependencies - always fetch all
 
   /**
    * Delete a single contact
@@ -98,21 +87,6 @@ export function useContacts() {
   }, []);
 
   /**
-   * Load more contacts (pagination)
-   */
-  const loadMore = useCallback(async () => {
-    if (!pagination.hasMore || loadingMore) return;
-    await fetchContacts({ reset: false });
-  }, [pagination.hasMore, loadingMore, fetchContacts]);
-
-  /**
-   * Refresh contacts (reset to first page)
-   */
-  const refresh = useCallback(async () => {
-    await fetchContacts({ reset: true });
-  }, [fetchContacts]);
-
-  /**
    * Update a contact in the local state
    */
   const updateContact = useCallback((updatedContact: Contact) => {
@@ -129,15 +103,16 @@ export function useContacts() {
     setPagination(prev => ({ ...prev, total: prev.total + 1 }));
   }, []);
 
+  // Fetch ALL contacts on component mount
+  useEffect(() => {
+    fetchContacts({ reset: true });
+  }, [fetchContacts]);
+
   return {
     contacts,
     loading,
-    loadingMore,
-    pagination,
     fetchContacts,
     deleteContact,
-    loadMore,
-    refresh,
     updateContact,
     addContact,
     setContacts
