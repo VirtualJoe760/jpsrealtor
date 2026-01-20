@@ -1,1 +1,0 @@
-export { ContactNotes } from './ContactNotes';

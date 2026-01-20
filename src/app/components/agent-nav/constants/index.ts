@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Mail,
   UserCircle,
+  CreditCard,
 } from 'lucide-react';
 import type { NavItem } from '../types';
 
@@ -56,6 +57,13 @@ export const getNavItems = (isTeamLeader: boolean = false): NavItem[] => [
     href: '/agent/cms',
     label: 'CMS',
     icon: FileText,
+    exact: false,
+    show: true,
+  },
+  {
+    href: '/agent/subscription',
+    label: 'Subscription',
+    icon: CreditCard,
     exact: false,
     show: true,
   },

@@ -7,7 +7,11 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nDocs: Complete CRM refactoring documentation overhaul\n\nCreated comprehensive documentation system for CRM refactoring initiative:\n\nNew Documentation:\n- CRM_DOCUMENTATION_INDEX.md - Complete CRM system hub with navigation\n- CRM_REFACTOR_PRIORITIES.md - Analysis of 7 components (8,836 lines)\n- CONTACTVIEWPANEL_REFACTOR_PLAN.md - 1,780 → 250 lines (24 → 8 hooks)\n- EMAILINBOX_REFACTOR_PLAN.md - 1,562 → 300 lines (27 → 6 hooks)\n- COMPOSEPANEL_REFACTOR_PLAN.md - 730 → 200 lines (18 → 5 hooks)\n\nUpdated Documentation:\n- README.md - Added CRM section with refactoring initiative status\n- CONTACTSTAB_REFACTOR_PROGRESS.md - Phase 3 complete (60% done)\n\nAnalysis Summary:\n✅ 7 components analyzed (8,836 total lines)\n✅ 3 CRITICAL priority (ContactViewPanel, EmailInbox, ContactsTab)  \n✅ Target: 77% code reduction across all components\n✅ Estimated timeline: 12-15 weeks for complete refactor\n✅ ContactsTab: 60% complete (Phases 1-3 done)\n\nEach plan includes:\n- Detailed current state analysis with hook/state breakdown\n- Phase-by-phase refactoring strategy (6-7 phases per component)\n- Custom hooks extraction plans with full implementation examples\n- UI component decomposition with code samples\n- Service layer architecture (API calls separated)\n- Utility functions for pure logic\n- Success metrics and realistic timelines\n- Reusable patterns identified (RichTextEditor, useDragToClose, etc.)\n\nArchitecture Benefits:\n- Single Responsibility Principle applied\n- Clean separation: UI / Logic / Data\n- Testable hooks and pure functions\n- Reusable components across CRM\n- Performance optimized (memoization)\n- Type-safe enums replace magic strings\n\nReady to begin Phase 4 of ContactsTab refactor\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
       "Bash(npm run build:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(node check-listing.js:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

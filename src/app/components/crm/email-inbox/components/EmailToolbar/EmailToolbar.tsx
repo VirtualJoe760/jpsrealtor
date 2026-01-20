@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Search, Filter, SortAsc, SortDesc, RefreshCw, Archive, Trash2, Check, X } from 'lucide-react';
-import type { EmailFilterType, EmailSortBy, SortOrder } from '../../types';
+import type { EmailFilterType, EmailSortBy } from '../../types';
+import { SortOrder } from '../../types';
 
 export interface EmailToolbarProps {
   searchQuery: string;
@@ -131,11 +132,11 @@ export function EmailToolbar({
 
           {/* Sort Order */}
           <button
-            onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
+            onClick={() => onSortChange(sortBy, sortOrder === SortOrder.ASC ? SortOrder.DESC : SortOrder.ASC)}
             className={`${buttonBgClass} ${textClass} p-2 rounded`}
             aria-label="Toggle sort order"
           >
-            {sortOrder === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
+            {sortOrder === SortOrder.ASC ? <SortAsc size={16} /> : <SortDesc size={16} />}
           </button>
 
           {/* Refresh */}

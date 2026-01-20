@@ -1,1 +1,0 @@
-export { ContactMap } from './ContactMap';

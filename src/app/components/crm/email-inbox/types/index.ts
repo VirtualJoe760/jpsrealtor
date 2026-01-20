@@ -88,6 +88,9 @@ export interface EmailInboxProps {
   isLight: boolean;
 }
 
+// Compose action type
+export type ComposeAction = 'reply' | 'replyAll' | 'forward';
+
 // EmailInbox state
 export interface EmailInboxState {
   emails: Email[];

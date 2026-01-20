@@ -1,1 +1,0 @@
-export { ContactInfo } from './ContactInfo';

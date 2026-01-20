@@ -47,11 +47,11 @@ export async function GET(
       );
     }
 
-    // Step 1: Get listing's mlsId and mlsSource from database
+    // Step 1: Get listing's mlsId, mlsSource, and photos from database
     await dbConnect();
 
     const listing = await UnifiedListing.findOne({ listingKey })
-      .select("mlsSource mlsId listingKey")
+      .select("mlsSource mlsId listingKey photos")
       .lean();
 
     if (!listing) {
