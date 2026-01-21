@@ -6,6 +6,7 @@ import { trackToolUsage } from "./user-analytics";
 import type { UserBehaviorEvent } from "./types";
 import dbConnect from "@/lib/mongodb";
 import UnifiedListing from "@/models/unified-listing";
+import Article from "@/models/article";
 
 /**
  * Execute a tool call and return the result
@@ -577,17 +578,32 @@ async function executeSearchArticles(args: {
 }): Promise<{ success: boolean; data: any }> {
   const { query } = args;
 
-  // Fetch top 3 articles for RAG (AI will read and synthesize)
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, limit: 3 })
-    });
+  console.log('[executeSearchArticles] 📚 Fetching articles for RAG...');
+  console.log('[executeSearchArticles] Query:', query);
 
-    if (!response.ok) {
-      console.error('[executeSearchArticles] API call failed:', response.status);
-      // Fall back to returning just query if API fails
+  // Fetch top 3 articles directly from MongoDB for RAG (AI will read and synthesize)
+  try {
+    await dbConnect();
+
+    // Perform MongoDB text search on published articles
+    const articles = await Article.find(
+      {
+        status: "published",
+        $text: { $search: query }
+      },
+      {
+        score: { $meta: "textScore" }
+      }
+    )
+      .sort({ score: { $meta: "textScore" } })
+      .limit(3)
+      .select("title slug excerpt category seo")
+      .lean();
+
+    console.log(`[executeSearchArticles] ✅ Found ${articles.length} articles for RAG`);
+
+    if (articles.length === 0) {
+      console.log('[executeSearchArticles] ⚠️ No articles found, returning query only');
       return {
         success: true,
         data: {
@@ -597,12 +613,12 @@ async function executeSearchArticles(args: {
       };
     }
 
-    const data = await response.json();
-    const articles = data.results || [];
+    // Log article titles for debugging
+    articles.forEach((article: any, idx: number) => {
+      console.log(`[executeSearchArticles] Article ${idx + 1}: ${article.title}`);
+    });
 
-    console.log(`[executeSearchArticles] Found ${articles.length} articles for RAG`);
-
-    // Return articles content for AI to read and synthesize
+    // Return articles content for AI to read and synthesize (RAG)
     return {
       success: true,
       data: {
@@ -617,8 +633,8 @@ async function executeSearchArticles(args: {
       }
     };
   } catch (error) {
-    console.error('[executeSearchArticles] Error fetching articles:', error);
-    // Fall back to returning just query if fetch fails
+    console.error('[executeSearchArticles] ❌ Error fetching articles:', error);
+    // Fall back to returning just query if DB query fails
     return {
       success: true,
       data: {
