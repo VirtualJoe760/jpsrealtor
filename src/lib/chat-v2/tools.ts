@@ -200,13 +200,13 @@ export const ALL_TOOLS: ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "searchArticles",
-      description: "Search educational real estate content, guides, and how-to articles. Use for questions about real estate concepts, processes, or general knowledge.",
+      description: "Search educational real estate content, guides, and how-to articles. Use for questions about: real estate concepts (buying, selling, investing), lifestyle topics (energy costs, utilities, climate, HOA rules), neighborhood insights (schools, amenities, community features), and general real estate knowledge. Call this for ANY question that isn't specifically about searching for properties or market appreciation data.",
       parameters: {
         type: "object",
         properties: {
           query: {
             type: "string",
-            description: "Search query or topic (e.g., 'first time buyer', 'closing costs', 'short sale')"
+            description: "Search query or topic (e.g., 'first time buyer', 'closing costs', 'energy costs in desert', 'HOA rules', 'property taxes')"
           }
         },
         required: ["query"]
