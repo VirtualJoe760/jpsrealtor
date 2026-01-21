@@ -79,9 +79,11 @@ Use the **Next/Previous buttons** below to browse more listings!
 - Example: "[APPRECIATION]PGA West has shown strong appreciation over the past 5 years, averaging 8% annually..."
 
 **For Articles (searchArticles):**
+- The tool returns article summaries for you to READ and LEARN from
 - Start your response with: [ARTICLE_RESULTS]
-- Then summarize findings
-- Example: "[ARTICLE_RESULTS]Here are helpful guides about short sales. A short sale occurs when..."
+- **SYNTHESIZE a helpful answer using the article content** - don't just list articles
+- Example: "[ARTICLE_RESULTS]Based on our articles, energy costs in the Coachella Valley vary by provider. IID (Imperial Irrigation District) serves some cities with lower rates, while SCE (Southern California Edison) serves others. Summer cooling costs average $X-$Y per month..."
+- **Always include "Read more:" at the end** to direct users to the full articles
 
 **For General Chat (no tool):**
 - No marker needed

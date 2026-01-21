@@ -569,7 +569,7 @@ async function executeGetAppreciation(args: {
 }
 
 // =========================================================================
-// TOOL 3: Search Articles
+// TOOL 3: Search Articles (with RAG - Retrieval-Augmented Generation)
 // =========================================================================
 
 async function executeSearchArticles(args: {
@@ -577,11 +577,54 @@ async function executeSearchArticles(args: {
 }): Promise<{ success: boolean; data: any }> {
   const { query } = args;
 
-  return {
-    success: true,
-    data: {
-      component: "articles",
-      query
+  // Fetch top 3 articles for RAG (AI will read and synthesize)
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit: 3 })
+    });
+
+    if (!response.ok) {
+      console.error('[executeSearchArticles] API call failed:', response.status);
+      // Fall back to returning just query if API fails
+      return {
+        success: true,
+        data: {
+          component: "articles",
+          query
+        }
+      };
     }
-  };
+
+    const data = await response.json();
+    const articles = data.results || [];
+
+    console.log(`[executeSearchArticles] Found ${articles.length} articles for RAG`);
+
+    // Return articles content for AI to read and synthesize
+    return {
+      success: true,
+      data: {
+        component: "articles",
+        query,
+        // Include article content for RAG (AI will read these)
+        articleSummaries: articles.map((article: any) => ({
+          title: article.title,
+          excerpt: article.excerpt || article.seo?.description || '',
+          url: `/insights/${article.category}/${article.slug}`
+        }))
+      }
+    };
+  } catch (error) {
+    console.error('[executeSearchArticles] Error fetching articles:', error);
+    // Fall back to returning just query if fetch fails
+    return {
+      success: true,
+      data: {
+        component: "articles",
+        query
+      }
+    };
+  }
 }

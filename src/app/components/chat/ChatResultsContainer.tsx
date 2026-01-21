@@ -308,7 +308,7 @@ export default function ChatResultsContainer({
       const response = await fetch('/api/articles/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, limit: 6 })
+        body: JSON.stringify({ query, limit: 3 })
       });
 
       if (!response.ok) {
