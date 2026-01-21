@@ -81,7 +81,6 @@ const ArticleSchema = new Schema<IArticle>(
     },
     slug: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
       lowercase: true,
@@ -226,7 +225,7 @@ ArticleSchema.index({ year: 1, month: 1, status: 1 }); // Date archive
 ArticleSchema.index({ tags: 1, status: 1 }); // Tag filtering
 ArticleSchema.index({ featured: 1, status: 1, publishedAt: -1 }); // Featured articles
 ArticleSchema.index({ "metadata.views": -1 }); // Popular articles
-ArticleSchema.index({ slug: 1 }, { unique: true }); // Fast slug lookup
+// Note: slug index is already defined in schema with unique: true (line 84)
 
 // Text index for search
 ArticleSchema.index({
