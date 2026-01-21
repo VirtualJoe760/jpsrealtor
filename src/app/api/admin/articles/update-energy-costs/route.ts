@@ -2,7 +2,7 @@
 // API route to update energy cost articles with accurate 2025 data
 
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
+import dbConnect from '@/lib/mongodb';
 import Article from '@/models/article';
 
 export async function GET() {
