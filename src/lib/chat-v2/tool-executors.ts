@@ -619,6 +619,7 @@ async function executeSearchArticles(args: {
     });
 
     // Return articles content for AI to read and synthesize (RAG)
+    // NOTE: No URLs included - frontend fetches/displays articles separately via /api/articles/search
     return {
       success: true,
       data: {
@@ -627,8 +628,8 @@ async function executeSearchArticles(args: {
         // Include article content for RAG (AI will read these)
         articleSummaries: articles.map((article: any) => ({
           title: article.title,
-          excerpt: article.excerpt || article.seo?.description || '',
-          url: `/insights/${article.category}/${article.slug}`
+          excerpt: article.excerpt || article.seo?.description || ''
+          // URL intentionally omitted - not needed for AI synthesis
         }))
       }
     };
