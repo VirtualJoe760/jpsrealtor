@@ -46,7 +46,6 @@ export default function NewArticlePage() {
   // Groq generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTopic, setGenerationTopic] = useState("");
-  const [generationKeywords, setGenerationKeywords] = useState("");
   const [generatedPreview, setGeneratedPreview] = useState("");
 
   // Article form state
@@ -102,10 +101,6 @@ export default function NewArticlePage() {
         body: JSON.stringify({
           topic: generationTopic,
           category: formData.category,
-          keywords: generationKeywords
-            .split(",")
-            .map((k) => k.trim())
-            .filter(Boolean),
           tone: "professional yet approachable",
           length: "comprehensive",
         }),
@@ -139,7 +134,7 @@ export default function NewArticlePage() {
           seo: {
             title: article.seo.title,
             description: article.seo.description,
-            keywords: article.seo.keywords,
+            keywords: article.seo.keywords || [],
           },
         }));
 
@@ -536,26 +531,6 @@ export default function NewArticlePage() {
                   <option value="market-insights">Market Insights</option>
                   <option value="real-estate-tips">Real Estate Tips</option>
                 </select>
-              </div>
-
-              {/* Keywords Input */}
-              <div>
-                <label
-                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
-                >
-                  Keywords (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={generationKeywords}
-                  onChange={(e) => setGenerationKeywords(e.target.value)}
-                  placeholder="golf, palm desert, investment, luxury homes"
-                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none transition-all ${
-                    isLight
-                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
-                  }`}
-                />
               </div>
 
               {/* Generate Button */}
