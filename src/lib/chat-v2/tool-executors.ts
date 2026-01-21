@@ -597,7 +597,7 @@ async function executeSearchArticles(args: {
     )
       .sort({ score: { $meta: "textScore" } })
       .limit(3)
-      .select("title slug excerpt category seo")
+      .select("title slug excerpt content category seo")
       .lean();
 
     console.log(`[executeSearchArticles] ✅ Found ${articles.length} articles for RAG`);
@@ -625,10 +625,10 @@ async function executeSearchArticles(args: {
       data: {
         component: "articles",
         query,
-        // Include article content for RAG (AI will read these)
+        // Include FULL article content for RAG (AI will read these and extract accurate data)
         articleSummaries: articles.map((article: any) => ({
           title: article.title,
-          excerpt: article.excerpt || article.seo?.description || ''
+          content: article.content || article.excerpt || article.seo?.description || ''
           // URL intentionally omitted - not needed for AI synthesis
         }))
       }
