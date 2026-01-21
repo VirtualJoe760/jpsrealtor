@@ -13,7 +13,8 @@
       "Bash(node check-listing.js:*)",
       "Bash(node:*)",
       "WebFetch(domain:jpsrealtor.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
