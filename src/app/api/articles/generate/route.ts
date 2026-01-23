@@ -13,11 +13,12 @@ export async function POST(request: Request) {
 
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.isAdmin) {
-      console.error('[Article Generation] Unauthorized access attempt');
+    // Allow both admins and authenticated agents to generate articles
+    if (!session?.user) {
+      console.error('[Article Generation] Unauthorized - no session');
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 403 }
+        { error: 'Unauthorized. Please sign in.' },
+        { status: 401 }
       );
     }
 
