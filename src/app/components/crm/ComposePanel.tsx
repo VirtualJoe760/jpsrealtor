@@ -427,7 +427,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
         </div>
 
         {/* Rich Text Toolbar */}
-        <div className={`flex items-center gap-1 px-4 py-2 border-b overflow-x-auto ${
+        <div className={`flex flex-wrap items-center gap-1 px-4 py-2 border-b ${
           isLight ? 'border-slate-200 bg-slate-50' : 'border-gray-700 bg-gray-900'
         }`}>
           {/* Font Family */}
