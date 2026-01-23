@@ -181,9 +181,9 @@ export default function ContactEditModal({
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pb-24 md:pb-4 pointer-events-none overflow-y-auto">
         <div
-          className={`w-full max-w-2xl rounded-xl shadow-2xl pointer-events-auto my-8 ${
+          className={`w-full max-w-2xl rounded-xl shadow-2xl pointer-events-auto my-8 max-h-[calc(100vh-8rem)] md:max-h-[90vh] flex flex-col ${
             isLight ? 'bg-white' : 'bg-gray-900'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -220,7 +220,7 @@ export default function ContactEditModal({
           </div>
 
           {/* Form - Scrollable */}
-          <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
             {/* Name Section */}
             <div className="grid grid-cols-2 gap-3">
               {/* First Name */}
@@ -489,7 +489,7 @@ export default function ContactEditModal({
           </div>
 
           {/* Footer */}
-          <div className={`flex gap-3 p-4 border-t ${
+          <div className={`flex gap-3 p-4 border-t flex-shrink-0 ${
             isLight ? 'border-gray-200' : 'border-gray-700'
           }`}>
             <button
