@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette, Sparkles } from 'lucide-react';
 import AIEmailModal from './AIEmailModal';
+import { processEmailContent } from '@/lib/email-variables';
 // import ContactAutocomplete from './ContactAutocomplete'; // Disabled - causes render failure
 
 interface Email {
@@ -170,12 +171,22 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     setSuccess(false);
 
     try {
+      // Get the primary recipient email (first in "to" field)
+      const recipientEmail = to.split(',')[0].trim();
+
+      // Process email content to replace variables like {first-name}
+      const { subject: processedSubject, body: processedBody } = await processEmailContent(
+        subject,
+        message,
+        recipientEmail
+      );
+
       const formData = new FormData();
       formData.append('to', to);
       if (cc) formData.append('cc', cc);
       if (bcc) formData.append('bcc', bcc);
-      formData.append('subject', subject);
-      formData.append('message', message);
+      formData.append('subject', processedSubject);
+      formData.append('message', processedBody);
 
       attachments.forEach((file) => {
         formData.append('attachments', file);

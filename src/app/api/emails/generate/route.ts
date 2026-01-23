@@ -78,12 +78,18 @@ WRITING STYLE:
 - Include proper greeting and closing
 
 EMAIL STRUCTURE:
-1. Greeting (Hi [Name], or Hello if name unknown)
+1. Greeting - Use "Hi {first-name}," for personalization (the system will replace {first-name} with actual name)
 2. Opening line (context or reference)
 3. Main message (2-3 short paragraphs max)
 4. Call to action (if applicable)
 5. NO closing line (no "Best regards," etc.)
 6. NO signature block
+
+PERSONALIZATION VARIABLES (use these in greetings):
+- {first-name} - Recipient's first name
+- {last-name} - Recipient's last name
+- {full-name} - Recipient's full name
+Example greeting: "Hi {first-name}," or "Hello {first-name},"
 
 FORMATTING - VERY IMPORTANT:
 - Use HTML <p> tags for paragraphs
@@ -94,7 +100,7 @@ FORMATTING - VERY IMPORTANT:
 - Just end with the last paragraph of content
 - Structure example:
 
-<p>Hi [Name],</p>
+<p>Hi {first-name},</p>
 <br>
 <p>First paragraph here with 2-3 sentences.</p>
 <br>
