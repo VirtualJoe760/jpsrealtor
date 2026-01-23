@@ -34,7 +34,7 @@ export function useEmails(
       }
 
       const data = await response.json();
-      setEmails(data.emails || []);
+      setEmails(data.data || []); // API returns data.data, not data.emails
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch emails');
       setEmails([]);
