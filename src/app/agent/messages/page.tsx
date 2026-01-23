@@ -251,7 +251,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Header */}
-          <div className="hidden md:flex px-4 md:px-0 mb-3 items-center justify-between gap-3 flex-shrink-0">
+          <div className="flex px-4 md:px-0 mb-3 items-center justify-between gap-3 flex-shrink-0">
             <div className="flex items-center gap-2">
               <h1 className={`text-2xl sm:text-3xl font-bold ${
                 isLight ? 'text-slate-900' : 'text-white'
