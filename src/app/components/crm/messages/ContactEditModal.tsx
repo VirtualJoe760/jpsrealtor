@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, User, Mail, Phone, Tag } from 'lucide-react';
+import { X, Save, User, Mail, Phone, Tag, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Conversation } from '@/app/agent/messages/types';
 
 interface ContactEditModalProps {
@@ -14,6 +14,18 @@ interface ContactEditModalProps {
   conversation: Conversation;
   onSave: (updatedContact: any) => void;
   isLight: boolean;
+}
+
+interface EmailField {
+  address: string;
+  label: 'personal' | 'work' | 'other';
+  isPrimary: boolean;
+}
+
+interface PhoneField {
+  number: string;
+  label: 'mobile' | 'home' | 'work' | 'other';
+  isPrimary: boolean;
 }
 
 export default function ContactEditModal({
@@ -25,7 +37,15 @@ export default function ContactEditModal({
 }: ContactEditModalProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [emails, setEmails] = useState<EmailField[]>([{ address: '', label: 'personal', isPrimary: true }]);
+  const [phones, setPhones] = useState<PhoneField[]>([{ number: conversation.phoneNumber, label: 'mobile', isPrimary: true }]);
+  const [address, setAddress] = useState({
+    street: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: 'USA'
+  });
   const [saving, setSaving] = useState(false);
 
   // Initialize form with existing data
@@ -33,14 +53,66 @@ export default function ContactEditModal({
     if (isOpen && conversation.contactInfo) {
       setFirstName(conversation.contactInfo.firstName || '');
       setLastName(conversation.contactInfo.lastName || '');
-      setEmail(conversation.contactInfo.email || '');
+
+      // Load emails
+      if (conversation.contactInfo.email) {
+        setEmails([{ address: conversation.contactInfo.email, label: 'personal', isPrimary: true }]);
+      }
     } else if (isOpen) {
       // New contact - clear form
       setFirstName('');
       setLastName('');
-      setEmail('');
+      setEmails([{ address: '', label: 'personal', isPrimary: true }]);
+      setPhones([{ number: conversation.phoneNumber, label: 'mobile', isPrimary: true }]);
+      setAddress({ street: '', city: '', state: '', zip: '', country: 'USA' });
     }
   }, [isOpen, conversation]);
+
+  const addEmail = () => {
+    setEmails([...emails, { address: '', label: 'personal', isPrimary: false }]);
+  };
+
+  const removeEmail = (index: number) => {
+    if (emails.length > 1) {
+      setEmails(emails.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEmail = (index: number, field: keyof EmailField, value: any) => {
+    const updated = [...emails];
+    if (field === 'isPrimary' && value) {
+      // If setting as primary, unset others
+      updated.forEach((e, i) => {
+        e.isPrimary = i === index;
+      });
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setEmails(updated);
+  };
+
+  const addPhone = () => {
+    setPhones([...phones, { number: '', label: 'mobile', isPrimary: false }]);
+  };
+
+  const removePhone = (index: number) => {
+    if (phones.length > 1) {
+      setPhones(phones.filter((_, i) => i !== index));
+    }
+  };
+
+  const updatePhone = (index: number, field: keyof PhoneField, value: any) => {
+    const updated = [...phones];
+    if (field === 'isPrimary' && value) {
+      // If setting as primary, unset others
+      updated.forEach((p, i) => {
+        p.isPrimary = i === index;
+      });
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setPhones(updated);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -48,8 +120,22 @@ export default function ContactEditModal({
       const contactData = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: conversation.phoneNumber,
-        email: email.trim() || undefined,
+        emails: emails.filter(e => e.address.trim()).map(e => ({
+          address: e.address.trim(),
+          label: e.label,
+          isPrimary: e.isPrimary,
+          isValid: true
+        })),
+        phones: phones.filter(p => p.number.trim()).map(p => ({
+          number: p.number.trim(),
+          label: p.label,
+          isPrimary: p.isPrimary,
+          isValid: true
+        })),
+        address: address.street || address.city ? address : undefined,
+        // Legacy fields for backward compatibility
+        email: emails.find(e => e.isPrimary)?.address || emails[0]?.address || undefined,
+        phone: phones.find(p => p.isPrimary)?.number || phones[0]?.number || undefined,
       };
 
       let response;
@@ -95,9 +181,9 @@ export default function ContactEditModal({
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none overflow-y-auto">
         <div
-          className={`w-full max-w-md rounded-xl shadow-2xl pointer-events-auto ${
+          className={`w-full max-w-2xl rounded-xl shadow-2xl pointer-events-auto my-8 ${
             isLight ? 'bg-white' : 'bg-gray-900'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -133,65 +219,43 @@ export default function ContactEditModal({
             </button>
           </div>
 
-          {/* Form */}
-          <div className="p-4 space-y-4">
-            {/* First Name */}
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${
-                isLight ? 'text-gray-700' : 'text-gray-300'
-              }`}>
-                First Name *
-              </label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Enter first name"
-                className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                  isLight
-                    ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                    : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
-                }`}
-              />
-            </div>
-
-            {/* Last Name */}
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${
-                isLight ? 'text-gray-700' : 'text-gray-300'
-              }`}>
-                Last Name *
-              </label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Enter last name"
-                className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                  isLight
-                    ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                    : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
-                }`}
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${
-                isLight ? 'text-gray-700' : 'text-gray-300'
-              }`}>
-                Email
-              </label>
-              <div className="relative">
-                <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
-                  isLight ? 'text-gray-400' : 'text-gray-500'
-                }`} />
+          {/* Form - Scrollable */}
+          <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Name Section */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* First Name */}
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${
+                  isLight ? 'text-gray-700' : 'text-gray-300'
+                }`}>
+                  First Name *
+                </label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Caron"
+                  className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                    isLight
+                      ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                      : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                  }`}
+                />
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${
+                  isLight ? 'text-gray-700' : 'text-gray-300'
+                }`}>
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Sardella"
+                  className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
                     isLight
                       ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
                       : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
@@ -200,31 +264,227 @@ export default function ContactEditModal({
               </div>
             </div>
 
-            {/* Phone (Read-only) */}
+            {/* Emails Section */}
             <div>
-              <label className={`block text-sm font-medium mb-1.5 ${
+              <div className="flex items-center justify-between mb-2">
+                <label className={`text-sm font-medium ${
+                  isLight ? 'text-gray-700' : 'text-gray-300'
+                }`}>
+                  Email Addresses
+                </label>
+                <button
+                  onClick={addEmail}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                    isLight
+                      ? 'text-blue-600 hover:bg-blue-50'
+                      : 'text-blue-400 hover:bg-blue-900/20'
+                  }`}
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Email
+                </button>
+              </div>
+              <div className="space-y-2">
+                {emails.map((email, index) => (
+                  <div key={index} className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                          isLight ? 'text-gray-400' : 'text-gray-500'
+                        }`} />
+                        <input
+                          type="email"
+                          value={email.address}
+                          onChange={(e) => updateEmail(index, 'address', e.target.value)}
+                          placeholder="email@example.com"
+                          className={`w-full pl-10 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            isLight
+                              ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                              : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    <select
+                      value={email.label}
+                      onChange={(e) => updateEmail(index, 'label', e.target.value)}
+                      className={`px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                        isLight
+                          ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                          : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                      }`}
+                    >
+                      <option value="personal">Personal</option>
+                      <option value="work">Work</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <label className="flex items-center gap-1 px-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={email.isPrimary}
+                        onChange={(e) => updateEmail(index, 'isPrimary', e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <span className={`text-xs ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                        Primary
+                      </span>
+                    </label>
+                    {emails.length > 1 && (
+                      <button
+                        onClick={() => removeEmail(index)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isLight
+                            ? 'hover:bg-red-50 text-red-600'
+                            : 'hover:bg-red-900/20 text-red-400'
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Phones Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={`text-sm font-medium ${
+                  isLight ? 'text-gray-700' : 'text-gray-300'
+                }`}>
+                  Phone Numbers
+                </label>
+                <button
+                  onClick={addPhone}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                    isLight
+                      ? 'text-blue-600 hover:bg-blue-50'
+                      : 'text-blue-400 hover:bg-blue-900/20'
+                  }`}
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Phone
+                </button>
+              </div>
+              <div className="space-y-2">
+                {phones.map((phone, index) => (
+                  <div key={index} className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                          isLight ? 'text-gray-400' : 'text-gray-500'
+                        }`} />
+                        <input
+                          type="tel"
+                          value={phone.number}
+                          onChange={(e) => updatePhone(index, 'number', e.target.value)}
+                          placeholder="+17603977807"
+                          className={`w-full pl-10 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            isLight
+                              ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                              : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    <select
+                      value={phone.label}
+                      onChange={(e) => updatePhone(index, 'label', e.target.value)}
+                      className={`px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                        isLight
+                          ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                          : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                      }`}
+                    >
+                      <option value="mobile">Mobile</option>
+                      <option value="home">Home</option>
+                      <option value="work">Work</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <label className="flex items-center gap-1 px-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={phone.isPrimary}
+                        onChange={(e) => updatePhone(index, 'isPrimary', e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <span className={`text-xs ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                        Primary
+                      </span>
+                    </label>
+                    {phones.length > 1 && (
+                      <button
+                        onClick={() => removePhone(index)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isLight
+                            ? 'hover:bg-red-50 text-red-600'
+                            : 'hover:bg-red-900/20 text-red-400'
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Address Section */}
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${
                 isLight ? 'text-gray-700' : 'text-gray-300'
               }`}>
-                Phone Number
+                <MapPin className="w-4 h-4" />
+                Address
               </label>
-              <div className="relative">
-                <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
-                  isLight ? 'text-gray-400' : 'text-gray-500'
-                }`} />
+              <div className="space-y-2">
                 <input
-                  type="tel"
-                  value={conversation.phoneNumber}
-                  disabled
-                  className={`w-full pl-10 pr-3 py-2.5 rounded-lg border text-sm ${
+                  type="text"
+                  value={address.street}
+                  onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                  placeholder="Street Address"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
                     isLight
-                      ? 'bg-gray-50 border-gray-300 text-gray-600'
-                      : 'bg-gray-800/50 border-gray-700 text-gray-400'
-                  } cursor-not-allowed`}
+                      ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                      : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                  }`}
                 />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={address.city}
+                    onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                    placeholder="City"
+                    className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                      isLight
+                        ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                        : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={address.state}
+                    onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                    placeholder="State"
+                    className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                      isLight
+                        ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                        : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={address.zip}
+                    onChange={(e) => setAddress({ ...address, zip: e.target.value })}
+                    placeholder="ZIP"
+                    className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                      isLight
+                        ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                        : 'bg-gray-800 border-gray-700 text-white focus:ring-blue-500'
+                    }`}
+                  />
+                </div>
               </div>
-              <p className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>
-                Phone number cannot be changed
-              </p>
             </div>
           </div>
 
