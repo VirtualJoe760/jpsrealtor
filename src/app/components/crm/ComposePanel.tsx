@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette } from 'lucide-react';
+import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette, Sparkles } from 'lucide-react';
+import AIEmailModal from './AIEmailModal';
 // import ContactAutocomplete from './ContactAutocomplete'; // Disabled - causes render failure
 
 interface Email {
@@ -37,6 +38,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   const [success, setSuccess] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   // Initialize reply or forward data
   useEffect(() => {
@@ -221,6 +223,14 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
       setShowLinkModal(false);
       setLinkUrl('');
       setLinkText('');
+    }
+  };
+
+  const handleAIGenerate = (generatedSubject: string, generatedBody: string) => {
+    setSubject(generatedSubject);
+    setMessage(generatedBody);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = generatedBody;
     }
   };
 
@@ -501,6 +511,23 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
 
           <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
+          {/* AI Generation */}
+          <button
+            type="button"
+            onClick={() => setShowAIModal(true)}
+            className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all ${
+              isLight
+                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                : 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50'
+            }`}
+            title="Generate with AI"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="text-xs font-medium">AI</span>
+          </button>
+
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
+
           {/* Attach */}
           <label className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Attach File">
             <Paperclip className="w-4 h-4" />
@@ -583,6 +610,15 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Email Modal */}
+      {showAIModal && (
+        <AIEmailModal
+          isLight={isLight}
+          onClose={() => setShowAIModal(false)}
+          onGenerate={handleAIGenerate}
+        />
       )}
     </div>
   );
