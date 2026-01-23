@@ -234,7 +234,7 @@ export default function ContactEditModal({
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Caron"
+                  placeholder="John"
                   className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
                     isLight
                       ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
@@ -254,7 +254,7 @@ export default function ContactEditModal({
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Sardella"
+                  placeholder="Smith"
                   className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
                     isLight
                       ? 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
