@@ -106,19 +106,19 @@ export function EmailFolderNav({
                   }`}
                 >
                   {showSubfolders && (
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFolder(folder.id);
                       }}
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 cursor-pointer"
                     >
                       {isExpanded ? (
                         <ChevronDown size={14} className={textClass} />
                       ) : (
                         <ChevronRight size={14} className={textClass} />
                       )}
-                    </button>
+                    </span>
                   )}
                   <Icon size={16} />
                   <span className="font-medium">{folder.label}</span>
