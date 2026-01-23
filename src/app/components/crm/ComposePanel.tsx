@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette, RefreshCw } from 'lucide-react';
-import ContactAutocomplete from './ContactAutocomplete';
+// import ContactAutocomplete from './ContactAutocomplete'; // Temporarily disabled - causing render issues
 
 interface Email {
   id: string;
@@ -322,15 +322,16 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden relative">
-        {/* To Field with Autocomplete */}
+        {/* To Field */}
         <div className={`px-4 py-2 border-b ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
           <div className="flex items-center gap-2">
             <label className={`text-sm font-medium w-16 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>To</label>
-            <ContactAutocomplete
+            <input
+              type="email"
               value={to}
-              onChange={setTo}
-              placeholder="Recipients"
-              isLight={isLight}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder="recipient@example.com"
+              className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
               required
               multiple
             />
@@ -368,12 +369,12 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
               {showCc && (
                 <div className="flex items-center gap-2">
                   <label className={`text-sm font-medium w-8 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Cc</label>
-                  <ContactAutocomplete
+                  <input
+                    type="text"
                     value={cc}
-                    onChange={setCc}
-                    placeholder="Carbon copy recipients (comma separated)"
-                    isLight={isLight}
-                    multiple
+                    onChange={(e) => setCc(e.target.value)}
+                    placeholder="cc@example.com"
+                    className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
                   />
                   <button
                     type="button"
@@ -387,12 +388,12 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
               {showBcc && (
                 <div className="flex items-center gap-2">
                   <label className={`text-sm font-medium w-8 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Bcc</label>
-                  <ContactAutocomplete
+                  <input
+                    type="text"
                     value={bcc}
-                    onChange={setBcc}
-                    placeholder="Blind carbon copy recipients (comma separated)"
-                    isLight={isLight}
-                    multiple
+                    onChange={(e) => setBcc(e.target.value)}
+                    placeholder="bcc@example.com"
+                    className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
                   />
                   <button
                     type="button"
