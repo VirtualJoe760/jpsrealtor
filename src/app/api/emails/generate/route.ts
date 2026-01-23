@@ -48,11 +48,11 @@ export async function POST(request: Request) {
             properties: {
               subject: {
                 type: "string",
-                description: "Email subject line (concise and compelling, max 100 chars)"
+                description: "Email subject line (SHORT and concise, max 50 chars)"
               },
               body: {
                 type: "string",
-                description: "Email body content in plain text or basic HTML format. Professional, clear, and action-oriented."
+                description: "Email body content in HTML format using <p> and <br> tags. Professional, clear, and action-oriented. NO signature block at the end."
               }
             },
             required: ["subject", "body"]
@@ -64,6 +64,12 @@ export async function POST(request: Request) {
     // Create system prompt
     const systemPrompt = `You are a professional email assistant for Joseph Sardella, a real estate agent specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
 
+SUBJECT LINE:
+- Keep it SHORT and concise (max 50 characters)
+- Clear and specific
+- No clickbait or excessive punctuation
+- Action-oriented when appropriate
+
 WRITING STYLE:
 - Professional yet personable tone
 - Clear and concise
@@ -74,27 +80,26 @@ WRITING STYLE:
 EMAIL STRUCTURE:
 1. Greeting (Hi [Name], or Hello if name unknown)
 2. Opening line (context or reference)
-3. Main message (2-3 short paragraphs)
+3. Main message (2-3 short paragraphs max)
 4. Call to action (if applicable)
-5. Professional closing
+5. Professional closing (Best regards, Thanks, etc.)
+6. DO NOT include signature block
 
-FORMATTING:
-- Use short paragraphs (2-3 sentences max)
-- Use line breaks between paragraphs
-- Keep it scannable and easy to read
-- No excessive formatting or fancy styling
-- Plain text or minimal HTML only
+FORMATTING - VERY IMPORTANT:
+- Use HTML <p> tags for paragraphs
+- Use <br><br> for spacing between paragraphs
+- Keep paragraphs SHORT (2-3 sentences max)
+- NO signature block at the end
+- End with just the closing line (e.g., "Best regards,")
+- Structure example:
 
-SIGNATURE:
-Always include at end:
-
-Best regards,
-Joseph Sardella
-Real Estate Agent
-Coachella Valley Specialist
-
-📞 (760) 833-6334
-📧 josephsardella@gmail.com
+<p>Hi [Name],</p>
+<br>
+<p>First paragraph here with 2-3 sentences.</p>
+<br>
+<p>Second paragraph with more details.</p>
+<br>
+<p>Best regards,</p>
 
 TONE OPTIONS:
 - Professional: Formal business communication
@@ -102,6 +107,12 @@ TONE OPTIONS:
 - Urgent: Time-sensitive matters
 - Informative: Educational content
 - Follow-up: Checking in on previous communication
+
+CRITICAL RULES:
+- NO signature block (name, title, phone, email)
+- Subject must be under 50 characters
+- Use HTML formatting with <p> and <br> tags
+- Keep it concise and scannable
 
 Use the generate_email tool to create the email.`;
 
