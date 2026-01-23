@@ -14,7 +14,7 @@ export default function AgentEmailPage() {
 
   return (
     <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:p-4 md:p-8 overflow-hidden">
-      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0">
+      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 min-h-0">
         {/* Agent Navigation */}
         <div className="flex-shrink-0">
           <AgentNav />
@@ -33,7 +33,7 @@ export default function AgentEmailPage() {
         </div>
 
         {/* Email Inbox Component - Scrollable */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           <EmailInbox isLight={isLight} />
         </div>
       </div>
