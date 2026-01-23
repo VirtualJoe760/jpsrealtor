@@ -166,7 +166,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
   const textClass = isLight ? 'text-gray-900' : 'text-white';
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative min-h-0">
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
@@ -191,7 +191,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <button
@@ -243,7 +243,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
         )}
 
         {/* Email List - Scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-0">
+        <div className="flex-1 overflow-y-auto px-4 md:px-0 min-h-0">
           {loading && emails.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
