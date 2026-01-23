@@ -1,6 +1,6 @@
 // Constants for EmailInbox
 
-import { Inbox, Send } from 'lucide-react';
+import { Inbox, Send, Tag, Users, Home } from 'lucide-react';
 import { FolderType, SentSubfolder } from '../types';
 
 // Email pagination
@@ -10,6 +10,9 @@ export const EMAIL_LIMIT = 50;
 export const EMAIL_FOLDERS = [
   { id: FolderType.INBOX, label: 'Inbox', icon: Inbox },
   { id: FolderType.SENT, label: 'Sent', icon: Send },
+  { id: FolderType.TAGGED, label: 'Tagged Contacts', icon: Tag },
+  { id: FolderType.CLIENTS, label: 'Clients', icon: Users },
+  { id: FolderType.ESCROWS, label: 'Escrows', icon: Home },
 ];
 
 // Sent subfolders configuration

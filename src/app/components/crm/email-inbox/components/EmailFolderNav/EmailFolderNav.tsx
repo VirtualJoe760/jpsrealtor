@@ -28,13 +28,13 @@ export function EmailFolderNav({
   const borderClass = isLight ? 'border-slate-200' : 'border-gray-700';
 
   return (
-    <div className={`${bgClass} border-r ${borderClass} w-64 flex-shrink-0 overflow-y-auto`}>
-      <div className="p-4">
-        <h3 className={`${textClass} font-semibold mb-3 text-sm uppercase tracking-wide`}>
+    <div className={`${bgClass} border-r ${borderClass} w-56 flex-shrink-0 overflow-y-auto`}>
+      <div className="p-3">
+        <h3 className={`${textClass} font-semibold mb-2 text-xs uppercase tracking-wide px-2`}>
           Folders
         </h3>
 
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {EMAIL_FOLDERS.map((folder) => {
             const Icon = folder.icon;
             const isActive = activeFolder === folder.id;
@@ -43,26 +43,26 @@ export function EmailFolderNav({
               <div key={folder.id}>
                 <button
                   onClick={() => onFolderChange(folder.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
                     isActive && !sentSubfolder
                       ? activeBgClass
                       : `${textClass} ${hoverClass}`
                   }`}
                 >
-                  <Icon size={18} />
+                  <Icon size={16} />
                   <span className="font-medium">{folder.label}</span>
                 </button>
 
                 {/* Sent Subfolders */}
                 {folder.id === 'sent' && activeFolder === 'sent' && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-5 mt-0.5 space-y-0.5">
                     {EMAIL_SENT_SUBFOLDERS.map((sub) => {
                       const isSubActive = sentSubfolder === sub.id;
                       return (
                         <button
                           key={sub.id}
                           onClick={() => onSentSubfolderChange(sub.id)}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${
+                          className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${
                             isSubActive
                               ? activeBgClass
                               : `${mutedClass} ${hoverClass}`
