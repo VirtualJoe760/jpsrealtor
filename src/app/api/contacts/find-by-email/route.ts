@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         { email: email.toLowerCase() },
         { 'emails.address': email.toLowerCase() }
       ]
-    }).select('firstName lastName email emails');
+    }).select('firstName lastName email emails address');
 
     if (!contact) {
       return NextResponse.json({ contact: null });
@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
       contact: {
         firstName: contact.firstName,
         lastName: contact.lastName,
-        email: contact.email || contact.emails?.find((e: any) => e.isPrimary)?.address || email
+        email: contact.email || contact.emails?.find((e: any) => e.isPrimary)?.address || email,
+        address: contact.address
       }
     });
 

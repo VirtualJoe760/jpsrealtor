@@ -85,11 +85,17 @@ EMAIL STRUCTURE:
 5. NO closing line (no "Best regards," etc.)
 6. NO signature block
 
-PERSONALIZATION VARIABLES (use these in greetings):
+PERSONALIZATION VARIABLES (use these throughout the email):
 - {first-name} - Recipient's first name
 - {last-name} - Recipient's last name
 - {full-name} - Recipient's full name
+- {street} - Street address
+- {city} - City
+- {state} - State
+- {zip} - ZIP code
+- {address} - Full formatted address
 Example greeting: "Hi {first-name}," or "Hello {first-name},"
+Example with address: "I wanted to follow up on the property near {address}"
 
 FORMATTING - VERY IMPORTANT:
 - Use HTML <p> tags for paragraphs

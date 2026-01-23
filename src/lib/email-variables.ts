@@ -9,6 +9,13 @@ interface ContactData {
   lastName?: string;
   fullName?: string;
   email?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    fullAddress?: string;
+  };
 }
 
 /**
@@ -25,13 +32,27 @@ export async function fetchContactByEmail(email: string): Promise<ContactData | 
     const data = await response.json();
 
     if (data.contact) {
+      const address = data.contact.address;
+      const fullAddress = address
+        ? [address.street, address.city, address.state, address.zip]
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
+
       return {
         firstName: data.contact.firstName,
         lastName: data.contact.lastName,
         fullName: data.contact.firstName && data.contact.lastName
           ? `${data.contact.firstName} ${data.contact.lastName}`
           : data.contact.firstName || data.contact.lastName || null,
-        email: data.contact.email
+        email: data.contact.email,
+        address: address ? {
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          zip: address.zip,
+          fullAddress
+        } : undefined
       };
     }
 
@@ -49,6 +70,11 @@ export async function fetchContactByEmail(email: string): Promise<ContactData | 
  * - {first-name} or {firstName}
  * - {last-name} or {lastName}
  * - {full-name} or {fullName}
+ * - {street}
+ * - {city}
+ * - {state}
+ * - {zip}
+ * - {address} (full formatted address)
  *
  * If contact data is not available, the variable is removed (replaced with empty string)
  */
@@ -62,6 +88,11 @@ export function replaceEmailVariables(text: string, contactData: ContactData | n
     result = result.replace(/\{first-?name\}/gi, '');
     result = result.replace(/\{last-?name\}/gi, '');
     result = result.replace(/\{full-?name\}/gi, '');
+    result = result.replace(/\{street\}/gi, '');
+    result = result.replace(/\{city\}/gi, '');
+    result = result.replace(/\{state\}/gi, '');
+    result = result.replace(/\{zip\}/gi, '');
+    result = result.replace(/\{address\}/gi, '');
 
     // Clean up any double spaces or "Hi ," patterns
     result = result.replace(/Hi\s*,/gi, 'Hello,');
@@ -89,6 +120,46 @@ export function replaceEmailVariables(text: string, contactData: ContactData | n
     result = result.replace(/\{full-?name\}/gi, contactData.fullName);
   } else {
     result = result.replace(/\{full-?name\}/gi, '');
+  }
+
+  // Replace address variables
+  if (contactData.address) {
+    if (contactData.address.street) {
+      result = result.replace(/\{street\}/gi, contactData.address.street);
+    } else {
+      result = result.replace(/\{street\}/gi, '');
+    }
+
+    if (contactData.address.city) {
+      result = result.replace(/\{city\}/gi, contactData.address.city);
+    } else {
+      result = result.replace(/\{city\}/gi, '');
+    }
+
+    if (contactData.address.state) {
+      result = result.replace(/\{state\}/gi, contactData.address.state);
+    } else {
+      result = result.replace(/\{state\}/gi, '');
+    }
+
+    if (contactData.address.zip) {
+      result = result.replace(/\{zip\}/gi, contactData.address.zip);
+    } else {
+      result = result.replace(/\{zip\}/gi, '');
+    }
+
+    if (contactData.address.fullAddress) {
+      result = result.replace(/\{address\}/gi, contactData.address.fullAddress);
+    } else {
+      result = result.replace(/\{address\}/gi, '');
+    }
+  } else {
+    // Remove all address variables if no address data
+    result = result.replace(/\{street\}/gi, '');
+    result = result.replace(/\{city\}/gi, '');
+    result = result.replace(/\{state\}/gi, '');
+    result = result.replace(/\{zip\}/gi, '');
+    result = result.replace(/\{address\}/gi, '');
   }
 
   // Clean up any "Hi ," patterns if name was missing

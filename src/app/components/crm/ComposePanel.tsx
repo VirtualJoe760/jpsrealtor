@@ -40,6 +40,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
 
   // Initialize reply or forward data
   useEffect(() => {
@@ -242,6 +243,22 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     setMessage(generatedBody);
     if (editorRef.current) {
       editorRef.current.innerHTML = generatedBody;
+    }
+  };
+
+  const insertVariable = (variable: string) => {
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
+
+    if (editorRef.current && editorRef.current.contains(range?.commonAncestorContainer || null)) {
+      formatText('insertHTML', `{${variable}}`);
+    } else {
+      // If no selection or outside editor, append to end
+      if (editorRef.current) {
+        const currentHTML = editorRef.current.innerHTML;
+        editorRef.current.innerHTML = currentHTML + `{${variable}}`;
+        setMessage(editorRef.current.innerHTML);
+      }
     }
   };
 
@@ -536,6 +553,105 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
             <Sparkles className="w-4 h-4" />
             <span className="text-xs font-medium">AI</span>
           </button>
+
+          {/* Variables Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowVariables(!showVariables)}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all ${
+                isLight
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+              }`}
+              title="Insert Variable"
+            >
+              <Type className="w-4 h-4" />
+              <span className="text-xs font-medium">Vars</span>
+            </button>
+
+            {showVariables && (
+              <div className={`absolute left-0 mt-1 w-48 rounded-lg shadow-lg border z-50 ${
+                isLight ? 'bg-white border-gray-200' : 'bg-gray-800 border-gray-700'
+              }`}>
+                <div className="p-2 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('first-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{first-name}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('last-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{last-name}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('full-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{full-name}'}
+                  </button>
+                  <div className={`my-1 border-t ${isLight ? 'border-gray-200' : 'border-gray-700'}`} />
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('street'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{street}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('city'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{city}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('state'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{state}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('zip'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{zip}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('address'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{address}'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
