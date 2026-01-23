@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get('limit') || '50';
     const after = searchParams.get('after');
     const before = searchParams.get('before');
-    const folder = searchParams.get('folder') || 'inbox'; // inbox, sent, tagged, clients, escrows
+    const folder = searchParams.get('folder') || 'inbox'; // inbox, sent, farms, clients, escrows
     const domain = searchParams.get('domain'); // domain filter (jpsrealtor.com or josephsardella.com)
 
     // Build query parameters
@@ -85,8 +85,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ...data, data: filtered });
     }
 
-    // Filter by contact criteria (tagged, clients, escrows)
-    if (folder === 'tagged' || folder === 'clients' || folder === 'escrows') {
+    // Filter by contact criteria (farms, clients, escrows)
+    if (folder === 'farms' || folder === 'clients' || folder === 'escrows') {
       const session = await getServerSession(authOptions);
       if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       // Get contact IDs based on folder type
       let contactIds: string[] = [];
 
-      if (folder === 'tagged') {
+      if (folder === 'farms') {
         // All emails from contacts (any contact in the system)
         contactIds = metadata
           .filter((m: any) => m.contactId)

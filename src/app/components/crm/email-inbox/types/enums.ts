@@ -3,7 +3,7 @@
 export enum FolderType {
   INBOX = 'inbox',
   SENT = 'sent',
-  TAGGED = 'tagged',
+  FARMS = 'farms',
   CLIENTS = 'clients',
   ESCROWS = 'escrows',
 }

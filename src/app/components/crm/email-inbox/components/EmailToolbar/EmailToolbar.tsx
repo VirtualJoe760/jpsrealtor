@@ -70,7 +70,7 @@ export function EmailToolbar({
     <div className="flex-shrink-0">
       {showBulkActions ? (
         // Bulk Actions Bar
-        <div className={`flex flex-wrap items-center justify-between gap-2 p-4 rounded-lg mb-4 px-4 md:px-0 ${bgClass}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 p-4 rounded-lg mb-4 mx-4 ${bgClass}`}>
           <span className={`text-sm font-medium ${isLight ? 'text-blue-900' : 'text-emerald-300'}`}>
             {selectedCount} email{selectedCount !== 1 ? 's' : ''} selected
           </span>
@@ -130,7 +130,7 @@ export function EmailToolbar({
         </div>
       ) : (
         // Normal Toolbar
-        <div className={`flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg flex-shrink-0 px-4 md:px-0 mb-4 ${bgClass}`}>
+        <div className={`flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg flex-shrink-0 mx-4 mb-4 ${bgClass}`}>
           {/* Search */}
           <div className="w-full sm:flex-1 sm:min-w-[200px]">
             <div className="relative">
