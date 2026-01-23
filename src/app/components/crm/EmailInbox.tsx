@@ -243,7 +243,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
         )}
 
         {/* Email List - Scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-0 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 md:px-0 min-h-0 pb-24 md:pb-4">
           {loading && emails.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
