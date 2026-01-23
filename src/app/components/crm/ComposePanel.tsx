@@ -284,9 +284,23 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   }
 
   return (
-    <div className={`fixed ${isMaximized ? 'inset-8' : 'bottom-0 right-8 w-full max-w-2xl'} z-50 flex flex-col rounded-t-xl shadow-2xl ${
-      isLight ? 'bg-white' : 'bg-gray-800'
-    }`} style={!isMaximized ? { height: '650px' } : {}}>
+    <div
+      className={`fixed ${
+        isMaximized
+          ? 'inset-8'
+          : 'inset-0 md:inset-auto md:bottom-0 md:right-8 md:w-full md:max-w-2xl'
+      } z-50 flex flex-col rounded-t-xl md:rounded-t-xl shadow-2xl ${
+        isLight ? 'bg-white' : 'bg-gray-800'
+      }`}
+      style={
+        isMaximized
+          ? {}
+          : {
+              height: '100vh',
+              maxHeight: '100vh'
+            }
+      }
+    >
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${
         isLight ? 'bg-slate-800' : 'bg-gray-900'

@@ -74,7 +74,9 @@ export function EmailFolderNav({
   };
 
   return (
-    <div className={`${bgClass} border-r ${borderClass} w-56 flex-shrink-0 overflow-y-auto`}>
+    <div className={`${bgClass} border-r ${borderClass} w-64 md:w-56 flex-shrink-0 overflow-y-auto h-full ${
+      isLight ? 'bg-white' : 'bg-gray-900'
+    }`}>
       <div className="p-3">
         <h3 className={`${textClass} font-semibold mb-2 text-xs uppercase tracking-wide px-2`}>
           Folders
