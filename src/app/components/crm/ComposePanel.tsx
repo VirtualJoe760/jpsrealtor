@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette, RefreshCw } from 'lucide-react';
-// import ContactAutocomplete from './ContactAutocomplete'; // Temporarily disabled - causing render issues
+import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette } from 'lucide-react';
+// import ContactAutocomplete from './ContactAutocomplete'; // Disabled - causes render failure
 
 interface Email {
   id: string;
@@ -92,11 +92,6 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   const [currentFontSize, setCurrentFontSize] = useState('14px');
   const [currentColor, setCurrentColor] = useState('#000000');
 
-  // AI modal state
-  const [showAIModal, setShowAIModal] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiGenerating, setAiGenerating] = useState(false);
-
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Email templates
@@ -166,34 +161,6 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     formatText('foreColor', color);
   };
 
-  const handleAIGenerate = async () => {
-    if (!aiPrompt.trim()) return;
-
-    setAiGenerating(true);
-    try {
-      const response = await fetch('/api/ai/generate-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.content) {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = data.content;
-          setMessage(data.content);
-        }
-        setShowAIModal(false);
-        setAiPrompt('');
-      }
-    } catch (error) {
-      console.error('AI generation failed:', error);
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
@@ -259,7 +226,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
 
   if (isMinimized) {
     return (
-      <div className={`hidden md:block fixed bottom-0 right-8 z-50 w-96 rounded-t-lg shadow-lg cursor-pointer ${
+      <div className={`fixed bottom-0 right-8 z-50 w-96 rounded-t-lg shadow-lg cursor-pointer ${
         isLight ? 'bg-slate-800' : 'bg-gray-900'
       }`} onClick={() => setIsMinimized(false)}>
         <div className="px-4 py-3 flex items-center justify-between text-white">
@@ -279,36 +246,26 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   }
 
   return (
-    <div
-      className={`fixed ${isMaximized ? 'inset-4 md:inset-8' : 'inset-0 md:inset-auto md:bottom-0 md:right-8 md:w-full md:max-w-2xl'} z-50 flex flex-col md:rounded-t-xl shadow-2xl ${
-        isLight ? 'bg-white' : 'bg-gray-800'
-      }`}
-      style={!isMaximized ? { height: '100vh' } : {}}
-    >
-      <style jsx>{`
-        @media (min-width: 768px) {
-          div {
-            height: 650px !important;
-          }
-        }
-      `}</style>
+    <div className={`fixed ${isMaximized ? 'inset-8' : 'bottom-0 right-8 w-full max-w-2xl'} z-50 flex flex-col rounded-t-xl shadow-2xl ${
+      isLight ? 'bg-white' : 'bg-gray-800'
+    }`} style={!isMaximized ? { height: '650px' } : {}}>
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3 md:rounded-t-xl ${
+      <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${
         isLight ? 'bg-slate-800' : 'bg-gray-900'
       }`}>
-        <h3 className="text-white font-medium text-base sm:text-lg">
+        <h3 className="text-white font-medium">
           {replyTo ? 'Reply' : forwardEmail ? 'Forward' : 'New Message'}
         </h3>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMinimized(true)}
-            className="hidden md:block hover:bg-white/10 p-2 rounded text-white"
+            className="hover:bg-white/10 p-2 rounded text-white"
           >
             <Minus className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsMaximized(!isMaximized)}
-            className="hidden md:block hover:bg-white/10 p-2 rounded text-white"
+            className="hover:bg-white/10 p-2 rounded text-white"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -316,13 +273,13 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
             onClick={onClose}
             className="hover:bg-white/10 p-2 rounded text-white"
           >
-            <X className="w-5 h-5 md:w-4 md:h-4" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden relative">
-        {/* To Field */}
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        {/* To Field with Autocomplete */}
         <div className={`px-4 py-2 border-b ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
           <div className="flex items-center gap-2">
             <label className={`text-sm font-medium w-16 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>To</label>
@@ -333,7 +290,6 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
               placeholder="recipient@example.com"
               className={`flex-1 bg-transparent outline-none text-sm ${isLight ? 'text-slate-900' : 'text-gray-100'}`}
               required
-              multiple
             />
           </div>
         </div>
@@ -461,126 +417,99 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
         </div>
 
         {/* Rich Text Toolbar */}
-        <div className={`flex flex-wrap items-center gap-1 px-3 sm:px-4 py-2 border-b ${
+        <div className={`flex items-center gap-1 px-4 py-2 border-b overflow-x-auto ${
           isLight ? 'border-slate-200 bg-slate-50' : 'border-gray-700 bg-gray-900'
         }`}>
-          {/* Row 1 */}
-          <div className="flex items-center gap-1 flex-wrap w-full sm:w-auto">
-            {/* Font Family */}
-            <select
-              value={currentFont}
-              onChange={(e) => handleFontChange(e.target.value)}
-              className={`px-2 py-1 rounded text-xs border flex-shrink-0 ${
-                isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'
-              }`}
-              title="Font"
-            >
-              <option value="Arial">Arial</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Times New Roman">Times</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Verdana">Verdana</option>
-            </select>
+          {/* Font Family */}
+          <select
+            value={currentFont}
+            onChange={(e) => handleFontChange(e.target.value)}
+            className={`px-2 py-1 rounded text-xs border ${
+              isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'
+            }`}
+            title="Font"
+          >
+            <option value="Arial">Arial</option>
+            <option value="Helvetica">Helvetica</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Courier New">Courier New</option>
+          </select>
 
-            {/* Font Size */}
-            <select
-              value={currentFontSize}
-              onChange={(e) => handleFontSizeChange(e.target.value)}
-              className={`px-2 py-1 rounded text-xs border flex-shrink-0 ${
-                isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'
-              }`}
-              title="Font Size"
-            >
-              <option value="10px">10</option>
-              <option value="12px">12</option>
-              <option value="14px">14</option>
-              <option value="16px">16</option>
-              <option value="18px">18</option>
-              <option value="20px">20</option>
-              <option value="24px">24</option>
-            </select>
+          {/* Font Size */}
+          <select
+            value={currentFontSize}
+            onChange={(e) => handleFontSizeChange(e.target.value)}
+            className={`px-2 py-1 rounded text-xs border ${
+              isLight ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'
+            }`}
+            title="Font Size"
+          >
+            <option value="10px">10px</option>
+            <option value="12px">12px</option>
+            <option value="14px">14px</option>
+            <option value="16px">16px</option>
+            <option value="18px">18px</option>
+            <option value="20px">20px</option>
+            <option value="24px">24px</option>
+          </select>
 
-            {/* Text Color */}
-            <label className="flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer flex-shrink-0" title="Text Color">
-              <Palette className="w-4 h-4" />
-              <input
-                type="color"
-                value={currentColor}
-                onChange={(e) => handleColorChange(e.target.value)}
-                className="w-0 h-0 invisible"
-              />
-            </label>
+          {/* Text Color */}
+          <label className="flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer" title="Text Color">
+            <Palette className="w-4 h-4" />
+            <input
+              type="color"
+              value={currentColor}
+              onChange={(e) => handleColorChange(e.target.value)}
+              className="w-0 h-0 invisible"
+            />
+          </label>
 
-            <div className={`w-px h-6 mx-1 flex-shrink-0 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
-            {/* Bold, Italic, Underline */}
-            <button type="button" onClick={() => formatText('bold')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Bold">
-              <Bold className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => formatText('italic')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Italic">
-              <Italic className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => formatText('underline')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Underline">
-              <Underline className="w-4 h-4" />
-            </button>
+          {/* Bold, Italic, Underline */}
+          <button type="button" onClick={() => formatText('bold')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Bold">
+            <Bold className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={() => formatText('italic')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Italic">
+            <Italic className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={() => formatText('underline')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Underline">
+            <Underline className="w-4 h-4" />
+          </button>
 
-            <div className={`w-px h-6 mx-1 flex-shrink-0 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
-            {/* Alignment */}
-            <button type="button" onClick={() => formatText('justifyLeft')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Left">
-              <AlignLeft className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => formatText('justifyCenter')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Center">
-              <AlignCenter className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => formatText('justifyRight')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Right">
-              <AlignRight className="w-4 h-4" />
-            </button>
+          {/* Alignment */}
+          <button type="button" onClick={() => formatText('justifyLeft')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Left">
+            <AlignLeft className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={() => formatText('justifyCenter')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Center">
+            <AlignCenter className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={() => formatText('justifyRight')} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Align Right">
+            <AlignRight className="w-4 h-4" />
+          </button>
 
-            <div className={`w-px h-6 mx-1 flex-shrink-0 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
-            {/* Link */}
-            <button type="button" onClick={() => setShowLinkModal(true)} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Insert Link">
-              <LinkIcon className="w-4 h-4" />
-            </button>
+          {/* Link */}
+          <button type="button" onClick={() => setShowLinkModal(true)} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Insert Link">
+            <LinkIcon className="w-4 h-4" />
+          </button>
 
-            {/* Attach */}
-            <label className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer flex-shrink-0 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Attach File">
-              <Paperclip className="w-4 h-4" />
-              <input type="file" onChange={handleAddAttachment} multiple className="hidden" />
-            </label>
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
-            <div className={`w-px h-6 mx-1 flex-shrink-0 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
-
-            {/* AI Button */}
-            <button
-              type="button"
-              onClick={() => setShowAIModal(true)}
-              className={`flex items-center gap-1 px-3 py-1 rounded font-medium text-xs transition-all flex-shrink-0 ${
-                isLight ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-purple-600 text-white hover:bg-purple-700'
-              }`}
-              title="AI Generate"
-            >
-              <Type className="w-4 h-4" />
-              AI
-            </button>
-
-            {/* Mobile Send Button */}
-            <button
-              type="submit"
-              disabled={sending}
-              className={`md:hidden flex items-center gap-1 px-4 py-1.5 rounded-lg font-medium text-xs transition-all flex-shrink-0 ml-auto ${
-                sending ? 'opacity-50 cursor-not-allowed' : ''
-              } ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
-            >
-              <Send className="w-4 h-4" />
-              {sending ? 'Sending...' : 'Send'}
-            </button>
-          </div>
+          {/* Attach */}
+          <label className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Attach File">
+            <Paperclip className="w-4 h-4" />
+            <input type="file" onChange={handleAddAttachment} multiple className="hidden" />
+          </label>
         </div>
 
         {/* Message Body */}
-        <div className="flex-1 px-4 py-3 overflow-y-auto pb-28 sm:pb-3">
+        <div className="flex-1 px-4 py-3 overflow-y-auto">
           <div
             ref={editorRef}
             contentEditable
@@ -615,9 +544,9 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
           <div className="px-4 py-2 bg-green-50 border-t border-green-200 text-green-700 text-sm">Email sent successfully!</div>
         )}
 
-        {/* Footer - Desktop */}
-        <div className={`hidden md:flex items-center justify-between px-4 py-4 border-t flex-shrink-0 ${isLight ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-800'}`}>
-          <button type="submit" disabled={sending} className={`flex items-center justify-center gap-2 px-6 py-2 rounded-lg font-medium transition-all text-base ${sending ? 'opacity-50 cursor-not-allowed' : ''} ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+        {/* Footer */}
+        <div className={`flex items-center justify-between px-4 py-3 border-t ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
+          <button type="submit" disabled={sending} className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${sending ? 'opacity-50 cursor-not-allowed' : ''} ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
             <Send className="w-4 h-4" />
             {sending ? 'Sending...' : 'Send'}
           </button>
@@ -626,77 +555,6 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
           </button>
         </div>
       </form>
-
-      {/* AI Generate Modal */}
-      {showAIModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className={`w-full max-w-lg rounded-xl shadow-2xl ${isLight ? 'bg-white' : 'bg-gray-800'}`}>
-            <div className={`flex items-center justify-between px-6 py-4 border-b ${isLight ? 'border-slate-200' : 'border-gray-700'}`}>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-                  <Type className="w-5 h-5 text-white" />
-                </div>
-                <h3 className={`text-lg font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>AI Generate Email</h3>
-              </div>
-              <button
-                onClick={() => { setShowAIModal(false); setAiPrompt(''); }}
-                className={`p-2 rounded-lg transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-gray-700 text-gray-400'}`}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-                  Describe the email you want to write
-                </label>
-                <textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  className={`w-full h-32 px-4 py-3 rounded-lg border transition-all resize-none ${
-                    isLight
-                      ? 'bg-white border-slate-300 text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20'
-                      : 'bg-gray-900 border-gray-700 text-gray-100 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20'
-                  }`}
-                  placeholder="Example: Write a professional follow-up email to a client about their property inquiry..."
-                  autoFocus
-                />
-              </div>
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowAIModal(false); setAiPrompt(''); }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    isLight ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAIGenerate}
-                  disabled={!aiPrompt.trim() || aiGenerating}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
-                    (!aiPrompt.trim() || aiGenerating) ? 'opacity-50 cursor-not-allowed' : ''
-                  } bg-purple-600 text-white hover:bg-purple-700`}
-                >
-                  {aiGenerating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Type className="w-4 h-4" />
-                      Generate
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Link Insert Modal */}
       {showLinkModal && (
