@@ -20,12 +20,12 @@ export function EmailFolderNav({
   onSentSubfolderChange,
   isLight,
 }: EmailFolderNavProps) {
-  const bgClass = isLight ? 'bg-white' : 'bg-gray-900';
-  const textClass = isLight ? 'text-gray-900' : 'text-white';
-  const mutedClass = isLight ? 'text-gray-600' : 'text-gray-400';
-  const activeBgClass = isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900 text-blue-300';
-  const hoverClass = isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-800';
-  const borderClass = isLight ? 'border-gray-200' : 'border-gray-700';
+  const bgClass = isLight ? 'bg-white/30 backdrop-blur-sm' : 'bg-neutral-900/30 backdrop-blur-sm';
+  const textClass = isLight ? 'text-slate-900' : 'text-white';
+  const mutedClass = isLight ? 'text-slate-600' : 'text-gray-400';
+  const activeBgClass = isLight ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white';
+  const hoverClass = isLight ? 'hover:bg-slate-100' : 'hover:bg-gray-800';
+  const borderClass = isLight ? 'border-slate-200' : 'border-gray-700';
 
   return (
     <div className={`${bgClass} border-r ${borderClass} w-64 flex-shrink-0 overflow-y-auto`}>
