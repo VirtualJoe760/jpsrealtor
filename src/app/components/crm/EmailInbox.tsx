@@ -280,10 +280,9 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
       {/* Compose Panel - Reply/Forward */}
       {composeAction && composeEmail && (
         <ComposePanel
-          recipientEmail={composeEmail.from}
           isLight={isLight}
-          mode={composeAction === 'forward' ? 'forward' : 'reply'}
-          originalEmail={composeEmail}
+          replyTo={composeAction === 'reply' || composeAction === 'replyAll' ? composeEmail : undefined}
+          forwardEmail={composeAction === 'forward' ? composeEmail : undefined}
           onClose={closeCompose}
         />
       )}
@@ -291,9 +290,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
       {/* Compose Panel - New Email */}
       {showNewCompose && (
         <ComposePanel
-          recipientEmail=""
           isLight={isLight}
-          mode="compose"
           onClose={handleCloseNewCompose}
         />
       )}
