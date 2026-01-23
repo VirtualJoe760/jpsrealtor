@@ -52,7 +52,7 @@ export async function POST(request: Request) {
               },
               body: {
                 type: "string",
-                description: "Email body content in HTML format using <p> and <br> tags. Professional, clear, and action-oriented. NO signature block at the end."
+                description: "Email body content in HTML format using <p> and <br> tags. Professional, clear, and action-oriented. NO signature block. NO closing line. Use single <br> between paragraphs. End with last content paragraph."
               }
             },
             required: ["subject", "body"]
@@ -82,15 +82,16 @@ EMAIL STRUCTURE:
 2. Opening line (context or reference)
 3. Main message (2-3 short paragraphs max)
 4. Call to action (if applicable)
-5. Professional closing (Best regards, Thanks, etc.)
-6. DO NOT include signature block
+5. NO closing line (no "Best regards," etc.)
+6. NO signature block
 
 FORMATTING - VERY IMPORTANT:
 - Use HTML <p> tags for paragraphs
-- Use <br><br> for spacing between paragraphs
+- Use single <br> for spacing between paragraphs (NOT <br><br>)
 - Keep paragraphs SHORT (2-3 sentences max)
+- NO closing line at the end
 - NO signature block at the end
-- End with just the closing line (e.g., "Best regards,")
+- Just end with the last paragraph of content
 - Structure example:
 
 <p>Hi [Name],</p>
@@ -98,8 +99,6 @@ FORMATTING - VERY IMPORTANT:
 <p>First paragraph here with 2-3 sentences.</p>
 <br>
 <p>Second paragraph with more details.</p>
-<br>
-<p>Best regards,</p>
 
 TONE OPTIONS:
 - Professional: Formal business communication
@@ -110,9 +109,11 @@ TONE OPTIONS:
 
 CRITICAL RULES:
 - NO signature block (name, title, phone, email)
+- NO closing line (no "Best regards," "Thanks," etc.)
 - Subject must be under 50 characters
-- Use HTML formatting with <p> and <br> tags
+- Use single <br> between paragraphs (NOT <br><br>)
 - Keep it concise and scannable
+- End with the last content paragraph
 
 Use the generate_email tool to create the email.`;
 
