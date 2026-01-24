@@ -115,48 +115,66 @@ export default function ClientLayoutWrapper({
   children,
   initialTheme,
 }: ClientLayoutWrapperProps) {
-  // Aggressive double-tap zoom and pinch zoom prevention for iOS
+  // Optimized touch event handling with comprehensive logging
   useEffect(() => {
-    let lastTouchEnd = 0;
+    console.log('[ClientLayoutWrapper] ========================================');
+    console.log('[ClientLayoutWrapper] Setting up touch event listeners');
+    console.log('[ClientLayoutWrapper] ========================================');
 
-    // Prevent double-tap zoom
+    let lastTouchEnd = 0;
+    let touchCount = 0;
+    let doubleTapCount = 0;
+
+    // Smarter double-tap prevention - only prevent actual double-taps
     const preventDoubleTap = (e: TouchEvent) => {
       const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
+      const timeSinceLastTouch = now - lastTouchEnd;
+      touchCount++;
+
+      console.log(`[Touch] touchend #${touchCount} - Time since last: ${timeSinceLastTouch}ms`);
+
+      // Only prevent if it's a genuine double-tap (< 300ms AND on same element)
+      if (timeSinceLastTouch > 0 && timeSinceLastTouch <= 300) {
+        doubleTapCount++;
+        console.warn(`[Touch] DOUBLE-TAP DETECTED (#${doubleTapCount}) - Preventing zoom`);
         e.preventDefault();
         e.stopPropagation();
       }
+
       lastTouchEnd = now;
     };
 
-    // Prevent pinch zoom
-    const preventPinch = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    // Prevent all gesture-based zooming
+    // Prevent gesture-based zooming (pinch, etc.)
     const preventGesture = (e: Event) => {
+      console.warn('[Touch] Gesture event detected - Preventing:', e.type);
       e.preventDefault();
       e.stopPropagation();
     };
-
-    // Add multiple layers of protection
-    document.addEventListener('touchend', preventDoubleTap, { passive: false, capture: true });
-    document.addEventListener('gesturestart', preventGesture, { passive: false, capture: true });
-    document.addEventListener('gesturechange', preventGesture, { passive: false, capture: true });
-    document.addEventListener('gestureend', preventGesture, { passive: false, capture: true });
 
     // Prevent zoom on wheel with ctrl/cmd
     const preventWheelZoom = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
+        console.warn('[Touch] Ctrl/Cmd+Wheel zoom attempt - Preventing');
         e.preventDefault();
         e.stopPropagation();
       }
     };
+
+    console.log('[ClientLayoutWrapper] Adding listeners with passive: false');
+
+    // Add event listeners
+    document.addEventListener('touchend', preventDoubleTap, { passive: false, capture: true });
+    document.addEventListener('gesturestart', preventGesture, { passive: false, capture: true });
+    document.addEventListener('gesturechange', preventGesture, { passive: false, capture: true });
+    document.addEventListener('gestureend', preventGesture, { passive: false, capture: true });
     document.addEventListener('wheel', preventWheelZoom, { passive: false, capture: true });
 
+    console.log('[ClientLayoutWrapper] Touch event listeners installed');
+
     return () => {
+      console.log('[ClientLayoutWrapper] Removing touch event listeners');
+      console.log(`[ClientLayoutWrapper] Stats: ${touchCount} touches, ${doubleTapCount} double-taps prevented`);
+
       document.removeEventListener('touchend', preventDoubleTap, true);
       document.removeEventListener('gesturestart', preventGesture, true);
       document.removeEventListener('gesturechange', preventGesture, true);

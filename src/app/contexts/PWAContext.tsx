@@ -86,31 +86,50 @@ const PWAContext = createContext<PWAContextType | undefined>(undefined);
  * Returns the most specific match (priority: fullscreen > standalone > minimal-ui > browser)
  */
 function detectDisplayMode(): DisplayMode {
-  if (typeof window === 'undefined') return 'browser';
+  if (typeof window === 'undefined') {
+    console.log('[PWAContext] SSR mode - returning browser');
+    return 'browser';
+  }
+
+  const checks = {
+    fullscreen: window.matchMedia('(display-mode: fullscreen)').matches,
+    standalone: window.matchMedia('(display-mode: standalone)').matches,
+    minimalUI: window.matchMedia('(display-mode: minimal-ui)').matches,
+    iOSStandalone: (window.navigator as any).standalone === true,
+    androidApp: document.referrer.includes('android-app://'),
+  };
+
+  console.log('[PWAContext] Display mode detection:', checks);
 
   // Check in order of specificity
-  if (window.matchMedia('(display-mode: fullscreen)').matches) {
+  if (checks.fullscreen) {
+    console.log('[PWAContext] Detected: fullscreen');
     return 'fullscreen';
   }
 
-  if (window.matchMedia('(display-mode: standalone)').matches) {
+  if (checks.standalone) {
+    console.log('[PWAContext] Detected: standalone (CSS media query)');
     return 'standalone';
   }
 
-  if (window.matchMedia('(display-mode: minimal-ui)').matches) {
+  if (checks.minimalUI) {
+    console.log('[PWAContext] Detected: minimal-ui');
     return 'minimal-ui';
   }
 
   // iOS-specific standalone check (Safari doesn't support display-mode media query in older versions)
-  if ((window.navigator as any).standalone === true) {
+  if (checks.iOSStandalone) {
+    console.log('[PWAContext] Detected: standalone (iOS navigator.standalone)');
     return 'standalone';
   }
 
   // Android-specific check (launched from home screen)
-  if (document.referrer.includes('android-app://')) {
+  if (checks.androidApp) {
+    console.log('[PWAContext] Detected: standalone (Android app referrer)');
     return 'standalone';
   }
 
+  console.log('[PWAContext] Detected: browser (default)');
   return 'browser';
 }
 
@@ -118,25 +137,33 @@ function detectDisplayMode(): DisplayMode {
  * Detect platform from user agent
  */
 function detectPlatform(): Platform {
-  if (typeof window === 'undefined') return 'unknown';
+  if (typeof window === 'undefined') {
+    console.log('[PWAContext] SSR mode - platform unknown');
+    return 'unknown';
+  }
 
   const ua = window.navigator.userAgent.toLowerCase();
+  console.log('[PWAContext] User agent:', ua.substring(0, 100) + '...');
 
   // iOS detection
   if (/iphone|ipad|ipod/.test(ua)) {
+    console.log('[PWAContext] Platform detected: iOS');
     return 'ios';
   }
 
   // Android detection
   if (/android/.test(ua)) {
+    console.log('[PWAContext] Platform detected: Android');
     return 'android';
   }
 
   // Desktop (Windows, Mac, Linux)
   if (/win|mac|linux/.test(ua)) {
+    console.log('[PWAContext] Platform detected: Desktop');
     return 'desktop';
   }
 
+  console.log('[PWAContext] Platform detected: Unknown');
   return 'unknown';
 }
 
@@ -158,17 +185,14 @@ export function PWAProvider({ children }: PWAProviderProps) {
   // This ensures detection happens synchronously before first render,
   // preventing layout shifts from state updates
   const [pwaState] = useState<PWAContextType>(() => {
+    console.log('[PWAContext] ========================================');
+    console.log('[PWAContext] Initializing PWA Context Provider');
+    console.log('[PWAContext] ========================================');
+
     const displayMode = detectDisplayMode();
     const platform = detectPlatform();
 
-    console.log('[PWAContext] Initializing:', {
-      displayMode,
-      platform,
-      isStandalone: displayMode === 'standalone',
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'SSR',
-    });
-
-    return {
+    const state = {
       displayMode,
       isStandalone: displayMode === 'standalone',
       isInstalled: displayMode !== 'browser',
@@ -176,6 +200,12 @@ export function PWAProvider({ children }: PWAProviderProps) {
       isIOS: platform === 'ios',
       isAndroid: platform === 'android',
     };
+
+    console.log('[PWAContext] ========================================');
+    console.log('[PWAContext] FINAL STATE:', JSON.stringify(state, null, 2));
+    console.log('[PWAContext] ========================================');
+
+    return state;
   });
 
   return <PWAContext.Provider value={pwaState}>{children}</PWAContext.Provider>;
