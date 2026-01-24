@@ -171,6 +171,35 @@ function getThemeColor(theme: ThemeName): string {
 }
 
 /**
+ * Curated listing photos for animation backgrounds
+ * TODO: Replace with actual Obsidian Group listing photos
+ */
+const LISTING_PHOTOS = [
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&q=80', // Modern home exterior
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80', // Luxury living room
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80', // Contemporary kitchen
+  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1600&q=80', // Master bedroom
+  'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1600&q=80', // Pool and patio
+  'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1600&q=80', // Elegant entryway
+];
+
+/**
+ * Get random listing photo
+ */
+function getRandomListingPhoto(): string {
+  return LISTING_PHOTOS[Math.floor(Math.random() * LISTING_PHOTOS.length)];
+}
+
+/**
+ * Get eXp logo path based on theme
+ */
+function getExpLogo(theme: ThemeName): string {
+  return theme === 'blackspace'
+    ? '/images/brand/EXP-white-square.png'
+    : '/images/brand/exp-Realty-Logo-black.png';
+}
+
+/**
  * Get SVG graphic for animation
  */
 function getAnimationSVG(animationKey: AnimationPairKey, phase: 'exit' | 'enter'): string {
@@ -292,17 +321,34 @@ function playExitAnimation(
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'theme-transition-overlay';
-    overlay.style.backgroundColor = backgroundColor;
+
+    // Use listing photo as background
+    const listingPhoto = getRandomListingPhoto();
+    overlay.style.cssText = `
+      background-image: url('${listingPhoto}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    `;
+
     overlay.setAttribute('data-animation', animationKey);
     overlay.setAttribute('data-phase', 'exit');
 
     const { exit, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add SVG graphic
-    const svgHTML = getAnimationSVG(animationKey, 'exit');
-    if (svgHTML) {
-      overlay.innerHTML = svgHTML;
-    }
+    // Add eXp logo (centered, large)
+    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
+    const logoPath = getExpLogo(currentTheme);
+    const logoHTML = `
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;">
+        <img
+          src="${logoPath}"
+          alt="eXp Realty"
+          style="width: 300px; height: auto; display: block; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+        />
+      </div>
+    `;
+    overlay.innerHTML = logoHTML;
 
     document.body.appendChild(overlay);
 
@@ -329,17 +375,34 @@ function playEnterAnimation(
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'theme-transition-overlay';
-    overlay.style.backgroundColor = backgroundColor;
+
+    // Use listing photo as background (different from EXIT)
+    const listingPhoto = getRandomListingPhoto();
+    overlay.style.cssText = `
+      background-image: url('${listingPhoto}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    `;
+
     overlay.setAttribute('data-animation', animationKey);
     overlay.setAttribute('data-phase', 'enter');
 
     const { enter, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add SVG graphic
-    const svgHTML = getAnimationSVG(animationKey, 'enter');
-    if (svgHTML) {
-      overlay.innerHTML = svgHTML;
-    }
+    // Add eXp logo (centered, large) - matches NEW theme
+    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
+    const logoPath = getExpLogo(currentTheme);
+    const logoHTML = `
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;">
+        <img
+          src="${logoPath}"
+          alt="eXp Realty"
+          style="width: 300px; height: auto; display: block; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+        />
+      </div>
+    `;
+    overlay.innerHTML = logoHTML;
 
     document.body.appendChild(overlay);
 
