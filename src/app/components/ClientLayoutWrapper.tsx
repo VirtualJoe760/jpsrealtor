@@ -17,6 +17,7 @@ import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
+import DynamicThemeColor from "./DynamicThemeColor";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   console.log('[LayoutContent] RENDER START');
@@ -59,6 +60,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <MetaPixel />
+      <DynamicThemeColor />
 
       {/* Global Spatial Background - Persists across navigation */}
       {shouldShowSpatialBackground && (
