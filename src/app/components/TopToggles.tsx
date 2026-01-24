@@ -30,22 +30,21 @@ export default function TopToggles() {
   const isHomePage = pathname === "/";
   const [isVisible, setIsVisible] = useState(true);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // REMOVED: mounted state was causing re-render that blocked clicks!
+  // const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
 
-  console.log('[TopToggles] State:', { mounted, isVisible, isMapVisible, pathname });
+  console.log('[TopToggles] State:', { isVisible, isMapVisible, pathname });
 
-  // Prevent hydration mismatch - wait for client-side mount
+  // Mount logging only - no state changes that cause re-renders
   useEffect(() => {
-    console.log('[TopToggles] Component mounting...');
-    setMounted(true);
-    console.log('[TopToggles] Mounted - Buttons now interactive');
+    console.log('[TopToggles] Component mounted - Buttons IMMEDIATELY interactive');
   }, []);
 
   // Debug notification state
   useEffect(() => {
-    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible, 'mounted:', mounted);
-  }, [hasUnreadMessage, isMapVisible, mounted]);
+    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible);
+  }, [hasUnreadMessage, isMapVisible]);
 
   // Listen for favorites panel state changes
   useEffect(() => {
@@ -188,9 +187,9 @@ export default function TopToggles() {
           className="pointer-events-auto relative"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
         >
-          {mounted && isMapVisible ? (
+          {isMapVisible ? (
             <>
               <MessageSquare
                 className="w-9 h-9 transition-colors"
@@ -240,10 +239,10 @@ export default function TopToggles() {
           className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
           data-tour="top-map-toggle-desktop"
         >
-          {mounted && isMapVisible ? (
+          {isMapVisible ? (
             <>
               <MessageSquare
                 className="w-11 h-11 transition-colors"
