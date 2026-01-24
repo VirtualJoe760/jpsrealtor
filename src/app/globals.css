@@ -190,27 +190,18 @@ html.theme-lightgradient {
   background-size: 400% 400%;
   background-attachment: fixed;
   animation: gradient 12s ease infinite;
+  /* Ensure background fills entire viewport including safe areas */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html.theme-lightgradient body {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
   background-size: 400% 400%;
   animation: gradient 12s ease infinite;
-}
-
-/* Extend gradient into Dynamic Island / safe area (iOS PWA) */
-html.theme-lightgradient::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-top, 0px);
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
-  background-size: 400% 400%;
-  animation: gradient 12s ease infinite;
-  z-index: -1;
-  pointer-events: none;
+  /* Extend background into safe areas */
+  min-height: calc(100vh + env(safe-area-inset-top, 0px));
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px));
 }
 
 @keyframes gradient {
@@ -227,23 +218,16 @@ html.theme-lightgradient::before {
 
 html.theme-blackspace {
   background-color: #000000;
+  /* Ensure background fills entire viewport including safe areas */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html.theme-blackspace body {
   background-color: #000000;
-}
-
-/* Extend black background into Dynamic Island / safe area (iOS PWA) */
-html.theme-blackspace::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-top, 0px);
-  background-color: #000000;
-  z-index: -1;
-  pointer-events: none;
+  /* Extend background into safe areas */
+  min-height: calc(100vh + env(safe-area-inset-top, 0px));
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px));
 }
 
 * {
