@@ -18,12 +18,8 @@ import formidable from 'formidable';
 import fs from 'fs';
 import { Types } from 'mongoose';
 
-// Disable body parsing to handle file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Note: In Next.js App Router, body parsing is handled automatically
+// formidable handles the multipart form data parsing
 
 export async function POST(req: NextRequest) {
   try {

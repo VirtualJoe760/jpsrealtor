@@ -141,7 +141,7 @@ export function EmailFolderNav({
                           key={sub.id}
                           onClick={() => {
                             if (folder.id === 'sent') {
-                              onSentSubfolderChange(sub.id);
+                              onSentSubfolderChange(sub.id as SentSubfolder);
                             } else {
                               handleSubfolderChange(folder.id, sub.id);
                               onFolderChange(folder.id);

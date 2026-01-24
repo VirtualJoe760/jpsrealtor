@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       yearBuilt: property.yearBuilt || null,
       propertyType: property.propertyType || null,
       lotSize: property.lotSizeAcres ? `${property.lotSizeAcres} acres` : null,
-      pool: property.poolYN || false,
+      pool: property.poolYn || false,
       purchasePrice: (property as any).closePrice || (property as any).listPrice || null,
       purchaseDate: (property as any).closeDate || null,
       matchedAddress: property.unparsedAddress || null,

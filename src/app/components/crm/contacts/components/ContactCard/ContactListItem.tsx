@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Mail, Phone, MapPin, Tag, Calendar } from 'lucide-react';
-import { Contact, ContactStatus } from '../../types';
+import { Contact, ContactStatus, DataFieldType } from '../../types';
 import { getContactDisplayName, formatPhoneNumber, getDaysSinceImport, hasEmail, hasPhone } from '../../utils';
 import { getStatusConfig } from '../../constants/styles';
 import { ContactAvatar } from './ContactAvatar';

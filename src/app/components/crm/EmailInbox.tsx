@@ -22,7 +22,7 @@ import {
   EmailToolbar,
   EmailFolderNav,
 } from './email-inbox/components';
-import type { FolderType } from './email-inbox/types';
+import type { FolderType, SentSubfolder } from './email-inbox/types';
 
 interface EmailInboxProps {
   isLight: boolean;
@@ -157,7 +157,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
     setMobileMenuOpen(false); // Close menu after selection on mobile
   };
 
-  const handleSentSubfolderChange = (subfolder: string) => {
+  const handleSentSubfolderChange = (subfolder: SentSubfolder) => {
     changeSentSubfolder(subfolder);
     setMobileMenuOpen(false); // Close menu after selection on mobile
   };
