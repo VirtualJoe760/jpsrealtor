@@ -16,6 +16,9 @@ import { useChatContext } from "./chat/ChatProvider";
 import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
+  console.log('[TopToggles] ====== COMPONENT RENDER ======');
+  const startTime = performance.now();
+
   const { currentTheme, setTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
@@ -29,6 +32,8 @@ export default function TopToggles() {
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
+
+  console.log('[TopToggles] State:', { mounted, isVisible, isMapVisible, pathname });
 
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
@@ -130,6 +135,9 @@ export default function TopToggles() {
       router.push("/");
     }
   };
+
+  const renderTime = performance.now() - startTime;
+  console.log(`[TopToggles] ====== RENDER COMPLETE (${renderTime.toFixed(2)}ms) ======`);
 
   return (
     <motion.div

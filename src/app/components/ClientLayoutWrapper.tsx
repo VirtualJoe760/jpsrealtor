@@ -19,10 +19,14 @@ import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
+  console.log('[LayoutContent] RENDER START');
+
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
+
+  console.log('[LayoutContent] Hooks loaded, pathname:', pathname);
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
