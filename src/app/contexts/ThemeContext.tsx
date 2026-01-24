@@ -172,8 +172,9 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
     // Update iOS PWA status bar / Dynamic Island color
     const themeColor = isLight ? '#4f46e5' : '#000000'; // Indigo for light, black for dark
-    // Use black-translucent for both - allows web content (gradient/black bg) to show through
-    const statusBarStyle = 'black-translucent';
+    // Light theme: 'default' (light status bar, no black overlay)
+    // Dark theme: 'black' (opaque black status bar)
+    const statusBarStyle = isLight ? 'default' : 'black';
 
     // Update theme-color meta tag (for Dynamic Island)
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');

@@ -133,8 +133,9 @@ export default async function RootLayout({
 
   // Get theme color for Dynamic Island/status bar
   const themeColor = serverTheme === 'lightgradient' ? '#4f46e5' : '#000000';
-  // Use black-translucent for both themes - allows web content (gradient/black bg) to show through
-  const statusBarStyle = 'black-translucent';
+  // Light theme: 'default' (light status bar, no black overlay)
+  // Dark theme: 'black' (opaque black status bar)
+  const statusBarStyle = serverTheme === 'lightgradient' ? 'default' : 'black';
 
   return (
     <html lang="en" className={`theme-${serverTheme}`} suppressHydrationWarning>
