@@ -26,7 +26,8 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "WebFetch(domain:web.dev)",
-      "WebFetch(domain:firt.dev)"
+      "WebFetch(domain:firt.dev)",
+      "Bash(xargs cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -32,7 +32,9 @@ export default function TopToggles() {
 
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
+    console.log('[TopToggles] Component mounting...');
     setMounted(true);
+    console.log('[TopToggles] Mounted - Buttons now interactive');
   }, []);
 
   // Debug notification state
@@ -144,7 +146,8 @@ export default function TopToggles() {
         Mobile: h-12 (48px), Desktop: h-14 (56px)
       */}
       {/* Mobile: Centered container with toggles on left/right */}
-      <div className="md:hidden max-w-7xl mx-auto px-4 pt-8 flex items-center justify-between pointer-events-none">
+      {/* pt-safe-plus: safe area + 2rem additional spacing for breathing room */}
+      <div className="md:hidden max-w-7xl mx-auto px-4 pt-safe-plus flex items-center justify-between pointer-events-none">
         {/* Theme Toggle - Left (Mobile Only) */}
         <motion.button
           onClick={handleToggleTheme}
