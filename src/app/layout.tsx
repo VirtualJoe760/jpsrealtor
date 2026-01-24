@@ -30,6 +30,12 @@ function getServerTheme(cookieStore: Awaited<ReturnType<typeof cookies>>): Theme
   const themeCookie = cookieStore.get(THEME_COOKIE_NAME);
   const theme = themeCookie?.value;
 
+  console.log('[Server Layout] Reading theme cookie:', {
+    cookieExists: !!themeCookie,
+    cookieValue: theme,
+    willReturn: (theme && VALID_THEMES.includes(theme as ThemeName)) ? theme : DEFAULT_THEME
+  });
+
   if (theme && VALID_THEMES.includes(theme as ThemeName)) {
     return theme as ThemeName;
   }
@@ -165,8 +171,27 @@ export default async function RootLayout({
                   var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
                   var theme = cookieMatch ? cookieMatch[2] : localStorage.getItem('site-theme') || 'lightgradient';
                   if (theme !== 'lightgradient' && theme !== 'blackspace') theme = 'lightgradient';
+
+                  console.log('[Inline Script] Detected theme:', theme, 'from cookie:', !!cookieMatch);
+
+                  // Apply theme class
                   document.documentElement.className = document.documentElement.className.replace(/theme-\\w+/g, '') + ' theme-' + theme;
-                } catch (e) {}
+
+                  // Update meta tags IMMEDIATELY to match detected theme
+                  var themeColor = theme === 'lightgradient' ? '#4f46e5' : '#000000';
+                  var metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                  if (metaThemeColor) {
+                    metaThemeColor.setAttribute('content', themeColor);
+                    console.log('[Inline Script] Set theme-color to:', themeColor);
+                  }
+
+                  var metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                  if (metaStatusBar) {
+                    metaStatusBar.setAttribute('content', 'black-translucent');
+                  }
+                } catch (e) {
+                  console.error('[Inline Script] Error:', e);
+                }
               })();
             `,
           }}

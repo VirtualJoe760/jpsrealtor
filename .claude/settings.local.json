@@ -28,7 +28,9 @@
       "WebFetch(domain:web.dev)",
       "WebFetch(domain:firt.dev)",
       "Bash(xargs cat:*)",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
