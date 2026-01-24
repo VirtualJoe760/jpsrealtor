@@ -170,34 +170,45 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .join(" ");
     });
 
-    // Update iOS PWA status bar / Dynamic Island color
-    const themeColor = isLight ? '#4f46e5' : '#000000'; // Indigo for light, black for dark
-    // Light theme: 'default' (light status bar, no black overlay)
-    // Dark theme: 'black' (opaque black status bar)
-    const statusBarStyle = isLight ? 'default' : 'black';
+    // Detect if running as PWA (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        (window.navigator as any).standalone ||
+                        document.referrer.includes('android-app://');
 
-    // Update theme-color meta tag (for browser toolbar)
-    // Remove and recreate to force Safari to recognize the change
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.remove();
+    console.log('[ThemeContext] Mode:', isStandalone ? 'PWA (standalone)' : 'Browser');
+
+    // Only update meta tags in PWA mode - Safari browser ignores dynamic updates
+    if (isStandalone) {
+      const themeColor = isLight ? '#4f46e5' : '#000000'; // Indigo for light, black for dark
+      // Light theme: 'default' (light status bar, no black overlay)
+      // Dark theme: 'black' (opaque black status bar)
+      const statusBarStyle = isLight ? 'default' : 'black';
+
+      // Update theme-color meta tag (for Dynamic Island / status bar)
+      // Remove and recreate to force Safari to recognize the change
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.remove();
+      }
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.name = 'theme-color';
+      metaThemeColor.content = themeColor;
+      document.head.appendChild(metaThemeColor);
+
+      // Update iOS status bar style (PWA only)
+      let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (metaStatusBar) {
+        metaStatusBar.remove();
+      }
+      metaStatusBar = document.createElement('meta');
+      metaStatusBar.name = 'apple-mobile-web-app-status-bar-style';
+      metaStatusBar.content = statusBarStyle;
+      document.head.appendChild(metaStatusBar);
+
+      console.log('[ThemeContext] 🔄 Updated PWA meta tags:', { themeColor, statusBarStyle });
+    } else {
+      console.log('[ThemeContext] ⏭️  Skipped meta tag updates (browser mode - requires page refresh)');
     }
-    metaThemeColor = document.createElement('meta');
-    metaThemeColor.name = 'theme-color';
-    metaThemeColor.content = themeColor;
-    document.head.appendChild(metaThemeColor);
-
-    // Update iOS status bar style (PWA only)
-    let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (metaStatusBar) {
-      metaStatusBar.remove();
-    }
-    metaStatusBar = document.createElement('meta');
-    metaStatusBar.name = 'apple-mobile-web-app-status-bar-style';
-    metaStatusBar.content = statusBarStyle;
-    document.head.appendChild(metaStatusBar);
-
-    console.log('[ThemeContext] 🔄 Recreated PWA meta tags:', { themeColor, statusBarStyle });
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
