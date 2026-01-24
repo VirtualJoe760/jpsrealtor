@@ -39,7 +39,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { isCollapsed, toggleSidebar, setSidebarCollapsed } = useSidebar();
-  const { currentTheme, setTheme } = useTheme();
+  const { currentTheme, toggleTheme: toggleThemeMode } = useTheme();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const isLight = currentTheme === "lightgradient";
   const isHomePage = pathname === "/";
@@ -152,7 +152,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   };
 
   const toggleTheme = () => {
-    setTheme(isLight ? "blackspace" : "lightgradient");
+    toggleThemeMode();
   };
 
   return (

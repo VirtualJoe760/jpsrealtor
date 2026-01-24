@@ -19,7 +19,7 @@ export default function TopToggles() {
   console.log('[TopToggles] ====== COMPONENT RENDER ======');
   const startTime = performance.now();
 
-  const { currentTheme, setTheme } = useTheme();
+  const { currentTheme, toggleTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
   const { hasUnreadMessage, setUnreadMessage } = useChatContext();
@@ -95,7 +95,7 @@ export default function TopToggles() {
   }, [isMapVisible, favoritesPanelOpen]);
 
   const handleToggleTheme = () => {
-    setTheme(isLight ? "blackspace" : "lightgradient");
+    toggleTheme();
   };
 
   const handleToggleMap = () => {
