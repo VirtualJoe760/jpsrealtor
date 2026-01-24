@@ -16,6 +16,7 @@ import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
+import { PWAProvider } from "../contexts/PWAContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -166,13 +167,15 @@ export default function ClientLayoutWrapper({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
-      <MapStateProvider>
-        <Providers>
-          <SidebarProvider>
-            <LayoutContent>{children}</LayoutContent>
-          </SidebarProvider>
-        </Providers>
-      </MapStateProvider>
+      <PWAProvider>
+        <MapStateProvider>
+          <Providers>
+            <SidebarProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </SidebarProvider>
+          </Providers>
+        </MapStateProvider>
+      </PWAProvider>
     </ThemeProvider>
   );
 }

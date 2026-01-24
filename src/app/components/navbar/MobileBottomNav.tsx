@@ -5,8 +5,7 @@ import { Home, MessageSquare, Map, Lightbulb, User, RefreshCw } from "lucide-rea
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { usePWA } from "@/app/contexts/PWAContext";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -15,15 +14,8 @@ export default function MobileBottomNav() {
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { currentTheme, bgPrimary, border, textSecondary } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
-  // Detect PWA mode synchronously to avoid layout shift
-  const [isPWA] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(display-mode: standalone)').matches ||
-             (window.navigator as any).standalone ||
-             document.referrer.includes('android-app://');
-    }
-    return false;
-  });
+  // Use centralized PWA context (no duplicate detection!)
+  const { isStandalone, isIOS } = usePWA();
 
   const isHomePage = pathname === "/";
 
@@ -66,15 +58,11 @@ export default function MobileBottomNav() {
 
   return (
     <nav
-      className={`fixed left-0 right-0 bottom-0 z-50 backdrop-blur-xl border-t sm:hidden ${
+      className={`mobile-bottom-nav fixed left-0 right-0 bottom-0 z-50 backdrop-blur-xl border-t sm:hidden ${
         isLight
           ? "bg-white/95 border-gray-200"
           : "bg-black/95 border-neutral-800"
       }`}
-      style={{
-        // Always use safe-area-inset with fallback to prevent layout shift
-        paddingBottom: 'max(2px, env(safe-area-inset-bottom))',
-      }}
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item, index) => {
