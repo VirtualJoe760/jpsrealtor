@@ -191,8 +191,8 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         metaThemeColor.remove();
       }
       metaThemeColor = document.createElement('meta');
-      metaThemeColor.name = 'theme-color';
-      metaThemeColor.content = themeColor;
+      metaThemeColor.setAttribute('name', 'theme-color');
+      metaThemeColor.setAttribute('content', themeColor);
       document.head.appendChild(metaThemeColor);
 
       // Update iOS status bar style (PWA only)
@@ -201,8 +201,8 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         metaStatusBar.remove();
       }
       metaStatusBar = document.createElement('meta');
-      metaStatusBar.name = 'apple-mobile-web-app-status-bar-style';
-      metaStatusBar.content = statusBarStyle;
+      metaStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+      metaStatusBar.setAttribute('content', statusBarStyle);
       document.head.appendChild(metaStatusBar);
 
       console.log('[ThemeContext] 🔄 Updated PWA meta tags:', { themeColor, statusBarStyle });
