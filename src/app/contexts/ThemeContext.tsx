@@ -125,6 +125,114 @@ function getServerRenderedTheme(): ThemeName | null {
   return null;
 }
 
+// ===================================
+// THEME TRANSITION ANIMATIONS
+// Two-Act System: Exit → Refresh → Enter
+// ===================================
+
+const ANIMATION_PAIRS = {
+  'key-turn': { exit: 'key-lock', enter: 'key-unlock', duration: 300 },
+  'french-doors': { exit: 'doors-close', enter: 'doors-open', duration: 500 },
+  'blinds': { exit: 'blinds-close', enter: 'blinds-open', duration: 400 },
+  'garage': { exit: 'garage-down', enter: 'garage-up', duration: 450 },
+  'sliding-door': { exit: 'slide-close', enter: 'slide-open', duration: 450 },
+  'property-card': { exit: 'card-flip-away', enter: 'card-flip-to', duration: 600 },
+  'shutters': { exit: 'shutters-close', enter: 'shutters-open', duration: 500 },
+  'curtains': { exit: 'curtains-close', enter: 'curtains-open', duration: 550 }
+} as const;
+
+type AnimationPairKey = keyof typeof ANIMATION_PAIRS;
+
+/**
+ * Select a random animation, avoiding repeats
+ */
+function selectRandomAnimation(): AnimationPairKey {
+  const keys = Object.keys(ANIMATION_PAIRS) as AnimationPairKey[];
+  const lastAnimation = localStorage.getItem('last-theme-animation') as AnimationPairKey | null;
+
+  // Filter out the last animation to avoid repeats
+  const availableKeys = lastAnimation
+    ? keys.filter(k => k !== lastAnimation)
+    : keys;
+
+  const selectedKey = availableKeys[Math.floor(Math.random() * availableKeys.length)];
+
+  // Save for next time
+  localStorage.setItem('last-theme-animation', selectedKey);
+
+  return selectedKey;
+}
+
+/**
+ * Get theme color for overlay
+ */
+function getThemeColor(theme: ThemeName): string {
+  return theme === 'blackspace' ? '#000000' : '#4f46e5';
+}
+
+/**
+ * Play EXIT animation (closing the old theme)
+ */
+function playExitAnimation(
+  animationKey: AnimationPairKey,
+  backgroundColor: string
+): Promise<void> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'theme-transition-overlay';
+    overlay.style.backgroundColor = backgroundColor;
+    overlay.setAttribute('data-animation', animationKey);
+    overlay.setAttribute('data-phase', 'exit');
+
+    const { exit, duration } = ANIMATION_PAIRS[animationKey];
+
+    document.body.appendChild(overlay);
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      overlay.classList.add(exit);
+      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms)`);
+    });
+
+    // Resolve after animation completes, but keep overlay for refresh
+    setTimeout(() => {
+      resolve();
+    }, duration);
+  });
+}
+
+/**
+ * Play ENTER animation (opening the new theme)
+ */
+function playEnterAnimation(
+  animationKey: AnimationPairKey,
+  backgroundColor: string
+): Promise<void> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'theme-transition-overlay';
+    overlay.style.backgroundColor = backgroundColor;
+    overlay.setAttribute('data-animation', animationKey);
+    overlay.setAttribute('data-phase', 'enter');
+
+    const { enter, duration } = ANIMATION_PAIRS[animationKey];
+
+    document.body.appendChild(overlay);
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      overlay.classList.add(enter);
+      console.log(`[ThemeTransition] 🔓 ENTER: ${animationKey} (${duration}ms)`);
+    });
+
+    // Remove overlay after animation completes
+    setTimeout(() => {
+      overlay.remove();
+      resolve();
+    }, duration);
+  });
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   initialTheme?: ThemeName;
@@ -215,12 +323,72 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     localStorage.setItem("site-theme", currentTheme);
   }, [currentTheme, mounted]);
 
+  // Play ENTER animation on mount if coming from theme toggle
+  useEffect(() => {
+    if (!mounted) return;
+
+    const animationKey = sessionStorage.getItem('theme-transition-pair') as AnimationPairKey | null;
+    const timestamp = sessionStorage.getItem('theme-transition-timestamp');
+
+    if (animationKey && timestamp) {
+      const age = Date.now() - parseInt(timestamp, 10);
+
+      // Only play if refresh happened within 5 seconds (prevent stale animations)
+      if (age < 5000) {
+        const newColor = getThemeColor(currentTheme);
+
+        console.log(`[ThemeTransition] 🎬 Act 2: Playing ENTER animation`);
+
+        playEnterAnimation(animationKey, newColor).then(() => {
+          // Cleanup sessionStorage after animation completes
+          sessionStorage.removeItem('theme-transition-pair');
+          sessionStorage.removeItem('theme-transition-timestamp');
+        });
+      } else {
+        // Clear stale data
+        console.log('[ThemeTransition] ⏰ Stale animation data cleared (>5s old)');
+        sessionStorage.removeItem('theme-transition-pair');
+        sessionStorage.removeItem('theme-transition-timestamp');
+      }
+    }
+  }, [mounted, currentTheme]);
+
   const setTheme = (theme: ThemeName) => {
     setCurrentTheme(theme);
   };
 
-  const toggleTheme = () => {
-    setCurrentTheme((prev) => (prev === "blackspace" ? "lightgradient" : "blackspace"));
+  const toggleTheme = async () => {
+    const newTheme = currentTheme === "blackspace" ? "lightgradient" : "blackspace";
+    const oldColor = getThemeColor(currentTheme);
+
+    // Detect if running as PWA (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        (window.navigator as any).standalone ||
+                        document.referrer.includes('android-app://');
+
+    if (!isStandalone) {
+      // Browser mode: Two-act animation system
+      const selectedAnimation = selectRandomAnimation();
+
+      // Save animation choice and timestamp to sessionStorage
+      sessionStorage.setItem('theme-transition-pair', selectedAnimation);
+      sessionStorage.setItem('theme-transition-timestamp', Date.now().toString());
+
+      console.log(`[ThemeTransition] 🎬 Starting two-act transition: ${selectedAnimation}`);
+
+      // Act 1: Play EXIT animation with old theme color
+      await playExitAnimation(selectedAnimation, oldColor);
+
+      // Update cookie for server-side rendering
+      setThemeCookie(newTheme);
+
+      // Trigger page refresh (Act 2 will play on mount)
+      window.location.reload();
+    } else {
+      // PWA mode: Instant theme change (no refresh needed)
+      console.log('[ThemeTransition] ⚡ PWA mode - instant theme change');
+      setCurrentTheme(newTheme);
+    }
   };
 
   const value: ThemeContextType = {
