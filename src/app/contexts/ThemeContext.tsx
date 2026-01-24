@@ -336,17 +336,36 @@ function playExitAnimation(
 
     const { exit, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add eXp logo (centered, large)
+    // Add eXp logo + "Featured Team Properties" text
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
     const logoHTML = `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
         <img
           src="${logoPath}"
           alt="eXp Realty"
-          style="width: 300px; height: auto; display: block; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+          style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
         />
+        <!-- Featured Team Properties text (fades in after animation) -->
+        <div style="
+          margin-top: 30px;
+          font-size: 28px;
+          font-weight: 700;
+          color: white;
+          text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
+          letter-spacing: 1px;
+          opacity: 0;
+          animation: fadeInText 0.5s ease-out ${duration}ms forwards;
+        ">
+          Featured Team Properties
+        </div>
       </div>
+      <style>
+        @keyframes fadeInText {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      </style>
     `;
     overlay.innerHTML = logoHTML;
 
@@ -355,13 +374,14 @@ function playExitAnimation(
     // Use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(() => {
       overlay.classList.add(exit);
-      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms)`);
+      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms) + 2.5s showcase`);
     });
 
-    // Resolve after animation completes, but keep overlay for refresh
+    // Resolve after animation completes + 2.5 second showcase hold
+    const totalDuration = duration + 2500; // Animation + 2.5s hold
     setTimeout(() => {
       resolve();
-    }, duration);
+    }, totalDuration);
   });
 }
 
@@ -390,17 +410,36 @@ function playEnterAnimation(
 
     const { enter, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add eXp logo (centered, large) - matches NEW theme
+    // Add eXp logo + "Featured Team Properties" text - matches NEW theme
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
     const logoHTML = `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
         <img
           src="${logoPath}"
           alt="eXp Realty"
-          style="width: 300px; height: auto; display: block; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+          style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
         />
+        <!-- Featured Team Properties text (fades in after animation) -->
+        <div style="
+          margin-top: 30px;
+          font-size: 28px;
+          font-weight: 700;
+          color: white;
+          text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
+          letter-spacing: 1px;
+          opacity: 0;
+          animation: fadeInText 0.5s ease-out ${duration}ms forwards;
+        ">
+          Featured Team Properties
+        </div>
       </div>
+      <style>
+        @keyframes fadeInText {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      </style>
     `;
     overlay.innerHTML = logoHTML;
 
@@ -409,14 +448,15 @@ function playEnterAnimation(
     // Use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(() => {
       overlay.classList.add(enter);
-      console.log(`[ThemeTransition] 🔓 ENTER: ${animationKey} (${duration}ms)`);
+      console.log(`[ThemeTransition] 🔓 ENTER: ${animationKey} (${duration}ms) + 2s showcase`);
     });
 
-    // Remove overlay after animation completes
+    // Remove overlay after animation completes + 2 second showcase hold
+    const totalDuration = duration + 2000; // Animation + 2s hold
     setTimeout(() => {
       overlay.remove();
       resolve();
-    }, duration);
+    }, totalDuration);
   });
 }
 
