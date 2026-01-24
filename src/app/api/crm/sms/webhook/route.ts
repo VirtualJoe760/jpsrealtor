@@ -170,15 +170,39 @@ export async function POST(request: NextRequest) {
     console.log('[Twilio Webhook] 📤 Emitted WebSocket event to user:', userId);
 
     // 📱 SEND PUSH NOTIFICATION - Alert user on mobile devices!
+    // Generate display name for notification
+    let contactDisplayName: string | undefined;
+    if (contact) {
+      const firstName = contact.firstName?.trim();
+      const lastName = contact.lastName?.trim();
+
+      // Don't show "Unknown Contact" - let it fall back to phone number formatting
+      const isUnknownContact = (firstName === 'Unknown' && lastName === 'Contact');
+
+      if (!isUnknownContact) {
+        if (firstName && lastName) {
+          contactDisplayName = `${firstName} ${lastName}`;
+        } else if (firstName) {
+          contactDisplayName = firstName;
+        } else if (lastName) {
+          contactDisplayName = lastName;
+        }
+      }
+    }
+
+    console.log('[Twilio Webhook] 📱 Sending push notification:', {
+      userId,
+      contactDisplayName,
+      from: twilioData.From,
+    });
+
     sendSMSNotification(userId, {
       from: twilioData.From,
       body: twilioData.Body || '',
-      contactName: contact?.firstName && contact?.lastName
-        ? `${contact.firstName} ${contact.lastName}`
-        : undefined,
+      contactName: contactDisplayName,
       messageId: smsMessage._id.toString(),
     }).catch(err => {
-      console.error('[Twilio Webhook] Push notification error:', err);
+      console.error('[Twilio Webhook] ❌ Push notification error:', err);
       // Don't fail the webhook if push fails
     });
 

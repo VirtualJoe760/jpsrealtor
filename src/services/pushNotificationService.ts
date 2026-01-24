@@ -138,6 +138,14 @@ export async function sendSMSNotification(
     messageId?: string;
   }
 ): Promise<void> {
+  console.log('[Push Service] 📱 sendSMSNotification called:', {
+    userId,
+    from: message.from,
+    contactName: message.contactName,
+    messageId: message.messageId,
+    bodyLength: message.body.length,
+  });
+
   // Format phone number for display (e.g., +17603333676 -> (760) 333-3676)
   const formatPhoneForDisplay = (phone: string): string => {
     const cleaned = phone.replace(/\D/g, '');
@@ -151,6 +159,7 @@ export async function sendSMSNotification(
   };
 
   const displayName = message.contactName || formatPhoneForDisplay(message.from);
+  console.log('[Push Service] Display name:', displayName);
 
   const payload: PushNotificationPayload = {
     title: `New SMS from ${displayName}`,
@@ -170,7 +179,9 @@ export async function sendSMSNotification(
     timestamp: Date.now(),
   };
 
-  await sendPushToUser(userId, payload);
+  console.log('[Push Service] Sending notification with title:', payload.title);
+  const result = await sendPushToUser(userId, payload);
+  console.log('[Push Service] ✅ sendSMSNotification complete:', result);
 }
 
 export default {
