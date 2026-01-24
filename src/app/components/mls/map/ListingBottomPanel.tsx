@@ -257,45 +257,13 @@ export default function ListingBottomPanel({
       transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
     });
 
-    // Panel-specific double-tap zoom prevention with logging
-    let panelTouchCount = 0;
-    let panelDoubleTapCount = 0;
-
-    const preventDoubleTapZoom = (e: TouchEvent) => {
-      const t2 = e.timeStamp;
-      const t1 = (e.currentTarget as any).lastTouch || t2;
-      const dt = t2 - t1;
-      const fingers = e.touches.length;
-      panelTouchCount++;
-
-      console.log(`[ListingPanel] touchstart #${panelTouchCount} - dt: ${dt}ms, fingers: ${fingers}`);
-
-      (e.currentTarget as any).lastTouch = t2;
-
-      // Not a double tap - allow it
-      if (!dt || dt > 500 || fingers > 1) {
-        console.log(`[ListingPanel] Touch allowed (not a double-tap)`);
-        return;
-      }
-
-      // Is a double tap - prevent zoom
-      panelDoubleTapCount++;
-      console.warn(`[ListingPanel] DOUBLE-TAP #${panelDoubleTapCount} - Preventing zoom`);
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const panel = panelRef.current;
-    if (panel) {
-      console.log('[ListingPanel] Adding panel-specific touch listener');
-      panel.addEventListener('touchstart', preventDoubleTapZoom, { passive: false });
-    }
+    // REMOVED: Panel-specific double-tap prevention
+    // CSS already handles this via: touch-action: manipulation !important
+    // Having JavaScript listeners was blocking the first tap and causing delays
+    console.log('[ListingPanel] Mounted - Double-tap zoom handled by CSS (touch-action: manipulation)');
 
     return () => {
-      if (panel) {
-        console.log(`[ListingPanel] Removing listener - Stats: ${panelTouchCount} touches, ${panelDoubleTapCount} prevented`);
-        panel.removeEventListener('touchstart', preventDoubleTapZoom);
-      }
+      console.log('[ListingPanel] Unmounting');
     };
   }, [enrichedListing.listingKey]);
 

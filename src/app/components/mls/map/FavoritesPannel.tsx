@@ -131,20 +131,10 @@ export default function FavoritesPannel({
     return activeTab === "favorites" ? favorites : dislikedListings;
   }, [activeTab, favorites, dislikedListings]);
 
-  // Prevent double-tap zoom on iPad and handle swipe-to-close
+  // Swipe-to-close gesture handler
+  // NOTE: Double-tap zoom prevention removed - CSS handles via touch-action: manipulation
   useEffect(() => {
-    const preventDoubleTapZoom = (e: TouchEvent) => {
-      const t2 = e.timeStamp;
-      const t1 = (e.currentTarget as any).lastTouch || t2;
-      const dt = t2 - t1;
-      const fingers = e.touches.length;
-      (e.currentTarget as any).lastTouch = t2;
-
-      if (!dt || dt > 500 || fingers > 1) return; // Not a double tap
-
-      e.preventDefault();
-      e.stopPropagation();
-    };
+    console.log('[FavoritesPannel] Setting up swipe-to-close (double-tap handled by CSS)');
 
     // Enhanced swipe-to-close
     let startX = 0;
@@ -181,6 +171,7 @@ export default function FavoritesPannel({
 
       // Swipe right to close (at least 100px swipe)
       if (deltaX > 100) {
+        console.log('[FavoritesPannel] Swipe-to-close triggered');
         onClose();
       }
 
@@ -189,18 +180,19 @@ export default function FavoritesPannel({
 
     const aside = asideRef.current;
     if (aside) {
-      aside.addEventListener('touchstart', preventDoubleTapZoom, { passive: false });
+      // All listeners use passive: true - no blocking!
       aside.addEventListener('touchstart', handleTouchStart, { passive: true });
       aside.addEventListener('touchmove', handleTouchMove, { passive: true });
       aside.addEventListener('touchend', handleTouchEnd, { passive: true });
+      console.log('[FavoritesPannel] Swipe listeners added (passive mode)');
     }
 
     return () => {
       if (aside) {
-        aside.removeEventListener('touchstart', preventDoubleTapZoom);
         aside.removeEventListener('touchstart', handleTouchStart);
         aside.removeEventListener('touchmove', handleTouchMove);
         aside.removeEventListener('touchend', handleTouchEnd);
+        console.log('[FavoritesPannel] Swipe listeners removed');
       }
     };
   }, [onClose]);

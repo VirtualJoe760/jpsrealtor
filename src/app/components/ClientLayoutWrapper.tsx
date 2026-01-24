@@ -115,67 +115,49 @@ export default function ClientLayoutWrapper({
   children,
   initialTheme,
 }: ClientLayoutWrapperProps) {
-  // Optimized touch event handling with comprehensive logging
+  // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
     console.log('[ClientLayoutWrapper] ========================================');
-    console.log('[ClientLayoutWrapper] Setting up touch event listeners');
+    console.log('[ClientLayoutWrapper] Setting up gesture prevention');
+    console.log('[ClientLayoutWrapper] Note: Double-tap zoom handled by CSS (touch-action: manipulation)');
     console.log('[ClientLayoutWrapper] ========================================');
 
-    let lastTouchEnd = 0;
-    let touchCount = 0;
-    let doubleTapCount = 0;
+    let gestureCount = 0;
+    let wheelZoomCount = 0;
 
-    // Smarter double-tap prevention - only prevent actual double-taps
-    const preventDoubleTap = (e: TouchEvent) => {
-      const now = Date.now();
-      const timeSinceLastTouch = now - lastTouchEnd;
-      touchCount++;
-
-      console.log(`[Touch] touchend #${touchCount} - Time since last: ${timeSinceLastTouch}ms`);
-
-      // Only prevent if it's a genuine double-tap (< 300ms AND on same element)
-      if (timeSinceLastTouch > 0 && timeSinceLastTouch <= 300) {
-        doubleTapCount++;
-        console.warn(`[Touch] DOUBLE-TAP DETECTED (#${doubleTapCount}) - Preventing zoom`);
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      lastTouchEnd = now;
-    };
-
-    // Prevent gesture-based zooming (pinch, etc.)
+    // Only prevent gesture-based zooming (pinch, etc.) - NOT double-tap
+    // Double-tap is handled by CSS: touch-action: manipulation !important
     const preventGesture = (e: Event) => {
-      console.warn('[Touch] Gesture event detected - Preventing:', e.type);
+      gestureCount++;
+      console.warn(`[Gesture] #${gestureCount} - Preventing ${e.type}`);
       e.preventDefault();
       e.stopPropagation();
     };
 
-    // Prevent zoom on wheel with ctrl/cmd
+    // Prevent zoom on wheel with ctrl/cmd (desktop)
     const preventWheelZoom = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        console.warn('[Touch] Ctrl/Cmd+Wheel zoom attempt - Preventing');
+        wheelZoomCount++;
+        console.warn(`[Wheel] #${wheelZoomCount} - Preventing Ctrl/Cmd+Wheel zoom`);
         e.preventDefault();
         e.stopPropagation();
       }
     };
 
-    console.log('[ClientLayoutWrapper] Adding listeners with passive: false');
+    console.log('[ClientLayoutWrapper] Adding gesture listeners (NOT touch listeners!)');
 
-    // Add event listeners
-    document.addEventListener('touchend', preventDoubleTap, { passive: false, capture: true });
+    // Only add gesture and wheel listeners - NO touchend/touchstart blocking!
     document.addEventListener('gesturestart', preventGesture, { passive: false, capture: true });
     document.addEventListener('gesturechange', preventGesture, { passive: false, capture: true });
     document.addEventListener('gestureend', preventGesture, { passive: false, capture: true });
     document.addEventListener('wheel', preventWheelZoom, { passive: false, capture: true });
 
-    console.log('[ClientLayoutWrapper] Touch event listeners installed');
+    console.log('[ClientLayoutWrapper] Gesture listeners installed (touches NOT blocked)');
 
     return () => {
-      console.log('[ClientLayoutWrapper] Removing touch event listeners');
-      console.log(`[ClientLayoutWrapper] Stats: ${touchCount} touches, ${doubleTapCount} double-taps prevented`);
+      console.log('[ClientLayoutWrapper] Removing gesture listeners');
+      console.log(`[ClientLayoutWrapper] Stats: ${gestureCount} gestures, ${wheelZoomCount} wheel zooms prevented`);
 
-      document.removeEventListener('touchend', preventDoubleTap, true);
       document.removeEventListener('gesturestart', preventGesture, true);
       document.removeEventListener('gesturechange', preventGesture, true);
       document.removeEventListener('gestureend', preventGesture, true);
