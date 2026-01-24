@@ -171,6 +171,118 @@ function getThemeColor(theme: ThemeName): string {
 }
 
 /**
+ * Get SVG graphic for animation
+ */
+function getAnimationSVG(animationKey: AnimationPairKey, phase: 'exit' | 'enter'): string {
+  const svgs = {
+    'key-turn': `
+      <svg viewBox="0 0 100 100" style="width: 200px; height: 200px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <g id="key" style="transform-origin: 50% 50%;">
+          <!-- Key head (circular) -->
+          <circle cx="30" cy="50" r="15" fill="none" stroke="white" stroke-width="3" opacity="0.9"/>
+          <circle cx="30" cy="50" r="8" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
+          <!-- Key shaft -->
+          <rect x="42" y="47" width="40" height="6" rx="2" fill="white" opacity="0.9"/>
+          <!-- Key teeth -->
+          <rect x="70" y="42" width="4" height="11" fill="white" opacity="0.9"/>
+          <rect x="76" y="45" width="4" height="8" fill="white" opacity="0.9"/>
+          <rect x="82" y="42" width="4" height="11" fill="white" opacity="0.9"/>
+        </g>
+      </svg>
+    `,
+    'french-doors': `
+      <svg viewBox="0 0 100 100" style="width: 60%; height: 80%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Left door -->
+        <rect x="10" y="15" width="35" height="70" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+        <rect x="15" y="20" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <rect x="15" y="50" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <circle cx="38" cy="52" r="2" fill="white" opacity="0.9"/>
+
+        <!-- Right door -->
+        <rect x="55" y="15" width="35" height="70" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+        <rect x="60" y="20" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <rect x="60" y="50" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <circle cx="62" cy="52" r="2" fill="white" opacity="0.9"/>
+      </svg>
+    `,
+    'blinds': `
+      <svg viewBox="0 0 100 100" style="width: 70%; height: 70%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        ${Array.from({ length: 12 }, (_, i) => `
+          <rect x="15" y="${15 + i * 6}" width="70" height="4" rx="1" fill="white" opacity="${0.7 - i * 0.02}"/>
+        `).join('')}
+      </svg>
+    `,
+    'garage': `
+      <svg viewBox="0 0 100 100" style="width: 60%; height: 70%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Garage door sections -->
+        ${Array.from({ length: 6 }, (_, i) => `
+          <rect x="20" y="${20 + i * 11}" width="60" height="9" rx="1" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+          <line x1="25" y1="${24 + i * 11}" x2="75" y2="${24 + i * 11}" stroke="white" stroke-width="0.5" opacity="0.5"/>
+        `).join('')}
+        <!-- Handle -->
+        <rect x="48" y="62" width="4" height="8" rx="1" fill="white" opacity="0.9"/>
+      </svg>
+    `,
+    'sliding-door': `
+      <svg viewBox="0 0 100 100" style="width: 65%; height: 80%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Door panel -->
+        <rect x="30" y="15" width="40" height="70" rx="2" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
+        <rect x="35" y="20" width="30" height="60" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <!-- Vertical divider -->
+        <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        <!-- Handle -->
+        <rect x="60" y="48" width="6" height="4" rx="2" fill="white" opacity="0.9"/>
+      </svg>
+    `,
+    'property-card': `
+      <svg viewBox="0 0 100 100" style="width: 300px; height: 200px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Card outline -->
+        <rect x="10" y="25" width="80" height="50" rx="4" fill="none" stroke="white" stroke-width="2" opacity="0.9"/>
+        <!-- House icon -->
+        <path d="M 35 45 L 50 35 L 65 45 L 65 60 L 35 60 Z" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+        <rect x="45" y="50" width="10" height="10" fill="white" opacity="0.7"/>
+        <path d="M 32 45 L 50 32 L 68 45" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+      </svg>
+    `,
+    'shutters': `
+      <svg viewBox="0 0 100 100" style="width: 60%; height: 75%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Left shutter -->
+        <rect x="15" y="20" width="28" height="60" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+        ${Array.from({ length: 8 }, (_, i) => `
+          <line x1="18" y1="${25 + i * 7}" x2="40" y2="${25 + i * 7}" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        `).join('')}
+
+        <!-- Right shutter -->
+        <rect x="57" y="20" width="28" height="60" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
+        ${Array.from({ length: 8 }, (_, i) => `
+          <line x1="60" y1="${25 + i * 7}" x2="82" y2="${25 + i * 7}" stroke="white" stroke-width="1.5" opacity="0.6"/>
+        `).join('')}
+      </svg>
+    `,
+    'curtains': `
+      <svg viewBox="0 0 100 100" style="width: 70%; height: 85%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <!-- Curtain rod -->
+        <line x1="10" y1="12" x2="90" y2="12" stroke="white" stroke-width="2" opacity="0.9"/>
+        <circle cx="10" cy="12" r="3" fill="white" opacity="0.9"/>
+        <circle cx="90" cy="12" r="3" fill="white" opacity="0.9"/>
+
+        <!-- Left curtain -->
+        <path d="M 15 15 Q 18 50, 15 85 L 40 85 Q 38 50, 40 15 Z" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
+        <path d="M 20 15 Q 22 50, 20 85" stroke="white" stroke-width="1" opacity="0.5"/>
+        <path d="M 30 15 Q 32 50, 30 85" stroke="white" stroke-width="1" opacity="0.5"/>
+
+        <!-- Right curtain -->
+        <path d="M 60 15 Q 62 50, 60 85 L 85 85 Q 82 50, 85 15 Z" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
+        <path d="M 65 15 Q 67 50, 65 85" stroke="white" stroke-width="1" opacity="0.5"/>
+        <path d="M 75 15 Q 77 50, 75 85" stroke="white" stroke-width="1" opacity="0.5"/>
+      </svg>
+    `,
+  };
+
+  return svgs[animationKey] || '';
+}
+
+/**
  * Play EXIT animation (closing the old theme)
  */
 function playExitAnimation(
@@ -185,6 +297,12 @@ function playExitAnimation(
     overlay.setAttribute('data-phase', 'exit');
 
     const { exit, duration } = ANIMATION_PAIRS[animationKey];
+
+    // Add SVG graphic
+    const svgHTML = getAnimationSVG(animationKey, 'exit');
+    if (svgHTML) {
+      overlay.innerHTML = svgHTML;
+    }
 
     document.body.appendChild(overlay);
 
@@ -216,6 +334,12 @@ function playEnterAnimation(
     overlay.setAttribute('data-phase', 'enter');
 
     const { enter, duration } = ANIMATION_PAIRS[animationKey];
+
+    // Add SVG graphic
+    const svgHTML = getAnimationSVG(animationKey, 'enter');
+    if (svgHTML) {
+      overlay.innerHTML = svgHTML;
+    }
 
     document.body.appendChild(overlay);
 
