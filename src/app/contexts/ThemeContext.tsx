@@ -176,19 +176,28 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     // Dark theme: 'black' (opaque black status bar)
     const statusBarStyle = isLight ? 'default' : 'black';
 
-    // Update theme-color meta tag (for Dynamic Island)
+    // Update theme-color meta tag (for browser toolbar)
+    // Remove and recreate to force Safari to recognize the change
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', themeColor);
+      metaThemeColor.remove();
     }
+    metaThemeColor = document.createElement('meta');
+    metaThemeColor.name = 'theme-color';
+    metaThemeColor.content = themeColor;
+    document.head.appendChild(metaThemeColor);
 
-    // Update iOS status bar style
+    // Update iOS status bar style (PWA only)
     let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (metaStatusBar) {
-      metaStatusBar.setAttribute('content', statusBarStyle);
+      metaStatusBar.remove();
     }
+    metaStatusBar = document.createElement('meta');
+    metaStatusBar.name = 'apple-mobile-web-app-status-bar-style';
+    metaStatusBar.content = statusBarStyle;
+    document.head.appendChild(metaStatusBar);
 
-    console.log('[ThemeContext] Updated PWA meta tags:', { themeColor, statusBarStyle });
+    console.log('[ThemeContext] 🔄 Recreated PWA meta tags:', { themeColor, statusBarStyle });
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
