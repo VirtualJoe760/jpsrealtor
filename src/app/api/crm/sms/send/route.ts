@@ -126,7 +126,8 @@ export async function POST(request: NextRequest) {
     console.log(`[SMS API] Sent SMS: ${twilioResult.messageSid}`);
 
     // Emit WebSocket event to notify client instantly
-    emitNewMessage(session.user.id, smsMessage);
+    // Convert Mongoose document to plain object for Socket.io serialization
+    emitNewMessage(session.user.id, smsMessage.toObject());
 
     return NextResponse.json({
       success: true,

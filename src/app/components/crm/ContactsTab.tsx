@@ -21,14 +21,17 @@ import {
 import { Contact, ViewMode, FilterBy, SortBy } from './contacts/types';
 import ContactSyncModal from './ContactSyncModal';
 import ContactViewPanel from './ContactViewPanel';
+import AddContactModal from './AddContactModal';
 
 interface ContactsTabProps {
   isLight: boolean;
+  showToolbar?: boolean;
 }
 
-export default function ContactsTab({ isLight }: ContactsTabProps) {
+export default function ContactsTab({ isLight, showToolbar = true }: ContactsTabProps) {
   // Modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showAddContactModal, setShowAddContactModal] = useState(false);
   const [panelContact, setPanelContact] = useState<Contact | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -235,67 +238,74 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
   };
 
   return (
-    <div className="flex flex-col">
-      {/* Toolbar - Always visible */}
-      <div className="px-4 md:px-0">
-        <ContactToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          filterBy={filterBy}
-          onFilterChange={setFilterBy}
-          contactAgeFilter={contactAgeFilter}
-          onContactAgeFilterChange={setContactAgeFilter}
-          selectedCount={selectedCount}
-          onBulkDelete={handleBulkDelete}
-          onImport={() => setShowSyncModal(true)}
-          onAdd={() => {
-            /* TODO: Add contact modal */
-          }}
-          isLight={isLight}
-          // Select all functionality
-          totalContacts={sortedContacts.length}
-          areAllSelected={areAllSelected}
-          onSelectAll={handleToggleSelectAll}
-        />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar - Fixed at top, collapsible - Wrapped with padding */}
+      {showToolbar && (
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex-shrink-0 mb-4">
+            <ContactToolbar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              filterBy={filterBy}
+              onFilterChange={setFilterBy}
+              selectedCount={selectedCount}
+              onBulkDelete={handleBulkDelete}
+              onImport={() => setShowSyncModal(true)}
+              onAdd={() => setShowAddContactModal(true)}
+              isLight={isLight}
+              // Select all functionality
+              totalContacts={sortedContacts.length}
+              areAllSelected={areAllSelected}
+              onSelectAll={handleToggleSelectAll}
+              // Tags
+              tags={tags}
+              selectedTag={selectedTag}
+              onTagChange={handleTagClick}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable content area - Stats or List */}
+      <div className="flex-1 overflow-hidden">
+        {/* Stats Cards Section - ONLY show in CARD view */}
+        {viewMode === ViewMode.CARD && (
+          <div className="h-full overflow-y-auto scrollbar-hide no-scrollbar pb-20 md:pb-6">
+            <StatsCardGrid
+              stats={stats}
+              tags={tags}
+              selectedTag={selectedTag}
+              onSelectTag={handleTagClick}
+              onSelectStatus={handleStatusClick}
+              onViewAll={handleViewAll}
+              isLight={isLight}
+            />
+          </div>
+        )}
+
+        {/* Contact List - ONLY show in LIST view - Wrapped with padding */}
+        {viewMode === ViewMode.LIST && (
+          <div className="px-4 sm:px-6 lg:px-8 h-full">
+            <ContactList
+              contacts={sortedContacts}
+              viewMode={viewMode}
+              isLight={isLight}
+              loading={loading}
+              selectedContactIds={selectedContactIds}
+              onSelectContact={toggleContactSelection}
+              onContactClick={handleContactClick}
+              loadingCount={8}
+              // Pass select all props
+              areAllSelected={areAllSelected}
+              onSelectAll={handleToggleSelectAll}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Stats Cards Section - ONLY show in CARD view */}
-      {viewMode === ViewMode.CARD && (
-        <div className="px-4 md:px-0 mb-6">
-          <StatsCardGrid
-            stats={stats}
-            tags={tags}
-            selectedTag={selectedTag}
-            onSelectTag={handleTagClick}
-            onSelectStatus={handleStatusClick}
-            onViewAll={handleViewAll}
-            isLight={isLight}
-          />
-        </div>
-      )}
-
-      {/* Contact List - ONLY show in LIST view */}
-      {viewMode === ViewMode.LIST && (
-        <div className="px-4 md:px-0 pb-24 md:pb-0">
-          <ContactList
-            contacts={sortedContacts}
-            viewMode={viewMode}
-            isLight={isLight}
-            loading={loading}
-            selectedContactIds={selectedContactIds}
-            onSelectContact={toggleContactSelection}
-            onContactClick={handleContactClick}
-            loadingCount={8}
-          />
-
-          {/* No "Load More" button - all contacts loaded upfront */}
-          {/* Front-end pagination happens in ContactList component */}
-        </div>
-      )}
 
       {/* Modals */}
       {showSyncModal && (
@@ -303,6 +313,19 @@ export default function ContactsTab({ isLight }: ContactsTabProps) {
           isLight={isLight}
           onClose={() => setShowSyncModal(false)}
           onSuccess={handleImportSuccess}
+        />
+      )}
+
+      {showAddContactModal && (
+        <AddContactModal
+          isLight={isLight}
+          isOpen={showAddContactModal}
+          onClose={() => setShowAddContactModal(false)}
+          onSuccess={async () => {
+            await fetchContacts({});
+            refetchStats();
+            setShowAddContactModal(false);
+          }}
         />
       )}
 

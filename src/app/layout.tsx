@@ -65,7 +65,7 @@ export const metadata: Metadata = {
   // themeColor removed - now handled dynamically by DynamicThemeColor component
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "JP Realtor",
   },
   applicationName: "JP Realtor",

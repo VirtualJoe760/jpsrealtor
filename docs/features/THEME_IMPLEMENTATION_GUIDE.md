@@ -8,6 +8,144 @@
 
 **DO NOT** set `bgPrimary` or background colors on page containers. The theme background comes from the root layout (`src/app/layout.tsx`), NOT from individual pages.
 
+---
+
+## 🚨 CRITICAL: Padding & Background Bleed Issue
+
+**Last Updated:** January 23, 2026
+
+### The Problem
+
+Per **MDN CSS Box Model**: _"Background colors extend through the padding area."_
+
+This means when you apply padding to a container that sits directly against the body's gradient background, the gradient **will show through** the padded area, creating unwanted "white space" or gradient bleed on the sides of the page.
+
+### ❌ INCORRECT Pattern - Padding on Main Container
+
+```tsx
+// ❌ WRONG - Gradient will show through padding creating white space
+<div className="max-w-7xl mx-auto w-full h-full flex flex-col pt-16 md:pt-0 px-4 sm:px-6 lg:px-8">
+  <YourHeader />
+  <YourToolbar />
+  <YourContent />
+</div>
+```
+
+**Why This Breaks:**
+1. Body has gradient background (defined in `globals.css` lines 139-150)
+2. Container has `px-4 sm:px-6 lg:px-8` padding
+3. Background fills that padding space
+4. Result: Visible gradient "white space" on sides that looks like a layout bug
+
+### ✅ CORRECT Pattern - Parent Wrapper with Padding
+
+```tsx
+// ✅ CORRECT - No padding on main container
+<div className="max-w-7xl mx-auto w-full h-full flex flex-col pt-16 md:pt-0">
+
+  {/* Wrap each section individually with padding */}
+  <div className="px-4 sm:px-6 lg:px-8">
+    <YourHeader />
+  </div>
+
+  <div className="px-4 sm:px-6 lg:px-8">
+    <YourToolbar />
+  </div>
+
+  <div className="px-4 sm:px-6 lg:px-8">
+    <YourContent />
+  </div>
+</div>
+```
+
+**Why This Works:**
+1. Main container has NO padding → no background bleed
+2. Individual sections wrapped in parent divs with padding
+3. Content properly spaced from edges WITHOUT exposing background
+4. Background gradient never shows in unwanted areas
+
+### Real-World Implementation Example
+
+See **`src/app/agent/contacts/page.tsx`** (lines 19-87):
+
+```tsx
+// Main container - NO PADDING
+<div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-x-hidden pt-16 md:pt-0">
+
+  {/* Navigation - No padding needed (fixed positioned buttons) */}
+  <div className="flex-shrink-0">
+    <AgentNav />
+  </div>
+
+  {/* Header - Wrapped with padding */}
+  <div className="px-4 sm:px-6 lg:px-8">
+    <div className="mb-4 sm:mb-6 flex-shrink-0 flex items-start justify-between">
+      <h1>Contacts</h1>
+      {/* ... */}
+    </div>
+  </div>
+
+  {/* Content - Wrapped with padding */}
+  <div className="flex-1 overflow-hidden">
+    <ContactsTab /> {/* This component also uses wrapper pattern internally */}
+  </div>
+</div>
+```
+
+Also see **`src/app/components/crm/ContactsTab.tsx`** (lines 244-306):
+
+```tsx
+{/* Toolbar - Wrapped with padding */}
+{showToolbar && (
+  <div className="px-4 sm:px-6 lg:px-8">
+    <div className="flex-shrink-0 mb-4">
+      <ContactToolbar {...props} />
+    </div>
+  </div>
+)}
+
+{/* List View - Wrapped with padding */}
+{viewMode === ViewMode.LIST && (
+  <div className="px-4 sm:px-6 lg:px-8 h-full">
+    <ContactList {...props} />
+  </div>
+)}
+```
+
+### Quick Decision Tree
+
+**Question:** "Should I add padding to this container?"
+
+1. **Does the container sit directly against the body gradient?**
+   - YES → ❌ **DO NOT** add padding. Use parent wrapper pattern instead.
+   - NO → ✅ Safe to add padding (it's nested inside another element with background)
+
+2. **Is this a card/modal component?**
+   - YES → ✅ Safe to add padding (cards have their own backgrounds via `cardBg`)
+   - NO → See #1
+
+3. **Is this a section inside a page?**
+   - YES → ✅ Use parent wrapper: `<div className="px-4 sm:px-6 lg:px-8"><YourSection /></div>`
+
+### Files with Comprehensive Documentation
+
+- **`src/app/contexts/ThemeContext.tsx`** (lines 3-61) - Full technical explanation
+- **`src/app/globals.css`** (lines 123-138) - Warning at gradient definition
+- **`src/app/agent/contacts/page.tsx`** - Reference implementation
+- **`src/app/components/crm/ContactsTab.tsx`** - Nested wrapper examples
+
+### ✅ Padding Pattern Checklist
+
+Before committing code with padding:
+
+- [ ] Main page container has NO `px-*` classes
+- [ ] Each section (header, toolbar, content) wrapped in `<div className="px-4 sm:px-6 lg:px-8">`
+- [ ] No visible gradient/white space on page sides
+- [ ] Content properly spaced from edges
+- [ ] Responsive padding preserved across breakpoints
+
+**Remember:** When in doubt, use the parent wrapper pattern. It's always safe and prevents background bleed.
+
 ### ✅ CORRECT Pattern (Dashboard/Admin Pages)
 
 ```tsx

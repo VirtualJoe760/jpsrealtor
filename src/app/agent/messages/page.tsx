@@ -11,7 +11,7 @@ import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
 import { useSession } from 'next-auth/react';
 import ServiceWorkerRegistration from '@/app/components/ServiceWorkerRegistration';
-import PushNotificationPrompt from '@/app/components/PushNotificationPrompt';
+import PushNotificationPrompt, { PushNotificationStatus } from '@/app/components/PushNotificationPrompt';
 import AgentNav from '@/app/components/AgentNav';
 
 // Hooks
@@ -101,15 +101,24 @@ export default function MessagesPage() {
     console.log('[Messages] Setting up WebSocket listeners');
 
     socket.on('message:new', (message: any) => {
-      console.log('[Messages] Received new message via WebSocket:', message._id);
+      console.log('[Messages] 🎉 RECEIVED NEW MESSAGE VIA WEBSOCKET!');
+      console.log('[Messages] Message ID:', message._id);
+      console.log('[Messages] Message data:', message);
+      console.log('[Messages] Current messages count before:', messages.length);
+
       setMessages(prev => {
-        if (prev.some(m => m._id === message._id)) return prev;
+        if (prev.some(m => m._id === message._id)) {
+          console.log('[Messages] ⚠️ Message already exists, skipping');
+          return prev;
+        }
 
         if (message.direction === 'inbound') {
+          console.log('[Messages] Playing notification sound and showing browser notification');
           playNotificationSound();
           showBrowserNotification(message, conversations);
         }
 
+        console.log('[Messages] ✅ Adding message to state');
         return [...prev, message];
       });
       fetchConversations();
@@ -244,15 +253,16 @@ export default function MessagesPage() {
             <AgentNav />
 
             {session?.user?.id && (
-              <div className="px-4 md:px-0">
+              <div className="px-4 md:px-0 space-y-2">
                 <PushNotificationPrompt userId={session.user.id} />
+                <PushNotificationStatus userId={session.user.id} />
               </div>
             )}
           </div>
 
           {/* Header - Hidden on mobile when viewing thread */}
           <div className={`${mobileView === 'thread' ? 'hidden' : 'flex'} md:flex px-4 md:px-0 mb-3 items-center justify-between gap-3 flex-shrink-0`}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className={`text-2xl sm:text-3xl font-bold ${
                 isLight ? 'text-slate-900' : 'text-white'
               }`}>

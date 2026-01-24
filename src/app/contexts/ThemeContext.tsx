@@ -1,5 +1,65 @@
 "use client";
 
+/**
+ * ThemeContext - Theme Management System
+ *
+ * This context manages the application's theme state, providing both light gradient
+ * and dark (blackspace) theme options. Themes are persisted via cookies (for SSR)
+ * and localStorage (for backup/backwards compatibility).
+ *
+ * CRITICAL: BACKGROUND & PADDING BEHAVIOR
+ * ========================================
+ *
+ * Per MDN CSS Box Model: "Background colors extend through the padding area."
+ *
+ * This means that when a container has padding AND a background (like our gradient),
+ * the background will be VISIBLE in the padded area, creating unwanted "white space"
+ * or gradient bleed on the sides of the page.
+ *
+ * ⚠️ DO NOT apply padding to containers that sit directly against the body gradient!
+ *
+ * CORRECT PATTERN - Parent Wrapper with Padding:
+ * ```tsx
+ * // Main container - NO PADDING
+ * <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-x-hidden pt-16 md:pt-0">
+ *
+ *   // Individual sections - WRAP with padding parent
+ *   <div className="px-4 sm:px-6 lg:px-8">
+ *     <YourComponent />
+ *   </div>
+ * </div>
+ * ```
+ *
+ * INCORRECT PATTERN - Padding on Main Container:
+ * ```tsx
+ * // ❌ WRONG - Gradient will show through padding
+ * <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+ *   <YourComponent />
+ * </div>
+ * ```
+ *
+ * WHY THIS MATTERS:
+ * - Body has gradient background (globals.css lines 124-135)
+ * - Padding creates space between content and container edge
+ * - Background fills that padding space, showing the gradient
+ * - Result: Visible "white space" that looks like a layout bug
+ *
+ * SOLUTION:
+ * 1. Remove padding from main containers that touch the body gradient
+ * 2. Wrap individual sections (header, toolbar, content) in parent divs
+ * 3. Apply padding to those parent wrappers: `px-4 sm:px-6 lg:px-8`
+ * 4. This keeps content properly spaced WITHOUT exposing the background
+ *
+ * REFERENCE IMPLEMENTATION:
+ * - See: src/app/agent/contacts/page.tsx (lines 19-87)
+ * - See: src/app/components/crm/ContactsTab.tsx (lines 244-306)
+ *
+ * AFFECTED PAGES:
+ * Any page that uses the gradient background and has full-width content containers.
+ *
+ * Last Updated: 2026-01-23
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { themes, getThemeClasses, type Theme, type ThemeName } from "@/app/themes/themes";
 

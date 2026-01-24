@@ -12,7 +12,7 @@ import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
-import { emitNewMessage } from '@/server/socket';
+import { emitNewMessage, getIO } from '@/server/socket';
 import { sendSMSNotification } from '@/services/pushNotificationService';
 
 // ============================================================================
@@ -146,7 +146,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔥 EMIT WEBSOCKET EVENT - Push message to client instantly!
-    emitNewMessage(userId, smsMessage);
+    // Convert Mongoose document to plain object for Socket.io serialization
+    const plainMessage = smsMessage.toObject();
+    console.log('[Twilio Webhook] 🔍 About to emit message:', {
+      userId,
+      messageId: plainMessage._id,
+      from: plainMessage.from,
+      to: plainMessage.to,
+      direction: plainMessage.direction,
+    });
+
+    // Check if any clients are connected
+    try {
+      const io = getIO();
+      const room = `user:${userId}`;
+      const clientsInRoom = io.sockets.adapter.rooms.get(room);
+      console.log(`[Twilio Webhook] 🔍 Room ${room} has ${clientsInRoom?.size || 0} clients`);
+    } catch (e) {
+      console.log('[Twilio Webhook] ⚠️ Could not get IO instance:', e);
+    }
+
+    emitNewMessage(userId, plainMessage);
     console.log('[Twilio Webhook] 📤 Emitted WebSocket event to user:', userId);
 
     // 📱 SEND PUSH NOTIFICATION - Alert user on mobile devices!

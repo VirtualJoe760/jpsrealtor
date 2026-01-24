@@ -14,7 +14,19 @@
       "Bash(node:*)",
       "WebFetch(domain:jpsrealtor.com)",
       "WebFetch(domain:github.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(del nul 2)",
+      "Bash(NUL)",
+      "Bash(npm run dev:*)",
+      "Bash(del \"F:\\web-clients\\joseph-sardella\\jpsrealtor\\.next\\dev\\lock\" 2)",
+      "Bash(nul)",
+      "Bash(where:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:firt.dev)"
     ],
     "deny": [],
     "ask": []

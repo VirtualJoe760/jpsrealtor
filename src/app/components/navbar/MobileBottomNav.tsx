@@ -15,18 +15,15 @@ export default function MobileBottomNav() {
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { currentTheme, bgPrimary, border, textSecondary } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
-  const [isPWA, setIsPWA] = useState(false);
-
-  // Detect if running as PWA (installed app) vs browser
-  useEffect(() => {
+  // Detect PWA mode synchronously to avoid layout shift
+  const [isPWA] = useState(() => {
     if (typeof window !== 'undefined') {
-      // Check if app is running in standalone mode (PWA)
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                          (window.navigator as any).standalone ||
-                          document.referrer.includes('android-app://');
-      setIsPWA(isStandalone);
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             (window.navigator as any).standalone ||
+             document.referrer.includes('android-app://');
     }
-  }, []);
+    return false;
+  });
 
   const isHomePage = pathname === "/";
 
@@ -75,8 +72,8 @@ export default function MobileBottomNav() {
           : "bg-black/95 border-neutral-800"
       }`}
       style={{
-        // Only add safe area padding in PWA mode, use minimal padding in browser
-        paddingBottom: isPWA ? 'env(safe-area-inset-bottom)' : '2px',
+        // Always use safe-area-inset with fallback to prevent layout shift
+        paddingBottom: 'max(2px, env(safe-area-inset-bottom))',
       }}
     >
       <div className="flex items-center justify-around px-2 py-2">
@@ -103,19 +100,9 @@ export default function MobileBottomNav() {
                 {/* Layered icons for Chat/Map button */}
                 {isChatMapButton ? (
                   <>
-                    {/* Shadow outline - alternate mode hint */}
-                    <motion.div
-                      className="absolute inset-0 flex items-center justify-center"
-                      initial={{ opacity: 0.3, scale: 1.1 }}
-                      animate={{
-                        opacity: [0.3, 0.5, 0.3],
-                        scale: [1.1, 1.15, 1.1]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
+                    {/* Shadow outline - alternate mode hint (static for performance) */}
+                    <div
+                      className="absolute inset-0 flex items-center justify-center opacity-30"
                     >
                       {isMapVisible ? (
                         <MessageSquare className={`w-7 h-7 ${
@@ -126,41 +113,23 @@ export default function MobileBottomNav() {
                           isLight ? "text-blue-300" : "text-emerald-700"
                         }`} style={{ filter: 'blur(2px)' }} />
                       )}
-                    </motion.div>
+                    </div>
 
-                    {/* Main icon with subtle flip animation */}
-                    <motion.div
-                      className="relative z-10"
-                      animate={{
-                        rotateY: [0, 2, 0, -2, 0]
-                      }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
+                    {/* Main icon (no animation for better performance) */}
+                    <div className="relative z-10">
                       <Icon
                         className={`w-6 h-6 ${item.active ? "stroke-[2.5]" : "stroke-2"}`}
                       />
-                    </motion.div>
+                    </div>
 
-                    {/* Rotating arrows indicator */}
-                    <motion.div
-                      className="absolute -bottom-1 -right-1 z-20"
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear"
-                      }}
-                    >
+                    {/* Rotating arrows indicator (CSS animation for better performance) */}
+                    <div className="absolute -bottom-1 -right-1 z-20 animate-spin-slow">
                       <RefreshCw className={`w-3 h-3 ${
                         item.active
                           ? isLight ? "text-blue-600" : "text-emerald-500"
                           : isLight ? "text-gray-400" : "text-neutral-500"
                       }`} />
-                    </motion.div>
+                    </div>
                   </>
                 ) : (
                   <Icon

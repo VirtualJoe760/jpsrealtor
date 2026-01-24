@@ -33,6 +33,20 @@ body {
   }
 }
 
+/* Custom slow spin animation for bottom nav */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
 /* Landscape orientation blocker for mobile (disabled in iframes) */
 @media screen and (max-height: 500px) and (orientation: landscape) {
   /* Only apply if not in an iframe */
@@ -120,7 +134,22 @@ html {
   max-width: 100vw;
 }
 
-/* Theme-aware backgrounds - fills PWA status bar area */
+/*
+ * Theme-aware backgrounds - fills PWA status bar area
+ *
+ * ⚠️ IMPORTANT: CSS Box Model Padding Behavior
+ * Per MDN: "Background colors extend through the padding area."
+ *
+ * This gradient background WILL SHOW THROUGH any container padding,
+ * creating visible "white space" or gradient bleed on page sides.
+ *
+ * SOLUTION: Use the Parent Wrapper Pattern
+ * - Do NOT add padding to containers that sit directly against this gradient
+ * - Instead, wrap child sections in divs with padding: `px-4 sm:px-6 lg:px-8`
+ * - See ThemeContext.tsx documentation for complete implementation guide
+ *
+ * Reference: src/app/contexts/ThemeContext.tsx (lines 10-60)
+ */
 html.theme-lightgradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
   background-size: 400% 400%;
@@ -362,12 +391,14 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
 
 .no-scrollbar::-webkit-scrollbar,
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 .no-scrollbar,
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 /* Custom styled scrollbar for listing panel */
@@ -396,11 +427,11 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
   scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27);
 }
 
-/* Fade-in animation for county hover labels */
+/* Fade-in animation for county hover labels and mobile contact crossfade */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -409,7 +440,21 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+/* Spin animation for gear icon transition */
+@keyframes spin-once {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.animate-spin-once {
+  animation: spin-once 0.3s ease-out forwards;
 }
 
 /* MapLibre Popup Styling - Remove default borders and shadows */

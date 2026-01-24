@@ -138,8 +138,22 @@ export async function sendSMSNotification(
     messageId?: string;
   }
 ): Promise<void> {
+  // Format phone number for display (e.g., +17603333676 -> (760) 333-3676)
+  const formatPhoneForDisplay = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      const areaCode = cleaned.substring(1, 4);
+      const prefix = cleaned.substring(4, 7);
+      const lineNumber = cleaned.substring(7);
+      return `(${areaCode}) ${prefix}-${lineNumber}`;
+    }
+    return phone;
+  };
+
+  const displayName = message.contactName || formatPhoneForDisplay(message.from);
+
   const payload: PushNotificationPayload = {
-    title: `New SMS from ${message.contactName || message.from}`,
+    title: `New SMS from ${displayName}`,
     body: message.body.substring(0, 100) + (message.body.length > 100 ? '...' : ''),
     icon: '/icons/icon-192x192.png',
     badge: '/icons/badge-72x72.png',

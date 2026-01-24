@@ -16,22 +16,22 @@ export function TagCard({ tag, onClick, isSelected, isLight }: TagCardProps) {
   return (
     <button
       onClick={onClick}
-      className={getCardClassName(isLight)}
+      className={`${getCardClassName(isLight)} flex items-center justify-between`}
       style={{
         borderColor: isSelected ? tag.color : undefined,
       }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <TagIcon className="w-8 h-8" style={{ color: tag.color }} />
+      <div className="flex flex-col items-start text-left">
+        <p className={`text-sm font-medium mb-1 ${isLight ? 'text-gray-600' : 'text-white'}`}>
+          {tag.name}
+        </p>
+        <p className={`text-3xl font-bold ${isLight ? 'text-blue-600' : 'text-emerald-400'}`}>
+          {tag.contactCount.toLocaleString()}
+        </p>
       </div>
-
-      <h3 className={`text-lg font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-        {tag.name}
-      </h3>
-
-      <p className="text-3xl font-bold" style={{ color: tag.color }}>
-        {tag.contactCount.toLocaleString()}
-      </p>
+      <div className="p-3 rounded-lg" style={{ backgroundColor: `${tag.color}20` }}>
+        <TagIcon className="w-6 h-6" style={{ color: tag.color }} />
+      </div>
     </button>
   );
 }

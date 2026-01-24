@@ -20,9 +20,8 @@ export function StatusCard({ status, count, onClick, isLight }: StatusCardProps)
     <StatsCard
       icon={config.icon}
       iconColor={iconColor}
-      title={config.label}
       count={count}
-      description={config.description}
+      description={config.label}
       onClick={onClick}
       isLight={isLight}
     />
