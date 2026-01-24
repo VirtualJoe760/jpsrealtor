@@ -170,7 +170,24 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
         .join(" ");
     });
 
-    // Browser chrome stays black (handled by static meta tags in layout.tsx)
+    // Update iOS PWA status bar / Dynamic Island color
+    const themeColor = isLight ? '#4f46e5' : '#000000'; // Indigo for light, black for dark
+    // Use black-translucent for both - allows web content (gradient/black bg) to show through
+    const statusBarStyle = 'black-translucent';
+
+    // Update theme-color meta tag (for Dynamic Island)
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', themeColor);
+    }
+
+    // Update iOS status bar style
+    let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (metaStatusBar) {
+      metaStatusBar.setAttribute('content', statusBarStyle);
+    }
+
+    console.log('[ThemeContext] Updated PWA meta tags:', { themeColor, statusBarStyle });
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
     setThemeCookie(currentTheme);
