@@ -187,6 +187,7 @@ html {
  */
 html.theme-lightgradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
+  background-color: #4f46e5; /* Fallback solid color if gradient fails */
   background-size: 400% 400%;
   background-attachment: fixed;
   animation: gradient 12s ease infinite;
@@ -197,7 +198,9 @@ html.theme-lightgradient {
 
 html.theme-lightgradient body {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
+  background-color: #4f46e5; /* Fallback solid color if gradient fails */
   background-size: 400% 400%;
+  background-attachment: fixed; /* CRITICAL: Makes background extend into safe areas */
   animation: gradient 12s ease infinite;
   /* Extend background into safe areas */
   min-height: calc(100vh + env(safe-area-inset-top, 0px));
@@ -217,14 +220,17 @@ html.theme-lightgradient body {
 }
 
 html.theme-blackspace {
-  background-color: #000000;
+  background-color: #000000 !important; /* Force black, no transparency */
+  background: #000000 !important; /* Ensure solid black background */
   /* Ensure background fills entire viewport including safe areas */
   min-height: 100vh;
   min-height: 100dvh;
 }
 
 html.theme-blackspace body {
-  background-color: #000000;
+  background-color: #000000 !important; /* Force black, no transparency */
+  background: #000000 !important; /* Ensure solid black background */
+  background-attachment: fixed; /* Extend into safe areas */
   /* Extend background into safe areas */
   min-height: calc(100vh + env(safe-area-inset-top, 0px));
   min-height: calc(100dvh + env(safe-area-inset-top, 0px));
