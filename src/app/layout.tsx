@@ -180,6 +180,8 @@ export default async function RootLayout({
 
                   // Update meta tags IMMEDIATELY to match detected theme
                   var themeColor = theme === 'lightgradient' ? '#4f46e5' : '#000000';
+                  var statusBarStyle = theme === 'lightgradient' ? 'default' : 'black';
+
                   var metaThemeColor = document.querySelector('meta[name="theme-color"]');
                   if (metaThemeColor) {
                     metaThemeColor.setAttribute('content', themeColor);
@@ -188,7 +190,8 @@ export default async function RootLayout({
 
                   var metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
                   if (metaStatusBar) {
-                    metaStatusBar.setAttribute('content', 'black-translucent');
+                    metaStatusBar.setAttribute('content', statusBarStyle);
+                    console.log('[Inline Script] Set status-bar-style to:', statusBarStyle);
                   }
                 } catch (e) {
                   console.error('[Inline Script] Error:', e);
