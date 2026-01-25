@@ -168,25 +168,25 @@ function getThemeColor(theme: ThemeName): string {
 }
 
 /**
- * Fallback listing photos (Unsplash placeholders)
- * Used if Obsidian Group API fails or returns no photos
+ * Listing data interface
  */
-const FALLBACK_LISTING_PHOTOS = [
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&q=80', // Modern home exterior
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80', // Luxury living room
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80', // Contemporary kitchen
-  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1600&q=80', // Master bedroom
-  'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1600&q=80', // Pool and patio
-  'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1600&q=80', // Elegant entryway
-];
+interface FeaturedListing {
+  photoUrl: string;
+  address: string;
+  city: string;
+  price: number;
+  beds: number;
+  baths: number;
+  sqft?: number;
+}
 
 /**
- * Featured Obsidian Group listing photos (fetched from API)
+ * Featured Obsidian Group listings (fetched from API)
  */
-let FEATURED_LISTING_PHOTOS: string[] = [];
+let FEATURED_LISTINGS: FeaturedListing[] = [];
 
 /**
- * Fetch Obsidian Group featured listings and populate photo array
+ * Fetch Obsidian Group featured listings
  */
 async function fetchFeaturedListings(): Promise<void> {
   try {
@@ -198,12 +198,9 @@ async function fetchFeaturedListings(): Promise<void> {
 
     const data = await response.json();
     if (data.success && data.listings && data.listings.length > 0) {
-      // Extract photo URLs from listings
-      FEATURED_LISTING_PHOTOS = data.listings
-        .map((listing: any) => listing.photoUrl)
-        .filter((url: string | undefined) => url); // Filter out undefined URLs
-
-      console.log(`[ThemeContext] Loaded ${FEATURED_LISTING_PHOTOS.length} Obsidian Group listing photos`);
+      // Store full listing objects
+      FEATURED_LISTINGS = data.listings.filter((listing: any) => listing.photoUrl);
+      console.log(`[ThemeContext] Loaded ${FEATURED_LISTINGS.length} Obsidian Group featured listings`);
     } else {
       console.warn('[ThemeContext] No featured listings returned from API');
     }
@@ -213,11 +210,12 @@ async function fetchFeaturedListings(): Promise<void> {
 }
 
 /**
- * Get random listing photo (prefers Obsidian Group, falls back to placeholders)
+ * Get random Obsidian Group listing
+ * Returns null if no listings available
  */
-function getRandomListingPhoto(): string {
-  const photos = FEATURED_LISTING_PHOTOS.length > 0 ? FEATURED_LISTING_PHOTOS : FALLBACK_LISTING_PHOTOS;
-  return photos[Math.floor(Math.random() * photos.length)];
+function getRandomListing(): FeaturedListing | null {
+  if (FEATURED_LISTINGS.length === 0) return null;
+  return FEATURED_LISTINGS[Math.floor(Math.random() * FEATURED_LISTINGS.length)];
 }
 
 /**
@@ -362,24 +360,31 @@ function playExitAnimation(
 
     const { exit, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add eXp logo + "Featured Team Properties" text
+    // Add eXp logo + listing details
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
 
-    // Use listing photo as background
-    const listingPhoto = getRandomListingPhoto();
+    // Get random Obsidian Group listing
+    const listing = getRandomListing();
+
+    // If no listings available, skip the animation overlay
+    if (!listing) {
+      console.warn('[ThemeTransition] No featured listings available, skipping animation');
+      resolve();
+      return;
+    }
 
     // Content container with listing photo background (will fade to reveal solid color)
     const contentHTML = `
       <div id="exit-content" style="
         position: absolute;
         inset: 0;
-        background-image: url('${listingPhoto}');
+        background-image: url('${listing.photoUrl}');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
       ">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center; width: 90%; max-width: 600px;">
           <img
             src="${logoPath}"
             alt="eXp Realty"
@@ -395,7 +400,61 @@ function playExitAnimation(
             opacity: 0;
             animation: fadeInText 0.5s ease-out ${duration}ms forwards;
           ">
-            Featured Team Properties
+            Featured Team Property
+          </div>
+          <div style="
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            opacity: 0;
+            animation: fadeInText 0.5s ease-out ${duration + 200}ms forwards;
+          ">
+            <div style="
+              font-size: 22px;
+              font-weight: 600;
+              color: white;
+              margin-bottom: 12px;
+              text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            ">
+              ${listing.address}
+            </div>
+            <div style="
+              font-size: 18px;
+              color: #e0e0e0;
+              margin-bottom: 8px;
+            ">
+              ${listing.city}
+            </div>
+            <div style="
+              display: flex;
+              justify-content: center;
+              gap: 30px;
+              margin-top: 16px;
+              flex-wrap: wrap;
+            ">
+              <div style="
+                font-size: 32px;
+                font-weight: 700;
+                color: #4ade80;
+                text-shadow: 0 2px 10px rgba(74, 222, 128, 0.5);
+              ">
+                $${listing.price.toLocaleString()}
+              </div>
+              <div style="
+                font-size: 20px;
+                color: white;
+                display: flex;
+                gap: 20px;
+                align-items: center;
+              ">
+                <span style="font-weight: 600;">${listing.beds} BD</span>
+                <span style="opacity: 0.5;">|</span>
+                <span style="font-weight: 600;">${listing.baths} BA</span>
+                ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -492,21 +551,28 @@ function playEnterAnimation(
     // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
 
-    // Use listing photo as background (different from EXIT)
-    const listingPhoto = getRandomListingPhoto();
+    // Get random Obsidian Group listing
+    const listing = getRandomListing();
+
+    // If no listings available, skip the animation
+    if (!listing) {
+      console.warn('[ThemeTransition] No featured listings available for ENTER, skipping animation');
+      resolve();
+      return;
+    }
 
     // Content container with listing photo (starts hidden, will fade in from solid color)
     const contentHTML = `
       <div id="enter-content" style="
         position: absolute;
         inset: 0;
-        background-image: url('${listingPhoto}');
+        background-image: url('${listing.photoUrl}');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
         opacity: 0;
       ">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center; width: 90%; max-width: 600px;">
           <img
             src="${logoPath}"
             alt="eXp Realty"
@@ -521,7 +587,60 @@ function playEnterAnimation(
             letter-spacing: 1px;
             opacity: 0;
           ">
-            Featured Team Properties
+            Featured Team Property
+          </div>
+          <div id="enter-details" style="
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            opacity: 0;
+          ">
+            <div style="
+              font-size: 22px;
+              font-weight: 600;
+              color: white;
+              margin-bottom: 12px;
+              text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            ">
+              ${listing.address}
+            </div>
+            <div style="
+              font-size: 18px;
+              color: #e0e0e0;
+              margin-bottom: 8px;
+            ">
+              ${listing.city}
+            </div>
+            <div style="
+              display: flex;
+              justify-content: center;
+              gap: 30px;
+              margin-top: 16px;
+              flex-wrap: wrap;
+            ">
+              <div style="
+                font-size: 32px;
+                font-weight: 700;
+                color: #4ade80;
+                text-shadow: 0 2px 10px rgba(74, 222, 128, 0.5);
+              ">
+                $${listing.price.toLocaleString()}
+              </div>
+              <div style="
+                font-size: 20px;
+                color: white;
+                display: flex;
+                gap: 20px;
+                align-items: center;
+              ">
+                <span style="font-weight: 600;">${listing.beds} BD</span>
+                <span style="opacity: 0.5;">|</span>
+                <span style="font-weight: 600;">${listing.baths} BA</span>
+                ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -556,11 +675,16 @@ function playEnterAnimation(
       }
     });
 
-    // After cross-dissolve, fade in text
+    // After cross-dissolve, fade in text and details
     setTimeout(() => {
       const textDiv = overlay.querySelector('#enter-text') as HTMLElement;
       if (textDiv) {
         textDiv.style.animation = 'fadeInText 0.5s ease-out forwards';
+      }
+
+      const detailsDiv = overlay.querySelector('#enter-details') as HTMLElement;
+      if (detailsDiv) {
+        detailsDiv.style.animation = 'fadeInText 0.5s ease-out 0.2s forwards';
       }
     }, crossDissolveDuration);
 
