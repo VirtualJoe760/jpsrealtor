@@ -414,18 +414,27 @@ function playExitAnimation(
 
 /**
  * Play ENTER animation (opening the new theme)
- * Sequence: Remove old overlay → Cross-dissolve from solid color → Hold → Animation OUT
+ * Sequence: Remove instant overlay → Replace with listing photo overlay → Cross-dissolve in → Hold → Animation OUT
  */
 function playEnterAnimation(
   animationKey: AnimationPairKey,
   backgroundColor: string
 ): Promise<void> {
   return new Promise((resolve) => {
-    // CRITICAL: Remove any existing EXIT overlay from before the refresh
+    // CRITICAL: Remove the instant solid color overlay created by blocking script
+    const instantOverlay = document.getElementById('instant-transition-overlay');
+    if (instantOverlay) {
+      console.log(`[ThemeTransition] Removing instant solid color overlay`);
+      instantOverlay.remove();
+    }
+
+    // Also remove any other existing overlays
     const existingOverlays = document.querySelectorAll('.theme-transition-overlay');
     existingOverlays.forEach(old => {
-      console.log(`[ThemeTransition] Removing old EXIT overlay`);
-      old.remove();
+      if (old.id !== 'instant-transition-overlay') {
+        console.log(`[ThemeTransition] Removing old overlay`);
+        old.remove();
+      }
     });
 
     const overlay = document.createElement('div');
@@ -437,6 +446,8 @@ function playEnterAnimation(
 
     // Use listing photo as background (different from EXIT)
     const listingPhoto = getRandomListingPhoto();
+
+    // Start with solid color, listing photo will fade in
     overlay.style.cssText = `
       background-color: ${solidColor};
       background-image: url('${listingPhoto}');

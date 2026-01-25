@@ -203,6 +203,53 @@ export default async function RootLayout({
         />
       </head>
       <body className={`theme-${serverTheme}`} suppressHydrationWarning>
+        {/* Blocking script: Create solid color overlay IMMEDIATELY if returning from theme toggle */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  // Check if we're returning from a theme toggle
+                  var animationKey = sessionStorage.getItem('theme-transition-pair');
+                  var timestamp = sessionStorage.getItem('theme-transition-timestamp');
+
+                  if (animationKey && timestamp) {
+                    var age = Date.now() - parseInt(timestamp, 10);
+
+                    // Only create overlay if refresh happened within 5 seconds
+                    if (age < 5000) {
+                      // Detect current theme to determine solid color
+                      var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
+                      var theme = cookieMatch ? cookieMatch[2] : 'lightgradient';
+                      var solidColor = theme === 'blackspace' ? '#000000' : '#ffffff';
+
+                      console.log('[Blocking Script] Creating solid color overlay:', solidColor);
+
+                      // Create overlay DIV IMMEDIATELY
+                      var overlay = document.createElement('div');
+                      overlay.className = 'theme-transition-overlay';
+                      overlay.id = 'instant-transition-overlay';
+                      overlay.style.cssText = 'position: fixed; inset: 0; z-index: 99999; background-color: ' + solidColor + '; pointer-events: none;';
+
+                      // Add to body immediately (before React renders)
+                      document.body.appendChild(overlay);
+
+                      console.log('[Blocking Script] Overlay created - page content hidden behind solid color');
+                    } else {
+                      // Clear stale data
+                      console.log('[Blocking Script] Stale animation data cleared');
+                      sessionStorage.removeItem('theme-transition-pair');
+                      sessionStorage.removeItem('theme-transition-timestamp');
+                    }
+                  }
+                } catch (e) {
+                  console.error('[Blocking Script] Error:', e);
+                }
+              })();
+            `,
+          }}
+        />
+
         {/* JSON-LD Structured Data for SEO */}
         <OrganizationJsonLd />
         <PersonJsonLd />
