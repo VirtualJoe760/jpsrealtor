@@ -134,7 +134,6 @@ const ANIMATION_PAIRS = {
   'french-doors': { exit: 'doors-close', enter: 'doors-open', duration: 500 },
   'garage': { exit: 'garage-down', enter: 'garage-up', duration: 450 },
   'sliding-door': { exit: 'slide-close', enter: 'slide-open', duration: 450 },
-  'property-card': { exit: 'card-flip-away', enter: 'card-flip-to', duration: 600 },
   'shutters': { exit: 'shutters-close', enter: 'shutters-open', duration: 500 },
   'curtains': { exit: 'curtains-close', enter: 'curtains-open', duration: 550 }
 } as const;
