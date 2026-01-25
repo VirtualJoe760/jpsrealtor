@@ -311,10 +311,11 @@ function getAnimationSVG(animationKey: AnimationPairKey, phase: 'exit' | 'enter'
 
 /**
  * Play EXIT animation (closing the old theme)
+ * Sequence: Animation IN → Hold → Cross-dissolve to solid color → Stay for refresh
  */
 function playExitAnimation(
   animationKey: AnimationPairKey,
-  backgroundColor: string
+  targetTheme: ThemeName
 ): Promise<void> {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -329,6 +330,10 @@ function playExitAnimation(
       background-repeat: no-repeat;
     `;
 
+    // Add solid color underlay (will be revealed during cross-dissolve)
+    const solidColor = targetTheme === 'blackspace' ? '#000000' : '#ffffff';
+    overlay.style.backgroundColor = solidColor;
+
     overlay.setAttribute('data-animation', animationKey);
     overlay.setAttribute('data-phase', 'exit');
 
@@ -337,25 +342,28 @@ function playExitAnimation(
     // Add eXp logo + "Featured Team Properties" text
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
-    const logoHTML = `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
-        <img
-          src="${logoPath}"
-          alt="eXp Realty"
-          style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
-        />
-        <!-- Featured Team Properties text (fades in after animation) -->
-        <div style="
-          margin-top: 30px;
-          font-size: 28px;
-          font-weight: 700;
-          color: white;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
-          letter-spacing: 1px;
-          opacity: 0;
-          animation: fadeInText 0.5s ease-out ${duration}ms forwards;
-        ">
-          Featured Team Properties
+
+    // Content container (will fade to solid color)
+    const contentHTML = `
+      <div id="exit-content" style="position: absolute; inset: 0; background-image: inherit; background-size: inherit; background-position: inherit;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
+          <img
+            src="${logoPath}"
+            alt="eXp Realty"
+            style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+          />
+          <div style="
+            margin-top: 30px;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
+            letter-spacing: 1px;
+            opacity: 0;
+            animation: fadeInText 0.5s ease-out ${duration}ms forwards;
+          ">
+            Featured Team Properties
+          </div>
         </div>
       </div>
       <style>
@@ -365,23 +373,40 @@ function playExitAnimation(
         }
       </style>
     `;
-    overlay.innerHTML = logoHTML;
+    overlay.innerHTML = contentHTML;
 
     document.body.appendChild(overlay);
 
     // Use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(() => {
       overlay.classList.add(exit);
-      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms) + 2.5s showcase`);
+      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms) → hold (2s) → cross-dissolve (600ms)`);
     });
 
-    // Resolve after animation completes + 2.5 second showcase hold
-    // IMPORTANT: Do NOT remove overlay - it must stay visible during page refresh
-    const totalDuration = duration + 2500; // Animation + 2.5s hold
+    // Timeline:
+    // 1. Animation IN - duration ms
+    // 2. Hold with listing photo - 2000ms
+    // 3. Cross-dissolve to solid color - 600ms
+    // 4. Stay on solid color for refresh
+
+    const holdDuration = 2000;
+    const crossDissolveDuration = 600;
+
+    // After animation + hold, start cross-dissolve to solid color
     setTimeout(() => {
-      console.log(`[ThemeTransition] EXIT complete - overlay stays for refresh`);
+      const contentDiv = overlay.querySelector('#exit-content') as HTMLElement;
+      if (contentDiv) {
+        contentDiv.classList.add('cross-dissolve-to-color');
+        console.log(`[ThemeTransition] Cross-dissolving to ${solidColor}...`);
+      }
+    }, duration + holdDuration);
+
+    // Resolve after cross-dissolve completes (overlay stays on solid color)
+    const totalDuration = duration + holdDuration + crossDissolveDuration;
+    setTimeout(() => {
+      console.log(`[ThemeTransition] EXIT complete - overlay stays on solid color for refresh`);
       resolve();
-      // Overlay is NOT removed here - it stays visible during refresh
+      // Overlay is NOT removed - stays visible during refresh
       // The ENTER animation will remove it
     }, totalDuration);
   });
@@ -389,6 +414,7 @@ function playExitAnimation(
 
 /**
  * Play ENTER animation (opening the new theme)
+ * Sequence: Remove old overlay → Cross-dissolve from solid color → Hold → Animation OUT
  */
 function playEnterAnimation(
   animationKey: AnimationPairKey,
@@ -405,9 +431,14 @@ function playEnterAnimation(
     const overlay = document.createElement('div');
     overlay.className = 'theme-transition-overlay';
 
+    // Get current theme (NEW theme after refresh)
+    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
+    const solidColor = currentTheme === 'blackspace' ? '#000000' : '#ffffff';
+
     // Use listing photo as background (different from EXIT)
     const listingPhoto = getRandomListingPhoto();
     overlay.style.cssText = `
+      background-color: ${solidColor};
       background-image: url('${listingPhoto}');
       background-size: cover;
       background-position: center;
@@ -419,28 +450,29 @@ function playEnterAnimation(
 
     const { enter, duration } = ANIMATION_PAIRS[animationKey];
 
-    // Add eXp logo + "Featured Team Properties" text - matches NEW theme
-    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
+    // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
-    const logoHTML = `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
-        <img
-          src="${logoPath}"
-          alt="eXp Realty"
-          style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
-        />
-        <!-- Featured Team Properties text (fades in after animation) -->
-        <div style="
-          margin-top: 30px;
-          font-size: 28px;
-          font-weight: 700;
-          color: white;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
-          letter-spacing: 1px;
-          opacity: 0;
-          animation: fadeInText 0.5s ease-out ${duration}ms forwards;
-        ">
-          Featured Team Properties
+
+    // Content container (starts hidden, will fade in from solid color)
+    const contentHTML = `
+      <div id="enter-content" style="position: absolute; inset: 0; background-image: inherit; background-size: inherit; background-position: inherit; opacity: 0;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
+          <img
+            src="${logoPath}"
+            alt="eXp Realty"
+            style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
+          />
+          <div id="enter-text" style="
+            margin-top: 30px;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
+            letter-spacing: 1px;
+            opacity: 0;
+          ">
+            Featured Team Properties
+          </div>
         </div>
       </div>
       <style>
@@ -450,18 +482,46 @@ function playEnterAnimation(
         }
       </style>
     `;
-    overlay.innerHTML = logoHTML;
+    overlay.innerHTML = contentHTML;
 
     document.body.appendChild(overlay);
 
-    // Use requestAnimationFrame to ensure DOM is ready
+    // Timeline:
+    // 1. Cross-dissolve from solid color to listing photo - 600ms
+    // 2. Hold with listing photo - 2000ms
+    // 3. Animation OUT - duration ms
+    // 4. Fade out and remove
+
+    const crossDissolveDuration = 600;
+    const holdDuration = 2000;
+
+    // Start cross-dissolve immediately
     requestAnimationFrame(() => {
-      overlay.classList.add(enter);
-      console.log(`[ThemeTransition] 🔓 ENTER: ${animationKey} (${duration}ms) + 2s showcase`);
+      const contentDiv = overlay.querySelector('#enter-content') as HTMLElement;
+      if (contentDiv) {
+        console.log(`[ThemeTransition] 🔓 ENTER: Cross-dissolving from ${solidColor} (600ms) → hold (2s) → ${animationKey} (${duration}ms)`);
+        // Fade in the listing photo content
+        contentDiv.style.transition = 'opacity 600ms ease-in-out';
+        contentDiv.style.opacity = '1';
+      }
     });
 
-    // Remove overlay after animation completes + 2 second showcase hold
-    const totalDuration = duration + 2000; // Animation + 2s hold
+    // After cross-dissolve, fade in text
+    setTimeout(() => {
+      const textDiv = overlay.querySelector('#enter-text') as HTMLElement;
+      if (textDiv) {
+        textDiv.style.animation = 'fadeInText 0.5s ease-out forwards';
+      }
+    }, crossDissolveDuration);
+
+    // After cross-dissolve + hold, play animation OUT
+    setTimeout(() => {
+      overlay.classList.add(enter);
+      console.log(`[ThemeTransition] Playing ${animationKey} animation OUT`);
+    }, crossDissolveDuration + holdDuration);
+
+    // Remove overlay after complete sequence
+    const totalDuration = crossDissolveDuration + holdDuration + duration;
     setTimeout(() => {
       overlay.remove();
       resolve();
@@ -612,8 +672,8 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
       console.log(`[ThemeTransition] 🎬 Starting two-act transition: ${selectedAnimation}`);
 
-      // Act 1: Play EXIT animation with old theme color
-      await playExitAnimation(selectedAnimation, oldColor);
+      // Act 1: Play EXIT animation → Hold → Cross-dissolve to solid color (target theme)
+      await playExitAnimation(selectedAnimation, newTheme);
 
       // Update cookie for server-side rendering
       setThemeCookie(newTheme);

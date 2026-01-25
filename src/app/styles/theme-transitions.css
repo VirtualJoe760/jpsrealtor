@@ -349,6 +349,40 @@
 }
 
 /* ===================================
+   CROSS-DISSOLVE TRANSITIONS
+   Duration: 600ms
+   Purpose: Smooth color transitions to hide page refresh
+   =================================== */
+
+/* Fade listing photo to solid color (before refresh) */
+@keyframes cross-dissolve-to-color {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Fade solid color to listing photo (after refresh) */
+@keyframes cross-dissolve-from-color {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.cross-dissolve-to-color {
+  animation: cross-dissolve-to-color 600ms ease-in-out forwards;
+}
+
+.cross-dissolve-from-color {
+  animation: cross-dissolve-from-color 600ms ease-in-out forwards;
+}
+
+/* ===================================
    ACCESSIBILITY: REDUCED MOTION
    =================================== */
 
