@@ -164,7 +164,7 @@ function selectRandomAnimation(): AnimationPairKey {
  * Get theme color for overlay
  */
 function getThemeColor(theme: ThemeName): string {
-  return theme === 'blackspace' ? '#000000' : '#4f46e5';
+  return theme === 'blackspace' ? '#000000' : '#ffffff';
 }
 
 /**
@@ -762,7 +762,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
     // Only update meta tags in PWA mode - Safari browser ignores dynamic updates
     if (isStandalone) {
-      const themeColor = isLight ? '#4f46e5' : '#000000'; // Indigo for light, black for dark
+      const themeColor = isLight ? '#ffffff' : '#000000'; // White for light, black for dark
       // Light theme: 'default' (light status bar, no black overlay)
       // Dark theme: 'black' (opaque black status bar)
       const statusBarStyle = isLight ? 'default' : 'black';

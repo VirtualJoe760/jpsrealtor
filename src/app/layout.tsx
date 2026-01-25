@@ -133,7 +133,7 @@ export default async function RootLayout({
   const serverTheme = getServerTheme(cookieStore);
 
   // Get theme color for Dynamic Island/status bar
-  const themeColor = serverTheme === 'lightgradient' ? '#4f46e5' : '#000000';
+  const themeColor = serverTheme === 'lightgradient' ? '#ffffff' : '#000000';
   // Light theme: 'default' (light status bar, no black overlay)
   // Dark theme: 'black' (opaque black status bar)
   const statusBarStyle = serverTheme === 'lightgradient' ? 'default' : 'black';
@@ -180,7 +180,7 @@ export default async function RootLayout({
                   document.documentElement.className = document.documentElement.className.replace(/theme-\\w+/g, '') + ' theme-' + theme;
 
                   // Update meta tags IMMEDIATELY to match detected theme
-                  var themeColor = theme === 'lightgradient' ? '#4f46e5' : '#000000';
+                  var themeColor = theme === 'lightgradient' ? '#ffffff' : '#000000';
                   var statusBarStyle = theme === 'lightgradient' ? 'default' : 'black';
 
                   var metaThemeColor = document.querySelector('meta[name="theme-color"]');
