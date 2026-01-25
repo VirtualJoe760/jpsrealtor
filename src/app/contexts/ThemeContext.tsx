@@ -131,9 +131,7 @@ function getServerRenderedTheme(): ThemeName | null {
 // ===================================
 
 const ANIMATION_PAIRS = {
-  'key-turn': { exit: 'key-lock', enter: 'key-unlock', duration: 300 },
   'french-doors': { exit: 'doors-close', enter: 'doors-open', duration: 500 },
-  'blinds': { exit: 'blinds-close', enter: 'blinds-open', duration: 400 },
   'garage': { exit: 'garage-down', enter: 'garage-up', duration: 450 },
   'sliding-door': { exit: 'slide-close', enter: 'slide-open', duration: 450 },
   'property-card': { exit: 'card-flip-away', enter: 'card-flip-to', duration: 600 },
@@ -378,9 +376,13 @@ function playExitAnimation(
     });
 
     // Resolve after animation completes + 2.5 second showcase hold
+    // IMPORTANT: Do NOT remove overlay - it must stay visible during page refresh
     const totalDuration = duration + 2500; // Animation + 2.5s hold
     setTimeout(() => {
+      console.log(`[ThemeTransition] EXIT complete - overlay stays for refresh`);
       resolve();
+      // Overlay is NOT removed here - it stays visible during refresh
+      // The ENTER animation will remove it
     }, totalDuration);
   });
 }
@@ -393,6 +395,13 @@ function playEnterAnimation(
   backgroundColor: string
 ): Promise<void> {
   return new Promise((resolve) => {
+    // CRITICAL: Remove any existing EXIT overlay from before the refresh
+    const existingOverlays = document.querySelectorAll('.theme-transition-overlay');
+    existingOverlays.forEach(old => {
+      console.log(`[ThemeTransition] Removing old EXIT overlay`);
+      old.remove();
+    });
+
     const overlay = document.createElement('div');
     overlay.className = 'theme-transition-overlay';
 
