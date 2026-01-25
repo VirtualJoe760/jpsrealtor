@@ -168,10 +168,10 @@ function getThemeColor(theme: ThemeName): string {
 }
 
 /**
- * Curated listing photos for animation backgrounds
- * TODO: Replace with actual Obsidian Group listing photos
+ * Fallback listing photos (Unsplash placeholders)
+ * Used if Obsidian Group API fails or returns no photos
  */
-const LISTING_PHOTOS = [
+const FALLBACK_LISTING_PHOTOS = [
   'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&q=80', // Modern home exterior
   'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80', // Luxury living room
   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80', // Contemporary kitchen
@@ -181,19 +181,50 @@ const LISTING_PHOTOS = [
 ];
 
 /**
- * Get random listing photo
+ * Featured Obsidian Group listing photos (fetched from API)
  */
-function getRandomListingPhoto(): string {
-  return LISTING_PHOTOS[Math.floor(Math.random() * LISTING_PHOTOS.length)];
+let FEATURED_LISTING_PHOTOS: string[] = [];
+
+/**
+ * Fetch Obsidian Group featured listings and populate photo array
+ */
+async function fetchFeaturedListings(): Promise<void> {
+  try {
+    const response = await fetch('/api/listings/featured');
+    if (!response.ok) {
+      console.warn('[ThemeContext] Failed to fetch featured listings:', response.status);
+      return;
+    }
+
+    const data = await response.json();
+    if (data.success && data.listings && data.listings.length > 0) {
+      // Extract photo URLs from listings
+      FEATURED_LISTING_PHOTOS = data.listings
+        .map((listing: any) => listing.photoUrl)
+        .filter((url: string | undefined) => url); // Filter out undefined URLs
+
+      console.log(`[ThemeContext] Loaded ${FEATURED_LISTING_PHOTOS.length} Obsidian Group listing photos`);
+    } else {
+      console.warn('[ThemeContext] No featured listings returned from API');
+    }
+  } catch (error) {
+    console.error('[ThemeContext] Error fetching featured listings:', error);
+  }
 }
 
 /**
- * Get eXp logo path based on theme
+ * Get random listing photo (prefers Obsidian Group, falls back to placeholders)
+ */
+function getRandomListingPhoto(): string {
+  const photos = FEATURED_LISTING_PHOTOS.length > 0 ? FEATURED_LISTING_PHOTOS : FALLBACK_LISTING_PHOTOS;
+  return photos[Math.floor(Math.random() * photos.length)];
+}
+
+/**
+ * Get eXp logo path (always white)
  */
 function getExpLogo(theme: ThemeName): string {
-  return theme === 'blackspace'
-    ? '/images/brand/EXP-white-square.png'
-    : '/images/brand/exp-Realty-Logo-black.png';
+  return '/images/brand/EXP-white-square.png';
 }
 
 /**
@@ -567,6 +598,11 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
       setCurrentTheme(storedTheme);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch Obsidian Group featured listings on mount
+  useEffect(() => {
+    fetchFeaturedListings();
+  }, []);
 
   // Apply theme to document and persist
   useEffect(() => {

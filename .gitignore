@@ -67,3 +67,6 @@ next-env.d.ts
 ca_counties.json
 
 .env*.local
+
+# Video files
+*.mp4

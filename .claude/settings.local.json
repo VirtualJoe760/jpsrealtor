@@ -30,7 +30,9 @@
       "Bash(xargs cat:*)",
       "Bash(ffmpeg:*)",
       "Bash(git reset:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(listing-dump.json)",
+      "Bash(.gitignore)"
     ],
     "deny": [],
     "ask": []
