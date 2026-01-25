@@ -387,10 +387,12 @@ function playExitAnimation(
     // 1. Animation IN - duration ms
     // 2. Hold with listing photo - 2000ms
     // 3. Cross-dissolve to solid color - 600ms
-    // 4. Stay on solid color for refresh
+    // 4. Hold on solid color - 300ms (stability buffer)
+    // 5. Refresh triggers (stays on solid color)
 
     const holdDuration = 2000;
     const crossDissolveDuration = 600;
+    const solidColorBuffer = 300; // Hold on solid color before refresh
 
     // After animation + hold, start cross-dissolve to solid color
     setTimeout(() => {
@@ -401,10 +403,10 @@ function playExitAnimation(
       }
     }, duration + holdDuration);
 
-    // Resolve after cross-dissolve completes (overlay stays on solid color)
-    const totalDuration = duration + holdDuration + crossDissolveDuration;
+    // Resolve AFTER cross-dissolve completes AND solid color is stable
+    const totalDuration = duration + holdDuration + crossDissolveDuration + solidColorBuffer;
     setTimeout(() => {
-      console.log(`[ThemeTransition] EXIT complete - overlay stays on solid color for refresh`);
+      console.log(`[ThemeTransition] EXIT complete - solid color stable, ready for refresh`);
       resolve();
       // Overlay is NOT removed - stays visible during refresh
       // The ENTER animation will remove it
