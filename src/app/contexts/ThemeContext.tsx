@@ -321,18 +321,11 @@ function playExitAnimation(
     const overlay = document.createElement('div');
     overlay.className = 'theme-transition-overlay';
 
-    // Use listing photo as background
-    const listingPhoto = getRandomListingPhoto();
-    overlay.style.cssText = `
-      background-image: url('${listingPhoto}');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    `;
-
-    // Add solid color underlay (will be revealed during cross-dissolve)
+    // Solid color will be the underlay (revealed when content fades)
     const solidColor = targetTheme === 'blackspace' ? '#000000' : '#ffffff';
-    overlay.style.backgroundColor = solidColor;
+    overlay.style.cssText = `
+      background-color: ${solidColor};
+    `;
 
     overlay.setAttribute('data-animation', animationKey);
     overlay.setAttribute('data-phase', 'exit');
@@ -343,9 +336,19 @@ function playExitAnimation(
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
 
-    // Content container (will fade to solid color)
+    // Use listing photo as background
+    const listingPhoto = getRandomListingPhoto();
+
+    // Content container with listing photo background (will fade to reveal solid color)
     const contentHTML = `
-      <div id="exit-content" style="position: absolute; inset: 0; background-image: inherit; background-size: inherit; background-position: inherit;">
+      <div id="exit-content" style="
+        position: absolute;
+        inset: 0;
+        background-image: url('${listingPhoto}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      ">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
           <img
             src="${logoPath}"
@@ -446,16 +449,9 @@ function playEnterAnimation(
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const solidColor = currentTheme === 'blackspace' ? '#000000' : '#ffffff';
 
-    // Use listing photo as background (different from EXIT)
-    const listingPhoto = getRandomListingPhoto();
-
-    // Start with solid color, listing photo will fade in
+    // Solid color as underlay (will be covered when content fades in)
     overlay.style.cssText = `
       background-color: ${solidColor};
-      background-image: url('${listingPhoto}');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
     `;
 
     overlay.setAttribute('data-animation', animationKey);
@@ -466,9 +462,20 @@ function playEnterAnimation(
     // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
 
-    // Content container (starts hidden, will fade in from solid color)
+    // Use listing photo as background (different from EXIT)
+    const listingPhoto = getRandomListingPhoto();
+
+    // Content container with listing photo (starts hidden, will fade in from solid color)
     const contentHTML = `
-      <div id="enter-content" style="position: absolute; inset: 0; background-image: inherit; background-size: inherit; background-position: inherit; opacity: 0;">
+      <div id="enter-content" style="
+        position: absolute;
+        inset: 0;
+        background-image: url('${listingPhoto}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: 0;
+      ">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center;">
           <img
             src="${logoPath}"
