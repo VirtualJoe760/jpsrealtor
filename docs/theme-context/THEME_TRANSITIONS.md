@@ -290,30 +290,57 @@ Cross-dissolve 600ms → Hold 2s → Animation OUT 500ms → Done
 
 ### 3. Browser Control Colors
 
+**IMPORTANT**: Safari uses **BOTH** meta tags AND CSS `background-color` to determine browser controls!
+
 **Meta Tags:**
 - `theme-color`: Controls address bar color (mobile) and Dynamic Island (iOS)
 - `apple-mobile-web-app-status-bar-style`: Controls iOS status bar style
 
+**CSS Background Color (Critical!):**
+Safari samples the CSS `background-color` property from `<html>` and `<body>` elements to determine browser control colors, even when gradients are used.
+
+Location: `src/app/globals.css:190, 201`
+
+```css
+html.theme-lightgradient {
+  background: linear-gradient(...); /* Visual gradient */
+  background-color: #ffffff; /* CRITICAL: Safari samples THIS for browser controls */
+}
+
+html.theme-lightgradient body {
+  background: linear-gradient(...); /* Visual gradient */
+  background-color: #ffffff; /* CRITICAL: Must match meta tags! */
+}
+```
+
+**Why This Matters:**
+- The `background:` gradient is what users see
+- The `background-color:` fallback is what Safari uses for browser controls
+- If these don't match meta tags, you'll get wrong colors
+
 **Color Values:**
 ```typescript
 // Light Theme (lightgradient)
-theme-color: #ffffff (white)
-status-bar-style: default (light status bar, dark text)
+meta theme-color: #ffffff (white)
+meta status-bar-style: default (light status bar, dark text)
+css background-color: #ffffff (white) ← MUST MATCH
 
 // Dark Theme (blackspace)
-theme-color: #000000 (black)
-status-bar-style: black (dark status bar, light text)
+meta theme-color: #000000 (black)
+meta status-bar-style: black (dark status bar, light text)
+css background-color: #000000 (black) ← MUST MATCH
 ```
 
 **Where Set:**
-1. **SSR**: `layout.tsx:136` - Initial server render
-2. **Inline Script**: `layout.tsx:183` - Client-side sync before React
-3. **ThemeContext**: `ThemeContext.tsx:765` - PWA mode updates
-4. **Theme Toggle**: Updates via cookie → refresh → SSR cycle
+1. **SSR Meta Tags**: `layout.tsx:145, 151` - Initial server render
+2. **Inline Script Meta Tags**: `layout.tsx:216, 220` - Client-side sync before React
+3. **CSS Background**: `globals.css:190, 201` - Browser control sampling
+4. **Manifest**: `manifest-v2.json:8` - PWA theme color
+5. **ThemeContext**: `ThemeContext.tsx:800-817` - PWA mode dynamic updates
 
 **Browser Support:**
-- **iOS Safari**: Uses `theme-color` + `status-bar-style`
-- **Android Chrome**: Uses `theme-color` only
+- **iOS Safari**: Uses meta tags + CSS background-color
+- **Android Chrome**: Uses meta tags + manifest
 - **Desktop Browsers**: Ignore (meta tags not visible)
 - **PWA Mode**: Dynamic updates work (standalone mode)
 
@@ -374,16 +401,44 @@ Each animation has:
 - Browser controls show blue/indigo instead of white
 - Theme toggle works perfectly but initial load is wrong
 
-**Likely Causes:**
-1. **Browser Cache**: Mobile Safari aggressively caches meta tags
-2. **Dev Server**: Changes to `layout.tsx` not hot-reloaded
-3. **Cookie/localStorage Mismatch**: Different theme stored in each
+**Root Cause:**
+Safari samples the CSS `background-color` property (NOT just meta tags!) to determine browser control colors. If you use a gradient with an indigo fallback, Safari will use that indigo color for browser controls.
+
+**Diagnosis Steps:**
+1. Open Safari Web Inspector → Elements tab
+2. Inspect `<html>` or `<body>` element
+3. Look at Computed Styles → `background-color`
+4. Check if it matches your expected theme color
+
+**Solution:**
+Update `globals.css` to use theme-appropriate fallback colors:
+
+```css
+/* ❌ WRONG - Safari samples indigo for browser controls */
+html.theme-lightgradient {
+  background: linear-gradient(...);
+  background-color: #4f46e5; /* Indigo fallback */
+}
+
+/* ✅ CORRECT - Safari samples white for browser controls */
+html.theme-lightgradient {
+  background: linear-gradient(...);
+  background-color: #ffffff; /* White fallback - matches meta tags */
+}
+```
+
+**Other Possible Causes:**
+1. **Browser Cache**: Mobile Safari aggressively caches meta tags and manifest
+2. **Manifest Cache**: `manifest.json` cached with old `theme_color`
+3. **Dev Server**: Changes to `layout.tsx` not hot-reloaded
+4. **Cookie/localStorage Mismatch**: Different theme stored in each
 
 **Solutions:**
 1. **Hard Refresh**: Pull down to refresh on mobile, or Cmd+Shift+R on desktop
 2. **Clear Cache**: Safari → Settings → Clear History and Website Data
 3. **Restart Dev Server**: Kill node process and restart
 4. **Check Cookie**: Verify `site-theme` cookie matches expected theme
+5. **Check CSS**: Inspect element and verify `background-color` property value
 
 ### Issue: Flash of content during theme toggle
 

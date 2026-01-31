@@ -32,7 +32,12 @@
       "Bash(git reset:*)",
       "Bash(git restore:*)",
       "Bash(listing-dump.json)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(taskkill:*)",
+      "Bash(if exist \".next\\dev\\lock\" del \".next\\dev\\lock\")",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")"
     ],
     "deny": [],
     "ask": []

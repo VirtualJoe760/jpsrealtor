@@ -187,7 +187,7 @@ html {
  */
 html.theme-lightgradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
-  background-color: #4f46e5; /* Fallback solid color if gradient fails */
+  background-color: #ffffff; /* Fallback solid color if gradient fails - WHITE for browser controls */
   background-size: 400% 400%;
   background-attachment: fixed;
   animation: gradient 12s ease infinite;
@@ -198,7 +198,7 @@ html.theme-lightgradient {
 
 html.theme-lightgradient body {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
-  background-color: #4f46e5; /* Fallback solid color if gradient fails */
+  background-color: #ffffff; /* Fallback solid color if gradient fails - WHITE for browser controls */
   background-size: 400% 400%;
   background-attachment: fixed; /* CRITICAL: Makes background extend into safe areas */
   animation: gradient 12s ease infinite;

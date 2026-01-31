@@ -94,24 +94,41 @@ function getThemeFromCookie(): ThemeName | null {
 
 // Helper function to get initial theme - checks cookie first, then localStorage
 function getInitialTheme(): ThemeName {
-  if (typeof window === 'undefined') return 'lightgradient';
+  console.log('=== [getInitialTheme] ===');
+
+  if (typeof window === 'undefined') {
+    console.log('[getInitialTheme] SSR context, returning default');
+    return 'lightgradient';
+  }
 
   try {
     // First check cookie (server can read this)
+    console.log('[getInitialTheme] Checking cookie...');
     const cookieTheme = getThemeFromCookie();
-    if (cookieTheme) return cookieTheme;
+    console.log('[getInitialTheme] Cookie theme:', cookieTheme);
+
+    if (cookieTheme) {
+      console.log('[getInitialTheme] Returning cookie theme:', cookieTheme);
+      return cookieTheme;
+    }
 
     // Fallback to localStorage for backwards compatibility
+    console.log('[getInitialTheme] No cookie, checking localStorage...');
     const savedTheme = localStorage.getItem("site-theme") as ThemeName | null;
+    console.log('[getInitialTheme] localStorage theme:', savedTheme);
+    console.log('[getInitialTheme] Is valid theme:', savedTheme && themes[savedTheme]);
+
     if (savedTheme && themes[savedTheme]) {
       // Migrate to cookie
+      console.log('[getInitialTheme] Migrating localStorage theme to cookie:', savedTheme);
       setThemeCookie(savedTheme);
       return savedTheme;
     }
   } catch (error) {
-    console.error('Error reading theme:', error);
+    console.error('[getInitialTheme] Error reading theme:', error);
   }
 
+  console.log('[getInitialTheme] No theme found, returning default: lightgradient');
   return 'lightgradient';
 }
 
@@ -715,11 +732,22 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
   // After mount, sync with cookie/localStorage if needed (handles edge cases like stale props)
   useEffect(() => {
+    console.log('=== [THEMECONTEXT MOUNT] ===');
+    console.log('[ThemeContext] Initial theme from props:', initialTheme);
+    console.log('[ThemeContext] Current theme state:', currentTheme);
+
     setMounted(true);
     const storedTheme = getInitialTheme();
+
+    console.log('[ThemeContext] Stored theme from getInitialTheme():', storedTheme);
+    console.log('[ThemeContext] Themes match:', storedTheme === currentTheme);
+
     // Only update if stored theme differs (e.g., user changed theme in another tab)
     if (storedTheme !== currentTheme) {
+      console.log('[ThemeContext] Theme mismatch detected, updating from', currentTheme, 'to', storedTheme);
       setCurrentTheme(storedTheme);
+    } else {
+      console.log('[ThemeContext] Theme already matches, no update needed');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -732,25 +760,33 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
   useEffect(() => {
     if (!mounted) return;
 
+    console.log('=== [THEMECONTEXT APPLY THEME] ===');
+    console.log('[ThemeContext] Current theme:', currentTheme);
+    console.log('[ThemeContext] Mounted:', mounted);
+
     const theme = themes[currentTheme];
     const root = document.documentElement;
     const isLight = currentTheme === 'lightgradient';
 
-    console.log('[ThemeContext] Applying theme:', currentTheme, '| isLight:', isLight);
+    console.log('[ThemeContext] Is light theme:', isLight);
+    console.log('[ThemeContext] Theme object:', theme);
 
     // Apply CSS variables
     Object.entries(theme.colors).forEach(([key, value]) => {
       root.style.setProperty(`--color-${key}`, value);
     });
+    console.log('[ThemeContext] CSS variables applied');
 
     // Update theme classes on both html and body
     [document.documentElement, document.body].forEach(el => {
+      const oldClassName = el.className;
       el.className = el.className
         .split(" ")
         .filter((c) => !c.startsWith("theme-") && c !== "dark")
         .concat(`theme-${currentTheme}`)
         .concat(isLight ? [] : ["dark"]) // Add 'dark' class for Tailwind dark mode
         .join(" ");
+      console.log('[ThemeContext] Class updated on', el.tagName, 'from:', oldClassName, 'to:', el.className);
     });
 
     // Detect if running as PWA (standalone mode)
@@ -758,39 +794,67 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
                         (window.navigator as any).standalone ||
                         document.referrer.includes('android-app://');
 
-    console.log('[ThemeContext] Mode:', isStandalone ? 'PWA (standalone)' : 'Browser');
+    console.log('[ThemeContext] Display mode check:');
+    console.log('[ThemeContext]   - matchMedia standalone:', window.matchMedia('(display-mode: standalone)').matches);
+    console.log('[ThemeContext]   - navigator.standalone:', (window.navigator as any).standalone);
+    console.log('[ThemeContext]   - android-app referrer:', document.referrer.includes('android-app://'));
+    console.log('[ThemeContext]   - Final isStandalone:', isStandalone);
 
     // Only update meta tags in PWA mode - Safari browser ignores dynamic updates
     if (isStandalone) {
+      console.log('[ThemeContext] PWA mode detected - updating meta tags dynamically');
+
       const themeColor = isLight ? '#ffffff' : '#000000'; // White for light, black for dark
       // Light theme: 'default' (light status bar, no black overlay)
       // Dark theme: 'black' (opaque black status bar)
       const statusBarStyle = isLight ? 'default' : 'black';
 
+      console.log('[ThemeContext] Computed values:');
+      console.log('[ThemeContext]   - themeColor:', themeColor, '(expected: lightgradient=#ffffff, blackspace=#000000)');
+      console.log('[ThemeContext]   - statusBarStyle:', statusBarStyle, '(expected: lightgradient=default, blackspace=black)');
+
       // Update theme-color meta tag (for Dynamic Island / status bar)
       // Remove and recreate to force Safari to recognize the change
       let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      const oldThemeColor = metaThemeColor ? metaThemeColor.getAttribute('content') : 'not found';
+      console.log('[ThemeContext] Old theme-color value:', oldThemeColor);
+
       if (metaThemeColor) {
         metaThemeColor.remove();
+        console.log('[ThemeContext] Removed old theme-color meta tag');
       }
       metaThemeColor = document.createElement('meta');
       metaThemeColor.setAttribute('name', 'theme-color');
       metaThemeColor.setAttribute('content', themeColor);
       document.head.appendChild(metaThemeColor);
+      console.log('[ThemeContext] Created new theme-color meta tag:', themeColor);
 
       // Update iOS status bar style (PWA only)
       let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      const oldStatusBar = metaStatusBar ? metaStatusBar.getAttribute('content') : 'not found';
+      console.log('[ThemeContext] Old status-bar-style value:', oldStatusBar);
+
       if (metaStatusBar) {
         metaStatusBar.remove();
+        console.log('[ThemeContext] Removed old status-bar-style meta tag');
       }
       metaStatusBar = document.createElement('meta');
       metaStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
       metaStatusBar.setAttribute('content', statusBarStyle);
       document.head.appendChild(metaStatusBar);
+      console.log('[ThemeContext] Created new status-bar-style meta tag:', statusBarStyle);
 
-      console.log('[ThemeContext] 🔄 Updated PWA meta tags:', { themeColor, statusBarStyle });
+      console.log('[ThemeContext] ✅ PWA meta tags updated successfully');
     } else {
-      console.log('[ThemeContext] ⏭️  Skipped meta tag updates (browser mode - requires page refresh)');
+      console.log('[ThemeContext] Browser mode (not standalone) - skipping meta tag updates');
+      console.log('[ThemeContext] Meta tags will update on page refresh via SSR');
+
+      // Log current meta tag values for debugging
+      const currentThemeColor = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+      const currentStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content');
+      console.log('[ThemeContext] Current meta tag values:');
+      console.log('[ThemeContext]   - theme-color:', currentThemeColor);
+      console.log('[ThemeContext]   - status-bar-style:', currentStatusBar);
     }
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
