@@ -35,3 +35,19 @@ These are useful, but they are not easy to browse and donΓÇÖt follow the `doc
 ## Needs review (not fully verified)
 
 - Any doc that references scripts that no longer exist or paths that changed should be added here as discovered.
+
+### Root README links to missing docs
+
+`README.md` links to several files that do **not** exist in this repo:
+
+- `docs/QUICKSTART.md`
+- `docs/DOCUMENTATION_INDEX.md`
+- `docs/VPS_SETUP_INSTRUCTIONS.md`
+- `docs/IMPLEMENTATION_SUMMARY.md`
+- `docs/FOR_VPS_CLAUDE.md`
+- `docs/VPS_CLAUDE_CONTENT_WRITER.md`
+
+**Suggested fix**:
+- Update `README.md` to point to the correct current docs (likely `docs/README.md` and the appropriate deployment runbooks under `docs/deployment/`).
+- Or restore/migrate the missing docs if they existed in a prior history.
+
