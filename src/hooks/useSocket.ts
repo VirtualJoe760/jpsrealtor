@@ -30,8 +30,17 @@ export function useSocket(userId?: string): UseSocketReturn {
 
     console.log('[useSocket] Initializing connection for user:', userId);
 
+    // Determine Socket.io server URL
+    // In browser, use current origin (works with localhost, ngrok, and production)
+    // In SSR/build, fall back to env variable
+    const socketUrl = typeof window !== 'undefined'
+      ? window.location.origin
+      : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+
+    console.log('[useSocket] Connecting to:', socketUrl);
+
     // Create Socket.io connection
-    const socketInstance = io(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', {
+    const socketInstance = io(socketUrl, {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       reconnection: true,

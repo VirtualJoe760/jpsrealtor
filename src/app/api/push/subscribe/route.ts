@@ -10,11 +10,12 @@ import { getServerSession } from 'next-auth';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/mongodb';
 import PushSubscription from '@/models/PushSubscription';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

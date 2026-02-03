@@ -21,6 +21,7 @@ import PannelCarousel from "./PannelCarousel";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { usePWA } from "@/app/contexts/PWAContext";
 
 /* ======================================================
    FIXED PANEL LAYOUT CONSTANTS
@@ -114,21 +115,13 @@ export default function ListingBottomPanel({
   const [enrichedListing, setEnrichedListing] = useState<IUnifiedListing>(fullListing);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Detect if running as PWA (standalone mode)
-  // Start with false to match server-side render, then update on client
-  const [isPWA, setIsPWA] = useState(false);
+  // Use centralized PWA detection from PWAContext
+  const { isStandalone } = usePWA();
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Mark as hydrated first
+    // Mark as hydrated for SSR consistency
     setHydrated(true);
-
-    // Check if running in standalone mode (PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                        (window.navigator as any).standalone ||
-                        document.referrer.includes('android-app://');
-    setIsPWA(isStandalone);
-    console.log('[ListingBottomPanel] Running in PWA mode:', isStandalone);
   }, []);
 
   // Fetch full listing data from API using slugAddress or listingKey
@@ -264,29 +257,13 @@ export default function ListingBottomPanel({
       transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
     });
 
-    // Prevent double-tap zoom on iOS
-    const preventDoubleTapZoom = (e: TouchEvent) => {
-      const t2 = e.timeStamp;
-      const t1 = (e.currentTarget as any).lastTouch || t2;
-      const dt = t2 - t1;
-      const fingers = e.touches.length;
-      (e.currentTarget as any).lastTouch = t2;
-
-      if (!dt || dt > 500 || fingers > 1) return; // Not a double tap
-
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const panel = panelRef.current;
-    if (panel) {
-      panel.addEventListener('touchstart', preventDoubleTapZoom, { passive: false });
-    }
+    // REMOVED: Panel-specific double-tap prevention
+    // CSS already handles this via: touch-action: manipulation !important
+    // Having JavaScript listeners was blocking the first tap and causing delays
+    console.log('[ListingPanel] Mounted - Double-tap zoom handled by CSS (touch-action: manipulation)');
 
     return () => {
-      if (panel) {
-        panel.removeEventListener('touchstart', preventDoubleTapZoom);
-      }
+      console.log('[ListingPanel] Unmounting');
     };
   }, [enrichedListing.listingKey]);
 
@@ -422,7 +399,7 @@ export default function ListingBottomPanel({
       animate={controls}
       exit={{ opacity: 0, y: 36, transition: { duration: 0.15 } }}
       className={`fixed bottom-0 z-[100] rounded-t-3xl overflow-hidden ${
-        hydrated && isPWA
+        hydrated && isStandalone
           ? 'max-h-[95vh]' // PWA: 95vh - PERFECT
           : 'max-h-[88vh]'  // Browser: 88vh for better fit (also SSR default)
       } sm:max-h-[88vh] md:max-h-[90vh] lg:max-h-[92vh] xl:max-h-[94vh] flex flex-col ${

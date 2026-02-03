@@ -16,12 +16,17 @@ import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
+import { PWAProvider } from "../contexts/PWAContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
+  console.log('[LayoutContent] RENDER START');
+
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
+
+  console.log('[LayoutContent] Hooks loaded, pathname:', pathname);
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -114,49 +119,49 @@ export default function ClientLayoutWrapper({
   children,
   initialTheme,
 }: ClientLayoutWrapperProps) {
-  // Aggressive double-tap zoom and pinch zoom prevention for iOS
+  // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
-    let lastTouchEnd = 0;
+    console.log('[ClientLayoutWrapper] ========================================');
+    console.log('[ClientLayoutWrapper] Setting up gesture prevention');
+    console.log('[ClientLayoutWrapper] Note: Double-tap zoom handled by CSS (touch-action: manipulation)');
+    console.log('[ClientLayoutWrapper] ========================================');
 
-    // Prevent double-tap zoom
-    const preventDoubleTap = (e: TouchEvent) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
+    let gestureCount = 0;
+    let wheelZoomCount = 0;
+
+    // Only prevent gesture-based zooming (pinch, etc.) - NOT double-tap
+    // Double-tap is handled by CSS: touch-action: manipulation !important
+    const preventGesture = (e: Event) => {
+      gestureCount++;
+      console.warn(`[Gesture] #${gestureCount} - Preventing ${e.type}`);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    // Prevent zoom on wheel with ctrl/cmd (desktop)
+    const preventWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        wheelZoomCount++;
+        console.warn(`[Wheel] #${wheelZoomCount} - Preventing Ctrl/Cmd+Wheel zoom`);
         e.preventDefault();
         e.stopPropagation();
       }
-      lastTouchEnd = now;
     };
 
-    // Prevent pinch zoom
-    const preventPinch = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+    console.log('[ClientLayoutWrapper] Adding gesture listeners (NOT touch listeners!)');
 
-    // Prevent all gesture-based zooming
-    const preventGesture = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    // Add multiple layers of protection
-    document.addEventListener('touchend', preventDoubleTap, { passive: false, capture: true });
+    // Only add gesture and wheel listeners - NO touchend/touchstart blocking!
     document.addEventListener('gesturestart', preventGesture, { passive: false, capture: true });
     document.addEventListener('gesturechange', preventGesture, { passive: false, capture: true });
     document.addEventListener('gestureend', preventGesture, { passive: false, capture: true });
-
-    // Prevent zoom on wheel with ctrl/cmd
-    const preventWheelZoom = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
     document.addEventListener('wheel', preventWheelZoom, { passive: false, capture: true });
 
+    console.log('[ClientLayoutWrapper] Gesture listeners installed (touches NOT blocked)');
+
     return () => {
-      document.removeEventListener('touchend', preventDoubleTap, true);
+      console.log('[ClientLayoutWrapper] Removing gesture listeners');
+      console.log(`[ClientLayoutWrapper] Stats: ${gestureCount} gestures, ${wheelZoomCount} wheel zooms prevented`);
+
       document.removeEventListener('gesturestart', preventGesture, true);
       document.removeEventListener('gesturechange', preventGesture, true);
       document.removeEventListener('gestureend', preventGesture, true);
@@ -166,13 +171,15 @@ export default function ClientLayoutWrapper({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
-      <MapStateProvider>
-        <Providers>
-          <SidebarProvider>
-            <LayoutContent>{children}</LayoutContent>
-          </SidebarProvider>
-        </Providers>
-      </MapStateProvider>
+      <PWAProvider>
+        <MapStateProvider>
+          <Providers>
+            <SidebarProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </SidebarProvider>
+          </Providers>
+        </MapStateProvider>
+      </PWAProvider>
     </ThemeProvider>
   );
 }

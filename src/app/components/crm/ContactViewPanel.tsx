@@ -573,13 +573,13 @@ export default function ContactViewPanel({
       {/* Panel */}
       <div
         ref={panelRef}
-        className={`fixed bottom-0 z-50 rounded-t-2xl shadow-2xl transform transition-transform duration-300 ease-out ${
+        className={`fixed inset-0 md:bottom-0 md:inset-auto z-50 md:rounded-t-2xl shadow-2xl transform transition-transform duration-300 ease-out ${
           isLight ? 'bg-white' : 'bg-gray-900'
         }`}
         style={{
-          width: layout.width,
-          left: layout.left,
-          maxHeight: '85vh',
+          width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : layout.width,
+          left: typeof window !== 'undefined' && window.innerWidth < 768 ? '0' : layout.left,
+          maxHeight: typeof window !== 'undefined' && window.innerWidth < 768 ? '100vh' : '85vh',
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)'
         }}
       >
@@ -594,7 +594,14 @@ export default function ContactViewPanel({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 140px)' }}>
+        <div
+          className="overflow-y-auto"
+          style={{
+            maxHeight: typeof window !== 'undefined' && window.innerWidth < 768
+              ? 'calc(100vh - 140px)'
+              : 'calc(85vh - 140px)'
+          }}
+        >
           <div className="space-y-6">
             {/* HEADER WITH BANNER - Full width, no top spacing */}
             <div className="relative overflow-hidden">

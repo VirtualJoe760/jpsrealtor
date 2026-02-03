@@ -1,6 +1,6 @@
 // Constants for EmailInbox
 
-import { Inbox, Send } from 'lucide-react';
+import { Inbox, Send, Tag, Users, Home } from 'lucide-react';
 import { FolderType, SentSubfolder } from '../types';
 
 // Email pagination
@@ -10,6 +10,9 @@ export const EMAIL_LIMIT = 50;
 export const EMAIL_FOLDERS = [
   { id: FolderType.INBOX, label: 'Inbox', icon: Inbox },
   { id: FolderType.SENT, label: 'Sent', icon: Send },
+  { id: FolderType.FARMS, label: 'Farms', icon: Tag },
+  { id: FolderType.CLIENTS, label: 'Clients', icon: Users },
+  { id: FolderType.ESCROWS, label: 'Escrows', icon: Home },
 ];
 
 // Sent subfolders configuration
@@ -17,6 +20,27 @@ export const EMAIL_SENT_SUBFOLDERS = [
   { id: SentSubfolder.ALL, label: 'All Sent' },
   { id: SentSubfolder.TRANSACTIONAL, label: 'Transactional', domain: 'jpsrealtor.com' },
   { id: SentSubfolder.MARKETING, label: 'Marketing', domain: 'josephsardella.com' },
+];
+
+// Farms subfolders (will be populated from labels/tags in database)
+export const EMAIL_FARMS_SUBFOLDERS = [
+  { id: 'all', label: 'All Farms' },
+  // Dynamic farm folders will be added based on contact labels
+];
+
+// Clients subfolders
+export const EMAIL_CLIENTS_SUBFOLDERS = [
+  { id: 'all', label: 'All Clients' },
+  { id: 'active', label: 'Active' },
+  { id: 'past', label: 'Past Clients' },
+];
+
+// Escrows subfolders
+export const EMAIL_ESCROWS_SUBFOLDERS = [
+  { id: 'all', label: 'All Escrows' },
+  { id: 'active', label: 'Active' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'closed', label: 'Closed' },
 ];
 
 // Default available tags

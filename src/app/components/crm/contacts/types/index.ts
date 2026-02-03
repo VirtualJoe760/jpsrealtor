@@ -1,5 +1,7 @@
 // Shared types for contacts module
 
+export type DataFieldType = 'phone' | 'email' | 'status' | 'tags';
+
 export interface Address {
   street?: string;
   city?: string;

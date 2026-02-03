@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
+import "./styles/theme-transitions.css";
 import "leaflet/dist/leaflet.css";
 import "@fontsource/raleway";
 import "@fontsource/plus-jakarta-sans/400.css";
@@ -29,6 +30,21 @@ type ThemeName = typeof VALID_THEMES[number];
 function getServerTheme(cookieStore: Awaited<ReturnType<typeof cookies>>): ThemeName {
   const themeCookie = cookieStore.get(THEME_COOKIE_NAME);
   const theme = themeCookie?.value;
+
+  const allCookies = cookieStore.getAll();
+  const cookieNames = allCookies.map(c => c.name).join(', ');
+
+  console.log('=== [SSR THEME DETECTION] ===');
+  console.log('[SSR] Cookie name searched:', THEME_COOKIE_NAME);
+  console.log('[SSR] All cookies present:', cookieNames);
+  console.log('[SSR] Theme cookie found:', !!themeCookie);
+  console.log('[SSR] Theme cookie value:', theme);
+  console.log('[SSR] Valid themes:', VALID_THEMES);
+  console.log('[SSR] Is valid theme:', theme && VALID_THEMES.includes(theme as ThemeName));
+
+  const resolvedTheme = (theme && VALID_THEMES.includes(theme as ThemeName)) ? theme as ThemeName : DEFAULT_THEME;
+  console.log('[SSR] Resolved theme:', resolvedTheme);
+  console.log('[SSR] Default theme fallback:', DEFAULT_THEME);
 
   if (theme && VALID_THEMES.includes(theme as ThemeName)) {
     return theme as ThemeName;
@@ -61,11 +77,11 @@ export const metadata: Metadata = {
   authors: [{ name: "Joseph Sardella", url: "https://jpsrealtor.com" }],
   creator: "Joseph Sardella",
   publisher: "JPS Realtor",
-  manifest: "/manifest.json",
+  manifest: "/manifest-v2.json",
   // themeColor removed - now handled dynamically by DynamicThemeColor component
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "JP Realtor",
   },
   applicationName: "JP Realtor",
@@ -125,16 +141,30 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const serverTheme = getServerTheme(cookieStore);
 
+  // Get theme color for Dynamic Island/status bar
+  const themeColor = serverTheme === 'lightgradient' ? '#ffffff' : '#000000';
+  // Light theme: 'default' (light status bar, no black overlay)
+  // Dark theme: 'black' (opaque black status bar)
+  const statusBarStyle = serverTheme === 'lightgradient' ? 'default' : 'black';
+
+  console.log('=== [SSR META TAGS] ===');
+  console.log('[SSR] Server theme resolved:', serverTheme);
+  console.log('[SSR] Meta theme-color will be:', themeColor);
+  console.log('[SSR] Meta status-bar-style will be:', statusBarStyle);
+  console.log('[SSR] HTML class will be:', `theme-${serverTheme}`);
+  console.log('[SSR] Expected colors: lightgradient=#ffffff, blackspace=#000000');
+
   return (
     <html lang="en" className={`theme-${serverTheme}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
+        <meta name="theme-color" content={themeColor} />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
         {/* PWA Meta Tags - Theme aware for Dynamic Island support */}
         <meta name="application-name" content="JP Realtor" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        {/* theme-color and statusBarStyle handled by metadata object above */}
+        <meta name="apple-mobile-web-app-status-bar-style" content={statusBarStyle} />
         <meta name="apple-mobile-web-app-title" content="JP Realtor" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -155,18 +185,116 @@ export default async function RootLayout({
             __html: `
               (function() {
                 try {
+                  console.log('=== [INLINE SCRIPT THEME SYNC] ===');
+                  console.log('[Inline] All cookies:', document.cookie);
+
                   // Check cookie first (matches server), then localStorage
                   var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
-                  var theme = cookieMatch ? cookieMatch[2] : localStorage.getItem('site-theme') || 'lightgradient';
-                  if (theme !== 'lightgradient' && theme !== 'blackspace') theme = 'lightgradient';
+                  var cookieTheme = cookieMatch ? cookieMatch[2] : null;
+                  var localStorageTheme = localStorage.getItem('site-theme');
+
+                  console.log('[Inline] Cookie match found:', !!cookieMatch);
+                  console.log('[Inline] Cookie theme value:', cookieTheme);
+                  console.log('[Inline] localStorage theme value:', localStorageTheme);
+
+                  var theme = cookieTheme || localStorageTheme || 'lightgradient';
+                  console.log('[Inline] Theme before validation:', theme);
+
+                  if (theme !== 'lightgradient' && theme !== 'blackspace') {
+                    console.log('[Inline] Invalid theme detected, falling back to lightgradient');
+                    theme = 'lightgradient';
+                  }
+
+                  console.log('[Inline] Final theme selected:', theme);
+
+                  // Apply theme class
+                  var oldClassName = document.documentElement.className;
                   document.documentElement.className = document.documentElement.className.replace(/theme-\\w+/g, '') + ' theme-' + theme;
-                } catch (e) {}
+                  console.log('[Inline] HTML class changed from:', oldClassName, 'to:', document.documentElement.className);
+
+                  // Update meta tags IMMEDIATELY to match detected theme
+                  var themeColor = theme === 'lightgradient' ? '#ffffff' : '#000000';
+                  var statusBarStyle = theme === 'lightgradient' ? 'default' : 'black';
+
+                  console.log('[Inline] Computed theme-color:', themeColor);
+                  console.log('[Inline] Computed status-bar-style:', statusBarStyle);
+
+                  var metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                  if (metaThemeColor) {
+                    var oldValue = metaThemeColor.getAttribute('content');
+                    metaThemeColor.setAttribute('content', themeColor);
+                    console.log('[Inline] theme-color changed from:', oldValue, 'to:', themeColor);
+                  } else {
+                    console.warn('[Inline] meta[name="theme-color"] not found!');
+                  }
+
+                  var metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                  if (metaStatusBar) {
+                    var oldStatusValue = metaStatusBar.getAttribute('content');
+                    metaStatusBar.setAttribute('content', statusBarStyle);
+                    console.log('[Inline] status-bar-style changed from:', oldStatusValue, 'to:', statusBarStyle);
+                  } else {
+                    console.warn('[Inline] meta[name="apple-mobile-web-app-status-bar-style"] not found!');
+                  }
+
+                  console.log('[Inline] Script execution complete');
+                } catch (e) {
+                  console.error('[Inline Script] Error:', e);
+                  console.error('[Inline Script] Stack:', e.stack);
+                }
               })();
             `,
           }}
         />
       </head>
       <body className={`theme-${serverTheme}`} suppressHydrationWarning>
+        {/* Blocking script: Create solid color overlay IMMEDIATELY if returning from theme toggle */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  // Check if we're returning from a theme toggle
+                  var animationKey = sessionStorage.getItem('theme-transition-pair');
+                  var timestamp = sessionStorage.getItem('theme-transition-timestamp');
+
+                  if (animationKey && timestamp) {
+                    var age = Date.now() - parseInt(timestamp, 10);
+
+                    // Only create overlay if refresh happened within 5 seconds
+                    if (age < 5000) {
+                      // Detect current theme to determine solid color
+                      var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
+                      var theme = cookieMatch ? cookieMatch[2] : 'lightgradient';
+                      var solidColor = theme === 'blackspace' ? '#000000' : '#ffffff';
+
+                      console.log('[Blocking Script] Creating solid color overlay:', solidColor);
+
+                      // Create overlay DIV IMMEDIATELY
+                      var overlay = document.createElement('div');
+                      overlay.className = 'theme-transition-overlay';
+                      overlay.id = 'instant-transition-overlay';
+                      overlay.style.cssText = 'position: fixed; inset: 0; z-index: 99999; background-color: ' + solidColor + '; pointer-events: none;';
+
+                      // Add to body immediately (before React renders)
+                      document.body.appendChild(overlay);
+
+                      console.log('[Blocking Script] Overlay created - page content hidden behind solid color');
+                    } else {
+                      // Clear stale data
+                      console.log('[Blocking Script] Stale animation data cleared');
+                      sessionStorage.removeItem('theme-transition-pair');
+                      sessionStorage.removeItem('theme-transition-timestamp');
+                    }
+                  }
+                } catch (e) {
+                  console.error('[Blocking Script] Error:', e);
+                }
+              })();
+            `,
+          }}
+        />
+
         {/* JSON-LD Structured Data for SEO */}
         <OrganizationJsonLd />
         <PersonJsonLd />

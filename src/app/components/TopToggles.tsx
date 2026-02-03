@@ -16,7 +16,10 @@ import { useChatContext } from "./chat/ChatProvider";
 import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
-  const { currentTheme, setTheme } = useTheme();
+  console.log('[TopToggles] ====== COMPONENT RENDER ======');
+  const startTime = performance.now();
+
+  const { currentTheme, toggleTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
   const { hasUnreadMessage, setUnreadMessage } = useChatContext();
@@ -27,18 +30,21 @@ export default function TopToggles() {
   const isHomePage = pathname === "/";
   const [isVisible, setIsVisible] = useState(true);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // REMOVED: mounted state was causing re-render that blocked clicks!
+  // const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
 
-  // Prevent hydration mismatch - wait for client-side mount
+  console.log('[TopToggles] State:', { isVisible, isMapVisible, pathname });
+
+  // Mount logging only - no state changes that cause re-renders
   useEffect(() => {
-    setMounted(true);
+    console.log('[TopToggles] Component mounted - Buttons IMMEDIATELY interactive');
   }, []);
 
   // Debug notification state
   useEffect(() => {
-    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible, 'mounted:', mounted);
-  }, [hasUnreadMessage, isMapVisible, mounted]);
+    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible);
+  }, [hasUnreadMessage, isMapVisible]);
 
   // Listen for favorites panel state changes
   useEffect(() => {
@@ -89,7 +95,7 @@ export default function TopToggles() {
   }, [isMapVisible, favoritesPanelOpen]);
 
   const handleToggleTheme = () => {
-    setTheme(isLight ? "blackspace" : "lightgradient");
+    toggleTheme();
   };
 
   const handleToggleMap = () => {
@@ -129,6 +135,9 @@ export default function TopToggles() {
     }
   };
 
+  const renderTime = performance.now() - startTime;
+  console.log(`[TopToggles] ====== RENDER COMPLETE (${renderTime.toFixed(2)}ms) ======`);
+
   return (
     <motion.div
       className="fixed top-0 left-0 right-0 z-50 pointer-events-none"
@@ -144,7 +153,8 @@ export default function TopToggles() {
         Mobile: h-12 (48px), Desktop: h-14 (56px)
       */}
       {/* Mobile: Centered container with toggles on left/right */}
-      <div className="md:hidden max-w-7xl mx-auto px-4 pt-8 flex items-center justify-between pointer-events-none">
+      {/* pt-safe-plus: safe area + 2rem additional spacing for breathing room */}
+      <div className="md:hidden max-w-7xl mx-auto px-4 pt-safe-plus flex items-center justify-between pointer-events-none">
         {/* Theme Toggle - Left (Mobile Only) */}
         <motion.button
           onClick={handleToggleTheme}
@@ -177,9 +187,9 @@ export default function TopToggles() {
           className="pointer-events-auto relative"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
         >
-          {mounted && isMapVisible ? (
+          {isMapVisible ? (
             <>
               <MessageSquare
                 className="w-9 h-9 transition-colors"
@@ -229,10 +239,10 @@ export default function TopToggles() {
           className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
-          aria-label={mounted && isMapVisible ? "Show Chat" : "Show Map"}
+          aria-label={isMapVisible ? "Show Chat" : "Show Map"}
           data-tour="top-map-toggle-desktop"
         >
-          {mounted && isMapVisible ? (
+          {isMapVisible ? (
             <>
               <MessageSquare
                 className="w-11 h-11 transition-colors"

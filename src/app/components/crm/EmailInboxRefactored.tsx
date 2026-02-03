@@ -5,7 +5,7 @@
 // Refactored: ~300 lines, 7 custom hooks
 
 import React from 'react';
-import ComposePanel from './ComposePanel';
+import ComposePanel from './compose-panel/ComposePanelRefactored';
 import {
   useEmails,
   useEmailMetadata,
@@ -126,6 +126,22 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
     selectAll(filteredEmails);
   };
 
+  const handleCompose = () => {
+    // TODO: Implement new email composition
+    console.log('Compose new email');
+  };
+
+  const handleBulkMarkRead = (read: boolean) => {
+    executeBulkAction(async () => {
+      for (const emailId of selectedEmailIds) {
+        if (read && !emailMetadata[emailId]?.isRead) {
+          await markAsRead(emailId);
+        }
+        // TODO: Implement markAsUnread if needed
+      }
+    });
+  };
+
   const bgClass = isLight ? 'bg-white' : 'bg-gray-900';
   const textClass = isLight ? 'text-gray-900' : 'text-white';
 
@@ -152,12 +168,14 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           sortOrder={sortOrder}
           onSortChange={updateSort}
           onRefresh={refreshEmails}
+          onCompose={handleCompose}
           showBulkActions={showBulkActions}
           selectedCount={selectedCount}
           onSelectAll={handleSelectAll}
           onDeselectAll={deselectAll}
           onBulkArchive={handleBulkArchive}
           onBulkDelete={handleBulkDelete}
+          onBulkMarkRead={handleBulkMarkRead}
           isLight={isLight}
         />
 

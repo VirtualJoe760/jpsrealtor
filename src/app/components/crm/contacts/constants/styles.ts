@@ -8,10 +8,10 @@ import { ContactStatus } from '../types/enums';
  */
 export const CARD_STYLES = {
   light: {
-    base: 'bg-white border-2 border-gray-100',
-    shadow: 'shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_10px_15px_-3px_rgba(0,0,0,0.1),0_20px_25px_-5px_rgba(0,0,0,0.1)]',
-    hoverShadow: 'hover:shadow-[0_10px_20px_-5px_rgba(0,0,0,0.15),0_20px_30px_-10px_rgba(0,0,0,0.15)]',
-    hoverTransform: 'hover:-translate-y-1',
+    base: 'bg-white/30',
+    shadow: 'shadow-2xl',
+    hoverShadow: 'hover:shadow-2xl',
+    hoverTransform: 'hover:-translate-y-0.5',
   },
   dark: {
     base: 'bg-neutral-900/30',

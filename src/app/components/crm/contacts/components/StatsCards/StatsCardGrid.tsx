@@ -27,10 +27,10 @@ export function StatsCardGrid({
   isLight
 }: StatsCardGridProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-4 sm:px-6 lg:px-8 pb-8">
       {/* All Contacts & Tags Section */}
       <div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {/* All Contacts Card */}
           <StatsCard
             icon={Users}
@@ -59,7 +59,7 @@ export function StatsCardGrid({
         <h2 className={`text-2xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
           By Status
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Object.values(ContactStatus).map((status) => (
             <StatusCard
               key={status}

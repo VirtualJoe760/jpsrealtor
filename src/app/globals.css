@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   PWA Safe Area Variables
+   ============================================================================
+
+   Define CSS variables for safe areas (notches, Dynamic Island, home indicator).
+   These work automatically without JavaScript - browser provides the values.
+
+   Benefits:
+   - No JavaScript needed
+   - No layout shifts
+   - Consistent fallback values
+   - Easy to use in components
+
+   Usage:
+   padding-bottom: var(--safe-bottom);  // Instead of env() directly
+   ============================================================================ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Mobile navigation height (used for body padding calculations) */
+  --mobile-nav-height: 60px;
+}
+
 /* iOS Keyboard Fix: Use dynamic viewport units */
 html {
   /* Use dvh (dynamic viewport height) - updates as keyboard opens/closes */
@@ -25,12 +51,30 @@ body {
   .pt-safe {
     padding-top: max(0px, env(safe-area-inset-top));
   }
+  /* TopToggles need safe area PLUS additional spacing */
+  .pt-safe-plus {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+  }
   .pl-safe {
     padding-left: max(0px, env(safe-area-inset-left));
   }
   .pr-safe {
     padding-right: max(0px, env(safe-area-inset-right));
   }
+}
+
+/* Custom slow spin animation for bottom nav */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
 }
 
 /* Landscape orientation blocker for mobile (disabled in iframes) */
@@ -75,9 +119,13 @@ body {
   /* Prevent horizontal overflow */
   overflow-x: hidden;
   max-width: 100vw;
-  /* iOS PWA - extend into safe areas (no top padding, let content extend) */
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+
+  /* iOS PWA - Safe area insets */
+  /* Top padding intentionally omitted - navbar/header handles top safe area */
+  /* Side padding prevents content from extending into curved edges */
+  /* Bottom padding calculated per-page (mobile nav + home indicator) */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Prevent page scrolling only on chat, map, and neighborhoods pages */
@@ -95,7 +143,8 @@ body:has([data-page="neighborhoods"]) {
 /* Add padding for mobile bottom nav on small screens */
 @media (max-width: 640px) {
   body {
-    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    /* Use CSS variables for consistency */
+    padding-bottom: calc(var(--mobile-nav-height) + var(--safe-bottom));
   }
 
   /* Remove padding when chat landing is active */
@@ -120,18 +169,42 @@ html {
   max-width: 100vw;
 }
 
-/* Theme-aware backgrounds - fills PWA status bar area */
+/*
+ * Theme-aware backgrounds - fills PWA status bar area AND Dynamic Island
+ *
+ * ⚠️ IMPORTANT: CSS Box Model Padding Behavior
+ * Per MDN: "Background colors extend through the padding area."
+ *
+ * This gradient background WILL SHOW THROUGH any container padding,
+ * creating visible "white space" or gradient bleed on page sides.
+ *
+ * SOLUTION: Use the Parent Wrapper Pattern
+ * - Do NOT add padding to containers that sit directly against this gradient
+ * - Instead, wrap child sections in divs with padding: `px-4 sm:px-6 lg:px-8`
+ * - See ThemeContext.tsx documentation for complete implementation guide
+ *
+ * Reference: src/app/contexts/ThemeContext.tsx (lines 10-60)
+ */
 html.theme-lightgradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
+  background-color: #ffffff; /* Fallback solid color if gradient fails - WHITE for browser controls */
   background-size: 400% 400%;
   background-attachment: fixed;
   animation: gradient 12s ease infinite;
+  /* Ensure background fills entire viewport including safe areas */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html.theme-lightgradient body {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
+  background-color: #ffffff; /* Fallback solid color if gradient fails - WHITE for browser controls */
   background-size: 400% 400%;
+  background-attachment: fixed; /* CRITICAL: Makes background extend into safe areas */
   animation: gradient 12s ease infinite;
+  /* Extend background into safe areas */
+  min-height: calc(100vh + env(safe-area-inset-top, 0px));
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px));
 }
 
 @keyframes gradient {
@@ -147,11 +220,20 @@ html.theme-lightgradient body {
 }
 
 html.theme-blackspace {
-  background-color: #000000;
+  background-color: #000000 !important; /* Force black, no transparency */
+  background: #000000 !important; /* Ensure solid black background */
+  /* Ensure background fills entire viewport including safe areas */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html.theme-blackspace body {
-  background-color: #000000;
+  background-color: #000000 !important; /* Force black, no transparency */
+  background: #000000 !important; /* Ensure solid black background */
+  background-attachment: fixed; /* Extend into safe areas */
+  /* Extend background into safe areas */
+  min-height: calc(100vh + env(safe-area-inset-top, 0px));
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px));
 }
 
 * {
@@ -362,12 +444,14 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
 
 .no-scrollbar::-webkit-scrollbar,
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 .no-scrollbar,
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 /* Custom styled scrollbar for listing panel */
@@ -396,11 +480,11 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
   scrollbar-color: rgb(63, 63, 70) rgb(24, 24, 27);
 }
 
-/* Fade-in animation for county hover labels */
+/* Fade-in animation for county hover labels and mobile contact crossfade */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -409,7 +493,21 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+/* Spin animation for gear icon transition */
+@keyframes spin-once {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.animate-spin-once {
+  animation: spin-once 0.3s ease-out forwards;
 }
 
 /* MapLibre Popup Styling - Remove default borders and shadows */

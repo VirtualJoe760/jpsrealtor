@@ -12,7 +12,7 @@ import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
-import { emitNewMessage } from '@/server/socket';
+import { emitNewMessage, getIO } from '@/server/socket';
 import { sendSMSNotification } from '@/services/pushNotificationService';
 
 // ============================================================================
@@ -146,19 +146,63 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔥 EMIT WEBSOCKET EVENT - Push message to client instantly!
-    emitNewMessage(userId, smsMessage);
+    // Convert Mongoose document to plain object for Socket.io serialization
+    const plainMessage = smsMessage.toObject();
+    console.log('[Twilio Webhook] 🔍 About to emit message:', {
+      userId,
+      messageId: plainMessage._id,
+      from: plainMessage.from,
+      to: plainMessage.to,
+      direction: plainMessage.direction,
+    });
+
+    // Check if any clients are connected
+    try {
+      const io = getIO();
+      const room = `user:${userId}`;
+      const clientsInRoom = io.sockets.adapter.rooms.get(room);
+      console.log(`[Twilio Webhook] 🔍 Room ${room} has ${clientsInRoom?.size || 0} clients`);
+    } catch (e) {
+      console.log('[Twilio Webhook] ⚠️ Could not get IO instance:', e);
+    }
+
+    emitNewMessage(userId, plainMessage);
     console.log('[Twilio Webhook] 📤 Emitted WebSocket event to user:', userId);
 
     // 📱 SEND PUSH NOTIFICATION - Alert user on mobile devices!
+    // Generate display name for notification
+    let contactDisplayName: string | undefined;
+    if (contact) {
+      const firstName = contact.firstName?.trim();
+      const lastName = contact.lastName?.trim();
+
+      // Don't show "Unknown Contact" - let it fall back to phone number formatting
+      const isUnknownContact = (firstName === 'Unknown' && lastName === 'Contact');
+
+      if (!isUnknownContact) {
+        if (firstName && lastName) {
+          contactDisplayName = `${firstName} ${lastName}`;
+        } else if (firstName) {
+          contactDisplayName = firstName;
+        } else if (lastName) {
+          contactDisplayName = lastName;
+        }
+      }
+    }
+
+    console.log('[Twilio Webhook] 📱 Sending push notification:', {
+      userId,
+      contactDisplayName,
+      from: twilioData.From,
+    });
+
     sendSMSNotification(userId, {
       from: twilioData.From,
       body: twilioData.Body || '',
-      contactName: contact?.firstName && contact?.lastName
-        ? `${contact.firstName} ${contact.lastName}`
-        : undefined,
+      contactName: contactDisplayName,
       messageId: smsMessage._id.toString(),
     }).catch(err => {
-      console.error('[Twilio Webhook] Push notification error:', err);
+      console.error('[Twilio Webhook] ❌ Push notification error:', err);
       // Don't fail the webhook if push fails
     });
 

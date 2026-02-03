@@ -3,6 +3,9 @@
 export enum FolderType {
   INBOX = 'inbox',
   SENT = 'sent',
+  FARMS = 'farms',
+  CLIENTS = 'clients',
+  ESCROWS = 'escrows',
 }
 
 export enum SentSubfolder {

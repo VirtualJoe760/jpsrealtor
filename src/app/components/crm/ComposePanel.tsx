@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette } from 'lucide-react';
+import { X, Send, Paperclip, Minus, Maximize2, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, Type, FileText, Palette, Sparkles } from 'lucide-react';
+import AIEmailModal from './AIEmailModal';
+import { processEmailContent } from '@/lib/email-variables';
 // import ContactAutocomplete from './ContactAutocomplete'; // Disabled - causes render failure
 
 interface Email {
@@ -37,6 +39,8 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   const [success, setSuccess] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
 
   // Initialize reply or forward data
   useEffect(() => {
@@ -168,12 +172,22 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     setSuccess(false);
 
     try {
+      // Get the primary recipient email (first in "to" field)
+      const recipientEmail = to.split(',')[0].trim();
+
+      // Process email content to replace variables like {first-name}
+      const { subject: processedSubject, body: processedBody } = await processEmailContent(
+        subject,
+        message,
+        recipientEmail
+      );
+
       const formData = new FormData();
       formData.append('to', to);
       if (cc) formData.append('cc', cc);
       if (bcc) formData.append('bcc', bcc);
-      formData.append('subject', subject);
-      formData.append('message', message);
+      formData.append('subject', processedSubject);
+      formData.append('message', processedBody);
 
       attachments.forEach((file) => {
         formData.append('attachments', file);
@@ -224,6 +238,30 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     }
   };
 
+  const handleAIGenerate = (generatedSubject: string, generatedBody: string) => {
+    setSubject(generatedSubject);
+    setMessage(generatedBody);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = generatedBody;
+    }
+  };
+
+  const insertVariable = (variable: string) => {
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
+
+    if (editorRef.current && editorRef.current.contains(range?.commonAncestorContainer || null)) {
+      formatText('insertHTML', `{${variable}}`);
+    } else {
+      // If no selection or outside editor, append to end
+      if (editorRef.current) {
+        const currentHTML = editorRef.current.innerHTML;
+        editorRef.current.innerHTML = currentHTML + `{${variable}}`;
+        setMessage(editorRef.current.innerHTML);
+      }
+    }
+  };
+
   if (isMinimized) {
     return (
       <div className={`fixed bottom-0 right-8 z-50 w-96 rounded-t-lg shadow-lg cursor-pointer ${
@@ -246,9 +284,23 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   }
 
   return (
-    <div className={`fixed ${isMaximized ? 'inset-8' : 'bottom-0 right-8 w-full max-w-2xl'} z-50 flex flex-col rounded-t-xl shadow-2xl ${
-      isLight ? 'bg-white' : 'bg-gray-800'
-    }`} style={!isMaximized ? { height: '650px' } : {}}>
+    <div
+      className={`fixed ${
+        isMaximized
+          ? 'inset-8'
+          : 'inset-0 md:inset-auto md:bottom-0 md:right-8 md:w-full md:max-w-2xl'
+      } z-50 flex flex-col rounded-t-xl md:rounded-t-xl shadow-2xl ${
+        isLight ? 'bg-white' : 'bg-gray-800'
+      }`}
+      style={
+        isMaximized
+          ? {}
+          : {
+              height: '100vh',
+              maxHeight: '100vh'
+            }
+      }
+    >
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${
         isLight ? 'bg-slate-800' : 'bg-gray-900'
@@ -417,7 +469,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
         </div>
 
         {/* Rich Text Toolbar */}
-        <div className={`flex items-center gap-1 px-4 py-2 border-b overflow-x-auto ${
+        <div className={`flex flex-wrap items-center gap-1 px-4 py-2 border-b ${
           isLight ? 'border-slate-200 bg-slate-50' : 'border-gray-700 bg-gray-900'
         }`}>
           {/* Font Family */}
@@ -498,6 +550,122 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
           <button type="button" onClick={() => setShowLinkModal(true)} className={`p-2 rounded hover:bg-slate-200 dark:hover:bg-gray-700 ${isLight ? 'text-slate-700' : 'text-gray-300'}`} title="Insert Link">
             <LinkIcon className="w-4 h-4" />
           </button>
+
+          <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
+
+          {/* AI Generation */}
+          <button
+            type="button"
+            onClick={() => setShowAIModal(true)}
+            className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all ${
+              isLight
+                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                : 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50'
+            }`}
+            title="Generate with AI"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="text-xs font-medium">AI</span>
+          </button>
+
+          {/* Variables Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowVariables(!showVariables)}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all ${
+                isLight
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+              }`}
+              title="Insert Variable"
+            >
+              <Type className="w-4 h-4" />
+              <span className="text-xs font-medium">Vars</span>
+            </button>
+
+            {showVariables && (
+              <div className={`absolute left-0 mt-1 w-48 rounded-lg shadow-lg border z-50 ${
+                isLight ? 'bg-white border-gray-200' : 'bg-gray-800 border-gray-700'
+              }`}>
+                <div className="p-2 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('first-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{first-name}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('last-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{last-name}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('full-name'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{full-name}'}
+                  </button>
+                  <div className={`my-1 border-t ${isLight ? 'border-gray-200' : 'border-gray-700'}`} />
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('street'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{street}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('city'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{city}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('state'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{state}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('zip'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{zip}'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { insertVariable('address'); setShowVariables(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      isLight ? 'hover:bg-blue-50 text-gray-700' : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {'{address}'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className={`w-px h-6 mx-1 ${isLight ? 'bg-slate-300' : 'bg-gray-600'}`} />
 
@@ -583,6 +751,15 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Email Modal */}
+      {showAIModal && (
+        <AIEmailModal
+          isLight={isLight}
+          onClose={() => setShowAIModal(false)}
+          onGenerate={handleAIGenerate}
+        />
       )}
     </div>
   );

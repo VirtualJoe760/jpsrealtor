@@ -1,0 +1,424 @@
+/**
+ * Theme Transition Animations - Two-Act System
+ *
+ * Real estate-themed animations for theme switching.
+ * Each animation has EXIT (closing) and ENTER (opening) variants.
+ *
+ * Metaphor: "Closing on one home, opening another"
+ *
+ * Usage:
+ * - EXIT: Plays when user toggles theme (old theme color)
+ * - ENTER: Plays after page refresh (new theme color)
+ */
+
+/* ===================================
+   BASE OVERLAY STYLES
+   =================================== */
+
+.theme-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  touch-action: none; /* Prevent all touch gestures during animation */
+  -webkit-touch-callout: none; /* Disable iOS callout */
+  -webkit-user-select: none; /* Disable text selection */
+  user-select: none;
+  will-change: transform, opacity, clip-path;
+  transform-origin: center center;
+  /* Cover safe areas on iOS (notch, Dynamic Island) */
+  top: env(safe-area-inset-top, 0);
+  bottom: env(safe-area-inset-bottom, 0);
+  left: env(safe-area-inset-left, 0);
+  right: env(safe-area-inset-right, 0);
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  perspective: 1000;
+}
+
+/* ===================================
+   ANIMATION 1: KEY TURN
+   Duration: 300ms
+   Metaphor: Locking/unlocking properties
+   =================================== */
+
+/* EXIT: Key rotates clockwise (locking) */
+@keyframes key-lock {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(90deg) scale(1);
+  }
+}
+
+/* ENTER: Key rotates counter-clockwise (unlocking) */
+@keyframes key-unlock {
+  0% {
+    opacity: 1;
+    transform: rotate(90deg) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(0deg) scale(0.5);
+  }
+}
+
+.key-lock {
+  animation: key-lock 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.key-unlock {
+  animation: key-unlock 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 2: FRENCH DOORS
+   Duration: 500ms
+   Metaphor: Grand entrance/exit
+   =================================== */
+
+/* EXIT: Doors swing closed (inward) */
+@keyframes doors-close {
+  from {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+}
+
+/* ENTER: Doors swing open (outward) */
+@keyframes doors-open {
+  from {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+}
+
+.doors-close {
+  animation: doors-close 500ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+.doors-open {
+  animation: doors-open 500ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 3: VENETIAN BLINDS
+   Duration: 400ms
+   Metaphor: Controlling light
+   =================================== */
+
+/* EXIT: Blinds close (blocking light) */
+@keyframes blinds-close {
+  0% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(0.02) rotateX(90deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1) rotateX(0deg);
+  }
+}
+
+/* ENTER: Blinds open (letting light in) */
+@keyframes blinds-open {
+  0% {
+    opacity: 1;
+    transform: scaleY(1) rotateX(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(0.02) rotateX(90deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+.blinds-close {
+  animation: blinds-close 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.blinds-open {
+  animation: blinds-open 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 4: GARAGE DOOR
+   Duration: 450ms
+   Metaphor: Modern homes, secure storage
+   =================================== */
+
+/* EXIT: Door rolls down */
+@keyframes garage-down {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ENTER: Door rolls up */
+@keyframes garage-up {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+
+.garage-down {
+  animation: garage-down 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.garage-up {
+  animation: garage-up 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 5: SLIDING GLASS DOOR
+   Duration: 450ms
+   Metaphor: Contemporary design
+   =================================== */
+
+/* EXIT: Panel slides right (closing) */
+@keyframes slide-close {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ENTER: Panel slides left (opening) */
+@keyframes slide-open {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.slide-close {
+  animation: slide-close 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-open {
+  animation: slide-open 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 6: PROPERTY CARD FLIP
+   Duration: 600ms
+   Metaphor: Browsing listings
+   =================================== */
+
+/* EXIT: Card flips away (showing back) */
+@keyframes card-flip-away {
+  from {
+    transform: perspective(1200px) rotateY(0deg);
+  }
+  to {
+    transform: perspective(1200px) rotateY(180deg);
+  }
+}
+
+/* ENTER: Card flips to front (showing property) */
+@keyframes card-flip-to {
+  from {
+    transform: perspective(1200px) rotateY(-180deg);
+  }
+  to {
+    transform: perspective(1200px) rotateY(0deg);
+  }
+}
+
+.card-flip-away {
+  animation: card-flip-away 600ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+.card-flip-to {
+  animation: card-flip-to 600ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 7: WINDOW SHUTTERS
+   Duration: 500ms
+   Metaphor: Traditional homes
+   =================================== */
+
+/* EXIT: Shutters close from sides to center */
+@keyframes shutters-close {
+  from {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+}
+
+/* ENTER: Shutters open from center to sides */
+@keyframes shutters-open {
+  from {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+}
+
+.shutters-close {
+  animation: shutters-close 500ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+.shutters-open {
+  animation: shutters-open 500ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* ===================================
+   ANIMATION 8: CURTAIN DRAW
+   Duration: 550ms
+   Metaphor: Theatrical reveal
+   =================================== */
+
+/* EXIT: Curtains pull closed */
+@keyframes curtains-close {
+  from {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+}
+
+/* ENTER: Curtains pull open */
+@keyframes curtains-open {
+  from {
+    clip-path: polygon(0 0, 0 100%, 50% 100%, 50% 0, 50% 0, 50% 100%, 100% 100%, 100% 0);
+    opacity: 1;
+  }
+  to {
+    clip-path: polygon(0 0, 0 100%, 0 100%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 0);
+    opacity: 0;
+  }
+}
+
+.curtains-close {
+  animation: curtains-close 550ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+.curtains-open {
+  animation: curtains-open 550ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* ===================================
+   CROSS-DISSOLVE TRANSITIONS
+   Duration: 600ms
+   Purpose: Smooth color transitions to hide page refresh
+   =================================== */
+
+/* Fade listing photo to solid color (before refresh) */
+@keyframes cross-dissolve-to-color {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Fade solid color to listing photo (after refresh) */
+@keyframes cross-dissolve-from-color {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.cross-dissolve-to-color {
+  animation: cross-dissolve-to-color 600ms ease-in-out forwards;
+}
+
+.cross-dissolve-from-color {
+  animation: cross-dissolve-from-color 600ms ease-in-out forwards;
+}
+
+/* ===================================
+   ACCESSIBILITY: REDUCED MOTION
+   =================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition-overlay {
+    animation: none !important;
+    transition: opacity 150ms ease-in-out !important;
+  }
+
+  /* Instant fade for accessibility */
+  .theme-transition-overlay {
+    animation: fade-reduced 150ms ease-in-out forwards !important;
+  }
+
+  @keyframes fade-reduced {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* ===================================
+   MOBILE OPTIMIZATION
+   =================================== */
+
+/* Prevent scroll bounce during animation on iOS */
+body:has(.theme-transition-overlay) {
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Ensure animations work on all mobile browsers */
+@supports (-webkit-appearance: none) {
+  /* iOS Safari specific optimizations */
+  .theme-transition-overlay {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
