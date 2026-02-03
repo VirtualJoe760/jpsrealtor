@@ -368,6 +368,9 @@ function playExitAnimation(
 
     // Solid color will be the underlay (revealed when content fades)
     const solidColor = targetTheme === 'blackspace' ? '#000000' : '#ffffff';
+
+    console.log(`[ThemeTransition] EXIT animation - Target theme: ${targetTheme}, Solid color: ${solidColor}`);
+
     overlay.style.cssText = `
       background-color: ${solidColor};
     `;
@@ -384,10 +387,20 @@ function playExitAnimation(
     // Get random Obsidian Group listing
     const listing = getRandomListing();
 
-    // If no listings available, skip the animation overlay
+    // If no listings available, show simple solid color transition
     if (!listing) {
-      console.warn('[ThemeTransition] No featured listings available, skipping animation');
-      resolve();
+      console.warn('[ThemeTransition] No featured listings available, using simple color transition');
+
+      // Create simple solid color overlay
+      document.body.appendChild(overlay);
+
+      // Simple fade transition (no property showcase)
+      const simpleDuration = 800; // Faster than full animation
+
+      setTimeout(() => {
+        console.log(`[ThemeTransition] Simple EXIT transition complete - solid ${solidColor}`);
+        resolve();
+      }, simpleDuration);
       return;
     }
 
@@ -528,8 +541,7 @@ function playExitAnimation(
  * Sequence: Remove instant overlay → Replace with listing photo overlay → Cross-dissolve in → Hold → Animation OUT
  */
 function playEnterAnimation(
-  animationKey: AnimationPairKey,
-  backgroundColor: string
+  animationKey: AnimationPairKey
 ): Promise<void> {
   return new Promise((resolve) => {
     // CRITICAL: Remove the instant solid color overlay created by blocking script
@@ -555,6 +567,8 @@ function playEnterAnimation(
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const solidColor = currentTheme === 'blackspace' ? '#000000' : '#ffffff';
 
+    console.log(`[ThemeTransition] ENTER animation - Current theme: ${currentTheme}, Solid color: ${solidColor}`);
+
     // Solid color as underlay (will be covered when content fades in)
     overlay.style.cssText = `
       background-color: ${solidColor};
@@ -571,10 +585,21 @@ function playEnterAnimation(
     // Get random Obsidian Group listing
     const listing = getRandomListing();
 
-    // If no listings available, skip the animation
+    // If no listings available, show simple solid color transition
     if (!listing) {
-      console.warn('[ThemeTransition] No featured listings available for ENTER, skipping animation');
-      resolve();
+      console.warn('[ThemeTransition] No featured listings available for ENTER, using simple color transition');
+
+      // Create simple solid color overlay
+      document.body.appendChild(overlay);
+
+      // Simple fade transition (no property showcase)
+      const simpleDuration = 800; // Faster than full animation
+
+      setTimeout(() => {
+        overlay.remove();
+        console.log(`[ThemeTransition] Simple ENTER transition complete`);
+        resolve();
+      }, simpleDuration);
       return;
     }
 
@@ -800,61 +825,52 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     console.log('[ThemeContext]   - android-app referrer:', document.referrer.includes('android-app://'));
     console.log('[ThemeContext]   - Final isStandalone:', isStandalone);
 
-    // Only update meta tags in PWA mode - Safari browser ignores dynamic updates
+    // Update meta tags in both PWA and browser modes
+    // Safari DOES respect these updates, even in browser mode, for Dynamic Island/status bar
+    const themeColor = isLight ? '#ffffff' : '#000000'; // White for light, black for dark
+    // Light theme: 'default' (light status bar, no black overlay)
+    // Dark theme: 'black' (opaque black status bar)
+    const statusBarStyle = isLight ? 'default' : 'black';
+
+    console.log('[ThemeContext] Computed values:');
+    console.log('[ThemeContext]   - themeColor:', themeColor, '(expected: lightgradient=#ffffff, blackspace=#000000)');
+    console.log('[ThemeContext]   - statusBarStyle:', statusBarStyle, '(expected: lightgradient=default, blackspace=black)');
+
+    // Update theme-color meta tag (for Dynamic Island / status bar)
+    // Remove and recreate to force Safari to recognize the change
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const oldThemeColor = metaThemeColor ? metaThemeColor.getAttribute('content') : 'not found';
+    console.log('[ThemeContext] Old theme-color value:', oldThemeColor);
+
+    if (metaThemeColor) {
+      metaThemeColor.remove();
+      console.log('[ThemeContext] Removed old theme-color meta tag');
+    }
+    metaThemeColor = document.createElement('meta');
+    metaThemeColor.setAttribute('name', 'theme-color');
+    metaThemeColor.setAttribute('content', themeColor);
+    document.head.appendChild(metaThemeColor);
+    console.log('[ThemeContext] Created new theme-color meta tag:', themeColor);
+
+    // Update iOS status bar style
+    let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    const oldStatusBar = metaStatusBar ? metaStatusBar.getAttribute('content') : 'not found';
+    console.log('[ThemeContext] Old status-bar-style value:', oldStatusBar);
+
+    if (metaStatusBar) {
+      metaStatusBar.remove();
+      console.log('[ThemeContext] Removed old status-bar-style meta tag');
+    }
+    metaStatusBar = document.createElement('meta');
+    metaStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+    metaStatusBar.setAttribute('content', statusBarStyle);
+    document.head.appendChild(metaStatusBar);
+    console.log('[ThemeContext] Created new status-bar-style meta tag:', statusBarStyle);
+
     if (isStandalone) {
-      console.log('[ThemeContext] PWA mode detected - updating meta tags dynamically');
-
-      const themeColor = isLight ? '#ffffff' : '#000000'; // White for light, black for dark
-      // Light theme: 'default' (light status bar, no black overlay)
-      // Dark theme: 'black' (opaque black status bar)
-      const statusBarStyle = isLight ? 'default' : 'black';
-
-      console.log('[ThemeContext] Computed values:');
-      console.log('[ThemeContext]   - themeColor:', themeColor, '(expected: lightgradient=#ffffff, blackspace=#000000)');
-      console.log('[ThemeContext]   - statusBarStyle:', statusBarStyle, '(expected: lightgradient=default, blackspace=black)');
-
-      // Update theme-color meta tag (for Dynamic Island / status bar)
-      // Remove and recreate to force Safari to recognize the change
-      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      const oldThemeColor = metaThemeColor ? metaThemeColor.getAttribute('content') : 'not found';
-      console.log('[ThemeContext] Old theme-color value:', oldThemeColor);
-
-      if (metaThemeColor) {
-        metaThemeColor.remove();
-        console.log('[ThemeContext] Removed old theme-color meta tag');
-      }
-      metaThemeColor = document.createElement('meta');
-      metaThemeColor.setAttribute('name', 'theme-color');
-      metaThemeColor.setAttribute('content', themeColor);
-      document.head.appendChild(metaThemeColor);
-      console.log('[ThemeContext] Created new theme-color meta tag:', themeColor);
-
-      // Update iOS status bar style (PWA only)
-      let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-      const oldStatusBar = metaStatusBar ? metaStatusBar.getAttribute('content') : 'not found';
-      console.log('[ThemeContext] Old status-bar-style value:', oldStatusBar);
-
-      if (metaStatusBar) {
-        metaStatusBar.remove();
-        console.log('[ThemeContext] Removed old status-bar-style meta tag');
-      }
-      metaStatusBar = document.createElement('meta');
-      metaStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-      metaStatusBar.setAttribute('content', statusBarStyle);
-      document.head.appendChild(metaStatusBar);
-      console.log('[ThemeContext] Created new status-bar-style meta tag:', statusBarStyle);
-
-      console.log('[ThemeContext] ✅ PWA meta tags updated successfully');
+      console.log('[ThemeContext] ✅ PWA mode - Meta tags updated');
     } else {
-      console.log('[ThemeContext] Browser mode (not standalone) - skipping meta tag updates');
-      console.log('[ThemeContext] Meta tags will update on page refresh via SSR');
-
-      // Log current meta tag values for debugging
-      const currentThemeColor = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
-      const currentStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content');
-      console.log('[ThemeContext] Current meta tag values:');
-      console.log('[ThemeContext]   - theme-color:', currentThemeColor);
-      console.log('[ThemeContext]   - status-bar-style:', currentStatusBar);
+      console.log('[ThemeContext] ✅ Browser mode - Meta tags updated (helps ensure Dynamic Island shows correct color)');
     }
 
     // Persist to both cookie (for SSR) and localStorage (for backup)
@@ -874,11 +890,9 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
       // Only play if refresh happened within 5 seconds (prevent stale animations)
       if (age < 5000) {
-        const newColor = getThemeColor(currentTheme);
-
         console.log(`[ThemeTransition] 🎬 Act 2: Playing ENTER animation`);
 
-        playEnterAnimation(animationKey, newColor).then(() => {
+        playEnterAnimation(animationKey).then(() => {
           // Cleanup sessionStorage after animation completes
           sessionStorage.removeItem('theme-transition-pair');
           sessionStorage.removeItem('theme-transition-timestamp');

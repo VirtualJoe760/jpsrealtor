@@ -37,7 +37,13 @@
       "Bash(if exist \".next\\dev\\lock\" del \".next\\dev\\lock\")",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
-      "Bash(cmd /c \"taskkill /F /IM node.exe\")"
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(powershell:*)",
+      "Bash(icacls:*)",
+      "Bash(python analyze_photos.py:*)",
+      "Bash(python convert_to_jpg.py:*)",
+      "Bash(python test_generate.py:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
