@@ -14,7 +14,8 @@
       "Bash(node:*)",
       "WebFetch(domain:jpsrealtor.com)",
       "WebFetch(domain:github.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
