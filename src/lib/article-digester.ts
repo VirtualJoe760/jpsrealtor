@@ -48,9 +48,41 @@ export async function digestAIResponse(
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // Pre-process: Auto-fix violations before validation
+  const sanitized = {
+    title: rawResponse.title || '',
+    excerpt: rawResponse.excerpt || '',
+    content: rawResponse.content || '',
+    altText: rawResponse.altText || '',
+    metaTitle: rawResponse.metaTitle || rawResponse.title || '',
+    metaDescription: rawResponse.metaDescription || rawResponse.excerpt || '',
+    keywords: Array.isArray(rawResponse.keywords) ? rawResponse.keywords : [],
+  };
+
+  // Auto-truncate metaTitle if too long (60 char limit)
+  if (sanitized.metaTitle.length > 60) {
+    const original = sanitized.metaTitle;
+    sanitized.metaTitle = sanitized.metaTitle.substring(0, 57) + '...';
+    warnings.push(`SEO title truncated from ${original.length} to 60 characters`);
+  }
+
+  // Auto-truncate metaDescription if too long (160 char limit)
+  if (sanitized.metaDescription.length > 160) {
+    const original = sanitized.metaDescription;
+    sanitized.metaDescription = sanitized.metaDescription.substring(0, 157) + '...';
+    warnings.push(`SEO description truncated from ${original.length} to 160 characters`);
+  }
+
+  // Limit keywords to 10
+  if (sanitized.keywords.length > 10) {
+    const original = sanitized.keywords.length;
+    sanitized.keywords = sanitized.keywords.slice(0, 10);
+    warnings.push(`Keywords reduced from ${original} to 10`);
+  }
+
   try {
-    // Validate with Zod
-    const validated = ArticleSchema.parse(rawResponse);
+    // Validate with Zod (should pass now after sanitization)
+    const validated = ArticleSchema.parse(sanitized);
 
     // Check for bold text overuse
     const boldCount = (validated.content.match(/\*\*/g) || []).length / 2;
@@ -97,14 +129,14 @@ export async function digestAIResponse(
     }
 
     return {
-      title: '',
+      title: sanitized.title,
       slugId: '',
-      excerpt: '',
-      content: '',
-      altText: '',
-      metaTitle: '',
-      metaDescription: '',
-      keywords: [],
+      excerpt: sanitized.excerpt,
+      content: sanitized.content,
+      altText: sanitized.altText,
+      metaTitle: sanitized.metaTitle,
+      metaDescription: sanitized.metaDescription,
+      keywords: sanitized.keywords,
       validation: {
         isValid: false,
         errors,
