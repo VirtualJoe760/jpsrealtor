@@ -113,6 +113,10 @@ export default function NewArticlePage() {
     setIsGenerating(true);
 
     try {
+      // Create AbortController for 65-second timeout (longer than backend's 60s)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 65000);
+
       const response = await fetch("/api/articles/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -122,9 +126,15 @@ export default function NewArticlePage() {
           tone: "professional yet approachable",
           length: "comprehensive",
         }),
+        signal: controller.signal,
       });
 
-      if (!response.ok) throw new Error("Failed to generate article");
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || "Failed to generate article");
+      }
 
       const data = await response.json();
 
@@ -166,13 +176,25 @@ export default function NewArticlePage() {
       }
     } catch (error) {
       console.error("Generation error:", error);
-      setModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Generation Failed',
-        message: 'Failed to generate article with Groq',
-        details: error instanceof Error ? error.message : undefined,
-      });
+
+      // Handle timeout specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Request Timed Out',
+          message: 'Article generation took too long. This might be a temporary issue.',
+          details: 'Try clicking "Generate Article" again. The AI service may need to warm up on the first request.',
+        });
+      } else {
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Generation Failed',
+          message: 'Failed to generate article with Groq',
+          details: error instanceof Error ? error.message : 'Unknown error. Try again.',
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
