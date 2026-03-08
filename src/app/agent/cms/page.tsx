@@ -143,8 +143,10 @@ export default function CMSPage() {
           <PaginationControls
             page={page}
             totalPages={totalPages}
+            totalArticles={filteredArticles.length}
             onPrevious={prevPage}
             onNext={nextPage}
+            onPageChange={setPage}
             textPrimary={textPrimary}
             textSecondary={textSecondary}
             isLight={isLight}

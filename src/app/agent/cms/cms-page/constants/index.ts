@@ -16,7 +16,8 @@ export const CATEGORY_LABELS: Record<string, string> = {
 /**
  * Pagination Constants
  */
-export const ITEMS_PER_PAGE = 50;
+export const ITEMS_PER_PAGE = 10; // Reduced from 50 to make pagination visible
+export const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 /**
  * Category Options for Filter
