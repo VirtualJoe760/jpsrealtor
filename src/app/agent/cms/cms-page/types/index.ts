@@ -22,6 +22,7 @@ export interface Article {
   date: string;
   image?: string;
   published?: boolean;
+  draft?: boolean; // Draft status (inverse of published)
 }
 
 /**
