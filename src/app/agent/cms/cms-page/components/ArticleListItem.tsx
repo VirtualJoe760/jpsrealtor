@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Eye, Edit, EyeOff, Trash2 } from 'lucide-react';
 import type { Article } from '../types';
 import { formatCategoryLabel } from '../utils';
+import DeploymentStatusBadge from './DeploymentStatusBadge';
 
 interface ArticleListItemProps {
   article: Article;
@@ -71,6 +72,11 @@ export function ArticleListItem({
         {/* Date Column */}
         <div className="w-32">
           <span className={`text-sm ${textSecondary}`}>{article.date}</span>
+        </div>
+
+        {/* Status Column */}
+        <div className="w-40">
+          <DeploymentStatusBadge slug={article.slug} isDraft={article.draft} />
         </div>
 
         {/* Actions Column */}
@@ -141,6 +147,8 @@ export function ArticleListItem({
         <span className="capitalize">{formatCategoryLabel(article.category)}</span>
         <span>•</span>
         <span>{article.date}</span>
+        <span>•</span>
+        <DeploymentStatusBadge slug={article.slug} isDraft={article.draft} />
       </div>
 
       <div className="flex items-center gap-2">

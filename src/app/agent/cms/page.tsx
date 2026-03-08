@@ -24,6 +24,8 @@ import {
   EmptyState,
   PaginationControls,
 } from './cms-page/components';
+import CMSModal from './cms-page/components/CMSModal';
+import DeploymentStatusBadge from './cms-page/components/DeploymentStatusBadge';
 
 export default function CMSPage() {
   // Theme
@@ -60,6 +62,8 @@ export default function CMSPage() {
     handleView,
     handleEdit,
     handleNewArticle,
+    modal,
+    setModal,
   } = useArticleActions(refetch);
 
   // Reset to page 1 when filters change
@@ -147,6 +151,21 @@ export default function CMSPage() {
           />
         </div>
       </div>
+
+      {/* CMS Modal */}
+      <CMSModal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        details={modal.details}
+        confirmText={modal.confirmText}
+        cancelText={modal.cancelText}
+        onConfirm={modal.onConfirm}
+        autoCloseMs={modal.autoCloseMs}
+        showTimer={modal.showTimer}
+      />
     </div>
   );
 }

@@ -24,7 +24,7 @@ export function useArticles(): UseArticlesResult {
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/articles');
+      const response = await fetch('/api/articles/list');
       if (!response.ok) throw new Error('Failed to fetch articles');
 
       const data = await response.json();

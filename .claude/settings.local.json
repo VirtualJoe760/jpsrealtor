@@ -43,7 +43,14 @@
       "Bash(python analyze_photos.py:*)",
       "Bash(python convert_to_jpg.py:*)",
       "Bash(python test_generate.py:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git log:*)",
+      "Bash(npm i:*)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 60 npx tsc:*)",
+      "Bash(tee:*)",
+      "Bash(npm run generate-mdx:*)"
     ],
     "deny": [],
     "ask": []

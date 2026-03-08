@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { unpublishArticle, isArticlePublished } from '@/lib/publishing-pipeline';
+import { IS_PRODUCTION } from '@/lib/environment';
 
 /**
  * DELETE /api/articles/unpublish
  *
- * Unpublishes an article by deleting MDX file from src/posts/ directory
- * Article will no longer appear on /insights pages
+ * Dual-environment unpublishing:
+ * LOCALHOST: Deletes MDX file from src/posts/
+ * PRODUCTION: Deletes from MongoDB + triggers Vercel rebuild
  */
 export async function DELETE(req: Request) {
   try {
@@ -41,13 +43,19 @@ export async function DELETE(req: Request) {
       }, { status: 404 });
     }
 
-    // Unpublish article from filesystem
+    // Unpublish article with environment-aware logic
     await unpublishArticle(slugId);
+
+    // Environment-specific response messages
+    const message = IS_PRODUCTION
+      ? `Article deleted from database! Vercel is rebuilding the site - changes will be live in 2-3 minutes.`
+      : `Article unpublished successfully. Deleted src/posts/${slugId}.mdx`;
 
     return NextResponse.json({
       success: true,
       slugId,
-      message: `Article unpublished successfully. Deleted src/posts/${slugId}.mdx`,
+      message,
+      environment: IS_PRODUCTION ? 'production' : 'localhost',
     });
 
   } catch (error) {

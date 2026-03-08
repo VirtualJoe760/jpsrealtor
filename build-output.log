@@ -2,6 +2,7 @@
 > jpsrealtor@0.1.0 build
 > next build
 
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
  ⚠ `skipMiddlewareUrlNormalize` is deprecated. Please use `skipProxyUrlNormalize` instead in next.config.mjs.
  ⚠ Invalid next.config.mjs options detected: 
  ⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
@@ -12,35 +13,431 @@
      ? turbo (invalid experimental key)
 
    Creating an optimized production build ...
-Turbopack build encountered 1 warnings:
-./src/app/api/crm/contacts/analyze/route.ts:21:14
-Next.js can't recognize the exported `config` field in route. Page config in `config` is deprecated and ignored, use individual exports instead.
-[0m [90m 19 |[39m
- [90m 20 |[39m [90m// Disable body parsing to handle file uploads[39m
-[31m[1m>[22m[39m[90m 21 |[39m [36mexport[39m [36mconst[39m config [33m=[39m {
- [90m    |[39m              [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
- [90m 22 |[39m   api[33m:[39m {
- [90m 23 |[39m     bodyParser[33m:[39m [36mfalse[39m[33m,[39m
- [90m 24 |[39m   }[33m,[39m[0m
-
-The exported configuration object in a source file needs to have a very specific format from which some properties can be statically parsed at compiled-time.
-
-https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config
-
-
- ✓ Compiled successfully in 19.9s
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Compiled successfully in 120s
    Running TypeScript ...
-Failed to compile.
+   Collecting page data using 23 workers ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(node:113964) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:107744) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:107276) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:63388) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:3724) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3724) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:114656) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89824) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:95956) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:20888) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:79212) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:53680) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:114656) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:88664) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:112476) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:112476) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:107276) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:96964) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:96964) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:115528) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:115528) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:115528) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:113964) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:53680) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:3724) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:105880) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:114492) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:63388) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:89824) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:89824) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:79976) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:95956) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:90448) [MONGOOSE] Warning: Duplicate schema index on {"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:64940) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:107808) [MONGOOSE] Warning: Duplicate schema index on {"endpoint":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:114492) [MONGOOSE] Warning: Duplicate schema index on {"endpoint":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:3724) [MONGOOSE] Warning: Duplicate schema index on {"endpoint":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:37000) [MONGOOSE] Warning: Duplicate schema index on {"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:96964) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:96964) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:96964) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:37000) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:79212) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:105880) [MONGOOSE] Warning: Duplicate schema index on {"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:64940) [MONGOOSE] Warning: Duplicate schema index on {"endpoint":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:105880) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:102200) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20888) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+   Generating static pages using 23 workers (0/179) ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(node:74204) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:115748) [MONGOOSE] Warning: Duplicate schema index on {"endpoint":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+   Generating static pages using 23 workers (44/179) 
+(node:115488) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:105352) [MONGOOSE] Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:105352) [MONGOOSE] Warning: Duplicate schema index on {"anonymousId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:86772) [MONGOOSE] Warning: Duplicate schema index on {"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8088) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:115748) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+   Generating static pages using 23 workers (89/179) 
+(node:115488) [MONGOOSE] Warning: Duplicate schema index on {"importBatchId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:115488) [MONGOOSE] Warning: Duplicate schema index on {"contactId":1,"campaignId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:105352) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:115748) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:115748) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:115748) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+   Generating static pages using 23 workers (134/179) 
+ ✓ Generating static pages using 23 workers (179/179) in 6.4s
+   Finalizing page optimization ...
 
-./src/app/api/campaigns/[id]/route.ts:61:27
-Type error: This expression is not callable.
-  Each member of the union type '{ (filter?: RootFilterQuery<any>, options?: DeleteOptions & Pick<QueryOptions<any>, MongooseBaseQueryOptionKeys> & { ...; }): Query<...>; (filter: RootFilterQuery<...>): Query<...>; } | { ...; }' has signatures, but none of those signatures are compatible with each other.
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /about
+├ ƒ /admin
+├ ƒ /admin/articles
+├ ƒ /admin/articles/[id]
+├ ƒ /admin/articles/new
+├ ƒ /admin/articles/test-edit
+├ ƒ /admin/cms
+├ ƒ /admin/cms/edit/[slugId]
+├ ƒ /admin/cms/new
+├ ƒ /admin/crm
+├ ƒ /admin/users
+├ ƒ /agent/campaigns
+├ ƒ /agent/campaigns/new
+├ ƒ /agent/cms
+├ ƒ /agent/cms/edit/[slugId]
+├ ƒ /agent/cms/new
+├ ƒ /agent/contacts
+├ ƒ /agent/create-team
+├ ƒ /agent/crm
+├ ƒ /agent/dashboard
+├ ƒ /agent/email
+├ ƒ /agent/messages
+├ ƒ /agent/subscription
+├ ƒ /agent/voice-training
+├ ƒ /animation-test
+├ ƒ /api/activity/search
+├ ƒ /api/activity/update-user-metrics
+├ ƒ /api/admin/analytics
+├ ƒ /api/admin/applications
+├ ƒ /api/admin/applications/[id]
+├ ƒ /api/admin/applications/[id]/review-final
+├ ƒ /api/admin/applications/[id]/review-phase1
+├ ƒ /api/admin/articles/update-energy-costs
+├ ƒ /api/admin/teams
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[id]
+├ ƒ /api/agent/apply
+├ ƒ /api/agent/create-team
+├ ƒ /api/agent/verify-identity
+├ ƒ /api/ai/cma
+├ ƒ /api/ai/console
+├ ƒ /api/ai/generate-email
+├ ƒ /api/ai/runway
+├ ƒ /api/ai/runway/[id]
+├ ƒ /api/analytics/appreciation
+├ ƒ /api/analytics/market-stats
+├ ƒ /api/analytics/subdivision-lookup
+├ ƒ /api/articles
+├ ƒ /api/articles/[id]
+├ ƒ /api/articles/ai-search
+├ ƒ /api/articles/generate
+├ ƒ /api/articles/list
+├ ƒ /api/articles/load-published
+├ ƒ /api/articles/publish
+├ ƒ /api/articles/published-status
+├ ƒ /api/articles/regenerate-field
+├ ƒ /api/articles/search
+├ ƒ /api/articles/set-draft
+├ ƒ /api/articles/topics
+├ ƒ /api/articles/unpublish
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/2fa/confirm-phone
+├ ƒ /api/auth/2fa/disable
+├ ƒ /api/auth/2fa/enable
+├ ƒ /api/auth/2fa/send-code
+├ ƒ /api/auth/2fa/switch-method
+├ ƒ /api/auth/2fa/verify-code
+├ ƒ /api/auth/2fa/verify-phone
+├ ƒ /api/auth/check-verification
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/register
+├ ƒ /api/auth/resend-verification
+├ ƒ /api/auth/reset-password
+├ ƒ /api/auth/test-email
+├ ƒ /api/auth/user
+├ ƒ /api/auth/verify
+├ ƒ /api/auth/verify-email
+├ ƒ /api/california-stats
+├ ƒ /api/campaigns/[id]
+├ ƒ /api/campaigns/[id]/archive
+├ ƒ /api/campaigns/[id]/contacts
+├ ƒ /api/campaigns/[id]/generate-audio
+├ ƒ /api/campaigns/[id]/generate-scripts
+├ ƒ /api/campaigns/[id]/generation-session
+├ ƒ /api/campaigns/[id]/history
+├ ƒ /api/campaigns/[id]/recordings/list
+├ ƒ /api/campaigns/[id]/scripts
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]/audio
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]/generate-audio
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]/preview-audio
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]/update
+├ ƒ /api/campaigns/[id]/scripts/[scriptId]/upload-audio
+├ ƒ /api/campaigns/[id]/scripts/update
+├ ƒ /api/campaigns/[id]/send
+├ ƒ /api/campaigns/[id]/send-simple
+├ ƒ /api/campaigns/[id]/test-sample-script
+├ ƒ /api/campaigns/create
+├ ƒ /api/campaigns/list
+├ ƒ /api/chat-v2
+├ ƒ /api/chat/community-facts
+├ ƒ /api/chat/generate-title
+├ ƒ /api/chat/goals
+├ ƒ /api/chat/log
+├ ƒ /api/chat/log-local
+├ ƒ /api/chat/research-community
+├ ƒ /api/chat/save
+├ ƒ /api/cities/[cityId]/hoa
+├ ƒ /api/cities/[cityId]/listings
+├ ƒ /api/cities/[cityId]/photos
+├ ƒ /api/cities/[cityId]/schools
+├ ƒ /api/cities/[cityId]/stats
+├ ƒ /api/cities/[cityId]/subdivisions
+├ ƒ /api/claude/draft-article
+├ ƒ /api/consent
+├ ƒ /api/contact
+├ ƒ /api/contacts/find-by-email
+├ ƒ /api/contacts/list
+├ ƒ /api/contacts/search
+├ ƒ /api/crm/contacts
+├ ƒ /api/crm/contacts/[id]
+├ ƒ /api/crm/contacts/[id]/comparables
+├ ƒ /api/crm/contacts/[id]/notes
+├ ƒ /api/crm/contacts/[id]/photo
+├ ƒ /api/crm/contacts/[id]/property-images
+├ ƒ /api/crm/contacts/analyze
+├ ƒ /api/crm/contacts/debug-labels
+├ ƒ /api/crm/contacts/enrich
+├ ƒ /api/crm/contacts/import/confirm
+├ ƒ /api/crm/contacts/import/csv
+├ ƒ /api/crm/contacts/import/google
+├ ƒ /api/crm/contacts/import/preview
+├ ƒ /api/crm/contacts/import/status/[batchId]
+├ ƒ /api/crm/contacts/import/vcard
+├ ƒ /api/crm/contacts/migrate-labels
+├ ƒ /api/crm/contacts/stats
+├ ƒ /api/crm/contacts/tags
+├ ƒ /api/crm/labels
+├ ƒ /api/crm/labels/[id]
+├ ƒ /api/crm/labels/[id]/create-campaign
+├ ƒ /api/crm/send-email
+├ ƒ /api/crm/sms/conversations
+├ ƒ /api/crm/sms/messages
+├ ƒ /api/crm/sms/send
+├ ƒ /api/crm/sms/status-webhook
+├ ƒ /api/crm/sms/sync
+├ ƒ /api/crm/sms/webhook
+├ ƒ /api/debug/test-db
+├ ƒ /api/debug/test-session
+├ ƒ /api/dropcowboy/campaign
+├ ƒ /api/email-metadata
+├ ƒ /api/emails/generate
+├ ƒ /api/geocode
+├ ƒ /api/geocoding/geocode
+├ ƒ /api/listing/[listingKey]/photos
+├ ƒ /api/listings/[listingKey]/photos
+├ ƒ /api/listings/featured
+├ ƒ /api/map-clusters
+├ ƒ /api/map/flyover
+├ ƒ /api/market-stats
+├ ƒ /api/mls-listings
+├ ƒ /api/mls-listings/[slugAddress]
+├ ƒ /api/mls-listings/[slugAddress]/documents
+├ ƒ /api/mls-listings/[slugAddress]/openhouses
+├ ƒ /api/mls-listings/[slugAddress]/videos
+├ ƒ /api/mls-listings/[slugAddress]/virtualtours
+├ ƒ /api/mortgage-rates
+├ ƒ /api/neighborhoods/directory
+├ ƒ /api/neighborhoods/tree
+├ ƒ /api/performance/query-stats
+├ ƒ /api/photos/[listingId]
+├ ƒ /api/push/subscribe
+├ ƒ /api/push/test
+├ ƒ /api/push/unsubscribe
+├ ƒ /api/regions/coachella-valley/stats
+├ ƒ /api/resend/email/[id]
+├ ƒ /api/resend/inbox
+├ ƒ /api/resend/send
+├ ƒ /api/rss/[section]
+├ ƒ /api/schoolImage
+├ ƒ /api/schools
+├ ƒ /api/scrapeMLS
+├ ƒ /api/search
+├ ƒ /api/stats
+├ ƒ /api/stats/california
+├ ƒ /api/stats/market
+├ ƒ /api/stats/property-types
+├ ƒ /api/storage/cleanup
+├ ƒ /api/storage/stats
+├ ƒ /api/subdivisions
+├ ƒ /api/subdivisions/[slug]
+├ ƒ /api/subdivisions/[slug]/listings
+├ ƒ /api/subdivisions/[slug]/photos
+├ ƒ /api/subdivisions/[slug]/stats
+├ ƒ /api/swipes/batch
+├ ƒ /api/swipes/exclude-keys
+├ ƒ /api/swipes/user
+├ ƒ /api/test
+├ ƒ /api/test-photos
+├ ƒ /api/testPhotos
+├ ƒ /api/trello/test
+├ ƒ /api/unified-listings
+├ ƒ /api/upload
+├ ƒ /api/upload/document
+├ ƒ /api/uploadImage
+├ ƒ /api/user/check-admin
+├ ƒ /api/user/dislikes
+├ ƒ /api/user/dislikes/[listingKey]
+├ ƒ /api/user/favorite-communities
+├ ƒ /api/user/favorites
+├ ƒ /api/user/favorites/[listingKey]
+├ ƒ /api/user/link-partner
+├ ƒ /api/user/profile
+├ ƒ /api/user/signature
+├ ƒ /api/user/update-avatar
+├ ƒ /api/user/voice-training
+├ ƒ /api/voicemail/generate-audio
+├ ƒ /api/webhooks/drop-cowboy
+├ ƒ /api/webhooks/dropcowboy/rvm-status
+├ ƒ /api/webhooks/stripe-identity
+├ ƒ /api/yelp-search
+├ ƒ /articles/preview
+├ ƒ /auth/2fa
+├ ƒ /auth/error
+├ ƒ /auth/forgot-password
+├ ƒ /auth/reset-password
+├ ƒ /auth/signin
+├ ƒ /auth/signup
+├ ƒ /auth/verify-email
+├ ƒ /book-appointment
+├ ƒ /campaign/direct-mail
+├ ƒ /contact
+├ ƒ /curb-appeal
+├ ƒ /dashboard
+├ ƒ /dashboard/settings
+├ ƒ /dashboard/settings/join-us
+├ ƒ /dashboard/subscriptions
+├ ƒ /insights
+├ ƒ /insights/[category]
+├ ƒ /insights/[category]/[slugId]
+├ ƒ /listings
+├ ƒ /map-demo
+├ ƒ /mls-listings
+├ ƒ /mls-listings/[slugAddress]
+├ ƒ /mls-listings/[slugAddress]/map
+├ ƒ /mls-listings/[slugAddress]/opengraph-image
+├ ƒ /neighborhoods
+├ ƒ /neighborhoods/[cityId]
+├ ƒ /neighborhoods/[cityId]/[slug]
+├ ƒ /neighborhoods/[cityId]/[slug]/buy
+├ ƒ /neighborhoods/[cityId]/[slug]/sell
+├ ƒ /neighborhoods/[cityId]/buy
+├ ƒ /neighborhoods/[cityId]/events
+├ ƒ /neighborhoods/[cityId]/events/[slug]
+├ ƒ /neighborhoods/[cityId]/hoa-contact-info
+├ ƒ /neighborhoods/[cityId]/local-business
+├ ƒ /neighborhoods/[cityId]/property-stats
+├ ƒ /neighborhoods/[cityId]/school-district
+├ ƒ /neighborhoods/[cityId]/school-district/[district]
+├ ƒ /neighborhoods/[cityId]/sell
+├ ƒ /open-house-registration
+├ ƒ /open-house-signup
+├ ƒ /opengraph-image
+├ ƒ /privacy-policy
+├ ○ /robots.txt
+├ ƒ /selling
+├ ○ /sitemap.xml
+├ ƒ /subdivisions/[slug]
+├ ƒ /subdivisions/[slug]/buy
+├ ƒ /subdivisions/[slug]/sell
+├ ƒ /subscribed
+├ ƒ /success
+├ ƒ /test
+├ ƒ /test-articles
+├ ƒ /test-listing-panel
+├ ƒ /test-market-stats
+├ ƒ /test-swipe-panel
+├ ƒ /text-opt-in
+└ ƒ /twitter-image
 
-[0m [90m 59 |[39m     [90m// Delete all associated data[39m
- [90m 60 |[39m     [90m// 1. Delete ContactCampaign junction records[39m
-[31m[1m>[22m[39m[90m 61 |[39m     [36mawait[39m [33mContactCampaign[39m[33m.[39mdeleteMany({ campaignId[33m:[39m campaign[33m.[39m_id })[33m;[39m
- [90m    |[39m                           [31m[1m^[22m[39m
- [90m 62 |[39m
- [90m 63 |[39m     [90m// 2. Delete VoicemailScript records[39m
- [90m 64 |[39m     [36mawait[39m [33mVoicemailScript[39m[33m.[39mdeleteMany({ campaignId[33m:[39m campaign[33m.[39m_id })[33m;[39m[0m
-Next.js build worker exited with code: 1 and signal: null
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import AgentNav from "@/app/components/AgentNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
+import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
+import { useDeploymentStatus } from "../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "generate" | "edit" | "preview";
 
@@ -79,6 +81,17 @@ export default function NewArticlePage() {
   const [previewKey, setPreviewKey] = useState(0);
   const [slugId, setSlugId] = useState("");
 
+  // Modal state
+  const [modal, setModal] = useState<Omit<CMSModalProps, 'isOpen' | 'onClose'> & { isOpen: boolean }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
+
+  // Deployment tracking
+  const { startDeployment } = useDeploymentStatus();
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -88,7 +101,12 @@ export default function NewArticlePage() {
   // Handle Groq generation
   const handleGenerate = async () => {
     if (!generationTopic.trim()) {
-      alert("Please enter a topic for article generation");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Topic Required',
+        message: 'Please enter a topic for article generation',
+      });
       return;
     }
 
@@ -148,7 +166,13 @@ export default function NewArticlePage() {
       }
     } catch (error) {
       console.error("Generation error:", error);
-      alert("Failed to generate article with Groq");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Generation Failed',
+        message: 'Failed to generate article with Groq',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -188,7 +212,13 @@ export default function NewArticlePage() {
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload image");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Upload Failed',
+        message: 'Failed to upload image',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -214,15 +244,28 @@ export default function NewArticlePage() {
       if (!response.ok) throw new Error("Failed to save article");
 
       const data = await response.json();
-      alert(publishNow ? "Article saved to database!" : "Article saved as draft!");
 
-      // Don't redirect if we just saved - stay on page for further editing
-      if (!publishNow) {
+      setModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Article Saved',
+        message: publishNow ? 'Article saved to database!' : 'Article saved as draft!',
+        autoCloseMs: 2000,
+      });
+
+      // Redirect to CMS after brief delay
+      setTimeout(() => {
         router.push("/agent/cms");
-      }
+      }, 2000);
     } catch (error) {
       console.error("Save error:", error);
-      alert("Failed to save article");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save article',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -231,12 +274,22 @@ export default function NewArticlePage() {
   // Handle publish to website (write MDX file to src/posts/)
   const handlePublishToSite = async () => {
     if (!slugId) {
-      alert("Please generate an article first to get a slug ID");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Cannot Publish',
+        message: 'Please generate an article first to get a slug ID',
+      });
       return;
     }
 
     if (!formData.title || !formData.content || !formData.featuredImage.url) {
-      alert("Please ensure you have a title, content, and featured image before publishing");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Missing Required Fields',
+        message: 'Please ensure you have a title, content, and featured image before publishing',
+      });
       return;
     }
 
@@ -263,14 +316,43 @@ export default function NewArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Article published to website!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
+        // Start deployment tracking
+        startDeployment(data.slugId, data.environment || 'production');
+
+        // Show success modal with deployment info
+        setModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Article Published!',
+          message: data.message || 'Article published successfully!',
+          details: data.warnings?.length ? `Warnings:\n${data.warnings.join('\n')}` : undefined,
+          autoCloseMs: 3000,
+          showTimer: true,
+        });
+
+        // Redirect to CMS after 3 seconds
+        setTimeout(() => {
+          router.push("/agent/cms");
+        }, 3000);
       } else {
         const errors = data.errors?.join("\n") || "Unknown error";
-        alert(`Failed to publish:\n\n${errors}`);
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Publish Failed',
+          message: 'Failed to publish article',
+          details: errors,
+        });
       }
     } catch (error) {
       console.error("Publish error:", error);
-      alert("Network error while publishing article");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Network Error',
+        message: 'Network error while publishing article',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -972,6 +1054,21 @@ export default function NewArticlePage() {
           )}
         </div>
       </div>
+
+      {/* CMS Modal */}
+      <CMSModal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        details={modal.details}
+        confirmText={modal.confirmText}
+        cancelText={modal.cancelText}
+        onConfirm={modal.onConfirm}
+        autoCloseMs={modal.autoCloseMs}
+        showTimer={modal.showTimer}
+      />
     </div>
   );
 }

@@ -24,6 +24,8 @@ import {
 import AgentNav from "@/app/components/AgentNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
+import CMSModal, { type CMSModalProps } from "../../cms-page/components/CMSModal";
+import { useDeploymentStatus } from "../../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "edit" | "preview";
 
@@ -74,6 +76,17 @@ export default function EditArticlePage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingToDB, setIsSavingToDB] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+
+  // Modal state
+  const [modal, setModal] = useState<Omit<CMSModalProps, 'isOpen' | 'onClose'> & { isOpen: boolean }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
+
+  // Deployment tracking
+  const { startDeployment } = useDeploymentStatus();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -169,7 +182,13 @@ export default function EditArticlePage() {
       }));
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload image");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Upload Failed',
+        message: 'Failed to upload image',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -178,12 +197,22 @@ export default function EditArticlePage() {
   // Handle republish to website (update MDX file)
   const handleRepublish = async (isDraft: boolean = false) => {
     if (!slugId) {
-      alert("No slug ID available for republishing");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Cannot Publish',
+        message: 'No slug ID available for republishing',
+      });
       return;
     }
 
     if (!formData.title || !formData.content || !formData.featuredImage.url) {
-      alert("Please ensure you have a title, content, and featured image before publishing");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Missing Required Fields',
+        message: 'Please ensure you have a title, content, and featured image before publishing',
+      });
       return;
     }
 
@@ -210,15 +239,43 @@ export default function EditArticlePage() {
       const data = await response.json();
 
       if (data.success) {
+        // Start deployment tracking
+        startDeployment(data.slugId, data.environment || 'production');
+
         const draftMsg = isDraft ? ' (saved as draft)' : '';
-        alert(`Article updated on website${draftMsg}!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
+        setModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Article Updated!',
+          message: data.message || `Article updated on website${draftMsg}!`,
+          details: data.warnings?.length ? `Warnings:\n${data.warnings.join('\n')}` : undefined,
+          autoCloseMs: 3000,
+          showTimer: true,
+        });
+
+        // Redirect to CMS after 3 seconds
+        setTimeout(() => {
+          router.push("/agent/cms");
+        }, 3000);
       } else {
         const errors = data.errors?.join("\n") || "Unknown error";
-        alert(`Failed to update:\n\n${errors}`);
+        setModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to update article',
+          details: errors,
+        });
       }
     } catch (error) {
       console.error("Republish error:", error);
-      alert("Network error while updating article");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Network Error',
+        message: 'Network error while updating article',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -248,10 +305,27 @@ export default function EditArticlePage() {
 
       if (!response.ok) throw new Error("Failed to save article");
 
-      alert("Article saved to database successfully!");
+      setModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Article Saved',
+        message: 'Article saved to database successfully!',
+        autoCloseMs: 2000,
+      });
+
+      // Redirect to CMS after brief delay
+      setTimeout(() => {
+        router.push("/agent/cms");
+      }, 2000);
     } catch (error) {
       console.error("Save to DB error:", error);
-      alert("Failed to save to database");
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save to database',
+        details: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsSavingToDB(false);
     }
@@ -930,6 +1004,21 @@ export default function EditArticlePage() {
           )}
         </div>
       </div>
+
+      {/* CMS Modal */}
+      <CMSModal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        details={modal.details}
+        confirmText={modal.confirmText}
+        cancelText={modal.cancelText}
+        onConfirm={modal.onConfirm}
+        autoCloseMs={modal.autoCloseMs}
+        showTimer={modal.showTimer}
+      />
     </div>
   );
 }

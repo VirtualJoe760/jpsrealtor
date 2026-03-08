@@ -4,11 +4,15 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
+import { IS_PRODUCTION } from '@/lib/environment';
+import { getArticleBySlug } from '@/lib/services/article.service';
 
 /**
  * GET /api/articles/load-published?slugId={slugId}
  *
- * Loads a published article from src/posts/ MDX file for editing
+ * Dual-environment article loading for editing:
+ * LOCALHOST: Loads from MDX file in src/posts/
+ * PRODUCTION: Loads from MongoDB database
  */
 export async function GET(req: Request) {
   try {
@@ -31,32 +35,43 @@ export async function GET(req: Request) {
       );
     }
 
-    // Read MDX file
-    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+    if (IS_PRODUCTION) {
+      // PRODUCTION: Load from MongoDB
+      const doc = await getArticleBySlug(slugId);
 
-    try {
-      const fileContents = await fs.readFile(filePath, 'utf-8');
-      const { data: frontmatter, content } = matter(fileContents);
+      if (!doc) {
+        return NextResponse.json(
+          { error: `Article ${slugId} not found in database` },
+          { status: 404 }
+        );
+      }
 
-      // Map frontmatter to article format
+      // Map MongoDB document to article format
       const article = {
-        slugId,
-        title: frontmatter.title || '',
-        excerpt: frontmatter.metaDescription || '',
-        content: content.trim(),
-        category: frontmatter.section || 'articles', // section → category mapping
-        tags: frontmatter.tags || [],
+        slugId: doc.slug,
+        title: doc.title,
+        excerpt: doc.excerpt,
+        content: doc.content,
+        category: doc.category,
+        tags: doc.tags,
         featuredImage: {
-          url: frontmatter.image || '',
-          publicId: frontmatter.image?.split('/').pop()?.split('.')[0] || '',
-          alt: frontmatter.altText || frontmatter.title || '',
+          url: doc.featuredImage.url,
+          publicId: doc.featuredImage.publicId,
+          alt: doc.featuredImage.alt,
         },
         seo: {
-          title: frontmatter.metaTitle || frontmatter.title || '',
-          description: frontmatter.metaDescription || '',
-          keywords: frontmatter.keywords || [],
+          title: doc.seo.title,
+          description: doc.seo.description,
+          keywords: doc.seo.keywords,
         },
-        publishedAt: frontmatter.date || '',
+        publishedAt: doc.publishedAt.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric',
+        }),
+        draft: doc.status === 'draft',
+        authorId: doc.author.id.toString(),
+        authorName: doc.author.name,
       };
 
       return NextResponse.json({
@@ -64,14 +79,52 @@ export async function GET(req: Request) {
         article,
       });
 
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return NextResponse.json(
-          { error: `Article ${slugId} not found in src/posts/` },
-          { status: 404 }
-        );
+    } else {
+      // LOCALHOST: Read MDX file
+      const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+
+      try {
+        const fileContents = await fs.readFile(filePath, 'utf-8');
+        const { data: frontmatter, content } = matter(fileContents);
+
+        // Map frontmatter to article format
+        const article = {
+          slugId,
+          title: frontmatter.title || '',
+          excerpt: frontmatter.metaDescription || '',
+          content: content.trim(),
+          category: frontmatter.section || 'articles', // section → category mapping
+          tags: frontmatter.tags || [],
+          featuredImage: {
+            url: frontmatter.image || '',
+            publicId: frontmatter.image?.split('/').pop()?.split('.')[0] || '',
+            alt: frontmatter.altText || frontmatter.title || '',
+          },
+          seo: {
+            title: frontmatter.metaTitle || frontmatter.title || '',
+            description: frontmatter.metaDescription || '',
+            keywords: frontmatter.keywords || [],
+          },
+          publishedAt: frontmatter.date || '',
+          draft: frontmatter.draft || false,
+          authorId: frontmatter.authorId,
+          authorName: frontmatter.authorName,
+        };
+
+        return NextResponse.json({
+          success: true,
+          article,
+        });
+
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return NextResponse.json(
+            { error: `Article ${slugId} not found in src/posts/` },
+            { status: 404 }
+          );
+        }
+        throw error;
       }
-      throw error;
     }
 
   } catch (error) {

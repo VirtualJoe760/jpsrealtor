@@ -3,14 +3,24 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { validateMDX } from './mdx-processor';
+import {
+  IS_PRODUCTION,
+  IS_LOCALHOST,
+  DEPLOY_HOOK_URL,
+  isDeployHookConfigured,
+  getEnvironmentName
+} from './environment';
+import { createArticle, deleteArticle, articleExists } from './services/article.service';
 
 const execAsync = promisify(exec);
 
 /**
- * Layer 5: Publishing Pipeline
+ * Layer 5: Dual-Environment Publishing Pipeline
  *
- * Handles file-based publishing to src/posts/ directory
- * Articles are stored as MDX files with frontmatter, NOT in MongoDB
+ * LOCALHOST: Writes MDX files to src/posts/ + git operations
+ * PRODUCTION: Saves to MongoDB + triggers Vercel rebuild
+ *
+ * This enables article publishing from ANY environment (localhost or production)
  */
 
 export interface PublishValidation {
@@ -106,14 +116,92 @@ export async function validateForPublish(
 }
 
 /**
- * Publish article by writing MDX file to filesystem
- * This is the ONLY way articles get "posted" - they go to src/posts/ as MDX files
+ * Publish article to MongoDB database (Production environment)
+ * Saves article data to MongoDB for later MDX generation during build
+ */
+export async function publishArticleToDatabase(
+  article: ArticleFormData,
+  slugId: string,
+  userId: string,
+  userName: string,
+  userEmail: string
+): Promise<{ _id: string; slug: string }> {
+  console.log(`[PUBLISH] Saving article to MongoDB: ${slugId}`);
+
+  // Add slug to article data
+  const articleWithSlug = { ...article, slug: slugId };
+
+  // Save to MongoDB
+  const doc = await createArticle(articleWithSlug, userId, userName, userEmail);
+
+  console.log(`✅ Article saved to MongoDB: ${doc.slug} (${doc._id})`);
+
+  return {
+    _id: doc._id.toString(),
+    slug: doc.slug,
+  };
+}
+
+/**
+ * Trigger Vercel rebuild via deploy hook
+ * This causes production site to rebuild and pick up new articles from MongoDB
+ */
+export async function triggerVercelRebuild(
+  reason: string
+): Promise<{ success: boolean; message: string; jobId?: string }> {
+  if (!isDeployHookConfigured()) {
+    return {
+      success: false,
+      message: 'Deploy hook not configured. Article saved to database but site rebuild required.',
+    };
+  }
+
+  try {
+    console.log(`[DEPLOY] Triggering Vercel rebuild: ${reason}`);
+
+    const response = await fetch(DEPLOY_HOOK_URL!, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Deploy hook failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const jobId = data.job?.id;
+
+    console.log(`✅ Vercel rebuild triggered! Job ID: ${jobId}`);
+
+    return {
+      success: true,
+      message: 'Deployment triggered! Site will rebuild in 2-3 minutes.',
+      jobId,
+    };
+  } catch (error) {
+    console.error('[DEPLOY] Failed to trigger rebuild:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to trigger rebuild',
+    };
+  }
+}
+
+/**
+ * Main publish article function with environment-aware branching
+ * LOCALHOST: Writes MDX file + git operations
+ * PRODUCTION: Saves to MongoDB + triggers Vercel rebuild
  */
 export async function publishArticle(
   article: ArticleFormData,
   slugId: string,
   options: {
     autoDeploy?: boolean;
+    userId?: string;
+    userName?: string;
+    userEmail?: string;
   } = {}
 ): Promise<void> {
   // Validate before publishing
@@ -122,14 +210,50 @@ export async function publishArticle(
     throw new Error(`Cannot publish: ${validation.errors.join(', ')}`);
   }
 
-  // Write MDX file to filesystem
-  await writeArticleToFilesystem(article, slugId);
+  const environment = getEnvironmentName();
+  console.log(`[PUBLISH] Environment: ${environment}`);
+  console.log(`[PUBLISH] Article: ${slugId}`);
 
-  console.log(`✅ Article published: ${slugId}.mdx`);
+  // Branch based on environment
+  if (IS_PRODUCTION) {
+    // PRODUCTION: Save to MongoDB + trigger rebuild
+    console.log('[PUBLISH] Method: Database + Vercel rebuild');
 
-  // Auto-deploy to production if requested
-  if (options.autoDeploy) {
-    await deployToProduction(article, slugId);
+    if (!options.userId || !options.userName || !options.userEmail) {
+      throw new Error('User information required for database publishing');
+    }
+
+    // Save to MongoDB
+    await publishArticleToDatabase(
+      article,
+      slugId,
+      options.userId,
+      options.userName,
+      options.userEmail
+    );
+
+    // Trigger Vercel rebuild
+    const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
+
+    if (deployResult.success) {
+      console.log(`✅ Article published to production! ${deployResult.message}`);
+    } else {
+      console.warn(`⚠️ Article saved but rebuild failed: ${deployResult.message}`);
+    }
+
+  } else {
+    // LOCALHOST: Write MDX file + git operations
+    console.log('[PUBLISH] Method: Filesystem + Git');
+
+    // Write MDX file to filesystem
+    await writeArticleToFilesystem(article, slugId);
+
+    console.log(`✅ Article published: ${slugId}.mdx`);
+
+    // Auto-deploy to production if requested
+    if (options.autoDeploy) {
+      await deployToProduction(article, slugId);
+    }
   }
 }
 
@@ -219,31 +343,71 @@ function escapeYAML(str: string): string {
 }
 
 /**
- * Unpublish article by deleting MDX file from filesystem
+ * Unpublish article with environment-aware logic
+ * LOCALHOST: Deletes MDX file from filesystem
+ * PRODUCTION: Deletes from MongoDB + triggers rebuild
  */
 export async function unpublishArticle(slugId: string): Promise<void> {
-  const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+  const environment = getEnvironmentName();
+  console.log(`[UNPUBLISH] Environment: ${environment}`);
+  console.log(`[UNPUBLISH] Article: ${slugId}`);
 
-  try {
-    await fs.unlink(filePath);
-    console.log(`✅ Article unpublished: ${slugId}.mdx deleted`);
-  } catch (error) {
-    console.error('File not found or already deleted:', filePath);
-    throw new Error(`Failed to unpublish article: ${slugId}`);
+  if (IS_PRODUCTION) {
+    // PRODUCTION: Delete from MongoDB + trigger rebuild
+    console.log('[UNPUBLISH] Method: Database deletion + Vercel rebuild');
+
+    const deleted = await deleteArticle(slugId);
+
+    if (!deleted) {
+      throw new Error(`Failed to unpublish article: ${slugId} not found in database`);
+    }
+
+    console.log(`✅ Article deleted from MongoDB: ${slugId}`);
+
+    // Trigger Vercel rebuild to remove article from site
+    const deployResult = await triggerVercelRebuild(`Unpublish: ${slugId}`);
+
+    if (deployResult.success) {
+      console.log(`✅ Rebuild triggered! Article will be removed in 2-3 minutes.`);
+    } else {
+      console.warn(`⚠️ Article deleted but rebuild failed: ${deployResult.message}`);
+    }
+
+  } else {
+    // LOCALHOST: Delete MDX file from filesystem
+    console.log('[UNPUBLISH] Method: Filesystem deletion');
+
+    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+
+    try {
+      await fs.unlink(filePath);
+      console.log(`✅ Article unpublished: ${slugId}.mdx deleted`);
+    } catch (error) {
+      console.error('File not found or already deleted:', filePath);
+      throw new Error(`Failed to unpublish article: ${slugId}`);
+    }
   }
 }
 
 /**
- * Check if article is already published (MDX file exists)
+ * Check if article is already published
+ * LOCALHOST: Checks if MDX file exists
+ * PRODUCTION: Checks if article exists in MongoDB
  */
 export async function isArticlePublished(slugId: string): Promise<boolean> {
-  const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+  if (IS_PRODUCTION) {
+    // PRODUCTION: Check MongoDB
+    return articleExists(slugId);
+  } else {
+    // LOCALHOST: Check filesystem
+    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
 
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
