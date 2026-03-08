@@ -1,5 +1,6 @@
 // src/app/api/articles/route.ts
-// API routes for article listing and creation
+// DEPRECATED: Use /api/articles/list instead
+// This endpoint is kept for backward compatibility but will be removed in a future version
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -8,7 +9,10 @@ import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 
 // GET /api/articles - List articles with filtering
+// DEPRECATED: Use /api/articles/list instead
 export async function GET(req: NextRequest) {
+  console.warn('[DEPRECATED] GET /api/articles - Use /api/articles/list instead (deprecated since 2026-03-07)');
+
   try {
     await dbConnect();
 
@@ -83,7 +87,10 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/articles - Create new article (admin only)
+// DEPRECATED: Use /api/articles/publish instead
 export async function POST(req: NextRequest) {
+  console.warn('[DEPRECATED] POST /api/articles - Use /api/articles/publish instead (deprecated since 2026-03-07)');
+
   try {
     const session = await getServerSession(authOptions);
 

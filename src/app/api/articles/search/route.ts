@@ -1,5 +1,6 @@
 // src/app/api/articles/search/route.ts
-// AI-powered article search for chat integration
+// DEPRECATED: Use /api/articles/ai-search instead
+// This endpoint is kept for backward compatibility but will be removed in a future version
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
@@ -23,9 +24,12 @@ export interface ArticleSearchResult {
 /**
  * Search articles using MongoDB text search and keyword matching
  * POST /api/articles/search
+ * DEPRECATED: Use /api/articles/ai-search instead
  * Body: { query: string, limit?: number }
  */
 export async function POST(req: NextRequest) {
+  console.warn('[DEPRECATED] POST /api/articles/search - Use /api/articles/ai-search instead (deprecated since 2026-03-07)');
+
   try {
     const body = await req.json();
     const { query, limit = 5 } = body;

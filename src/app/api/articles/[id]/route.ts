@@ -1,5 +1,6 @@
 // src/app/api/articles/[id]/route.ts
-// API routes for individual article operations
+// DEPRECATED: Use /api/articles/list or /api/articles/ai-search instead
+// This endpoint is kept for backward compatibility but will be removed in a future version
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -8,10 +9,13 @@ import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 
 // GET /api/articles/[id] - Get single article
+// DEPRECATED: Articles are now stored as MDX files
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.warn('[DEPRECATED] GET /api/articles/[id] - Articles now stored as MDX files (deprecated since 2026-03-07)');
+
   try {
     await dbConnect();
 
