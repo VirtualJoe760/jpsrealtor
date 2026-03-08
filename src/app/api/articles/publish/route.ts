@@ -63,20 +63,10 @@ export async function POST(req: Request) {
       userEmail: session.user.email || 'noemail@example.com',
     });
 
-    // Environment-specific response messages
-    let message: string;
-    let deployed: boolean;
-
-    if (IS_PRODUCTION) {
-      message = `Article saved to database! Vercel is rebuilding the site - your article will be live in 2-3 minutes.`;
-      deployed = true;
-    } else {
-      const deployMessage = autoDeploy
-        ? ' and deployed to production! Vercel will rebuild in ~2 minutes.'
-        : '. Remember to commit and push to deploy to production.';
-      message = `Article published successfully to src/posts/${slugId}.mdx${deployMessage}`;
-      deployed = autoDeploy;
-    }
+    // Unified workflow response messages
+    const message = IS_PRODUCTION
+      ? `Article saved to MongoDB and pushed to main branch! Vercel is rebuilding - your article will be live in 2-3 minutes.`
+      : `Article saved to MongoDB and pushed to main branch! Vercel will auto-deploy in ~2 minutes.`;
 
     return NextResponse.json({
       success: true,
@@ -84,8 +74,9 @@ export async function POST(req: Request) {
       url: `/insights/${slugId}`,
       warnings: validation.warnings,
       message,
-      deployed,
+      deployed: true,
       environment: IS_PRODUCTION ? 'production' : 'localhost',
+      workflow: 'MongoDB → MDX → Git (main) → Vercel',
     });
 
   } catch (error) {

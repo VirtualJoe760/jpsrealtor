@@ -46,16 +46,17 @@ export async function DELETE(req: Request) {
     // Unpublish article with environment-aware logic
     await unpublishArticle(slugId);
 
-    // Environment-specific response messages
+    // Unified workflow response messages
     const message = IS_PRODUCTION
-      ? `Article deleted from database! Vercel is rebuilding the site - changes will be live in 2-3 minutes.`
-      : `Article unpublished successfully. Deleted src/posts/${slugId}.mdx`;
+      ? `Article deleted from MongoDB and removed from main branch! Vercel is rebuilding - changes will be live in 2-3 minutes.`
+      : `Article deleted from MongoDB and removed from main branch! Vercel will auto-deploy in ~2 minutes.`;
 
     return NextResponse.json({
       success: true,
       slugId,
       message,
       environment: IS_PRODUCTION ? 'production' : 'localhost',
+      workflow: 'MongoDB delete → MDX delete → Git (main) → Vercel',
     });
 
   } catch (error) {

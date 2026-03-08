@@ -190,9 +190,13 @@ export async function triggerVercelRebuild(
 }
 
 /**
- * Main publish article function with environment-aware branching
- * LOCALHOST: Writes MDX file + git operations
- * PRODUCTION: Saves to MongoDB + triggers Vercel rebuild
+ * Main publish article function - Unified CMS workflow
+ *
+ * WORKFLOW (both localhost and production):
+ * 1. Save article to MongoDB (source of truth)
+ * 2. Generate MDX file from MongoDB data
+ * 3. Commit and push MDX to main branch (regardless of current branch)
+ * 4. Trigger Vercel rebuild (production) or rely on auto-deploy (localhost)
  */
 export async function publishArticle(
   article: ArticleFormData,
@@ -213,26 +217,35 @@ export async function publishArticle(
   const environment = getEnvironmentName();
   console.log(`[PUBLISH] Environment: ${environment}`);
   console.log(`[PUBLISH] Article: ${slugId}`);
+  console.log('[PUBLISH] Method: MongoDB + MDX generation + Git push to main');
 
-  // Branch based on environment
+  if (!options.userId || !options.userName || !options.userEmail) {
+    throw new Error('User information required for publishing');
+  }
+
+  // STEP 1: Save to MongoDB (source of truth)
+  console.log('[PUBLISH] Step 1/4: Saving to MongoDB...');
+  const dbResult = await publishArticleToDatabase(
+    article,
+    slugId,
+    options.userId,
+    options.userName,
+    options.userEmail
+  );
+
+  // STEP 2: Generate MDX file from MongoDB data
+  console.log('[PUBLISH] Step 2/4: Generating MDX file...');
+  await writeArticleToFilesystem(article, slugId);
+
+  // STEP 3: Commit and push to main branch (even if on different branch)
+  console.log('[PUBLISH] Step 3/4: Pushing to main branch...');
+  if (options.autoDeploy !== false) {
+    await deployToMain(article, slugId);
+  }
+
+  // STEP 4: Trigger rebuild (production only, localhost relies on auto-deploy)
   if (IS_PRODUCTION) {
-    // PRODUCTION: Save to MongoDB + trigger rebuild
-    console.log('[PUBLISH] Method: Database + Vercel rebuild');
-
-    if (!options.userId || !options.userName || !options.userEmail) {
-      throw new Error('User information required for database publishing');
-    }
-
-    // Save to MongoDB
-    await publishArticleToDatabase(
-      article,
-      slugId,
-      options.userId,
-      options.userName,
-      options.userEmail
-    );
-
-    // Trigger Vercel rebuild
+    console.log('[PUBLISH] Step 4/4: Triggering Vercel rebuild...');
     const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
 
     if (deployResult.success) {
@@ -240,20 +253,9 @@ export async function publishArticle(
     } else {
       console.warn(`⚠️ Article saved but rebuild failed: ${deployResult.message}`);
     }
-
   } else {
-    // LOCALHOST: Write MDX file + git operations
-    console.log('[PUBLISH] Method: Filesystem + Git');
-
-    // Write MDX file to filesystem
-    await writeArticleToFilesystem(article, slugId);
-
-    console.log(`✅ Article published: ${slugId}.mdx`);
-
-    // Auto-deploy to production if requested
-    if (options.autoDeploy) {
-      await deployToProduction(article, slugId);
-    }
+    console.log('[PUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
+    console.log(`✅ Article published! Pushed to main branch (${dbResult._id})`);
   }
 }
 
@@ -343,28 +345,49 @@ function escapeYAML(str: string): string {
 }
 
 /**
- * Unpublish article with environment-aware logic
- * LOCALHOST: Deletes MDX file from filesystem
- * PRODUCTION: Deletes from MongoDB + triggers rebuild
+ * Unpublish article - Unified CMS workflow
+ *
+ * WORKFLOW (both localhost and production):
+ * 1. Delete article from MongoDB
+ * 2. Delete MDX file from filesystem
+ * 3. Commit and push deletion to main branch
+ * 4. Trigger Vercel rebuild (production) or rely on auto-deploy (localhost)
  */
 export async function unpublishArticle(slugId: string): Promise<void> {
   const environment = getEnvironmentName();
   console.log(`[UNPUBLISH] Environment: ${environment}`);
   console.log(`[UNPUBLISH] Article: ${slugId}`);
+  console.log('[UNPUBLISH] Method: MongoDB deletion + MDX removal + Git push to main');
 
+  // STEP 1: Delete from MongoDB
+  console.log('[UNPUBLISH] Step 1/4: Deleting from MongoDB...');
+  const deleted = await deleteArticle(slugId);
+
+  if (!deleted) {
+    throw new Error(`Failed to unpublish article: ${slugId} not found in database`);
+  }
+
+  console.log(`✅ Article deleted from MongoDB: ${slugId}`);
+
+  // STEP 2: Delete MDX file from filesystem
+  console.log('[UNPUBLISH] Step 2/4: Deleting MDX file...');
+  const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+
+  try {
+    await fs.unlink(filePath);
+    console.log(`✅ MDX file deleted: ${slugId}.mdx`);
+  } catch (error) {
+    console.warn('File not found or already deleted:', filePath);
+    // Continue anyway - file might already be deleted
+  }
+
+  // STEP 3: Commit and push deletion to main branch
+  console.log('[UNPUBLISH] Step 3/4: Pushing deletion to main branch...');
+  await unpublishFromMain(slugId);
+
+  // STEP 4: Trigger rebuild (production only)
   if (IS_PRODUCTION) {
-    // PRODUCTION: Delete from MongoDB + trigger rebuild
-    console.log('[UNPUBLISH] Method: Database deletion + Vercel rebuild');
-
-    const deleted = await deleteArticle(slugId);
-
-    if (!deleted) {
-      throw new Error(`Failed to unpublish article: ${slugId} not found in database`);
-    }
-
-    console.log(`✅ Article deleted from MongoDB: ${slugId}`);
-
-    // Trigger Vercel rebuild to remove article from site
+    console.log('[UNPUBLISH] Step 4/4: Triggering Vercel rebuild...');
     const deployResult = await triggerVercelRebuild(`Unpublish: ${slugId}`);
 
     if (deployResult.success) {
@@ -372,20 +395,9 @@ export async function unpublishArticle(slugId: string): Promise<void> {
     } else {
       console.warn(`⚠️ Article deleted but rebuild failed: ${deployResult.message}`);
     }
-
   } else {
-    // LOCALHOST: Delete MDX file from filesystem
-    console.log('[UNPUBLISH] Method: Filesystem deletion');
-
-    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
-
-    try {
-      await fs.unlink(filePath);
-      console.log(`✅ Article unpublished: ${slugId}.mdx deleted`);
-    } catch (error) {
-      console.error('File not found or already deleted:', filePath);
-      throw new Error(`Failed to unpublish article: ${slugId}`);
-    }
+    console.log('[UNPUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
+    console.log(`✅ Article unpublished! Deletion pushed to main branch.`);
   }
 }
 
@@ -412,10 +424,10 @@ export async function isArticlePublished(slugId: string): Promise<boolean> {
 }
 
 /**
- * Deploy article to production by committing and pushing to GitHub
- * Vercel will auto-deploy when it detects the push
+ * Deploy article to main branch (regardless of current branch)
+ * This ensures CMS articles always go to production
  */
-export async function deployToProduction(
+export async function deployToMain(
   article: ArticleFormData,
   slugId: string
 ): Promise<{
@@ -426,6 +438,11 @@ export async function deployToProduction(
   try {
     const fileName = `${slugId}.mdx`;
     const filePath = `src/posts/${fileName}`;
+
+    // Save current branch name
+    const { stdout: currentBranch } = await execAsync('git branch --show-current');
+    const originalBranch = currentBranch.trim();
+    console.log(`📍 Current branch: ${originalBranch}`);
 
     // Check if there are changes to commit
     const { stdout: statusOutput } = await execAsync('git status --porcelain');
@@ -441,6 +458,25 @@ export async function deployToProduction(
     console.log(`📝 Staging ${filePath}...`);
     await execAsync(`git add "${filePath}"`);
 
+    // Stash any other uncommitted changes
+    console.log('💼 Stashing other changes...');
+    await execAsync('git stash push -m "CMS publish temp stash"').catch(() => {
+      // Ignore errors if nothing to stash
+    });
+
+    // Switch to main branch
+    console.log('🔀 Switching to main branch...');
+    await execAsync('git checkout main');
+
+    // Pull latest changes
+    console.log('⬇️ Pulling latest changes...');
+    await execAsync('git pull origin main');
+
+    // Cherry-pick the staged file to main
+    console.log(`📦 Moving ${filePath} to main...`);
+    // Create a temporary commit on original branch, then cherry-pick
+    await execAsync(`git checkout ${originalBranch}`);
+
     // Create commit message
     const isDraft = article.draft ? ' [DRAFT]' : '';
     const commitMessage = `Update article: ${article.title}${isDraft}
@@ -451,7 +487,7 @@ export async function deployToProduction(
 
 🤖 Generated with Claude Code CMS`;
 
-    // Commit the changes
+    // Commit the changes on original branch
     console.log('💾 Committing changes...');
     const { stdout: commitOutput } = await execAsync(
       `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
@@ -461,15 +497,28 @@ export async function deployToProduction(
     const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
     const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
 
-    // Push to GitHub
-    console.log('🚀 Pushing to GitHub...');
+    // Switch to main and cherry-pick
+    await execAsync('git checkout main');
+    await execAsync(`git cherry-pick ${commitHash}`);
+
+    // Push to main
+    console.log('🚀 Pushing to main branch...');
     await execAsync('git push origin main');
 
-    console.log('✅ Deployed to production!');
+    // Switch back to original branch
+    console.log(`🔙 Returning to ${originalBranch}...`);
+    await execAsync(`git checkout ${originalBranch}`);
+
+    // Restore stashed changes if any
+    await execAsync('git stash pop').catch(() => {
+      // Ignore errors if nothing was stashed
+    });
+
+    console.log('✅ Deployed to main!');
 
     return {
       success: true,
-      message: `Article deployed to production! Vercel will auto-deploy in ~2 minutes.`,
+      message: `Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.`,
       commitHash,
     };
 
@@ -492,4 +541,105 @@ export async function deployToProduction(
 
     throw new Error(`Deploy failed: ${errorMessage}`);
   }
+}
+
+/**
+ * Remove article from main branch (regardless of current branch)
+ * This ensures article deletions always remove from production
+ */
+export async function unpublishFromMain(slugId: string): Promise<void> {
+  try {
+    const fileName = `${slugId}.mdx`;
+    const filePath = `src/posts/${fileName}`;
+
+    // Save current branch name
+    const { stdout: currentBranch } = await execAsync('git branch --show-current');
+    const originalBranch = currentBranch.trim();
+    console.log(`📍 Current branch: ${originalBranch}`);
+
+    // Stash any uncommitted changes
+    console.log('💼 Stashing other changes...');
+    await execAsync('git stash push -m "CMS unpublish temp stash"').catch(() => {
+      // Ignore errors if nothing to stash
+    });
+
+    // Switch to main branch
+    console.log('🔀 Switching to main branch...');
+    await execAsync('git checkout main');
+
+    // Pull latest changes
+    console.log('⬇️ Pulling latest changes...');
+    await execAsync('git pull origin main');
+
+    // Check if file exists on main
+    try {
+      await execAsync(`git ls-files --error-unmatch "${filePath}"`);
+    } catch {
+      console.log('⚠️ File not found on main branch, skipping deletion');
+      await execAsync(`git checkout ${originalBranch}`);
+      await execAsync('git stash pop').catch(() => {});
+      return;
+    }
+
+    // Delete the file
+    console.log(`🗑️ Deleting ${filePath}...`);
+    await execAsync(`git rm "${filePath}"`);
+
+    // Create commit message
+    const commitMessage = `Delete article: ${slugId}
+
+- Unpublished via CMS
+- Removed from production
+
+🤖 Generated with Claude Code CMS`;
+
+    // Commit the deletion
+    console.log('💾 Committing deletion...');
+    await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`);
+
+    // Push to main
+    console.log('🚀 Pushing to main branch...');
+    await execAsync('git push origin main');
+
+    // Switch back to original branch
+    console.log(`🔙 Returning to ${originalBranch}...`);
+    await execAsync(`git checkout ${originalBranch}`);
+
+    // Also delete from current branch if it exists
+    try {
+      await fs.unlink(path.join(process.cwd(), filePath));
+      await execAsync(`git rm "${filePath}"`).catch(() => {});
+    } catch {
+      // File doesn't exist on current branch, that's fine
+    }
+
+    // Restore stashed changes if any
+    await execAsync('git stash pop').catch(() => {
+      // Ignore errors if nothing was stashed
+    });
+
+    console.log('✅ Removed from main!');
+
+  } catch (error) {
+    console.error('❌ Unpublish failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to remove from main: ${errorMessage}`);
+  }
+}
+
+/**
+ * Deploy article to production by committing and pushing to GitHub
+ * Vercel will auto-deploy when it detects the push
+ * @deprecated Use deployToMain instead for unified CMS workflow
+ */
+export async function deployToProduction(
+  article: ArticleFormData,
+  slugId: string
+): Promise<{
+  success: boolean;
+  message: string;
+  commitHash?: string;
+}> {
+  // Redirect to deployToMain for unified workflow
+  return deployToMain(article, slugId);
 }
