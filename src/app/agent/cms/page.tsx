@@ -90,10 +90,10 @@ export default function CMSPage() {
 
   return (
     <div
-      className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:py-6 md:py-12 overflow-hidden"
+      className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:py-6 md:py-12"
       data-page="admin-articles"
     >
-      <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 px-4">
+      <div className="max-w-7xl mx-auto w-full h-full flex flex-col pt-16 md:pt-0 px-4">
         {/* Agent Navigation */}
         <div className="flex-shrink-0">
           <AgentNav />
