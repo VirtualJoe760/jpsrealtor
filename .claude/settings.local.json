@@ -50,7 +50,8 @@
       "Bash(npx tsc:*)",
       "Bash(timeout 60 npx tsc:*)",
       "Bash(tee:*)",
-      "Bash(npm run generate-mdx:*)"
+      "Bash(npm run generate-mdx:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

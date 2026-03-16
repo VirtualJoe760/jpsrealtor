@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
         licenseNumber: user.licenseNumber,
         team: user.team,
         isTeamLeader: user.isTeamLeader,
+        // MULTI-TENANT: Agent Profile
+        agentProfile: user.agentProfile,
       },
     });
   } catch (error) {
@@ -88,6 +90,8 @@ export async function PUT(request: NextRequest) {
       image,
       brokerageName,
       licenseNumber,
+      // MULTI-TENANT: Agent Profile fields
+      agentProfile,
     } = body;
 
     await dbConnect();
@@ -101,7 +105,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update fields
+    // Update basic fields
     if (name !== undefined) user.name = name;
     if (phone !== undefined) user.phone = phone;
     if (birthday !== undefined) user.birthday = birthday ? new Date(birthday) : undefined;
@@ -112,6 +116,36 @@ export async function PUT(request: NextRequest) {
     if (image !== undefined) user.image = image;
     if (brokerageName !== undefined) user.brokerageName = brokerageName;
     if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+
+    // MULTI-TENANT: Update agentProfile fields (deep merge)
+    if (agentProfile !== undefined) {
+      // Initialize agentProfile if it doesn't exist
+      if (!user.agentProfile) {
+        user.agentProfile = {} as any;
+      }
+
+      // Deep merge agentProfile fields
+      user.agentProfile = {
+        ...user.agentProfile,
+        ...agentProfile,
+        // Handle nested objects separately to preserve existing data
+        customBackgrounds: agentProfile.customBackgrounds ? {
+          ...user.agentProfile.customBackgrounds,
+          ...agentProfile.customBackgrounds,
+        } : user.agentProfile.customBackgrounds,
+        socialMedia: agentProfile.socialMedia ? {
+          ...user.agentProfile.socialMedia,
+          ...agentProfile.socialMedia,
+        } : user.agentProfile.socialMedia,
+        brandColors: agentProfile.brandColors ? {
+          ...user.agentProfile.brandColors,
+          ...agentProfile.brandColors,
+        } : user.agentProfile.brandColors,
+      };
+
+      // Mark the field as modified for Mongoose
+      user.markModified('agentProfile');
+    }
 
     await user.save();
 
@@ -135,6 +169,8 @@ export async function PUT(request: NextRequest) {
         licenseNumber: user.licenseNumber,
         team: user.team,
         isTeamLeader: user.isTeamLeader,
+        // MULTI-TENANT: Agent Profile
+        agentProfile: user.agentProfile,
       },
     });
   } catch (error) {

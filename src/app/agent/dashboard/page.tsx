@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AgentNav from "@/app/components/AgentNav";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { Briefcase, Users, TrendingUp, FileCheck, User as UserIcon, Phone, Building2, CreditCard, Settings, Camera, Mail } from "lucide-react";
+import { Briefcase, Users, TrendingUp, FileCheck, User as UserIcon, Phone, Building2, CreditCard, Settings, Camera, Mail, Globe } from "lucide-react";
 import { toast } from "react-toastify";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
+import AgentProfileEditor from "./components/AgentProfileEditor";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -26,11 +27,13 @@ export default function AgentDashboard() {
     image: "",
     team: null as { name: string; description?: string } | null,
     isTeamLeader: false,
+    agentProfile: null as any,
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "profile">("overview");
 
   // Fetch agent profile - MUST be before conditional returns
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function AgentDashboard() {
             image: data.profile.image || user?.image || "",
             team: data.profile.team || null,
             isTeamLeader: data.profile.isTeamLeader || false,
+            agentProfile: data.profile.agentProfile || null,
           });
         }
       } catch (error) {
@@ -196,6 +200,7 @@ export default function AgentDashboard() {
           image: data.profile.image || user?.image || "",
           team: data.profile.team || null,
           isTeamLeader: data.profile.isTeamLeader || false,
+          agentProfile: data.profile.agentProfile || null,
         });
       }
     } catch (error) {
@@ -255,10 +260,46 @@ export default function AgentDashboard() {
               Team Leader
             </p>
           )}
+
+          {/* Tabs */}
+          <div className={`flex gap-2 mt-4 border-b ${isLight ? "border-gray-200" : "border-gray-800"}`}>
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-2 font-medium transition-all ${
+                activeTab === "overview"
+                  ? isLight
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-blue-400 border-b-2 border-blue-400"
+                  : isLight
+                    ? "text-gray-600 hover:text-gray-900"
+                    : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Briefcase className="w-4 h-4 inline mr-2" />
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className={`px-4 py-2 font-medium transition-all ${
+                activeTab === "profile"
+                  ? isLight
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-blue-400 border-b-2 border-blue-400"
+                  : isLight
+                    ? "text-gray-600 hover:text-gray-900"
+                    : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Globe className="w-4 h-4 inline mr-2" />
+              Public Profile
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto pb-20 md:pb-0 px-4 md:px-6">
+          {activeTab === "overview" && (
+            <>
           {/* Agent Profile Card */}
           {!isLoadingProfile && (
           <div
@@ -580,6 +621,30 @@ export default function AgentDashboard() {
               );
             })}
           </div>
+            </>
+          )}
+
+          {/* Public Profile Tab */}
+          {activeTab === "profile" && !isLoadingProfile && (
+            <AgentProfileEditor
+              agentProfile={agentProfile.agentProfile}
+              isLight={isLight}
+              onSave={async (updatedProfile) => {
+                const response = await fetch("/api/user/profile", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(updatedProfile),
+                });
+
+                if (!response.ok) {
+                  throw new Error("Failed to update profile");
+                }
+
+                // Refresh profile data
+                await fetchProfile();
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
