@@ -32,13 +32,128 @@ export interface IUser extends Document {
   homeownerStatus?: "own" | "rent" | "other";
   significantOther?: mongoose.Types.ObjectId; // Reference to linked partner account
 
-  // Real Estate Agent/Broker specific
+  // Real Estate Agent/Broker specific (legacy fields - keep for backwards compatibility)
   licenseNumber?: string;
   brokerageName?: string;
   teamName?: string; // e.g., "The Sardella Team"
   website?: string;
   voicePersonality?: string; // AI training prompt for script generation personality
   voiceTrainingResponses?: Record<string, string>; // Raw questionnaire responses
+
+  // MULTI-TENANT: Agent Profile (comprehensive landing page data)
+  agentProfile?: {
+    // Photos & Media
+    headshot?: string; // Primary profile photo (Cloudinary URL)
+    heroPhoto?: string; // Landing page hero background (Cloudinary URL)
+    teamPhoto?: string; // Team group photo (Cloudinary URL)
+    officePhoto?: string; // Office/brokerage photo (Cloudinary URL)
+    galleryPhotos?: string[]; // Additional photos (Cloudinary URLs)
+    videoIntro?: string; // Video introduction URL (Cloudinary video)
+
+    // Custom Backgrounds (4 variations for theme transitions)
+    customBackgrounds?: {
+      lightDesktop?: string; // Light theme desktop background (Cloudinary URL)
+      lightMobile?: string; // Light theme mobile background (Cloudinary URL)
+      darkDesktop?: string; // Dark theme desktop background (Cloudinary URL)
+      darkMobile?: string; // Dark theme mobile background (Cloudinary URL)
+    };
+
+    // Landing Page Content
+    headline?: string; // Main headline (e.g., "Your Trusted Real Estate Partner")
+    tagline?: string; // Subheadline (e.g., "Serving Orange County Since 2010")
+    valuePropositions?: Array<{
+      icon: string; // Icon name or URL
+      title: string; // e.g., "Local Expertise"
+      description: string; // e.g., "Deep knowledge of Orange County neighborhoods"
+    }>;
+    testimonials?: Array<{
+      clientName: string;
+      clientPhoto?: string; // Cloudinary URL
+      rating: number; // 1-5 stars
+      text: string;
+      date: Date;
+      propertyAddress?: string; // Optional context
+    }>;
+    stats?: Array<{
+      label: string; // e.g., "Homes Sold"
+      value: string; // e.g., "500+"
+      icon?: string; // Icon name or URL
+    }>;
+
+    // Social Media Links
+    socialMedia?: {
+      facebook?: string;
+      instagram?: string;
+      linkedin?: string;
+      twitter?: string;
+      youtube?: string;
+      tiktok?: string;
+    };
+
+    // Business Info
+    businessHours?: Array<{
+      day: string; // e.g., "Monday"
+      open: string; // e.g., "9:00 AM"
+      close: string; // e.g., "6:00 PM"
+      closed: boolean; // true if closed that day
+    }>;
+    officeAddress?: string;
+    officePhone?: string;
+    cellPhone?: string;
+
+    // Service Areas & Specializations
+    serviceAreas?: Array<{
+      name: string; // e.g., "Orange County"
+      type: "city" | "county" | "zip" | "custom";
+      geoJson?: any; // GeoJSON polygon for territory
+    }>;
+    specializations?: string[]; // e.g., ["Luxury Homes", "First-Time Buyers", "Investment Properties"]
+    certifications?: Array<{
+      name: string; // e.g., "Certified Luxury Home Marketing Specialist"
+      issuedBy: string;
+      year: number;
+      logoUrl?: string; // Cloudinary URL
+    }>;
+
+    // MLS Data Sources (Data Broker)
+    mlsDataSources?: Array<{
+      name: string; // e.g., "CRMLS"
+      mlsId: string; // Agent's MLS ID
+      coverage: {
+        type: "MultiPolygon"; // GeoJSON type
+        coordinates: any[][]; // GeoJSON coordinates
+        cities: string[];
+        counties: string[];
+        states: string[];
+      };
+      listingCount: number; // How many listings this agent contributed
+      lastSyncedAt: Date;
+      status: "active" | "inactive" | "pending";
+      dataBrokerRights: boolean; // First-come gets data broker status
+    }>;
+
+    // Licensed Territories (where agent can legally operate)
+    licenses: Array<{
+      state: string; // e.g., "CA"
+      licenseNumber: string;
+      status: "active" | "inactive" | "expired";
+      expiresAt?: Date;
+    }>;
+
+    // Domain & Branding (for multi-tenancy)
+    customDomain?: string; // e.g., "josephsardella.com"
+    subdomain?: string; // e.g., "joseph" (becomes joseph.chatrealty.io)
+    brandColors?: {
+      primary?: string; // Hex color
+      secondary?: string; // Hex color
+      accent?: string; // Hex color
+    };
+
+    // SEO & Marketing
+    metaTitle?: string; // Page title for SEO
+    metaDescription?: string; // Meta description for SEO
+    metaKeywords?: string[]; // SEO keywords
+  };
 
   // Service Provider specific
   businessName?: string;
@@ -52,6 +167,31 @@ export interface IUser extends Document {
 
   // Anonymous Identification (for pre-login users)
   anonymousId?: string; // Browser fingerprint
+
+  // MULTI-TENANT: Client-Side Agent Relationship
+  agentRelationship?: mongoose.Types.ObjectId; // Reference to assigned agent (User with realEstateAgent role)
+  representationAgreement?: {
+    agentId: mongoose.Types.ObjectId; // Reference to agent
+    signedAt: Date;
+    expiresAt: Date; // 30 days from signedAt (rolling)
+    status: "active" | "expired" | "cancelled";
+    documentUrl?: string; // Cloudinary URL to signed PDF
+    ipAddress?: string; // IP at time of signing
+    userAgent?: string; // Browser info at time of signing
+  };
+
+  // MULTI-TENANT: Subscription & Feature Gates
+  subscriptionTier?: "free" | "pro" | "ultimate" | "investor"; // Client subscription tier
+  subscriptionStatus?: "active" | "cancelled" | "past_due" | "trialing";
+  subscriptionExpiresAt?: Date;
+  stripeSubscriptionId?: string; // Stripe subscription ID
+  usageLimits?: {
+    aiQueriesUsedToday: number;
+    aiQueriesLimit: number; // Based on tier (free: 10, pro: 100, ultimate: unlimited, investor: unlimited)
+    lastResetAt: Date; // Daily reset
+    browsingMinutesToday?: number; // For anonymous/free tier limits
+    browsingMinutesLimit?: number; // e.g., 30 minutes for free tier
+  };
 
   // CLIENT TYPE (for users who signed agreements)
   clientType?: "buyer" | "seller" | "both";
@@ -305,13 +445,128 @@ const UserSchema = new Schema<IUser>(
       ref: "User",
     },
 
-    // Real Estate Agent/Broker specific
+    // Real Estate Agent/Broker specific (legacy)
     licenseNumber: String,
     brokerageName: String,
     teamName: String,
     website: String,
     voicePersonality: String,
     voiceTrainingResponses: Schema.Types.Mixed,
+
+    // MULTI-TENANT: Agent Profile
+    agentProfile: {
+      // Photos & Media
+      headshot: String,
+      heroPhoto: String,
+      teamPhoto: String,
+      officePhoto: String,
+      galleryPhotos: [String],
+      videoIntro: String,
+
+      // Custom Backgrounds (4 variations)
+      customBackgrounds: {
+        lightDesktop: String,
+        lightMobile: String,
+        darkDesktop: String,
+        darkMobile: String,
+      },
+
+      // Landing Page Content
+      headline: String,
+      tagline: String,
+      valuePropositions: [{
+        icon: String,
+        title: String,
+        description: String,
+      }],
+      testimonials: [{
+        clientName: String,
+        clientPhoto: String,
+        rating: { type: Number, min: 1, max: 5 },
+        text: String,
+        date: Date,
+        propertyAddress: String,
+      }],
+      stats: [{
+        label: String,
+        value: String,
+        icon: String,
+      }],
+
+      // Social Media Links
+      socialMedia: {
+        facebook: String,
+        instagram: String,
+        linkedin: String,
+        twitter: String,
+        youtube: String,
+        tiktok: String,
+      },
+
+      // Business Info
+      businessHours: [{
+        day: String,
+        open: String,
+        close: String,
+        closed: { type: Boolean, default: false },
+      }],
+      officeAddress: String,
+      officePhone: String,
+      cellPhone: String,
+
+      // Service Areas & Specializations
+      serviceAreas: [{
+        name: String,
+        type: { type: String, enum: ["city", "county", "zip", "custom"] },
+        geoJson: Schema.Types.Mixed, // GeoJSON polygon
+      }],
+      specializations: [String],
+      certifications: [{
+        name: String,
+        issuedBy: String,
+        year: Number,
+        logoUrl: String,
+      }],
+
+      // MLS Data Sources (Data Broker)
+      mlsDataSources: [{
+        name: String,
+        mlsId: String,
+        coverage: {
+          type: { type: String, default: "MultiPolygon" },
+          coordinates: [[Schema.Types.Mixed]],
+          cities: [String],
+          counties: [String],
+          states: [String],
+        },
+        listingCount: { type: Number, default: 0 },
+        lastSyncedAt: Date,
+        status: { type: String, enum: ["active", "inactive", "pending"], default: "pending" },
+        dataBrokerRights: { type: Boolean, default: false },
+      }],
+
+      // Licensed Territories
+      licenses: [{
+        state: String,
+        licenseNumber: String,
+        status: { type: String, enum: ["active", "inactive", "expired"], default: "active" },
+        expiresAt: Date,
+      }],
+
+      // Domain & Branding
+      customDomain: String,
+      subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
+      brandColors: {
+        primary: String,
+        secondary: String,
+        accent: String,
+      },
+
+      // SEO & Marketing
+      metaTitle: String,
+      metaDescription: String,
+      metaKeywords: [String],
+    },
 
     // Service Provider specific
     businessName: String,
@@ -325,6 +580,39 @@ const UserSchema = new Schema<IUser>(
 
     // Anonymous Identification
     anonymousId: { type: String, index: true }, // Browser fingerprint for pre-login users
+
+    // MULTI-TENANT: Client-Side Agent Relationship
+    agentRelationship: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    representationAgreement: {
+      agentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+      signedAt: { type: Date, required: true },
+      expiresAt: { type: Date, required: true },
+      status: { type: String, enum: ["active", "expired", "cancelled"], default: "active" },
+      documentUrl: String,
+      ipAddress: String,
+      userAgent: String,
+    },
+
+    // MULTI-TENANT: Subscription & Feature Gates
+    subscriptionTier: {
+      type: String,
+      enum: ["free", "pro", "ultimate", "investor"],
+      default: "free",
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ["active", "cancelled", "past_due", "trialing"],
+      default: "active",
+    },
+    subscriptionExpiresAt: Date,
+    stripeSubscriptionId: String,
+    usageLimits: {
+      aiQueriesUsedToday: { type: Number, default: 0 },
+      aiQueriesLimit: { type: Number, default: 10 }, // free tier default
+      lastResetAt: { type: Date, default: Date.now },
+      browsingMinutesToday: { type: Number, default: 0 },
+      browsingMinutesLimit: { type: Number, default: 30 }, // free tier default
+    },
 
     // CLIENT TYPE (for users who signed agreements)
     clientType: {
@@ -527,6 +815,16 @@ UserSchema.index({ "agentApplication.phase": 1 }); // For filtering applications
 UserSchema.index({ team: 1 }); // For team member queries
 UserSchema.index({ isTeamLeader: 1 }); // For team leader queries
 UserSchema.index({ clientType: 1 }); // For client queries
+
+// MULTI-TENANT: Indexes for new fields
+UserSchema.index({ "agentProfile.subdomain": 1 }); // Subdomain lookup (e.g., joseph.chatrealty.io)
+UserSchema.index({ "agentProfile.customDomain": 1 }); // Custom domain lookup (e.g., josephsardella.com)
+UserSchema.index({ agentRelationship: 1 }); // Find all clients of an agent
+UserSchema.index({ "representationAgreement.agentId": 1, "representationAgreement.status": 1 }); // Active agreements
+UserSchema.index({ "representationAgreement.expiresAt": 1 }); // Find expiring agreements
+UserSchema.index({ subscriptionTier: 1 }); // Filter by subscription tier
+UserSchema.index({ subscriptionStatus: 1 }); // Filter by subscription status
+UserSchema.index({ "agentProfile.mlsDataSources.dataBrokerRights": 1 }); // Find data brokers
 
 // Helper methods
 UserSchema.methods.hasRole = function(role: UserRole): boolean {
