@@ -140,7 +140,7 @@ export default function FavoriteProperties({
           <Heart className={`w-16 h-16 mx-auto mb-4 ${textTertiary}`} />
           <p className={`${textSecondary} mb-4`}>No favorites yet</p>
           <Link
-            href="/?view=map"
+            href="/chap?view=map"
             className={`inline-block px-6 py-3 rounded-lg transition-all text-white font-medium ${
               isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
             }`}

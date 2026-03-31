@@ -29,7 +29,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
           className="mb-8 pt-16 md:pt-0"
         >
           <Link
-            href="/insights"
+            href="/"
             className={`inline-flex items-center gap-2 transition-colors ${
               isLight
                 ? 'text-gray-600 hover:text-gray-900'

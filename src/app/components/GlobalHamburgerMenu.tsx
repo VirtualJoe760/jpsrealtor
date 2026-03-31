@@ -13,7 +13,7 @@ export default function GlobalHamburgerMenu() {
   const isLight = currentTheme === "lightgradient";
   const pathname = usePathname();
   const isMapPage = pathname === "/map";
-  const isChatPage = pathname === "/";
+  const isChatPage = pathname === "/chap";
 
   useEffect(() => {
     setMounted(true);

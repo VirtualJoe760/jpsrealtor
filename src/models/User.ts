@@ -584,9 +584,9 @@ const UserSchema = new Schema<IUser>(
     // MULTI-TENANT: Client-Side Agent Relationship
     agentRelationship: { type: Schema.Types.ObjectId, ref: "User", index: true },
     representationAgreement: {
-      agentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-      signedAt: { type: Date, required: true },
-      expiresAt: { type: Date, required: true },
+      agentId: { type: Schema.Types.ObjectId, ref: "User" },
+      signedAt: { type: Date },
+      expiresAt: { type: Date },
       status: { type: String, enum: ["active", "expired", "cancelled"], default: "active" },
       documentUrl: String,
       ipAddress: String,

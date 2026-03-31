@@ -49,7 +49,7 @@ function PreviewContent() {
           transition={{ duration: 0.4 }}
           className="mb-8 pt-16 md:pt-0"
         >
-          <a href="/insights" className={`inline-flex items-center gap-2 transition-colors ${
+          <a href="/" className={`inline-flex items-center gap-2 transition-colors ${
             isLight ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'
           }`}>
             <span>← Back to articles</span>

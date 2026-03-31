@@ -1753,15 +1753,17 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
               const hovered = hoveredId === listing._id;
               const showSelected = selected && !panelOpen;
 
-              // Show dots for zoom < 13, prices for zoom >= 13
-              const showAsDot = currentZoom < 13;
+              // Show dots for zoom < 14, prices for zoom >= 14
+              const showAsDot = currentZoom < 14;
+
+              const listingIdx = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m) && !isRadialCluster(m)).length - 1;
 
               return (
                 <Marker
                   key={listing.listingKey || listing._id || `marker-${i}`}
                   longitude={listing.longitude}
                   latitude={listing.latitude}
-                  anchor={showAsDot ? "center" : "bottom"} // Center dots, bottom for price bubbles
+                  anchor={showAsDot ? "center" : "bottom"}
                   onClick={() => handleMarkerClick(listing)}
                 >
                   <AnimatedMarker
@@ -1774,6 +1776,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                     onMouseLeave={() => setHoveredId(null)}
                     isLight={isLight}
                     showAsDot={showAsDot}
+                    staggerIndex={listingIdx}
                   />
                 </Marker>
               );

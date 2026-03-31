@@ -9,7 +9,7 @@ import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const navigation = [
   { name: "About", href: "/about" },
-  { name: 'Insights', href: '/insights' },
+  { name: 'Home', href: '/' },
   { name: "Listings", href: "/mls-listings" },
   { name: "Neighborhoods", href: "/neighborhoods" },
 ];

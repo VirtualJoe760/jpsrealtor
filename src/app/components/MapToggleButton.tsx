@@ -17,22 +17,17 @@ export default function MapToggleButton() {
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
 
-  const isHomePage = pathname === "/";
+  const isChapPage = pathname === "/chap";
 
   const handleToggleMap = () => {
-    // If we're on the homepage, toggle the map
-    if (isHomePage) {
+    if (isChapPage) {
       if (isMapVisible) {
         hideMap();
       } else {
-        // Show map centered on California (entire state view)
-        // Center: ~37°N, 119.5°W (California geographic center)
-        // Zoom: 5 shows entire state with more breathing room
         showMapAtLocation(37.0, -119.5, 5);
       }
     } else {
-      // If we're on any other page, redirect to homepage (returns to last state)
-      router.push("/");
+      router.push("/chap");
     }
   };
 

@@ -54,10 +54,7 @@ export async function GET() {
 
     const duration = Date.now() - startTime;
 
-    console.log('[market-stats] Current mortgage rates:', currentRates);
-    console.log('[market-stats] Historical data points:', historicalRates.length);
-    console.log('[market-stats] Economic indicators:', economicData);
-    console.log(`[market-stats] Total fetch time: ${duration}ms`);
+    console.log(`[market-stats] Fetched in ${duration}ms: 30yr=${currentRates.frm_30 ?? 'N/A'}%, ${historicalRates.length} historical points, economic indicators loaded`);
 
     const stats: MarketStats = {
       mortgageRates: {
@@ -258,8 +255,6 @@ async function fetchMortgageRates(): Promise<MortgageRateData> {
     }
 
     const result = await response.json();
-    console.log('[market-stats] Raw API response:', JSON.stringify(result));
-
     // API returns an array with nested data object
     // Structure: [{ week: "current", data: { frm_30: "6.23", frm_15: "5.51", week: "2025-11-26" }}]
     if (Array.isArray(result) && result.length > 0) {

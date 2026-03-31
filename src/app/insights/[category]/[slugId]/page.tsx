@@ -55,7 +55,7 @@ export default async function PostPage({
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-black text-white">
         <p>Invalid URL: Missing content identifier.</p>
-        <a href="/insights" className="text-indigo-500 hover:underline">
+        <a href="/" className="text-indigo-500 hover:underline">
           Back to Insights
         </a>
       </div>
@@ -70,7 +70,7 @@ export default async function PostPage({
       return (
         <div className="min-h-screen flex flex-col justify-center items-center bg-black text-white">
           <p>Sorry, the requested post could not be found.</p>
-          <a href="/insights" className="text-indigo-500 hover:underline">
+          <a href="/" className="text-indigo-500 hover:underline">
             Back to Insights
           </a>
         </div>
@@ -88,7 +88,7 @@ export default async function PostPage({
     return (
       <div className="min-h-screen flex flex-col justify-center items-center text-white">
         <p>Something went wrong while loading the post.</p>
-        <a href="/insights" className="text-indigo-500 hover:underline">
+        <a href="/" className="text-indigo-500 hover:underline">
           Back to Insights
         </a>
       </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 interface AnimatedMarkerProps {
   price: string;
   propertyType?: string;
@@ -10,7 +12,8 @@ interface AnimatedMarkerProps {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   isLight?: boolean;
-  showAsDot?: boolean; // New prop: if true, render as small dot instead of price bubble
+  showAsDot?: boolean;
+  staggerIndex?: number;
 }
 
 function getMarkerStyles(
@@ -69,8 +72,24 @@ export default function AnimatedMarker({
   onMouseEnter,
   onMouseLeave,
   isLight = false,
-  showAsDot = false
+  showAsDot = false,
+  staggerIndex = 0
 }: AnimatedMarkerProps) {
+  // Each marker manages its own expanded state with a staggered delay
+  const [isExpanded, setIsExpanded] = useState(!showAsDot);
+
+  useEffect(() => {
+    if (!showAsDot) {
+      // Should expand — randomized delay so markers pop in scattered order
+      const delay = Math.floor(Math.random() * 1200);
+      const timer = setTimeout(() => setIsExpanded(true), delay);
+      return () => clearTimeout(timer);
+    } else {
+      // Collapse immediately
+      setIsExpanded(false);
+    }
+  }, [showAsDot, staggerIndex]);
+
   const markerStyles = getMarkerStyles(
     propertyType,
     mlsSource,
@@ -79,8 +98,8 @@ export default function AnimatedMarker({
     isLight
   );
 
-  // Dot mode: render as small circular dot
-  if (showAsDot) {
+  // Render as dot when collapsed (either zoom < 14, or waiting for stagger delay)
+  if (!isExpanded) {
     return (
       <div
         onClick={onClick}
@@ -100,7 +119,7 @@ export default function AnimatedMarker({
     );
   }
 
-  // Price bubble mode: original behavior
+  // Price bubble mode
   return (
     <div
       onClick={onClick}

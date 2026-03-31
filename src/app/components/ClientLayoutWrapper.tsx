@@ -19,14 +19,10 @@ import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  console.log('[LayoutContent] RENDER START');
-
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
-
-  console.log('[LayoutContent] Hooks loaded, pathname:', pathname);
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -53,8 +49,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const shouldShowMapBackground = pagesWithMapBackground.some(page => pathname?.startsWith(page));
 
-  // Determine whether to show TopToggles - only on root page
-  const shouldShowTopToggles = pathname === '/';
+  // Determine whether to show TopToggles - only on CHAP page
+  const shouldShowTopToggles = pathname === '/chap';
 
   return (
     <>
@@ -121,19 +117,9 @@ export default function ClientLayoutWrapper({
 }: ClientLayoutWrapperProps) {
   // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
-    console.log('[ClientLayoutWrapper] ========================================');
-    console.log('[ClientLayoutWrapper] Setting up gesture prevention');
-    console.log('[ClientLayoutWrapper] Note: Double-tap zoom handled by CSS (touch-action: manipulation)');
-    console.log('[ClientLayoutWrapper] ========================================');
-
-    let gestureCount = 0;
-    let wheelZoomCount = 0;
-
     // Only prevent gesture-based zooming (pinch, etc.) - NOT double-tap
     // Double-tap is handled by CSS: touch-action: manipulation !important
     const preventGesture = (e: Event) => {
-      gestureCount++;
-      console.warn(`[Gesture] #${gestureCount} - Preventing ${e.type}`);
       e.preventDefault();
       e.stopPropagation();
     };
@@ -141,14 +127,10 @@ export default function ClientLayoutWrapper({
     // Prevent zoom on wheel with ctrl/cmd (desktop)
     const preventWheelZoom = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        wheelZoomCount++;
-        console.warn(`[Wheel] #${wheelZoomCount} - Preventing Ctrl/Cmd+Wheel zoom`);
         e.preventDefault();
         e.stopPropagation();
       }
     };
-
-    console.log('[ClientLayoutWrapper] Adding gesture listeners (NOT touch listeners!)');
 
     // Only add gesture and wheel listeners - NO touchend/touchstart blocking!
     document.addEventListener('gesturestart', preventGesture, { passive: false, capture: true });
@@ -156,12 +138,7 @@ export default function ClientLayoutWrapper({
     document.addEventListener('gestureend', preventGesture, { passive: false, capture: true });
     document.addEventListener('wheel', preventWheelZoom, { passive: false, capture: true });
 
-    console.log('[ClientLayoutWrapper] Gesture listeners installed (touches NOT blocked)');
-
     return () => {
-      console.log('[ClientLayoutWrapper] Removing gesture listeners');
-      console.log(`[ClientLayoutWrapper] Stats: ${gestureCount} gestures, ${wheelZoomCount} wheel zooms prevented`);
-
       document.removeEventListener('gesturestart', preventGesture, true);
       document.removeEventListener('gesturechange', preventGesture, true);
       document.removeEventListener('gestureend', preventGesture, true);

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Update user if we filtered any expired dislikes
-    if (validDislikes.length !== user.dislikedListings.length) {
+    if (validDislikes.length !== (user.dislikedListings || []).length) {
       user.dislikedListings = validDislikes;
       await user.save();
     }

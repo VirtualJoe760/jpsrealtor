@@ -17,21 +17,20 @@ export default function MobileBottomNav() {
   // Use centralized PWA context (no duplicate detection!)
   const { isStandalone, isIOS } = usePWA();
 
-  const isHomePage = pathname === "/";
+  const isChapPage = pathname === "/chap";
 
   // Handle Chat/Map button click
   const handleChatMapClick = () => {
-    if (isHomePage) {
-      // On homepage, toggle map visibility
+    if (isChapPage) {
+      // On CHAP page, toggle map visibility
       if (isMapVisible) {
         hideMap();
       } else {
-        // Show map centered on California (entire state view)
         showMapAtLocation(37.0, -119.5, 5);
       }
     } else {
-      // On other pages, navigate to homepage (returns to last state)
-      router.push("/");
+      // On other pages, navigate to CHAP
+      router.push("/chap");
     }
   };
 
@@ -40,13 +39,13 @@ export default function MobileBottomNav() {
       name: isMapVisible ? "Map" : "Chat",
       icon: isMapVisible ? Map : MessageSquare,
       onClick: handleChatMapClick,
-      active: pathname === "/",
+      active: isChapPage,
     },
     {
-      name: "Insights",
+      name: "Home",
       icon: Lightbulb,
-      href: "/insights",
-      active: pathname?.startsWith("/insights"),
+      href: "/",
+      active: pathname === "/",
     },
     {
       name: session ? "Profile" : "Login",

@@ -16,9 +16,6 @@ import { useChatContext } from "./chat/ChatProvider";
 import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
-  console.log('[TopToggles] ====== COMPONENT RENDER ======');
-  const startTime = performance.now();
-
   const { currentTheme, toggleTheme } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
@@ -27,24 +24,12 @@ export default function TopToggles() {
   const pathname = usePathname();
   const router = useRouter();
   const isLight = currentTheme === "lightgradient";
-  const isHomePage = pathname === "/";
+  const isChapPage = pathname === "/chap";
   const [isVisible, setIsVisible] = useState(true);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   // REMOVED: mounted state was causing re-render that blocked clicks!
   // const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
-
-  console.log('[TopToggles] State:', { isVisible, isMapVisible, pathname });
-
-  // Mount logging only - no state changes that cause re-renders
-  useEffect(() => {
-    console.log('[TopToggles] Component mounted - Buttons IMMEDIATELY interactive');
-  }, []);
-
-  // Debug notification state
-  useEffect(() => {
-    console.log('🔔 [TopToggles] hasUnreadMessage:', hasUnreadMessage, 'isMapVisible:', isMapVisible);
-  }, [hasUnreadMessage, isMapVisible]);
 
   // Listen for favorites panel state changes
   useEffect(() => {
@@ -99,22 +84,12 @@ export default function TopToggles() {
   };
 
   const handleToggleMap = () => {
-    console.log('🗺️ [TopToggles] handleToggleMap called', {
-      tutorialRun: tutorial.run,
-      tutorialStep: tutorial.stepIndex,
-      waitingForMapToggle: tutorial.waitingForMapToggle,
-      isMapVisible,
-      isHomePage
-    });
-
     // Notify tutorial system if on step 10
     if (tutorial.run && tutorial.stepIndex === 10) {
-      console.log('🎓 [TopToggles] Calling tutorial.onMapToggleClicked()');
       tutorial.onMapToggleClicked();
-      console.log('🎓 [TopToggles] After onMapToggleClicked, waitingForMapToggle:', tutorial.waitingForMapToggle);
     }
 
-    if (isHomePage) {
+    if (isChapPage) {
       if (isMapVisible) {
         // Switching to chat view - clear notification
         hideMap();
@@ -131,12 +106,9 @@ export default function TopToggles() {
       }
     } else {
       // If we're on any other page, redirect to homepage (returns to last state)
-      router.push("/");
+      router.push("/chap");
     }
   };
-
-  const renderTime = performance.now() - startTime;
-  console.log(`[TopToggles] ====== RENDER COMPLETE (${renderTime.toFixed(2)}ms) ======`);
 
   return (
     <motion.div
@@ -232,10 +204,7 @@ export default function TopToggles() {
       {/* Desktop: Map toggle on far right edge of screen */}
       <div className="hidden md:block">
         <motion.button
-          onClick={(e) => {
-            console.log('🖱️ [TopToggles] Desktop button onClick fired!', e);
-            handleToggleMap();
-          }}
+          onClick={() => handleToggleMap()}
           className="pointer-events-auto fixed right-6 top-6"
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}

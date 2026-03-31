@@ -42,7 +42,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const { currentTheme, toggleTheme: toggleThemeMode } = useTheme();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const isLight = currentTheme === "lightgradient";
-  const isHomePage = pathname === "/";
+  const isChapPage = pathname === "/chap";
 
   const [isMobile, setIsMobile] = useState(false);
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
@@ -77,29 +77,22 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
 
   const handleMapToggle = () => {
-    if (isHomePage) {
-      if (isMapVisible) {
-        hideMap();
-      } else {
-        // Show map centered on California (entire state view)
+    if (isChapPage) {
+      if (!isMapVisible) {
         showMapAtLocation(37.0, -119.5, 5);
       }
       if (onClose) onClose();
     } else {
-      // If we're on any other page, redirect to homepage first
-      router.push("/");
+      router.push("/chap?view=map");
       if (onClose) onClose();
-      // Map will show on next visit to homepage
     }
   };
 
   const handleChatToggle = () => {
-    if (isHomePage) {
-      // Hide map to show chat view
+    if (isChapPage) {
       hideMap();
     } else {
-      // If we're on any other page, redirect to homepage (chat view)
-      router.push("/");
+      router.push("/chap");
     }
     if (onClose) onClose();
   };
@@ -107,7 +100,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const menuItems = [
     { label: "Chat", icon: MessageSquare, action: "chat" }, // Special action for chat toggle
     { label: "Map", icon: Map, action: "map" }, // Special action for map toggle
-    { label: "Insights", icon: Lightbulb, href: "/insights" },
+    { label: "Home", icon: Lightbulb, href: "/" },
   ];
 
   const dashboardItems = [
@@ -284,9 +277,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         {/* Regular Menu Items */}
         {menuItems.map((item) => {
           const isActive = mounted && (item.action === "map"
-            ? isMapVisible
+            ? isChapPage && isMapVisible
             : item.action === "chat"
-              ? isHomePage && !isMapVisible
+              ? isChapPage && !isMapVisible
               : pathname === item.href);
           const Icon = item.icon;
 

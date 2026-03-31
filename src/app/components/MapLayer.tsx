@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
@@ -49,6 +49,7 @@ const DEFAULT_BOUNDS = {
 export default function MapLayer() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const {
     isMapVisible,
@@ -123,9 +124,10 @@ export default function MapLayer() {
       params.set('lng', centerLng);
       params.set('zoom', zoom);
 
-      router.replace(`/?${params.toString()}`, { scroll: false });
+      const basePath = pathname === '/chap' ? '/chap' : '/';
+      router.replace(`${basePath}?${params.toString()}`, { scroll: false });
     },
-    [filters, loadListings, router, searchParams]
+    [filters, loadListings, router, searchParams, pathname]
   );
 
   // Handle listing selection
@@ -139,10 +141,11 @@ export default function MapLayer() {
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('listing', slug);
 
-      router.replace(`/?${params.toString()}`, { scroll: false });
+      const basePath = pathname === '/chap' ? '/chap' : '/';
+      router.replace(`${basePath}?${params.toString()}`, { scroll: false });
       console.log('🗺️ [MapLayer] Updated URL with listing:', slug);
     },
-    [selectListing, router, searchParams]
+    [selectListing, router, searchParams, pathname]
   );
 
   if (!mounted) {

@@ -125,7 +125,7 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   };
 
   const handleChat = () => {
-    router.push("/?openChat=true");
+    router.push("/chap");
   };
 
   const handleMapSearch = () => {
