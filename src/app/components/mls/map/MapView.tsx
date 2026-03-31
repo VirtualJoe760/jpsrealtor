@@ -717,42 +717,41 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     // Get current zoom to determine behavior
     const currentZoom = map.getZoom();
 
-    // Calculate padding based on mobile vs desktop
-    const padding = isMobile ? 80 : 50;
-
-    // Calculate center of the polygon for county clicks at zoom 7-9
     const centerLng = (minLng + maxLng) / 2;
     const centerLat = (minLat + maxLat) / 2;
+    // Slightly south-biased center to account for listings clustering in lower portion
+    const southBiasedLat = (centerLat + minLat) / 2;
 
-    // Special handling for county clicks at zoom 7-9: always go to zoom 10 centered
-    if (polygonData.clusterType === 'county' && currentZoom >= 7 && currentZoom <= 9) {
-      console.log(`🎯 County clicked at zoom ${currentZoom} - flying to zoom 10 (centered)`);
+    let targetZoom = 12;
+    if (polygonData.clusterType === 'region') {
+      targetZoom = 7;
+    } else if (polygonData.clusterType === 'county') {
+      targetZoom = 10;
+    } else if (polygonData.clusterType === 'city') {
+      targetZoom = 13;
+    }
+
+    const minZoom = Math.max(targetZoom, currentZoom + 1);
+
+    if (polygonData.clusterType === 'city') {
+      // For cities: fly to southern-biased center so listings appear in the middle of screen
       map.flyTo({
-        center: [centerLng, centerLat],
-        zoom: 10,
-        duration: 1000
+        center: [centerLng, southBiasedLat],
+        zoom: minZoom,
+        duration: 1000,
       });
     } else {
-      // Standard behavior for other boundary types or zoom levels
-      let targetZoom = 12; // Default for cities
-      if (polygonData.clusterType === 'region') {
-        targetZoom = 7; // Region → zoom to county view
-      } else if (polygonData.clusterType === 'county') {
-        targetZoom = 10; // County → zoom to city view
-      } else if (polygonData.clusterType === 'city') {
-        targetZoom = 13; // City → zoom to listing view
-      }
-
-      // Fit map to polygon bounds with appropriate zoom level
-      // Always ensure we zoom in at least 1 level, or to the target zoom, whichever is greater
-      const minZoom = Math.max(targetZoom, currentZoom + 1);
+      // For regions/counties: use fitBounds with padding
+      const padding = isMobile
+        ? { top: 150, right: 80, bottom: 80, left: 80 }
+        : { top: 120, right: 50, bottom: 50, left: 50 };
 
       map.fitBounds(
         [[minLng, minLat], [maxLng, maxLat]],
         {
-          padding: padding,
+          padding,
           duration: 1000,
-          minZoom: minZoom, // Ensure we always zoom in
+          minZoom,
         }
       );
     }
@@ -1683,14 +1682,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
                 return isCluster;
               }
 
-              // At zoom 12: Cap at 600 individual listings, show all clusters
-              if (currentZoom >= 12 && currentZoom < 13) {
-                // Always render clusters
-                if (isCluster) return true;
-                // For individual listings, only show first 600
-                const listingIndex = dataToRender.slice(0, i + 1).filter(m => !isServerCluster(m) && !isRadialCluster(m)).length;
-                return listingIndex <= 600;
-              }
+              // At zoom 12+: Show all listings and clusters (no cap)
 
               // At zoom 13+: Show all listings and clusters
               return true;

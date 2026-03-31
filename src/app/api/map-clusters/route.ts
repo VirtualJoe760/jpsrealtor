@@ -89,9 +89,9 @@ function determineClusteringStrategy(
     // Zoom 5-6: Regions (boundaries only)
     // Zoom 7-9: Counties (boundaries, hoverable)
     // Zoom 10-11: Cities (boundaries, hoverable)
-    // Zoom 12+: Individual listings (capped at 600)
+    // Zoom 12+: Individual listings
     //
-    // Note: At zoom 7-11, if <600 listings, boundaries are still shown (for hovering),
+    // Note: At zoom 7-11, boundaries are shown (for hovering),
     // but frontend can decide to also fetch/show listings for better UX
     const shouldCluster = zoom < 12;
     // DEBUG: console.log(`🖱️ Manual exploration at zoom ${zoom} with ${actualListingCount} listings → ${shouldCluster ? 'BOUNDARIES' : 'LISTINGS'}`);
@@ -105,23 +105,14 @@ function determineClusteringStrategy(
     return true;
   }
 
-  // Default: use hierarchical zoom-based decision with density awareness
-  // Zoom < 11: Always show clusters (counties or cities)
-  // Zoom 11-12: Show listings if count < 800, otherwise clusters
-  // Zoom 12+: Always show individual listings (capped at 500-600)
-  if (zoom < 11) {
-    // DEBUG: console.log(`🔄 Zoom ${zoom} < 11 → CLUSTERS (hierarchical boundaries)`);
+  // Default: use hierarchical zoom-based decision
+  // Zoom < 12: Always show clusters (counties or cities)
+  // Zoom 12+: Always show individual listings
+  if (zoom < 12) {
     return true;
   }
 
-  if (zoom >= 11 && zoom < 12) {
-    const showListings = actualListingCount < 800;
-    // DEBUG: console.log(`🔄 Zoom ${zoom} (11-12 transition) → ${showListings ? 'LISTINGS' : 'CLUSTERS'} (count: ${actualListingCount})`);
-    return !showListings;
-  }
-
   // Zoom 12+: Always show listings
-  console.log(`🔄 Zoom ${zoom} >= 12 → LISTINGS (individual markers)`);
   return false;
 }
 
@@ -605,7 +596,7 @@ export async function GET(req: NextRequest) {
                       spaYn: 1,
                       primaryPhotoUrl: 1,
                     })
-                    .limit(600)
+                    .limit(2000)
                     .lean()
                     .cursor();
 
@@ -683,7 +674,7 @@ export async function GET(req: NextRequest) {
                 spaYn: 1,
                 primaryPhotoUrl: 1,
               })
-              .limit(600)
+              .limit(2000)
               .lean();
             console.log(`✅ Fetched ${listings.length} listings to display alongside boundaries`);
 
@@ -823,7 +814,7 @@ export async function GET(req: NextRequest) {
               spaYn: 1,
               primaryPhotoUrl: 1,
             })
-            .limit(500)
+            .limit(2000)
             .lean();
 
           return NextResponse.json(
@@ -987,7 +978,7 @@ export async function GET(req: NextRequest) {
                     spaYn: 1,
                     primaryPhotoUrl: 1,
                   })
-                  .limit(600)
+                  .limit(2000)
                   .lean()
                   .cursor();
 
@@ -1051,7 +1042,7 @@ export async function GET(req: NextRequest) {
               spaYn: 1,
               primaryPhotoUrl: 1,
             })
-            .limit(600)
+            .limit(2000)
             .lean();
           console.log(`✅ Fetched ${listings.length} listings alongside city boundaries`);
 

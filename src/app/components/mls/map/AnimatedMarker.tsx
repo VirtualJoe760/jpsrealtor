@@ -75,8 +75,16 @@ export default function AnimatedMarker({
   showAsDot = false,
   staggerIndex = 0
 }: AnimatedMarkerProps) {
-  // Each marker manages its own expanded state with a staggered delay
+  // Staggered reveal: each marker appears one-by-one with a random delay on mount
+  const [isVisible, setIsVisible] = useState(false);
+  // Staggered expand: each marker expands from dot to price bubble with a random delay
   const [isExpanded, setIsExpanded] = useState(!showAsDot);
+
+  useEffect(() => {
+    const delay = Math.floor(Math.random() * 1500);
+    const timer = setTimeout(() => setIsVisible(true), delay);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!showAsDot) {
@@ -97,6 +105,12 @@ export default function AnimatedMarker({
     isHovered,
     isLight
   );
+
+  // Not yet revealed — render nothing
+  if (!isVisible) return null;
+
+  // Not yet revealed
+  if (!isVisible) return null;
 
   // Render as dot when collapsed (either zoom < 14, or waiting for stagger delay)
   if (!isExpanded) {
