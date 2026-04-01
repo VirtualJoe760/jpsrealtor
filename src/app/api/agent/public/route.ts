@@ -30,14 +30,6 @@ export async function GET(request: NextRequest) {
       .select('name email phone licenseNumber brokerageName agentProfile')
       .lean();
 
-    console.log('[DEBUG] Agent profile keys:', agent?.agentProfile ? Object.keys(agent.agentProfile) : 'no agentProfile');
-    console.log('[DEBUG] Phone (nested):', agent?.agentProfile?.cellPhone || agent?.agentProfile?.officePhone);
-    console.log('[DEBUG] Phone (top-level):', agent?.phone);
-    console.log('[DEBUG] License (nested):', agent?.agentProfile?.licenseNumber);
-    console.log('[DEBUG] License (top-level):', agent?.licenseNumber);
-    console.log('[DEBUG] Brokerage (nested):', agent?.agentProfile?.brokerageName);
-    console.log('[DEBUG] Brokerage (top-level):', agent?.brokerageName);
-
     if (!agent) {
       console.error(`[GET /api/agent/public] Primary agent not found: ${primaryAgentEmail}`);
       return NextResponse.json(
@@ -47,30 +39,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract public-facing data with fallbacks to legacy top-level fields
+    // Cast agentProfile to any to access fields that may exist in DB but not in strict TS interface
+    const profile = agent.agentProfile as any;
     const publicProfile = {
       name: agent.name,
       email: agent.email,
-      // Check both nested agentProfile and legacy top-level fields
-      brokerageName: agent.agentProfile?.brokerageName || agent.brokerageName,
-      licenseNumber: agent.agentProfile?.licenseNumber || agent.licenseNumber,
-      phone: agent.agentProfile?.cellPhone || agent.agentProfile?.officePhone || agent.phone,
+      brokerageName: profile?.brokerageName || agent.brokerageName,
+      licenseNumber: profile?.licenseNumber || agent.licenseNumber,
+      phone: profile?.cellPhone || profile?.officePhone || agent.phone,
       agentProfile: {
-        // Basic info with fallbacks
-        bio: agent.agentProfile?.bio,
-        phone: agent.agentProfile?.cellPhone || agent.agentProfile?.officePhone || agent.phone,
-        licenseNumber: agent.agentProfile?.licenseNumber || agent.licenseNumber,
-        yearsExperience: agent.agentProfile?.yearsExperience,
-        brokerageName: agent.agentProfile?.brokerageName || agent.brokerageName,
+        bio: profile?.bio,
+        phone: profile?.cellPhone || profile?.officePhone || agent.phone,
+        licenseNumber: profile?.licenseNumber || agent.licenseNumber,
+        yearsExperience: profile?.yearsExperience,
+        brokerageName: profile?.brokerageName || agent.brokerageName,
 
-        // Photos and branding
-        profilePhoto: agent.agentProfile?.profilePhoto,
-        headshot: agent.agentProfile?.headshot,
-        coverPhoto: agent.agentProfile?.coverPhoto,
-        insightsBannerImage: agent.agentProfile?.insightsBannerImage,
-        heroImage: agent.agentProfile?.heroImage,
-        heroPhoto: agent.agentProfile?.heroPhoto,
-        teamLogo: agent.agentProfile?.teamLogo,
-        galleryPhotos: agent.agentProfile?.galleryPhotos,
+        profilePhoto: profile?.profilePhoto,
+        headshot: profile?.headshot,
+        coverPhoto: profile?.coverPhoto,
+        insightsBannerImage: profile?.insightsBannerImage,
+        heroImage: profile?.heroImage,
+        heroPhoto: profile?.heroPhoto,
+        teamLogo: profile?.teamLogo,
+        galleryPhotos: profile?.galleryPhotos,
 
         // Social links (check both socialMedia object and top-level)
         facebook: agent.agentProfile?.socialMedia?.facebook,
