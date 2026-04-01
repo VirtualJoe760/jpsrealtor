@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get("category"); // optional filter
     const zoom = parseInt(searchParams.get("zoom") || "12", 10);
 
-    // Only show POIs at zoom 12+
-    if (zoom < 12) {
+    // Only show POIs at zoom 14+
+    if (zoom < 14) {
       return NextResponse.json({ pois: [] });
     }
 
@@ -30,10 +30,10 @@ export async function GET(req: NextRequest) {
       query.category = category;
     }
 
-    // At zoom 12-13: only show major POIs (golf, school, park, attraction)
-    // At zoom 14+: show all POIs including restaurants, shopping
-    if (zoom < 14) {
-      query.category = { $in: ["golf", "school", "park", "attraction", "healthcare"] };
+    // At zoom 14-15: only show major POIs (golf, parks, attractions)
+    // At zoom 16+: show all POIs including restaurants, shopping, etc.
+    if (zoom < 16) {
+      query.category = { $in: ["golf", "park", "attraction"] };
     }
 
     const pois = await PointOfInterest.find(query)

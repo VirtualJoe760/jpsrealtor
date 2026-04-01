@@ -51,7 +51,8 @@
       "Bash(timeout 60 npx tsc:*)",
       "Bash(tee:*)",
       "Bash(npm run generate-mdx:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(xargs grep:*)"
     ],
     "deny": [],
     "ask": []

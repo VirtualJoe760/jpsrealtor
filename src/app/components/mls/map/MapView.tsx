@@ -23,6 +23,59 @@ import { CITY_BOUNDARIES } from "@/data/city-boundaries";
 import { COUNTY_BOUNDARIES } from "@/data/county-boundaries";
 import { REGION_BOUNDARIES } from "@/data/region-boundaries";
 
+// POI marker colors by category
+const POI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  golf: { bg: "bg-green-600", text: "text-white", border: "border-green-700" },
+  park: { bg: "bg-emerald-500", text: "text-white", border: "border-emerald-600" },
+  attraction: { bg: "bg-amber-500", text: "text-white", border: "border-amber-600" },
+  school: { bg: "bg-blue-500", text: "text-white", border: "border-blue-600" },
+  shopping: { bg: "bg-purple-500", text: "text-white", border: "border-purple-600" },
+  restaurant: { bg: "bg-orange-500", text: "text-white", border: "border-orange-600" },
+  worship: { bg: "bg-indigo-500", text: "text-white", border: "border-indigo-600" },
+  healthcare: { bg: "bg-red-500", text: "text-white", border: "border-red-600" },
+  fitness: { bg: "bg-pink-500", text: "text-white", border: "border-pink-600" },
+};
+
+function POIMarker({ poi, isLight }: { poi: { name: string; category: string; rating?: number }; isLight: boolean }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const colors = POI_COLORS[poi.category] || { bg: "bg-gray-500", text: "text-white", border: "border-gray-600" };
+
+  return (
+    <div
+      className="relative cursor-pointer"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* Small colored dot with subtle label */}
+      <div className="flex items-center gap-1">
+        <div className={`w-2 h-2 rounded-full ${colors.bg} border ${colors.border} shadow-sm`} />
+        <span className={`text-[9px] font-medium leading-none whitespace-nowrap max-w-[100px] truncate ${
+          isLight ? "text-gray-700" : "text-neutral-300"
+        }`} style={{ textShadow: isLight ? '0 0 3px white, 0 0 3px white' : '0 0 3px black, 0 0 3px black' }}>
+          {poi.name}
+        </span>
+      </div>
+      {/* Tooltip on hover */}
+      {showTooltip && (
+        <div
+          className={`absolute bottom-full left-0 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap z-[200] shadow-xl ${
+            isLight
+              ? "bg-white text-gray-900 border border-gray-200"
+              : "bg-neutral-900 text-white border border-neutral-700"
+          }`}
+        >
+          <div className="font-semibold">{poi.name}</div>
+          {poi.rating && (
+            <div className={`text-[10px] mt-0.5 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+              ★ {poi.rating} rating
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface MapViewHandles {
   flyToCity: (lat: number, lng: number, zoom?: number) => void;
 }
@@ -45,6 +98,20 @@ interface MapViewProps {
   onSelectListingByIndex?: (index: number) => void;
   panelOpen?: boolean;
   mapStyle?: 'toner' | 'dark' | 'satellite' | 'bright';
+  pois?: Array<{
+    _id: string;
+    placeId: string;
+    name: string;
+    category: string;
+    latitude: number;
+    longitude: number;
+    rating?: number;
+    userRatingsTotal?: number;
+    description?: string;
+    photoUrl?: string;
+    address?: string;
+    city?: string;
+  }>;
 }
 
 // MapTiler API Key
@@ -77,6 +144,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     onSelectListingByIndex,
     panelOpen = false,
     mapStyle = 'toner',
+    pois = [],
   },
   ref
 ) {
@@ -1775,6 +1843,18 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
             }
           })
         ) : null}
+
+        {/* POI Markers — community landmarks, golf courses, parks, etc. */}
+        {currentZoom >= 14 && pois.length > 0 && pois.map((poi) => (
+          <Marker
+            key={`poi-${poi.placeId}`}
+            longitude={poi.longitude}
+            latitude={poi.latitude}
+            anchor="bottom"
+          >
+            <POIMarker poi={poi} isLight={isLight} />
+          </Marker>
+        ))}
 
         {/* Hover stats overlay is rendered at the top-center of the map (see HoverStatsOverlay component above) */}
       </Map>

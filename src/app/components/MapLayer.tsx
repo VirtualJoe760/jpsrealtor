@@ -8,6 +8,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMLSContext } from "@/app/components/mls/MLSProvider";
 import type { MapListing } from "@/types/types";
 import LoadingGlobe from "@/app/components/LoadingGlobe";
+import { usePOIs } from "@/app/hooks/usePOIs";
 
 // Dynamic import for MapView (client-side only)
 const MapView = dynamic(
@@ -69,6 +70,7 @@ export default function MapLayer() {
 
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const { pois, loadPOIs } = usePOIs();
 
   const [mounted, setMounted] = useState(false);
   const hasInitializedRef = useRef(false);
@@ -108,6 +110,9 @@ export default function MapLayer() {
       // Load new listings with current filters (merge mode = true to keep existing listings)
       // The useServerClusters hook handles caching and deduplication internally
       await loadListings(bounds, filters, true);
+
+      // Load POIs for viewport
+      loadPOIs(bounds);
 
       // NOTE: We do NOT call setBounds/setViewState here!
       // That would create a feedback loop: bounds change → state update → props change → map moves → bounds change
@@ -174,6 +179,7 @@ export default function MapLayer() {
           onBoundsChange={handleBoundsChange}
           panelOpen={false}
           mapStyle={themeAwareMapStyle}
+          pois={pois}
         />
       </div>
 
