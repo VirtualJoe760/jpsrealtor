@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
     const listings = await UnifiedListing.find(query)
       .sort({ modificationTimestamp: -1 })
       .limit(6)
-      .select('listingKey unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName')
+      .select('listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName')
       .lean();
 
     console.log(`[COMMUNITY SPOTLIGHT] Found ${listings.length} new listings in ${communityName}`);

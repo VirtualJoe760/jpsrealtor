@@ -70,7 +70,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Desktop: Always visible sidebar (except on listing detail pages) */}
-      {!isListingDetailPage && (
+      {(
         <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
           <EnhancedSidebar />
         </div>
@@ -82,7 +82,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main content with sidebar spacing on desktop */}
       <div
         className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
-          isListingDetailPage ? '' : isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
+          isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
         <div style={{ pointerEvents: 'auto' }}>
@@ -91,7 +91,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile Bottom Nav (hidden on listing detail pages) */}
-      {!isListingDetailPage && <MobileBottomNav />}
+      <MobileBottomNav />
 
       {/* Toast Notifications */}
       <ToastContainer

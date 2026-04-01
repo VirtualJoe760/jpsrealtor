@@ -121,6 +121,7 @@ export async function GET(req: NextRequest) {
         BathroomsTotalInteger: listing.bathroomsTotalInteger || 0,
         LivingArea: listing.livingArea || listing.buildingAreaTotal || 0,
         SubdivisionName: normalizedSubdivision,
+        SlugAddress: listing.slugAddress || null,
       };
     });
 

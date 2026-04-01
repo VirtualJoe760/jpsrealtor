@@ -6,6 +6,7 @@ import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface Listing {
   ListingKey: string;
+  SlugAddress?: string;
   UnparsedAddress: string;
   City: string;
   StateOrProvince: string;
@@ -90,7 +91,7 @@ const ListingCard: React.FC<{
 
   return (
     <a
-      href={`/mls-listings/${listing.ListingKey}`}
+      href={`/mls-listings/${listing.SlugAddress || listing.ListingKey}`}
       key={listing.ListingKey}
       className={`flex-shrink-0 w-72 rounded-lg overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}
     >

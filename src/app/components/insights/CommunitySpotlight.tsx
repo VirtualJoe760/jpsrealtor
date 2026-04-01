@@ -7,6 +7,7 @@ import Link from "next/link";
 
 interface Listing {
   ListingKey: string;
+  slugAddress?: string;
   UnparsedAddress: string;
   City: string;
   StateOrProvince: string;
@@ -112,7 +113,7 @@ const ListingCard: React.FC<{
 
   return (
     <a
-      href={`/mls-listings/${listing.ListingKey}`}
+      href={`/mls-listings/${listing.slugAddress || listing.ListingKey}`}
       className={`rounded-xl overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] block`}
     >
       {/* Large Image */}
@@ -231,7 +232,7 @@ const ListingListItem: React.FC<{
 
   return (
     <a
-      href={`/mls-listings/${listing.ListingKey}`}
+      href={`/mls-listings/${listing.slugAddress || listing.ListingKey}`}
       className={`flex gap-3 p-3 rounded-lg ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg block`}
     >
       {/* Thumbnail */}
