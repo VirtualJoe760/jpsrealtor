@@ -292,6 +292,19 @@ export interface IUser extends Document {
     detailsViewed?: boolean; // Did they click "View Full Details"?
     photosViewed?: number; // How many photos did they look at?
   }>;
+  // Favorites that had a status change (sold, pending, off-market, etc.)
+  statusChangedListings?: Array<{
+    listingKey: string;
+    listingData: Record<string, any>;
+    originalStatus: string;
+    newStatus: string;
+    swipedAt: Date;
+    detectedAt: Date;
+    subdivision?: string;
+    city?: string;
+    address?: string;
+  }>;
+
   dislikedListings: Array<{
     listingKey: string;
     listingData?: Record<string, any>; // Full listing object for display
@@ -707,6 +720,18 @@ const UserSchema = new Schema<IUser>(
       city: String,
       propertySubType: String,
     }],
+    statusChangedListings: [{
+      listingKey: { type: String, required: true },
+      listingData: { type: Schema.Types.Mixed, required: true },
+      originalStatus: { type: String, required: true },
+      newStatus: { type: String, required: true },
+      swipedAt: { type: Date },
+      detectedAt: { type: Date, default: Date.now },
+      subdivision: String,
+      city: String,
+      address: String,
+    }],
+
     dislikedListings: [{
       listingKey: { type: String, required: true },
       listingData: { type: Schema.Types.Mixed }, // Full listing object for display

@@ -719,8 +719,8 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
 
     const centerLng = (minLng + maxLng) / 2;
     const centerLat = (minLat + maxLat) / 2;
-    // Slightly south-biased center to account for listings clustering in lower portion
-    const southBiasedLat = (centerLat + minLat) / 2;
+    // No bias — center on the polygon centroid
+    const targetLat = centerLat;
 
     let targetZoom = 12;
     if (polygonData.clusterType === 'region') {
@@ -736,7 +736,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     if (polygonData.clusterType === 'city') {
       // For cities: fly to southern-biased center so listings appear in the middle of screen
       map.flyTo({
-        center: [centerLng, southBiasedLat],
+        center: [centerLng, targetLat],
         zoom: minZoom,
         duration: 1000,
       });

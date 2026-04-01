@@ -1142,8 +1142,7 @@ export async function GET(req: NextRequest) {
       // Zoom 12: Show up to 500 listings
       // Zoom 13+: Show ALL listings in viewport (no limit)
 
-      const useUnlimitedListings = zoom >= 13;
-      const limit = useUnlimitedListings ? 50000 : 500; // All listings at zoom 13+, max 500 at zoom 12
+      const limit = 2000; // Show all listings in viewport at zoom 12+
 
       // Check if client wants streaming response
       const streamParam = query.get("stream");

@@ -17,8 +17,11 @@ import MapBackground from "./backgrounds/MapBackground";
 import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
+import { useFavoritesSync } from "../hooks/useFavoritesSync";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
+  // Sync favorites status on login (once per session)
+  useFavoritesSync();
   const { isCollapsed } = useSidebar();
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
