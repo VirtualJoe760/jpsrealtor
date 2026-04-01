@@ -111,8 +111,9 @@ const ListingCard: React.FC<{
   };
 
   return (
-    <div
-      className={`rounded-xl overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200`}
+    <a
+      href={`/mls-listings/${listing.ListingKey}`}
+      className={`rounded-xl overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] block`}
     >
       {/* Large Image */}
       <div className="relative h-64 bg-gray-200">
@@ -163,7 +164,7 @@ const ListingCard: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </a>
   );
 };
 
@@ -229,8 +230,9 @@ const ListingListItem: React.FC<{
   };
 
   return (
-    <div
-      className={`flex gap-3 p-3 rounded-lg ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200`}
+    <a
+      href={`/mls-listings/${listing.ListingKey}`}
+      className={`flex gap-3 p-3 rounded-lg ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg block`}
     >
       {/* Thumbnail */}
       <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200">
@@ -281,7 +283,7 @@ const ListingListItem: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </a>
   );
 };
 

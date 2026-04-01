@@ -89,9 +89,10 @@ const ListingCard: React.FC<{
   };
 
   return (
-    <div
+    <a
+      href={`/mls-listings/${listing.ListingKey}`}
       key={listing.ListingKey}
-      className={`flex-shrink-0 w-72 rounded-lg overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200`}
+      className={`flex-shrink-0 w-72 rounded-lg overflow-hidden ${cardBg} ${cardBorder} border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}
     >
       {/* Image */}
       <div className="relative h-48 bg-gray-200">
@@ -148,7 +149,7 @@ const ListingCard: React.FC<{
           </p>
         )}
       </div>
-    </div>
+    </a>
   );
 };
 
