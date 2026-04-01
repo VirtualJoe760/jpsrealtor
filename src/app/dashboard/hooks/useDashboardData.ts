@@ -29,50 +29,56 @@ export function useDashboardData(status: string) {
     }
   };
 
-  // Sync favorites
+  // Sync favorites - Using dedicated /api/user/favorites endpoint
   const syncFavorites = async () => {
     try {
       setIsSyncing(true);
-      const response = await fetch("/api/swipes/user");
-      if (!response.ok) throw new Error(`Failed to fetch swipes: ${response.status}`);
+      const response = await fetch("/api/user/favorites");
+      if (!response.ok) throw new Error(`Failed to fetch favorites: ${response.status}`);
       const data = await response.json();
 
-      const likedListings = data.likedListings || [];
+      const favorites = data.favorites || [];
 
-      // Filter and deduplicate favorites
-      const seenKeys = new Set<string>();
-      const favorites = likedListings
-        .filter((item: any) => item.listingData && Object.keys(item.listingData).length > 0)
-        .map((item: any) => ({
-          ...item.listingData,
-          listingKey: item.listingKey,
-          swipedAt: item.swipedAt,
-        }))
-        // Remove duplicates - keep first occurrence only
-        .filter((listing: FavoriteProperty) => {
-          if (seenKeys.has(listing.listingKey)) {
-            return false;
-          }
-          seenKeys.add(listing.listingKey);
-          return true;
-        })
-        // Filter out listings without photos (likely removed from MLS)
-        // But keep them temporarily so the modal can show them
-        // The modal will handle hiding them after user acknowledgment
-        ;
+      console.log('📊 Favorites loaded from /api/user/favorites:', {
+        total: data.total,
+        stale: data.stale,
+        missing: data.missing,
+        hasMlsData: favorites.filter((f: any) => f.mlsId && f.mlsSource).length,
+        note: 'Photos fetched dynamically from Spark API',
+        sample: favorites.slice(0, 3).map((f: any) => ({
+          listingKey: f.listingKey,
+          address: f.unparsedAddress || f.address?.unparsedAddress || f.address,
+          listPrice: f.listPrice,
+          mlsId: f.mlsId,
+          mlsSource: f.mlsSource,
+          bedsTotal: f.bedsTotal,
+          bathroomsTotalInteger: f.bathroomsTotalInteger,
+          _stale: f._stale,
+          _missing: f._missing,
+        })),
+      });
 
+      // Data is already clean, flat, and enriched from the API
+      // No need for client-side processing!
       setFavorites(favorites);
-      setAnalytics(
-        data.analytics || {
-          totalLikes: 0,
-          totalDislikes: 0,
-          topSubdivisions: [],
-          topCities: [],
-          topPropertySubTypes: [],
-        }
-      );
+      setAnalytics(data.analytics || {
+        totalLikes: 0,
+        totalDislikes: 0,
+        topSubdivisions: [],
+        topCities: [],
+        topPropertySubTypes: [],
+      });
+
+      // Log warnings for stale/missing data
+      if (data.stale > 0) {
+        console.warn(`⚠️ ${data.stale} favorites have stale data (relisted properties)`);
+      }
+      if (data.missing > 0) {
+        console.warn(`⚠️ ${data.missing} favorites are no longer in MLS database (likely sold/expired)`);
+      }
+
     } catch (error) {
-      console.error("Error fetching swipe data:", error);
+      console.error("Error fetching favorites:", error);
     } finally {
       setIsLoadingFavorites(false);
       setIsSyncing(false);

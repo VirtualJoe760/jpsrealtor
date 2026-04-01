@@ -184,5 +184,23 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true, // Enable debug logging temporarily
+  debug: process.env.NODE_ENV === 'development', // Only debug in dev
+  logger: {
+    error(code, ...message) {
+      // Suppress CLIENT_FETCH_ERROR during dev hot reload
+      if (code === 'CLIENT_FETCH_ERROR' && process.env.NODE_ENV === 'development') {
+        console.log('[NextAuth] Client fetch error (likely hot reload) - ignoring');
+        return;
+      }
+      console.error('[NextAuth Error]', code, ...message);
+    },
+    warn(code, ...message) {
+      console.warn('[NextAuth Warning]', code, ...message);
+    },
+    debug(code, ...message) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[NextAuth Debug]', code, ...message);
+      }
+    }
+  },
 };

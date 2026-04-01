@@ -26,13 +26,11 @@ export function useRemovedListings(favorites: FavoriteProperty[]) {
       }
       seen.add(listing.listingKey);
 
-      // Check for removed listings - consider a listing removed if it has no photo URL
-      // and no MLS data to fetch one from
-      const hasNoPhoto =
-        !listing.primaryPhotoUrl &&
-        (!listing.mlsId || !listing.mlsSource);
+      // Check for removed listings using the _missing flag from the API
+      // This flag is set when the listing is not found in UnifiedListing (removed from market)
+      const isRemoved = (listing as any)._missing === true;
 
-      if (hasNoPhoto) {
+      if (isRemoved) {
         removedListings.push({
           listingKey: listing.listingKey,
           listing,

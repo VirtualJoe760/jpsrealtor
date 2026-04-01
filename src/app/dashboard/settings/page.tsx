@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Lock, Upload, Loader2, Mail, Briefcase } from "lucide-react";
+import { User, Lock, Upload, Loader2, Mail, Briefcase, Type, FileSignature } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
+import FontSelector from "@/app/components/FontSelector";
+import EmailSignatureEditor from "@/app/components/EmailSignatureEditor";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
@@ -48,7 +50,8 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "marketing" | "joinus">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "marketing" | "font" | "signature" | "joinus">("profile");
+  const [emailSignature, setEmailSignature] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -98,6 +101,9 @@ export default function SettingsPage() {
           image: profileData.profile.image || "",
           brokerageName: profileData.profile.brokerageName || "",
         });
+        // Handle email signature - it's an object with {html, photo}
+        const signature = profileData.profile.emailSignature;
+        setEmailSignature(typeof signature === 'string' ? signature : (signature?.html || ""));
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -323,6 +329,38 @@ export default function SettingsPage() {
             <Mail className="w-5 h-5 inline mr-2" />
             Marketing Consent
           </button>
+          <button
+            onClick={() => setActiveTab("font")}
+            className={`px-6 py-3 font-medium transition-all ${
+              activeTab === "font"
+                ? isLight
+                  ? "text-gray-900 border-b-2 border-blue-500"
+                  : "text-white border-b-2 border-emerald-500"
+                : isLight
+                  ? "text-gray-500 hover:text-gray-900"
+                  : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Type className="w-5 h-5 inline mr-2" />
+            Website Font
+          </button>
+          {isAgent && (
+            <button
+              onClick={() => setActiveTab("signature")}
+              className={`px-6 py-3 font-medium transition-all ${
+                activeTab === "signature"
+                  ? isLight
+                    ? "text-gray-900 border-b-2 border-blue-500"
+                    : "text-white border-b-2 border-emerald-500"
+                  : isLight
+                    ? "text-gray-500 hover:text-gray-900"
+                    : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <FileSignature className="w-5 h-5 inline mr-2" />
+              Email Signature
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("joinus")}
             className={`px-6 py-3 font-medium transition-all ${
@@ -703,6 +741,46 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Website Font Tab */}
+        {activeTab === "font" && (
+          <div className="space-y-6">
+            <FontSelector />
+          </div>
+        )}
+
+        {/* Email Signature Tab */}
+        {activeTab === "signature" && isAgent && (
+          <div className={`backdrop-blur-sm rounded-2xl shadow-xl p-6 ${
+            isLight
+              ? "bg-white/80 border border-gray-200"
+              : "bg-gray-900/50 border border-gray-800"
+          }`}
+          style={isLight ? {
+            backdropFilter: "blur(10px) saturate(150%)",
+            WebkitBackdropFilter: "blur(10px) saturate(150%)",
+          } : undefined}
+          >
+            <EmailSignatureEditor
+              isLight={isLight}
+              initialSignature={emailSignature}
+              onSave={async (signature: string) => {
+                const response = await fetch("/api/user/signature", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ emailSignature: signature }),
+                });
+
+                if (!response.ok) {
+                  const data = await response.json();
+                  throw new Error(data.error || "Failed to save signature");
+                }
+
+                setEmailSignature(signature);
+              }}
+            />
           </div>
         )}
 

@@ -40,7 +40,7 @@ export function ListView({
       exit={{ opacity: 0, y: -20 }}
       whileHover={{ scale: 1.01 }}
       onClick={onClick}
-      className={`relative ${cardBg} rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${
+      className={`relative ${cardBg} rounded-xl border-2 transition-all cursor-pointer overflow-hidden my-2 ${
         isSelected
           ? `${isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'}`
           : `${cardBorder} ${isLight ? 'hover:border-blue-300' : 'hover:border-emerald-700'} shadow-sm hover:shadow-md`

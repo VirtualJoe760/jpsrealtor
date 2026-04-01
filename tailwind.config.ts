@@ -56,7 +56,12 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Raleway', 'sans-serif'],
+        sans: ['Jost', 'sans-serif'], // Default font changed to Jost
+        raleway: ['Raleway', 'sans-serif'],
+        jost: ['Jost', 'sans-serif'],
+        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+        dmsans: ['DM Sans', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       transitionTimingFunction: {
         smooth: 'ease-in-out',

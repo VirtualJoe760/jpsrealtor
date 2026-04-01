@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Sparkles, FolderOpen, Tag, Search } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -79,15 +78,12 @@ export default function FilterTabs({
 
       {/* Tab Content */}
       {children && (
-        <motion.div
+        <div
           key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
           className="mt-4"
         >
           {children}
-        </motion.div>
+        </div>
       )}
     </div>
   );

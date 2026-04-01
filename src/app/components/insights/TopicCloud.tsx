@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { Search, X } from "lucide-react";
 
@@ -31,7 +30,7 @@ export default function TopicCloud({
   const [searchQuery, setSearchQuery] = useState("");
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  const { textPrimary, textSecondary, cardBg, cardBorder, currentTheme } = useThemeClasses();
+  const { textPrimary, textSecondary, cardBg, cardBorder, currentTheme, shadow } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
   useEffect(() => {
@@ -163,7 +162,7 @@ export default function TopicCloud({
       <div className="md:hidden">
         {/* Search Bar */}
         <div className="mb-4">
-          <div className={`relative ${cardBg} ${cardBorder} border rounded-lg overflow-hidden`}>
+          <div className={`relative ${cardBg} ${cardBorder} border rounded-lg overflow-hidden ${shadow}`}>
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
             <input
               type="text"
@@ -185,7 +184,7 @@ export default function TopicCloud({
 
         {/* Topic List */}
         <div
-          className={`${cardBg} ${cardBorder} border rounded-lg overflow-hidden`}
+          className={`${cardBg} ${cardBorder} border rounded-lg overflow-hidden ${shadow}`}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -208,11 +207,8 @@ export default function TopicCloud({
                     : "bg-emerald-900/20 text-emerald-400 border-emerald-800/30";
 
                 return (
-                  <motion.button
+                  <button
                     key={topic.name}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
                     onClick={() => onTopicSelect(topic.name)}
                     className={`w-full px-4 py-3 flex items-center justify-between border-b ${
                       isLight ? "border-gray-200" : "border-gray-800"
@@ -255,7 +251,7 @@ export default function TopicCloud({
                         </div>
                       )}
                     </div>
-                  </motion.button>
+                  </button>
                 );
               })
             ) : (
@@ -357,27 +353,19 @@ export default function TopicCloud({
               : "0 20px 60px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
           }}
         >
-          {/* Animated background particles */}
+          {/* Animated background particles - Pure CSS */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {[...Array(20)].map((_, i) => (
-              <motion.div
+              <div
                 key={i}
-                className={`absolute w-2 h-2 rounded-full ${
+                className={`absolute w-2 h-2 rounded-full animate-pulse ${
                   isLight ? "bg-blue-300/20" : "bg-emerald-400/10"
                 }`}
                 style={{
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
-                }}
-                animate={{
-                  y: [0, -30, 0],
-                  opacity: [0.2, 0.5, 0.2],
-                  scale: [1, 1.5, 1],
-                }}
-                transition={{
-                  duration: 3 + Math.random() * 2,
-                  repeat: Infinity,
-                  delay: Math.random() * 2,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${3 + Math.random() * 2}s`,
                 }}
               />
             ))}
@@ -385,64 +373,29 @@ export default function TopicCloud({
 
           {/* Topic bubbles in flexible wrap layout */}
           <div className="relative px-8 pt-8 pb-4 flex flex-wrap gap-3 justify-center items-start">
-            <AnimatePresence mode="sync" key={animationKey}>
-              {displayedTopics.map((topic, idx) => {
-                const isSelected = selectedTopics.includes(topic.name);
-                const size = getTopicSize(topic.count);
-                const colorClass = getTopicColor(topic, isSelected);
+            {displayedTopics.map((topic, idx) => {
+              const isSelected = selectedTopics.includes(topic.name);
+              const size = getTopicSize(topic.count);
+              const colorClass = getTopicColor(topic, isSelected);
 
-                // Random horizontal offset for rain effect
-                const randomX = (Math.random() - 0.5) * 100;
-
-                return (
-                  <motion.button
-                    key={`${topic.name}-${animationKey}`}
-                    initial={{
-                      opacity: 0,
-                      scale: 0.3,
-                      y: -800,
-                      x: randomX,
-                      rotate: Math.random() * 360 - 180,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      y: 0,
-                      x: 0,
-                      rotate: 0,
-                    }}
-                    exit={{ opacity: 0, scale: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 100,
-                      damping: 15,
-                      delay: idx * 0.05,
-                      mass: 0.5 + (idx % 3) * 0.2,
-                    }}
-                    onClick={() => onTopicSelect(topic.name)}
-                    className={`${size.padding} ${size.text} rounded-full font-semibold transition-all duration-300 ${colorClass} backdrop-blur-md border border-white/20 shadow-lg hover:shadow-xl hover:scale-110 cursor-pointer whitespace-nowrap`}
-                    whileHover={{
-                      scale: 1.15,
-                      rotate: [0, -5, 5, 0],
-                      transition: { duration: 0.3 },
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {topic.name}
-                    <span className="ml-2 opacity-70 text-xs">({topic.count})</span>
-                  </motion.button>
-                );
-              })}
-            </AnimatePresence>
+              return (
+                <button
+                  key={`${topic.name}-${animationKey}`}
+                  onClick={() => onTopicSelect(topic.name)}
+                  className={`${size.padding} ${size.text} rounded-full font-semibold transition-all duration-300 ${colorClass} backdrop-blur-md border border-white/20 shadow-lg hover:shadow-xl hover:scale-[1.15] active:scale-95 cursor-pointer whitespace-nowrap`}
+                >
+                  {topic.name}
+                  <span className="ml-2 opacity-70 text-xs">({topic.count})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="mt-3 flex items-center justify-center gap-4">
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <button
               onClick={prevPage}
               disabled={currentPage === 0}
               className={`px-6 py-3 rounded-xl font-semibold transition-all ${
@@ -454,7 +407,7 @@ export default function TopicCloud({
               } shadow-md hover:shadow-lg disabled:hover:shadow-md`}
             >
               ← Previous
-            </motion.button>
+            </button>
 
             <div
               className={`px-4 py-2 rounded-lg ${
@@ -464,9 +417,7 @@ export default function TopicCloud({
               Page {currentPage + 1} of {totalPages}
             </div>
 
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <button
               onClick={nextPage}
               disabled={currentPage === totalPages - 1}
               className={`px-6 py-3 rounded-xl font-semibold transition-all ${
@@ -478,17 +429,14 @@ export default function TopicCloud({
               } shadow-md hover:shadow-lg disabled:hover:shadow-md`}
             >
               Next →
-            </motion.button>
+            </button>
           </div>
         )}
       </div>
 
       {/* Selected Topics Bar */}
       {selectedTopics.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`mt-6 p-6 rounded-2xl ${
+        <div className={`mt-6 p-6 rounded-2xl ${
             isLight
               ? "bg-gradient-to-r from-blue-50 to-purple-50"
               : "bg-gradient-to-r from-gray-900 to-emerald-900/30"
@@ -515,11 +463,8 @@ export default function TopicCloud({
               if (!topic) return null;
 
               return (
-                <motion.span
+                <span
                   key={topicName}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
                     isLight
                       ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
@@ -533,11 +478,11 @@ export default function TopicCloud({
                   >
                     ✕
                   </button>
-                </motion.span>
+                </span>
               );
             })}
           </div>
-        </motion.div>
+        </div>
       )}
 
     </div>

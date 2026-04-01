@@ -36,7 +36,7 @@ export default function SpaticalBackground({
   const effectiveIsLight = mounted ? isLightMode : false;
 
   return (
-    <div className={`relative ${effectiveIsLight ? 'bg-white' : 'bg-black'} ${className}`} suppressHydrationWarning>
+    <div className={`relative ${effectiveIsLight ? 'bg-white' : 'bg-neutral-900'} ${className}`} suppressHydrationWarning>
       {/* Theme-aware Background */}
       <div className="fixed inset-0 z-0" suppressHydrationWarning>
         {effectiveIsLight ? (
@@ -49,8 +49,20 @@ export default function SpaticalBackground({
             }} />
           </>
         ) : (
-          // Black space theme - stars and deep space
-          <StarsCanvas />
+          // Dark mode - 2D gradient with better contrast (lighter tones)
+          <>
+            {/* Base gradient - lighter dark tones with purple/blue accents */}
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950" />
+
+            {/* Subtle color accents - purple and blue tones */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-purple-900/30 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-900/25 via-transparent to-transparent" />
+
+            {/* Subtle noise texture for depth */}
+            <div className="absolute inset-0 opacity-[0.02]" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            }} />
+          </>
         )}
       </div>
 
@@ -59,7 +71,7 @@ export default function SpaticalBackground({
         <div className={`fixed inset-0 pointer-events-none z-[1] ${
           effectiveIsLight
             ? 'bg-gradient-to-br from-blue-100/20 via-transparent to-purple-100/20'
-            : 'bg-gradient-to-br from-purple-900/5 via-transparent to-pink-900/5'
+            : 'bg-gradient-to-t from-neutral-950/40 via-transparent to-transparent'
         }`} suppressHydrationWarning />
       )}
 

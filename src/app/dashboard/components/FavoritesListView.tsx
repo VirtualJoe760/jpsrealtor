@@ -102,31 +102,66 @@ export default function FavoritesListView({
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
-                    className="block"
-                  >
-                    <p className={`text-xl font-bold ${textPrimary} mb-1 hover:underline`}>
-                      ${listing.listPrice?.toLocaleString() || "N/A"}
-                    </p>
-                    <p className={`text-sm ${textSecondary} mb-2 truncate`}>
-                      {listing.address || listing.unparsedAddress || "No address"}
-                    </p>
-
-                    {/* Property details */}
-                    <div className={`flex items-center gap-4 text-sm ${textSecondary} mb-2`}>
-                      <span>{listing.bedsTotal ?? 0} bd</span>
-                      <span>{listing.bathroomsTotalInteger ?? 0} ba</span>
-                      <span>{listing.livingArea?.toLocaleString() ?? 0} sqft</span>
-                    </div>
-
-                    {/* Subdivision */}
-                    {listing.subdivisionName && (
-                      <p className={`text-xs ${textSecondary} truncate`}>
-                        {listing.subdivisionName}
+                  {/* Check if listing is removed */}
+                  {(listing as any)._missing ? (
+                    <div className="block">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className={`text-xl font-bold ${textPrimary}`}>
+                          ${listing.listPrice?.toLocaleString() || "N/A"}
+                        </p>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            isLight ? "bg-red-100 text-red-700" : "bg-red-900/40 text-red-300"
+                          }`}
+                        >
+                          Removed
+                        </span>
+                      </div>
+                      <p className={`text-sm ${textSecondary} mb-2 truncate`}>
+                        {listing.address || listing.unparsedAddress || "No address"}
                       </p>
-                    )}
-                  </Link>
+
+                      {/* Property details */}
+                      <div className={`flex items-center gap-4 text-sm ${textSecondary} mb-2`}>
+                        <span>{listing.bedsTotal ?? 0} bd</span>
+                        <span>{listing.bathroomsTotalInteger ?? 0} ba</span>
+                        <span>{listing.livingArea?.toLocaleString() ?? 0} sqft</span>
+                      </div>
+
+                      {/* Subdivision */}
+                      {listing.subdivisionName && (
+                        <p className={`text-xs ${textSecondary} truncate`}>
+                          {listing.subdivisionName}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
+                      className="block"
+                    >
+                      <p className={`text-xl font-bold ${textPrimary} mb-1 hover:underline`}>
+                        ${listing.listPrice?.toLocaleString() || "N/A"}
+                      </p>
+                      <p className={`text-sm ${textSecondary} mb-2 truncate`}>
+                        {listing.address || listing.unparsedAddress || "No address"}
+                      </p>
+
+                      {/* Property details */}
+                      <div className={`flex items-center gap-4 text-sm ${textSecondary} mb-2`}>
+                        <span>{listing.bedsTotal ?? 0} bd</span>
+                        <span>{listing.bathroomsTotalInteger ?? 0} ba</span>
+                        <span>{listing.livingArea?.toLocaleString() ?? 0} sqft</span>
+                      </div>
+
+                      {/* Subdivision */}
+                      {listing.subdivisionName && (
+                        <p className={`text-xs ${textSecondary} truncate`}>
+                          {listing.subdivisionName}
+                        </p>
+                      )}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

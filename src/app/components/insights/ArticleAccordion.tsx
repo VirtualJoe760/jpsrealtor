@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -69,8 +68,7 @@ export default function ArticleAccordion({
 
   return (
     <Link href={`/insights/${article.category}/${article.slug}`}>
-      <motion.div
-        layout
+      <div
         className={`${cardBg} ${cardBorder} border rounded-xl overflow-hidden transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer`}
       >
         {/* Card Content */}
@@ -122,7 +120,7 @@ export default function ArticleAccordion({
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 }

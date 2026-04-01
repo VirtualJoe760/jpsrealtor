@@ -36,8 +36,8 @@ export default function ThreeStars() {
     setCanvasSize();
     window.addEventListener("resize", setCanvasSize);
 
-    // Generate 2500 stars in spherical distribution
-    const sphere = generateSphere(2500, 1.2);
+    // Generate 800 stars in spherical distribution (reduced for more professional look)
+    const sphere = generateSphere(800, 1.2);
 
     // Group rotation: [0, 0, Math.PI / 4] = 45° Z-axis tilt
     const groupRotationZ = Math.PI / 4;
@@ -51,8 +51,8 @@ export default function ThreeStars() {
       const delta = Math.min((currentTime - lastTime) / 1000, 0.1); // Cap delta to prevent jumps
       lastTime = currentTime;
 
-      // Clear with pure black background for space effect
-      ctx.fillStyle = "#000000";
+      // Clear with very dark grey background for professional look with good contrast
+      ctx.fillStyle = "#050507"; // Much darker grey, closer to black
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Update rotation - Very slow and ambient
@@ -71,8 +71,8 @@ export default function ThreeStars() {
       const cosX = Math.cos(rotationX);
       const sinX = Math.sin(rotationX);
 
-      // Render each star
-      for (let i = 0; i < 2500; i++) {
+      // Render each star (reduced count for professional look)
+      for (let i = 0; i < 800; i++) {
         let x = sphere[i * 3] ?? 0;
         let y = sphere[i * 3 + 1] ?? 0;
         let z = sphere[i * 3 + 2] ?? 0;
@@ -99,18 +99,18 @@ export default function ThreeStars() {
           const projectedX = rotatedX * scale * perspective + centerX;
           const projectedY = rotatedY * scale * perspective + centerY;
 
-          // Size based on distance
-          const size = 0.002 * scale * perspective;
-          const opacity = Math.min(1, perspective * 0.4);
+          // Size based on distance (slightly smaller for subtlety)
+          const size = 0.0015 * scale * perspective;
+          const opacity = Math.min(1, perspective * 0.25); // Reduced opacity for subtlety
 
-          // Draw star with white color for space effect
+          // Draw star with subtle grey-white color for professional look
           if (size > 0.3 && opacity > 0.05 &&
               projectedX >= 0 && projectedX <= canvas.width &&
               projectedY >= 0 && projectedY <= canvas.height) {
 
-            // Vary star brightness for depth
-            const brightness = 200 + Math.floor(55 * opacity);
-            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${opacity})`;
+            // Reduced brightness for more subtle, professional appearance
+            const brightness = 140 + Math.floor(40 * opacity); // Much dimmer than before
+            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness + 10}, ${opacity * 0.6})`; // Slight blue tint, lower opacity
             ctx.beginPath();
             ctx.arc(projectedX, projectedY, size, 0, Math.PI * 2);
             ctx.fill();
@@ -136,7 +136,17 @@ export default function ThreeStars() {
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ background: "#000000" }}
+        style={{ background: "#050507" }}
+      />
+      {/* Subtle fog overlay for depth */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse at center, transparent 0%, rgba(12, 12, 15, 0.4) 50%, rgba(5, 5, 7, 0.6) 100%),
+            linear-gradient(to bottom, rgba(15, 15, 18, 0.15) 0%, transparent 30%, transparent 70%, rgba(5, 5, 7, 0.3) 100%)
+          `
+        }}
       />
     </div>
   );

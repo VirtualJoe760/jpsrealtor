@@ -5,7 +5,6 @@
 // Features: All original functionality restored with clean code
 
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
 import ComposePanel from './ComposePanel';
 import {
   useEmails,
@@ -31,9 +30,6 @@ interface EmailInboxProps {
 export default function EmailInbox({ isLight }: EmailInboxProps) {
   // Compose panel state (for new compose, not reply/forward)
   const [showNewCompose, setShowNewCompose] = useState(false);
-
-  // Mobile menu state
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Folder management
   const { activeFolder, sentSubfolder, changeFolder, changeSentSubfolder } =
@@ -63,7 +59,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
     loadingContent,
     toggleExpand,
     collapseEmail,
-  } = useEmailExpand();
+  } = useEmailExpand(activeFolder);
 
   // Compose panel (reply/forward)
   const {
@@ -154,33 +150,19 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
 
   const handleFolderChange = (folder: FolderType) => {
     changeFolder(folder);
-    setMobileMenuOpen(false); // Close menu after selection on mobile
   };
 
   const handleSentSubfolderChange = (subfolder: SentSubfolder) => {
     changeSentSubfolder(subfolder);
-    setMobileMenuOpen(false); // Close menu after selection on mobile
   };
 
   const bgClass = isLight ? 'bg-white' : 'bg-gray-900';
   const textClass = isLight ? 'text-gray-900' : 'text-white';
 
   return (
-    <div className="flex h-full relative min-h-0">
-      {/* Mobile Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Folder Navigation */}
-      <div
-        className={`fixed md:relative inset-y-0 left-0 z-50 md:z-auto transform transition-transform duration-300 ease-in-out ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
-      >
+    <div className="flex flex-col h-full relative min-h-0">
+      {/* Folder Navigation - Top Bar */}
+      <div className="flex-shrink-0">
         <EmailFolderNav
           activeFolder={activeFolder}
           sentSubfolder={sentSubfolder}
@@ -192,20 +174,6 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Mobile Menu Button */}
-        <div className="md:hidden flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className={`p-2 rounded-lg transition-colors ${
-              isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-800'
-            }`}
-          >
-            <Menu className={`w-5 h-5 ${textClass}`} />
-          </button>
-          <h2 className={`ml-3 text-lg font-semibold ${textClass}`}>
-            {activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)}
-          </h2>
-        </div>
         {/* Toolbar */}
         <EmailToolbar
           searchQuery={searchQuery}

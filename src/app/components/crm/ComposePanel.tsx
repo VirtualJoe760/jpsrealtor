@@ -41,6 +41,26 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
   const [isMaximized, setIsMaximized] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
+  const [emailSignature, setEmailSignature] = useState('');
+
+  // Fetch email signature
+  useEffect(() => {
+    const fetchSignature = async () => {
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const data = await response.json();
+          // Handle signature as object {html, photo} or legacy string
+          const signature = data.profile.emailSignature;
+          setEmailSignature(typeof signature === 'string' ? signature : (signature?.html || ''));
+        }
+      } catch (error) {
+        console.error('Failed to fetch email signature:', error);
+      }
+    };
+
+    fetchSignature();
+  }, []);
 
   // Initialize reply or forward data
   useEffect(() => {
@@ -50,7 +70,8 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
       setSubject(replyTo.subject.startsWith('Re: ') ? replyTo.subject : `Re: ${replyTo.subject}`);
 
       const originalMessage = replyTo.html || replyTo.text || '';
-      const quotedMessage = `
+      const signature = emailSignature ? `<br><br>${emailSignature}` : '';
+      const quotedMessage = `${signature}
         <br><br>
         <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-left: 8px; color: #666;">
           <p style="margin: 0 0 8px 0;"><strong>On ${new Date(replyTo.created_at).toLocaleString()}, ${replyTo.from} wrote:</strong></p>
@@ -66,7 +87,8 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
       setSubject(forwardEmail.subject.startsWith('Fwd: ') ? forwardEmail.subject : `Fwd: ${forwardEmail.subject}`);
 
       const originalMessage = forwardEmail.html || forwardEmail.text || '';
-      const forwardedMessage = `
+      const signature = emailSignature ? `<br><br>${emailSignature}` : '';
+      const forwardedMessage = `${signature}
         <br><br>
         <div style="border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #f9f9f9;">
           <p style="margin: 0 0 8px 0; font-weight: bold;">---------- Forwarded message ----------</p>
@@ -82,8 +104,23 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
       if (editorRef.current) {
         editorRef.current.innerHTML = forwardedMessage;
       }
+    } else if (emailSignature && !message) {
+      // New compose - initialize with signature
+      const initialMessage = `<br><br>${emailSignature}`;
+      setMessage(initialMessage);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = initialMessage;
+        // Move cursor to the beginning
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(editorRef.current, 0);
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        editorRef.current.focus();
+      }
     }
-  }, [replyTo, forwardEmail]);
+  }, [replyTo, forwardEmail, emailSignature]);
 
   // Link modal state
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -297,7 +334,7 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
           ? {}
           : {
               height: '100vh',
-              maxHeight: '100vh'
+              maxHeight: '700px'
             }
       }
     >
