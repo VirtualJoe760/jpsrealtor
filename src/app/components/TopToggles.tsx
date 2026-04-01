@@ -31,6 +31,12 @@ export default function TopToggles() {
   // const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
 
+  // Don't render on listing detail pages
+  const isListingPage = pathname?.startsWith('/mls-listings/') && pathname !== '/mls-listings';
+  if (isListingPage) {
+    return null;
+  }
+
   // Listen for favorites panel state changes
   useEffect(() => {
     const handleFavoritesPanel = (e: CustomEvent) => {

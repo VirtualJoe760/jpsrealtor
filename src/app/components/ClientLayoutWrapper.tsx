@@ -41,10 +41,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     // '/dashboard', // Dashboard with map background
   ];
 
-  // Pages where we WANT TopToggles (whitelist approach)
-  const pagesWithTopToggles = [
-    '/', // Root page (map/chat)
-  ];
+  // Listing detail pages - hide sidebar and nav completely
+  const isListingDetailPage = pathname?.startsWith('/mls-listings/') && pathname !== '/mls-listings';
 
   // Determine which background to show
   const shouldShowSpatialBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page))
@@ -71,10 +69,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <MapBackground />
       )}
 
-      {/* Desktop: Always visible sidebar */}
-      <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
-        <EnhancedSidebar />
-      </div>
+      {/* Desktop: Always visible sidebar (except on listing detail pages) */}
+      {!isListingDetailPage && (
+        <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
+          <EnhancedSidebar />
+        </div>
+      )}
 
       {/* Top Toggles - Theme (left) and Map (right) - Hidden on agent pages */}
       {shouldShowTopToggles && <TopToggles />}
@@ -82,7 +82,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main content with sidebar spacing on desktop */}
       <div
         className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
-          isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
+          isListingDetailPage ? '' : isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}
       >
         <div style={{ pointerEvents: 'auto' }}>
@@ -90,7 +90,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <MobileBottomNav />
+      {/* Mobile Bottom Nav (hidden on listing detail pages) */}
+      {!isListingDetailPage && <MobileBottomNav />}
 
       {/* Toast Notifications */}
       <ToastContainer

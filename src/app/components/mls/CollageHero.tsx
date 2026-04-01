@@ -80,12 +80,12 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   return (
     <>
       {/* Main Photo Section */}
-      <section className="w-full max-w-7xl mx-auto px-4 pt-20 md:pt-6 pb-4">
+      <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:pl-6 lg:pl-8 pt-16 sm:pt-20 md:pt-6 pb-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[600px] rounded-2xl overflow-hidden bg-black/40 backdrop-blur-xl border border-neutral-800/50 shadow-2xl group"
+          className="relative w-full aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] max-h-[400px] sm:max-h-[500px] md:max-h-[600px] rounded-lg sm:rounded-2xl overflow-hidden bg-black/40 backdrop-blur-xl border border-neutral-800/50 shadow-2xl group"
           onMouseEnter={() => setIsHoveringMain(true)}
           onMouseLeave={() => setIsHoveringMain(false)}
         >
@@ -120,10 +120,10 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                   onClick={handlePrev}
-                  className="absolute top-1/2 left-4 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-md hover:bg-black/80 p-3 rounded-xl border border-white/10 transition-all shadow-lg group/btn"
+                  className="absolute top-1/2 left-2 sm:left-4 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-md hover:bg-black/80 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/10 transition-all shadow-lg group/btn"
                   aria-label="Previous"
                 >
-                  <ChevronLeft className="h-6 w-6 text-white group-hover/btn:scale-110 transition-transform" strokeWidth={2.5} />
+                  <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-white group-hover/btn:scale-110 transition-transform" strokeWidth={2.5} />
                 </motion.button>
 
                 <motion.button
@@ -132,21 +132,21 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.2 }}
                   onClick={handleNext}
-                  className="absolute top-1/2 right-4 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-md hover:bg-black/80 p-3 rounded-xl border border-white/10 transition-all shadow-lg group/btn"
+                  className="absolute top-1/2 right-2 sm:right-4 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-md hover:bg-black/80 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/10 transition-all shadow-lg group/btn"
                   aria-label="Next"
                 >
-                  <ChevronRight className="h-6 w-6 text-white group-hover/btn:scale-110 transition-transform" strokeWidth={2.5} />
+                  <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-white group-hover/btn:scale-110 transition-transform" strokeWidth={2.5} />
                 </motion.button>
               </>
             )}
           </AnimatePresence>
 
           {/* Photo Counter & Fullscreen Button */}
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2">
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-white text-sm font-medium shadow-lg"
+              className="bg-black/60 backdrop-blur-md px-2 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-white/10 text-white text-xs sm:text-sm font-medium shadow-lg"
             >
               {currentIndex + 1} / {media.length}
             </motion.div>
@@ -154,10 +154,10 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => openModal(currentIndex)}
-              className="bg-black/60 backdrop-blur-md hover:bg-black/80 p-2 rounded-xl border border-white/10 transition-all shadow-lg group/expand"
+              className="bg-black/60 backdrop-blur-md hover:bg-black/80 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/10 transition-all shadow-lg group/expand"
               aria-label="View Fullscreen"
             >
-              <Maximize2 className="h-5 w-5 text-white group-hover/expand:scale-110 transition-transform" strokeWidth={2.5} />
+              <Maximize2 className="h-4 w-4 sm:h-5 sm:w-5 text-white group-hover/expand:scale-110 transition-transform" strokeWidth={2.5} />
             </motion.button>
           </div>
         </motion.div>
@@ -244,36 +244,45 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 flex items-center justify-center"
-            onClick={closeModal}
+            className="fixed inset-0 bg-black z-[9999] flex items-center justify-center"
+            onClick={(e) => {
+              // Only close if clicking the backdrop, not the image
+              if (e.target === e.currentTarget) {
+                e.preventDefault();
+              }
+            }}
           >
-            {/* Close Button */}
+            {/* Close Button - Top Right */}
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              onClick={closeModal}
-              className="absolute top-6 right-6 z-50 bg-black/60 backdrop-blur-md hover:bg-black/80 p-3 rounded-xl border border-white/10 transition-all shadow-lg group"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeModal();
+              }}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 z-[10000] bg-white/10 backdrop-blur-md hover:bg-white/20 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/20 transition-all shadow-2xl group"
+              aria-label="Close fullscreen view"
             >
-              <X className="h-6 w-6 text-white group-hover:rotate-90 transition-transform duration-300" strokeWidth={2.5} />
+              <X className="h-5 w-5 sm:h-6 sm:w-6 text-white group-hover:rotate-90 transition-transform duration-300" strokeWidth={2.5} />
             </motion.button>
 
             {/* Photo Counter */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 text-white text-lg font-medium shadow-lg"
+              className="absolute top-4 left-1/2 -translate-x-1/2 sm:top-6 z-[10000] bg-white/10 backdrop-blur-md px-4 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl border border-white/20 text-white text-sm sm:text-lg font-medium shadow-2xl"
             >
               {modalIndex + 1} / {media.length}
             </motion.div>
 
-            {/* Main Image Container */}
+            {/* Main Image Container - Full screen */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="relative w-[90vw] h-[90vh] max-w-7xl"
+              className="relative w-full h-full"
               onClick={(e) => e.stopPropagation()}
             >
               <Image
@@ -283,24 +292,32 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
                 blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J2EnPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzUnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWxsPSdibGFjazsnIGZpbHRlcj0ndXJsKCNhKScvPjwvc3ZnPg=="
                 fill
                 quality={100}
-                sizes="90vw"
+                sizes="100vw"
                 unoptimized={(media[modalIndex]?.src || "").includes('media.crmls.org')}
-                className="object-contain"
+                className="object-contain p-4 sm:p-8"
               />
 
-              {/* Navigation Buttons */}
+              {/* Navigation Buttons - Left/Right */}
               <button
-                onClick={modalPrev}
-                className="absolute top-1/2 left-6 -translate-y-1/2 z-10 bg-black/60 backdrop-blur-md hover:bg-black/80 p-4 rounded-xl border border-white/10 transition-all shadow-lg group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  modalPrev();
+                }}
+                className="absolute top-1/2 left-2 sm:left-6 -translate-y-1/2 z-10 bg-white/10 backdrop-blur-md hover:bg-white/20 p-2 sm:p-4 rounded-lg sm:rounded-xl border border-white/20 transition-all shadow-2xl group"
+                aria-label="Previous photo"
               >
-                <ChevronLeft className="h-8 w-8 text-white group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+                <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-white group-hover:scale-110 transition-transform" strokeWidth={2.5} />
               </button>
 
               <button
-                onClick={modalNext}
-                className="absolute top-1/2 right-6 -translate-y-1/2 z-10 bg-black/60 backdrop-blur-md hover:bg-black/80 p-4 rounded-xl border border-white/10 transition-all shadow-lg group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  modalNext();
+                }}
+                className="absolute top-1/2 right-2 sm:right-6 -translate-y-1/2 z-10 bg-white/10 backdrop-blur-md hover:bg-white/20 p-2 sm:p-4 rounded-lg sm:rounded-xl border border-white/20 transition-all shadow-2xl group"
+                aria-label="Next photo"
               >
-                <ChevronRight className="h-8 w-8 text-white group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+                <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-white group-hover:scale-110 transition-transform" strokeWidth={2.5} />
               </button>
             </motion.div>
 
@@ -308,9 +325,9 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/40 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 text-neutral-400 text-xs"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 sm:bottom-6 z-[10000] bg-white/10 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-white/20 text-white/80 text-xs shadow-2xl"
             >
-              Use arrow keys to navigate • Press ESC to close
+              Use arrow keys to navigate • Press <kbd className="px-1 py-0.5 bg-white/20 rounded text-white">ESC</kbd> to close
             </motion.div>
           </motion.div>
         )}
