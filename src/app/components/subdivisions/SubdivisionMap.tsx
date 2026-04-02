@@ -215,7 +215,7 @@ export default function SubdivisionMap({
               </div>
               ${
                 listing.bedsTotal !== undefined || listing.bathroomsTotalDecimal !== undefined
-                  ? `<div class="flex gap-2.5 text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}">`
+                  ? `<div class="flex gap-2.5 text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}">
                       ${
                         listing.bedsTotal !== undefined && listing.bedsTotal !== null
                           ? `<div class="flex items-center gap-1">
