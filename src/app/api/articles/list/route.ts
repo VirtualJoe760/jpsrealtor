@@ -29,8 +29,11 @@ interface Article {
  * For agents: returns only their own articles (filtered by authorId)
  * For admins: returns all articles
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const excludeLandingPages = searchParams.get("excludeLandingPages") !== "false";
+
     // Check session for agent scoping
     const session = await getServerSession(authOptions);
     const isAdmin = session?.user?.isAdmin;
@@ -43,6 +46,11 @@ export async function GET() {
       // Agent scoping: filter by authorId (unless admin)
       if (!isAdmin && userId) {
         filters.authorId = userId;
+      }
+
+      // Exclude landing pages from insights feed
+      if (excludeLandingPages) {
+        filters.category = { $ne: "landing-page" };
       }
 
       const result = await listArticles({
@@ -99,6 +107,9 @@ export async function GET() {
 
         // Skip drafts
         if (data.draft === true) continue;
+
+        // Skip landing pages from insights feed
+        if (excludeLandingPages && data.section === "landing-page") continue;
 
         // Agent scoping: skip articles not authored by this agent (unless admin)
         if (!isAdmin && userId && data.authorId && data.authorId !== userId) {
