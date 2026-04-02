@@ -14,6 +14,7 @@ import { useChatContext } from "@/app/components/chat/ChatProvider";
 import NotificationToast from "@/app/components/NotificationToast";
 import MapLayer from "@/app/components/MapLayer";
 import MapSearchBar from "@/app/components/map/MapSearchBar";
+import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
@@ -77,6 +78,21 @@ function HomeContent() {
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
     setMounted(true);
+
+    // Suppress MapLibre/React DOM conflict errors (removeChild on null parent)
+    // These are non-fatal — MapLibre manipulates DOM outside React's virtual DOM
+    const handleError = (event: ErrorEvent) => {
+      if (
+        event.message?.includes("removeChild") ||
+        event.message?.includes("Cannot read properties of null")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
+      }
+    };
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
   }, []);
 
   // Notify TopToggles when favorites panel opens/closes
@@ -340,20 +356,22 @@ function HomeContent() {
         <SpaticalBackground showGradient={true} className="h-full w-full" />
       </div>
 
-      {/* Map Layer with wipe clip-path effect */}
-      <div
-        className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
-        style={{
-          zIndex: 1,
-          clipPath: mounted && isMapVisible
-            ? 'inset(0% 0% 0% 0%)' // Fully visible
-            : 'inset(50% 0% 50% 0%)', // Clipped to center horizontal line (hidden)
-          pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
-        }}
-        suppressHydrationWarning
-      >
-        <MapLayer />
-      </div>
+      {/* Map Layer with wipe clip-path effect — wrapped in error boundary for MapLibre/React DOM conflicts */}
+      <MapErrorBoundary>
+        <div
+          className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
+          style={{
+            zIndex: 1,
+            clipPath: mounted && isMapVisible
+              ? 'inset(0% 0% 0% 0%)'
+              : 'inset(50% 0% 50% 0%)',
+            pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
+          }}
+          suppressHydrationWarning
+        >
+          <MapLayer />
+        </div>
+      </MapErrorBoundary>
 
       {/* Map Search Bar - always mounted, visibility controlled by CSS to prevent remount cycles */}
       <div style={{
