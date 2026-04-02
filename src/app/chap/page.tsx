@@ -79,20 +79,33 @@ function HomeContent() {
   useEffect(() => {
     setMounted(true);
 
-    // Suppress MapLibre/React DOM conflict errors (removeChild on null parent)
-    // These are non-fatal — MapLibre manipulates DOM outside React's virtual DOM
-    const handleError = (event: ErrorEvent) => {
-      if (
-        event.message?.includes("removeChild") ||
-        event.message?.includes("Cannot read properties of null")
-      ) {
+    // Suppress MapLibre/React DOM conflict errors at all levels
+    const suppressMapError = (event: Event) => {
+      const msg = (event as any)?.message || (event as any)?.reason?.message || "";
+      if (msg.includes("removeChild") || msg.includes("Cannot read properties of null")) {
         event.preventDefault();
-        event.stopPropagation();
-        return true;
+        event.stopImmediatePropagation();
+        return false;
       }
     };
-    window.addEventListener("error", handleError);
-    return () => window.removeEventListener("error", handleError);
+    window.addEventListener("error", suppressMapError, true);
+    window.addEventListener("unhandledrejection", suppressMapError, true);
+
+    // Patch console.error to filter the noise
+    const originalConsoleError = console.error;
+    console.error = (...args: any[]) => {
+      const msg = args[0]?.toString?.() || "";
+      if (msg.includes("removeChild") || msg.includes("Cannot read properties of null")) {
+        return; // Suppress
+      }
+      originalConsoleError.apply(console, args);
+    };
+
+    return () => {
+      window.removeEventListener("error", suppressMapError, true);
+      window.removeEventListener("unhandledrejection", suppressMapError, true);
+      console.error = originalConsoleError;
+    };
   }, []);
 
   // Notify TopToggles when favorites panel opens/closes
