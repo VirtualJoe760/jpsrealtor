@@ -83,8 +83,33 @@ export async function POST(request: Request) {
       }
     ];
 
+    // Landing page vs article system prompt
+    const landingPagePrompt = `You are creating a high-converting landing page. Think Instagram reel marketing — punchy, visual, action-driven.
+
+CRITICAL RULES:
+- Use the EXACT information, facts, numbers, and details the user provides
+- Do NOT make up statistics or claims not in the source content
+- Do NOT generate generic real estate content
+- Do NOT add contact info unless explicitly provided
+- Do NOT start content with the title as a heading (title is shown separately)
+
+STYLE:
+- TITLE: Short and punchy (max 8 words). Think ad headline.
+- EXCERPT: One powerful sentence. The hook.
+- CONTENT: Maximum 300 words. Less is more.
+
+CONTENT STRUCTURE:
+1. One bold opening line (the hook)
+2. 3-5 bullet points of key benefits (use ✅ emoji, one line each)
+3. One short paragraph explaining the "how" (2-3 sentences max)
+4. A one-line CTA
+
+TONE: ${tone || "confident and direct"}
+
+Use the generate_article_mdx tool to create the landing page.`;
+
     // Create system prompt with writing guidelines
-    const systemPrompt = `You are an expert real estate content writer for jpsrealtor.com, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
+    const systemPrompt = category === "landing-page" ? landingPagePrompt : `You are an expert real estate content writer for jpsrealtor.com, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
 
 CRITICAL FORMATTING RULES:
 - Output ONLY the article content, NO labels or meta-text
@@ -172,13 +197,9 @@ Palm Desert offers exceptional ROI potential for savvy investors. The combinatio
 
 Use the generate_article_mdx tool to create the article.`;
 
-    const userPrompt = `Topic: ${topic}
-Category: ${category}
-${keywords && keywords.length > 0 ? `Keywords to include: ${keywords.join(', ')}` : ''}
-${tone ? `Tone: ${tone}` : ''}
-${length ? `Length: ${length}` : 'Length: comprehensive (1000-1500 words)'}
-
-Create a complete, engaging article following all guidelines. Make it actionable and SEO-optimized.`;
+    const userPrompt = category === "landing-page"
+      ? `Create a landing page using EXACTLY this content — do not substitute with generic text:\n\n${topic}\n\n${keywords?.length ? `Keywords: ${keywords.join(', ')}` : ''}\n${tone ? `Tone: ${tone}` : ''}\nKeep it short, punchy, and conversion-focused.`
+      : `Topic: ${topic}\nCategory: ${category}\n${keywords?.length ? `Keywords to include: ${keywords.join(', ')}` : ''}\n${tone ? `Tone: ${tone}` : ''}\n${length ? `Length: ${length}` : 'Length: comprehensive (1000-1500 words)'}\n\nCreate a complete, engaging article following all guidelines. Make it actionable and SEO-optimized.`;
 
     // Call Groq with retry logic for cold starts
     console.log('[CMS] Generating article with AI...');

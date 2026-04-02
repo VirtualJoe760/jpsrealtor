@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
+import LandingPagePreview from "./LandingPagePreview";
 
 function PreviewContent() {
   const searchParams = useSearchParams();
@@ -24,6 +25,19 @@ function PreviewContent() {
   const imageUrl = searchParams.get("imageUrl") || "";
   const theme = searchParams.get("theme") || "lightgradient";
 
+  // Landing page params
+  const standalone = searchParams.get("standalone") === "true";
+  const heroType = searchParams.get("heroType") || "photo";
+  const youtubeUrl = searchParams.get("youtubeUrl") || "";
+  const videoAutoplay = searchParams.get("videoAutoplay") !== "false";
+  const formEnabled = searchParams.get("formEnabled") === "true";
+  const formHeading = searchParams.get("formHeading") || "Get Started";
+  const formButtonText = searchParams.get("formButtonText") || "Submit";
+  let formFields: any[] = [];
+  try { formFields = JSON.parse(searchParams.get("formFields") || "[]"); } catch {}
+
+  const isLandingPage = category === "landing-page";
+
   // Apply theme to HTML element
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -32,6 +46,27 @@ function PreviewContent() {
   }, [theme]);
 
   const isLight = theme === "lightgradient";
+
+  // Render landing page preview using separate component
+  if (isLandingPage) {
+    return (
+      <LandingPagePreview
+        title={title}
+        excerpt={excerpt}
+        content={content}
+        imageUrl={imageUrl}
+        isLight={isLight}
+        heroType={heroType}
+        youtubeUrl={youtubeUrl}
+        videoAutoplay={videoAutoplay}
+        standalone={standalone}
+        formEnabled={formEnabled}
+        formHeading={formHeading}
+        formButtonText={formButtonText}
+        formFields={formFields}
+      />
+    );
+  }
 
   const categoryNames: Record<string, string> = {
     articles: "Articles",

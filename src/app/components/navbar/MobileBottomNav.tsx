@@ -19,6 +19,9 @@ export default function MobileBottomNav() {
 
   const isChapPage = pathname === "/chap";
 
+  // Hide on preview and standalone landing pages
+  if (pathname?.startsWith("/articles/preview") || pathname?.startsWith("/campaign")) return null;
+
   // Handle Chat/Map button click
   const handleChatMapClick = () => {
     if (isChapPage) {
