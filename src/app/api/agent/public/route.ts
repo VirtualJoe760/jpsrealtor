@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
         subdomain: agent.agentProfile?.subdomain,
 
         // Branding
+        fontFamily: profile?.fontFamily || "Raleway",
         brandColor: agent.agentProfile?.brandColors?.primary,
         secondaryColor: agent.agentProfile?.brandColors?.secondary,
 
