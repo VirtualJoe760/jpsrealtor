@@ -95,31 +95,8 @@ export default function ListingPhoto({
               console.warn(`   This may indicate stale or missing listing data`);
             }
 
-            console.warn(`   → Triggering background refresh of favorite data...`);
-
-            // Trigger background refresh (don't await - let it run async)
-            refreshAttemptedRef.current = true; // Prevent multiple refresh attempts
-            fetch(`/api/user/favorites/${listingKey}/refresh`, {
-              method: 'PATCH',
-            })
-              .then(res => res.json())
-              .then(result => {
-                if (result.success && result.updated) {
-                  console.log(`✅ [ListingPhoto] Favorite data refreshed for ${listingKey}`);
-                  if (result.changes) {
-                    console.log(`   Changes detected:`, result.changes);
-                  }
-                  // Note: Dashboard auto-refresh (every 30s) will pick up these changes
-                  // No need to force reload - prevents infinite loop
-                } else if (result.removed) {
-                  console.log(`ℹ️ [ListingPhoto] Listing ${listingKey} removed from market`);
-                } else {
-                  console.log(`ℹ️ [ListingPhoto] No update needed for ${listingKey}`);
-                }
-              })
-              .catch(err => {
-                console.error(`❌ [ListingPhoto] Failed to refresh favorite:`, err);
-              });
+            // Refresh endpoint does not exist — skip
+            refreshAttemptedRef.current = true;
           }
 
           if (hasPhotos) {
@@ -144,8 +121,11 @@ export default function ListingPhoto({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center bg-gray-700 ${className}`}>
-        <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      <div className={`absolute inset-0 flex items-center justify-center ${className}`} style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%)' }}>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-slate-400 font-medium">Loading photo...</span>
+        </div>
       </div>
     );
   }
