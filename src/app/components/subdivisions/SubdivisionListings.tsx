@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import ListingPhoto from "@/app/components/ListingPhoto";
 
 interface Listing {
   listingId: string;
@@ -14,7 +14,7 @@ interface Listing {
   stateOrProvince?: string;
   postalCode?: string;
   listPrice?: number;
-  bedroomsTotal?: number;
+  bedsTotal?: number;
   bathroomsTotalDecimal?: number;
   livingArea?: number;
   yearBuilt?: number;
@@ -91,11 +91,11 @@ export default function SubdivisionListings({
     // Beds filter
     if (minBeds) {
       const min = parseInt(minBeds);
-      filtered = filtered.filter(l => (l.bedroomsTotal || 0) >= min);
+      filtered = filtered.filter(l => (l.bedsTotal || 0) >= min);
     }
     if (maxBeds) {
       const max = parseInt(maxBeds);
-      filtered = filtered.filter(l => (l.bedroomsTotal || 0) <= max);
+      filtered = filtered.filter(l => (l.bedsTotal || 0) <= max);
     }
 
     // Baths filter
@@ -129,6 +129,7 @@ export default function SubdivisionListings({
       const params = new URLSearchParams({
         page: page.toString(),
         limit: "100",
+        propertyType: "all",
       });
 
       if (minPrice) params.append("minPrice", minPrice);
@@ -398,23 +399,18 @@ export default function SubdivisionListings({
               className={`${isLight ? 'bg-white/80 border-gray-300 shadow-md hover:shadow-xl hover:border-blue-400' : 'bg-gray-900 border-gray-800 shadow-xl hover:shadow-2xl hover:border-gray-700'} border rounded-lg overflow-hidden transition-all cursor-pointer block backdrop-blur-sm`}
               style={isLight ? { backdropFilter: "blur(10px) saturate(150%)", WebkitBackdropFilter: "blur(10px) saturate(150%)" } : undefined}
             >
-              {/* Photo */}
+              {/* Photo - fetched from Spark API */}
               <div className={`relative h-48 ${isLight ? 'bg-gray-200' : 'bg-gray-800'}`}>
-                {listing.primaryPhotoUrl ? (
-                  <Image
-                    src={listing.primaryPhotoUrl}
-                    alt={listing.address || "Property"}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                ) : (
-                  <div className={`flex items-center justify-center h-full ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No Image
-                  </div>
-                )}
+                <ListingPhoto
+                  listingKey={listing.listingKey || listing.listingId}
+                  mlsId={listing.listingId}
+                  mlsSource={listing.mlsSource}
+                  alt={listing.address || "Property"}
+                  fill
+                  className="object-cover"
+                />
                 {listing.mlsSource && (
-                  <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-semibold text-white">
+                  <div className="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-semibold text-white z-10">
                     {listing.mlsSource}
                   </div>
                 )}
@@ -432,9 +428,9 @@ export default function SubdivisionListings({
                   </div>
                 </div>
                 <div className={`flex gap-4 text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
-                  {listing.bedroomsTotal !== undefined && (
+                  {listing.bedsTotal !== undefined && (
                     <div>
-                      <span className={`font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.bedroomsTotal}</span> Beds
+                      <span className={`font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.bedsTotal}</span> Beds
                     </div>
                   )}
                   {listing.bathroomsTotalDecimal !== undefined && (
