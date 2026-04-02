@@ -448,8 +448,8 @@ export default function AgentDashboard() {
           team: data.profile.team || null,
           isTeamLeader: data.profile.isTeamLeader || false,
         });
-        toast.success("Profile updated successfully!");
-        setIsEditMode(false);
+        toast.success("Profile updated! Refreshing...");
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         toast.error("Failed to update profile");
       }
@@ -1060,6 +1060,27 @@ export default function AgentDashboard() {
                         <p className={`mt-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
                           Customize the main headline on your Insights page. Use {"<br />"} for line breaks.
                         </p>
+                      </div>
+
+                      {/* Website Font */}
+                      <div className="mb-6">
+                        <label className={`block text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>Website Font</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {["Raleway", "Plus Jakarta Sans", "DM Sans", "Inter", "Jost"].map((font) => {
+                            const isSelected = (agentProfile.agentProfile?.fontFamily || "Raleway") === font;
+                            return (
+                              <button key={font} type="button"
+                                onClick={() => setAgentProfile({ ...agentProfile, agentProfile: { ...agentProfile.agentProfile, fontFamily: font } })}
+                                className={`text-left p-4 rounded-lg border-2 transition-all ${isSelected ? (isLight ? "border-blue-500 bg-blue-50" : "border-blue-500 bg-blue-950/30") : (isLight ? "border-gray-200 hover:border-gray-400 bg-white" : "border-slate-700 hover:border-slate-500 bg-slate-800")}`}
+                              >
+                                <p className={`text-xs font-medium mb-1 ${isSelected ? (isLight ? "text-blue-600" : "text-blue-400") : (isLight ? "text-gray-500" : "text-gray-400")}`}>{font}</p>
+                                <p className={`text-lg ${isLight ? "text-gray-900" : "text-white"}`} style={{ fontFamily: `'${font}', sans-serif` }}>The quick brown fox</p>
+                                <p className={`text-sm mt-1 ${isLight ? "text-gray-600" : "text-gray-400"}`} style={{ fontFamily: `'${font}', sans-serif` }}>Aa Bb Cc 123</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className={`mt-2 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>This font will be used across your entire branded site.</p>
                       </div>
 
                       {/* Broker Logo Upload */}
