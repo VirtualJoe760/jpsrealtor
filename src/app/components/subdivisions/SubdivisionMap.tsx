@@ -7,6 +7,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface Listing {
   listingId: string;
+  listingKey?: string;
   slug?: string;
   latitude?: number;
   longitude?: number;
@@ -14,9 +15,9 @@ interface Listing {
   address?: string;
   bedsTotal?: number;
   bathroomsTotalDecimal?: number;
-  primaryPhotoUrl?: string;
   propertyType?: string;
   propertySubType?: string;
+  mlsSource?: string;
 }
 
 interface Subdivision {
@@ -160,6 +161,22 @@ export default function SubdivisionMap({
 
     if (validListings.length === 0) return;
 
+    // Lazy photo fetch for popups
+    const fetchPhotoForPopup = async (listingKey: string, listingId: string, mlsSource?: string): Promise<string | null> => {
+      try {
+        let url = `/api/listings/${listingKey}/photos`;
+        if (listingId && mlsSource) url += `?mlsId=${encodeURIComponent(listingId)}&mlsSource=${encodeURIComponent(mlsSource)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.photos?.length > 0) {
+          const p = data.photos.find((p: any) => p.primary) || data.photos[0];
+          return p.uri800 || p.uri640 || p.uri1024 || null;
+        }
+        return null;
+      } catch { return null; }
+    };
+
     // Add markers for each listing
     validListings.forEach((listing) => {
       if (!listing.latitude || !listing.longitude) return;
@@ -184,33 +201,21 @@ export default function SubdivisionMap({
 
       // Enhanced popup content with photo and clickable link - smaller size - DARK MODE
       const popupContent = `
-        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity rounded-lg overflow-hidden shadow-lg bg-gray-900 border border-gray-700">
+        <a href="/mls-listings/${listingSlug}" class="block hover:opacity-90 transition-opacity rounded-lg overflow-hidden shadow-lg ${isLight ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border">
           <div class="w-[220px]">
-            ${
-              listing.primaryPhotoUrl
-                ? `<div class="relative h-32">
-                    <img
-                      src="${listing.primaryPhotoUrl}"
-                      alt="Property"
-                      class="w-full h-full object-cover"
-                    />
-                  </div>`
-                : `<div class="relative h-32 bg-gray-800 flex items-center justify-center">
-                    <svg class="w-12 h-12 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                    </svg>
-                  </div>`
-            }
+            <div class="relative h-32 ${isLight ? 'bg-gray-100' : 'bg-gray-800'} flex items-center justify-center" data-photo-container>
+              <span class="text-xs ${isLight ? 'text-gray-400' : 'text-gray-500'}">Loading...</span>
+            </div>
             <div class="px-2.5 py-2.5">
-              <div class="text-lg font-bold text-blue-400 mb-1.5">
+              <div class="text-lg font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'} mb-1.5">
                 ${listing.listPrice ? `$${listing.listPrice.toLocaleString()}` : "Price N/A"}
               </div>
-              <div class="text-xs text-gray-300 mb-1.5 font-medium leading-tight">
+              <div class="text-xs ${isLight ? 'text-gray-700' : 'text-gray-300'} mb-1.5 font-medium leading-tight">
                 ${listing.address || "Address not available"}
               </div>
               ${
                 listing.bedsTotal !== undefined || listing.bathroomsTotalDecimal !== undefined
-                  ? `<div class="flex gap-2.5 text-xs text-gray-400">
+                  ? `<div class="flex gap-2.5 text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}">`
                       ${
                         listing.bedsTotal !== undefined && listing.bedsTotal !== null
                           ? `<div class="flex items-center gap-1">
@@ -280,6 +285,16 @@ export default function SubdivisionMap({
             (closeBtn as HTMLElement).style.zIndex = '100';
             (closeBtn as HTMLElement).style.lineHeight = '1';
             (closeBtn as HTMLElement).style.padding = '0';
+          }
+
+          // Lazy-load photo from Spark API
+          const imgContainer = popupEl?.querySelector('[data-photo-container]') as HTMLElement;
+          if (imgContainer && listing.listingKey) {
+            fetchPhotoForPopup(listing.listingKey, listing.listingId, listing.mlsSource).then((photoUrl) => {
+              if (photoUrl && imgContainer) {
+                imgContainer.innerHTML = `<img src="${photoUrl}" alt="Property" class="w-full h-full object-cover" />`;
+              }
+            });
           }
         }, 0);
       });
