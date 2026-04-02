@@ -100,7 +100,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const menuItems = [
     { label: "Chat", icon: MessageSquare, action: "chat" }, // Special action for chat toggle
     { label: "Map", icon: Map, action: "map" }, // Special action for map toggle
-    { label: "Home", icon: Lightbulb, href: "/" },
+    { label: "Home", icon: Home, href: "/" },
   ];
 
   const dashboardItems = [
