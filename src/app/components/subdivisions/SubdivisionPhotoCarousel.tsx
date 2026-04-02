@@ -184,51 +184,37 @@ export default function SubdivisionPhotoCarousel({
               priority={currentIndex < 3}
             />
 
-            {/* Gradient Overlay - Theme appropriate */}
-            {!isLight && (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-            )}
+            {/* Gradient Overlay - dark for both themes */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
             {/* Listing Details Overlay */}
-            <div className={`absolute bottom-0 left-0 right-0 p-8 md:p-12 ${
-              isLight ? "bg-gradient-to-t from-white via-white/95 to-transparent" : ""
-            }`}>
+            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
               {/* Price */}
-              <div className={`text-5xl md:text-6xl lg:text-7xl font-bold mb-6 ${
-                isLight ? "text-gray-900" : "text-white"
-              }`}>
+              <div className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white">
                 {formatPrice(currentPhoto.listPrice)}
               </div>
 
               {/* Beds & Baths */}
               <div className="flex items-center gap-8 mb-6">
                 {currentPhoto.bedsTotal !== undefined && currentPhoto.bedsTotal !== null && (
-                  <div className={`flex items-center gap-3 ${
-                    isLight ? "text-gray-700" : "text-white"
-                  }`}>
+                  <div className="flex items-center gap-3 text-white">
                     <Bed className="w-6 h-6 md:w-7 md:h-7" />
                     <span className="text-2xl md:text-3xl font-bold">
                       {currentPhoto.bedsTotal}
                     </span>
-                    <span className={`text-lg md:text-xl font-medium ${
-                      isLight ? "text-gray-600" : "text-white/90"
-                    }`}>
+                    <span className="text-lg md:text-xl font-medium text-white/90">
                       {currentPhoto.bedsTotal === 1 ? "bed" : "beds"}
                     </span>
                   </div>
                 )}
 
                 {currentPhoto.bathroomsTotalDecimal !== undefined && currentPhoto.bathroomsTotalDecimal !== null && (
-                  <div className={`flex items-center gap-3 ${
-                    isLight ? "text-gray-700" : "text-white"
-                  }`}>
+                  <div className="flex items-center gap-3 text-white">
                     <Bath className="w-6 h-6 md:w-7 md:h-7" />
                     <span className="text-2xl md:text-3xl font-bold">
                       {currentPhoto.bathroomsTotalDecimal}
                     </span>
-                    <span className={`text-lg md:text-xl font-medium ${
-                      isLight ? "text-gray-600" : "text-white/90"
-                    }`}>
+                    <span className="text-lg md:text-xl font-medium text-white/90">
                       {currentPhoto.bathroomsTotalDecimal === 1 ? "bath" : "baths"}
                     </span>
                   </div>
@@ -237,12 +223,8 @@ export default function SubdivisionPhotoCarousel({
 
               {/* Address */}
               <div className="flex items-start gap-3 mb-8">
-                <MapPin className={`w-6 h-6 md:w-7 md:h-7 flex-shrink-0 mt-1 ${
-                  isLight ? "text-gray-700" : "text-white"
-                }`} />
-                <p className={`text-xl md:text-2xl lg:text-3xl font-semibold leading-tight ${
-                  isLight ? "text-gray-800" : "text-white"
-                }`}>
+                <MapPin className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0 mt-1 text-white" />
+                <p className="text-xl md:text-2xl lg:text-3xl font-semibold leading-tight text-white">
                   {currentPhoto.address}
                 </p>
               </div>
@@ -349,21 +331,13 @@ export default function SubdivisionPhotoCarousel({
                 quality={85}
               />
 
-              {/* Overlay with price */}
-              <div className={`absolute inset-0 ${
-                isLight
-                  ? "bg-gradient-to-t from-white via-white/90 to-transparent"
-                  : "bg-gradient-to-t from-black/80 to-transparent"
-              }`} />
+              {/* Overlay with price - dark for both themes */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
               <div className="absolute bottom-2 left-2 right-2">
-                <p className={`font-bold text-sm truncate ${
-                  isLight ? "text-gray-900" : "text-white"
-                }`}>
+                <p className="font-bold text-sm truncate text-white">
                   {formatPrice(photo.listPrice)}
                 </p>
-                <p className={`text-xs truncate ${
-                  isLight ? "text-gray-700" : "text-white/80"
-                }`}>
+                <p className="text-xs truncate text-white/80">
                   {photo.bedsTotal}bd · {photo.bathroomsTotalDecimal}ba
                 </p>
               </div>
