@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Map, Lightbulb, User, RefreshCw } from "lucide-react";
+import { Home, MessageSquare, Map, User, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
@@ -46,7 +46,7 @@ export default function MobileBottomNav() {
     },
     {
       name: "Home",
-      icon: Lightbulb,
+      icon: Home,
       href: "/",
       active: pathname === "/",
     },
