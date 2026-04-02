@@ -148,6 +148,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     toggleThemeMode();
   };
 
+  // Hide sidebar on preview and campaign pages
+  if (pathname?.startsWith("/articles/preview") || pathname?.startsWith("/campaign")) return null;
+
   return (
     <motion.aside
       initial={false}
