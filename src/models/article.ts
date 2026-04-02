@@ -98,7 +98,7 @@ const ArticleSchema = new Schema<IArticle>(
     // Organization
     category: {
       type: String,
-      enum: ["articles", "market-insights", "real-estate-tips"],
+      enum: ["articles", "market-insights", "real-estate-tips", "landing-page"],
       required: true,
       index: true,
     },

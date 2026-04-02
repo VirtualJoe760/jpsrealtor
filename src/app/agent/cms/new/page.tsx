@@ -23,6 +23,7 @@ import {
 import AgentNav from "@/app/components/AgentNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
+import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../components/LandingPageOptions";
 import { useDeploymentStatus } from "../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "generate" | "edit" | "preview";
@@ -70,6 +71,9 @@ export default function NewArticlePage() {
       keywords: [] as string[],
     },
   });
+
+  // Landing page config (separate state so linter doesn't revert it)
+  const [lpConfig, setLpConfig] = useState<LandingPageConfig>(DEFAULT_LANDING_PAGE_CONFIG);
 
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
@@ -331,6 +335,7 @@ export default function NewArticlePage() {
             tags: formData.tags,
             featuredImage: formData.featuredImage,
             seo: formData.seo,
+            ...(formData.category === "landing-page" ? lpConfig : {}),
           },
         }),
       });
@@ -550,12 +555,22 @@ export default function NewArticlePage() {
                 <iframe
                   key={previewKey}
                   src={`/articles/preview?${new URLSearchParams({
-                    title: formData.title || "Untitled Article",
+                    title: formData.title || "Untitled",
                     excerpt: formData.excerpt || "",
                     content: formData.content || "",
                     category: formData.category,
                     imageUrl: formData.featuredImage.url || "",
                     theme: currentTheme,
+                    ...(formData.category === "landing-page" ? {
+                      standalone: lpConfig.standalone ? "true" : "false",
+                      heroType: lpConfig.heroType,
+                      youtubeUrl: lpConfig.youtubeUrl || "",
+                      videoAutoplay: lpConfig.videoAutoplay ? "true" : "false",
+                      formEnabled: lpConfig.formEnabled ? "true" : "false",
+                      formHeading: lpConfig.formHeading || "Get Started",
+                      formButtonText: lpConfig.formButtonText || "Submit",
+                      formFields: JSON.stringify(lpConfig.formFields),
+                    } : {}),
                   }).toString()}`}
                   className="w-full h-full border-0"
                   title="Article Preview"
@@ -634,8 +649,18 @@ export default function NewArticlePage() {
                   <option value="articles">Articles</option>
                   <option value="market-insights">Market Insights</option>
                   <option value="real-estate-tips">Real Estate Tips</option>
+                  <option value="landing-page">Landing Page</option>
                 </select>
               </div>
+
+              {/* Landing Page Options */}
+              {formData.category === "landing-page" && (
+                <LandingPageOptions
+                  config={lpConfig}
+                  onChange={setLpConfig}
+                  isLight={isLight}
+                />
+              )}
 
               {/* Generate Button */}
               <button
