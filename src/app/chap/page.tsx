@@ -355,8 +355,11 @@ function HomeContent() {
         <MapLayer />
       </div>
 
-      {/* Map Search Bar - Only visible when map is active */}
-      {mounted && isMapVisible && (
+      {/* Map Search Bar - always mounted, visibility controlled by CSS to prevent remount cycles */}
+      <div style={{
+        display: mounted && isMapVisible ? 'block' : 'none',
+        pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
+      }}>
         <MapSearchBar
           onSearch={(query) => {
             console.log('🗺️ [Map Search]:', query);
@@ -365,10 +368,10 @@ function HomeContent() {
             setControlsExpanded(!controlsExpanded);
           }}
         />
-      )}
+      </div>
 
       {/* Favorites Button - Under info panel (when map is visible and has favorites) */}
-      {mounted && isMapVisible && likedListings.length > 0 && (
+      {likedListings.length > 0 && (
         <button
           onClick={() => setFavoritesPannelOpen(true)}
           className={`fixed top-32 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
@@ -376,6 +379,7 @@ function HomeContent() {
               ? "bg-red-500 hover:bg-red-600 text-white"
               : "bg-pink-600 hover:bg-pink-700 text-white"
           }`}
+          style={{ display: mounted && isMapVisible ? 'flex' : 'none' }}
           aria-label="View Favorites"
         >
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -395,8 +399,8 @@ function HomeContent() {
         <ChatWidget />
       </div>
 
-      {/* Favorites Panel - only show when map is visible */}
-      {mounted && isMapVisible && (
+      {/* Favorites Panel - always mounted, hidden via CSS */}
+      <div style={{ display: mounted && isMapVisible ? 'block' : 'none' }}>
         <FavoritesPannel
           visibleListings={visibleListings}
           favorites={likedListings}
@@ -410,7 +414,7 @@ function HomeContent() {
           onRemoveDislike={removeDislike}
           onClearDislikes={clearDislikes}
         />
-      )}
+      </div>
 
       {/* Listing Bottom Panel - shows when a listing is selected */}
       <AnimatePresence mode="wait">
@@ -430,9 +434,10 @@ function HomeContent() {
         )}
       </AnimatePresence>
 
-      {/* Map Controls - Only visible when map is active and expanded */}
-      {isMapVisible && controlsExpanded && (
-        <div className="fixed bottom-[160px] sm:bottom-28 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto">
+      {/* Map Controls - visibility controlled by CSS */}
+      {controlsExpanded && (
+        <div className="fixed bottom-[160px] sm:bottom-28 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto"
+          style={{ display: isMapVisible ? 'block' : 'none' }}>
           {/* Expanded Panel - slides up from search bar */}
           <AnimatePresence>
             {controlsExpanded && (

@@ -146,19 +146,22 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
 
   const flyToLocation = useCallback((lat: number, lng: number, zoom: number = 13) => {
     console.log('🗺️ [MapStateContext.flyToLocation] Called with:', { lat, lng, zoom });
-    console.log('🗺️ [MapStateContext.flyToLocation] Setting pendingFlyTo...');
     setPendingFlyTo({ lat, lng, zoom });
-    console.log('🗺️ [MapStateContext.flyToLocation] Setting viewState...');
     setViewStateInternal({ centerLat: lat, centerLng: lng, zoom });
-    console.log('🗺️ [MapStateContext.flyToLocation] Setting map visible...');
-    setIsMapVisible(true);
-    console.log('🗺️ [MapStateContext.flyToLocation] Completed');
+    // Only set visible if not already visible (prevents unnecessary re-render cascade)
+    setIsMapVisible(prev => {
+      if (prev) return prev; // No change, no re-render
+      return true;
+    });
   }, []);
 
   const setBounds = useCallback((bounds: MapBounds) => {
     console.log('🗺️ [MapStateContext] Setting bounds:', bounds);
     setPendingBounds(bounds);
-    setIsMapVisible(true);
+    setIsMapVisible(prev => {
+      if (prev) return prev;
+      return true;
+    });
   }, []);
 
   const value: MapStateContextType = {
