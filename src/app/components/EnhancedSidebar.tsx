@@ -6,7 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Lightbulb,
+  Home,
   LayoutDashboard,
   Sun,
   Moon,
