@@ -14,7 +14,6 @@ import { useChatContext } from "@/app/components/chat/ChatProvider";
 import NotificationToast from "@/app/components/NotificationToast";
 import MapLayer from "@/app/components/MapLayer";
 import MapSearchBar from "@/app/components/map/MapSearchBar";
-import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
@@ -78,34 +77,6 @@ function HomeContent() {
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
     setMounted(true);
-
-    // Suppress MapLibre/React DOM conflict errors at all levels
-    const suppressMapError = (event: Event) => {
-      const msg = (event as any)?.message || (event as any)?.reason?.message || "";
-      if (msg.includes("removeChild") || msg.includes("Cannot read properties of null")) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return false;
-      }
-    };
-    window.addEventListener("error", suppressMapError, true);
-    window.addEventListener("unhandledrejection", suppressMapError, true);
-
-    // Patch console.error to filter the noise
-    const originalConsoleError = console.error;
-    console.error = (...args: any[]) => {
-      const msg = args[0]?.toString?.() || "";
-      if (msg.includes("removeChild") || msg.includes("Cannot read properties of null")) {
-        return; // Suppress
-      }
-      originalConsoleError.apply(console, args);
-    };
-
-    return () => {
-      window.removeEventListener("error", suppressMapError, true);
-      window.removeEventListener("unhandledrejection", suppressMapError, true);
-      console.error = originalConsoleError;
-    };
   }, []);
 
   // Notify TopToggles when favorites panel opens/closes
@@ -369,28 +340,23 @@ function HomeContent() {
         <SpaticalBackground showGradient={true} className="h-full w-full" />
       </div>
 
-      {/* Map Layer with wipe clip-path effect — wrapped in error boundary for MapLibre/React DOM conflicts */}
-      <MapErrorBoundary>
-        <div
-          className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
-          style={{
-            zIndex: 1,
-            clipPath: mounted && isMapVisible
-              ? 'inset(0% 0% 0% 0%)'
-              : 'inset(50% 0% 50% 0%)',
-            pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
-          }}
-          suppressHydrationWarning
-        >
-          <MapLayer />
-        </div>
-      </MapErrorBoundary>
+      {/* Map Layer with wipe clip-path effect */}
+      <div
+        className="fixed inset-0 transition-all duration-[1500ms] ease-in-out"
+        style={{
+          zIndex: 1,
+          clipPath: mounted && isMapVisible
+            ? 'inset(0% 0% 0% 0%)' // Fully visible
+            : 'inset(50% 0% 50% 0%)', // Clipped to center horizontal line (hidden)
+          pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
+        }}
+        suppressHydrationWarning
+      >
+        <MapLayer />
+      </div>
 
-      {/* Map Search Bar - always mounted, visibility controlled by CSS to prevent remount cycles */}
-      <div style={{
-        display: mounted && isMapVisible ? 'block' : 'none',
-        pointerEvents: mounted && isMapVisible ? 'auto' : 'none',
-      }}>
+      {/* Map Search Bar - Only visible when map is active */}
+      {mounted && isMapVisible && (
         <MapSearchBar
           onSearch={(query) => {
             console.log('🗺️ [Map Search]:', query);
@@ -399,10 +365,10 @@ function HomeContent() {
             setControlsExpanded(!controlsExpanded);
           }}
         />
-      </div>
+      )}
 
       {/* Favorites Button - Under info panel (when map is visible and has favorites) */}
-      {likedListings.length > 0 && (
+      {mounted && isMapVisible && likedListings.length > 0 && (
         <button
           onClick={() => setFavoritesPannelOpen(true)}
           className={`fixed top-32 right-4 z-30 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
@@ -410,7 +376,6 @@ function HomeContent() {
               ? "bg-red-500 hover:bg-red-600 text-white"
               : "bg-pink-600 hover:bg-pink-700 text-white"
           }`}
-          style={{ display: mounted && isMapVisible ? 'flex' : 'none' }}
           aria-label="View Favorites"
         >
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -430,8 +395,8 @@ function HomeContent() {
         <ChatWidget />
       </div>
 
-      {/* Favorites Panel - always mounted, hidden via CSS */}
-      <div style={{ display: mounted && isMapVisible ? 'block' : 'none' }}>
+      {/* Favorites Panel - only show when map is visible */}
+      {mounted && isMapVisible && (
         <FavoritesPannel
           visibleListings={visibleListings}
           favorites={likedListings}
@@ -445,7 +410,7 @@ function HomeContent() {
           onRemoveDislike={removeDislike}
           onClearDislikes={clearDislikes}
         />
-      </div>
+      )}
 
       {/* Listing Bottom Panel - shows when a listing is selected */}
       <AnimatePresence mode="wait">
@@ -465,10 +430,9 @@ function HomeContent() {
         )}
       </AnimatePresence>
 
-      {/* Map Controls - visibility controlled by CSS */}
-      {controlsExpanded && (
-        <div className="fixed bottom-[160px] sm:bottom-28 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto"
-          style={{ display: isMapVisible ? 'block' : 'none' }}>
+      {/* Map Controls - Only visible when map is active and expanded */}
+      {isMapVisible && controlsExpanded && (
+        <div className="fixed bottom-[160px] sm:bottom-28 left-4 right-4 z-40 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl pointer-events-auto">
           {/* Expanded Panel - slides up from search bar */}
           <AnimatePresence>
             {controlsExpanded && (
