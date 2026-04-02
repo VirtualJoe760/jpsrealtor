@@ -31,8 +31,9 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Use heroImage as primary background, fallback to insightsBannerImage, then gallery photos
+  // Use heroImage as primary background, fallback chain for all possible photo fields
   const heroImage = agentProfile?.agentProfile?.heroImage ||
+                    agentProfile?.agentProfile?.heroPhoto ||
                     agentProfile?.agentProfile?.insightsBannerImage ||
                     agentProfile?.agentProfile?.coverPhoto ||
                     agentProfile?.agentProfile?.galleryPhotos?.[0];
