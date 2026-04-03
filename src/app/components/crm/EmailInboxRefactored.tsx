@@ -56,7 +56,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
     loadingContent,
     toggleExpand,
     collapseEmail,
-  } = useEmailExpand();
+  } = useEmailExpand(activeFolder);
 
   // Compose panel (reply/forward)
   const {
