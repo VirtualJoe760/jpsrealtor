@@ -1,9 +1,10 @@
 // src/app/components/ListingPhoto.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Home } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface ListingPhotoProps {
   listingKey: string;
@@ -46,6 +47,8 @@ export default function ListingPhoto({
 }: ListingPhotoProps) {
   const [photoUrl, setPhotoUrl] = useState<string>("/images/no-photo.png");
   const [isLoading, setIsLoading] = useState(true);
+  const { data: session } = useSession();
+  const refreshAttemptedRef = useRef(false); // Prevent infinite refresh loops
 
   useEffect(() => {
     if (!listingKey) {
@@ -62,16 +65,72 @@ export default function ListingPhoto({
           url += `?mlsId=${encodeURIComponent(mlsId)}&mlsSource=${encodeURIComponent(mlsSource)}`;
         }
 
+        console.log(`[ListingPhoto] Fetching: ${url.substring(0, 100)}`);
+
         const res = await fetch(url);
 
         if (res.ok) {
           const data = await res.json();
 
-          if (data.photos && data.photos.length > 0) {
+          console.log(`[ListingPhoto] ${listingKey}: ${data.photos?.length || 0} photos found`);
+
+          // Check if we found photos
+          const hasPhotos = data.photos && data.photos.length > 0;
+
+          // STALE DATA DETECTION: Check if mlsId changed OR no photos found
+          const shouldRefresh = session && !refreshAttemptedRef.current && (
+            // Case 1: mlsId changed (property was relisted)
+            (mlsId && data.mlsId && mlsId !== data.mlsId) ||
+            // Case 2: No photos found but we have mlsId (photo fetch failed)
+            (!hasPhotos && mlsId)
+          );
+
+          if (shouldRefresh) {
+            if (mlsId && data.mlsId && mlsId !== data.mlsId) {
+              console.warn(`[ListingPhoto] ⚠️ STALE DATA DETECTED for ${listingKey}:`);
+              console.warn(`   Cached mlsId: ${mlsId}`);
+              console.warn(`   Fresh mlsId:  ${data.mlsId}`);
+            } else if (!hasPhotos) {
+              console.warn(`[ListingPhoto] ⚠️ NO PHOTOS FOUND for ${listingKey}`);
+              console.warn(`   This may indicate stale or missing listing data`);
+            }
+
+            console.warn(`   → Triggering background refresh of favorite data...`);
+
+            // Trigger background refresh (don't await - let it run async)
+            refreshAttemptedRef.current = true; // Prevent multiple refresh attempts
+            fetch(`/api/user/favorites/${listingKey}/refresh`, {
+              method: 'PATCH',
+            })
+              .then(res => res.json())
+              .then(result => {
+                if (result.success && result.updated) {
+                  console.log(`✅ [ListingPhoto] Favorite data refreshed for ${listingKey}`);
+                  if (result.changes) {
+                    console.log(`   Changes detected:`, result.changes);
+                  }
+                  // Note: Dashboard auto-refresh (every 30s) will pick up these changes
+                  // No need to force reload - prevents infinite loop
+                } else if (result.removed) {
+                  console.log(`ℹ️ [ListingPhoto] Listing ${listingKey} removed from market`);
+                } else {
+                  console.log(`ℹ️ [ListingPhoto] No update needed for ${listingKey}`);
+                }
+              })
+              .catch(err => {
+                console.error(`❌ [ListingPhoto] Failed to refresh favorite:`, err);
+              });
+          }
+
+          if (hasPhotos) {
             const primaryPhoto = data.photos.find((p: any) => p.primary) || data.photos[0];
             const url = primaryPhoto.uri800 || primaryPhoto.uri640 || primaryPhoto.uri1024 || "/images/no-photo.png";
             setPhotoUrl(url);
+          } else {
+            console.warn(`[ListingPhoto] ${listingKey}: No photos in response`);
           }
+        } else {
+          console.warn(`[ListingPhoto] ${listingKey}: API returned ${res.status}`);
         }
       } catch (error) {
         console.error(`[ListingPhoto] Error fetching photo for ${listingKey}:`, error);
@@ -81,7 +140,7 @@ export default function ListingPhoto({
     };
 
     fetchPhoto();
-  }, [listingKey, mlsId, mlsSource]);
+  }, [listingKey, mlsId, mlsSource, session]);
 
   if (isLoading) {
     return (
@@ -91,11 +150,16 @@ export default function ListingPhoto({
     );
   }
 
-  // Fallback to placeholder icon if no photo
+  // Fallback to placeholder if no photo
   if (photoUrl === "/images/no-photo.png") {
     return (
-      <div className={`flex items-center justify-center bg-gray-700 ${className}`}>
-        <Home className="h-12 w-12 text-gray-500" />
+      <div className={`flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 ${className}`} style={{ minHeight: fill ? undefined : '280px' }}>
+        <div className="relative mb-4">
+          <Home className="h-32 w-32 text-slate-400 opacity-40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent" />
+        </div>
+        <p className="text-base text-slate-300 font-semibold">No Photo Available</p>
+        <p className="text-sm text-slate-500 mt-2 text-center px-4">Refreshing listing data...</p>
       </div>
     );
   }

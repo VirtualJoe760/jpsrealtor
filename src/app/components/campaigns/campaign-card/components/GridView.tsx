@@ -41,7 +41,7 @@ export function GridView({
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ scale: 1.02, y: -4 }}
       onClick={onClick}
-      className={`group relative ${cardBg} rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
+      className={`group relative ${cardBg} rounded-2xl border-2 transition-all cursor-pointer overflow-hidden m-2 ${
         isSelected
           ? `${isLight ? 'border-blue-500 shadow-2xl shadow-blue-500/20' : 'border-emerald-500 shadow-2xl shadow-emerald-500/20'}`
           : `${cardBorder} ${isLight ? 'hover:border-blue-300' : 'hover:border-emerald-700'} shadow-lg hover:shadow-xl`
