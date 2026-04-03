@@ -31,6 +31,11 @@ export async function GET(
     const listingQuery: any = {
       standardStatus: "Active",
       city: { $regex: new RegExp(`^${subdivision.city}$`, 'i') },
+      // Only residential sale properties (Type A: houses, condos, townhomes)
+      // Excludes: B=Rentals, C=Multifamily, D=Land
+      propertyType: "A",
+      // Exclude Co-Ownership properties (fractional ownership/timeshares)
+      propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };
 
     // If it's not a "Non-HOA" subdivision, also filter by subdivision name

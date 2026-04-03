@@ -21,6 +21,9 @@ export async function GET(
     const sortParam = searchParams.get("sort") || "auto";
     const skipStats = searchParams.get("skipStats") === "true"; // Skip expensive stats aggregations for pagination
 
+    // Property type filter (A=Sale, B=Rental, null=All)
+    const propertyTypeParam = searchParams.get("propertyType") || "A"; // Default to residential sale
+
     // Subdivision group support - comma-separated list of subdivision names
     const groupParam = searchParams.get("group");
 
@@ -68,12 +71,15 @@ export async function GET(
     // Build query for listings - unified collection
     const baseQuery: any = {
       standardStatus: "Active",
-      // Only residential properties (Type A: houses, condos, townhomes)
-      // Excludes: B=Rentals, C=Multifamily, D=Land
-      propertyType: "A",
       // Exclude Co-Ownership properties (fractional ownership/timeshares)
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };
+
+    // Apply property type filter conditionally
+    // A=Residential Sale, B=Residential Lease (Rental), C=Multifamily, D=Land
+    if (propertyTypeParam && propertyTypeParam !== "all") {
+      baseQuery.propertyType = propertyTypeParam;
+    }
 
     // Handle subdivision group (multiple subdivisions like "BDCC Bellissimo, BDCC Castle, ...")
     if (groupParam) {
