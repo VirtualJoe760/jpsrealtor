@@ -22,6 +22,7 @@ import {
   Map,
   Briefcase,
   Users,
+  MapPin,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useSidebar } from "./SidebarContext";
@@ -98,9 +99,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   };
 
   const menuItems = [
-    { label: "Chat", icon: MessageSquare, action: "chat" }, // Special action for chat toggle
-    { label: "Map", icon: Map, action: "map" }, // Special action for map toggle
     { label: "Home", icon: Home, href: "/" },
+    { label: "Chat", icon: MessageSquare, action: "chat" },
+    { label: "Map", icon: Map, action: "map" },
+    { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 
   const dashboardItems = [
@@ -243,31 +245,46 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                   Loading...
                 </div>
               ) : session ? (
-                dashboardItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  const Icon = item.icon;
+                <>
+                  {dashboardItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    const Icon = item.icon;
 
-                  return (
-                    <motion.button
-                      key={item.label}
-                      onClick={() => handleNavigate(item.href)}
-                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
-                        isActive
-                          ? isLight
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-purple-600/10 text-purple-400"
-                          : isLight
-                            ? "text-gray-600 hover:bg-gray-50"
-                            : "text-neutral-400 hover:bg-neutral-800/50"
-                      }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">{item.label}</span>
-                    </motion.button>
-                  );
-                })
+                    return (
+                      <motion.button
+                        key={item.label}
+                        onClick={() => handleNavigate(item.href)}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                          isActive
+                            ? isLight
+                              ? "bg-blue-50 text-blue-600"
+                              : "bg-purple-600/10 text-purple-400"
+                            : isLight
+                              ? "text-gray-600 hover:bg-gray-50"
+                              : "text-neutral-400 hover:bg-neutral-800/50"
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">{item.label}</span>
+                      </motion.button>
+                    );
+                  })}
+                  <motion.button
+                    onClick={handleSignOut}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
+                      isLight
+                        ? "text-red-500 hover:bg-red-50"
+                        : "text-red-400 hover:bg-red-900/20"
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium">Sign Out</span>
+                  </motion.button>
+                </>
               ) : (
                 <div className={`px-4 py-2 text-sm ${isLight ? "text-gray-600" : "text-neutral-400"}`}>
                   Please sign in to access dashboard features
@@ -318,6 +335,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             </motion.button>
           );
         })}
+
       </nav>
 
       {/* Footer - extra padding on mobile for safe area */}

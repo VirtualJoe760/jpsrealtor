@@ -55,29 +55,24 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
             {isMobile ? (
               /* Mobile Skeleton */
               <div className="relative z-10 h-full flex flex-col">
-                {/* Skeleton headline and buttons - upper section */}
-                <div className="absolute left-0 right-0 px-6" style={{ top: '22%' }}>
-                  <div className="max-w-7xl w-full">
-                    {/* Skeleton headline */}
-                    <div className="space-y-4 mb-4">
-                      <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4"></div>
-                      <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3"></div>
-                    </div>
-
-                    {/* Skeleton buttons */}
-                    <div className="flex gap-3">
-                      <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
-                      <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
-                    </div>
+                {/* Skeleton headline and buttons */}
+                <div className="px-6 pt-10">
+                  <div className="space-y-4 mb-4">
+                    <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4"></div>
+                    <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3"></div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
+                    <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
                   </div>
                 </div>
 
-                {/* Skeleton business card at bottom left */}
-                <div className="absolute left-0 px-6" style={{ top: '58%' }}>
+                {/* Skeleton bottom: business card left */}
+                <div className="mt-auto flex items-end pb-16 px-6">
                   <div className="flex flex-col gap-1">
                     <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
-                    <div className="w-16 h-0.5 bg-gray-300 dark:bg-gray-700 my-0.5"></div>
+                    <div className="w-12 h-0.5 bg-gray-300 dark:bg-gray-700 my-0.5"></div>
                     <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-28"></div>
                     <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
                   </div>
@@ -130,7 +125,7 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   };
 
   const handleMapSearch = () => {
-    router.push("/map");
+    router.push("/chap?view=map");
   };
 
   return (
@@ -140,7 +135,7 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
       {/* Container matching other sections */}
       <div className="w-full md:max-w-7xl md:mx-auto">
         <div
-          className="relative overflow-hidden rounded-none md:rounded-2xl h-[100vh] md:h-[70vh] transition-opacity duration-700"
+          className={`relative overflow-hidden rounded-none md:rounded-2xl transition-opacity duration-700 ${isMobile ? 'h-[65vh]' : 'h-[70vh]'}`}
           style={{
             minHeight: "500px",
             maxHeight: "none",
@@ -194,125 +189,115 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                 </div>
               )}
 
-              {/* Headline and Buttons - Upper section */}
-              <div className="absolute left-0 right-0 px-6 z-10" style={{ top: '22%' }}>
-                <div className="max-w-7xl w-full">
-                  <h1
-                    className="text-3xl font-serif text-white mb-4 leading-tight transition-opacity duration-700"
-                    style={{
-                      fontFamily: 'Georgia, serif',
-                      opacity: imageLoaded || !heroImage ? 1 : 0,
-                      textShadow: '2px 2px 12px rgba(0,0,0,0.9)'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: heroHeadline }}
-                  />
+              {/* Top section: Headline + Buttons - centered in top half */}
+              <div
+                className="flex-1 flex flex-col justify-center px-6 pt-12 z-10 transition-opacity duration-700"
+                style={{ opacity: imageLoaded || !heroImage ? 1 : 0, maxHeight: '50%' }}
+              >
+                <h1
+                  className="text-3xl font-serif text-white mb-4 leading-tight"
+                  style={{
+                    fontFamily: 'Georgia, serif',
+                    textShadow: '2px 2px 12px rgba(0,0,0,0.9)'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: heroHeadline }}
+                />
 
-                  {/* CTA Buttons - Chat/Create Account and Map Search */}
-                  <div
-                    className="flex gap-3 transition-opacity duration-700"
-                    style={{ opacity: imageLoaded || !heroImage ? 1 : 0 }}
-                  >
-                    {session ? (
-                      <button
-                        onClick={handleChat}
-                        className={`group flex-1 px-6 py-3 backdrop-blur-sm border-2 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
-                          isLight
-                            ? "bg-blue-600/90 hover:bg-blue-700/90 border-blue-500/50"
-                            : "bg-emerald-600/90 hover:bg-emerald-700/90 border-emerald-500/50"
-                        }`}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Chat</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleCreateAccount}
-                        className={`group flex-1 px-6 py-3 backdrop-blur-sm border-2 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
-                          isLight
-                            ? "bg-blue-600/90 hover:bg-blue-700/90 border-blue-500/50"
-                            : "bg-emerald-600/90 hover:bg-emerald-700/90 border-emerald-500/50"
-                        }`}
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>Create Free Account</span>
-                      </button>
-                    )}
-
+                {/* CTA Buttons */}
+                <div className="flex gap-3">
+                  {session ? (
                     <button
-                      onClick={handleMapSearch}
-                      className="group flex-1 px-6 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/30 hover:bg-white/20 hover:border-white/50 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg"
+                      onClick={handleChat}
+                      className={`group flex-1 px-6 py-3 backdrop-blur-sm border-2 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
+                        isLight
+                          ? "bg-blue-600/90 hover:bg-blue-700/90 border-blue-500/50"
+                          : "bg-emerald-600/90 hover:bg-emerald-700/90 border-emerald-500/50"
+                      }`}
                     >
-                      <Search className="w-4 h-4" />
-                      <span>Map Search</span>
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Chat</span>
                     </button>
+                  ) : (
+                    <button
+                      onClick={handleCreateAccount}
+                      className={`group flex-1 px-6 py-3 backdrop-blur-sm border-2 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
+                        isLight
+                          ? "bg-blue-600/90 hover:bg-blue-700/90 border-blue-500/50"
+                          : "bg-emerald-600/90 hover:bg-emerald-700/90 border-emerald-500/50"
+                      }`}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Create Free Account</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleMapSearch}
+                    className="group flex-1 px-6 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/30 hover:bg-white/20 hover:border-white/50 text-white text-sm font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>Map Search</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom section: Business card left + Headshot right */}
+              <div className="mt-auto flex items-end pb-16">
+                {/* Business Card - Left side */}
+                <div
+                  className="px-6 z-30 transition-opacity duration-700 flex-shrink-0"
+                  style={{ opacity: imageLoaded || !heroImage ? 1 : 0, maxWidth: '55%' }}
+                >
+                  <div className="flex flex-col gap-1.5 text-white">
+                    {agentProfile?.name && (
+                      <div className="text-lg font-bold tracking-wide" style={{ textShadow: '1px 1px 8px rgba(0,0,0,0.8)' }}>
+                        {agentProfile.name}
+                      </div>
+                    )}
+                    {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
+                      <div className="text-sm font-medium opacity-90" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
+                        {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
+                      </div>
+                    )}
+                    <div className="w-14 h-0.5 bg-white/50 my-0.5"></div>
+                    {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
+                      <div className="text-sm font-medium" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
+                        DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
+                      </div>
+                    )}
+                    {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
+                      <div className="flex items-center gap-1.5 text-sm" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
+                      </div>
+                    )}
+                    {agentProfile?.email && (
+                      <div className="text-sm" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>{agentProfile.email}</div>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* Business Card at Bottom Left - Top aligned with headshot eyes */}
-              <div
-                className="absolute left-0 px-6 z-30 transition-opacity duration-700"
-                style={{
-                  top: '64%',
-                  opacity: imageLoaded || !heroImage ? 1 : 0
-                }}
-              >
-                <div className="flex flex-col gap-1 text-white">
-                  {agentProfile?.name && (
-                    <div className="text-lg font-bold tracking-wide">
-                      {agentProfile.name}
-                    </div>
-                  )}
-                  {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
-                    <div className="text-sm font-medium opacity-90">
-                      {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
-                    </div>
-                  )}
-                  <div className="w-16 h-0.5 bg-white/50 my-0.5"></div>
-                  {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
-                    <div className="text-xs font-medium">
-                      DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
-                    </div>
-                  )}
-                  {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Phone className="w-3 h-3" />
-                      <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
-                    </div>
-                  )}
-                  {agentProfile?.email && (
-                    <div className="text-xs">{agentProfile.email}</div>
-                  )}
-                </div>
+                {/* Headshot - Bottom right */}
+                {(agentProfile?.agentProfile?.headshot || agentProfile?.agentProfile?.profilePhoto) && (
+                  <div
+                    className="flex-1 flex justify-end pointer-events-none z-20 overflow-hidden"
+                    style={{ height: '35vh', marginBottom: '-64px', marginRight: '-8px' }}
+                  >
+                    {!headshotLoaded && (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 animate-pulse" />
+                    )}
+                    <img
+                      src={agentProfile.agentProfile.headshot || agentProfile.agentProfile.profilePhoto}
+                      alt={agentProfile.name}
+                      className={`h-full w-auto object-contain transition-opacity duration-1000 ${
+                        headshotLoaded ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{ objectPosition: "right bottom" }}
+                      onLoad={() => setHeadshotLoaded(true)}
+                    />
+                  </div>
+                )}
               </div>
-
-              {/* Large Headshot - Right side showing full shoulders, overlapping buttons */}
-              {(agentProfile?.agentProfile?.headshot || agentProfile?.agentProfile?.profilePhoto) && (
-                <div
-                  className="absolute bottom-0 overflow-hidden pointer-events-none z-20"
-                  style={{
-                    right: '-8%',
-                    height: "62%",
-                    width: '75%'
-                  }}
-                >
-                  {!headshotLoaded && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 animate-pulse" />
-                  )}
-                  <img
-                    src={agentProfile.agentProfile.headshot || agentProfile.agentProfile.profilePhoto}
-                    alt={agentProfile.name}
-                    className={`h-full w-auto object-contain transition-opacity duration-1000 ${
-                      headshotLoaded ? 'opacity-100' : 'opacity-0'
-                    }`}
-                    style={{
-                      objectPosition: "right bottom",
-                      marginLeft: 'auto'
-                    }}
-                    onLoad={() => setHeadshotLoaded(true)}
-                  />
-                </div>
-              )}
             </div>
           ) : (
             /* ============================================
@@ -331,7 +316,7 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
               )}
 
               {/* Headline, Buttons, and Business Card - stacked with spacing */}
-              <div className="flex-1 flex flex-col justify-end w-full pb-10">
+              <div className="flex-1 flex flex-col justify-center w-full">
                 <div className="px-12 lg:px-16 xl:px-24 max-w-7xl w-full">
                   <h1
                     className="text-5xl lg:text-6xl xl:text-7xl font-serif text-white mb-8 leading-tight transition-opacity duration-700"
@@ -383,34 +368,37 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                     </button>
                   </div>
 
-                  {/* Business Card - inline below buttons */}
-                  <div className="flex flex-col gap-1 text-white mt-6" style={{ maxWidth: '350px' }}>
-                    {agentProfile?.name && (
-                      <div className="text-xl font-bold tracking-wide">
-                        {agentProfile.name}
-                      </div>
-                    )}
-                    {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
-                      <div className="text-sm font-medium opacity-90">
-                        {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
-                      </div>
-                    )}
-                    <div className="w-16 h-0.5 bg-white/50 my-1"></div>
-                    {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
-                      <div className="text-xs font-medium">
-                        DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
-                      </div>
-                    )}
-                    {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
-                      </div>
-                    )}
-                    {agentProfile?.email && (
-                      <div className="text-xs opacity-80">{agentProfile.email}</div>
-                    )}
-                  </div>
+                </div>
+              </div>
+
+              {/* Business Card - absolute bottom-left, large screens only */}
+              <div className="absolute bottom-0 left-0 pb-8 px-12 lg:px-16 xl:px-24 z-30">
+                <div className="flex flex-col gap-1.5 text-white" style={{ maxWidth: '400px' }}>
+                  {agentProfile?.name && (
+                    <div className="text-2xl font-bold tracking-wide">
+                      {agentProfile.name}
+                    </div>
+                  )}
+                  {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
+                    <div className="text-base font-medium opacity-90">
+                      {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
+                    </div>
+                  )}
+                  <div className="w-20 h-0.5 bg-white/50 my-1"></div>
+                  {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
+                    <div className="text-sm font-medium">
+                      DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
+                    </div>
+                  )}
+                  {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4" />
+                      <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
+                    </div>
+                  )}
+                  {agentProfile?.email && (
+                    <div className="text-sm opacity-80">{agentProfile.email}</div>
+                  )}
                 </div>
               </div>
 
