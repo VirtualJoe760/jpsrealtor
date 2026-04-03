@@ -96,10 +96,10 @@ export const themes: Record<ThemeName, Theme> = {
       hoverBg: "rgba(55, 65, 81, 0.5)",
       activeBg: "rgba(75, 85, 99, 0.5)",
 
-      // Shadows - Deep and dramatic
-      shadowSm: "0 1px 2px 0 rgba(0, 0, 0, 0.5)",
-      shadowMd: "0 4px 6px -1px rgba(0, 0, 0, 0.5)",
-      shadowLg: "0 10px 15px -3px rgba(0, 0, 0, 0.7)",
+      // Shadows - Prominent for contrast against lighter background
+      shadowSm: "0 2px 4px 0 rgba(0, 0, 0, 0.4)",
+      shadowMd: "0 6px 12px -2px rgba(0, 0, 0, 0.5)",
+      shadowLg: "0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4)",
     },
   },
 
@@ -199,9 +199,11 @@ export function getThemeClasses(themeName: ThemeName) {
       ? "bg-gray-200 hover:bg-gray-300 text-gray-900"
       : "bg-gray-800/70 hover:bg-gray-700/70 text-white border border-gray-700",
 
-    // Shadows
-    shadow: isLight ? "shadow-lg" : "shadow-2xl",
-    shadowSm: isLight ? "shadow-sm" : "shadow-md",
+    // Shadows - More prominent in dark mode for contrast
+    shadow: isLight ? "shadow-lg" : "shadow-2xl shadow-black/40",
+    shadowSm: isLight ? "shadow-sm" : "shadow-lg shadow-black/30",
+    shadowMd: isLight ? "shadow-md" : "shadow-xl shadow-black/40",
+    shadowLg: isLight ? "shadow-xl" : "shadow-2xl shadow-black/50",
 
     // Interactive states
     hover: isLight ? "hover:bg-gray-100" : "hover:bg-gray-800",

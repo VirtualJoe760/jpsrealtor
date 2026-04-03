@@ -454,6 +454,22 @@ html.theme-blackspace *::-webkit-scrollbar-corner {
   scrollbar-width: none !important;
 }
 
+/* Hide scrollbar on mobile devices */
+@media (max-width: 768px) {
+  body::-webkit-scrollbar,
+  html::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  body,
+  html {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+}
+
 /* Custom styled scrollbar for listing panel */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
