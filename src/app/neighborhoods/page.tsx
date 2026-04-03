@@ -328,9 +328,12 @@ export default function NeighborhoodsPage() {
                         className={`${countyIndex > 0 && 'border-t'} ${isLight ? 'border-gray-100' : 'border-gray-750'}`}
                       >
                         {/* County Header */}
-                        <button
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={() => toggleCounty(county.slug)}
-                          className={`w-full px-6 py-5 pl-16 flex items-center justify-between transition-colors ${
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCounty(county.slug); } }}
+                          className={`w-full px-6 py-5 pl-16 flex items-center justify-between transition-colors cursor-pointer ${
                             isLight ? 'hover:bg-blue-50/50' : 'hover:bg-blue-900/10'
                           }`}
                         >
@@ -367,7 +370,7 @@ export default function NeighborhoodsPage() {
                               <ChevronRightIcon className={`w-5 h-5 ${textSecondary}`} />
                             )}
                           </div>
-                        </button>
+                        </div>
 
                         {/* Cities List */}
                         <AnimatePresence>
@@ -382,9 +385,12 @@ export default function NeighborhoodsPage() {
                               {county.cities.map((city, cityIndex) => (
                                 <div key={city.slug} className={`${cityIndex > 0 && 'border-t'} ${isLight ? 'border-gray-50' : 'border-gray-800'}`}>
                                   {/* City Header */}
-                                  <button
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => toggleCity(city.slug)}
-                                    className={`w-full px-6 py-4 pl-24 flex items-center justify-between transition-colors ${
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCity(city.slug); } }}
+                                    className={`w-full px-6 py-4 pl-24 flex items-center justify-between transition-colors cursor-pointer ${
                                       isLight ? 'hover:bg-emerald-50/50' : 'hover:bg-emerald-900/10'
                                     }`}
                                   >
@@ -424,7 +430,7 @@ export default function NeighborhoodsPage() {
                                         )
                                       )}
                                     </div>
-                                  </button>
+                                  </div>
 
                                   {/* Subdivisions List */}
                                   <AnimatePresence>

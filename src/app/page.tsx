@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { BookOpen, MessageCircle, LayoutGrid, List } from "lucide-react";
+import { BookOpen, MessageCircle, LayoutGrid, List, Sparkles, MapPin, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
@@ -16,6 +17,7 @@ import InsightsCTABanner from "@/app/components/insights/InsightsCTABanner";
 import FaveSpot from "@/app/components/insights/FaveSpot";
 import CommunitySpotlight from "@/app/components/insights/CommunitySpotlight";
 import AgentHero from "@/app/components/insights/AgentHero";
+import AccountBentoGrid from "@/app/components/insights/AccountBentoGrid";
 
 interface Article {
   title: string;
@@ -67,7 +69,7 @@ const InsightsPage = () => {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const articlesPerPage = 5;
+  const articlesPerPage = 6;
   const [bannerImage, setBannerImage] = useState<string | undefined>(undefined);
   const [agentProfile, setAgentProfile] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -239,7 +241,7 @@ const InsightsPage = () => {
         <AgentHero agentProfile={agentProfile} />
       )}
 
-        <div className="min-h-screen pt-12 md:pt-16 pb-6 md:pb-12 px-4">
+        <div className="min-h-screen pt-4 md:pt-6 pb-6 md:pb-12 px-4">
           <div className="max-w-7xl mx-auto">
 
           {/* Community Spotlight - Show listings from favorite subdivision/city */}
@@ -247,6 +249,56 @@ const InsightsPage = () => {
 
           {/* Favorites Spotlight - Only show for logged-in users */}
           <FaveSpot className="mb-6 md:mb-8" />
+
+          {/* Guest CTA Banner */}
+          {status !== "loading" && !session && (
+            <div className={`rounded-2xl overflow-hidden mb-6 md:mb-8 border ${
+              isLight
+                ? "bg-gradient-to-br from-slate-50 to-white border-slate-200"
+                : "bg-gradient-to-br from-gray-900/80 to-gray-950/80 border-gray-800"
+            }`}>
+              <div className="px-6 py-12 sm:py-16 lg:px-8">
+                <div className="mx-auto max-w-2xl text-center">
+                  <h2 className={`text-3xl font-semibold tracking-tight text-balance sm:text-4xl ${
+                    isLight ? "text-slate-900" : "text-white"
+                  }`}>
+                    Find Your Next Property
+                  </h2>
+                  <p className={`mx-auto mt-4 max-w-xl text-base/7 text-pretty ${
+                    isLight ? "text-slate-600" : "text-gray-400"
+                  }`}>
+                    Search thousands of listings across California — from the Bay Area to the Coachella Valley. Use our AI-powered search to describe exactly what you&apos;re looking for, or browse the neighborhoods portal to explore local communities and narrow down your results.
+                  </p>
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-x-6">
+                    <Link
+                      href="/chap"
+                      className="inline-flex items-center gap-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white px-5 py-3 text-sm font-semibold shadow-sm transition-colors"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      AI Property Search
+                    </Link>
+                    <Link
+                      href="/neighborhoods"
+                      className={`group inline-flex items-center gap-1 text-sm font-semibold transition-colors ${
+                        isLight
+                          ? "text-slate-700 hover:text-slate-900"
+                          : "text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Explore Neighborhoods
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account Benefits Bento - Only for guests */}
+          {status !== "loading" && !session && (
+            <AccountBentoGrid />
+          )}
 
           {/* CTA Banner - Show for all users */}
           <div className="mb-6 md:mb-8">
