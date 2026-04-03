@@ -330,11 +330,11 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                 </div>
               )}
 
-              {/* Headline and Buttons - Centered */}
-              <div className="flex-1 flex flex-col justify-center w-full">
+              {/* Headline, Buttons, and Business Card - stacked with spacing */}
+              <div className="flex-1 flex flex-col justify-end w-full pb-10">
                 <div className="px-12 lg:px-16 xl:px-24 max-w-7xl w-full">
                   <h1
-                    className="text-6xl lg:text-7xl font-serif text-white mb-12 leading-tight transition-opacity duration-700"
+                    className="text-5xl lg:text-6xl xl:text-7xl font-serif text-white mb-8 leading-tight transition-opacity duration-700"
                     style={{
                       fontFamily: 'Georgia, serif',
                       opacity: imageLoaded || !heroImage ? 1 : 0,
@@ -382,43 +382,35 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                       <span>Map Search</span>
                     </button>
                   </div>
-                </div>
-              </div>
 
-              {/* Business Card - Bottom Left */}
-              <div
-                className="absolute bottom-0 left-0 right-0 pb-12 px-12 lg:px-16 xl:px-24 z-20 transition-opacity duration-700 flex items-end"
-                style={{ opacity: imageLoaded || !heroImage ? 1 : 0 }}
-              >
-                <div
-                  className="flex flex-col gap-2 text-white pb-8"
-                  style={{ maxWidth: '350px' }}
-                >
-                  {agentProfile?.name && (
-                    <div className="text-2xl font-bold tracking-wide">
-                      {agentProfile.name}
-                    </div>
-                  )}
-                  {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
-                    <div className="text-lg font-medium opacity-90">
-                      {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
-                    </div>
-                  )}
-                  <div className="w-20 h-0.5 bg-white/50 my-1"></div>
-                  {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
-                    <div className="text-sm font-medium">
-                      DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
-                    </div>
-                  )}
-                  {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4" />
-                      <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
-                    </div>
-                  )}
-                  {agentProfile?.email && (
-                    <div className="text-sm">{agentProfile.email}</div>
-                  )}
+                  {/* Business Card - inline below buttons */}
+                  <div className="flex flex-col gap-1 text-white mt-6" style={{ maxWidth: '350px' }}>
+                    {agentProfile?.name && (
+                      <div className="text-xl font-bold tracking-wide">
+                        {agentProfile.name}
+                      </div>
+                    )}
+                    {(agentProfile?.brokerageName || agentProfile?.agentProfile?.brokerageName) && (
+                      <div className="text-sm font-medium opacity-90">
+                        {agentProfile.brokerageName || agentProfile.agentProfile.brokerageName}
+                      </div>
+                    )}
+                    <div className="w-16 h-0.5 bg-white/50 my-1"></div>
+                    {(agentProfile?.licenseNumber || agentProfile?.agentProfile?.licenseNumber) && (
+                      <div className="text-xs font-medium">
+                        DRE# {agentProfile.licenseNumber || agentProfile.agentProfile.licenseNumber}
+                      </div>
+                    )}
+                    {(agentProfile?.phone || agentProfile?.agentProfile?.phone) && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{agentProfile.phone || agentProfile.agentProfile.phone}</span>
+                      </div>
+                    )}
+                    {agentProfile?.email && (
+                      <div className="text-xs opacity-80">{agentProfile.email}</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
