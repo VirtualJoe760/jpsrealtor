@@ -245,13 +245,13 @@ const InsightsPage = () => {
           {/* Community Spotlight - Show listings from favorite subdivision/city */}
           <CommunitySpotlight />
 
+          {/* Buyer & Seller Guide Cards */}
+          <div className="mb-6 md:mb-8">
+            <InsightsCTABanner />
+          </div>
+
           {/* Favorites Spotlight - Only show for logged-in users */}
           <FaveSpot className="mb-6 md:mb-8" />
-
-          {/* CTA Banner - Show for all users */}
-          <div className="mb-6 md:mb-8">
-            <InsightsCTABanner backgroundImage={bannerImage} />
-          </div>
 
         {/* Market Stats */}
         <div className="mb-6 md:mb-8">
