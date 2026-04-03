@@ -164,6 +164,7 @@ export async function GET(
     const apiResponse = {
       listingKey,
       mlsSource,
+      mlsId, // Include mlsId so client can detect if it changed
       count: photos.length,
       photos,
     };
