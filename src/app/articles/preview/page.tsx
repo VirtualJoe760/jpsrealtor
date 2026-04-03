@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
-import LandingPagePreview from "./LandingPagePreview";
+import LandingPagePreview from "../LandingPagePreview";
 
 function PreviewContent() {
   const searchParams = useSearchParams();
