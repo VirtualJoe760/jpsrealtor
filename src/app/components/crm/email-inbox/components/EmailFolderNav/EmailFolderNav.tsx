@@ -74,15 +74,16 @@ export function EmailFolderNav({
   };
 
   return (
-    <div className={`${bgClass} border-r ${borderClass} w-64 md:w-56 flex-shrink-0 overflow-y-auto h-full ${
+    <div className={`${bgClass} border-b ${borderClass} w-full flex-shrink-0 ${
       isLight ? 'bg-white' : 'bg-gray-900'
     }`}>
       <div className="p-3">
-        <h3 className={`${textClass} font-semibold mb-2 text-xs uppercase tracking-wide px-2`}>
-          Folders
-        </h3>
+        <div className="flex items-center gap-4">
+          <h3 className={`${textClass} font-semibold text-xs uppercase tracking-wide flex-shrink-0`}>
+            Folders
+          </h3>
 
-        <div className="space-y-0.5">
+        <div className="flex items-center gap-2 flex-wrap">
           {EMAIL_FOLDERS.map((folder) => {
             const Icon = folder.icon;
             const isActive = activeFolder === folder.id;
@@ -91,7 +92,7 @@ export function EmailFolderNav({
             const showSubfolders = hasSubfolders(folder.id);
 
             return (
-              <div key={folder.id}>
+              <div key={folder.id} className="flex items-center gap-1">
                 <button
                   onClick={() => {
                     onFolderChange(folder.id);
@@ -99,34 +100,28 @@ export function EmailFolderNav({
                       toggleFolder(folder.id);
                     }
                   }}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors whitespace-nowrap ${
                     isActive && (!showSubfolders || (folder.id === 'sent' && !sentSubfolder))
                       ? activeBgClass
                       : `${textClass} ${hoverClass}`
                   }`}
                 >
+                  <Icon size={16} />
+                  <span className="font-medium">{folder.label}</span>
                   {showSubfolders && (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFolder(folder.id);
-                      }}
-                      className="flex-shrink-0 cursor-pointer"
-                    >
+                    <span className="flex-shrink-0">
                       {isExpanded ? (
-                        <ChevronDown size={14} className={textClass} />
+                        <ChevronDown size={14} />
                       ) : (
-                        <ChevronRight size={14} className={textClass} />
+                        <ChevronRight size={14} />
                       )}
                     </span>
                   )}
-                  <Icon size={16} />
-                  <span className="font-medium">{folder.label}</span>
                 </button>
 
                 {/* Subfolders */}
                 {showSubfolders && isExpanded && (
-                  <div className="ml-5 mt-0.5 space-y-0.5">
+                  <div className="flex items-center gap-1">
                     {subfolders.map((sub) => {
                       let isSubActive = false;
 
@@ -147,7 +142,7 @@ export function EmailFolderNav({
                               onFolderChange(folder.id);
                             }
                           }}
-                          className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${
+                          className={`px-2 py-1 rounded text-xs transition-colors whitespace-nowrap ${
                             isSubActive
                               ? activeBgClass
                               : `${mutedClass} ${hoverClass}`
@@ -162,6 +157,7 @@ export function EmailFolderNav({
               </div>
             );
           })}
+        </div>
         </div>
       </div>
     </div>

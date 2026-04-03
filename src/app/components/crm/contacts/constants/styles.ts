@@ -9,15 +9,15 @@ import { ContactStatus } from '../types/enums';
 export const CARD_STYLES = {
   light: {
     base: 'bg-white/30',
-    shadow: 'shadow-2xl',
-    hoverShadow: 'hover:shadow-2xl',
+    shadow: 'shadow-lg',
+    hoverShadow: 'hover:shadow-xl',
     hoverTransform: 'hover:-translate-y-0.5',
   },
   dark: {
     base: 'bg-neutral-900/30',
-    shadow: '',
-    hoverShadow: '',
-    hoverTransform: '',
+    shadow: 'shadow-lg shadow-blue-500/20',
+    hoverShadow: 'hover:shadow-xl hover:shadow-blue-500/30',
+    hoverTransform: 'hover:-translate-y-0.5',
   }
 } as const;
 

@@ -37,9 +37,9 @@ export function EmailDetail({
   const senderEmail = getSenderEmail(email);
   const formattedDate = formatEmailDate(email.created_at);
 
-  const bgClass = isLight ? 'bg-gray-50' : 'bg-gray-800';
-  const textClass = isLight ? 'text-gray-900' : 'text-white';
-  const mutedClass = isLight ? 'text-gray-600' : 'text-gray-400';
+  const bgClass = isLight ? 'bg-gray-50' : 'bg-gray-800/50';
+  const textClass = isLight ? 'text-gray-900' : 'text-gray-100';
+  const mutedClass = isLight ? 'text-gray-600' : 'text-gray-300';
   const borderClass = isLight ? 'border-gray-200' : 'border-gray-700';
 
   return (
@@ -161,7 +161,10 @@ export function EmailDetail({
       ) : (
         <>
           <div
-            className={`${textClass} prose prose-sm max-w-none`}
+            className={`prose prose-sm max-w-none ${
+              isLight ? 'prose-gray' : 'prose-invert'
+            }`}
+            style={isLight ? {} : { color: '#e5e7eb' }}
             dangerouslySetInnerHTML={{ __html: content }}
           />
 
