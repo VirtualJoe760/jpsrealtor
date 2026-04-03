@@ -6,6 +6,63 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
 
+// Cloudinary asset fields in agentProfile that store URLs
+const CLOUDINARY_PHOTO_FIELDS = [
+  "profilePhoto", "headshot", "coverPhoto", "heroImage", "heroPhoto",
+  "insightsBannerImage", "teamLogo", "teamPhoto", "officePhoto",
+] as const;
+
+/**
+ * Extract Cloudinary public_id from a URL for deletion
+ * e.g. "https://res.cloudinary.com/duqgao9h8/image/upload/v123/jpsrealtor/agents/abc.jpg"
+ * → "jpsrealtor/agents/abc"
+ */
+function extractCloudinaryPublicId(url: string): string | null {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Delete an asset from Cloudinary by public_id
+ */
+async function deleteCloudinaryAsset(publicId: string): Promise<boolean> {
+  const cloudName = "duqgao9h8";
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!apiKey || !apiSecret) {
+    console.warn("⚠️ [Cloudinary] Missing API_KEY or API_SECRET — cannot delete old assets");
+    return false;
+  }
+
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const crypto = require("crypto");
+    const signature = crypto.createHash("sha1")
+      .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
+      .digest("hex");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_id: publicId, timestamp, api_key: apiKey, signature }),
+    });
+
+    const data = await res.json();
+    if (data.result === "ok") {
+      console.log(`🗑️ [Cloudinary] Deleted old asset: ${publicId}`);
+      return true;
+    } else {
+      console.warn(`⚠️ [Cloudinary] Delete failed for ${publicId}:`, data);
+      return false;
+    }
+  } catch (err) {
+    console.error(`❌ [Cloudinary] Error deleting ${publicId}:`, err);
+    return false;
+  }
+}
+
 // Ensure Team model is registered
 const ensureModelsLoaded = () => {
   Team; // Reference to ensure the model is loaded
@@ -107,21 +164,36 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update basic fields
-    if (name !== undefined) user.name = name;
-    if (phone !== undefined) user.phone = phone;
-    if (birthday !== undefined) user.birthday = birthday ? new Date(birthday) : undefined;
+    console.log(`\n📝 ═══════════════════════════════════════`);
+    console.log(`📝 [PROFILE UPDATE] ${session.user.email}`);
+    console.log(`📝 ═══════════════════════════════════════`);
+
+    // Log basic field changes
+    const basicChanges: string[] = [];
+    if (name !== undefined && name !== user.name) { basicChanges.push(`name: "${user.name}" → "${name}"`); user.name = name; }
+    else if (name !== undefined) user.name = name;
+    if (phone !== undefined && phone !== user.phone) { basicChanges.push(`phone: "${user.phone}" → "${phone}"`); user.phone = phone; }
+    else if (phone !== undefined) user.phone = phone;
+    if (birthday !== undefined) { user.birthday = birthday ? new Date(birthday) : undefined; }
     if (profileDescription !== undefined) user.profileDescription = profileDescription;
     if (realEstateGoals !== undefined) user.realEstateGoals = realEstateGoals;
     if (currentAddress !== undefined) user.currentAddress = currentAddress;
     if (homeownerStatus !== undefined) user.homeownerStatus = homeownerStatus;
-    if (image !== undefined) user.image = image;
-    if (brokerageName !== undefined) user.brokerageName = brokerageName;
-    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+    if (image !== undefined && image !== user.image) { basicChanges.push(`image: updated`); user.image = image; }
+    else if (image !== undefined) user.image = image;
+    if (brokerageName !== undefined && brokerageName !== user.brokerageName) { basicChanges.push(`brokerageName: "${user.brokerageName}" → "${brokerageName}"`); user.brokerageName = brokerageName; }
+    else if (brokerageName !== undefined) user.brokerageName = brokerageName;
+    if (licenseNumber !== undefined && licenseNumber !== user.licenseNumber) { basicChanges.push(`licenseNumber: "${user.licenseNumber}" → "${licenseNumber}"`); user.licenseNumber = licenseNumber; }
+    else if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+
+    if (basicChanges.length > 0) {
+      console.log(`📝 [PROFILE UPDATE] Basic field changes:`);
+      basicChanges.forEach(c => console.log(`   • ${c}`));
+    }
 
     // MULTI-TENANT: Update agentProfile fields (deep merge)
     if (agentProfile !== undefined) {
-      console.log('🔍 [PROFILE UPDATE] Incoming agentProfile:', JSON.stringify(agentProfile, null, 2));
+      console.log(`📝 [PROFILE UPDATE] agentProfile update received`);
 
       // Initialize agentProfile if it doesn't exist
       if (!user.agentProfile) {
@@ -168,11 +240,42 @@ export async function PUT(request: NextRequest) {
         return output;
       };
 
+      // Detect photo field changes and delete old Cloudinary assets
+      for (const field of CLOUDINARY_PHOTO_FIELDS) {
+        const oldUrl = cleanedExisting?.[field] as string | undefined;
+        const newUrl = cleanedIncoming?.[field] as string | undefined;
+
+        if (newUrl && oldUrl && newUrl !== oldUrl) {
+          console.log(`🖼️ [PHOTO CHANGE] ${field}:`);
+          console.log(`   OLD: ${oldUrl}`);
+          console.log(`   NEW: ${newUrl}`);
+
+          // Delete old asset from Cloudinary
+          const oldPublicId = extractCloudinaryPublicId(oldUrl);
+          if (oldPublicId) {
+            console.log(`   🗑️ Deleting old Cloudinary asset: ${oldPublicId}`);
+            deleteCloudinaryAsset(oldPublicId); // Fire and forget
+          }
+        } else if (newUrl && !oldUrl) {
+          console.log(`🖼️ [PHOTO ADD] ${field}: ${newUrl}`);
+        }
+      }
+
+      // Log non-photo field changes
+      if (cleanedIncoming) {
+        for (const [key, value] of Object.entries(cleanedIncoming)) {
+          if (CLOUDINARY_PHOTO_FIELDS.includes(key as any)) continue; // Already logged above
+          if (typeof value === "object") continue; // Skip nested objects (logged separately)
+          const oldVal = cleanedExisting?.[key];
+          if (value !== oldVal) {
+            console.log(`   📝 agentProfile.${key}: "${oldVal || ''}" → "${value}"`);
+          }
+        }
+      }
+
       // Merge and set
       const mergedProfile = deepMerge(cleanedExisting || {}, cleanedIncoming || {});
       user.agentProfile = mergedProfile;
-
-      console.log('🔍 [PROFILE UPDATE] Merged agentProfile:', JSON.stringify(mergedProfile, null, 2));
 
       // Mark the field as modified for Mongoose
       user.markModified('agentProfile');
@@ -180,7 +283,8 @@ export async function PUT(request: NextRequest) {
 
     await user.save({ validateModifiedOnly: true });
 
-    console.log('✅ [PROFILE UPDATE] Saved to database. Final agentProfile:', JSON.stringify(user.agentProfile, null, 2));
+    console.log(`✅ [PROFILE UPDATE] Saved to DB for ${session.user.email}`);
+    console.log(`📝 ═══════════════════════════════════════\n`);
 
     // Populate team info for response
     await user.populate('team', 'name description');
