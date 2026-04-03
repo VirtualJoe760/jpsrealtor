@@ -31,7 +31,7 @@ export async function GET() {
         { 'photos.0': { $exists: true } }, // Must have at least one photo
       ]
     })
-      .select('listingKey address city listPrice photos unparsedAddress publicRemarks bedsTotal bathroomsTotalInteger livingArea')
+      .select('listingKey address city listPrice photos unparsedAddress publicRemarks bedsTotal bathroomsTotal livingArea')
       .sort({ modificationTimestamp: -1 })
       .limit(20) // Get up to 20 listings
       .lean();
@@ -47,7 +47,7 @@ export async function GET() {
         city: listing.city,
         price: listing.listPrice,
         beds: listing.bedsTotal,
-        baths: listing.bathroomsTotalInteger,
+        baths: listing.bathroomsTotal,
         sqft: listing.livingArea,
         description: listing.publicRemarks?.substring(0, 200) + '...',
         // Use highest quality available

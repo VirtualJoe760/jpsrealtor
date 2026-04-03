@@ -6,7 +6,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
 
 const DISLIKE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -106,18 +105,11 @@ export async function POST(request: NextRequest) {
 
         if (!alreadyLiked) {
           console.log(`  ➕ Adding LIKE: ${swipe.listingKey}`);
-
-          // Normalize subdivision name (converts "Not Applicable" to "{City} Non-HOA")
-          const normalizedSubdivision = normalizeSubdivisionName(
-            swipe.listingData?.subdivisionName,
-            swipe.listingData?.city || ''
-          );
-
           user.likedListings.push({
             listingKey: swipe.listingKey,
             listingData: swipe.listingData || {},
             swipedAt: new Date(swipe.timestamp),
-            subdivision: normalizedSubdivision,
+            subdivision: swipe.listingData?.subdivisionName,
             city: swipe.listingData?.city,
             county: swipe.listingData?.county, // NEW: Track county
             propertySubType: swipe.listingData?.propertySubType,
@@ -240,13 +232,10 @@ function calculateAnalytics(likedListings: any[]) {
 
   likedListings.forEach((listing) => {
     // Check both top-level and listingData for fields
-    const rawSubdivision = listing.subdivision || listing.listingData?.subdivisionName;
+    const subdivision = listing.subdivision || listing.listingData?.subdivisionName;
     const city = listing.city || listing.listingData?.city;
     const county = listing.county || listing.listingData?.county; // NEW
     const propertySubType = listing.propertySubType || listing.listingData?.propertySubType;
-
-    // Normalize subdivision name (handles legacy "Not Applicable" values)
-    const subdivision = city ? normalizeSubdivisionName(rawSubdivision, city) : rawSubdivision;
 
     if (subdivision) {
       subdivisionCounts[subdivision] = (subdivisionCounts[subdivision] || 0) + 1;

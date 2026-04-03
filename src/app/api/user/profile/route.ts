@@ -37,8 +37,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 [GET PROFILE] Returning agentProfile:', JSON.stringify(user.agentProfile, null, 2));
-
     return NextResponse.json({
       profile: {
         name: user.name,
@@ -121,66 +119,35 @@ export async function PUT(request: NextRequest) {
 
     // MULTI-TENANT: Update agentProfile fields (deep merge)
     if (agentProfile !== undefined) {
-      console.log('🔍 [PROFILE UPDATE] Incoming agentProfile:', JSON.stringify(agentProfile, null, 2));
-
       // Initialize agentProfile if it doesn't exist
       if (!user.agentProfile) {
         user.agentProfile = {} as any;
       }
 
-      console.log('🔍 [PROFILE UPDATE] Existing agentProfile before merge:', JSON.stringify(user.agentProfile, null, 2));
-
-      // Helper function to deeply remove undefined values
-      const removeUndefined = (obj: any): any => {
-        if (!obj || typeof obj !== 'object') return obj;
-        const cleaned: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-          if (value !== undefined) {
-            cleaned[key] = typeof value === 'object' && !Array.isArray(value)
-              ? removeUndefined(value)
-              : value;
-          }
-        }
-        return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+      // Deep merge agentProfile fields
+      user.agentProfile = {
+        ...user.agentProfile,
+        ...agentProfile,
+        // Handle nested objects separately to preserve existing data
+        customBackgrounds: agentProfile.customBackgrounds ? {
+          ...user.agentProfile.customBackgrounds,
+          ...agentProfile.customBackgrounds,
+        } : user.agentProfile.customBackgrounds,
+        socialMedia: agentProfile.socialMedia ? {
+          ...user.agentProfile.socialMedia,
+          ...agentProfile.socialMedia,
+        } : user.agentProfile.socialMedia,
+        brandColors: agentProfile.brandColors ? {
+          ...user.agentProfile.brandColors,
+          ...agentProfile.brandColors,
+        } : user.agentProfile.brandColors,
       };
-
-      // Get existing profile and clean it
-      const existingProfile = (user.agentProfile as any)?.toObject ? (user.agentProfile as any).toObject() : user.agentProfile;
-      const cleanedExisting = removeUndefined(existingProfile);
-
-      // Clean incoming profile
-      const cleanedIncoming = removeUndefined(agentProfile);
-
-      console.log('🔍 [PROFILE UPDATE] Cleaned incoming:', JSON.stringify(cleanedIncoming, null, 2));
-
-      // Deep merge function
-      const deepMerge = (target: any, source: any): any => {
-        const output = { ...target };
-        for (const key in source) {
-          if (source[key] !== undefined) {
-            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-              output[key] = deepMerge(output[key] || {}, source[key]);
-            } else {
-              output[key] = source[key];
-            }
-          }
-        }
-        return output;
-      };
-
-      // Merge and set
-      const mergedProfile = deepMerge(cleanedExisting || {}, cleanedIncoming || {});
-      user.agentProfile = mergedProfile;
-
-      console.log('🔍 [PROFILE UPDATE] Merged agentProfile:', JSON.stringify(mergedProfile, null, 2));
 
       // Mark the field as modified for Mongoose
       user.markModified('agentProfile');
     }
 
-    await user.save({ validateModifiedOnly: true });
-
-    console.log('✅ [PROFILE UPDATE] Saved to database. Final agentProfile:', JSON.stringify(user.agentProfile, null, 2));
+    await user.save();
 
     // Populate team info for response
     await user.populate('team', 'name description');
