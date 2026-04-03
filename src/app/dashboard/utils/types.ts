@@ -45,3 +45,18 @@ export interface RemovedListingsResult {
   removedListings: RemovedListing[];
   count: number;
 }
+
+export interface WatchedAddress {
+  originalListingKey: string;
+  address: string;
+  unparsedAddress: string;
+  city?: string;
+  county?: string;
+  subdivision?: string;
+  originalListingData: Record<string, any>;
+  removedAt: string;
+  lastChecked?: string;
+  notified: boolean;
+  reListedAt?: string;
+  newListingKey?: string;
+}

@@ -50,6 +50,19 @@ export default function FavoriteProperties({
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const mobileItemsPerPage = 5;
 
+  // Debug logging
+  console.log('[FavoriteProperties] Received props:', {
+    favoritesCount: favorites.length,
+    isLoadingFavorites,
+    isSyncing,
+    firstThree: favorites.slice(0, 3).map(f => ({
+      listingKey: f.listingKey,
+      address: f.address || f.unparsedAddress,
+      listPrice: f.listPrice,
+      mlsId: f.mlsId
+    }))
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -238,7 +251,7 @@ function DesktopFavorites({
                        hover:border-gray-600`}
           >
             {/* Image */}
-            <div className="relative h-48">
+            <div className="relative h-72">
               <ListingPhoto
                 listingKey={listing.listingKey}
                 mlsId={listing.mlsId}
@@ -290,14 +303,27 @@ function DesktopFavorites({
                 </p>
               )}
 
-              <Link
-                href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
-                className={`block w-full rounded-lg py-2 text-center text-sm text-white font-medium transition-colors ${
-                  isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
-                }`}
-              >
-                View Details
-              </Link>
+              {/* Check if listing is removed from market */}
+              {(listing as any)._missing ? (
+                <div
+                  className={`block w-full rounded-lg py-2 text-center text-sm font-medium ${
+                    isLight
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-gray-700 text-gray-400"
+                  }`}
+                >
+                  Listing Removed
+                </div>
+              ) : (
+                <Link
+                  href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
+                  className={`block w-full rounded-lg py-2 text-center text-sm text-white font-medium transition-colors ${
+                    isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  View Details
+                </Link>
+              )}
             </div>
           </div>
         );
@@ -412,7 +438,7 @@ function MobileFavorites({
                 <div
                   className={`border-t ${isLight ? "border-gray-300" : "border-gray-700"}`}
                 >
-                  <div className="relative h-48">
+                  <div className="relative h-64">
                     <ListingPhoto
                       listingKey={listing.listingKey}
                       mlsId={listing.mlsId}
@@ -468,16 +494,29 @@ function MobileFavorites({
                       </p>
                     )}
 
-                    <Link
-                      href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
-                      className={`block w-full text-center py-2 text-white font-medium rounded-lg transition-colors text-sm ${
-                        isLight
-                          ? "bg-blue-600 hover:bg-blue-700"
-                          : "bg-emerald-600 hover:bg-emerald-700"
-                      }`}
-                    >
-                      View Details
-                    </Link>
+                    {/* Check if listing is removed from market */}
+                    {(listing as any)._missing ? (
+                      <div
+                        className={`block w-full text-center py-2 font-medium rounded-lg text-sm ${
+                          isLight
+                            ? "bg-gray-300 text-gray-600"
+                            : "bg-gray-700 text-gray-400"
+                        }`}
+                      >
+                        Listing Removed
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/mls-listings/${listing.slugAddress || listing.listingKey}`}
+                        className={`block w-full text-center py-2 text-white font-medium rounded-lg transition-colors text-sm ${
+                          isLight
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                        }`}
+                      >
+                        View Details
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}

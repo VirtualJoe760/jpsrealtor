@@ -49,10 +49,22 @@ export default function DashboardPage() {
     removeFavorite,
     removeCommunity,
     bulkRemoveFavorites,
+    syncFavorites,
   } = useDashboardData(status);
 
   // Removed listings detection
   const { removedListingsResult, shouldShowModal, dismissModal } = useRemovedListings(favorites);
+
+  // Callback after moving to watched addresses - refresh favorites
+  const handleMoveToWatched = async () => {
+    console.log('[Dashboard] Refreshing favorites after moving to watched addresses');
+    await syncFavorites();
+  };
+
+  // Debug logging
+  console.log('[Dashboard] Rendering with favorites count:', favorites.length);
+  console.log('[Dashboard] isLoadingFavorites:', isLoadingFavorites);
+  console.log('[Dashboard] isSyncing:', isSyncing);
 
   // Auth redirect
   useEffect(() => {
@@ -76,6 +88,7 @@ export default function DashboardPage() {
         isOpen={shouldShowModal}
         removedListings={removedListingsResult.removedListings}
         onContinue={dismissModal}
+        onMoveToWatched={handleMoveToWatched}
         isLight={isLight}
         textPrimary={textPrimary}
         textSecondary={textSecondary}
@@ -139,11 +152,7 @@ export default function DashboardPage() {
 
           {/* Favorite Properties */}
           <FavoriteProperties
-            favorites={favorites.filter(
-              (f) =>
-                // Keep listings that have a photo OR have MLS info to fetch photo
-                f.primaryPhotoUrl || (f.mlsId && f.mlsSource)
-            )}
+            favorites={favorites}
             isLoadingFavorites={isLoadingFavorites}
             isSyncing={isSyncing}
             selectedListings={selectedListings}
