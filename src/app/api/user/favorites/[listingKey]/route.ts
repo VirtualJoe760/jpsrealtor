@@ -6,7 +6,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
 
 // POST - Add a single favorite
 export async function POST(
@@ -55,18 +54,12 @@ export async function POST(
       );
     }
 
-    // Normalize subdivision name (converts "Not Applicable" to "{City} Non-HOA")
-    const normalizedSubdivision = normalizeSubdivisionName(
-      listingData.subdivisionName,
-      listingData.city || ''
-    );
-
     // Add the favorite
     user.likedListings.push({
       listingKey,
       listingData,
       swipedAt: new Date(),
-      subdivision: normalizedSubdivision,
+      subdivision: listingData.subdivisionName,
       city: listingData.city,
       propertySubType: listingData.propertySubType,
     });

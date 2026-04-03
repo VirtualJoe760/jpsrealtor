@@ -6,10 +6,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import UnifiedListing from "@/models/unified-listing";
-import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
 
-// GET - Fetch user's favorites with fresh MLS data
+// GET - Fetch user's favorites and analytics
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,10 +20,7 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const user = await User.findOne({ email: session.user.email })
-      .select('likedListings swipeAnalytics')
-      .lean();
-
+    const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -33,113 +28,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const likedListings = user.likedListings || [];
-
-    if (likedListings.length === 0) {
-      return NextResponse.json({
-        favorites: [],
-        analytics: user.swipeAnalytics || {
-          totalLikes: 0,
-          totalDislikes: 0,
-          topSubdivisions: [],
-          topCities: [],
-          topPropertySubTypes: [],
-        },
-        total: 0,
-        stale: 0,
-        missing: 0,
-      });
-    }
-
-    console.log(`[GET /api/user/favorites] Processing ${likedListings.length} favorites for ${session.user.email}`);
-
-    // Get all listing keys
-    const listingKeys = likedListings.map((item: any) => item.listingKey);
-
-    // Fetch fresh data from UnifiedListing in ONE batch query
-    // NOTE: Excluding primaryPhotoUrl - we ALWAYS fetch photos from Spark API via ListingPhoto component
-    const freshListings = await UnifiedListing.find({
-      listingKey: { $in: listingKeys }
-    })
-    .select('listingKey mlsId mlsSource address unparsedAddress listPrice bedsTotal bathroomsTotal bathroomsTotalInteger livingArea lotSizeArea subdivisionName city county propertySubType yearBuilt daysOnMarket status slugAddress publicRemarks')
-    .lean();
-
-    console.log(`[GET /api/user/favorites] Found ${freshListings.length} listings in UnifiedListing`);
-
-    // Create lookup map for fast access
-    const freshDataMap = new Map(
-      freshListings.map((listing: any) => [listing.listingKey, listing])
-    );
-
-    // Build clean favorites array
-    let staleCount = 0;
-    let missingCount = 0;
-
-    const favoritesWithDuplicates = likedListings.map((cachedListing: any) => {
-      const fresh = freshDataMap.get(cachedListing.listingKey);
-      const cachedData = cachedListing.listingData || {};
-
-      if (!fresh) {
-        // Listing not in UnifiedListing - likely removed from market
-        missingCount++;
-
-        // Return cached data with metadata stripped and stale flags
-        const { _id, __v, __parentArray, ...cleanCachedData } = cachedData;
-
-        return {
-          ...cleanCachedData,
-          listingKey: cachedListing.listingKey,
-          swipedAt: cachedListing.swipedAt,
-          _stale: true,
-          _missing: true,
-          status: 'Removed',
-        };
-      }
-
-      // Check if data is stale
-      const isStale = cachedData.mlsId !== fresh.mlsId ||
-                      cachedData.listPrice !== fresh.listPrice ||
-                      cachedData.status !== fresh.status;
-
-      if (isStale) {
-        staleCount++;
-      }
-
-      // Return fresh data (UnifiedListing is source of truth)
-      // Remove MongoDB metadata from fresh listing too
-      const { _id, __v, ...cleanFreshData } = fresh;
-
-      return {
-        // Fresh data from UnifiedListing (already clean)
-        ...cleanFreshData,
-
-        // Metadata from cached data
-        swipedAt: cachedListing.swipedAt,
-
-        // Flags
-        _stale: isStale,
-        _missing: false,
-      };
-    });
-
-    // Deduplicate favorites (user may have same listing saved multiple times)
-    const seenKeys = new Set<string>();
-    const favorites = favoritesWithDuplicates.filter((fav: any) => {
-      if (seenKeys.has(fav.listingKey)) {
-        console.log(`[GET /api/user/favorites] ⚠️ Removing duplicate: ${fav.listingKey}`);
-        return false;
-      }
-      seenKeys.add(fav.listingKey);
-      return true;
-    });
-
-    const duplicateCount = favoritesWithDuplicates.length - favorites.length;
-
-    console.log(`[GET /api/user/favorites] Returning ${favorites.length} favorites (${staleCount} stale, ${missingCount} missing, ${duplicateCount} duplicates removed)`);
-    console.log(`[GET /api/user/favorites] Photos will be fetched dynamically from Spark API via ListingPhoto component`);
-
     return NextResponse.json({
-      favorites,
+      favorites: user.likedListings || [],
       analytics: user.swipeAnalytics || {
         totalLikes: 0,
         totalDislikes: 0,
@@ -147,14 +37,6 @@ export async function GET(request: NextRequest) {
         topCities: [],
         topPropertySubTypes: [],
       },
-      total: favorites.length,
-      stale: staleCount,
-      missing: missingCount,
-    }, {
-      headers: {
-        // Cache for 30 seconds
-        'Cache-Control': 'private, max-age=30',
-      }
     });
   } catch (error) {
     console.error("Error fetching favorites:", error);
@@ -197,22 +79,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Process favorites and extract analytics data
-    const processedFavorites = favorites.map((listing: any) => {
-      // Normalize subdivision name (converts "Not Applicable" to "{City} Non-HOA")
-      const normalizedSubdivision = normalizeSubdivisionName(
-        listing.subdivisionName,
-        listing.city || ''
-      );
-
-      return {
-        listingKey: listing.listingKey || listing._id,
-        listingData: listing,
-        swipedAt: new Date(),
-        subdivision: normalizedSubdivision,
-        city: listing.city,
-        propertyType: listing.propertyType,
-      };
-    });
+    const processedFavorites = favorites.map((listing: any) => ({
+      listingKey: listing.listingKey || listing._id,
+      listingData: listing,
+      swipedAt: new Date(),
+      subdivision: listing.subdivisionName,
+      city: listing.city,
+      propertyType: listing.propertyType,
+    }));
 
     // Calculate analytics
     const analytics = calculateAnalytics(processedFavorites);
@@ -249,12 +123,9 @@ function calculateAnalytics(favorites: any[]) {
 
   favorites.forEach((fav) => {
     // Check both top-level and listingData for fields
-    const rawSubdivision = fav.subdivision || fav.listingData?.subdivisionName;
+    const subdivision = fav.subdivision || fav.listingData?.subdivisionName;
     const city = fav.city || fav.listingData?.city;
     const propertySubType = fav.propertySubType || fav.listingData?.propertySubType;
-
-    // Normalize subdivision name (handles legacy "Not Applicable" values)
-    const subdivision = city ? normalizeSubdivisionName(rawSubdivision, city) : rawSubdivision;
 
     if (subdivision) {
       subdivisionCounts[subdivision] = (subdivisionCounts[subdivision] || 0) + 1;
