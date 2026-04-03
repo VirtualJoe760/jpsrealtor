@@ -1047,7 +1047,7 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         }
       };
     }
-  }, [dataToRender?.length]); // Only re-run when marker count changes (not reference)
+  }, [dataToRender]); // Re-run when data changes (removed hoveredPolygon to prevent infinite loop)
 
   // Helper function to calculate stats for a specific boundary from filtered markers
   const calculateBoundaryStats = useCallback((boundaryName: string, boundaryType: 'city' | 'county') => {
