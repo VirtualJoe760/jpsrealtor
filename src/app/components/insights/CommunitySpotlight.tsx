@@ -60,10 +60,14 @@ const ListingCard: React.FC<{
   cardBg: string;
   cardBorder: string;
 }> = ({ listing, isLight, textPrimary, textSecondary, textMuted, cardBg, cardBorder }) => {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Use PhotoUrl from API response (server-side resolved) — no per-listing fetch needed
+  const [photoUrl, setPhotoUrl] = useState<string | null>((listing as any).PhotoUrl || null);
+  const [loading, setLoading] = useState(!(listing as any).PhotoUrl);
 
+  // Only fetch if API didn't provide a photo (fallback for legacy data)
   useEffect(() => {
+    if (photoUrl) { setLoading(false); return; }
+
     let isMounted = true;
     const abortController = new AbortController();
 

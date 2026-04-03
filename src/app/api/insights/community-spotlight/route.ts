@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
     const listings = await UnifiedListing.find(query)
       .sort({ modificationTimestamp: -1 })
       .limit(6)
-      .select('listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName')
+      .select('listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName primaryPhoto media')
       .lean();
 
     console.log(`[COMMUNITY SPOTLIGHT] Found ${listings.length} new listings in ${communityName}`);
@@ -172,6 +172,15 @@ export async function GET(req: NextRequest) {
         listing.city
       );
 
+      // Extract photo URL server-side (avoids per-listing client fetch)
+      let photoUrl = null;
+      if (listing.primaryPhoto) {
+        photoUrl = listing.primaryPhoto.uri800 || listing.primaryPhoto.uri640 || listing.primaryPhoto.uri1024 || listing.primaryPhoto.uri1280;
+      } else if (listing.media?.length > 0) {
+        const primary = listing.media.find((m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0) || listing.media[0];
+        photoUrl = primary?.Uri800 || primary?.Uri640 || primary?.Uri1024 || primary?.Uri1280;
+      }
+
       return {
         ListingKey: listing.listingKey,
         UnparsedAddress: listing.unparsedAddress || listing.unparsedFirstLineAddress || listing.address || 'Address not available',
@@ -182,6 +191,7 @@ export async function GET(req: NextRequest) {
         BathroomsTotalInteger: baths,
         LivingArea: sqft,
         SubdivisionName: normalizedSubdivision,
+        PhotoUrl: photoUrl,
       };
     });
 
