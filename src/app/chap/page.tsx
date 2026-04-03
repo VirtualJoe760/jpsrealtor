@@ -102,9 +102,9 @@ function HomeContent() {
       console.log('🔧 [CHAP] URL wants map, showing map');
       showMapAtLocation(37.0, -119.5, 5);
     } else if (!urlWantsMap && isMapVisible) {
-      // URL says no map, but state has map visible — URL wins (user intentionally navigated to chat)
-      console.log('🔧 [CHAP] URL says no map, hiding map to respect navigation intent');
-      hideMap();
+      // State wants map but URL doesn't have it - sync URL
+      console.log('🔧 [HomePage] URL/state conflict: Adding missing ?view=map parameter');
+      router.replace('/chap?view=map', { scroll: false });
     } else if (urlWantsMap && isMapVisible) {
       // Both agree map should be visible - restore position if available
       const latParam = searchParams?.get('lat');
