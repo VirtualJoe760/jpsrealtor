@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Percent, TrendingUp, TrendingDown, BarChart3, DollarSign, Activity, Loader2, LineChart, Home, Landmark, Info } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -40,7 +39,47 @@ export default function MarketStats() {
   const isLight = currentTheme === "lightgradient";
 
   useEffect(() => {
+    let isMounted = true;
+    const abortController = new AbortController();
+
+    const loadMarketData = async () => {
+      try {
+        console.log('[MarketStats] Fetching market data from /api/stats/market...');
+        const response = await fetch("/api/stats/market", {
+          signal: abortController.signal
+        });
+        console.log('[MarketStats] Response status:', response.status, 'OK:', response.ok);
+
+        if (response.ok && isMounted) {
+          const result = await response.json();
+          console.log('[MarketStats] Response data:', result);
+
+          if (result.success) {
+            console.log('[MarketStats] Setting market data:', result.data);
+            setMarketData(result.data);
+          } else {
+            console.error('[MarketStats] Response success=false:', result);
+          }
+        } else if (!response.ok) {
+          console.error('[MarketStats] Response not OK:', response.status, response.statusText);
+        }
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error("[MarketStats] Failed to load market data:", error);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     loadMarketData();
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, []);
 
   // Auto-cycle through tabs every 8 seconds (when not paused)
@@ -76,28 +115,33 @@ export default function MarketStats() {
     // Don't restart auto-cycle here - let the useEffect handle it based on isPaused state
   };
 
-  const loadMarketData = async () => {
-    try {
-      const response = await fetch("/api/stats/market");
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setMarketData(result.data);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load market data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
-      <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow} flex items-center justify-center h-64`}>
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className={`w-8 h-8 animate-spin ${isLight ? 'text-blue-600' : 'text-emerald-400'}`} />
-          <p className={`text-sm ${textSecondary}`}>Loading market data...</p>
+      <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow} animate-pulse`}>
+        {/* Skeleton Tabs */}
+        <div className={`flex gap-2 p-1.5 ${cardBg} ${cardBorder} border rounded-lg mb-4`}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex-1 h-10 bg-gray-300 dark:bg-gray-700 rounded-md"></div>
+          ))}
+        </div>
+        {/* Skeleton Content */}
+        <div className="min-h-[400px] md:min-h-[450px] space-y-4">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded-lg w-64 mb-2"></div>
+              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
+            </div>
+          </div>
+          <div className="h-16 bg-gray-300 dark:bg-gray-700 rounded-lg w-48 mb-6"></div>
+          <div className="h-40 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
+          <div className="grid grid-cols-3 gap-4 pt-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-2"></div>
+                <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -105,13 +149,13 @@ export default function MarketStats() {
 
   const tabs = [
     { id: "trends" as const, label: "Rate Trends", icon: TrendingUp },
-    { id: "comparison" as const, label: "Compare Rates", icon: BarChart3 },
+    { id: "comparison" as const, label: "Loan Types", icon: BarChart3 },
     { id: "economy" as const, label: "Economy", icon: Activity },
   ];
 
   return (
     <div
-      className="space-y-4"
+      className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -144,17 +188,15 @@ export default function MarketStats() {
 
       {/* Tab Content - Fixed height container to prevent layout shift */}
       <div className="relative min-h-[400px] md:min-h-[450px]">
-        <AnimatePresence mode="wait">
-          {activeTab === "trends" && (
-            <TrendsView key="trends" marketData={marketData} isLight={isLight} />
-          )}
-          {activeTab === "comparison" && (
-            <ComparisonView key="comparison" marketData={marketData} isLight={isLight} />
-          )}
-          {activeTab === "economy" && (
-            <EconomyView key="economy" marketData={marketData} isLight={isLight} />
-          )}
-        </AnimatePresence>
+        {activeTab === "trends" && (
+          <TrendsView key="trends" marketData={marketData} isLight={isLight} />
+        )}
+        {activeTab === "comparison" && (
+          <ComparisonView key="comparison" marketData={marketData} isLight={isLight} />
+        )}
+        {activeTab === "economy" && (
+          <EconomyView key="economy" marketData={marketData} isLight={isLight} />
+        )}
       </div>
     </div>
   );
@@ -163,6 +205,7 @@ export default function MarketStats() {
 // Trends View - 30-Year Historical Chart
 function TrendsView({ marketData, isLight }: { marketData: MarketData | null; isLight: boolean }) {
   const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow } = useThemeClasses();
+  const [hoveredPoint, setHoveredPoint] = useState<{ date: string; rate: number; x: number; y: number } | null>(null);
 
   const currentRate = marketData?.mortgageRates.current.thirtyYear;
   const historical = marketData?.mortgageRates.historical || [];
@@ -178,11 +221,7 @@ function TrendsView({ marketData, isLight }: { marketData: MarketData | null; is
   const trend = getTrend();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className={`absolute inset-0 ${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}
     >
       <div className="flex items-start justify-between mb-4 gap-2">
@@ -226,21 +265,94 @@ function TrendsView({ marketData, isLight }: { marketData: MarketData | null; is
       </div>
 
       {historical.length > 0 && (
-        <div className="w-full h-24 md:h-32 lg:h-40 mb-4">
-          <svg className="w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">
-            <polyline
-              fill="none"
-              stroke={isLight ? '#10b981' : '#34d399'}
-              strokeWidth="0.5"
-              points={historical.map((point, idx) => {
+        <div className="w-full mb-4">
+          <div className="w-full h-24 md:h-32 lg:h-40 relative">
+            <svg className="w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">
+              {/* Main line */}
+              <polyline
+                fill="none"
+                stroke={isLight ? '#10b981' : '#34d399'}
+                strokeWidth="0.5"
+                points={historical.map((point, idx) => {
+                  const x = (idx / (historical.length - 1)) * 100;
+                  const minRate = Math.min(...historical.map(p => p.thirtyYear));
+                  const maxRate = Math.max(...historical.map(p => p.thirtyYear));
+                  const y = 50 - ((point.thirtyYear - minRate) / (maxRate - minRate)) * 45;
+                  return `${x},${y}`;
+                }).join(' ')}
+              />
+
+              {/* Interactive hover points */}
+              {historical.map((point, idx) => {
                 const x = (idx / (historical.length - 1)) * 100;
                 const minRate = Math.min(...historical.map(p => p.thirtyYear));
                 const maxRate = Math.max(...historical.map(p => p.thirtyYear));
                 const y = 50 - ((point.thirtyYear - minRate) / (maxRate - minRate)) * 45;
-                return `${x},${y}`;
-              }).join(' ')}
-            />
-          </svg>
+
+                return (
+                  <g key={idx}>
+                    {/* Invisible larger hit area for easier hovering */}
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="3"
+                      fill="transparent"
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={() => setHoveredPoint({ date: point.date, rate: point.thirtyYear, x, y })}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                    {/* Visible dot on hover */}
+                    {hoveredPoint?.date === point.date && (
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="1"
+                        fill={isLight ? '#10b981' : '#34d399'}
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Tooltip */}
+            {hoveredPoint && (
+              <div
+                className={`absolute z-10 px-3 py-2 rounded-lg shadow-lg pointer-events-none ${
+                  isLight ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
+                }`}
+                style={{
+                  left: `${hoveredPoint.x}%`,
+                  top: `${hoveredPoint.y}%`,
+                  transform: 'translate(-50%, -120%)',
+                }}
+              >
+                <div className="text-xs font-semibold whitespace-nowrap">
+                  {hoveredPoint.rate.toFixed(2)}%
+                </div>
+                <div className="text-xs opacity-75 whitespace-nowrap">
+                  {new Date(hoveredPoint.date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date labels below the chart */}
+          <div className="flex justify-between mt-1 md:mt-2">
+            <span className={`text-xs ${textMuted}`}>
+              {new Date(historical[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </span>
+            <span className={`text-xs ${textMuted} hidden sm:inline`}>
+              {new Date(historical[Math.floor(historical.length / 2)].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </span>
+            <span className={`text-xs ${textMuted}`}>
+              {new Date(historical[historical.length - 1].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </span>
+          </div>
         </div>
       )}
 
@@ -267,37 +379,49 @@ function TrendsView({ marketData, isLight }: { marketData: MarketData | null; is
         </div>
       )}
 
-    </motion.div>
+    </div>
   );
 }
 
-// Comparison View - 30-Year vs 15-Year
+// Comparison View - Loan Types (Conventional, VA, FHA)
 function ComparisonView({ marketData, isLight }: { marketData: MarketData | null; isLight: boolean }) {
   const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow } = useThemeClasses();
 
+  // Base conventional rate from API
+  const conventionalRate = marketData?.mortgageRates.current.thirtyYear || 0;
+
+  // Typical rate offsets (these are estimates based on historical averages)
+  const vaRate = conventionalRate > 0 ? conventionalRate - 0.25 : 0; // VA typically 0.25% lower
+  const fhaRate = conventionalRate > 0 ? conventionalRate + 0.125 : 0; // FHA typically 0.125% higher
+
   const rates = [
     {
-      label: "30-Year Fixed",
-      rate: marketData?.mortgageRates.current.thirtyYear,
-      payment: marketData?.mortgageRates.current.thirtyYear ? calculatePayment(500000, marketData.mortgageRates.current.thirtyYear, 30) : 0,
+      label: "Conventional 30-Year",
+      rate: conventionalRate,
+      payment: conventionalRate ? calculatePayment(500000, conventionalRate, 30) : 0,
       color: isLight ? 'bg-blue-500' : 'bg-blue-600',
+      description: "Standard loan, 20% down",
     },
     {
-      label: "15-Year Fixed",
-      rate: marketData?.mortgageRates.current.fifteenYear,
-      payment: marketData?.mortgageRates.current.fifteenYear ? calculatePayment(500000, marketData.mortgageRates.current.fifteenYear, 15) : 0,
+      label: "VA 30-Year",
+      rate: vaRate,
+      payment: vaRate ? calculatePayment(500000, vaRate, 30) : 0,
       color: isLight ? 'bg-emerald-500' : 'bg-emerald-600',
+      description: "Veterans, 0% down possible",
+    },
+    {
+      label: "FHA 30-Year",
+      rate: fhaRate,
+      payment: fhaRate ? calculatePayment(500000, fhaRate, 30) : 0,
+      color: isLight ? 'bg-purple-500' : 'bg-purple-600',
+      description: "3.5% down minimum",
     },
   ];
 
   const maxRate = Math.max(...rates.map(r => r.rate || 0));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className={`absolute inset-0 ${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}
     >
       <div className="flex items-start justify-between mb-4 md:mb-6 gap-2">
@@ -306,8 +430,8 @@ function ComparisonView({ marketData, isLight }: { marketData: MarketData | null
             <BarChart3 className={`w-5 h-5 md:w-6 md:h-6 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
           </div>
           <div className="min-w-0">
-            <h3 className={`text-base md:text-lg lg:text-xl font-bold ${textPrimary} truncate`}>Compare Rates</h3>
-            <p className={`text-xs md:text-sm ${textSecondary}`}>$500K loan</p>
+            <h3 className={`text-base md:text-lg lg:text-xl font-bold ${textPrimary} truncate`}>Loan Types</h3>
+            <p className={`text-xs md:text-sm ${textSecondary}`}>$500K • 30-Year</p>
           </div>
         </div>
 
@@ -320,8 +444,8 @@ function ComparisonView({ marketData, isLight }: { marketData: MarketData | null
 
           {/* Tooltip on hover */}
           <div className={`absolute top-full right-0 mt-2 w-56 md:w-64 p-3 rounded-lg ${isLight ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} text-xs shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50`}>
-            <p className="font-semibold mb-1">Not a Quote</p>
-            <p>Payments on $500K loan. Rates subject to change. Varies by credit & lender.</p>
+            <p className="font-semibold mb-1">Estimates Only</p>
+            <p>VA/FHA rates estimated from conventional. Actual rates vary by credit, lender, and loan details. Not a quote.</p>
           </div>
         </div>
       </div>
@@ -330,7 +454,10 @@ function ComparisonView({ marketData, isLight }: { marketData: MarketData | null
         {rates.map((item) => (
           <div key={item.label}>
             <div className="flex justify-between items-baseline mb-1.5 md:mb-2">
-              <span className={`text-xs md:text-sm font-medium ${textPrimary}`}>{item.label}</span>
+              <div className="flex flex-col">
+                <span className={`text-xs md:text-sm font-medium ${textPrimary}`}>{item.label}</span>
+                <span className={`text-xs ${textMuted}`}>{item.description}</span>
+              </div>
               <span className={`text-xl md:text-2xl lg:text-3xl font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
                 {item.rate ? `${item.rate.toFixed(2)}%` : 'N/A'}
               </span>
@@ -345,7 +472,7 @@ function ComparisonView({ marketData, isLight }: { marketData: MarketData | null
                   />
                 </div>
                 <p className={`text-xs ${textMuted}`}>
-                  ${item.payment.toLocaleString()}/mo
+                  Est. ${item.payment.toLocaleString()}/mo
                 </p>
               </>
             )}
@@ -353,7 +480,7 @@ function ComparisonView({ marketData, isLight }: { marketData: MarketData | null
         ))}
       </div>
 
-    </motion.div>
+    </div>
   );
 }
 
@@ -407,11 +534,7 @@ function EconomyView({ marketData, isLight }: { marketData: MarketData | null; i
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className={`absolute inset-0 ${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}
     >
       <div className="flex items-start justify-between mb-4 md:mb-6 gap-2">
@@ -456,7 +579,7 @@ function EconomyView({ marketData, isLight }: { marketData: MarketData | null; i
         })}
       </div>
 
-    </motion.div>
+    </div>
   );
 }
 

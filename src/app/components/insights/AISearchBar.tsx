@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Search, Sparkles, Loader2, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface AISearchBarProps {
@@ -130,55 +129,45 @@ export default function AISearchBar({
       </div>
 
       {/* Suggestions Dropdown */}
-      <AnimatePresence>
-        {showSuggestions && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className={`absolute top-full mt-2 w-full ${bgSecondary} ${border} rounded-xl shadow-2xl overflow-hidden z-50`}
-          >
-            <div className={`p-3 ${border} border-b`}>
-              <p className={`text-sm ${textSecondary} font-semibold`}>
-                Popular Searches
-              </p>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {suggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setQuery(suggestion);
-                    onSearch(suggestion);
-                    setShowSuggestions(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 transition-colors ${
-                    isLight
-                      ? "hover:bg-blue-50 text-gray-700"
-                      : "hover:bg-gray-800 text-gray-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Search
-                      className={`w-4 h-4 ${
-                        isLight ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    />
-                    <span className="text-sm">{suggestion}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showSuggestions && (
+        <div className={`absolute top-full mt-2 w-full ${bgSecondary} ${border} rounded-xl shadow-2xl overflow-hidden z-50 transition-opacity duration-200`}>
+          <div className={`p-3 ${border} border-b`}>
+            <p className={`text-sm ${textSecondary} font-semibold`}>
+              Popular Searches
+            </p>
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {suggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setQuery(suggestion);
+                  onSearch(suggestion);
+                  setShowSuggestions(false);
+                }}
+                className={`w-full text-left px-4 py-3 transition-colors ${
+                  isLight
+                    ? "hover:bg-blue-50 text-gray-700"
+                    : "hover:bg-gray-800 text-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Search
+                    className={`w-4 h-4 ${
+                      isLight ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  />
+                  <span className="text-sm">{suggestion}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Example Queries (shown when empty and not focused) */}
       {!query && !isFocused && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+        <div
           className="mt-4 flex flex-wrap gap-2 justify-center"
         >
           {[
@@ -202,7 +191,7 @@ export default function AISearchBar({
               {example}
             </button>
           ))}
-        </motion.div>
+        </div>
       )}
     </div>
   );
