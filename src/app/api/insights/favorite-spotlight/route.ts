@@ -110,6 +110,15 @@ export async function GET(req: NextRequest) {
       const rawSubdivision = listing.subdivisionName || liked.subdivision || '';
       const normalizedSubdivision = normalizeSubdivisionName(rawSubdivision, city);
 
+      // Extract photo URL server-side
+      let photoUrl = null;
+      if (listing.primaryPhoto) {
+        photoUrl = listing.primaryPhoto.uri800 || listing.primaryPhoto.uri640 || listing.primaryPhoto.uri1024;
+      } else if (listing.media?.length > 0) {
+        const primary = listing.media.find((m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0) || listing.media[0];
+        photoUrl = primary?.Uri800 || primary?.Uri640 || primary?.Uri1024;
+      }
+
       return {
         ListingKey: liked.listingKey,
         UnparsedAddress: listing.unparsedAddress || listing.unparsedFirstLineAddress || listing.address || 'Address not available',
@@ -122,6 +131,7 @@ export async function GET(req: NextRequest) {
         LivingArea: listing.livingArea || listing.buildingAreaTotal || 0,
         SubdivisionName: normalizedSubdivision,
         SlugAddress: listing.slugAddress || null,
+        PhotoUrl: photoUrl,
       };
     });
 
