@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const user = await User.findOne({ email: session.user.email });
+    const user = await User.findOne({ email: session.user.email })
+      .select('likedListings swipeAnalytics')
+      .lean();
+
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -28,8 +31,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const likedListings = user.likedListings || [];
+
+    // Deduplicate favorites
+    const seenKeys = new Set<string>();
+    const favorites = likedListings.filter((fav: any) => {
+      if (seenKeys.has(fav.listingKey)) return false;
+      seenKeys.add(fav.listingKey);
+      return true;
+    });
+
     return NextResponse.json({
-      favorites: user.likedListings || [],
+      favorites,
       analytics: user.swipeAnalytics || {
         totalLikes: 0,
         totalDislikes: 0,
@@ -37,6 +50,7 @@ export async function GET(request: NextRequest) {
         topCities: [],
         topPropertySubTypes: [],
       },
+      total: favorites.length,
     });
   } catch (error) {
     console.error("Error fetching favorites:", error);
