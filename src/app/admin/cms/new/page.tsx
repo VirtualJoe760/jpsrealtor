@@ -535,6 +535,7 @@ export default function NewArticlePage() {
                   <option value="articles">Articles</option>
                   <option value="market-insights">Market Insights</option>
                   <option value="real-estate-tips">Real Estate Tips</option>
+                  <option value="landing-page">Landing Page</option>
                 </select>
               </div>
 

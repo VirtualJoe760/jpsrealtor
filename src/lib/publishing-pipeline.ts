@@ -332,6 +332,27 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
     lines.push(`  - ${keyword}`);
   });
 
+  // Landing page specific frontmatter
+  if (article.category === "landing-page") {
+    if ((article as any).standalone) lines.push(`standalone: true`);
+    if ((article as any).heroType) lines.push(`heroType: "${(article as any).heroType}"`);
+    if ((article as any).youtubeUrl) lines.push(`youtubeUrl: "${escapeYAML((article as any).youtubeUrl)}"`);
+    if ((article as any).videoAutoplay !== undefined) lines.push(`videoAutoplay: ${(article as any).videoAutoplay}`);
+    if ((article as any).formEnabled) {
+      lines.push(`formEnabled: true`);
+      lines.push(`formHeading: "${escapeYAML((article as any).formHeading || 'Get Started')}"`);
+      lines.push(`formButtonText: "${escapeYAML((article as any).formButtonText || 'Submit')}"`);
+      if ((article as any).formRecipients) lines.push(`formRecipients: "${escapeYAML((article as any).formRecipients)}"`);
+      lines.push(`formFields:`);
+      ((article as any).formFields || []).forEach((field: any) => {
+        lines.push(`  - id: "${field.id}"`);
+        lines.push(`    label: "${escapeYAML(field.label)}"`);
+        lines.push(`    type: "${field.type}"`);
+        lines.push(`    required: ${field.required}`);
+      });
+    }
+  }
+
   return lines.join('\n');
 }
 

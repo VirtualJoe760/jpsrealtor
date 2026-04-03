@@ -27,6 +27,19 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
 
+  // Apply agent font via CSS variable (NOT body.style — that crashes MapLibre/React reconciliation)
+  useEffect(() => {
+    fetch("/api/agent/public")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const font = data?.profile?.agentProfile?.fontFamily;
+        if (font) {
+          document.documentElement.style.setProperty("--agent-font", `'${font}', sans-serif`);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
     '/map', // /map page has its own map instance

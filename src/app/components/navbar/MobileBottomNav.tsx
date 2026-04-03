@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessageSquare, Map, Lightbulb, User, RefreshCw } from "lucide-react";
+import { Home, MessageSquare, Map, User, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
@@ -18,6 +18,9 @@ export default function MobileBottomNav() {
   const { isStandalone, isIOS } = usePWA();
 
   const isChapPage = pathname === "/chap";
+
+  // Hide on preview and standalone landing pages
+  if (pathname?.startsWith("/articles/preview") || pathname?.startsWith("/campaign")) return null;
 
   // Handle Chat/Map button click
   const handleChatMapClick = () => {
@@ -43,7 +46,7 @@ export default function MobileBottomNav() {
     },
     {
       name: "Home",
-      icon: Lightbulb,
+      icon: Home,
       href: "/",
       active: pathname === "/",
     },
