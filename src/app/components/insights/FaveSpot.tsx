@@ -387,9 +387,10 @@ const FaveSpot: React.FC<FaveSpotProps> = ({ className = "" }) => {
     const container = document.getElementById(containerId);
     if (container) {
       const scrollAmount = 300;
+      const currentScroll = container.scrollLeft;
       const newPosition = direction === "left"
-        ? scrollPosition - scrollAmount
-        : scrollPosition + scrollAmount;
+        ? currentScroll - scrollAmount
+        : currentScroll + scrollAmount;
 
       container.scrollTo({ left: newPosition, behavior: "smooth" });
       setScrollPosition(newPosition);
