@@ -6,6 +6,8 @@ import { Metadata } from "next";
 import CityPageClient from "./CityPageClient";
 import dbConnect from "@/lib/mongoose";
 import { City } from "@/models/cities";
+import { FaqJsonLd, getCityFaqs } from "@/app/components/seo/FaqJsonLd";
+import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 
 interface CityData {
   name: string;
@@ -191,14 +193,25 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
           priceRange: { min: 0, max: 0 },
         };
 
+    const faqs = getCityFaqs(cityData.name, initialStats.listingCount);
+    const breadcrumbItems = [
+      { name: "Home", url: "https://jpsrealtor.com" },
+      { name: "Neighborhoods", url: "https://jpsrealtor.com/neighborhoods" },
+      { name: cityData.name, url: `https://jpsrealtor.com/neighborhoods/${cityId}` },
+    ];
+
     return (
-      <CityPageClient
-        city={city}
-        countyName={countyName!}
-        cityId={cityId}
-        cityDoc={serializedCityDoc}
-        initialStats={initialStats}
-      />
+      <>
+        <FaqJsonLd faqs={faqs} />
+        <BreadcrumbJsonLd items={breadcrumbItems} />
+        <CityPageClient
+          city={city}
+          countyName={countyName!}
+          cityId={cityId}
+          cityDoc={serializedCityDoc}
+          initialStats={initialStats}
+        />
+      </>
     );
   }
 

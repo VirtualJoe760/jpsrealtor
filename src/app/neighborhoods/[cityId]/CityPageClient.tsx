@@ -240,6 +240,38 @@ export default function CityPageClient({
           <SubdivisionsSection cityId={cityId} />
           <HOASection cityId={cityId} />
 
+          {/* FAQ Section — matches FAQPage schema for rich snippets */}
+          {(() => {
+            const cityInfo = coachellaValleyCities.find(c => c.id === cityId);
+            if (!cityInfo) return null;
+            const faqs = [
+              { q: `How much do homes cost in ${city.name}?`, a: `Home prices in ${city.name} vary widely depending on the neighborhood, property type, and amenities. Contact Joseph Sardella for a current market analysis tailored to your budget and preferences.` },
+              { q: `Is ${city.name} a good place to buy a home?`, a: `${city.name} is a popular choice for homebuyers in the Coachella Valley, offering a mix of lifestyle amenities, climate, and community. Whether you're looking for a primary residence, vacation home, or investment property, ${city.name} has options across price ranges.` },
+              { q: `What neighborhoods are popular in ${city.name}?`, a: `${city.name} has many desirable neighborhoods and gated communities, each with unique character and price points. Visit our ${city.name} neighborhoods page to explore subdivisions with listing counts, average prices, and community details.` },
+              { q: `Do I need a real estate agent to buy in ${city.name}?`, a: `While not legally required, working with a local real estate agent gives you access to market expertise, negotiation skills, and off-market listings. Joseph Sardella specializes in ${city.name} and the broader Coachella Valley — call (760) 333-3676 for a free consultation.` },
+            ];
+            return (
+              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+                  Frequently Asked Questions
+                </h2>
+                <div className="space-y-4">
+                  {faqs.map((faq, idx) => (
+                    <details key={idx} className={`group ${cardBorder} border rounded-lg`}>
+                      <summary className={`flex items-center justify-between cursor-pointer p-4 font-semibold ${textPrimary} hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors`}>
+                        {faq.q}
+                        <span className="ml-2 text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                      </summary>
+                      <div className={`px-4 pb-4 text-sm leading-relaxed ${textSecondary}`}>
+                        {faq.a}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Branded Buy/Sell CTA Section */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
             <h2 className={`text-3xl md:text-4xl font-bold ${textPrimary} mb-4 text-center`}>
