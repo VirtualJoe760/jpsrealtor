@@ -6,6 +6,7 @@ import SubdivisionPageClient from "./SubdivisionPageClient";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
 import { notFound } from "next/navigation";
+import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 
 interface SubdivisionPageProps {
   params: Promise<{
@@ -47,11 +48,13 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${subdivision.name} Homes for Sale | ${subdivision.city}, ${subdivision.region}`,
+    title: `${subdivision.name} Homes for Sale | ${subdivision.city}, CA`,
     description:
       subdivision.description ||
-      `Browse ${subdivision.listingCount} homes for sale in ${subdivision.name}, ${subdivision.city}. Average price: $${subdivision.avgPrice.toLocaleString()}`,
-    keywords: subdivision.keywords?.join(", ") || undefined,
+      `Browse ${subdivision.listingCount} homes for sale in ${subdivision.name}, ${subdivision.city}. Average price: $${subdivision.avgPrice.toLocaleString()}. Joseph Sardella, local Coachella Valley expert.`,
+    alternates: {
+      canonical: `https://jpsrealtor.com/neighborhoods/${cityId}/${slug}`,
+    },
   };
 }
 
@@ -74,11 +77,21 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
   // Serialize subdivision to plain object for Client Component
   const serializedSubdivision = JSON.parse(JSON.stringify(subdivision));
 
+  const breadcrumbItems = [
+    { name: "Home", url: "https://jpsrealtor.com" },
+    { name: "Neighborhoods", url: "https://jpsrealtor.com/neighborhoods" },
+    { name: subdivision.city, url: `https://jpsrealtor.com/neighborhoods/${cityId}` },
+    { name: subdivision.name, url: `https://jpsrealtor.com/neighborhoods/${cityId}/${slug}` },
+  ];
+
   return (
-    <SubdivisionPageClient
-      cityId={cityId}
-      slug={slug}
-      subdivision={serializedSubdivision}
-    />
+    <>
+      <BreadcrumbJsonLd items={breadcrumbItems} />
+      <SubdivisionPageClient
+        cityId={cityId}
+        slug={slug}
+        subdivision={serializedSubdivision}
+      />
+    </>
   );
 }
