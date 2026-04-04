@@ -99,9 +99,13 @@ export async function generateMetadata({ params }: { params: Promise<{ cityId: s
   }
 
   if (pageData.type === 'city' && pageData.city) {
+    const listingCount = pageData.city.listings.toLocaleString();
     return {
-      title: `${pageData.city.name} Real Estate | ${pageData.countyName}`,
-      description: `Explore homes and properties in ${pageData.city.name}, ${pageData.countyName}. Browse ${pageData.city.listings.toLocaleString()} active listings.`,
+      title: `${pageData.city.name} Homes for Sale | ${listingCount} Active Listings`,
+      description: `Browse ${listingCount} homes for sale in ${pageData.city.name}, CA. View listings with photos, prices, and details. Joseph Sardella, your local Coachella Valley real estate expert.`,
+      alternates: {
+        canonical: `https://jpsrealtor.com/neighborhoods/${cityId}`,
+      },
     };
   }
 

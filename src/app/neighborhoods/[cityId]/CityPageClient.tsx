@@ -10,6 +10,7 @@ import SubdivisionsSection from "@/app/components/cities/SubdivisionsSection";
 import HOASection from "@/app/components/cities/HOASection";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { coachellaValleyCities } from "@/app/constants/cities";
 
 interface CityPageClientProps {
   city: {
@@ -148,7 +149,7 @@ export default function CityPageClient({
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h1 className={`text-4xl md:text-5xl font-bold ${textPrimary} mb-4 drop-shadow-2xl`}>
-                {city.name}
+                {city.name} Homes for Sale
               </h1>
               {city.description && (
                 <p className={`text-xl ${textSecondary} leading-relaxed max-w-3xl`}>
@@ -210,6 +211,30 @@ export default function CityPageClient({
 
           {/* Stats with Auto-Cycling */}
           <CityStats cityId={cityId} initialStats={initialStats} />
+
+          {/* About City — SEO content from city constants */}
+          {(() => {
+            const cityInfo = coachellaValleyCities.find(c => c.id === cityId);
+            if (!cityInfo?.about) return null;
+            return (
+              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4`}>
+                  About {city.name} Real Estate
+                </h2>
+                <div className={`text-base leading-relaxed ${textSecondary} space-y-4`}>
+                  {cityInfo.about.split('. ').reduce((acc: string[][], sentence, i) => {
+                    // Group sentences into paragraphs of ~3 sentences
+                    const paragraphIdx = Math.floor(i / 3);
+                    if (!acc[paragraphIdx]) acc[paragraphIdx] = [];
+                    acc[paragraphIdx].push(sentence);
+                    return acc;
+                  }, []).map((group: string[], idx: number) => (
+                    <p key={idx}>{group.join('. ')}{group[group.length - 1]?.endsWith('.') ? '' : '.'}</p>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Dynamic Community Data Sections */}
           <SubdivisionsSection cityId={cityId} />

@@ -22,9 +22,11 @@ export async function generateMetadata({ params }: BuyPageProps): Promise<Metada
   const { city, countyName } = cityData;
 
   return {
-    title: `Buy a Home in ${city.name}, ${countyName} | Expert Real Estate Agent`,
-    description: `Looking to buy a home in ${city.name}? Work with Joey Sardella, your trusted ${countyName} real estate expert. Get personalized service, market insights, and find your dream home today.`,
-    keywords: `buy a home in ${city.name}, buy a house in ${city.name}, ${city.name} real estate agent, homes for sale ${city.name}, ${countyName} realtor, buying property ${city.name}`,
+    title: `Buy a Home in ${city.name}, CA | ${city.name} Real Estate Agent`,
+    description: `Looking to buy a home in ${city.name}? Joseph Sardella is your local Coachella Valley real estate expert. Browse homes for sale, get market insights, and find your dream home.`,
+    alternates: {
+      canonical: `https://jpsrealtor.com/neighborhoods/${resolvedParams.cityId}/buy`,
+    },
   };
 }
 
