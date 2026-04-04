@@ -4,7 +4,7 @@
  * to avoid serverless self-referencing issues on Vercel.
  */
 
-import connectToDatabase from '@/lib/mongodb';
+import dbConnect from '@/lib/mongoose';
 import UnifiedListing from '@/models/unified-listing';
 
 interface SubdivisionData {
@@ -124,7 +124,7 @@ export async function getNeighborhoodsDirectory(): Promise<RegionData[] | null> 
   }
 
   try {
-    await connectToDatabase();
+    await dbConnect();
 
     const listings = await UnifiedListing.aggregate([
       {
