@@ -55,7 +55,7 @@ export async function generateMetadata({
   const { slugAddress } = await params;
   const listing = await getEnrichedListing(slugAddress);
 
-  if (!listing) return { title: "Listing Not Found" };
+  if (!listing) return { title: "Listing No Longer Available" };
 
   const address =
     listing.unparsedAddress ||
@@ -63,7 +63,10 @@ export async function generateMetadata({
     listing.address ||
     "Unknown address";
 
-  const title = `${address} - $${listing.listPrice?.toLocaleString() || "Price Unavailable"}`;
+  const isActive = listing.standardStatus === "Active";
+  const title = isActive
+    ? `${address} - $${listing.listPrice?.toLocaleString() || "Price Unavailable"}`
+    : `${address} - ${listing.standardStatus || "Off Market"}`;
   const description =
     listing.publicRemarks?.substring(0, 150) || "View property details, photos, and more.";
 
@@ -72,6 +75,13 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Noindex sold/inactive listings so Google drops them from the index
+    ...(!isActive && {
+      robots: {
+        index: false,
+        follow: true,
+      },
+    }),
     openGraph: {
       title,
       description,
