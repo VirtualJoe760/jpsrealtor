@@ -71,9 +71,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "JP Realtor",
+    title: "JPS Realtor",
   },
-  applicationName: "JP Realtor",
+  applicationName: "JPS Realtor",
   formatDetection: {
     telephone: true,
     email: true,
@@ -144,10 +144,10 @@ export default async function RootLayout({
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
         {/* PWA Meta Tags - Theme aware for Dynamic Island support */}
-        <meta name="application-name" content="JP Realtor" />
+        <meta name="application-name" content="JPS Realtor" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content={statusBarStyle} />
-        <meta name="apple-mobile-web-app-title" content="JP Realtor" />
+        <meta name="apple-mobile-web-app-title" content="JPS Realtor" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
 
