@@ -43,11 +43,14 @@ interface PageData {
 // Fetch data from neighborhoods API (handles cities, counties, and regions)
 async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || 'http://localhost:3000';
+    // Use production URL directly to avoid serverless self-referencing issues
+    // In dev, falls back to localhost
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://jpsrealtor.com'
+      : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
     const response = await fetch(`${baseUrl}/api/neighborhoods/directory`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) return null;
