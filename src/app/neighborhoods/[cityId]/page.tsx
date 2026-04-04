@@ -8,6 +8,7 @@ import dbConnect from "@/lib/mongoose";
 import { City } from "@/models/cities";
 import { FaqJsonLd, getCityFaqs } from "@/app/components/seo/FaqJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
+import { getNeighborhoodsDirectory, findCityBySlug } from "@/lib/neighborhoods-data";
 
 interface CityData {
   name: string;
@@ -40,26 +41,11 @@ interface PageData {
   region?: RegionData;
 }
 
-// Fetch data from neighborhoods API (handles cities, counties, and regions)
-async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
+// Query DB directly instead of fetching own API route (avoids Vercel serverless deadlock)
+async function getPageData(slug: string): Promise<PageData | null> {
   try {
-    // Use production URL directly to avoid serverless self-referencing issues
-    // In dev, falls back to localhost
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://jpsrealtor.com'
-      : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
-    const response = await fetch(`${baseUrl}/api/neighborhoods/directory`, {
-      cache: 'no-store',
-      next: { revalidate: 0 },
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (!data.success || !data.data) return null;
-
-    const regions = data.data as RegionData[];
+    const regions = await getNeighborhoodsDirectory();
+    if (!regions) return null;
 
     // Check if it's a region slug
     const region = regions.find(r => r.slug === slug);
@@ -67,9 +53,9 @@ async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
       return { type: 'region', region };
     }
 
-    // Check if it's a county slug (ends with -county)
+    // Check if it's a county slug
     for (const region of regions) {
-      const county = region.counties.find((c: CountyData) => c.slug === slug);
+      const county = region.counties.find((c: any) => c.slug === slug);
       if (county) {
         return { type: 'county', county, region };
       }
@@ -78,7 +64,7 @@ async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
     // Check if it's a city slug
     for (const region of regions) {
       for (const county of region.counties) {
-        const city = county.cities.find((c: CityData) => c.slug === slug);
+        const city = county.cities.find((c: any) => c.slug === slug);
         if (city) {
           return { type: 'city', city, countyName: county.name };
         }
@@ -87,7 +73,7 @@ async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
 
     return null;
   } catch (error) {
-    console.error('Error fetching data from API:', error);
+    console.error('Error fetching neighborhoods data:', error);
     return null;
   }
 }
@@ -97,7 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ cityId: s
   const { cityId } = await params;
 
   // Fetch page data from API
-  const pageData = await getPageDataFromAPI(cityId);
+  const pageData = await getPageData(cityId);
 
   if (!pageData) {
     return {
@@ -144,7 +130,7 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
   const { cityId } = resolvedParams;
 
   // Fetch page data from API
-  const pageData = await getPageDataFromAPI(cityId);
+  const pageData = await getPageData(cityId);
 
   // Handle not found
   if (!pageData) {
