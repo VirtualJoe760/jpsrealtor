@@ -11,6 +11,7 @@ import HOASection from "@/app/components/cities/HOASection";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { coachellaValleyCities } from "@/app/constants/cities";
+import generatedCityContent from "../../../../docs/seo/city-content-generated.json";
 
 interface CityPageClientProps {
   city: {
@@ -212,24 +213,20 @@ export default function CityPageClient({
           {/* Stats with Auto-Cycling */}
           <CityStats cityId={cityId} initialStats={initialStats} />
 
-          {/* About City — SEO content from city constants */}
+          {/* About City — SEO content from constants (CV cities) or generated content (all others) */}
           {(() => {
-            const cityInfo = coachellaValleyCities.find(c => c.id === cityId);
-            if (!cityInfo?.about) return null;
+            const cvCity = coachellaValleyCities.find(c => c.id === cityId);
+            const generatedCity = (generatedCityContent as Record<string, any>)[cityId];
+            const aboutText = cvCity?.about || generatedCity?.about;
+            if (!aboutText) return null;
             return (
               <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
                 <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4`}>
                   About {city.name} Real Estate
                 </h2>
                 <div className={`text-base leading-relaxed ${textSecondary} space-y-4`}>
-                  {cityInfo.about.split('. ').reduce((acc: string[][], sentence, i) => {
-                    // Group sentences into paragraphs of ~3 sentences
-                    const paragraphIdx = Math.floor(i / 3);
-                    if (!acc[paragraphIdx]) acc[paragraphIdx] = [];
-                    acc[paragraphIdx].push(sentence);
-                    return acc;
-                  }, []).map((group: string[], idx: number) => (
-                    <p key={idx}>{group.join('. ')}{group[group.length - 1]?.endsWith('.') ? '' : '.'}</p>
+                  {aboutText.split('\n\n').map((paragraph: string, idx: number) => (
+                    <p key={idx}>{paragraph}</p>
                   ))}
                 </div>
               </div>
@@ -242,8 +239,6 @@ export default function CityPageClient({
 
           {/* FAQ Section — matches FAQPage schema for rich snippets */}
           {(() => {
-            const cityInfo = coachellaValleyCities.find(c => c.id === cityId);
-            if (!cityInfo) return null;
             const faqs = [
               { q: `How much do homes cost in ${city.name}?`, a: `Home prices in ${city.name} vary widely depending on the neighborhood, property type, and amenities. Contact Joseph Sardella for a current market analysis tailored to your budget and preferences.` },
               { q: `Is ${city.name} a good place to buy a home?`, a: `${city.name} is a popular choice for homebuyers in the Coachella Valley, offering a mix of lifestyle amenities, climate, and community. Whether you're looking for a primary residence, vacation home, or investment property, ${city.name} has options across price ranges.` },
