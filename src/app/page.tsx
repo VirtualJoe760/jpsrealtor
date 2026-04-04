@@ -18,6 +18,7 @@ import FaveSpot from "@/app/components/insights/FaveSpot";
 import CommunitySpotlight from "@/app/components/insights/CommunitySpotlight";
 import AgentHero from "@/app/components/insights/AgentHero";
 import AccountBentoGrid from "@/app/components/insights/AccountBentoGrid";
+import BrowseByCityGrid from "@/app/components/insights/BrowseByCityGrid";
 
 interface Article {
   title: string;
@@ -302,6 +303,9 @@ const InsightsPage = () => {
           <div className="mb-6 md:mb-8">
             <InsightsCTABanner backgroundImage={bannerImage} />
           </div>
+
+          {/* Browse by City — internal links to all city pages for SEO */}
+          <BrowseByCityGrid />
 
         {/* Market Stats */}
         <div className="mb-6 md:mb-8">
