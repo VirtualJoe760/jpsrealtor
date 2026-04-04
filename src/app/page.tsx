@@ -248,8 +248,8 @@ const InsightsPage = () => {
           {/* Favorites Spotlight - Only show for logged-in users */}
           <FaveSpot className="mb-6 md:mb-8" />
 
-          {/* Guest CTA Banner */}
-          {status !== "loading" && !session && (
+          {/* Guest CTA Banner — render immediately for guests to avoid CLS from delayed auth check */}
+          {!session && (
             <div className={`rounded-2xl overflow-hidden mb-6 md:mb-8 border ${
               isLight
                 ? "bg-gradient-to-br from-slate-50 to-white border-slate-200"
@@ -293,8 +293,8 @@ const InsightsPage = () => {
             </div>
           )}
 
-          {/* Account Benefits Bento - Only for guests */}
-          {status !== "loading" && !session && (
+          {/* Account Benefits Bento - render immediately for guests */}
+          {!session && (
             <AccountBentoGrid />
           )}
 
