@@ -41,20 +41,8 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const projection = {
-      listingKey: 1,
-      slugAddress: 1,
-      unparsedAddress: 1,
-      city: 1,
-      stateOrProvince: 1,
-      listPrice: 1,
-      bedroomsTotal: 1,
-      bathroomsTotalInteger: 1,
-      livingArea: 1,
-      "media.0": 1,
-    };
-
-    let listings = await UnifiedListing.find(query, projection)
+    let listings = await UnifiedListing.find(query)
+      .select("listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea media")
       .sort({ listPrice: -1 })
       .limit(limit)
       .lean();
@@ -71,7 +59,8 @@ export async function GET(req: NextRequest) {
         cityQuery.listPrice = { $gte: parseInt(minPrice), $lte: parseInt(maxPrice) };
       }
 
-      listings = await UnifiedListing.find(cityQuery, projection)
+      listings = await UnifiedListing.find(cityQuery)
+        .select("listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea media")
         .sort({ listPrice: -1 })
         .limit(limit)
         .lean();
