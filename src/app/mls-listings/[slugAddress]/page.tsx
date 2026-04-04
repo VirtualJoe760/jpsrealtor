@@ -5,6 +5,9 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
+import ListingBreadcrumbs from "@/app/components/mls/ListingBreadcrumbs";
+import RelatedListings from "@/app/components/mls/RelatedListings";
+import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import Footer from "@/app/components/Footer";
 
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
@@ -152,9 +155,42 @@ export default async function ListingPage({
 
   const media = formatPhotos(rawPhotos, listing.primaryPhotoUrl || "/images/no-photo.png");
 
+  const city = (listing as any).city || "";
+  const subdivisionName = (listing as any).subdivisionName || "";
+  const citySlug = city ? city.toLowerCase().replace(/\s+/g, "-") : "";
+  const subdivisionSlug = subdivisionName
+    ? subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+    : "";
+
+  // Build breadcrumb items for JSON-LD
+  const breadcrumbItems = [
+    { name: "Home", url: "https://jpsrealtor.com" },
+    { name: "Listings", url: "https://jpsrealtor.com/mls-listings" },
+  ];
+  if (city && citySlug) {
+    breadcrumbItems.push({ name: city, url: `https://jpsrealtor.com/neighborhoods/${citySlug}` });
+  }
+  if (subdivisionName && subdivisionSlug && citySlug) {
+    breadcrumbItems.push({
+      name: subdivisionName,
+      url: `https://jpsrealtor.com/neighborhoods/${citySlug}/${subdivisionSlug}`,
+    });
+  }
+  breadcrumbItems.push({ name: address, url: `https://jpsrealtor.com/mls-listings/${slugAddress}` });
+
   return (
     <main className="w-full bg-black text-white">
+      <BreadcrumbJsonLd items={breadcrumbItems} />
+      <div className="max-w-7xl mx-auto">
+        <ListingBreadcrumbs city={city} subdivisionName={subdivisionName} address={address} />
+      </div>
       <UnifiedListingClient listing={listing} media={media} address={address} />
+      <RelatedListings
+        city={city}
+        subdivisionName={subdivisionName}
+        excludeListingKey={listing.listingKey || ""}
+        listPrice={(listing as any).listPrice}
+      />
       <Footer />
     </main>
   );
