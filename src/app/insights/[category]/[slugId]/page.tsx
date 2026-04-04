@@ -4,6 +4,8 @@ import YouTube from "@/components/mdx/YouTube";
 import { Post } from "@/types/post";
 import MDXLink from "@/app/components/mdx/Link";
 import ArticlePageClient from "./ArticlePageClient";
+import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
+import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 
 // Dynamic metadata generation
 export async function generateMetadata({
@@ -80,8 +82,26 @@ export default async function PostPage({
     // Render MDX content on server
     const mdxContent = <MDXRemote source={post.content} components={{ YouTube, MDXLink }} />;
 
+    const articleUrl = `https://jpsrealtor.com/insights/${category}/${slugId}`;
+    const breadcrumbItems = [
+      { name: "Home", url: "https://jpsrealtor.com" },
+      { name: "Insights", url: "https://jpsrealtor.com/insights" },
+      { name: post.title, url: articleUrl },
+    ];
+
     return (
-      <ArticlePageClient post={post} category={category} mdxContent={mdxContent} />
+      <>
+        <ArticleJsonLd
+          title={post.title}
+          description={post.metaDescription || post.description || ""}
+          url={articleUrl}
+          image={post.image}
+          datePublished={post.date}
+          section={category}
+        />
+        <BreadcrumbJsonLd items={breadcrumbItems} />
+        <ArticlePageClient post={post} category={category} mdxContent={mdxContent} />
+      </>
     );
   } catch (error) {
     console.error("Error rendering post:", error);
