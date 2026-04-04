@@ -649,7 +649,11 @@ export default function CityMap({
         </div>
         <Link
           href="/mls-listings"
-          className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
+          className={`px-6 py-2.5 font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg ${
+            isLight
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "bg-blue-500 hover:bg-blue-400 text-white"
+          }`}
         >
           View All Listings →
         </Link>
