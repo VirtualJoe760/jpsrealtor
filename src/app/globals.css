@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force font-display: swap on all @fontsource fonts to prevent CLS from FOUT */
+@layer base {
+  @font-face {
+    font-family: 'Raleway';
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Inter';
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Jost';
+    font-display: swap;
+  }
+}
+
 /* ============================================================================
    PWA Safe Area Variables
    ============================================================================
