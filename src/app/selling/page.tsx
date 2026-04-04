@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     description: 'Ready to sell your Coachella Valley home? Joseph Sardella provides expert guidance, market analysis, and proven strategies to get you top dollar for your property.',
     images: [
       {
-        url: '/misc/real-estate/front-yard/front-yard_00017_.png',
+        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_',
         width: 1200,
         height: 630,
         alt: 'Sell Your Home in the Coachella Valley',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Sell Your Home | Joseph Sardella | Palm Desert Real Estate',
     description: 'Ready to sell your Coachella Valley home? Joseph Sardella provides expert guidance, market analysis, and proven strategies to get you top dollar for your property.',
-    images: ['/misc/real-estate/front-yard/front-yard_00017_.png'],
+    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_'],
   },
 }
 

@@ -14,7 +14,7 @@ export async function generateMetadata() {
       url: "https://jpsrealtor.com/open-house-signup",
       images: [
         {
-          url: "/misc/real-estate/front-yard/front-yard_00001_.png", // Replace with the full URL if hosted externally
+          url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00001_", // Replace with the full URL if hosted externally
           alt: "Picture of Joseph Sardella",
         },
       ],
@@ -24,7 +24,7 @@ export async function generateMetadata() {
       title: "Open House Signup | Joseph Sardella | JPSREALTOR",
       description:
         "Sign up for our open house and get exclusive access to Joseph Sardella's ultimate buyer's guide to the Coachella Valley. Your real estate journey starts here.",
-      images: ["/misc/real-estate/front-yard/front-yard_00001_.png"], // Replace with the full URL if hosted externally
+      images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00001_"], // Replace with the full URL if hosted externally
     },
     robots: {
       index: true,
@@ -42,7 +42,7 @@ export default function OpenHouseSignupPage() {
     <div className="bg-black text-white min-h-screen flex flex-col">
       {/* Hero Section */}
       <VariableHero
-        backgroundImage="/misc/real-estate/front-yard/front-yard_00001_.png" // Replace with your actual default hero image path
+        backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00001_" // Replace with your actual default hero image path
         heroContext="Sign Up for Our Open House"
         description="Get your exclusive guide to buying in the Coachella Valley!"
       />

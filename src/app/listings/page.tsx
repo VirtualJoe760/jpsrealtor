@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     description: 'Browse the latest homes for sale in Palm Desert, Indian Wells, La Quinta, and the greater Coachella Valley. Find your perfect property with Joseph Sardella.',
     images: [
       {
-        url: '/city-images/palm-desert.jpg',
+        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-desert',
         width: 1200,
         height: 630,
         alt: 'Palm Desert Homes for Sale',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Property Listings | Palm Desert & Coachella Valley Homes for Sale',
     description: 'Browse the latest homes for sale in Palm Desert, Indian Wells, La Quinta, and the greater Coachella Valley.',
-    images: ['/city-images/palm-desert.jpg'],
+    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-desert'],
   },
 }
 

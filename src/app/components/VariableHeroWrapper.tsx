@@ -4,14 +4,14 @@ import React, { useState, useEffect } from "react";
 import VariableHero from "./VariableHero";
 
 const VariableHeroWrapper: React.FC = () => {
-  const [backgroundImage, setBackgroundImage] = useState("/joey/home.png");
+  const [backgroundImage, setBackgroundImage] = useState("https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/home");
 
   useEffect(() => {
     const updateBackgroundImage = () => {
       if (window.innerWidth <= 768) {
-        setBackgroundImage("/joey/home-mobile.png");
+        setBackgroundImage("https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/home-mobile");
       } else {
-        setBackgroundImage("/joey/home.png");
+        setBackgroundImage("https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/home");
       }
     };
 

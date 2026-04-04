@@ -37,7 +37,7 @@ export default async function OGImage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://jpsrealtor.com/joey/about.png"
+            src="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about"
             alt="Joseph Sardella"
             style={{
               width: '320px',

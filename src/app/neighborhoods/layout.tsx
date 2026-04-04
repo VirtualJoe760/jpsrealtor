@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     description: 'Explore neighborhoods across the Coachella Valley including Palm Desert, Indian Wells, La Quinta, Rancho Mirage, Palm Springs, and more.',
     images: [
       {
-        url: '/city-images/la-quinta.jpg',
+        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/la-quinta',
         width: 1200,
         height: 630,
         alt: 'Coachella Valley Neighborhoods',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Coachella Valley Neighborhoods | Palm Desert, Indian Wells, La Quinta & More',
     description: 'Explore neighborhoods across the Coachella Valley including Palm Desert, Indian Wells, La Quinta, and more.',
-    images: ['/city-images/la-quinta.jpg'],
+    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/la-quinta'],
   },
 }
 

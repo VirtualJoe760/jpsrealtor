@@ -12,7 +12,7 @@ export default function SubscribedPage() {
     <div className="bg-black text-white min-h-screen flex flex-col">
       {/* Hero Section */}
       <VariableHero
-        backgroundImage="/joey/about.png" // Replace with your actual default hero image path
+        backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about" // Replace with your actual default hero image path
         heroContext="You Are Officially Subscribed!"
         description=""
       />

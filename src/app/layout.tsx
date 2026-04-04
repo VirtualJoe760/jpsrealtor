@@ -98,7 +98,7 @@ export const metadata: Metadata = {
     description: "Your trusted real estate expert in the Coachella Valley. Buy, sell, or invest with local expertise.",
     images: [
       {
-        url: "/joey/about.png",
+        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
         width: 1200,
         height: 630,
         alt: "Joseph Sardella - Palm Desert Real Estate Agent",
@@ -109,7 +109,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Joseph Sardella | Palm Desert Real Estate Agent",
     description: "Your trusted real estate expert in the Coachella Valley.",
-    images: ["/joey/about.png"],
+    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png"],
     creator: "@jpsrealtor",
   },
   verification: {

@@ -22,7 +22,7 @@ export const metadata = {
       "Unlock expert advice and strategies to sell your home with confidence. Get your free Ultimate Home Seller's Guide now.",
     images: [
       {
-        url: "/misc/real-estate/kitchen/kitchen_00027_.png",
+        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/kitchen/kitchen_00027_",
         alt: "JPSREALTOR - Ultimate Home Seller's Guide",
       },
     ],
@@ -34,7 +34,7 @@ export default function DirectMailPage() {
     <div className="bg-black text-white min-h-screen flex flex-col">
       {/* Hero Section */}
       <VariableHero
-        backgroundImage="/misc/real-estate/kitchen/kitchen_00027_.png"
+        backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/kitchen/kitchen_00027_"
         heroContext="Get The Ultimate Home Seller's Guide"
         description="Scroll down and fill out the form to recieve your copy of the ultimate sellers guide."
       />
