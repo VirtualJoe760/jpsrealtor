@@ -17,19 +17,6 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   const isLight = currentTheme === "lightgradient";
   const [imageLoaded, setImageLoaded] = useState(false);
   const [headshotLoaded, setHeadshotLoaded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is md breakpoint
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Use heroImage as primary background, fallback chain for all possible photo fields
   const heroImage = agentProfile?.agentProfile?.heroImage ||
@@ -48,68 +35,56 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
       <section className="relative w-full overflow-hidden pt-0 md:pt-16 pb-0 md:pb-16 px-0 md:px-4">
         <div className="w-full md:max-w-7xl md:mx-auto">
           <div
-            className="relative overflow-hidden rounded-none md:rounded-2xl h-[100vh] md:h-[70vh] bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 animate-pulse"
+            className="relative overflow-hidden rounded-none md:rounded-2xl h-[65vh] md:h-[70vh] bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 animate-pulse"
             style={{ minHeight: "500px", maxHeight: "none" }}
           >
-            {/* Skeleton - Conditional Rendering for Mobile vs Desktop */}
-            {isMobile ? (
-              /* Mobile Skeleton */
-              <div className="relative z-10 h-full flex flex-col">
-                {/* Skeleton headline and buttons */}
-                <div className="px-6 pt-10">
-                  <div className="space-y-4 mb-4">
-                    <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4"></div>
-                    <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3"></div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
-                    <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
-                  </div>
+            {/* Mobile Skeleton */}
+            <div className="md:hidden relative z-10 h-full flex flex-col">
+              <div className="px-6 pt-10">
+                <div className="space-y-4 mb-4">
+                  <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4"></div>
+                  <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3"></div>
                 </div>
-
-                {/* Skeleton bottom: business card left */}
-                <div className="mt-auto flex items-end pb-16 px-6">
-                  <div className="flex flex-col gap-1">
-                    <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
-                    <div className="w-12 h-0.5 bg-gray-300 dark:bg-gray-700 my-0.5"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-28"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+                <div className="flex gap-3">
+                  <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
+                  <div className="flex-1 h-12 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
+                </div>
+              </div>
+              <div className="mt-auto flex items-end pb-16 px-6">
+                <div className="flex flex-col gap-1">
+                  <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+                  <div className="w-12 h-0.5 bg-gray-300 dark:bg-gray-700 my-0.5"></div>
+                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-28"></div>
+                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+                </div>
+              </div>
+            </div>
+            {/* Desktop Skeleton */}
+            <div className="hidden md:flex relative z-10 h-full flex-col">
+              <div className="flex-1 flex flex-col justify-center w-full">
+                <div className="px-12 lg:px-16 xl:px-24 max-w-7xl w-full">
+                  <div className="space-y-4 mb-12">
+                    <div className="h-16 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4 max-w-2xl"></div>
+                    <div className="h-16 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3 max-w-xl"></div>
+                  </div>
+                  <div className="flex flex-row gap-5">
+                    <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
+                    <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
+                    <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
                   </div>
                 </div>
               </div>
-            ) : (
-              /* Desktop Skeleton */
-              <div className="relative z-10 h-full flex flex-col">
-                <div className="flex-1 flex flex-col justify-center w-full">
-                  <div className="px-12 lg:px-16 xl:px-24 max-w-7xl w-full">
-                    {/* Skeleton headline */}
-                    <div className="space-y-4 mb-12">
-                      <div className="h-16 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4 max-w-2xl"></div>
-                      <div className="h-16 bg-gray-300 dark:bg-gray-700 rounded-lg w-2/3 max-w-xl"></div>
-                    </div>
-
-                    {/* Skeleton buttons */}
-                    <div className="flex flex-row gap-5">
-                      <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
-                      <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
-                      <div className="h-14 bg-gray-300 dark:bg-gray-700 rounded-xl w-32"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Skeleton business card - bottom left */}
-                <div className="absolute bottom-0 left-0 right-0 pb-12 px-12 lg:px-16 xl:px-24 flex items-end">
-                  <div className="flex flex-col gap-2 pb-8">
-                    <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
-                    <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-36"></div>
-                    <div className="w-20 h-0.5 bg-gray-300 dark:bg-gray-700 my-1"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
-                  </div>
+              <div className="absolute bottom-0 left-0 right-0 pb-12 px-12 lg:px-16 xl:px-24 flex items-end">
+                <div className="flex flex-col gap-2 pb-8">
+                  <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
+                  <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-36"></div>
+                  <div className="w-20 h-0.5 bg-gray-300 dark:bg-gray-700 my-1"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-40"></div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </section>
@@ -135,11 +110,10 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
       {/* Container matching other sections */}
       <div className="w-full md:max-w-7xl md:mx-auto">
         <div
-          className={`relative overflow-hidden rounded-none md:rounded-2xl transition-opacity duration-700 ${isMobile ? 'h-[65vh]' : 'h-[70vh]'}`}
+          className="relative overflow-hidden rounded-none md:rounded-2xl h-[65vh] md:h-[70vh]"
           style={{
             minHeight: "500px",
             maxHeight: "none",
-            opacity: imageLoaded || !heroImage ? 1 : 0.5
           }}
         >
           {/* Hero Background Image */}
@@ -172,12 +146,8 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800" />
           )}
 
-          {/* Content Container - Conditional Rendering for Mobile vs Desktop */}
-          {isMobile ? (
-            /* ============================================
-               MOBILE LAYOUT
-               ============================================ */
-            <div className="relative z-10 h-full flex flex-col">
+          {/* MOBILE LAYOUT — hidden on md+ via CSS, no JS state needed */}
+            <div className="md:hidden relative z-10 h-full flex flex-col">
               {/* Top Right Team Logo */}
               {agentProfile?.agentProfile?.teamLogo && (
                 <div className="absolute top-6 right-6 z-20">
@@ -192,7 +162,7 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
               {/* Top section: Headline + Buttons - centered in top half */}
               <div
                 className="flex-1 flex flex-col justify-center px-6 pt-12 z-10 transition-opacity duration-700"
-                style={{ opacity: imageLoaded || !heroImage ? 1 : 0, maxHeight: '50%' }}
+                style={{ maxHeight: '50%' }}
               >
                 <h1
                   className="text-3xl font-serif text-white mb-4 leading-tight"
@@ -245,8 +215,8 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
               <div className="mt-auto flex items-end pb-16">
                 {/* Business Card - Left side */}
                 <div
-                  className="px-6 z-30 transition-opacity duration-700 flex-shrink-0"
-                  style={{ opacity: imageLoaded || !heroImage ? 1 : 0, maxWidth: '55%' }}
+                  className="px-6 z-30 flex-shrink-0"
+                  style={{ maxWidth: '55%' }}
                 >
                   <div className="flex flex-col gap-1.5 text-white">
                     {agentProfile?.name && (
@@ -299,11 +269,9 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                 )}
               </div>
             </div>
-          ) : (
-            /* ============================================
-               DESKTOP LAYOUT
-               ============================================ */
-            <div className="relative z-10 h-full flex flex-col">
+
+          {/* DESKTOP LAYOUT — hidden below md via CSS */}
+            <div className="hidden md:flex relative z-10 h-full flex-col">
               {/* Top Right Team Logo */}
               {agentProfile?.agentProfile?.teamLogo && (
                 <div className="absolute top-12 right-12 z-20">
@@ -319,20 +287,16 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
               <div className="flex-1 flex flex-col justify-center w-full">
                 <div className="px-12 lg:px-16 xl:px-24 max-w-7xl w-full">
                   <h1
-                    className="text-5xl lg:text-6xl xl:text-7xl font-serif text-white mb-8 leading-tight transition-opacity duration-700"
+                    className="text-5xl lg:text-6xl xl:text-7xl font-serif text-white mb-8 leading-tight"
                     style={{
                       fontFamily: 'Georgia, serif',
-                      opacity: imageLoaded || !heroImage ? 1 : 0,
                       textShadow: '2px 2px 12px rgba(0,0,0,0.9)'
                     }}
                     dangerouslySetInnerHTML={{ __html: heroHeadline }}
                   />
 
                   {/* CTA Buttons - Chat/Create Account and Map Search */}
-                  <div
-                    className="flex flex-row gap-5 transition-opacity duration-700"
-                    style={{ opacity: imageLoaded || !heroImage ? 1 : 0 }}
-                  >
+                  <div className="flex flex-row gap-5">
                     {session ? (
                       <button
                         onClick={handleChat}
@@ -428,7 +392,6 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
                 </div>
               )}
             </div>
-          )}
         </div>
       </div>
     </section>

@@ -237,9 +237,7 @@ const InsightsPage = () => {
   return (
     <>
       {/* Fullscreen Agent Hero Section - Show for all users */}
-      {agentProfile && (
-        <AgentHero agentProfile={agentProfile} />
-      )}
+      <AgentHero agentProfile={agentProfile} />
 
         <div className="min-h-screen pt-4 md:pt-6 pb-6 md:pb-12 px-4">
           <div className="max-w-7xl mx-auto">
