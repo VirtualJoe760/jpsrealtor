@@ -48,6 +48,8 @@ const InsightsCTABanner: React.FC<InsightsCTABannerProps> = () => {
                 fill
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
                 sizes="(max-width: 640px) 100vw, 50vw"
+                quality={75}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-300" />
               <div className="absolute inset-0 flex items-center justify-center">
