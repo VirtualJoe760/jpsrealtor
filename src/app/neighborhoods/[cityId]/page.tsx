@@ -43,7 +43,9 @@ interface PageData {
 // Fetch data from neighborhoods API (handles cities, counties, and regions)
 async function getPageDataFromAPI(slug: string): Promise<PageData | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/neighborhoods/directory`, {
       cache: 'no-store'
     });
