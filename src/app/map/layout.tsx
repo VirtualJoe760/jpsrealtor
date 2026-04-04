@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     description: 'Explore homes for sale on our interactive map. Browse properties in Palm Desert, Indian Wells, La Quinta, and across the Coachella Valley.',
     images: [
       {
-        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-springs',
+        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-springs.jpg',
         width: 1200,
         height: 630,
         alt: 'Coachella Valley Real Estate Map',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Interactive Map | Palm Desert & Coachella Valley Real Estate',
     description: 'Explore homes for sale on our interactive map across the Coachella Valley.',
-    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-springs'],
+    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-springs.jpg'],
   },
 }
 

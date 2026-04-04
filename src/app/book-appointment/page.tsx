@@ -80,7 +80,7 @@ export default function BookAppointmentPage() {
 
       <div className="relative z-10">
         <VariableHero
-          backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_"
+          backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png"
           heroContext="Book Your Free Real Estate Consultation"
           description="Take the first step toward achieving your real estate goals."
         />

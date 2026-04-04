@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     url: "https://www.jpsrealtor.com/mls-listings",
     images: [
       {
-        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city",
+        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg",
         width: 1200,
         height: 630,
         alt: "Coachella Valley Real Estate Listings",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Search MLS Listings | Coachella Valley Real Estate",
     description: "Find homes for sale in real-time using our map search.",
-    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city"],
+    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg"],
   },
 };
 

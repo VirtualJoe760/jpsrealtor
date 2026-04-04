@@ -69,7 +69,7 @@ const OhCaptureHero: React.FC<OhCaptureHeroProps> = ({
           </div>
           <div className="w-20 h-20 md:w-28 md:h-28 overflow-hidden rounded-full mt-4 md:mt-0">
             <Image
-              src="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/agent/joey-transparent"
+              src="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/agent/joey-transparent.png"
               alt="Agent Photo"
               width={112}
               height={112}

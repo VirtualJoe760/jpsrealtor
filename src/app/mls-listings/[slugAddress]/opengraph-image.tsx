@@ -73,7 +73,7 @@ export default async function OGImage({
   const beds = listing.bedroomsTotal || listing.beds || 0
   const baths = listing.bathroomsTotalInteger || listing.bathroomsFull || 0
   const sqft = listing.livingArea || listing.buildingAreaTotal || 0
-  const photoUrl = listing.primaryPhotoUrl || 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about'
+  const photoUrl = listing.primaryPhotoUrl || 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png'
 
   return new ImageResponse(
     (

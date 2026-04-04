@@ -13,11 +13,11 @@ export function OrganizationJsonLd() {
     url: "https://jpsrealtor.com",
     logo: {
       "@type": "ImageObject",
-      url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about",
+      url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
       width: 1200,
       height: 630,
     },
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
     telephone: "+1-760-333-3676",
     email: "joseph@jpsrealtor.com",
     address: {
@@ -143,7 +143,7 @@ export function PersonJsonLd() {
     jobTitle: "Real Estate Agent",
     description:
       "Born and raised in Indian Wells Country Club, Joseph Sardella is a local real estate expert serving the Coachella Valley.",
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
     url: "https://jpsrealtor.com/about",
     sameAs: [
       "https://www.instagram.com/instadella",

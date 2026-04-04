@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
       <div className="min-h-screen flex flex-col py-8">
         {/* Hero Section */}
         <CenterHero
-          backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about"
+          backgroundImage="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png"
           maxWidth="max-w-5xl"
           showBusinessCard={true}
         />

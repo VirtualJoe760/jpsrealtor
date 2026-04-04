@@ -46,7 +46,7 @@ export function ArticleJsonLd({
       url: "https://jpsrealtor.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about",
+        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
       },
     },
     ...(section && { articleSection: section }),

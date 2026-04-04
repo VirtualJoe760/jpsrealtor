@@ -43,7 +43,7 @@ export const aboutSectionContent = {
         text: "Explore The Desert",
         href: "/neighborhoods",
       },
-      imageUrl: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bento-2",
+      imageUrl: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bento-2.png",
     },
     {
       heading: "Don't be shy.",
@@ -53,7 +53,7 @@ export const aboutSectionContent = {
         text: "Contact Joseph Today",
         href: "/#contact",
       },
-      imageUrl: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bento-3",
+      imageUrl: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bento-3.png",
     },
     {
       heading: "Ready to see some houses?",
@@ -114,7 +114,7 @@ export const insightsCategoriesContent = {
       title: "Articles",
       href: "/insights/articles",
       imageUrl:
-        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/back-yard_00001_",
+        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/back-yard_00001_.png",
       altText: "An open book with charts representing knowledge and insights.",
       description:
         "Explore in-depth articles covering economics, market statistics, trends, and insights that go beyond the Coachella Valley.",
@@ -124,7 +124,7 @@ export const insightsCategoriesContent = {
       title: "Market Insights",
       href: "/insights/market-insights",
       imageUrl:
-        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/front-yard_00001_",
+        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/front-yard_00001_.png",
       altText: "Graphs and charts showcasing Coachella Valley market trends.",
       description:
         "Discover insights focused on the Coachella Valley market, including housing trends, neighborhood highlights, and local statistics.",
@@ -134,7 +134,7 @@ export const insightsCategoriesContent = {
       title: "Real Estate Tips",
       href: "/insights/real-estate-tips",
       imageUrl:
-        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bathroom_00001_",
+        "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/bathroom_00001_.png",
       altText: "A real estate agent reviewing a home buying guide.",
       description:
         "Practical tips and advice on navigating real estate transactions, from buying and selling to maximizing your investment.",

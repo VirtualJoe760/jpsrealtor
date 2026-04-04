@@ -11,14 +11,14 @@ const guides = [
     title: "Buyer's Guide",
     subtitle: "Navigate the Coachella Valley market",
     icon: BookOpen,
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/buying",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/buying.jpeg",
     href: "/insights/articles/ultimate-buyers-guide-coachella-valley",
   },
   {
     title: "Seller's Guide",
     subtitle: "Maximize your home's value",
     icon: FileText,
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/living-room_00001_",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/living-room_00001_.png",
     href: "/insights/articles/ultimate-sellers-guide-coachella-valley",
   },
 ];

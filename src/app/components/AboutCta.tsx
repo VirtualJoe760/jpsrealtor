@@ -8,7 +8,7 @@ const cards = [
       "Get to know me—my journey, expertise, and unwavering dedication to helping you succeed in the real estate market.",
     icon: HomeIcon,
     href: "/about",
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/about-cta-1",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/about-cta-1.png",
   },
   {
     name: "Buying",
@@ -16,7 +16,7 @@ const cards = [
       "Let me guide you through buying your dream home. Together, we’ll make the process seamless, exciting, and rewarding.",
     icon: KeyIcon,
     href: "/insights/real-estate-tips/ultimate-buyers-guide-coachella-valley",
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/buying",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/buying.jpeg",
   },
   {
     name: "Selling",
@@ -24,7 +24,7 @@ const cards = [
       "Selling your property? I’ll help you navigate the market, maximize value, and achieve the best results, stress-free.",
     icon: ShoppingBagIcon,
     href: "insights/real-estate-tips/ultimate-sellers-guide-coachella-valley",
-    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/about-cta-3",
+    image: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/about-cta-3.png",
   },
 ];
 

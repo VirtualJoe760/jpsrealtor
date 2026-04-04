@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     url: "https://www.jpsrealtor.com/book-appointment",
     images: [
       {
-        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_",
+        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png",
         alt: "Front Yard Real Estate View",
       },
     ],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     title: "Book Your Free Real Estate Consultation | Joseph Sardella",
     description:
       "Schedule your free real estate consultation with Joseph Sardella. Let's achieve your real estate goals in the Coachella Valley.",
-    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_"],
+    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png"],
   },
 };
 

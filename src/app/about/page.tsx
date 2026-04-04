@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
     images: [
       {
-        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about',
+        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png',
         width: 1200,
         height: 630,
         alt: 'Joseph Sardella - Palm Desert Real Estate Agent',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
     description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
-    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about'],
+    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png'],
   },
 }
 
@@ -31,7 +31,7 @@ const page = () => {
   return (
     <div>
       <VariableHero 
-        backgroundImage={`https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about`}
+        backgroundImage={`https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png`}
         heroContext=" "
         description=""
         alignment="center"
