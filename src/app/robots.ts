@@ -20,10 +20,13 @@ export default function robots(): MetadataRoute.Robots {
           '/api/',
           '/admin/',
           '/dashboard/',
+          '/agent/',
           '/auth/',
           '/private/',
           '/test/',
           '/_next/',
+          '/chap',
+          '/map',
           '/404',
           '/500',
         ],
@@ -31,7 +34,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/', '/auth/'],
+        disallow: ['/api/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
       },
       {
         userAgent: 'Googlebot-Image',
@@ -41,7 +44,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: 'Bingbot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/', '/auth/'],
+        disallow: ['/api/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

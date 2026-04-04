@@ -18,14 +18,13 @@ export function OrganizationJsonLd() {
       height: 630,
     },
     image: "https://jpsrealtor.com/joey/about.png",
-    telephone: "+1-760-XXX-XXXX", // Update with actual phone number
-    email: "joseph@jpsrealtor.com", // Update with actual email
+    telephone: "+1-760-333-3676",
+    email: "joseph@jpsrealtor.com",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "", // Add street address if applicable
-      addressLocality: "Palm Desert",
+      addressLocality: "Indian Wells",
       addressRegion: "CA",
-      postalCode: "92260",
+      postalCode: "92253",
       addressCountry: "US",
     },
     geo: {
@@ -96,15 +95,23 @@ export function OrganizationJsonLd() {
       },
     ],
     sameAs: [
-      // Add social media profiles when available
-      // "https://www.facebook.com/jpsrealtor",
-      // "https://www.instagram.com/jpsrealtor",
-      // "https://www.linkedin.com/in/josephsardella",
+      "https://www.instagram.com/instadella",
+      "https://www.yelp.com/biz/joseph-sardella-exp-realty-indian-wells",
+      "https://www.obsidianregroup.com/team/joseph-sardella",
     ],
     memberOf: {
       "@type": "Organization",
       name: "eXp Realty",
       url: "https://exprealty.com",
+    },
+    hasCredential: {
+      "@type": "EducationalOccupationalCredential",
+      credentialCategory: "Real Estate License",
+      recognizedBy: {
+        "@type": "Organization",
+        name: "California Department of Real Estate",
+      },
+      identifier: "DRE# 02106916",
     },
     knowsAbout: [
       "Real Estate",
@@ -139,18 +146,32 @@ export function PersonJsonLd() {
     image: "https://jpsrealtor.com/joey/about.png",
     url: "https://jpsrealtor.com/about",
     sameAs: [
-      // Add social profiles
+      "https://www.instagram.com/instadella",
     ],
     worksFor: {
       "@type": "Organization",
       name: "eXp Realty - Obsidian Real Estate Group",
+      url: "https://www.obsidianregroup.com",
+    },
+    hasCredential: {
+      "@type": "EducationalOccupationalCredential",
+      credentialCategory: "Real Estate License",
+      recognizedBy: {
+        "@type": "Organization",
+        name: "California Department of Real Estate",
+      },
+      identifier: "DRE# 02106916",
     },
     knowsAbout: [
       "Real Estate",
       "Coachella Valley",
       "Palm Desert",
+      "Indian Wells",
+      "La Quinta",
       "Home Buying",
       "Home Selling",
+      "Luxury Real Estate",
+      "Investment Properties",
     ],
     alumniOf: {
       "@type": "Organization",

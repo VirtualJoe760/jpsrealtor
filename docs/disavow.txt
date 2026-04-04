@@ -1,0 +1,27 @@
+# Disavow file for jpsrealtor.com
+# Generated 2026-04-03
+# Spam/toxic backlinks identified via Ahrefs Site Audit
+
+domain:seoexpress.org
+domain:rankyour.website
+domain:seoagency.sale
+domain:quero.party
+domain:bye.fyi
+domain:creativeposts.top
+domain:atomizelink.icu
+domain:blogsphere.top
+domain:screenshots.wiki
+domain:optimizeflow.top
+domain:jake.eu
+domain:sport-life.club
+domain:nettools.guru
+domain:rankvanceseo.info
+domain:businessvocal.com
+domain:getwebsiteworth.com
+domain:rankpilot.shop
+domain:booksreadr.org
+domain:egyptiandirectory.com
+domain:pagesearch.net
+domain:globalecommerce.org
+domain:indians.cc
+domain:5913231.cc

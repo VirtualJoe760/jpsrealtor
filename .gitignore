@@ -70,3 +70,7 @@ ca_counties.json
 
 # Video files
 *.mp4
+
+# Google credentials for MCP servers
+gsc-credentials.json
+*-credentials.json
