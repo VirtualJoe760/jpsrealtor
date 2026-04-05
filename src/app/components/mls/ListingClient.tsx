@@ -1,9 +1,9 @@
 // src/app/components/mls/ListingClient.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon, Building2, Eye } from "lucide-react";
+import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon, Building2, Eye, ChevronLeft, Heart, MessageCircle, Map, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -12,6 +12,94 @@ import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import type { IUnifiedListing } from "@/models/unified-listing";
+
+// Community aside panel for the right column
+function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: {
+  subdivisionName: string;
+  cityName: string;
+  subdivisionUrl: string;
+  isLight: boolean;
+}) {
+  const [stats, setStats] = useState<{ listingCount?: number; avgPrice?: number; medianPrice?: number } | null>(null);
+
+  useEffect(() => {
+    const slug = subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    fetch(`/api/subdivisions/${slug}/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setStats(data); })
+      .catch(() => {});
+  }, [subdivisionName]);
+
+  return (
+    <motion.div
+      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } } }}
+      className={`backdrop-blur-xl rounded-2xl p-6 shadow-2xl ${
+        isLight
+          ? 'bg-white/80 border-2 border-gray-300'
+          : 'bg-black/40 border border-neutral-800/50'
+      }`}
+      style={isLight ? {
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+      } : undefined}
+    >
+      <h2 className={`text-xl font-bold mb-3 flex items-center gap-2 ${
+        isLight ? 'text-gray-900' : 'text-white'
+      }`}>
+        <div className={`w-1 h-6 rounded-full ${
+          isLight
+            ? 'bg-gradient-to-b from-purple-500 to-indigo-500'
+            : 'bg-gradient-to-b from-purple-400 to-indigo-400'
+        }`} />
+        About {subdivisionName}
+      </h2>
+
+      <p className={`text-sm leading-relaxed mb-4 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>
+        This property is located in <span className={`font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>{subdivisionName}</span>,
+        a community in {cityName}. Explore more listings in this neighborhood to compare options and pricing.
+      </p>
+
+      {/* Community stats */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {stats.listingCount != null && (
+            <div className={`rounded-xl p-3 text-center ${
+              isLight ? 'bg-purple-50 border border-purple-200' : 'bg-purple-500/10 border border-purple-500/20'
+            }`}>
+              <div className={`text-xl font-bold ${isLight ? 'text-purple-700' : 'text-purple-400'}`}>{stats.listingCount}</div>
+              <div className={`text-xs ${isLight ? 'text-purple-600' : 'text-purple-400/70'}`}>Active Listings</div>
+            </div>
+          )}
+          {stats.medianPrice != null && stats.medianPrice > 0 && (
+            <div className={`rounded-xl p-3 text-center ${
+              isLight ? 'bg-indigo-50 border border-indigo-200' : 'bg-indigo-500/10 border border-indigo-500/20'
+            }`}>
+              <div className={`text-xl font-bold ${isLight ? 'text-indigo-700' : 'text-indigo-400'}`}>
+                {stats.medianPrice >= 1000000
+                  ? `$${(stats.medianPrice / 1000000).toFixed(1)}M`
+                  : `$${(stats.medianPrice / 1000).toFixed(0)}K`}
+              </div>
+              <div className={`text-xs ${isLight ? 'text-indigo-600' : 'text-indigo-400/70'}`}>Median Price</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Link
+        href={subdivisionUrl}
+        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          isLight
+            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+            : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30'
+        }`}
+      >
+        <HomeIcon className="w-4 h-4" />
+        View {subdivisionName} Listings
+        <ArrowRight className="w-4 h-4" />
+      </Link>
+    </motion.div>
+  );
+}
 
 function calculateDaysOnMarket(dateString?: string | Date) {
   if (!dateString) return null;
@@ -87,36 +175,108 @@ export default function ListingClient({
   const getSubdivisionUrl = () => {
     if (!listing.subdivisionName || !listing.city) return null;
 
-    // Filter out non-applicable subdivisions
-    const nonApplicableValues = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
-    const lowerSubdivision = listing.subdivisionName.toLowerCase().trim();
-    if (nonApplicableValues.some(val => lowerSubdivision.includes(val))) {
-      return null;
-    }
+    const nonApplicable = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
+    if (nonApplicable.some(v => listing.subdivisionName!.toLowerCase().includes(v))) return null;
 
-    // Import the findCityByName function to get the proper cityId
-    const { findCityByName } = require('@/app/constants/counties');
-
-    const cityData = findCityByName(listing.city);
-    if (!cityData) return null;
-
-    // Use the city's ID from the counties constant
-    const cityId = cityData.city.id;
-
-    // Create subdivision slug from name - this should match the database slug
-    const subdivisionSlug = listing.subdivisionName
+    const citySlug = (listing.city as string).toLowerCase().replace(/\s+/g, '-');
+    const subdivSlug = listing.subdivisionName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    return `/neighborhoods/${cityId}/${subdivisionSlug}`;
+    return `/neighborhoods/${citySlug}/${subdivSlug}`;
   };
 
   const subdivisionUrl = getSubdivisionUrl();
 
+  // Back button destination: subdivision > city > listings
+  const backLink = (() => {
+    const l = listing as any;
+    const citySlug = l.city
+      ? String(l.city).toLowerCase().replace(/\s+/g, "-")
+      : null;
+
+    const subdivName = l.subdivisionName ? String(l.subdivisionName).trim() : "";
+    const nonApplicable = ['not applicable', 'n/a', 'none', 'other', 'na', 'no hoa'];
+    const validSubdiv = subdivName.length > 0 &&
+      !nonApplicable.some((v: string) => subdivName.toLowerCase().includes(v));
+
+    if (validSubdiv && citySlug) {
+      const subdivSlug = subdivName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      return { href: `/neighborhoods/${citySlug}/${subdivSlug}`, label: subdivName };
+    }
+    if (citySlug) {
+      return { href: `/neighborhoods/${citySlug}`, label: String(l.city) };
+    }
+    return { href: "/mls-listings", label: "Listings" };
+  })();
+
   return (
     <SpaticalBackground showGradient={true}>
       <div className="min-h-screen">
+        {/* Top Action Bar */}
+        <div className="max-w-7xl mx-auto px-4 pt-2 md:pt-4 pb-2 flex items-center justify-between">
+          <Link
+            href={backLink.href}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+              isLight
+                ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {"Back to " + backLink.label}
+          </Link>
+          <div className="flex items-center gap-1.5 md:hidden">
+            <Link
+              href="/?view=chat"
+              className={`p-2.5 rounded-full transition-all ${
+                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+              }`}
+              title="Chat"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </Link>
+            <Link
+              href={`/mls-listings/${(listing as any).slugAddress || listing.listingKey}/map`}
+              className={`p-2.5 rounded-full transition-all ${
+                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+              }`}
+              title="Map"
+            >
+              <Map className="w-5 h-5" />
+            </Link>
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: address, url: window.location.href });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
+              }}
+              className={`p-2.5 rounded-full transition-all ${
+                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+              }`}
+              title="Share"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+            <button
+              className={`p-2.5 rounded-full transition-all ${
+                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+              }`}
+              title="Save"
+            >
+              <Heart className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
         {/* Hero Section */}
         <div className="w-full">
           <CollageHero media={media} />
@@ -142,74 +302,125 @@ export default function ListingClient({
               WebkitBackdropFilter: "blur(20px) saturate(180%)",
             } : undefined}
           >
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-              {/* Left - Address & Info */}
-              <div className="flex-1">
-                <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${
-                  isLight ? 'text-gray-900' : 'text-white'
+            {/* Mobile: Condensed view */}
+            <div className="md:hidden">
+              <h1 className={`text-2xl font-bold mb-1 ${
+                isLight ? 'text-gray-900' : 'text-white'
+              }`}>
+                {address}
+              </h1>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                <span className={`text-2xl font-extrabold ${
+                  isLight ? 'text-blue-600' : 'text-emerald-400'
                 }`}>
-                  {address}
-                </h1>
-                <div className={`flex flex-wrap items-center gap-3 text-sm mb-4 ${
-                  isLight ? 'text-gray-600' : 'text-neutral-400'
-                }`}>
-                  <span className="flex items-center gap-1.5">
-                    <HomeIcon className="w-4 h-4" />
-                    MLS# {listing.listingId}
-                  </span>
-                  <span>•</span>
-                  <span>{getPropertyTypeLabel(listing.propertyType)}</span>
-                  <span>•</span>
-                  <span>{listing.propertySubType || "Unknown Subtype"}</span>
-                </div>
-
-                {/* Status Badge */}
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
-                      listing.standardStatus === "Active"
-                        ? isLight
-                          ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
-                          : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : isLight
-                          ? "bg-gray-200 text-gray-700 border-2 border-gray-300"
-                          : "bg-neutral-700/50 text-neutral-300 border border-neutral-600/30"
-                    }`}
-                  >
-                    <div className={`w-2 h-2 rounded-full ${listing.standardStatus === "Active"
-                      ? isLight ? "bg-emerald-600 animate-pulse" : "bg-emerald-400 animate-pulse"
-                      : isLight ? "bg-gray-600" : "bg-neutral-400"
-                    }`} />
-                    {listing.standardStatus}
-                  </span>
-                  {daysOnMarket !== null && (
-                    <span className={`flex items-center gap-1.5 text-sm ${
-                      isLight ? 'text-gray-600' : 'text-neutral-400'
-                    }`}>
-                      <CalendarIcon className="w-4 h-4" />
-                      {daysOnMarket} days on market
-                    </span>
-                  )}
-                </div>
+                  {(() => {
+                    const p = listing.listPrice;
+                    if (!p) return "Price TBD";
+                    if (p >= 1000000) return `$${(p / 1000000).toFixed(p % 100000 === 0 ? 1 : 2)}M`;
+                    if (p >= 1000) return `$${(p / 1000).toFixed(0)}K`;
+                    return `$${p.toLocaleString()}`;
+                  })()}
+                  {listing.propertyType?.toLowerCase().includes("lease") && <span className="text-sm">/mo</span>}
+                </span>
+                <span className={`text-sm font-semibold ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>
+                  {[
+                    (listing.bedroomsTotal || listing.bedsTotal) !== undefined ? `${listing.bedroomsTotal || listing.bedsTotal}bd` : null,
+                    listing.bathroomsTotalInteger !== undefined ? `${listing.bathroomsTotalInteger}ba` : null,
+                    listing.livingArea ? `${listing.livingArea.toLocaleString()} sqft` : null,
+                  ].filter(Boolean).join(" · ")}
+                </span>
               </div>
+              <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${
+                isLight ? 'text-gray-500' : 'text-neutral-500'
+              }`}>
+                {listing.lotSizeArea !== undefined && <span>Lot {Math.round(listing.lotSizeArea).toLocaleString()} sqft</span>}
+                {listing.lotSizeArea !== undefined && typeof listing.associationFee === "number" && listing.associationFee > 0 && <span>•</span>}
+                {typeof listing.associationFee === "number" && listing.associationFee > 0 && <span>HOA ${listing.associationFee}/mo</span>}
+                {(listing.lotSizeArea !== undefined || (typeof listing.associationFee === "number" && listing.associationFee > 0)) && <span>•</span>}
+                <span>{listing.propertySubType || getPropertyTypeLabel(listing.propertyType)}</span>
+                <span>•</span>
+                <span
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold ${
+                    listing.standardStatus === "Active"
+                      ? isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-400"
+                      : isLight ? "bg-gray-200 text-gray-700" : "bg-neutral-700/50 text-neutral-300"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${listing.standardStatus === "Active" ? "bg-emerald-400 animate-pulse" : "bg-neutral-400"}`} />
+                  {listing.standardStatus}
+                </span>
+                {daysOnMarket !== null && <><span>•</span><span>{daysOnMarket}d on market</span></>}
+                <span>•</span>
+                <span>MLS# {listing.listingId}</span>
+              </div>
+            </div>
 
-              {/* Right - Price */}
-              <div className="text-right lg:text-right">
-                <div className={`text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text mb-2 ${
-                  isLight
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
-                    : 'bg-gradient-to-r from-emerald-400 to-cyan-400'
-                }`}>
-                  ${listing.listPrice?.toLocaleString()}
-                  {listing.propertyType?.toLowerCase().includes("lease") && (
-                    <span className="text-3xl md:text-4xl">/mo</span>
-                  )}
+            {/* Desktop: Original layout */}
+            <div className="hidden md:block">
+              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+                <div className="flex-1">
+                  <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${
+                    isLight ? 'text-gray-900' : 'text-white'
+                  }`}>
+                    {address}
+                  </h1>
+                  <div className={`flex flex-wrap items-center gap-3 text-sm mb-4 ${
+                    isLight ? 'text-gray-600' : 'text-neutral-400'
+                  }`}>
+                    <span className="flex items-center gap-1.5">
+                      <HomeIcon className="w-4 h-4" />
+                      MLS# {listing.listingId}
+                    </span>
+                    <span>•</span>
+                    <span>{getPropertyTypeLabel(listing.propertyType)}</span>
+                    <span>•</span>
+                    <span>{listing.propertySubType || "Unknown Subtype"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+                        listing.standardStatus === "Active"
+                          ? isLight
+                            ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
+                            : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : isLight
+                            ? "bg-gray-200 text-gray-700 border-2 border-gray-300"
+                            : "bg-neutral-700/50 text-neutral-300 border border-neutral-600/30"
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full ${listing.standardStatus === "Active"
+                        ? isLight ? "bg-emerald-600 animate-pulse" : "bg-emerald-400 animate-pulse"
+                        : isLight ? "bg-gray-600" : "bg-neutral-400"
+                      }`} />
+                      {listing.standardStatus}
+                    </span>
+                    {daysOnMarket !== null && (
+                      <span className={`flex items-center gap-1.5 text-sm ${
+                        isLight ? 'text-gray-600' : 'text-neutral-400'
+                      }`}>
+                        <CalendarIcon className="w-4 h-4" />
+                        {daysOnMarket} days on market
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right lg:text-right">
+                  <div className={`text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text mb-2 ${
+                    isLight
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
+                      : 'bg-gradient-to-r from-emerald-400 to-cyan-400'
+                  }`}>
+                    ${listing.listPrice?.toLocaleString()}
+                    {listing.propertyType?.toLowerCase().includes("lease") && (
+                      <span className="text-3xl md:text-4xl">/mo</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-6">
+            {/* Quick Stats - desktop only (mobile shows condensed inline) */}
+            <div className="hidden md:grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-6">
               {(listing.bedroomsTotal !== undefined || listing.bedsTotal !== undefined) && (
                 <div className={`flex items-center gap-3 rounded-xl p-3 ${
                   isLight
@@ -710,6 +921,16 @@ export default function ListingClient({
                   downPayment={listing.listPrice ? Math.round(listing.listPrice * 0.20) : 100000}
                 />
               </motion.div>
+
+              {/* About Community Panel */}
+              {subdivisionUrl && listing.subdivisionName && (
+                <CommunityAside
+                  subdivisionName={listing.subdivisionName}
+                  cityName={listing.city as string}
+                  subdivisionUrl={subdivisionUrl}
+                  isLight={isLight}
+                />
+              )}
             </div>
           </div>
         </motion.div>

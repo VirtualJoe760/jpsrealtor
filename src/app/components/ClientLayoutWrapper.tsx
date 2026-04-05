@@ -84,7 +84,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Desktop: Always visible sidebar (except on listing detail pages) */}
       {(
-        <div className="hidden md:block fixed left-0 top-0 h-screen z-30">
+        <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
           <EnhancedSidebar />
         </div>
       )}
@@ -94,6 +94,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main content with sidebar spacing on desktop */}
       <div
+        data-main-content
         className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
           isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
         }`}

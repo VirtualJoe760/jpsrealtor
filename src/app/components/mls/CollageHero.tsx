@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, Maximize2, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,8 +52,19 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
     setCurrentIndex((prev) => (prev + 1) % media.length);
   };
 
-  const openModal = (index: number) => setModalIndex(index);
-  const closeModal = () => setModalIndex(null);
+  const openModal = (index: number) => {
+    setModalIndex(index);
+    // Allow landscape rotation for fullscreen carousel
+    document.body.classList.add("carousel-open");
+    try { screen.orientation?.unlock?.(); } catch {}
+  };
+
+  const closeModal = () => {
+    setModalIndex(null);
+    // Re-enable landscape blocker
+    document.body.classList.remove("carousel-open");
+    try { (screen.orientation as any)?.lock?.("portrait-primary")?.catch?.(() => {}); } catch {}
+  };
   const modalPrev = () =>
     setModalIndex((prev) => (prev! - 1 + media.length) % media.length);
   const modalNext = () => setModalIndex((prev) => (prev! + 1) % media.length);
@@ -83,15 +95,15 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   return (
     <>
       {/* Main Photo Section */}
-      <section className="w-full max-w-7xl mx-auto px-4 pt-20 md:pt-6 pb-4">
+      <section className="w-full px-0 md:max-w-7xl md:mx-auto md:px-4 pb-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className={`relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[600px] rounded-2xl overflow-hidden backdrop-blur-xl border shadow-2xl group ${
+          className={`relative w-full h-[38vh] md:aspect-[16/9] md:h-auto md:max-h-[600px] md:rounded-2xl overflow-hidden backdrop-blur-xl md:border shadow-2xl group ${
             isLight
-              ? "bg-gray-100 border-gray-200"
-              : "bg-black/40 border-neutral-800/50"
+              ? "bg-gray-100 md:border-gray-200"
+              : "bg-black/40 md:border-neutral-800/50"
           }`}
           onMouseEnter={() => setIsHoveringMain(true)}
           onMouseLeave={() => setIsHoveringMain(false)}
@@ -189,109 +201,10 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
           </div>
         </motion.div>
 
-        {/* Thumbnail Carousel - Modern Glass Panel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className={`relative mt-4 backdrop-blur-xl border rounded-2xl p-4 shadow-2xl ${
-            isLight
-              ? "bg-white border-gray-200"
-              : "bg-black/40 border-neutral-800/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            {/* Left Scroll Button */}
-            <button
-              onClick={() => scrollThumbnails("left")}
-              className={`flex-shrink-0 p-2 rounded-lg border transition-all group ${
-                isLight
-                  ? "bg-white hover:bg-gray-50 border-gray-300"
-                  : "bg-neutral-900/50 hover:bg-neutral-800/50 border-neutral-700/30"
-              }`}
-              aria-label="Scroll Left"
-            >
-              <ChevronLeft className={`h-5 w-5 transition-colors ${
-                isLight
-                  ? "text-gray-700 group-hover:text-gray-900"
-                  : "text-neutral-400 group-hover:text-white"
-              }`} strokeWidth={2.5} />
-            </button>
-
-            {/* Thumbnails */}
-            <div
-              ref={thumbScrollRef}
-              className="flex overflow-x-auto no-scrollbar gap-3 scroll-smooth flex-1"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              {media.map((item, i) => (
-                <motion.div
-                  key={i}
-                  ref={(el) => {
-                    thumbRefs.current[i] = el;
-                  }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`relative w-24 h-20 md:w-32 md:h-24 flex-shrink-0 cursor-pointer rounded-xl overflow-hidden border-2 transition-all shadow-lg ${
-                    i === currentIndex
-                      ? isLight
-                        ? "border-blue-600 ring-2 ring-blue-400/50 shadow-blue-500/50"
-                        : "border-emerald-400 ring-2 ring-emerald-400/50 shadow-emerald-500/50"
-                      : isLight
-                        ? "border-gray-300 hover:border-blue-400"
-                        : "border-neutral-700/50 hover:border-neutral-600"
-                  }`}
-                  onClick={() => setCurrentIndex(i)}
-                >
-                  <Image
-                    src={item.src}
-                    alt={item.alt || `Thumb ${i}`}
-                    placeholder="blur"
-                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J2EnPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzUnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWxsPSdibGFjazsnIGZpbHRlcj0ndXJsKCNhKScvPjwvc3ZnPg=="
-                    fill
-                    quality={85}
-                    sizes="128px"
-                    className={`object-cover transition-all duration-300 ${
-                      i === currentIndex ? "opacity-100" : "opacity-60 hover:opacity-90"
-                    }`}
-                  />
-
-                  {/* Active Indicator */}
-                  {i === currentIndex && (
-                    <motion.div
-                      layoutId="activeThumb"
-                      className={`absolute inset-0 pointer-events-none ${
-                        isLight
-                          ? "bg-gradient-to-t from-blue-500/20 to-transparent"
-                          : "bg-gradient-to-t from-emerald-500/20 to-transparent"
-                      }`}
-                    />
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Right Scroll Button */}
-            <button
-              onClick={() => scrollThumbnails("right")}
-              className={`flex-shrink-0 p-2 rounded-lg border transition-all group ${
-                isLight
-                  ? "bg-white hover:bg-gray-50 border-gray-300"
-                  : "bg-neutral-900/50 hover:bg-neutral-800/50 border-neutral-700/30"
-              }`}
-              aria-label="Scroll Right"
-            >
-              <ChevronRight className={`h-5 w-5 transition-colors ${
-                isLight
-                  ? "text-gray-700 group-hover:text-gray-900"
-                  : "text-neutral-400 group-hover:text-white"
-              }`} strokeWidth={2.5} />
-            </button>
-          </div>
-        </motion.div>
       </section>
 
-      {/* Modal - Enhanced Fullscreen Viewer */}
+      {/* Modal - Enhanced Fullscreen Viewer (portaled to body to escape stacking context) */}
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {modalIndex !== null && (
           <motion.div
@@ -299,7 +212,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[9999] flex items-center justify-center"
             onClick={closeModal}
           >
             {/* Close Button */}
@@ -369,7 +282,9 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </>
   );
 };

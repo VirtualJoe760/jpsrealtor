@@ -2,7 +2,65 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
 import { getStreetCoordinate } from "@/lib/geo/street-lookup";
-// Photo collection no longer used - using primaryPhoto from unified_listings
+
+// Batch-fetch primary photo URLs from Spark Replication API
+async function fetchPrimaryPhotos(listings: any[]): Promise<Map<string, string>> {
+  const photoMap = new Map<string, string>();
+  const token = process.env.SPARK_ACCESS_TOKEN;
+  if (!token || listings.length === 0) return photoMap;
+
+  // Group listings by mlsId for efficient batch queries
+  const byMls = new Map<string, string[]>();
+  for (const l of listings) {
+    const mlsId = l.mlsId;
+    const key = l.listingKey;
+    if (!mlsId || !key) continue;
+    if (!byMls.has(mlsId)) byMls.set(mlsId, []);
+    byMls.get(mlsId)!.push(key);
+  }
+
+  // Fetch each MLS batch (Spark supports OR filters, batch up to 50 at a time)
+  const BATCH_SIZE = 50;
+  const fetches: Promise<void>[] = [];
+
+  for (const [mlsId, keys] of byMls) {
+    for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+      const batch = keys.slice(i, i + BATCH_SIZE);
+      const keyFilter = batch.map(k => `ListingKey Eq '${k}'`).join(' Or ');
+      const url = `https://replication.sparkapi.com/v1/listings?_filter=MlsId Eq '${mlsId}' And (${keyFilter})&_expand=Photos&_select=ListingKey&_limit=${batch.length}`;
+
+      fetches.push(
+        fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-SparkApi-User-Agent": "jpsrealtor.com",
+            Accept: "application/json",
+          },
+          next: { revalidate: 3600 },
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            const results = data?.D?.Results || [];
+            for (const result of results) {
+              const lk = result?.StandardFields?.ListingKey;
+              const photos = result?.StandardFields?.Photos || [];
+              const primary = photos.find((p: any) => p.Primary === true || p.Order === 0) || photos[0];
+              if (lk && primary) {
+                const url = primary.Uri800 || primary.Uri640 || primary.Uri1024 || primary.Uri300 || primary.UriLarge;
+                if (url) photoMap.set(lk, url);
+              }
+            }
+          })
+          .catch(err => {
+            console.error(`[City API] Spark photo batch error for ${mlsId}:`, err.message);
+          })
+      );
+    }
+  }
+
+  await Promise.all(fetches);
+  return photoMap;
+}
 
 export async function GET(
   request: NextRequest,
@@ -72,11 +130,20 @@ export async function GET(
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
+    // Map frontend filter values to MLS property type codes
+    const propertyTypeMap: Record<string, string> = {
+      sale: "A",      // Residential Sale
+      rental: "B",    // Residential Lease
+      multifamily: "C", // Residential Income / Multifamily
+      land: "D",      // Land
+    };
+    const mlsPropertyType = propertyTypeMap[propertyType] || "A";
+
     // Base query for the city - using unified_listings
     const baseQuery: any = {
       city: cityName,  // Exact match - uses index (city names are stored in Title Case)
       standardStatus: "Active",  // Only show active listings
-      propertyType: "A",  // Residential only (excludes B=Rentals, C=Multifamily, D=Land)
+      propertyType: mlsPropertyType,
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
       listPrice: { $exists: true, $ne: null, $gt: 0 },
     };
@@ -89,9 +156,6 @@ export async function GET(
                        minSqft || maxSqft || minLotSize || maxLotSize || minYear || maxYear ||
                        pool || spa || view || fireplace || gatedCommunity || seniorCommunity ||
                        garageSpaces || stories || hasHOA || eastOf || westOf || northOf || southOf;
-
-    // Property type is hardcoded to "A" (Residential) in baseQuery
-    // The propertyType URL parameter is ignored to ensure only residential properties are shown
 
     // Apply price filters
     if (minPrice) {
@@ -403,8 +467,7 @@ export async function GET(
             latitude: 1,
             longitude: 1,
             mlsSource: 1,
-            primaryPhoto: 1,
-            media: 1,
+            mlsId: 1,
             onMarketDate: 1,
             pricePerSqft: 1  // Include calculated field
           }
@@ -414,7 +477,7 @@ export async function GET(
       // Standard query with .find()
       listingsQuery = UnifiedListing.find(baseQuery)
         .select(
-          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bathsTotal bathroomsTotalDecimal bathroomsTotalInteger yearBuilt livingArea lotSizeSquareFeet lotSizeSqft propertyType propertySubType coordinates latitude longitude mlsSource primaryPhoto media onMarketDate"
+          "listingId listingKey listPrice unparsedAddress slugAddress bedsTotal bathsTotal bathroomsTotalDecimal bathroomsTotalInteger yearBuilt livingArea lotSizeSquareFeet lotSizeSqft lotSizeArea propertyType propertySubType coordinates latitude longitude mlsSource mlsId onMarketDate associationFee subdivisionName"
         )
         .sort(sortBy)
         .limit(limit)
@@ -543,44 +606,8 @@ export async function GET(
       return NextResponse.json({ listings: [] });
     }
 
-    // HYBRID PHOTO STRATEGY: Extract photos from primaryPhoto field or media array
-    // No separate Photo collection query needed!
-    const photoMap = new Map();
-
-    listings.forEach((listing: any) => {
-      let photoUrl = null;
-
-      // Try new primaryPhoto field first (hybrid strategy)
-      if (listing.primaryPhoto) {
-        photoUrl = listing.primaryPhoto.uri1600 ||
-                   listing.primaryPhoto.uri1280 ||
-                   listing.primaryPhoto.uri1024 ||
-                   listing.primaryPhoto.uri800 ||
-                   listing.primaryPhoto.uri640 ||
-                   listing.primaryPhoto.uri300 ||
-                   listing.primaryPhoto.uriLarge;
-      }
-      // Fallback to media array (backwards compatibility)
-      else if (listing.media && listing.media.length > 0) {
-        const media = listing.media;
-        const primaryPhoto = media.find(
-          (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
-        ) || media[0];
-
-        if (primaryPhoto) {
-          photoUrl = primaryPhoto.Uri1600 ||
-                     primaryPhoto.Uri1280 ||
-                     primaryPhoto.Uri1024 ||
-                     primaryPhoto.Uri800 ||
-                     primaryPhoto.Uri640 ||
-                     primaryPhoto.Uri300;
-        }
-      }
-
-      if (photoUrl && listing.listingId) {
-        photoMap.set(listing.listingId, photoUrl);
-      }
-    });
+    // Fetch primary photos from Spark Replication API (batch)
+    const photoMap = await fetchPrimaryPhotos(listings);
 
     // Combine listings with photos
     const listingsWithPhotos = listings.map((listing: any, index: number) => {
@@ -599,9 +626,11 @@ export async function GET(
           0,
         yearBuilt: listing.yearBuilt,
         livingArea: listing.livingArea,
-        lotSize: listing.lotSizeSquareFeet || listing.lotSizeSqft,
+        lotSize: listing.lotSizeSquareFeet || listing.lotSizeSqft || listing.lotSizeArea,
         propertyType: listing.propertyType,
         propertySubType: listing.propertySubType,
+        associationFee: listing.associationFee || null,
+        subdivisionName: listing.subdivisionName || null,
         // Include both formats for compatibility
         coordinates: listing.coordinates || {
           latitude: listing.latitude,
@@ -609,8 +638,8 @@ export async function GET(
         },
         latitude: listing.latitude || listing.coordinates?.latitude,
         longitude: listing.longitude || listing.coordinates?.longitude,
-        photoUrl: photoMap.get(listing.listingId) || null,
-        primaryPhotoUrl: photoMap.get(listing.listingId) || null,
+        photoUrl: photoMap.get(listing.listingKey) || null,
+        primaryPhotoUrl: photoMap.get(listing.listingKey) || null,
         mlsSource: listing.mlsSource || "UNKNOWN",
         // Days on market - calculated from onMarketDate
         onMarketDate: listing.onMarketDate,

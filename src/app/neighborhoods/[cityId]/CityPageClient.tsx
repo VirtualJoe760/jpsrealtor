@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Heart, ChevronLeft } from "lucide-react";
+import { Heart, ChevronLeft, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
 import CityMap from "@/app/components/cities/CityMap";
 import CityStats from "@/app/components/cities/CityStats";
@@ -127,7 +127,7 @@ export default function CityPageClient({
   const countySlug = createSlug(countyName) + '-county';
 
   return (
-    <div className="min-h-screen pt-20 md:pt-12 px-4" data-page="neighborhoods-city">
+    <div className="min-h-screen pt-14 md:pt-8 px-4" data-page="neighborhoods-city">
       <div className="max-w-7xl mx-auto">
         {/* Back to County Button */}
         <Link
@@ -143,65 +143,80 @@ export default function CityPageClient({
         </Link>
 
         {/* Hero Section */}
-        <div className="mb-8">
-          <p className={`text-sm ${textMuted} mb-2 flex items-center gap-2`}>
-            <span>{countyName}</span>
-          </p>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <h1 className={`text-4xl md:text-5xl font-bold ${textPrimary} mb-4 drop-shadow-2xl`}>
-                {city.name} Homes for Sale
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className={`text-3xl md:text-4xl lg:text-5xl font-bold ${textPrimary} drop-shadow-2xl`}>
+                {city.name}
               </h1>
-              {city.description && (
-                <p className={`text-xl ${textSecondary} leading-relaxed max-w-3xl`}>
-                  {city.description}
-                </p>
-              )}
-              {city.population && (
-                <p className={`text-lg ${textMuted} mt-3`}>
-                  Population:{" "}
-                  <span className={`font-semibold ${textPrimary}`}>
-                    {city.population.toLocaleString()}
-                  </span>
-                </p>
-              )}
+              <h2 className={`text-xl md:text-2xl font-medium ${textSecondary} mt-1`}>
+                Residential Listings
+              </h2>
             </div>
-            {/* Favorite Button */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleFavorite}
-              disabled={isLoading}
-              className={`flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all ${
-                isFavorite
-                  ? "bg-red-500/20 border-2 border-red-500"
-                  : isLight
-                    ? "bg-gray-200/80 border-2 border-gray-300 hover:border-red-500/50 backdrop-blur-sm"
-                    : "bg-gray-800/50 border-2 border-gray-700 hover:border-red-500/50"
-              }`}
-              title={isFavorite ? "Remove from Communities" : "Add to Communities"}
-            >
-              <Heart
-                className={`w-7 h-7 md:w-8 md:h-8 transition-all ${
-                  isFavorite
-                    ? "fill-red-500 text-red-500"
-                    : isLight
-                      ? "text-gray-600"
-                      : "text-gray-400"
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${city.name} Residential Listings`,
+                      url: window.location.href,
+                    });
+                  } else {
+                    navigator.clipboard.writeText(window.location.href);
+                  }
+                }}
+                className={`flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all ${
+                  isLight
+                    ? "bg-gray-200/80 border-2 border-gray-300 hover:border-blue-500/50 backdrop-blur-sm"
+                    : "bg-gray-800/50 border-2 border-gray-700 hover:border-blue-500/50"
                 }`}
-              />
-            </motion.button>
+                title="Share"
+              >
+                <Share2
+                  className={`w-5 h-5 md:w-6 md:h-6 ${
+                    isLight ? "text-gray-600" : "text-gray-400"
+                  }`}
+                />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleFavorite}
+                disabled={isLoading}
+                className={`flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all ${
+                  isFavorite
+                    ? "bg-red-500/20 border-2 border-red-500"
+                    : isLight
+                      ? "bg-gray-200/80 border-2 border-gray-300 hover:border-red-500/50 backdrop-blur-sm"
+                      : "bg-gray-800/50 border-2 border-gray-700 hover:border-red-500/50"
+                }`}
+                title={isFavorite ? "Remove from Communities" : "Add to Communities"}
+              >
+                <Heart
+                  className={`w-5 h-5 md:w-6 md:h-6 transition-all ${
+                    isFavorite
+                      ? "fill-red-500 text-red-500"
+                      : isLight
+                        ? "text-gray-600"
+                        : "text-gray-400"
+                  }`}
+                />
+              </motion.button>
+            </div>
           </div>
+          {city.description && (
+            <p className={`text-lg ${textSecondary} leading-relaxed max-w-2xl mx-auto`}>
+              {city.description}
+            </p>
+          )}
         </div>
 
         {/* Content */}
         <div className="space-y-8">
           {/* Map View */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-            <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-              Listings in {city.name}
-            </h2>
-
             <CityMap
               cityId={cityId}
               cityName={city.name}

@@ -5,7 +5,6 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
-import ListingBreadcrumbs from "@/app/components/mls/ListingBreadcrumbs";
 import RelatedListings from "@/app/components/mls/RelatedListings";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import Footer from "@/app/components/Footer";
@@ -181,9 +180,6 @@ export default async function ListingPage({
   return (
     <main className="w-full bg-black text-white">
       <BreadcrumbJsonLd items={breadcrumbItems} />
-      <div className="max-w-7xl mx-auto">
-        <ListingBreadcrumbs city={city} subdivisionName={subdivisionName} address={address} />
-      </div>
       <UnifiedListingClient listing={listing} media={media} address={address} />
       <RelatedListings
         city={city}
