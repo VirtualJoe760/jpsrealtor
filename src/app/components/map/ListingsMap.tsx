@@ -328,6 +328,7 @@ export default function ListingsMap({
             onClick={handleMapClick}
             onMoveEnd={handleMoveEnd}
             cursor="default"
+            cooperativeGestures={true}
           >
             {/* Markers */}
             {listings

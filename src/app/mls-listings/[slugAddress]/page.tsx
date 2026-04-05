@@ -5,9 +5,7 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
-import RelatedListings from "@/app/components/mls/RelatedListings";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
-import Footer from "@/app/components/Footer";
 
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
   try {
@@ -181,13 +179,6 @@ export default async function ListingPage({
     <main className="w-full bg-black text-white">
       <BreadcrumbJsonLd items={breadcrumbItems} />
       <UnifiedListingClient listing={listing} media={media} address={address} />
-      <RelatedListings
-        city={city}
-        subdivisionName={subdivisionName}
-        excludeListingKey={listing.listingKey || ""}
-        listPrice={(listing as any).listPrice}
-      />
-      <Footer />
     </main>
   );
 }

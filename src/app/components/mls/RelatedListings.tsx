@@ -74,7 +74,7 @@ export default function RelatedListings({
 
   if (loading) {
     return (
-      <section className={`py-8 px-4 md:px-8 ${isLight ? "bg-gray-50" : "bg-neutral-950"}`}>
+      <section className="py-8 px-4 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="h-6 w-48 rounded bg-neutral-800/50 animate-pulse mb-6" />
           <div className="flex gap-4 overflow-hidden">
@@ -98,12 +98,12 @@ export default function RelatedListings({
   const citySlug = city.toLowerCase().replace(/\s+/g, "-");
 
   return (
-    <section className={`py-8 px-4 md:px-8 ${isLight ? "bg-gray-50" : "bg-neutral-950"}`}>
+    <section className="py-8 px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className={`text-lg font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-            {subdivisionName ? `More in ${subdivisionName}` : `More in ${city}`}
+          <h2 className={`text-2xl md:text-3xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+            Similar Properties
           </h2>
           <Link
             href={subdivisionName

@@ -11,6 +11,10 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
+import RelatedListings from "@/app/components/mls/RelatedListings";
+import NearbyListingsMap from "@/app/components/mls/NearbyListingsMap";
+import CMAReport from "@/app/components/cma/CMAReport";
+
 import type { IUnifiedListing } from "@/models/unified-listing";
 
 // Community aside panel for the right column
@@ -98,6 +102,46 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
         <ArrowRight className="w-4 h-4" />
       </Link>
     </motion.div>
+  );
+}
+
+// CMA on-demand section
+function CMASection({ listingKey, isLight }: { listingKey: string; isLight: boolean }) {
+  const [showCMA, setShowCMA] = useState(false);
+
+  if (!listingKey) return null;
+
+  return (
+    <section className="py-8 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto">
+        {!showCMA ? (
+          <div className={`rounded-2xl p-8 text-center backdrop-blur-xl border ${
+            isLight
+              ? "bg-white/80 border-gray-300"
+              : "bg-black/40 border-neutral-800/50"
+          }`}>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+              Comparative Market Analysis
+            </h2>
+            <p className={`text-sm mb-6 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+              Generate a CMA with comparable active and closed sales, pricing analysis, and market insights.
+            </p>
+            <button
+              onClick={() => setShowCMA(true)}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all shadow-lg ${
+                isLight
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                  : "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black"
+              }`}
+            >
+              Generate CMA
+            </button>
+          </div>
+        ) : (
+          <CMAReport listingKey={listingKey} />
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -934,6 +978,29 @@ export default function ListingClient({
             </div>
           </div>
         </motion.div>
+        {/* Related Listings + Nearby Map */}
+        {(listing as any).city && (
+          <>
+            <RelatedListings
+              city={(listing as any).city}
+              subdivisionName={listing.subdivisionName}
+              excludeListingKey={listing.listingKey || ""}
+              listPrice={(listing as any).listPrice}
+            />
+            <NearbyListingsMap
+              city={(listing as any).city}
+              subdivisionName={listing.subdivisionName}
+              excludeListingKey={listing.listingKey || ""}
+              coordinates={(listing as any).latitude && (listing as any).longitude
+                ? { latitude: (listing as any).latitude, longitude: (listing as any).longitude }
+                : undefined
+              }
+            />
+          </>
+        )}
+
+        {/* CMA Section */}
+        <CMASection listingKey={listing.listingKey || ""} isLight={isLight} />
       </div>
     </SpaticalBackground>
   );
