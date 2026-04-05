@@ -316,3 +316,51 @@ export function getLotSizeCategory(sqft: number): LotSizeCategory {
   if (sqft >= 10000) return "large";      // 10,000 sqft - 1 acre
   return "standard";                       // < 10,000 sqft
 }
+
+// ─── Map Data Export ───
+// Converts CMA results to MapListing format for use with <ListingsMap />
+// Lives in types.ts (not engine.ts) to avoid pulling server deps into client bundles.
+
+export function cmaCompsToMapListings(result: CMAResult): MapListing[] {
+  const all = [
+    {
+      listingKey: result.subject.listingKey,
+      slugAddress: undefined,
+      latitude: result.subject.latitude,
+      longitude: result.subject.longitude,
+      listPrice: result.subject.listPrice,
+      propertyType: result.subject.propertyType,
+      bedsTotal: result.subject.bedsTotal,
+      bathsTotal: result.subject.bathsTotal,
+      bathroomsTotalInteger: result.subject.bathsTotal,
+      livingArea: result.subject.livingArea,
+      lotSize: result.subject.lotSize,
+      associationFee: result.subject.associationFee,
+      subdivisionName: result.subject.subdivisionName || undefined,
+      address: result.subject.address,
+    } as MapListing,
+    ...result.activeComps.map(compToMapListing),
+    ...result.closedComps.map(compToMapListing),
+  ];
+
+  return all.filter(l => l.latitude && l.longitude);
+}
+
+function compToMapListing(comp: CMAComp): MapListing {
+  return {
+    listingKey: comp.listingKey,
+    slugAddress: undefined,
+    latitude: 0,
+    longitude: 0,
+    listPrice: comp.closePrice || comp.currentListPrice,
+    propertyType: comp.propertySubType?.includes("Lease") ? "B" : "A",
+    bedsTotal: comp.bedsTotal,
+    bathsTotal: comp.bathsTotal,
+    bathroomsTotalInteger: comp.bathsTotal,
+    livingArea: comp.livingArea,
+    lotSize: comp.lotSize,
+    associationFee: comp.associationFee,
+    subdivisionName: comp.subdivisionName || undefined,
+    address: comp.address,
+  };
+}

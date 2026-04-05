@@ -29,8 +29,6 @@ import { getSubdivisionProfile } from "./subdivision-profile";
 import { parseRemarks } from "./remarks-parser";
 import { generateNarrative, collectLimitations, collectInferences } from "./narrative";
 
-// Re-export MapListing so consumers can build map data from CMA results
-export type { MapListing } from "./types";
 
 // ─── Helpers ───
 
@@ -395,52 +393,3 @@ export async function generateCMA(
   return result;
 }
 
-// ─── Map Data Export ───
-// Converts CMA comps to MapListing format for use with <ListingsMap />
-
-export function cmaCompsToMapListings(result: CMAResult): MapListing[] {
-  const all = [
-    // Subject listing first
-    {
-      listingKey: result.subject.listingKey,
-      slugAddress: undefined,
-      latitude: result.subject.latitude,
-      longitude: result.subject.longitude,
-      listPrice: result.subject.listPrice,
-      propertyType: result.subject.propertyType,
-      bedsTotal: result.subject.bedsTotal,
-      bathsTotal: result.subject.bathsTotal,
-      bathroomsTotalInteger: result.subject.bathsTotal,
-      livingArea: result.subject.livingArea,
-      lotSize: result.subject.lotSize,
-      associationFee: result.subject.associationFee,
-      subdivisionName: result.subject.subdivisionName || undefined,
-      address: result.subject.address,
-    } as MapListing,
-    // Active comps
-    ...result.activeComps.map(compToMapListing),
-    // Closed comps
-    ...result.closedComps.map(compToMapListing),
-  ];
-
-  return all.filter(l => l.latitude && l.longitude);
-}
-
-function compToMapListing(comp: CMAComp): MapListing {
-  return {
-    listingKey: comp.listingKey,
-    slugAddress: undefined,
-    latitude: 0, // Will be populated from raw listing data
-    longitude: 0,
-    listPrice: comp.closePrice || comp.currentListPrice,
-    propertyType: comp.propertySubType?.includes("Lease") ? "B" : "A",
-    bedsTotal: comp.bedsTotal,
-    bathsTotal: comp.bathsTotal,
-    bathroomsTotalInteger: comp.bathsTotal,
-    livingArea: comp.livingArea,
-    lotSize: comp.lotSize,
-    associationFee: comp.associationFee,
-    subdivisionName: comp.subdivisionName || undefined,
-    address: comp.address,
-  };
-}

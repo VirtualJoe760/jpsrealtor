@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CMAResult } from "@/lib/cma/types";
-import { cmaCompsToMapListings } from "@/lib/cma/engine";
+import { CMAResult, cmaCompsToMapListings } from "@/lib/cma/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import CMASubjectCard from "./CMASubjectCard";
 import CMACompTable from "./CMACompTable";
