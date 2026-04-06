@@ -27,16 +27,6 @@ export default function AgentValueProps({ agent }: { agent: AgentProfile }) {
           {agent.brokerageName} · DRE# {agent.licenseNumber}
         </p>
 
-        {/* Stats */}
-        <div className="flex gap-4 mb-4">
-          {agent.stats.map((s, i) => (
-            <div key={i} className="text-center">
-              <div className="text-xl font-extrabold" style={{ color: agent.brandColor }}>{s.value}</div>
-              <div className={`text-[10px] uppercase tracking-wider ${isLight ? "text-gray-500" : "text-gray-500"}`}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
         {/* Specializations */}
         <div className="flex flex-wrap gap-1.5 justify-center">
           {agent.specializations.map((s, i) => (

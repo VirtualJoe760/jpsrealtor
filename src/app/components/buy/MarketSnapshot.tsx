@@ -50,7 +50,7 @@ export default function MarketSnapshot({ cityId, cityName }: { cityId: string; c
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const [stats, setStats] = useState<MarketStat[]>([]);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 
-export default function BuyPageHero3D({
+export default function SellPageHero3D({
   cityName,
   cityId,
   agent,
@@ -15,12 +14,10 @@ export default function BuyPageHero3D({
   cityId: string;
   agent: AgentProfile;
 }) {
-  const { currentTheme } = useTheme();
-  const isLight = currentTheme === "lightgradient";
   const [photos, setPhotos] = useState<string[]>([]);
   const [currentPhoto, setCurrentPhoto] = useState(0);
 
-  // Fetch real listing photos from the city — most expensive first
+  // Use recently sold listings to convey "we sell homes here"
   useEffect(() => {
     fetch(`/api/cities/${cityId}/listings?limit=8&propertyType=sale&sort=price-high`)
       .then(r => r.ok ? r.json() : null)
@@ -34,7 +31,6 @@ export default function BuyPageHero3D({
       .catch(() => {});
   }, [cityId]);
 
-  // Cycle through photos every 5 seconds
   useEffect(() => {
     if (photos.length <= 1) return;
     const interval = setInterval(() => {
@@ -43,11 +39,8 @@ export default function BuyPageHero3D({
     return () => clearInterval(interval);
   }, [photos.length]);
 
-  const heroImage = photos[currentPhoto] || agent.heroPhoto;
-
   return (
     <section className="relative w-full h-[85vh] min-h-[550px] overflow-hidden bg-black">
-      {/* Slideshow background */}
       <div className="absolute inset-0">
         {photos.length > 0 ? (
           photos.map((photo, i) => (
@@ -79,30 +72,24 @@ export default function BuyPageHero3D({
         )}
       </div>
 
-      {/* Subtle bottom gradient for text legibility */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 pointer-events-none" />
 
-      {/* Photo counter (bottom-right) */}
       {photos.length > 1 && (
         <div className="absolute top-6 right-6 z-20 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium border border-white/10">
           {currentPhoto + 1} / {photos.length}
         </div>
       )}
 
-      {/* Content */}
       <div className="relative z-20 h-full flex flex-col justify-end pb-12 md:pb-16 px-6 max-w-5xl mx-auto">
         <div className="space-y-3">
-          {/* Eyebrow label */}
           <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.2em] text-white/70">
-            Buy a Home in
+            Sell Your Home in
           </p>
 
-          {/* City name — large */}
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[0.95] text-white drop-shadow-2xl">
             {cityName}
           </h1>
 
-          {/* Agent attribution */}
           <p className="text-lg md:text-xl text-white/90 font-medium pt-1">
             with{" "}
             <span style={{ color: agent.brandColor }} className="font-bold">
@@ -110,16 +97,15 @@ export default function BuyPageHero3D({
             </span>
           </p>
 
-          {/* CTAs */}
           <div className="flex flex-wrap gap-3 pt-3">
             <Link
-              href={`/neighborhoods/${cityId}`}
+              href="#sell-intake"
               className="px-6 py-3 rounded-xl font-semibold text-white transition-all shadow-2xl hover:scale-105"
               style={{
                 background: `linear-gradient(135deg, ${agent.brandColor}, ${agent.secondaryColor})`,
               }}
             >
-              Browse Listings
+              Get Free Home Valuation
             </Link>
             <Link
               href="/book-appointment"
@@ -129,7 +115,6 @@ export default function BuyPageHero3D({
             </Link>
           </div>
 
-          {/* Agent badge */}
           <div className="flex items-center gap-3 pt-4">
             <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/30 shadow-lg">
               <Image src={agent.headshot} alt={agent.name} fill sizes="40px" className="object-cover" />
@@ -144,7 +129,6 @@ export default function BuyPageHero3D({
         </div>
       </div>
 
-      {/* Scroll indicator */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 animate-bounce pointer-events-none">
         <svg className="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

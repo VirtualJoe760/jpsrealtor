@@ -12,7 +12,7 @@ import MarketSnapshot from "@/app/components/buy/MarketSnapshot";
 import FeaturedListings from "@/app/components/buy/FeaturedListings";
 import AgentValueProps from "@/app/components/buy/AgentValueProps";
 import BuyingJourney from "@/app/components/buy/BuyingJourney";
-import ContactCTA from "@/app/components/buy/ContactCTA";
+import BuyIntakeCTA from "@/app/components/buy/BuyIntakeCTA";
 
 interface BuyPageClientProps {
   cityId: string;
@@ -38,12 +38,12 @@ export default function BuyPageClient({
   return (
     <div className="min-h-screen" data-page="buy">
       <BuyPageHero3D cityName={cityName} cityId={cityId} agent={agent} />
-      <div className="max-w-5xl mx-auto mt-16 space-y-16">
+      <div className="max-w-5xl mx-auto mt-16 space-y-16 px-4">
         <MarketSnapshot cityId={cityId} cityName={cityName} />
-        <FeaturedListings cityId={cityId} cityName={cityName} />
         <AgentValueProps agent={agent} />
         <BuyingJourney brandColor={agent.brandColor} />
-        <ContactCTA agent={agent} cityName={cityName} />
+        <FeaturedListings cityId={cityId} cityName={cityName} />
+        <BuyIntakeCTA agent={agent} cityName={cityName} cityId={cityId} />
       </div>
     </div>
   );

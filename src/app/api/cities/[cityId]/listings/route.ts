@@ -46,7 +46,7 @@ async function fetchPrimaryPhotos(listings: any[]): Promise<Map<string, string>>
               const photos = result?.StandardFields?.Photos || [];
               const primary = photos.find((p: any) => p.Primary === true || p.Order === 0) || photos[0];
               if (lk && primary) {
-                const url = primary.Uri800 || primary.Uri640 || primary.Uri1024 || primary.Uri300 || primary.UriLarge;
+                const url = primary.Uri2048 || primary.Uri1600 || primary.Uri1280 || primary.Uri1024 || primary.UriLarge || primary.Uri800;
                 if (url) photoMap.set(lk, url);
               }
             }
