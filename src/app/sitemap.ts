@@ -12,38 +12,14 @@ const baseUrl = 'https://jpsrealtor.com'
 
 // Next.js uses generateSitemaps() to create a sitemap index at /sitemap.xml
 // with child sitemaps at /sitemap/0.xml, /sitemap/1.xml, etc.
+// IMPORTANT: This runs at BUILD time — no DB access. Use fixed IDs.
+// IDs: 0 = static+neighborhoods, 1 = blog, 2 = listings (paginated at request time)
 export async function generateSitemaps() {
-  // Count MLS listings to determine how many listing sitemaps we need
-  let listingCount = 0
-  try {
-    await dbConnect()
-    const gpsCount = await UnifiedListing.countDocuments({
-      standardStatus: 'Active',
-      slugAddress: { $exists: true, $ne: null },
-    })
-    const crmlsCount = await CRMLSListing.countDocuments({
-      standardStatus: 'Active',
-      slugAddress: { $exists: true, $ne: null },
-    })
-    listingCount = gpsCount + crmlsCount
-  } catch (error) {
-    console.error('Sitemap: Error counting listings:', error)
-  }
-
-  // Each listing sitemap holds up to 5000 URLs
-  const listingSitemapCount = Math.max(1, Math.ceil(listingCount / 5000))
-
-  // IDs: 0 = static+neighborhoods, 1 = blog, 2+ = listings
-  const sitemaps = [
+  return [
     { id: 0 }, // static pages + neighborhoods + subdivisions
     { id: 1 }, // blog/insights posts
+    { id: 2 }, // MLS listings
   ]
-
-  for (let i = 0; i < listingSitemapCount; i++) {
-    sitemaps.push({ id: 2 + i })
-  }
-
-  return sitemaps
 }
 
 export default async function sitemap({
@@ -161,71 +137,32 @@ export default async function sitemap({
     return blogPages
   }
 
-  // Sitemap 2+: MLS Listings (paginated, 5000 per sitemap)
-  const listingOffset = (id - 2) * 5000
+  // Sitemap 2: MLS Listings (all active, up to 50k URLs per sitemap spec)
   let listingPages: MetadataRoute.Sitemap = []
   try {
     await dbConnect()
 
-    // Fetch GPS listings
-    const gpsListings = await UnifiedListing.find(
-      { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
-      { slugAddress: 1, modificationTimestamp: 1 }
-    )
-      .lean()
-      .skip(listingOffset)
-      .limit(5000)
+    const [gpsListings, crmlsListings] = await Promise.all([
+      UnifiedListing.find(
+        { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
+        { slugAddress: 1, modificationTimestamp: 1 }
+      ).lean(),
+      CRMLSListing.find(
+        { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
+        { slugAddress: 1, modificationTimestamp: 1 }
+      ).lean(),
+    ])
 
-    // If GPS listings cover this page, use them; otherwise fetch CRMLS
-    if (gpsListings.length < 5000) {
-      const gpsTotal = await UnifiedListing.countDocuments({
-        standardStatus: 'Active',
-        slugAddress: { $exists: true, $ne: null },
-      })
-      const crmlsOffset = Math.max(0, listingOffset - gpsTotal)
-      const crmlsLimit = 5000 - gpsListings.length
-
-      if (crmlsLimit > 0) {
-        const crmlsListings = await CRMLSListing.find(
-          { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
-          { slugAddress: 1, modificationTimestamp: 1 }
-        )
-          .lean()
-          .skip(crmlsOffset)
-          .limit(crmlsLimit)
-
-        listingPages = [...gpsListings, ...crmlsListings].map((listing: any) => ({
-          url: `${baseUrl}/mls-listings/${listing.slugAddress}`,
-          lastModified: listing.modificationTimestamp
-            ? new Date(listing.modificationTimestamp)
-            : now,
-          changeFrequency: 'daily' as const,
-          priority: 0.6,
-        }))
-      } else {
-        listingPages = gpsListings.map((listing: any) => ({
-          url: `${baseUrl}/mls-listings/${listing.slugAddress}`,
-          lastModified: listing.modificationTimestamp
-            ? new Date(listing.modificationTimestamp)
-            : now,
-          changeFrequency: 'daily' as const,
-          priority: 0.6,
-        }))
-      }
-    } else {
-      listingPages = gpsListings.map((listing: any) => ({
-        url: `${baseUrl}/mls-listings/${listing.slugAddress}`,
-        lastModified: listing.modificationTimestamp
-          ? new Date(listing.modificationTimestamp)
-          : now,
-        changeFrequency: 'daily' as const,
-        priority: 0.6,
-      }))
-    }
-
-    console.log(`Sitemap ${id}: Added ${listingPages.length} MLS listings`)
+    listingPages = [...gpsListings, ...crmlsListings].map((listing: any) => ({
+      url: `${baseUrl}/mls-listings/${listing.slugAddress}`,
+      lastModified: listing.modificationTimestamp
+        ? new Date(listing.modificationTimestamp)
+        : now,
+      changeFrequency: 'daily' as const,
+      priority: 0.6,
+    }))
   } catch (error) {
-    console.error(`Sitemap ${id}: Error fetching MLS listings:`, error)
+    console.error('Sitemap: Error fetching MLS listings:', error)
   }
 
   return listingPages
