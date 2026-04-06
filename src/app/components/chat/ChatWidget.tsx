@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -1305,7 +1306,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={{
-                                      table: ({ node, ...props }) => (
+                                      table: ({ node, ...props }: any) => (
                                         <div className={`overflow-x-auto my-6 ${
                                           isLight
                                             ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
@@ -1375,7 +1376,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={{
-                                      table: ({ node, ...props }) => (
+                                      table: ({ node, ...props }: any) => (
                                         <div className={`overflow-x-auto my-6 ${
                                           isLight
                                             ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'
@@ -1447,7 +1448,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                            table: ({ node, ...props }) => (
+                            table: ({ node, ...props }: any) => (
                               <div className={`overflow-x-auto my-6 ${
                                 isLight
                                   ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-blue-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-400'

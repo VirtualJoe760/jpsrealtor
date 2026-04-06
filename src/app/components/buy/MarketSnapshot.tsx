@@ -56,14 +56,17 @@ export default function MarketSnapshot({ cityId, cityName }: { cityId: string; c
   useEffect(() => {
     fetch(`/api/cities/${cityId}/stats`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        setStats([
-          { label: "Median Price", value: data.medianPrice || 0, prefix: "$", format: "currency" },
-          { label: "Active Listings", value: data.listingCount || 0, format: "number" },
-          { label: "Avg Days on Market", value: data.avgDaysOnMarket || 0, format: "number" },
-          { label: "Avg $/SqFt", value: data.avgPricePerSqft || (data.avgPrice && data.avgSqft ? Math.round(data.avgPrice / data.avgSqft) : 0), prefix: "$", format: "number" },
-        ]);
+      .then(raw => {
+        if (!raw) return;
+        // API may nest under "stats" or return flat
+        const data = raw.stats || raw;
+        const results: MarketStat[] = [];
+        if (data.medianPrice) results.push({ label: "Median Price", value: data.medianPrice, prefix: "$", format: "currency" });
+        if (data.listingCount) results.push({ label: "Active Listings", value: data.listingCount, format: "number" });
+        if (data.avgPrice) results.push({ label: "Average Price", value: data.avgPrice, prefix: "$", format: "currency" });
+        if (data.avgDaysOnMarket) results.push({ label: "Avg Days on Market", value: data.avgDaysOnMarket, format: "number" });
+        if (data.priceRange?.max) results.push({ label: "Price Range", value: data.priceRange.max, prefix: "Up to $", format: "currency" });
+        setStats(results.slice(0, 4));
       })
       .catch(() => {});
   }, [cityId]);
