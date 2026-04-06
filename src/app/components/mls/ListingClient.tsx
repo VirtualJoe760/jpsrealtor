@@ -105,52 +105,28 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
   );
 }
 
-// CMA on-demand section
+// CMA section — auto-loads when visible
 function CMASection({ listingKey, isLight }: { listingKey: string; isLight: boolean }) {
-  const [showCMA, setShowCMA] = useState(false);
-
   if (!listingKey) return null;
 
   return (
     <section className="py-8 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto">
-        {!showCMA ? (
-          <div className={`rounded-2xl p-8 text-center backdrop-blur-xl border ${
-            isLight
-              ? "bg-white/80 border-gray-300"
-              : "bg-black/40 border-neutral-800/50"
-          }`}>
-            <h2 className={`text-2xl md:text-3xl font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
-              Comparative Market Analysis
-            </h2>
-            <p className={`text-sm mb-6 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
-              Generate a CMA with comparable active and closed sales, pricing analysis, and market insights.
-            </p>
-            <button
-              onClick={() => setShowCMA(true)}
-              className={`px-8 py-3 rounded-xl font-semibold transition-all shadow-lg ${
-                isLight
-                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                  : "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black"
-              }`}
-            >
-              Generate CMA
-            </button>
-          </div>
-        ) : (
-          <CMAReport listingKey={listingKey} />
-        )}
-      </div>
+      <CMAReport listingKey={listingKey} />
     </section>
   );
 }
 
-function calculateDaysOnMarket(dateString?: string | Date) {
+function calculateDaysOnMarket(listing: { daysOnMarket?: number; onMarketDate?: string | Date; listingContractDate?: string | Date }) {
+  // Prefer MLS-provided DOM (accurate for relisted properties)
+  if (listing.daysOnMarket != null && listing.daysOnMarket >= 0) return listing.daysOnMarket;
+  // Fall back to calculating from onMarketDate (resets on relist per RESO standard)
+  const dateString = listing.onMarketDate || listing.listingContractDate;
   if (!dateString) return null;
   const listedDate = new Date(dateString);
   const today = new Date();
   const diffTime = today.getTime() - listedDate.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return days >= 0 ? days : null;
 }
 
 // Map property type codes to human-readable names
@@ -213,7 +189,7 @@ export default function ListingClient({
   const isLight = currentTheme === "lightgradient";
 
   const [copied, setCopied] = useState(false);
-  const daysOnMarket = calculateDaysOnMarket(listing.listingContractDate);
+  const daysOnMarket = calculateDaysOnMarket(listing);
 
   // Generate subdivision URL
   const getSubdivisionUrl = () => {

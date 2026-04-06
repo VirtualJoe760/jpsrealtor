@@ -262,21 +262,24 @@ async function searchComps(
   };
 
   for (const level of levels) {
-    const dateField = isClosed ? "closeDate" : "onMarketDate";
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - level.dateMonths);
-    const query = { ...level.query, [dateField]: { $gte: cutoffDate } };
+    const query = { ...level.query };
+
+    // Only add date filter for closed listings — active listings are current by definition
+    if (isClosed) {
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - level.dateMonths);
+      query.closeDate = { $gte: cutoffDate };
+    }
 
     const candidates = await collection.find(query, { projection }).limit(50).toArray();
     totalEvaluated += candidates.length;
 
     if (candidates.length === 0) continue;
 
-    // Resolve attributes and score each candidate
+    // Score each candidate (skip full remarks parsing for speed — only resolve top candidates)
     const scored: CMAComp[] = [];
     for (const candidate of candidates) {
-      const remarks = parseRemarks(candidate.publicRemarks);
-      const resolved = resolveAttributes(candidate, subdivisionProfile, remarks);
+      const resolved = resolveAttributes(candidate, subdivisionProfile);
       const breakdown = scoreComp(subject, {
         subdivisionName: candidate.subdivisionName || null,
         livingArea: candidate.livingArea || 0,
