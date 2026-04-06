@@ -9,13 +9,13 @@ export default function DaysOnMarketBar({ comps }: { comps: CMAComp[] }) {
   const isLight = currentTheme === "lightgradient";
 
   const data = comps
-    .filter(c => c.daysOnMarket >= 0)
+    .filter(c => c.daysOnMarket > 0)
     .map(c => ({
       name: c.address.split(",")[0].replace(/^\d+\s+/, "").substring(0, 15),
       days: c.daysOnMarket,
     }));
 
-  if (data.length < 2) return null;
+  if (data.length < 1) return null;
 
   return (
     <div className="w-full h-[250px]">

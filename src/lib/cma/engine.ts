@@ -101,7 +101,14 @@ function buildCompFromListing(listing: any, isClosed: boolean, resolvedAttrs: an
     closePrice,
     salePricePerSqft: isClosed && closePrice && livingArea > 0 ? Math.round(closePrice / livingArea) : undefined,
     salePriceToListRatio: isClosed && closePrice && listPrice > 0 ? Number((closePrice / listPrice).toFixed(3)) : undefined,
-    daysOnMarket: listing.daysOnMarket || 0,
+    daysOnMarket: listing.daysOnMarket
+      || (isClosed && listing.closeDate && listing.onMarketDate
+        ? Math.floor((new Date(listing.closeDate).getTime() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
+        : null)
+      || (!isClosed && listing.onMarketDate
+        ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
+        : null)
+      || 0,
     similarityScore: scoreBreakdown.total,
     scoreBreakdown,
     propertySubType: listing.propertySubType || "",
