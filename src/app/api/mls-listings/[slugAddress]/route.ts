@@ -14,8 +14,16 @@ export async function GET(
 
   try {
     // 🔍 Find listing in unified_listings (all 8 MLSs)
-    // Try by slugAddress first, then by listingKey (fallback for when slugAddress isn't generated yet)
-    let listing: any = await UnifiedListing.findOne({ slugAddress }).lean();
+    // Prefer Active listing when multiple exist for the same address (relisting scenario).
+    // Fall back to any status if no Active listing exists.
+    let listing: any = await UnifiedListing.findOne({
+      slugAddress,
+      standardStatus: "Active",
+    }).lean();
+
+    if (!listing) {
+      listing = await UnifiedListing.findOne({ slugAddress }).lean();
+    }
 
     // If not found by slugAddress, try by listingKey
     if (!listing) {

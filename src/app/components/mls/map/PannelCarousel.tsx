@@ -87,7 +87,7 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
       className="
         relative
         w-full
-        h-[300px] sm:h-[320px] md:h-[340px] lg:h-[360px] xl:h-[400px] 2xl:h-[450px]
+        h-[360px] sm:h-[380px] md:h-[400px] lg:h-[420px] xl:h-[450px] 2xl:h-[500px]
         rounded-t-2xl
         overflow-hidden
         bg-zinc-900
@@ -135,23 +135,23 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
               prev();
             }}
             className="
-              absolute 
-              left-3 
-              top-1/2 
-              -translate-y-1/2 
-              bg-black/70 
-              hover:bg-black/90 
-              backdrop-blur-sm 
-              p-3 
-              rounded-full 
-              z-10 
-              transition-all 
-              hover:scale-110 
+              absolute
+              left-3
+              top-[55%]
+              -translate-y-1/2
+              bg-black/60
+              hover:bg-black/80
+              backdrop-blur-sm
+              p-2
+              rounded-full
+              z-10
+              transition-all
+              hover:scale-110
               active:scale-95
               shadow-lg
             "
           >
-            <ChevronLeft className="w-8 h-8 text-white" />
+            <ChevronLeft className="w-5 h-5 text-white" />
           </button>
 
           <button
@@ -160,23 +160,23 @@ export default function PannelCarousel({ listingKey, alt }: Props) {
               next();
             }}
             className="
-              absolute 
-              right-3 
-              top-1/2 
-              -translate-y-1/2 
-              bg-black/70 
-              hover:bg-black/90 
-              backdrop-blur-sm 
-              p-3 
-              rounded-full 
-              z-10 
-              transition-all 
-              hover:scale-110 
+              absolute
+              right-3
+              top-[55%]
+              -translate-y-1/2
+              bg-black/60
+              hover:bg-black/80
+              backdrop-blur-sm
+              p-2
+              rounded-full
+              z-10
+              transition-all
+              hover:scale-110
               active:scale-95
               shadow-lg
             "
           >
-            <ChevronRight className="w-8 h-8 text-white" />
+            <ChevronRight className="w-5 h-5 text-white" />
           </button>
 
           {/* Counter */}

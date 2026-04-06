@@ -434,7 +434,7 @@ export default function ListingBottomPanel({
           onPanelClosedForTutorial?.(); // Notify tutorial system
         }}
         data-tour="close-listing-panel"
-        className={`absolute top-4 right-4 z-50 p-2.5 rounded-xl border transition-all backdrop-blur-sm ${
+        className={`absolute top-12 right-4 z-50 p-2.5 rounded-xl border transition-all backdrop-blur-sm ${
           isLight
             ? 'bg-white/90 border-gray-200 hover:bg-white hover:shadow-lg text-gray-700 hover:text-gray-900'
             : 'bg-black/50 border-white/10 hover:bg-black/70 hover:border-white/20 text-white'

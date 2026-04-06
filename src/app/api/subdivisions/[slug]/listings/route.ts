@@ -572,10 +572,12 @@ export async function GET(
         slug: listing.slugAddress,
         primaryPhotoUrl: photoUrl,
         mlsSource: listing.mlsSource || "UNKNOWN",
-        // Calculate days on market from onMarketDate
-        daysOnMarket: listing.onMarketDate
-          ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
-          : null,
+        // Prefer MLS-provided DOM, fall back to calculating from onMarketDate
+        daysOnMarket: (listing.daysOnMarket != null && listing.daysOnMarket >= 0)
+          ? listing.daysOnMarket
+          : listing.onMarketDate
+            ? Math.floor((Date.now() - new Date(listing.onMarketDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
         // Price per sqft - calculate if not from aggregation
         pricePerSqft: listing.pricePerSqft ||
           (listing.livingArea && listing.livingArea > 0

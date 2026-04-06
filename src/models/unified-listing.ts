@@ -207,6 +207,7 @@ export interface IUnifiedListing extends Document {
   onMarketDate?: Date;
   originalOnMarketTimestamp?: Date;
   daysOnMarket?: number;
+  cumulativeDaysOnMarket?: number;
   listingUpdateTimestamp?: Date;
   priceChangeTimestamp?: Date;
   photosChangeTimestamp?: Date;
@@ -388,7 +389,8 @@ const UnifiedListingSchema = new Schema<IUnifiedListing>(
     statusChangeTimestamp: Date,
     onMarketDate: { type: Date, index: true }, // For filtering new listings
     originalOnMarketTimestamp: Date,
-    // daysOnMarket is now a virtual property (computed from onMarketDate)
+    daysOnMarket: Number, // MLS-provided DOM (snapshot at last sync)
+    cumulativeDaysOnMarket: Number, // Total days across all list periods
     listingUpdateTimestamp: Date,
     priceChangeTimestamp: { type: Date, index: true }, // For price change tracking
     photosChangeTimestamp: Date,
@@ -497,31 +499,7 @@ const UnifiedListingSchema = new Schema<IUnifiedListing>(
   }
 );
 
-// -----------------------------
-// Virtual Properties
-// -----------------------------
-
-// Calculate days on market from onMarketDate
-UnifiedListingSchema.virtual('daysOnMarket').get(function() {
-  if (!this.onMarketDate) return null;
-
-  try {
-    // Handle both string and Date types
-    const onMarketDateObj = typeof this.onMarketDate === 'string'
-      ? new Date(this.onMarketDate)
-      : this.onMarketDate;
-
-    const today = new Date();
-    const diffTime = today.getTime() - onMarketDateObj.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays >= 0 ? diffDays : null;
-  } catch (error) {
-    return null;
-  }
-});
-
-// Ensure virtuals are included in JSON and toObject outputs
+// Ensure toJSON and toObject work correctly
 UnifiedListingSchema.set('toJSON', { virtuals: true });
 UnifiedListingSchema.set('toObject', { virtuals: true });
 

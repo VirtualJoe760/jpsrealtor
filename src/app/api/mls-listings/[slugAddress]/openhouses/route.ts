@@ -11,10 +11,15 @@ export async function GET(
   const { slugAddress } = await params;
 
   try {
-    // Find listing in unified collection
-    const listing = await UnifiedListing.findOne({ slugAddress })
+    // Prefer Active listing when multiple exist (relisting scenario)
+    let listing = await UnifiedListing.findOne({ slugAddress, standardStatus: "Active" })
       .select("OpenHouses")
       .lean();
+    if (!listing) {
+      listing = await UnifiedListing.findOne({ slugAddress })
+        .select("OpenHouses")
+        .lean();
+    }
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
