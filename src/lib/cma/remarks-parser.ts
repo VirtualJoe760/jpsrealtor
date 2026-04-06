@@ -26,6 +26,11 @@ const POOL_RULES: PatternRule = {
     /\bpool\s+(?:and|&|w\/)\s+spa\b/i,
     /\bswimming\s+pool\b/i,
     /\bpool\s+(?:w\/|with)\s+(?:waterfall|slide|grotto|heater)/i,
+    /\bspool\b/i,                     // Spool = small pool / soaking pool
+    /\bsoaking\s+pool\b/i,
+    /\bwading\s+pool\b/i,
+    /\bplunge\s+pool\b/i,
+    /\bcocktail\s+pool\b/i,
     /\bpool\b(?!.*\btable\b)(?!.*\broom\b)(?!.*\bhall\b)/i,  // "pool" not followed by "table", "room", "hall"
   ],
   exclusions: [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CMAResult, cmaCompsToMapListings } from "@/lib/cma/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import CMASubjectCard from "./CMASubjectCard";
@@ -13,8 +13,35 @@ import DaysOnMarketBar from "./charts/DaysOnMarketBar";
 import SalePriceRatioPie from "./charts/SalePriceRatioPie";
 import SqftComparisonBar from "./charts/SqftComparisonBar";
 
+// ─── Scroll-reveal wrapper ───
+function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 interface CMAReportProps {
-  /** Pass a pre-generated result, OR provide a listingKey to fetch */
   result?: CMAResult;
   listingKey?: string;
 }
@@ -55,9 +82,6 @@ export default function CMAReport({ result: preloadedResult, listingKey }: CMARe
           <p className={`text-sm ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
             Generating Comparative Market Analysis...
           </p>
-          <p className={`text-xs ${isLight ? "text-gray-400" : "text-neutral-500"}`}>
-            Searching comparable properties, resolving attributes, scoring matches
-          </p>
         </div>
       </div>
     );
@@ -79,135 +103,140 @@ export default function CMAReport({ result: preloadedResult, listingKey }: CMARe
   const mapListings = cmaCompsToMapListings(result);
   const allComps = [...result.activeComps, ...result.closedComps];
 
-  const sectionClass = `rounded-2xl p-6 md:p-8 backdrop-blur-xl shadow-2xl ${
+  const sectionClass = `rounded-2xl p-5 md:p-6 backdrop-blur-xl shadow-xl ${
     isLight
-      ? "bg-white/80 border-2 border-gray-300"
+      ? "bg-white/80 border border-gray-200"
       : "bg-black/40 border border-neutral-800/50"
   }`;
 
-  const sectionTitle = `text-xl md:text-2xl font-bold flex items-center gap-2 mb-4 ${
+  const sectionTitle = `text-lg md:text-xl font-bold flex items-center gap-2 mb-4 ${
     isLight ? "text-gray-900" : "text-white"
   }`;
 
-  const accentBar = (color: string) => (
-    <div className={`w-1 h-6 rounded-full bg-gradient-to-b ${color}`} />
+  const bar = (color: string) => (
+    <div className={`w-1 h-5 rounded-full bg-gradient-to-b ${color}`} />
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
       {/* Header */}
-      <div className="text-center mb-2">
-        <h1 className={`text-3xl md:text-4xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-          Comparative Market Analysis
-        </h1>
-        <p className={`text-sm mt-1 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
-          Residential CMA · {result.tier.charAt(0).toUpperCase() + result.tier.slice(1)} Tier
-        </p>
-      </div>
-
-      {/* Subject Property */}
-      <CMASubjectCard subject={result.subject} tier={result.tier} />
-
-      {/* Narrative */}
-      <CMANarrative result={result} />
-
-      {/* Active Comps Table */}
-      <div className={sectionClass}>
-        <h2 className={sectionTitle}>
-          {accentBar("from-emerald-400 to-green-400")}
-          Active Properties
-        </h2>
-        <CMACompTable
-          title="Active Comparables"
-          comps={result.activeComps}
-          stats={result.stats.active}
-          isClosed={false}
-        />
-      </div>
-
-      {/* Closed Comps Table */}
-      <div className={sectionClass}>
-        <h2 className={sectionTitle}>
-          {accentBar("from-blue-400 to-cyan-400")}
-          Closed Properties
-        </h2>
-        <CMACompTable
-          title="Closed Comparables"
-          comps={result.closedComps}
-          stats={result.stats.closed}
-          isClosed={true}
-        />
-      </div>
-
-      {/* Charts Grid */}
-      {allComps.length >= 2 && (
-        <div className={sectionClass}>
-          <h2 className={sectionTitle}>
-            {accentBar("from-purple-400 to-indigo-400")}
-            Market Analysis Charts
+      <RevealSection>
+        <div className="text-center mb-1">
+          <h2 className={`text-2xl md:text-3xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+            Comparative Market Analysis
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Price per sqft comparison */}
-            <div>
-              <h3 className={`text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-                List vs Sale Price per SqFt
-              </h3>
-              <PricePerSqftBar subject={result.subject} closedComps={result.closedComps} />
-            </div>
+          <p className={`text-xs mt-1 ${isLight ? "text-gray-400" : "text-neutral-500"}`}>
+            {result.tier.charAt(0).toUpperCase() + result.tier.slice(1)} Tier · {result.activeComps.length} active · {result.closedComps.length} closed
+          </p>
+        </div>
+      </RevealSection>
 
-            {/* Price trend */}
-            <div>
-              <h3 className={`text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-                Closed Sale Prices Over Time
-              </h3>
-              <PriceTrendLine closedComps={result.closedComps} />
-            </div>
-
-            {/* Days on market */}
-            <div>
-              <h3 className={`text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-                Days on Market
-              </h3>
-              <DaysOnMarketBar comps={allComps} />
-            </div>
-
-            {/* Sale price ratio */}
-            <div>
-              <h3 className={`text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-                Sale Price vs List Price
-              </h3>
-              <SalePriceRatioPie closedComps={result.closedComps} />
-            </div>
-
-            {/* Sqft comparison */}
-            <div className="md:col-span-2">
-              <h3 className={`text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-                Living Area Comparison
-              </h3>
-              <SqftComparisonBar subject={result.subject} comps={allComps} />
-            </div>
+      {/* Subject + Narrative — side by side on desktop */}
+      <RevealSection>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <CMASubjectCard subject={result.subject} tier={result.tier} />
+          </div>
+          <div className="flex flex-col justify-between">
+            <CMANarrative result={result} />
           </div>
         </div>
+      </RevealSection>
+
+      {/* Active Comps */}
+      {result.activeComps.length > 0 && (
+        <RevealSection>
+          <div className={sectionClass}>
+            <h3 className={sectionTitle}>
+              {bar("from-emerald-400 to-green-400")}
+              Active Properties ({result.activeComps.length})
+            </h3>
+            <CMACompTable
+              title="Active Comparables"
+              comps={result.activeComps}
+              stats={result.stats.active}
+              isClosed={false}
+            />
+          </div>
+        </RevealSection>
+      )}
+
+      {/* Closed Comps */}
+      {result.closedComps.length > 0 && (
+        <RevealSection>
+          <div className={sectionClass}>
+            <h3 className={sectionTitle}>
+              {bar("from-blue-400 to-cyan-400")}
+              Closed Properties ({result.closedComps.length})
+            </h3>
+            <CMACompTable
+              title="Closed Comparables"
+              comps={result.closedComps}
+              stats={result.stats.closed}
+              isClosed={true}
+            />
+          </div>
+        </RevealSection>
+      )}
+
+      {/* Charts — 2x2 grid */}
+      {allComps.length >= 2 && (
+        <RevealSection>
+          <div className={sectionClass}>
+            <h3 className={sectionTitle}>
+              {bar("from-purple-400 to-indigo-400")}
+              Market Analysis
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                  List vs Sale $/SqFt
+                </h4>
+                <PricePerSqftBar subject={result.subject} closedComps={result.closedComps} />
+              </div>
+              <div>
+                <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                  Sale Price Trend
+                </h4>
+                <PriceTrendLine closedComps={result.closedComps} />
+              </div>
+              <div>
+                <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                  Days on Market
+                </h4>
+                <DaysOnMarketBar comps={allComps} />
+              </div>
+              <div>
+                <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                  Sale vs List Price
+                </h4>
+                <SalePriceRatioPie closedComps={result.closedComps} />
+              </div>
+            </div>
+          </div>
+        </RevealSection>
       )}
 
       {/* Map */}
       {mapListings.length > 1 && (
-        <div className={sectionClass}>
-          <h2 className={sectionTitle}>
-            {accentBar("from-cyan-400 to-teal-400")}
-            Comparable Properties Map
-          </h2>
-          <ListingsMap
-            listings={mapListings}
-            height="400px"
-            center={{
-              latitude: result.subject.latitude,
-              longitude: result.subject.longitude,
-            }}
-            zoom={14}
-            selectedListingKey={result.subject.listingKey}
-          />
-        </div>
+        <RevealSection>
+          <div className={sectionClass}>
+            <h3 className={sectionTitle}>
+              {bar("from-cyan-400 to-teal-400")}
+              Comparable Properties Map
+            </h3>
+            <ListingsMap
+              listings={mapListings}
+              height="350px"
+              center={{
+                latitude: result.subject.latitude,
+                longitude: result.subject.longitude,
+              }}
+              zoom={14}
+              selectedListingKey={result.subject.listingKey}
+            />
+          </div>
+        </RevealSection>
       )}
     </div>
   );
