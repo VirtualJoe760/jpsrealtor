@@ -11,7 +11,7 @@ import HOASection from "@/app/components/cities/HOASection";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { coachellaValleyCities } from "@/app/constants/cities";
-import generatedCityContent from "../../../../docs/seo/city-content-generated.json";
+import generatedCityContent from "@/data/city-content-generated.json";
 
 interface CityPageClientProps {
   city: {

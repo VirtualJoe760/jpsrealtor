@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { findCityById } from "@/app/constants/counties";
 import { coachellaValleyCities } from "@/app/constants/cities";
 import BuyPageClient from "./BuyPageClient";
-import generatedCityContent from "../../../../../docs/seo/city-content-generated.json";
+import generatedCityContent from "@/data/city-content-generated.json";
 
 interface BuyPageProps {
   params: Promise<{ cityId: string }>;
