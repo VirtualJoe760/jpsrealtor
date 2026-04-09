@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 
 export default function SellPageHero3D({
@@ -14,6 +15,8 @@ export default function SellPageHero3D({
   cityId: string;
   agent: AgentProfile;
 }) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
   const [photos, setPhotos] = useState<string[]>([]);
   const [currentPhoto, setCurrentPhoto] = useState(0);
 
@@ -115,13 +118,19 @@ export default function SellPageHero3D({
             </Link>
           </div>
 
-          <div className="flex items-center gap-3 pt-4">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/30 shadow-lg">
-              <Image src={agent.headshot} alt={agent.name} fill sizes="40px" className="object-cover" />
-            </div>
+          <div className="flex items-center gap-4 pt-5">
+            {agent.headshot && (
+              <div
+                className={`relative w-16 h-16 rounded-full overflow-hidden border border-white/30 shadow-lg ${
+                  isLight ? "bg-white" : "bg-neutral-800"
+                }`}
+              >
+                <Image src={agent.headshot} alt={agent.name} fill sizes="64px" className="object-cover" />
+              </div>
+            )}
             <div>
-              <p className="text-xs font-semibold text-white">{agent.name}</p>
-              <p className="text-[10px] text-white/60">
+              <p className="text-base font-semibold text-white">{agent.name}</p>
+              <p className="text-xs text-white/70">
                 {agent.brokerageName} · DRE# {agent.licenseNumber}
               </p>
             </div>

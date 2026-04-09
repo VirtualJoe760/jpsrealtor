@@ -22,6 +22,7 @@ export interface AgentProfile {
     instagram?: string;
     linkedin?: string;
     youtube?: string;
+    twitter?: string;
     tiktok?: string;
   };
   valuePropositions: Array<{ icon?: string; title: string; description: string }>;
@@ -36,7 +37,7 @@ const FALLBACK: AgentProfile = {
   phone: "(760) 333-3676",
   brokerageName: "eXp Realty",
   licenseNumber: "02106916",
-  headshot: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
+  headshot: "",
   heroPhoto: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png",
   bio: "With over 30 years of experience in the Coachella Valley, Joseph Sardella brings unmatched local expertise and a family legacy in real estate dating back to the 1970s.",
   headline: "Your Coachella Valley Real Estate Expert",
@@ -76,34 +77,42 @@ export function useAgentProfile() {
 
     fetch("/api/agent/public")
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
+      .then(raw => {
+        if (!raw) return;
+        // The route returns { profile: { ..., agentProfile: { ... } } }.
+        // Unwrap the envelope so we read the actual shape.
+        const data = raw.profile || raw;
+        const ap = data.agentProfile || {};
         const profile: AgentProfile = {
           name: data.name || FALLBACK.name,
           email: data.email || FALLBACK.email,
-          phone: data.phone || data.agentProfile?.cellPhone || FALLBACK.phone,
-          brokerageName: data.brokerageName || FALLBACK.brokerageName,
-          licenseNumber: data.licenseNumber || FALLBACK.licenseNumber,
-          headshot: data.agentProfile?.headshot || FALLBACK.headshot,
-          heroPhoto: data.agentProfile?.heroPhoto || FALLBACK.heroPhoto,
-          bio: data.agentProfile?.bio || FALLBACK.bio,
-          headline: data.agentProfile?.heroHeadline || data.agentProfile?.headline || FALLBACK.headline,
-          tagline: data.agentProfile?.tagline || FALLBACK.tagline,
-          brandColor: data.agentProfile?.brandColor || FALLBACK.brandColor,
-          secondaryColor: data.agentProfile?.secondaryColor || FALLBACK.secondaryColor,
-          customDomain: data.agentProfile?.customDomain || FALLBACK.customDomain,
-          subdomain: data.agentProfile?.subdomain || FALLBACK.subdomain,
-          socialMedia: data.agentProfile?.socialMedia || FALLBACK.socialMedia,
-          valuePropositions: data.agentProfile?.valuePropositions?.length > 0
-            ? data.agentProfile.valuePropositions
+          phone: data.phone || ap.cellPhone || ap.phone || FALLBACK.phone,
+          brokerageName: data.brokerageName || ap.brokerageName || FALLBACK.brokerageName,
+          licenseNumber: data.licenseNumber || ap.licenseNumber || FALLBACK.licenseNumber,
+          headshot: ap.headshot || FALLBACK.headshot,
+          heroPhoto: ap.heroPhoto || FALLBACK.heroPhoto,
+          bio: ap.bio || FALLBACK.bio,
+          headline: ap.heroHeadline || ap.headline || FALLBACK.headline,
+          tagline: ap.tagline || FALLBACK.tagline,
+          brandColor: ap.brandColor || FALLBACK.brandColor,
+          secondaryColor: ap.secondaryColor || FALLBACK.secondaryColor,
+          customDomain: ap.customDomain || FALLBACK.customDomain,
+          subdomain: ap.subdomain || FALLBACK.subdomain,
+          socialMedia: {
+            instagram: ap.instagram || ap.socialMedia?.instagram || FALLBACK.socialMedia.instagram,
+            facebook: ap.facebook || ap.socialMedia?.facebook || FALLBACK.socialMedia.facebook,
+            youtube: ap.youtube || ap.socialMedia?.youtube || FALLBACK.socialMedia.youtube,
+            linkedin: ap.linkedin || ap.socialMedia?.linkedin || FALLBACK.socialMedia.linkedin,
+            twitter: ap.twitter || ap.socialMedia?.twitter || FALLBACK.socialMedia.twitter,
+          },
+          valuePropositions: ap.valuePropositions?.length > 0
+            ? ap.valuePropositions
             : FALLBACK.valuePropositions,
-          stats: data.agentProfile?.stats?.length > 0
-            ? data.agentProfile.stats
-            : FALLBACK.stats,
-          specializations: data.agentProfile?.specializations?.length > 0
-            ? data.agentProfile.specializations
+          stats: ap.stats?.length > 0 ? ap.stats : FALLBACK.stats,
+          specializations: ap.specializations?.length > 0
+            ? ap.specializations
             : FALLBACK.specializations,
-          serviceAreas: data.agentProfile?.serviceAreas?.map((a: any) => a.name || a) || FALLBACK.serviceAreas,
+          serviceAreas: ap.serviceAreas?.map((a: any) => a.name || a) || FALLBACK.serviceAreas,
         };
         cachedProfile = profile;
         setAgent(profile);

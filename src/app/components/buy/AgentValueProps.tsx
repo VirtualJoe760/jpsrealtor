@@ -15,11 +15,11 @@ export default function AgentValueProps({ agent }: { agent: AgentProfile }) {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
       {/* Agent card */}
       <div className="lg:col-span-2 flex flex-col items-center text-center">
-        <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-2xl overflow-hidden shadow-2xl mb-4 border-2"
-          style={{ borderColor: agent.brandColor + "40" }}
-        >
-          <Image src={agent.headshot} alt={agent.name} fill className="object-cover" />
-        </div>
+        {agent.headshot && (
+          <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
+            <Image src={agent.headshot} alt={agent.name} fill className="object-contain" />
+          </div>
+        )}
         <h3 className={`text-xl font-bold mb-1 ${isLight ? "text-gray-900" : "text-white"}`}>
           {agent.name}
         </h3>

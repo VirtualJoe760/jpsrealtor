@@ -43,119 +43,219 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Build list of top 5 communities (subdivisions first, then cities)
-    const allCommunities: Array<{ name: string; type: 'subdivision' | 'city' }> = [];
+    // Build list of candidate communities. Non-HOA subdivisions get folded
+    // into their parent CITY (so "La Quinta Non-HOA" becomes a "La Quinta"
+    // city candidate). De-duplicated by name.
+    const allCommunities: Array<{ name: string; type: "subdivision" | "city" }> = [];
+    const seenNames = new Set<string>();
 
-    topSubdivisions.slice(0, 5).forEach((sub: any) => {
-      allCommunities.push({ name: sub.name, type: 'subdivision' });
+    function pushUnique(name: string, type: "subdivision" | "city") {
+      const key = `${type}:${name.toLowerCase()}`;
+      if (seenNames.has(key)) return;
+      seenNames.add(key);
+      allCommunities.push({ name, type });
+    }
+
+    topSubdivisions.slice(0, 8).forEach((sub: any) => {
+      const cityFromNonHOA = getCityFromNonHOA(sub.name);
+      if (cityFromNonHOA) {
+        // Non-HOA → fold into the parent city instead
+        pushUnique(cityFromNonHOA, "city");
+      } else {
+        pushUnique(sub.name, "subdivision");
+      }
     });
 
-    if (allCommunities.length < 5) {
-      const remaining = 5 - allCommunities.length;
-      topCities.slice(0, remaining).forEach((city: any) => {
-        allCommunities.push({ name: city.name, type: 'city' });
-      });
-    }
+    topCities.slice(0, 5).forEach((city: any) => {
+      pushUnique(city.name, "city");
+    });
 
-    let communityType: 'subdivision' | 'city' = 'subdivision';
-    let communityName: string;
-    let communityMetadata: any = null;
-    let citySlug: string | null = null;
-    let subdivisionSlug: string | null = null;
+    // We're no longer EXCLUDING liked listings — instead we sort them last
+    // so unseen ones surface first. The set is still useful for that sort.
+    const likedKeys = user.likedListings?.map((l: any) => l.listingKey) || [];
+    console.log("[COMMUNITY SPOTLIGHT]", likedKeys.length, "liked listings (will sort to bottom)");
 
-    // Determine which community to show
-    if (requestedCommunity) {
-      // Use the requested community
-      communityName = requestedCommunity;
-      // Determine type by checking if it's in subdivisions or cities
-      const isSubdivision = topSubdivisions.some((s: any) => s.name === requestedCommunity);
-      communityType = isSubdivision ? 'subdivision' : 'city';
-    } else {
-      // Default to first in list
-      communityName = allCommunities[0]?.name || '';
-      communityType = allCommunities[0]?.type || 'subdivision';
-    }
+    const projection =
+      "listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName primaryPhoto media";
 
-    // Try subdivision first (if type is subdivision)
-    if (communityType === 'subdivision') {
+    /**
+     * Run the spotlight query for one candidate community. Returns the
+     * resolved metadata + listings, or `null` if no sale listings exist.
+     */
+    async function tryCommunity(
+      candidate: { name: string; type: "subdivision" | "city" },
+    ): Promise<{
+      communityName: string;
+      communityType: "subdivision" | "city";
+      communityMetadata: any;
+      citySlug: string | null;
+      subdivisionSlug: string | null;
+      listings: any[];
+    } | null> {
+      const cName = candidate.name;
+      const cType = candidate.type;
+      let cMeta: any = null;
+      let cCitySlug: string | null = null;
+      let cSubSlug: string | null = null;
 
-      // Fetch subdivision metadata
-      const subdivision = await Subdivision.findOne({
-        name: communityName
-      }).select('name slug city region listingCount avgPrice medianPrice priceRange description').lean();
+      // Resolve subdivision metadata when applicable
+      if (cType === "subdivision") {
+        const sub = await Subdivision.findOne({ name: cName })
+          .select("name slug city region listingCount avgPrice medianPrice priceRange description")
+          .lean();
+        if (sub) {
+          cMeta = sub;
+          cSubSlug = (sub as any).slug;
+          cCitySlug = (sub as any).city
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .trim();
+        }
+      }
 
-      if (subdivision) {
-        communityMetadata = subdivision;
-        subdivisionSlug = subdivision.slug;
+      // Build the query — residential-sale only, $50K+ price floor.
+      // No more $nin on liked listings — we sort them last instead.
+      const baseQuery: any = {
+        standardStatus: "Active",
+        propertyType: "A",
+        listPrice: { $gte: 50_000 },
+      };
 
-        // Create city slug for URL
-        citySlug = subdivision.city
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .trim();
-
-        console.log('[COMMUNITY SPOTLIGHT] Using subdivision:', communityName);
+      if (cType === "subdivision") {
+        baseQuery.subdivisionName = cName;
       } else {
-        // Subdivision not found in DB, fall back to city
-        console.log('[COMMUNITY SPOTLIGHT] Subdivision not found in DB, falling back to city');
-        communityType = 'city';
-        communityName = topCities.length > 0 ? topCities[0].name : '';
+        baseQuery.city = cName;
+      }
+
+      // Use an aggregation so we can compute "_seen" per listing and sort
+      // unseen results to the top.
+      const listings = await UnifiedListing.aggregate([
+        { $match: baseQuery },
+        {
+          $addFields: {
+            _seen: { $cond: [{ $in: ["$listingKey", likedKeys] }, 1, 0] },
+          },
+        },
+        { $sort: { _seen: 1, modificationTimestamp: -1 } },
+        { $limit: 6 },
+        {
+          $project: {
+            listingKey: 1,
+            slugAddress: 1,
+            unparsedAddress: 1,
+            city: 1,
+            stateOrProvince: 1,
+            listPrice: 1,
+            bedroomsTotal: 1,
+            bedsTotal: 1,
+            bathroomsTotalInteger: 1,
+            bathroomsFull: 1,
+            livingArea: 1,
+            buildingAreaTotal: 1,
+            subdivisionName: 1,
+            primaryPhoto: 1,
+            media: 1,
+          },
+        },
+      ]);
+
+      if (listings.length === 0) return null;
+
+      return {
+        communityName: cName,
+        communityType: cType,
+        communityMetadata: cMeta,
+        citySlug: cCitySlug,
+        subdivisionSlug: cSubSlug,
+        listings,
+      };
+    }
+
+    /**
+     * Count how many propertyType=A sale listings a candidate has. Used to
+     * rank candidates by inventory so the busiest community lands first.
+     */
+    async function inventoryCount(c: { name: string; type: "subdivision" | "city" }) {
+      const filter: any = {
+        standardStatus: "Active",
+        propertyType: "A",
+        listPrice: { $gte: 50_000 },
+      };
+      if (c.type === "subdivision") filter.subdivisionName = c.name;
+      else filter.city = c.name;
+      return UnifiedListing.countDocuments(filter);
+    }
+
+    // Build the candidate list. If the client explicitly requested a
+    // community we honor it first; otherwise we sort by sale-inventory size
+    // so the most active community surfaces by default.
+    let candidates: Array<{ name: string; type: "subdivision" | "city" }> = [];
+    if (requestedCommunity) {
+      // Fold Non-HOA into the parent city if applicable so the request
+      // doesn't bypass the de-duping we did at allCommunities build time.
+      const cityFromNonHOA = getCityFromNonHOA(requestedCommunity);
+      const requested: { name: string; type: "subdivision" | "city" } = cityFromNonHOA
+        ? { name: cityFromNonHOA, type: "city" }
+        : {
+            name: requestedCommunity,
+            type: topSubdivisions.some((s: any) => s.name === requestedCommunity)
+              ? "subdivision"
+              : "city",
+          };
+      candidates.push(requested);
+      for (const c of allCommunities) {
+        if (!candidates.find((x) => x.name === c.name && x.type === c.type)) {
+          candidates.push(c);
+        }
       }
     } else {
-      // No favorite subdivisions, use city
-      communityType = 'city';
-      communityName = topCities[0].name;
-      console.log('[COMMUNITY SPOTLIGHT] Using city:', communityName);
+      // Rank by inventory count (descending) — busiest community first.
+      const counts = await Promise.all(
+        allCommunities.map(async (c) => ({ c, count: await inventoryCount(c) }))
+      );
+      candidates = counts
+        .sort((a, b) => b.count - a.count)
+        .map((x) => x.c);
+      console.log(
+        "[COMMUNITY SPOTLIGHT] Ranked by inventory:",
+        counts.map((x) => `${x.c.name}=${x.count}`).join(", ")
+      );
     }
 
-    if (!communityName) {
+    // Iterate until one community returns sale listings
+    let resolved: Awaited<ReturnType<typeof tryCommunity>> = null;
+    for (const c of candidates) {
+      const result = await tryCommunity(c);
+      if (result) {
+        resolved = result;
+        break;
+      }
+      console.log(`[COMMUNITY SPOTLIGHT] Skipping ${c.name} — no sale listings`);
+    }
+
+    if (!resolved) {
+      console.log("[COMMUNITY SPOTLIGHT] No candidates yielded any sale listings");
       return NextResponse.json({
         community: null,
+        allCommunities,
         listings: [],
       });
     }
 
-    // Get array of liked listing keys to exclude
-    const likedKeys = user.likedListings?.map((l: any) => l.listingKey) || [];
+    const {
+      communityName,
+      communityType,
+      communityMetadata,
+      citySlug,
+      subdivisionSlug,
+      listings,
+    } = resolved;
 
-    console.log('[COMMUNITY SPOTLIGHT] Excluding', likedKeys.length, 'liked listings');
-
-    // Query UnifiedListing for fresh listings
-    const query: any = {
-      standardStatus: "Active",
-      listingKey: { $nin: likedKeys }
-    };
-
-    if (communityType === 'subdivision') {
-      // Check if this is a Non-HOA subdivision (e.g., "Palm Desert Non-HOA")
-      const cityFromNonHOA = getCityFromNonHOA(communityName);
-
-      if (cityFromNonHOA) {
-        // Query for Non-HOA properties (subdivisionName is null/"Not Applicable")
-        query.city = cityFromNonHOA;
-        query.$or = [
-          { subdivisionName: "Not Applicable" },
-          { subdivisionName: null },
-          { subdivisionName: "" },
-          { subdivisionName: "N/A" }
-        ];
-      } else {
-        // Regular subdivision - query by exact name
-        query.subdivisionName = communityName;
-      }
-    } else {
-      query.city = communityName;
-    }
-
-    const listings = await UnifiedListing.find(query)
-      .sort({ modificationTimestamp: -1 })
-      .limit(6)
-      .select('listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathroomsFull livingArea buildingAreaTotal subdivisionName primaryPhoto media')
-      .lean();
-
-    console.log(`[COMMUNITY SPOTLIGHT] Found ${listings.length} new listings in ${communityName}`);
+    console.log(
+      `[COMMUNITY SPOTLIGHT] Resolved → ${communityName} (${communityType}) with ${listings.length} listings`
+    );
 
     // Format listings for frontend
     const formattedListings = listings.map((listing: any) => {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Phone, Calendar, Instagram, Facebook, Youtube, Check, Loader2 } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
+import { formatPhone, toE164US, formatPrice, parsePrice } from "@/lib/format-input";
 
 interface Props {
   agent: AgentProfile;
@@ -60,13 +61,20 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: toE164US(form.phone),
           cityName,
           cityId,
-          budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
-          budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
+          budgetMin: parsePrice(form.budgetMin),
+          budgetMax: parsePrice(form.budgetMax),
           beds: form.beds ? Number(form.beds) : undefined,
           baths: form.baths ? Number(form.baths) : undefined,
+          propertyType: form.propertyType,
+          timeframe: form.timeframe,
+          message: form.message,
+          createAccount: form.createAccount,
         }),
       });
       const data = await res.json();
@@ -84,12 +92,14 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-5">
         {/* Agent panel */}
         <div className="lg:col-span-2 relative min-h-[280px] lg:min-h-full">
-          <Image
-            src={agent.headshot}
-            alt={agent.name}
-            fill
-            className="object-cover object-top"
-          />
+          {agent.headshot && (
+            <Image
+              src={agent.headshot}
+              alt={agent.name}
+              fill
+              className="object-cover object-top"
+            />
+          )}
           <div
             className={`absolute inset-0 ${
               isLight
@@ -155,7 +165,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
               <h3 className={`text-xl font-bold mb-2 ${heading}`}>Thank you!</h3>
               <p className={`text-sm ${subtext} max-w-sm`}>
                 {form.createAccount
-                  ? `${agent.name.split(" ")[0]} will be in touch shortly. Check your inbox for an email to set your password.`
+                  ? `${agent.name.split(" ")[0]} will be in touch shortly. Check your inbox to verify your email and finish setting up your account.`
                   : `${agent.name.split(" ")[0]} will be in touch shortly.`}
               </p>
             </div>
@@ -196,9 +206,11 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
                 />
                 <input
                   type="tel"
-                  placeholder="Phone"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(555) 123-4567"
                   value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
+                  onChange={(e) => update("phone", formatPhone(e.target.value))}
                   className={inputCls}
                   style={{ ["--tw-ring-color" as any]: agent.brandColor }}
                 />
@@ -206,18 +218,20 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <input
-                  type="number"
-                  placeholder="Budget min ($)"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Budget min"
                   value={form.budgetMin}
-                  onChange={(e) => update("budgetMin", e.target.value)}
+                  onChange={(e) => update("budgetMin", formatPrice(e.target.value))}
                   className={inputCls}
                   style={{ ["--tw-ring-color" as any]: agent.brandColor }}
                 />
                 <input
-                  type="number"
-                  placeholder="Budget max ($)"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Budget max"
                   value={form.budgetMax}
-                  onChange={(e) => update("budgetMax", e.target.value)}
+                  onChange={(e) => update("budgetMax", formatPrice(e.target.value))}
                   className={inputCls}
                   style={{ ["--tw-ring-color" as any]: agent.brandColor }}
                 />
@@ -285,7 +299,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
                 />
                 <span>
                   Create a free account so I can save your favorites and send matching listings.
-                  We&apos;ll email you a link to set your password.
+                  We&apos;ll email you a link to verify and finish setup.
                 </span>
               </label>
 

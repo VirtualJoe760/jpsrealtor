@@ -12,7 +12,8 @@ import nodemailer from "nodemailer";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Contact from "@/models/Contact";
-import { sendPasswordResetEmail } from "@/lib/email-resend";
+import VerificationToken from "@/models/verificationToken";
+import { sendLeadWelcomeEmail } from "@/lib/email-resend";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,9 @@ export async function POST(request: NextRequest) {
       userId: agentUser._id,
       firstName,
       lastName,
+      // Legacy fields populated for sparse-index safety + backwards compat.
+      phone: phone || undefined,
+      email: email.toLowerCase(),
       emails: [
         {
           address: email.toLowerCase(),
@@ -192,7 +196,7 @@ export async function POST(request: NextRequest) {
         let user = await User.findOne({ email: lower });
 
         if (!user) {
-          // Random placeholder password — user will set their own via reset link
+          // Random placeholder password — user will set their own (or use OAuth)
           const tempPassword = randomBytes(24).toString("hex");
           const hashed = await bcrypt.hash(tempPassword, 12);
           user = await User.create({
@@ -205,18 +209,31 @@ export async function POST(request: NextRequest) {
           accountCreated = true;
         }
 
-        // Generate a reset token and send the "set your password" email
-        const resetToken = randomBytes(32).toString("hex");
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await user.save();
+        // Issue a verification token good for 24h
+        const token = randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await VerificationToken.create({
+          identifier: lower,
+          token,
+          expires,
+        });
 
-        const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
-        await sendPasswordResetEmail(
-          user.email,
-          resetUrl,
-          user.name || firstName
-        );
+        const verifyUrl = `${process.env.NEXTAUTH_URL}/auth/welcome?token=${token}`;
+        const ap: any = (agentUser as any).agentProfile || {};
+        await sendLeadWelcomeEmail(user.email, verifyUrl, user.name || firstName, {
+          name: agentUser.name,
+          headshot: ap.headshot,
+          brokerage: ap.brokerageName || (agentUser as any).brokerageName,
+          licenseNumber: ap.licenseNumber || (agentUser as any).licenseNumber,
+          phone: ap.cellPhone || ap.officePhone || (agentUser as any).phone,
+          email: agentUser.email,
+          website: ap.customDomain || "jpsrealtor.com",
+          brandColor: ap.brandColors?.primary,
+          secondaryColor: ap.brandColors?.secondary,
+          instagram: ap.socialMedia?.instagram,
+          facebook: ap.socialMedia?.facebook,
+          youtube: ap.socialMedia?.youtube,
+        });
       } catch (acctErr) {
         console.error("[buy-intake] Account creation failed:", acctErr);
         // Non-fatal — lead is still saved

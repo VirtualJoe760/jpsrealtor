@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         brokerageName: profile?.brokerageName || agent.brokerageName,
 
         profilePhoto: profile?.profilePhoto,
+        // Transparent PNG headshot uploaded via /agent/dashboard.
         headshot: profile?.headshot,
         coverPhoto: profile?.coverPhoto,
         insightsBannerImage: profile?.insightsBannerImage,

@@ -5,6 +5,15 @@ import Image from "next/image";
 import { Phone, Calendar, Instagram, Facebook, Youtube, Check, Loader2 } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
+import {
+  formatPhone,
+  toE164US,
+  formatPrice,
+  parsePrice,
+  formatZip,
+  US_STATES,
+} from "@/lib/format-input";
+import AddressAutocomplete from "@/app/components/common/AddressAutocomplete";
 
 interface Props {
   agent: AgentProfile;
@@ -32,15 +41,18 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    address: "",
+    phone: "",          // formatted display value, e.g. "(888) 555-5555"
+    street: "",
+    city: cityName,     // pre-filled with the city the visitor is on
+    state: "CA",        // sensible default for Coachella Valley pages
+    zip: "",
     beds: "",
     baths: "",
     sqft: "",
     condition: "",
     timeframe: "",
     reason: "",
-    expectedPrice: "",
+    expectedPrice: "",  // formatted display value, e.g. "$500,000"
     message: "",
     createAccount: true,
   });
@@ -66,17 +78,36 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
     setSubmitting(true);
     setError(null);
     try {
+      // Reconstruct a single-line address for the legacy `address` field on
+      // the API while also sending the structured pieces.
+      const fullAddress = [form.street, form.city, form.state, form.zip]
+        .filter(Boolean)
+        .join(", ");
+
       const res = await fetch("/api/leads/sell-intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: toE164US(form.phone),       // E.164 normalized
+          address: fullAddress,              // legacy single-line
+          street: form.street,
+          city: form.city,
+          state: form.state,
+          zip: form.zip,
           cityName,
           cityId,
           beds: form.beds ? Number(form.beds) : undefined,
           baths: form.baths ? Number(form.baths) : undefined,
           sqft: form.sqft ? Number(form.sqft) : undefined,
-          expectedPrice: form.expectedPrice ? Number(form.expectedPrice) : undefined,
+          condition: form.condition,
+          timeframe: form.timeframe,
+          reason: form.reason,
+          expectedPrice: parsePrice(form.expectedPrice),
+          message: form.message,
+          createAccount: form.createAccount,
         }),
       });
       const data = await res.json();
@@ -94,12 +125,14 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-5">
         {/* Agent panel */}
         <div className="lg:col-span-2 relative min-h-[280px] lg:min-h-full">
-          <Image
-            src={agent.headshot}
-            alt={agent.name}
-            fill
-            className="object-cover object-top"
-          />
+          {agent.headshot && (
+            <Image
+              src={agent.headshot}
+              alt={agent.name}
+              fill
+              className="object-cover object-top"
+            />
+          )}
           <div
             className={`absolute inset-0 ${
               isLight
@@ -166,7 +199,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
               <h3 className={`text-xl font-bold mb-2 ${heading}`}>Thank you!</h3>
               <p className={`text-sm ${subtext} max-w-sm`}>
                 {form.createAccount
-                  ? `${agent.name.split(" ")[0]} will prepare your CMA and reach out shortly. Check your inbox for an email to set your password.`
+                  ? `${agent.name.split(" ")[0]} will prepare your CMA and reach out shortly. Check your inbox to verify your email and finish setting up your account.`
                   : `${agent.name.split(" ")[0]} will prepare your CMA and reach out shortly.`}
               </p>
             </div>
@@ -207,22 +240,65 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
                 />
                 <input
                   type="tel"
-                  placeholder="Phone"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(555) 123-4567"
                   value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
+                  onChange={(e) => update("phone", formatPhone(e.target.value))}
                   className={inputCls}
                   style={{ ["--tw-ring-color" as any]: agent.brandColor }}
                 />
               </div>
 
-              <input
+              <AddressAutocomplete
+                value={form.street}
+                onChange={(v) => update("street", v)}
+                onSelect={(s) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    street: s.street || s.label.split(",")[0],
+                    city: s.city || prev.city,
+                    state: s.state || prev.state,
+                    zip: s.zip || prev.zip,
+                  }));
+                }}
                 required
-                placeholder="Property address"
-                value={form.address}
-                onChange={(e) => update("address", e.target.value)}
-                className={inputCls}
-                style={{ ["--tw-ring-color" as any]: agent.brandColor }}
+                placeholder="Start typing your address…"
+                inputClassName={inputCls}
+                inputStyle={{ ["--tw-ring-color" as any]: agent.brandColor }}
+                dropdownVariant={isLight ? "light" : "dark"}
               />
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <input
+                  className={`${inputCls} md:col-span-2`}
+                  autoComplete="address-level2"
+                  placeholder="City"
+                  value={form.city}
+                  onChange={(e) => update("city", e.target.value)}
+                  style={{ ["--tw-ring-color" as any]: agent.brandColor }}
+                />
+                <select
+                  className={inputCls}
+                  autoComplete="address-level1"
+                  value={form.state}
+                  onChange={(e) => update("state", e.target.value)}
+                  style={{ ["--tw-ring-color" as any]: agent.brandColor }}
+                >
+                  {US_STATES.map((s) => (
+                    <option key={s.code} value={s.code}>{s.code}</option>
+                  ))}
+                </select>
+                <input
+                  className={inputCls}
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  placeholder="ZIP"
+                  value={form.zip}
+                  onChange={(e) => update("zip", formatZip(e.target.value))}
+                  style={{ ["--tw-ring-color" as any]: agent.brandColor }}
+                />
+              </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <input
@@ -292,10 +368,11 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
               </div>
 
               <input
-                type="number"
-                placeholder="Expected sale price ($) — optional"
+                type="text"
+                inputMode="numeric"
+                placeholder="Expected sale price — optional"
                 value={form.expectedPrice}
-                onChange={(e) => update("expectedPrice", e.target.value)}
+                onChange={(e) => update("expectedPrice", formatPrice(e.target.value))}
                 className={inputCls}
                 style={{ ["--tw-ring-color" as any]: agent.brandColor }}
               />
@@ -318,7 +395,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
                 />
                 <span>
                   Create a free account so I can send your CMA and track market activity for your home.
-                  We&apos;ll email you a link to set your password.
+                  We&apos;ll email you a link to verify and finish setup.
                 </span>
               </label>
 

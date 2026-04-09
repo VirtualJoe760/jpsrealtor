@@ -251,6 +251,11 @@ async function searchComps(
   const maxComps = params.maxCompsPerStatus;
   let totalEvaluated = 0;
 
+  // Slim projection — drops `publicRemarks`, `communityFeatures`,
+  // `lotFeatures` (large text fields). Per-candidate remarks parsing is
+  // skipped for speed; only the SUBJECT's remarks are parsed in the engine
+  // entrypoint. Subdivision profile inference still applies via the
+  // pre-resolved subdivisionProfile object.
   const projection = {
     listingKey: 1, listingId: 1, unparsedAddress: 1, address: 1, city: 1,
     subdivisionName: 1, yearBuilt: 1, bedsTotal: 1, bedroomsTotal: 1,
@@ -262,64 +267,86 @@ async function searchComps(
     stories: 1, storiesTotal: 1, garageSpaces: 1,
     poolYn: 1, pool: 1, spaYn: 1, spa: 1, viewYn: 1, view: 1,
     gatedCommunity: 1, seniorCommunityYn: 1, associationFee: 1,
-    publicRemarks: 1, communityFeatures: 1, lotFeatures: 1,
     schoolDistrict: 1, latitude: 1, longitude: 1, coordinates: 1,
     slugAddress: 1, mlsSource: 1, standardStatus: 1,
     photoUrl: 1, primaryPhotoUrl: 1,
   };
 
-  for (const level of levels) {
+  // ─── Fire ALL level queries in parallel ───
+  // Old behavior was sequential: level 1 → wait → level 2 → wait → ...
+  // New behavior: kick off all 5 levels concurrently and walk results in
+  // priority order. Trade-off: a few extra DB queries on the happy path
+  // (when level 1 already had enough comps) for a massive latency win on
+  // cold cache. MongoDB handles 10 concurrent indexed queries trivially.
+  const queryPromises = levels.map((level) => {
     const query = { ...level.query };
-
-    // Only add date filter for closed listings — active listings are current by definition
     if (isClosed) {
       const cutoffDate = new Date();
       cutoffDate.setMonth(cutoffDate.getMonth() - level.dateMonths);
       query.closeDate = { $gte: cutoffDate };
     }
+    return collection
+      .find(query, { projection })
+      .limit(20)
+      .toArray()
+      .then((candidates: any[]) => ({ level, candidates }));
+  });
 
-    const candidates = await collection.find(query, { projection }).limit(50).toArray();
+  const levelResults = await Promise.all(queryPromises);
+
+  // Walk results in priority order (level 1 → 5) and pick the first level
+  // whose top-scored slice has ≥3 comps.
+  let lastNonEmpty: { comps: CMAComp[]; levelUsed: number } | null = null;
+
+  for (const { level, candidates } of levelResults) {
     totalEvaluated += candidates.length;
-
     if (candidates.length === 0) continue;
 
-    // Score each candidate (skip full remarks parsing for speed — only resolve top candidates)
+    // Cheap structured-only resolve — we dropped publicRemarks from the
+    // projection so parseRemarks would be a no-op anyway.
     const scored: CMAComp[] = [];
     for (const candidate of candidates) {
       const resolved = resolveAttributes(candidate, subdivisionProfile);
-      const breakdown = scoreComp(subject, {
-        subdivisionName: candidate.subdivisionName || null,
-        livingArea: candidate.livingArea || 0,
-        lotSize: candidate.lotSizeArea || candidate.lotSizeSqft || 0,
-        bedsTotal: candidate.bedsTotal || candidate.bedroomsTotal || 0,
-        bathsTotal: candidate.bathroomsTotalInteger || candidate.bathsTotal || 0,
-        yearBuilt: candidate.yearBuilt || 0,
-        garageSpaces: candidate.garageSpaces || 0,
-        stories: candidate.stories || 1,
-        landType: candidate.landType || "Fee",
-        architecturalStyle: candidate.architecturalStyle || null,
-        closeDate: isClosed ? candidate.closeDate?.toISOString?.() || candidate.closeDate : undefined,
-        onMarketDate: !isClosed ? candidate.onMarketDate?.toISOString?.() || candidate.onMarketDate : undefined,
-        resolved,
-      }, params);
-
+      const breakdown = scoreComp(
+        subject,
+        {
+          subdivisionName: candidate.subdivisionName || null,
+          livingArea: candidate.livingArea || 0,
+          lotSize: candidate.lotSizeArea || candidate.lotSizeSqft || 0,
+          bedsTotal: candidate.bedsTotal || candidate.bedroomsTotal || 0,
+          bathsTotal: candidate.bathroomsTotalInteger || candidate.bathsTotal || 0,
+          yearBuilt: candidate.yearBuilt || 0,
+          garageSpaces: candidate.garageSpaces || 0,
+          stories: candidate.stories || 1,
+          landType: candidate.landType || "Fee",
+          architecturalStyle: candidate.architecturalStyle || null,
+          closeDate: isClosed
+            ? candidate.closeDate?.toISOString?.() || candidate.closeDate
+            : undefined,
+          onMarketDate: !isClosed
+            ? candidate.onMarketDate?.toISOString?.() || candidate.onMarketDate
+            : undefined,
+          resolved,
+        },
+        params,
+      );
       scored.push(buildCompFromListing(candidate, isClosed, resolved, breakdown));
     }
 
-    // Sort by score descending, take top N
     scored.sort((a, b) => b.similarityScore - a.similarityScore);
     const top = scored.slice(0, maxComps);
 
     if (top.length >= 3) {
       return { comps: top, levelUsed: level.level, totalEvaluated };
     }
-
-    // If we got some but not enough, try next level to get more
-    if (top.length > 0 && level.level === levels[levels.length - 1].level) {
-      return { comps: top, levelUsed: level.level, totalEvaluated };
+    if (top.length > 0) {
+      lastNonEmpty = { comps: top, levelUsed: level.level };
     }
   }
 
+  if (lastNonEmpty) {
+    return { ...lastNonEmpty, totalEvaluated };
+  }
   return { comps: [], levelUsed: 0, totalEvaluated };
 }
 
@@ -328,6 +355,15 @@ async function searchComps(
 export interface GenerateCMAOptions {
   maxCompsPerStatus?: number;
   tierOverride?: CMATier;
+  /**
+   * Off by default for speed. The subdivision profile lookup is the slowest
+   * part of the cold-cache subject resolution and only contributes
+   * inference signals when MLS data is missing — for Joe's market the data
+   * is reliable enough that the cost outweighs the benefit. Pass `true`
+   * here only when you specifically need attribute inference (e.g. for the
+   * standalone CMA report page).
+   */
+  useSubdivisionProfile?: boolean;
 }
 
 export async function generateCMA(
@@ -345,12 +381,14 @@ export async function generateCMA(
   const params = getTierParams(tier);
   if (options?.maxCompsPerStatus) params.maxCompsPerStatus = options.maxCompsPerStatus;
 
-  // 2. Get subdivision profile
-  const subdivisionProfile = subjectBase.subdivisionName
-    ? await getSubdivisionProfile(subjectBase.subdivisionName)
-    : null;
+  // 2. Subdivision profile (opt-in — off by default to skip the slow cold lookup)
+  const subdivisionProfile =
+    options?.useSubdivisionProfile && subjectBase.subdivisionName
+      ? await getSubdivisionProfile(subjectBase.subdivisionName)
+      : null;
 
-  // 3. Resolve subject attributes
+  // 3. Resolve subject attributes (subject still parses its own remarks —
+  //    one document, near-zero cost — so its `resolved` is fully informed).
   const subjectRemarks = parseRemarks(subjectListing.publicRemarks);
   const subjectResolved = resolveAttributes(subjectListing, subdivisionProfile, subjectRemarks);
   const subject: CMASubject = { ...subjectBase, resolved: subjectResolved };

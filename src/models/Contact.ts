@@ -534,7 +534,9 @@ const ContactSchema: Schema = new Schema(
 );
 
 // Indexes
-ContactSchema.index({ userId: 1, phone: 1 }, { unique: true });  // Prevent duplicate contacts per user
+// Sparse + unique: only enforces uniqueness when phone is set, so contacts
+// without a phone (web leads, imports without phone) don't collide on null.
+ContactSchema.index({ userId: 1, phone: 1 }, { unique: true, sparse: true });
 ContactSchema.index({ userId: 1, email: 1 }, { sparse: true });
 ContactSchema.index({ userId: 1, status: 1 });
 ContactSchema.index({ userId: 1, 'preferences.smsOptIn': 1 });

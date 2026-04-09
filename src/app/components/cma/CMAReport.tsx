@@ -57,11 +57,10 @@ export default function CMAReport({ result: preloadedResult, listingKey }: CMARe
     if (preloadedResult || !listingKey) return;
 
     setLoading(true);
-    fetch("/api/cma/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ listingKey }),
-    })
+    // GET so the response is HTTP-cacheable. The route serves a Cache-Control
+    // header (s-maxage=3600, swr=86400) AND keeps an in-process result cache
+    // by listingKey, so cold = full compute, warm = ~5ms.
+    fetch(`/api/cma/generate?listingKey=${encodeURIComponent(listingKey)}`)
       .then(r => {
         if (!r.ok) throw new Error(`CMA generation failed: ${r.status}`);
         return r.json();

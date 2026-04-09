@@ -12,7 +12,8 @@ import nodemailer from "nodemailer";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Contact from "@/models/Contact";
-import { sendPasswordResetEmail } from "@/lib/email-resend";
+import VerificationToken from "@/models/verificationToken";
+import { sendLeadWelcomeEmail } from "@/lib/email-resend";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,13 @@ interface SellIntakeBody {
   phone?: string;
   cityName?: string;
   cityId?: string;
+  // Legacy single-line address (still accepted for compatibility)
   address?: string;
+  // Structured address (new)
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   beds?: number;
   baths?: number;
   sqft?: number;
@@ -49,6 +56,10 @@ export async function POST(request: NextRequest) {
       cityName,
       cityId,
       address,
+      street,
+      city,
+      state,
+      zip,
       beds,
       baths,
       sqft,
@@ -105,6 +116,11 @@ export async function POST(request: NextRequest) {
       userId: agentUser._id,
       firstName,
       lastName,
+      // Legacy `phone` field — left undefined if no phone given so the
+      // sparse unique index doesn't trigger duplicate-null collisions.
+      phone: phone || undefined,
+      // Same for legacy `email` field — populated for sparse-index safety.
+      email: email.toLowerCase(),
       emails: [
         {
           address: email.toLowerCase(),
@@ -123,7 +139,15 @@ export async function POST(request: NextRequest) {
             },
           ]
         : [],
-      address: address ? { street: address, city: cityName } : undefined,
+      address: street || city || state || zip || address
+        ? {
+            street: street || address,
+            city: city || cityName,
+            state: state,
+            zip: zip,
+            country: "US",
+          }
+        : undefined,
       source: "website",
       status: "uncontacted",
       tags: ["Web Generated Leads", "Sell Intake", cityName].filter(
@@ -170,7 +194,7 @@ export async function POST(request: NextRequest) {
           <tr><td><strong>Name</strong></td><td>${firstName} ${lastName}</td></tr>
           <tr><td><strong>Email</strong></td><td>${email}</td></tr>
           <tr><td><strong>Phone</strong></td><td>${phone || "—"}</td></tr>
-          <tr><td><strong>Property Address</strong></td><td>${address || "—"}</td></tr>
+          <tr><td><strong>Property Address</strong></td><td>${[street || address, city || cityName, state, zip].filter(Boolean).join(", ") || "—"}</td></tr>
           <tr><td><strong>City</strong></td><td>${cityName || "—"}</td></tr>
           <tr><td><strong>Beds / Baths / Sqft</strong></td><td>${beds ?? "—"} / ${baths ?? "—"} / ${sqft ? sqft.toLocaleString() : "—"}</td></tr>
           <tr><td><strong>Condition</strong></td><td>${condition || "—"}</td></tr>
@@ -193,7 +217,7 @@ export async function POST(request: NextRequest) {
       console.error("[sell-intake] Notification email failed:", mailErr);
     }
 
-    // ---- 3. Optional account creation + password-set email -------------------
+    // ---- 3. Optional account creation + verification email ------------------
     let accountCreated = false;
     if (createAccount) {
       try {
@@ -201,6 +225,7 @@ export async function POST(request: NextRequest) {
         let user = await User.findOne({ email: lower });
 
         if (!user) {
+          // Random placeholder password — user will set their own (or use OAuth)
           const tempPassword = randomBytes(24).toString("hex");
           const hashed = await bcrypt.hash(tempPassword, 12);
           user = await User.create({
@@ -213,17 +238,31 @@ export async function POST(request: NextRequest) {
           accountCreated = true;
         }
 
-        const resetToken = randomBytes(32).toString("hex");
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await user.save();
+        // Issue a verification token good for 24h
+        const token = randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await VerificationToken.create({
+          identifier: lower,
+          token,
+          expires,
+        });
 
-        const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
-        await sendPasswordResetEmail(
-          user.email,
-          resetUrl,
-          user.name || firstName
-        );
+        const verifyUrl = `${process.env.NEXTAUTH_URL}/auth/welcome?token=${token}`;
+        const ap: any = (agentUser as any).agentProfile || {};
+        await sendLeadWelcomeEmail(user.email, verifyUrl, user.name || firstName, {
+          name: agentUser.name,
+          headshot: ap.headshot,
+          brokerage: ap.brokerageName || (agentUser as any).brokerageName,
+          licenseNumber: ap.licenseNumber || (agentUser as any).licenseNumber,
+          phone: ap.cellPhone || ap.officePhone || (agentUser as any).phone,
+          email: agentUser.email,
+          website: ap.customDomain || "jpsrealtor.com",
+          brandColor: ap.brandColors?.primary,
+          secondaryColor: ap.brandColors?.secondary,
+          instagram: ap.socialMedia?.instagram,
+          facebook: ap.socialMedia?.facebook,
+          youtube: ap.socialMedia?.youtube,
+        });
       } catch (acctErr) {
         console.error("[sell-intake] Account creation failed:", acctErr);
       }
