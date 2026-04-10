@@ -144,12 +144,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .lean(),
     ])
 
-    // De-duplicate by slugAddress (both collections may contain the same listing)
+    // De-duplicate by slugAddress (both collections may contain the same listing).
+    // Sanitize slugs: some MLS addresses contain '&' which breaks XML if
+    // not escaped. Next.js doesn't auto-escape sitemap URLs, so we strip
+    // characters that are invalid in XML or URL paths.
     const seen = new Set<string>()
     const all = [...gpsListings, ...crmlsListings]
     for (const listing of all) {
-      const slug = (listing as any).slugAddress
+      let slug = (listing as any).slugAddress
       if (!slug || seen.has(slug)) continue
+      // Skip slugs with XML-breaking characters rather than mangle them
+      if (/[&<>"']/.test(slug)) continue
       seen.add(slug)
       listingPages.push({
         url: `${baseUrl}/mls-listings/${slug}`,
