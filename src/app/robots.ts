@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           '/mls-listings/',
           '/neighborhoods/',
           '/insights/',
+          '/lp/',
           '/selling',
           '/book-appointment',
         ],

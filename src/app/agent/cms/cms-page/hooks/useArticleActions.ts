@@ -147,7 +147,12 @@ export function useArticleActions(refetch?: () => Promise<void>): UseArticleActi
 
   const handleView = useCallback(
     (category: string, slug: string) => {
-      router.push(`/insights/${category}/${slug}`);
+      // Landing pages live at /lp/{slug}, blog posts at /insights/{category}/{slug}
+      if (category === 'landing-page') {
+        router.push(`/lp/${slug}`);
+      } else {
+        router.push(`/insights/${category}/${slug}`);
+      }
     },
     [router]
   );

@@ -109,11 +109,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const { data } = matter(fileContent)
 
       if (data.slugId && data.section) {
+        // Landing pages route to /lp/{slug}, blog posts to /insights/{section}/{slug}
+        const url = data.section === 'landing-page'
+          ? `${baseUrl}/lp/${data.slugId}`
+          : `${baseUrl}/insights/${data.section}/${data.slugId}`
         blogPages.push({
-          url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
+          url,
           lastModified: data.date ? new Date(data.date) : now,
-          changeFrequency: 'monthly',
-          priority: 0.7,
+          changeFrequency: data.section === 'landing-page' ? 'weekly' : 'monthly',
+          priority: data.section === 'landing-page' ? 0.8 : 0.7,
         })
       }
     })
