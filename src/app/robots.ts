@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/api/',
           '/v1/',           // Spark Platform API photo paths that leak as relative URLs
+          '/*/property-stats', // Removed page — block any lingering crawl attempts
           '/admin/',
           '/dashboard/',
           '/agent/',
