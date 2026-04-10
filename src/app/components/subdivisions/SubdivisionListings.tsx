@@ -57,6 +57,8 @@ export default function SubdivisionListings({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const ITEMS_PER_PAGE = 9;
+  const [displayPage, setDisplayPage] = useState(1);
 
   // Filters
   const [minPrice, setMinPrice] = useState<string>("");
@@ -119,6 +121,7 @@ export default function SubdivisionListings({
     }
 
     setFilteredListings(filtered);
+    setDisplayPage(1);
   }, [listings, propertyTypeFilter, minBeds, maxBeds, minBaths, maxBaths, minSqft, maxSqft]);
 
   const fetchListings = async () => {
@@ -389,10 +392,12 @@ export default function SubdivisionListings({
         )}
       </div>
 
-      {/* Listings Grid */}
+      {/* Listings Grid — paginated to ITEMS_PER_PAGE */}
       {filteredListings.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredListings.map((listing, index) => (
+          {filteredListings
+            .slice((displayPage - 1) * ITEMS_PER_PAGE, displayPage * ITEMS_PER_PAGE)
+            .map((listing, index) => (
             <Link
               key={listing.listingKey || listing.listingId || `listing-${index}`}
               href={`/mls-listings/${listing.slug}`}
@@ -462,27 +467,51 @@ export default function SubdivisionListings({
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className={`px-4 py-2 ${isLight ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100' : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'} rounded-md disabled:opacity-50 disabled:cursor-not-allowed border`}
-          >
-            Previous
-          </button>
-          <span className={`px-4 py-2 ${isLight ? 'text-gray-900' : 'text-gray-300'}`}>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className={`px-4 py-2 ${isLight ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100' : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'} rounded-md disabled:opacity-50 disabled:cursor-not-allowed border`}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      {(() => {
+        const totalDisplayPages = Math.ceil(filteredListings.length / ITEMS_PER_PAGE);
+        if (totalDisplayPages <= 1) return null;
+        return (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <button
+              onClick={() => setDisplayPage((p) => Math.max(1, p - 1))}
+              disabled={displayPage === 1}
+              className={`px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+                isLight
+                  ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              Previous
+            </button>
+            {Array.from({ length: totalDisplayPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setDisplayPage(p)}
+                className={`w-10 h-10 text-sm font-semibold rounded-lg transition-colors ${
+                  p === displayPage
+                    ? 'bg-blue-600 text-white'
+                    : isLight
+                      ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                      : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => setDisplayPage((p) => Math.min(totalDisplayPages, p + 1))}
+              disabled={displayPage === totalDisplayPages}
+              className={`px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+                isLight
+                  ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

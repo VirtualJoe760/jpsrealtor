@@ -8,8 +8,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import SubdivisionListings from "@/app/components/subdivisions/SubdivisionListings";
 import SubdivisionPhotoCarousel from "@/app/components/subdivisions/SubdivisionPhotoCarousel";
-import SubdivisionReviews from "@/app/components/subdivisions/SubdivisionReviews";
-import SubdivisionForum from "@/app/components/subdivisions/SubdivisionForum";
 import SubdivisionStats from "@/app/components/subdivisions/SubdivisionStats";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -258,18 +256,6 @@ export default function SubdivisionPageClient({
             </h2>
             <SubdivisionListings subdivisionSlug={slug} />
           </div>
-
-          {/* Reviews Section */}
-          <SubdivisionReviews
-            subdivisionName={subdivision.name}
-            subdivisionSlug={slug}
-          />
-
-          {/* Forum Section */}
-          <SubdivisionForum
-            subdivisionName={subdivision.name}
-            subdivisionSlug={slug}
-          />
 
           {/* Branded Buy/Sell CTA Section */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
