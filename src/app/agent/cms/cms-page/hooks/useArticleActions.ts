@@ -45,7 +45,7 @@ export function useArticleActions(refetch?: () => Promise<void>): UseArticleActi
           setModal({ ...modal, isOpen: false });
 
           try {
-            const response = await fetch(`/api/articles/${slug}`, {
+            const response = await fetch(`/api/articles/unpublish?slugId=${slug}`, {
               method: 'DELETE',
             });
 
