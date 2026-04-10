@@ -233,27 +233,24 @@ export async function publishArticle(
     options.userEmail
   );
 
-  // STEP 2: Generate MDX file from MongoDB data
-  console.log('[PUBLISH] Step 2/4: Generating MDX file...');
-  await writeArticleToFilesystem(article, slugId);
-
-  // STEP 3: Commit and push to main branch (even if on different branch)
-  console.log('[PUBLISH] Step 3/4: Pushing to main branch...');
-  if (options.autoDeploy !== false) {
-    await deployToMain(article, slugId);
-  }
-
-  // STEP 4: Trigger rebuild (production only, localhost relies on auto-deploy)
   if (IS_PRODUCTION) {
-    console.log('[PUBLISH] Step 4/4: Triggering Vercel rebuild...');
-    const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
+    // PRODUCTION: Use GitHub Contents API (Vercel's filesystem is read-only)
+    console.log('[PUBLISH] Step 2/3: Pushing MDX to GitHub via API...');
+    await publishMDXViaGitHub(article, slugId);
 
-    if (deployResult.success) {
-      console.log(`✅ Article published to production! ${deployResult.message}`);
-    } else {
-      console.warn(`⚠️ Article saved but rebuild failed: ${deployResult.message}`);
-    }
+    // STEP 3: Vercel auto-deploys when the commit lands on main
+    console.log('[PUBLISH] Step 3/3: Vercel will auto-deploy from the GitHub commit.');
+    console.log(`✅ Article published to production! (${dbResult._id})`);
   } else {
+    // LOCALHOST: Write to filesystem + git push
+    console.log('[PUBLISH] Step 2/4: Generating MDX file...');
+    await writeArticleToFilesystem(article, slugId);
+
+    console.log('[PUBLISH] Step 3/4: Pushing to main branch...');
+    if (options.autoDeploy !== false) {
+      await deployToMain(article, slugId);
+    }
+
     console.log('[PUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
     console.log(`✅ Article published! Pushed to main branch (${dbResult._id})`);
   }
@@ -390,33 +387,28 @@ export async function unpublishArticle(slugId: string): Promise<void> {
 
   console.log(`✅ Article deleted from MongoDB: ${slugId}`);
 
-  // STEP 2: Delete MDX file from filesystem
-  console.log('[UNPUBLISH] Step 2/4: Deleting MDX file...');
-  const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
-
-  try {
-    await fs.unlink(filePath);
-    console.log(`✅ MDX file deleted: ${slugId}.mdx`);
-  } catch (error) {
-    console.warn('File not found or already deleted:', filePath);
-    // Continue anyway - file might already be deleted
-  }
-
-  // STEP 3: Commit and push deletion to main branch
-  console.log('[UNPUBLISH] Step 3/4: Pushing deletion to main branch...');
-  await unpublishFromMain(slugId);
-
-  // STEP 4: Trigger rebuild (production only)
   if (IS_PRODUCTION) {
-    console.log('[UNPUBLISH] Step 4/4: Triggering Vercel rebuild...');
-    const deployResult = await triggerVercelRebuild(`Unpublish: ${slugId}`);
+    // PRODUCTION: Delete via GitHub Contents API
+    console.log('[UNPUBLISH] Step 2/3: Deleting MDX from GitHub via API...');
+    await deleteMDXViaGitHub(slugId);
 
-    if (deployResult.success) {
-      console.log(`✅ Rebuild triggered! Article will be removed in 2-3 minutes.`);
-    } else {
-      console.warn(`⚠️ Article deleted but rebuild failed: ${deployResult.message}`);
-    }
+    console.log('[UNPUBLISH] Step 3/3: Vercel will auto-deploy from the GitHub commit.');
+    console.log(`✅ Article unpublished! Will be removed in 2-3 minutes.`);
   } else {
+    // LOCALHOST: Delete from filesystem + git push
+    console.log('[UNPUBLISH] Step 2/4: Deleting MDX file...');
+    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
+
+    try {
+      await fs.unlink(filePath);
+      console.log(`✅ MDX file deleted: ${slugId}.mdx`);
+    } catch (error) {
+      console.warn('File not found or already deleted:', filePath);
+    }
+
+    console.log('[UNPUBLISH] Step 3/4: Pushing deletion to main branch...');
+    await unpublishFromMain(slugId);
+
     console.log('[UNPUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
     console.log(`✅ Article unpublished! Deletion pushed to main branch.`);
   }
@@ -663,4 +655,126 @@ export async function deployToProduction(
 }> {
   // Redirect to deployToMain for unified workflow
   return deployToMain(article, slugId);
+}
+
+// ─── GitHub Contents API helpers (production publishing) ───
+
+const GITHUB_OWNER = 'VirtualJoe760';
+const GITHUB_REPO = 'jpsrealtor';
+const GITHUB_BRANCH = 'main';
+
+function getGitHubToken(): string {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error(
+      'GITHUB_TOKEN env var is required for production publishing. ' +
+      'Create a Personal Access Token with "repo" scope at ' +
+      'https://github.com/settings/tokens and add it to your Vercel env vars.'
+    );
+  }
+  return token;
+}
+
+async function githubAPI(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = getGitHubToken();
+  return fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+}
+
+/**
+ * Get the SHA of an existing file (needed for updates/deletes).
+ * Returns null if the file doesn't exist.
+ */
+async function getFileSHA(filePath: string): Promise<string | null> {
+  const res = await githubAPI(`/contents/${filePath}?ref=${GITHUB_BRANCH}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.sha || null;
+}
+
+/**
+ * Create or update an MDX file in the repo via GitHub Contents API.
+ * Commits directly to main, which triggers Vercel auto-deploy.
+ */
+export async function publishMDXViaGitHub(
+  article: ArticleFormData,
+  slugId: string
+): Promise<void> {
+  const filePath = `src/posts/${slugId}.mdx`;
+  const frontmatter = formatFrontmatter(article, slugId);
+  const fullContent = `---\n${frontmatter}\n---\n\n${article.content}`;
+
+  // Base64-encode the content (GitHub API requirement)
+  const contentBase64 = Buffer.from(fullContent, 'utf-8').toString('base64');
+
+  // Check if file already exists (need SHA for update)
+  const existingSHA = await getFileSHA(filePath);
+
+  const body: any = {
+    message: `${existingSHA ? 'Update' : 'Publish'} article: ${article.title}\n\nAuto-published via CMS`,
+    content: contentBase64,
+    branch: GITHUB_BRANCH,
+  };
+
+  if (existingSHA) {
+    body.sha = existingSHA;
+  }
+
+  console.log(`[GitHub API] ${existingSHA ? 'Updating' : 'Creating'} ${filePath}...`);
+  const res = await githubAPI(`/contents/${filePath}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(
+      `GitHub API error (${res.status}): ${(error as any)?.message || 'Unknown error'}`
+    );
+  }
+
+  const data = await res.json();
+  console.log(`✅ Published to GitHub: ${data.commit?.sha?.slice(0, 7)}`);
+}
+
+/**
+ * Delete an MDX file from the repo via GitHub Contents API.
+ */
+export async function deleteMDXViaGitHub(slugId: string): Promise<void> {
+  const filePath = `src/posts/${slugId}.mdx`;
+  const sha = await getFileSHA(filePath);
+
+  if (!sha) {
+    console.warn(`[GitHub API] File not found: ${filePath} — skipping deletion`);
+    return;
+  }
+
+  console.log(`[GitHub API] Deleting ${filePath}...`);
+  const res = await githubAPI(`/contents/${filePath}`, {
+    method: 'DELETE',
+    body: JSON.stringify({
+      message: `Delete article: ${slugId}\n\nUnpublished via CMS`,
+      sha,
+      branch: GITHUB_BRANCH,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(
+      `GitHub API error (${res.status}): ${(error as any)?.message || 'Unknown error'}`
+    );
+  }
+
+  console.log(`✅ Deleted from GitHub: ${filePath}`);
 }
