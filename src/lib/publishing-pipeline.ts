@@ -470,38 +470,18 @@ export async function deployToMain(
     const originalBranch = currentBranch.trim();
     console.log(`📍 Current branch: ${originalBranch}`);
 
-    // Check if there are changes to commit
-    const { stdout: statusOutput } = await execAsync('git status --porcelain');
+    // Stage the article file
+    console.log(`📝 Staging ${filePath}...`);
+    await execAsync(`git add "${filePath}"`);
 
-    if (!statusOutput.includes(filePath)) {
+    // Check if anything is staged
+    const { stdout: diffOutput } = await execAsync('git diff --cached --name-only');
+    if (!diffOutput.includes(fileName)) {
       return {
         success: true,
         message: 'No changes to deploy (file already up to date)',
       };
     }
-
-    // Stage the file
-    console.log(`📝 Staging ${filePath}...`);
-    await execAsync(`git add "${filePath}"`);
-
-    // Stash any other uncommitted changes
-    console.log('💼 Stashing other changes...');
-    await execAsync('git stash push -m "CMS publish temp stash"').catch(() => {
-      // Ignore errors if nothing to stash
-    });
-
-    // Switch to main branch
-    console.log('🔀 Switching to main branch...');
-    await execAsync('git checkout main');
-
-    // Pull latest changes
-    console.log('⬇️ Pulling latest changes...');
-    await execAsync('git pull origin main');
-
-    // Cherry-pick the staged file to main
-    console.log(`📦 Moving ${filePath} to main...`);
-    // Create a temporary commit on original branch, then cherry-pick
-    await execAsync(`git checkout ${originalBranch}`);
 
     // Create commit message
     const isDraft = article.draft ? ' [DRAFT]' : '';
@@ -509,42 +489,55 @@ export async function deployToMain(
 
 - Category: ${article.category}
 - Slug: ${slugId}
-- Auto-deployed via CMS
+- Auto-deployed via CMS`;
 
-🤖 Generated with Claude Code CMS`;
+    if (originalBranch === 'main') {
+      // Already on main — just commit and push directly.
+      console.log('💾 Committing on main...');
+      const { stdout: commitOutput } = await execAsync(
+        `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
+      );
+      const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
+      const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
 
-    // Commit the changes on original branch
-    console.log('💾 Committing changes...');
+      console.log('🚀 Pushing to main...');
+      await execAsync('git push origin main');
+
+      console.log('✅ Deployed to main!');
+      return {
+        success: true,
+        message: 'Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.',
+        commitHash,
+      };
+    }
+
+    // On a different branch — commit here, cherry-pick onto main, push, switch back
+    console.log('💼 Stashing other changes...');
+    await execAsync('git stash push -m "CMS publish temp stash"').catch(() => {});
+
+    console.log('💾 Committing on current branch...');
     const { stdout: commitOutput } = await execAsync(
       `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
     );
-
-    // Extract commit hash
     const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
     const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
 
-    // Switch to main and cherry-pick
+    console.log('🔀 Switching to main...');
     await execAsync('git checkout main');
+    await execAsync('git pull origin main');
     await execAsync(`git cherry-pick ${commitHash}`);
 
-    // Push to main
-    console.log('🚀 Pushing to main branch...');
+    console.log('🚀 Pushing to main...');
     await execAsync('git push origin main');
 
-    // Switch back to original branch
     console.log(`🔙 Returning to ${originalBranch}...`);
     await execAsync(`git checkout ${originalBranch}`);
-
-    // Restore stashed changes if any
-    await execAsync('git stash pop').catch(() => {
-      // Ignore errors if nothing was stashed
-    });
+    await execAsync('git stash pop').catch(() => {});
 
     console.log('✅ Deployed to main!');
-
     return {
       success: true,
-      message: `Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.`,
+      message: 'Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.',
       commitHash,
     };
 
