@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
         disallow: [
           '/api/',
+          '/v1/',           // Spark Platform API photo paths that leak as relative URLs
           '/admin/',
           '/dashboard/',
           '/agent/',
@@ -34,7 +35,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
+        disallow: ['/api/', '/v1/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
       },
       {
         userAgent: 'Googlebot-Image',
@@ -44,7 +45,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: 'Bingbot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
+        disallow: ['/api/', '/v1/', '/admin/', '/dashboard/', '/agent/', '/auth/', '/chap', '/map'],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

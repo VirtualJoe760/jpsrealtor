@@ -137,6 +137,13 @@ export async function GET(
     // Photos are in StandardFields.Photos array (not Media)
     const photosArray = listingData?.StandardFields?.Photos || [];
 
+    // Sanitize URIs: Spark sometimes returns relative paths like
+    // "/v1/listings/{id}/photos/{photoId}" instead of absolute CDN URLs.
+    // These resolve to jpsrealtor.com/v1/... and cause 1,800+ ghost 404s
+    // in Google's index. Only keep URIs that start with "http".
+    const safeUri = (uri: any) =>
+      typeof uri === "string" && uri.startsWith("http") ? uri : undefined;
+
     // Transform Photos to photo format
     const photos = photosArray
       .filter((p: any) => p.Id) // Must have Id
@@ -145,16 +152,16 @@ export async function GET(
         order: p.Order ?? index,
         caption: p.Caption || p.Name || "",
 
-        // All URI sizes
-        uri300: p.Uri300,
-        uri640: p.Uri640,
-        uri800: p.Uri800,
-        uri1024: p.Uri1024,
-        uri1280: p.Uri1280,
-        uri1600: p.Uri1600,
-        uri2048: p.Uri2048,
-        uriThumb: p.UriThumb,
-        uriLarge: p.UriLarge,
+        // All URI sizes — only absolute URLs allowed
+        uri300: safeUri(p.Uri300),
+        uri640: safeUri(p.Uri640),
+        uri800: safeUri(p.Uri800),
+        uri1024: safeUri(p.Uri1024),
+        uri1280: safeUri(p.Uri1280),
+        uri1600: safeUri(p.Uri1600),
+        uri2048: safeUri(p.Uri2048),
+        uriThumb: safeUri(p.UriThumb),
+        uriLarge: safeUri(p.UriLarge),
 
         // Primary photo flag
         primary: p.Primary === true || p.Order === 0,
