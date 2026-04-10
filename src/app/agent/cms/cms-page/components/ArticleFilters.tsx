@@ -14,6 +14,7 @@ interface ArticleFiltersProps {
   bgSecondary: string;
   border: string;
   isLight: boolean;
+  hideCategory?: boolean;
 }
 
 export function ArticleFilters({
@@ -26,6 +27,7 @@ export function ArticleFilters({
   bgSecondary,
   border,
   isLight,
+  hideCategory,
 }: ArticleFiltersProps) {
   return (
     <div className="mb-6 flex-shrink-0">
@@ -44,18 +46,20 @@ export function ArticleFilters({
           </div>
         </div>
 
-        {/* Category Filter */}
-        <select
-          value={filterCategory}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? 'border-blue-500' : 'border-emerald-500'}`}
-        >
-          {CATEGORY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        {/* Category Filter — hidden when on Landing Pages tab */}
+        {!hideCategory && (
+          <select
+            value={filterCategory}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            className={`px-4 py-3 ${bgSecondary} ${border} rounded-lg ${textPrimary} focus:outline-none focus:${isLight ? 'border-blue-500' : 'border-emerald-500'}`}
+          >
+            {CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
     </div>
   );

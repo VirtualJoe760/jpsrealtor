@@ -6,3 +6,4 @@ export { ArticleListItem } from './ArticleListItem';
 export { ArticleList } from './ArticleList';
 export { EmptyState } from './EmptyState';
 export { PaginationControls } from './PaginationControls';
+export { LandingPageGrid } from './LandingPageGrid';

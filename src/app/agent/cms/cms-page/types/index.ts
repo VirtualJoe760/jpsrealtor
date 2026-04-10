@@ -8,6 +8,7 @@ export enum ArticleCategory {
   ARTICLES = 'articles',
   MARKET_INSIGHTS = 'market-insights',
   REAL_ESTATE_TIPS = 'real-estate-tips',
+  LANDING_PAGE = 'landing-page',
 }
 
 /**
