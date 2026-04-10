@@ -10,160 +10,174 @@ import { CRMLSListing } from '@/models/crmls-listings'
 
 const baseUrl = 'https://jpsrealtor.com'
 
-// Next.js uses generateSitemaps() to create a sitemap index at /sitemap.xml
-// with child sitemaps at /sitemap/0.xml, /sitemap/1.xml, etc.
-// IMPORTANT: This runs at BUILD time — no DB access. Use fixed IDs.
-// IDs: 0 = static+neighborhoods, 1 = blog, 2 = listings (paginated at request time)
-export async function generateSitemaps() {
-  return [
-    { id: 0 }, // static pages + neighborhoods + subdivisions
-    { id: 1 }, // blog/insights posts
-    { id: 2 }, // MLS listings
-  ]
-}
+// Single sitemap — all content types merged.
+//
+// Total URLs: ~500 static/neighborhoods + ~50 blog + ~38K listings ≈ 38.5K
+// Well within the 50K sitemap spec limit. Using a single sitemap avoids
+// the Next.js 16 id-dispatch bug where generateSitemaps() ids weren't
+// being passed through correctly to the sitemap function.
 
-export default async function sitemap({
-  id,
-}: {
-  id: number
-}): Promise<MetadataRoute.Sitemap> {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 
-  // Sitemap 0: Static pages + neighborhoods + subdivisions
-  if (id === 0) {
-    const staticPages: MetadataRoute.Sitemap = [
-      {
-        url: baseUrl,
-        lastModified: now,
-        changeFrequency: 'daily',
-        priority: 1.0,
-      },
-      {
-        url: `${baseUrl}/about`,
-        lastModified: now,
-        changeFrequency: 'monthly',
-        priority: 0.8,
-      },
-      {
-        url: `${baseUrl}/selling`,
-        lastModified: now,
-        changeFrequency: 'monthly',
-        priority: 0.8,
-      },
-      {
-        url: `${baseUrl}/book-appointment`,
-        lastModified: now,
-        changeFrequency: 'monthly',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/mls-listings`,
-        lastModified: now,
-        changeFrequency: 'hourly',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/neighborhoods`,
-        lastModified: now,
-        changeFrequency: 'weekly',
-        priority: 0.9,
-      },
-    ]
+  // ─── 1. Static pages ───
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/selling`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/book-appointment`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/mls-listings`,
+      lastModified: now,
+      changeFrequency: 'hourly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/neighborhoods`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+  ]
 
-    // City neighborhood pages
-    const cityPages: MetadataRoute.Sitemap = cities.map((city) => ({
+  // ─── 2. City neighborhood pages + buy/sell variants ───
+  const cityPages: MetadataRoute.Sitemap = cities.flatMap((city) => [
+    {
       url: `${baseUrl}/neighborhoods/${city.id}`,
       lastModified: now,
       changeFrequency: 'weekly' as const,
       priority: 0.9,
-    }))
+    },
+    {
+      url: `${baseUrl}/neighborhoods/${city.id}/buy`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/neighborhoods/${city.id}/sell`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    },
+  ])
 
-    // City buy/sell variant pages
-    const cityVariantPages: MetadataRoute.Sitemap = cities.flatMap((city) => [
-      {
-        url: `${baseUrl}/neighborhoods/${city.id}/buy`,
+  // ─── 3. Subdivision pages ───
+  const subdivisionPages: MetadataRoute.Sitemap = []
+  Object.entries(subdivisions).forEach(([cityKey, subdivisionList]) => {
+    const city = cities.find((c) => cityKey.includes(c.id))
+    if (!city) return
+
+    subdivisionList.forEach((sub) => {
+      subdivisionPages.push({
+        url: `${baseUrl}/neighborhoods/${city.id}/${sub.slug}`,
         lastModified: now,
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      },
-      {
-        url: `${baseUrl}/neighborhoods/${city.id}/sell`,
-        lastModified: now,
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      },
-    ])
-
-    // Subdivision pages
-    const subdivisionPages: MetadataRoute.Sitemap = []
-    Object.entries(subdivisions).forEach(([cityKey, subdivisionList]) => {
-      const city = cities.find((c) => cityKey.includes(c.id))
-      if (!city) return
-
-      subdivisionList.forEach((sub) => {
-        subdivisionPages.push({
-          url: `${baseUrl}/neighborhoods/${city.id}/${sub.slug}`,
-          lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.8,
-        })
+        changeFrequency: 'weekly',
+        priority: 0.8,
       })
     })
+  })
 
-    return [...staticPages, ...cityPages, ...cityVariantPages, ...subdivisionPages]
+  // ─── 4. Blog/Insights posts ───
+  const blogPages: MetadataRoute.Sitemap = []
+  const postsDir = path.join(process.cwd(), 'src/posts')
+  if (fs.existsSync(postsDir)) {
+    const blogFiles = fs.readdirSync(postsDir).filter((file) => file.endsWith('.mdx'))
+    blogFiles.forEach((file) => {
+      const filePath = path.join(postsDir, file)
+      const fileContent = fs.readFileSync(filePath, 'utf-8')
+      const { data } = matter(fileContent)
+
+      if (data.slugId && data.section) {
+        blogPages.push({
+          url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
+          lastModified: data.date ? new Date(data.date) : now,
+          changeFrequency: 'monthly',
+          priority: 0.7,
+        })
+      }
+    })
   }
 
-  // Sitemap 1: Blog/Insights posts
-  if (id === 1) {
-    const blogPages: MetadataRoute.Sitemap = []
-    const postsDir = path.join(process.cwd(), 'src/posts')
-    if (fs.existsSync(postsDir)) {
-      const blogFiles = fs.readdirSync(postsDir).filter((file) => file.endsWith('.mdx'))
-      blogFiles.forEach((file) => {
-        const filePath = path.join(postsDir, file)
-        const fileContent = fs.readFileSync(filePath, 'utf-8')
-        const { data } = matter(fileContent)
-
-        if (data.slugId && data.section) {
-          blogPages.push({
-            url: `${baseUrl}/insights/${data.section}/${data.slugId}`,
-            lastModified: data.date ? new Date(data.date) : now,
-            changeFrequency: 'monthly',
-            priority: 0.7,
-          })
-        }
-      })
-    }
-    return blogPages
-  }
-
-  // Sitemap 2: MLS Listings (all active, up to 50k URLs per sitemap spec)
-  let listingPages: MetadataRoute.Sitemap = []
+  // ─── 5. MLS Listings (residential sale only, capped at 49K) ───
+  const MAX_LISTING_URLS = 49_000
+  const listingPages: MetadataRoute.Sitemap = []
   try {
     await dbConnect()
 
+    const filter: any = {
+      standardStatus: 'Active',
+      propertyType: 'A',
+      slugAddress: { $exists: true, $ne: null },
+    }
+
     const [gpsListings, crmlsListings] = await Promise.all([
-      UnifiedListing.find(
-        { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
-        { slugAddress: 1, modificationTimestamp: 1 }
-      ).lean(),
-      CRMLSListing.find(
-        { standardStatus: 'Active', slugAddress: { $exists: true, $ne: null } },
-        { slugAddress: 1, modificationTimestamp: 1 }
-      ).lean(),
+      UnifiedListing.find(filter as any)
+        .select('slugAddress modificationTimestamp')
+        .sort({ modificationTimestamp: -1 })
+        .limit(MAX_LISTING_URLS)
+        .lean(),
+      CRMLSListing.find(filter as any)
+        .select('slugAddress modificationTimestamp')
+        .sort({ modificationTimestamp: -1 })
+        .limit(MAX_LISTING_URLS)
+        .lean(),
     ])
 
-    listingPages = [...gpsListings, ...crmlsListings].map((listing: any) => ({
-      url: `${baseUrl}/mls-listings/${listing.slugAddress}`,
-      lastModified: listing.modificationTimestamp
-        ? new Date(listing.modificationTimestamp)
-        : now,
-      changeFrequency: 'daily' as const,
-      priority: 0.6,
-    }))
+    // De-duplicate by slugAddress (both collections may contain the same listing)
+    const seen = new Set<string>()
+    const all = [...gpsListings, ...crmlsListings]
+    for (const listing of all) {
+      const slug = (listing as any).slugAddress
+      if (!slug || seen.has(slug)) continue
+      seen.add(slug)
+      listingPages.push({
+        url: `${baseUrl}/mls-listings/${slug}`,
+        lastModified: (listing as any).modificationTimestamp
+          ? new Date((listing as any).modificationTimestamp)
+          : now,
+        changeFrequency: 'daily',
+        priority: 0.6,
+      })
+      if (listingPages.length >= MAX_LISTING_URLS) break
+    }
   } catch (error) {
     console.error('Sitemap: Error fetching MLS listings:', error)
   }
 
-  return listingPages
+  const allPages = [
+    ...staticPages,
+    ...cityPages,
+    ...subdivisionPages,
+    ...blogPages,
+    ...listingPages,
+  ]
+
+  console.log(
+    `[Sitemap] Generated: ${staticPages.length} static, ${cityPages.length} city, ` +
+    `${subdivisionPages.length} subdivision, ${blogPages.length} blog, ` +
+    `${listingPages.length} listings = ${allPages.length} total URLs`
+  )
+
+  return allPages
 }
