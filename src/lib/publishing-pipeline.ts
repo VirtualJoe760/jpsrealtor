@@ -235,12 +235,19 @@ export async function publishArticle(
 
   if (IS_PRODUCTION) {
     // PRODUCTION: Use GitHub Contents API (Vercel's filesystem is read-only)
-    console.log('[PUBLISH] Step 2/3: Pushing MDX to GitHub via API...');
+    console.log('[PUBLISH] Step 2/4: Pushing MDX to GitHub via API...');
     await publishMDXViaGitHub(article, slugId);
 
-    // STEP 3: Vercel auto-deploys when the commit lands on main
-    console.log('[PUBLISH] Step 3/3: Vercel will auto-deploy from the GitHub commit.');
-    console.log(`✅ Article published to production! (${dbResult._id})`);
+    // STEP 3: Trigger Vercel rebuild via deploy hook (same as before)
+    console.log('[PUBLISH] Step 3/4: Triggering Vercel rebuild...');
+    const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
+    if (deployResult.success) {
+      console.log(`✅ Article published to production! ${deployResult.message}`);
+    } else {
+      // Deploy hook failed but the GitHub commit will still trigger auto-deploy
+      console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
+    }
+    console.log(`✅ Article published! (${dbResult._id})`);
   } else {
     // LOCALHOST: Write to filesystem + git push
     console.log('[PUBLISH] Step 2/4: Generating MDX file...');
@@ -389,11 +396,17 @@ export async function unpublishArticle(slugId: string): Promise<void> {
 
   if (IS_PRODUCTION) {
     // PRODUCTION: Delete via GitHub Contents API
-    console.log('[UNPUBLISH] Step 2/3: Deleting MDX from GitHub via API...');
+    console.log('[UNPUBLISH] Step 2/4: Deleting MDX from GitHub via API...');
     await deleteMDXViaGitHub(slugId);
 
-    console.log('[UNPUBLISH] Step 3/3: Vercel will auto-deploy from the GitHub commit.');
-    console.log(`✅ Article unpublished! Will be removed in 2-3 minutes.`);
+    console.log('[UNPUBLISH] Step 3/4: Triggering Vercel rebuild...');
+    const deployResult = await triggerVercelRebuild(`Unpublish: ${slugId}`);
+    if (deployResult.success) {
+      console.log(`✅ Rebuild triggered! Article will be removed in 2-3 minutes.`);
+    } else {
+      console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
+    }
+    console.log(`✅ Article unpublished!`);
   } else {
     // LOCALHOST: Delete from filesystem + git push
     console.log('[UNPUBLISH] Step 2/4: Deleting MDX file...');
