@@ -24,7 +24,8 @@ export function useArticles(): UseArticlesResult {
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/articles/list');
+      // Include landing pages — the CMS needs all content types
+      const response = await fetch('/api/articles/list?excludeLandingPages=false');
       if (!response.ok) throw new Error('Failed to fetch articles');
 
       const data = await response.json();
