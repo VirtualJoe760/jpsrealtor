@@ -168,6 +168,9 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
           sentSubfolder={sentSubfolder}
           onFolderChange={handleFolderChange}
           onSentSubfolderChange={handleSentSubfolderChange}
+          onCompose={handleCompose}
+          onRefresh={refreshEmails}
+          loading={loading}
           isLight={isLight}
         />
       </div>

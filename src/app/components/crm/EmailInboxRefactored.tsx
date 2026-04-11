@@ -153,6 +153,9 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
         sentSubfolder={sentSubfolder}
         onFolderChange={changeFolder}
         onSentSubfolderChange={changeSentSubfolder}
+        onCompose={handleCompose}
+        onRefresh={refreshEmails}
+        loading={loading}
         isLight={isLight}
       />
 
