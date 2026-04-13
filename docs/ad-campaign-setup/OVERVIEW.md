@@ -1,6 +1,6 @@
 # Ad Campaign Setup Guide
 
-> Last updated: 2026-04-12
+> Last updated: 2026-04-12 | Pixel ID: 1378421466770456
 
 ## Current Status
 
