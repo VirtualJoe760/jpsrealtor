@@ -1,59 +1,124 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '@/app/contexts/ThemeContext';
 
 // Fix Leaflet icon issue in Next.js
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import markerRetina from 'leaflet/dist/images/marker-icon-2x.png';
 
 const PinIcon = L.icon({
-  iconUrl: icon.src,
-  iconRetinaUrl: iconRetina.src,
-  shadowUrl: iconShadow.src,
+  iconUrl: markerIcon.src,
+  iconRetinaUrl: markerRetina.src,
+  shadowUrl: markerShadow.src,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
 
-L.Marker.prototype.options.icon = PinIcon;
-
 interface PinDropMapProps {
-  /** Current lat/lng (controlled) */
   lat?: number;
   lng?: number;
-  /** Optional radius in miles to display */
   radiusMiles?: number;
-  /** Callback when pin is placed or search result selected */
   onChange: (location: { lat: number; lng: number; address?: string }) => void;
-  /** Map height */
   height?: string;
-  /** Placeholder text for search */
   searchPlaceholder?: string;
 }
 
-/** Inner component to handle map click events */
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+/**
+ * Manages the marker + circle imperatively so React doesn't fight Leaflet's DOM.
+ * This avoids the "removeChild" crash when radius or position changes.
+ */
+function MapContent({
+  lat,
+  lng,
+  radiusMiles,
+  onMapClick,
+  isLight,
+}: {
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
+  onMapClick: (lat: number, lng: number) => void;
+  isLight: boolean;
+}) {
+  const map = useMap();
+  const markerRef = useRef<L.Marker | null>(null);
+  const circleRef = useRef<L.Circle | null>(null);
+
+  // Handle map clicks
   useMapEvents({
     click(e) {
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
-  return null;
-}
 
-/** Inner component to fly to a location */
-function FlyTo({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
+  // Update marker + circle when lat/lng/radius change
   useEffect(() => {
     if (lat && lng) {
-      map.flyTo([lat, lng], 14, { duration: 1 });
+      const pos = L.latLng(lat, lng);
+
+      // Marker
+      if (markerRef.current) {
+        markerRef.current.setLatLng(pos);
+      } else {
+        markerRef.current = L.marker(pos, { icon: PinIcon }).addTo(map);
+      }
+
+      // Circle
+      const radiusMeters = (radiusMiles || 0) * 1609.34;
+      if (radiusMeters > 0) {
+        if (circleRef.current) {
+          circleRef.current.setLatLng(pos);
+          circleRef.current.setRadius(radiusMeters);
+        } else {
+          circleRef.current = L.circle(pos, {
+            radius: radiusMeters,
+            color: isLight ? '#3b82f6' : '#10b981',
+            fillColor: isLight ? '#3b82f6' : '#10b981',
+            fillOpacity: 0.1,
+            weight: 2,
+          }).addTo(map);
+        }
+      } else if (circleRef.current) {
+        map.removeLayer(circleRef.current);
+        circleRef.current = null;
+      }
+
+      // Fly to the pin
+      map.flyTo(pos, 13, { duration: 0.8 });
+    } else {
+      // No pin — remove marker and circle
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+      if (circleRef.current) {
+        map.removeLayer(circleRef.current);
+        circleRef.current = null;
+      }
     }
-  }, [lat, lng, map]);
+  }, [lat, lng, map, isLight]);
+
+  // Update circle radius without re-creating it
+  useEffect(() => {
+    if (circleRef.current && radiusMiles) {
+      circleRef.current.setRadius(radiusMiles * 1609.34);
+    }
+  }, [radiusMiles]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (markerRef.current) map.removeLayer(markerRef.current);
+      if (circleRef.current) map.removeLayer(circleRef.current);
+    };
+  }, [map]);
+
   return null;
 }
 
@@ -61,10 +126,6 @@ interface SearchResult {
   display_name: string;
   lat: number;
   lng: number;
-  street?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
 }
 
 export default function PinDropMap({
@@ -87,10 +148,6 @@ export default function PinDropMap({
 
   // Default center: Coachella Valley
   const defaultCenter: [number, number] = [33.7225, -116.3738];
-  const center: [number, number] = lat && lng ? [lat, lng] : defaultCenter;
-
-  // Convert miles to meters for Leaflet circle
-  const radiusMeters = radiusMiles ? radiusMiles * 1609.34 : undefined;
 
   const handleMapClick = useCallback(
     async (clickLat: number, clickLng: number) => {
@@ -135,10 +192,6 @@ export default function PinDropMap({
               display_name: [r.street, r.city, r.state, r.zip].filter(Boolean).join(', '),
               lat: r.lat,
               lng: r.lng,
-              street: r.street,
-              city: r.city,
-              state: r.state,
-              zip: r.zip,
             }))
           );
           setShowResults(true);
@@ -224,11 +277,11 @@ export default function PinDropMap({
         )}
       </div>
 
-      {/* Map */}
+      {/* Map — MapContainer mounts once, MapContent handles updates imperatively */}
       <div className="rounded-lg overflow-hidden border" style={{ height }}>
         <MapContainer
-          center={center}
-          zoom={lat && lng ? 14 : 10}
+          center={defaultCenter}
+          zoom={10}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
         >
@@ -236,21 +289,13 @@ export default function PinDropMap({
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url={tileUrl}
           />
-          <MapClickHandler onMapClick={handleMapClick} />
-          {lat && lng && <FlyTo lat={lat} lng={lng} />}
-          {lat && lng && <Marker position={[lat, lng]} />}
-          {lat && lng && radiusMeters && (
-            <Circle
-              center={[lat, lng]}
-              radius={radiusMeters}
-              pathOptions={{
-                color: isLight ? '#3b82f6' : '#10b981',
-                fillColor: isLight ? '#3b82f6' : '#10b981',
-                fillOpacity: 0.1,
-                weight: 2,
-              }}
-            />
-          )}
+          <MapContent
+            lat={lat}
+            lng={lng}
+            radiusMiles={radiusMiles}
+            onMapClick={handleMapClick}
+            isLight={isLight}
+          />
         </MapContainer>
       </div>
 
