@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/app/contexts/ThemeContext';
-import PipelineStepIndicator, { PipelineStep } from './PipelineStepIndicator';
+import PipelineStepIndicator, { VOICEMAIL_STEPS, VOICEMAIL_SIMPLE_STEPS } from './PipelineStepIndicator';
 import PipelineContactsStep from './PipelineContactsStep';
 import PipelineScriptsStep from './PipelineScriptsStep';
 import PipelineReviewStep from './PipelineReviewStep';
@@ -34,8 +34,8 @@ export default function CampaignPipelineWizard({
 }: CampaignPipelineWizardProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
-  const [currentStep, setCurrentStep] = useState<PipelineStep>('contacts');
-  const [completedSteps, setCompletedSteps] = useState<PipelineStep[]>([]);
+  const [currentStep, setCurrentStep] = useState<string>('contacts');
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [data, setData] = useState<PipelineData>({
     contactCount: 0,
     scriptCount: 0,
@@ -77,7 +77,7 @@ export default function CampaignPipelineWizard({
         });
 
         // Auto-complete steps based on current data
-        const completed: PipelineStep[] = [];
+        const completed: string[] = [];
         if (contacts.length > 0) completed.push('contacts');
         if (scripts.length > 0) completed.push('scripts');
         if (scripts.length > 0) completed.push('review');
@@ -95,7 +95,7 @@ export default function CampaignPipelineWizard({
       });
 
       // Auto-complete steps based on current data
-      const completed: PipelineStep[] = [];
+      const completed: string[] = [];
       if (statsData.contactCount > 0) completed.push('contacts');
       if (statsData.scriptCount > 0) completed.push('scripts');
       if (statsData.scriptCount > 0) completed.push('review');
@@ -149,14 +149,14 @@ export default function CampaignPipelineWizard({
     }
   }, [data, isLoading, hasCheckedResume, isSimpleMode]);
 
-  const handleNext = (fromStep: PipelineStep) => {
+  const handleNext = (fromStep: string) => {
     // Mark current step as completed if it has required data
     if (!completedSteps.includes(fromStep)) {
       setCompletedSteps([...completedSteps, fromStep]);
     }
 
     // Move to next step - different flow for simple vs full mode
-    const steps: PipelineStep[] = isSimpleMode
+    const steps: string[] = isSimpleMode
       ? ['contacts', 'audio', 'send']  // Simple mode: 3 steps
       : ['contacts', 'scripts', 'review', 'audio', 'send'];  // Full mode: 5 steps
 
@@ -166,8 +166,8 @@ export default function CampaignPipelineWizard({
     }
   };
 
-  const handleBack = (fromStep: PipelineStep) => {
-    const steps: PipelineStep[] = isSimpleMode
+  const handleBack = (fromStep: string) => {
+    const steps: string[] = isSimpleMode
       ? ['contacts', 'audio', 'send']  // Simple mode: 3 steps
       : ['contacts', 'scripts', 'review', 'audio', 'send'];  // Full mode: 5 steps
 
@@ -214,7 +214,7 @@ export default function CampaignPipelineWizard({
     );
   }
 
-  const handleStepClick = (step: PipelineStep) => {
+  const handleStepClick = (step: string) => {
     setCurrentStep(step);
   };
 
@@ -262,6 +262,7 @@ export default function CampaignPipelineWizard({
 
       {/* Step Indicator */}
       <PipelineStepIndicator
+        steps={isSimpleMode ? VOICEMAIL_SIMPLE_STEPS : VOICEMAIL_STEPS}
         currentStep={currentStep}
         completedSteps={completedSteps}
         onStepClick={handleStepClick}

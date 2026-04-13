@@ -9,6 +9,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 import CampaignPipelineWizard from './pipeline/CampaignPipelineWizard';
+import DirectMailPipelineWizard from './pipeline/DirectMailPipelineWizard';
+import GoogleAdsPipelineWizard from './pipeline/GoogleAdsPipelineWizard';
+import MetaAdsPipelineWizard from './pipeline/MetaAdsPipelineWizard';
 
 interface Campaign {
   id: string;
@@ -59,8 +62,23 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
 
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy>(null);
 
-  // If a strategy is selected, show the pipeline wizard
+  // If a strategy is selected, show the appropriate pipeline wizard
   if (selectedStrategy) {
+    const renderWizard = () => {
+      switch (selectedStrategy) {
+        case 'voicemail':
+          return <CampaignPipelineWizard campaign={campaign} initialStrategy="voicemail" onRefresh={onRefresh} />;
+        case 'directMail':
+          return <DirectMailPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+        case 'googleAds':
+          return <GoogleAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+        case 'metaAds':
+          return <MetaAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+        default:
+          return null;
+      }
+    };
+
     return (
       <div className="space-y-6">
         <button
@@ -69,7 +87,7 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
         >
           ← Back to Strategy Selection
         </button>
-        <CampaignPipelineWizard campaign={campaign} initialStrategy={selectedStrategy} onRefresh={onRefresh} />
+        {renderWizard()}
       </div>
     );
   }
