@@ -14,6 +14,7 @@ import User from "@/models/User";
 import Contact from "@/models/Contact";
 import VerificationToken from "@/models/verificationToken";
 import { sendLeadWelcomeEmail } from "@/lib/email-resend";
+import { sendLeadEvent } from "@/lib/meta-capi";
 
 export const dynamic = "force-dynamic";
 
@@ -239,6 +240,21 @@ export async function POST(request: NextRequest) {
         // Non-fatal — lead is still saved
       }
     }
+
+    // Fire server-side Meta CAPI Lead event (non-blocking)
+    sendLeadEvent(
+      {
+        email,
+        phone,
+        firstName,
+        lastName,
+        city: cityName,
+        state: "CA",
+        clientIp: request.headers.get("x-forwarded-for") || undefined,
+        clientUserAgent: request.headers.get("user-agent") || undefined,
+      },
+      { content_category: "buy_inquiry", content_name: cityName || "Buy Lead" }
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, accountCreated });
   } catch (err) {

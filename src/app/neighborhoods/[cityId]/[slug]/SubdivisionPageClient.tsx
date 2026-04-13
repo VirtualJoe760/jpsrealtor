@@ -9,7 +9,9 @@ import dynamic from "next/dynamic";
 import SubdivisionListings from "@/app/components/subdivisions/SubdivisionListings";
 import SubdivisionPhotoCarousel from "@/app/components/subdivisions/SubdivisionPhotoCarousel";
 import SubdivisionStats from "@/app/components/subdivisions/SubdivisionStats";
+import SubdivisionCmaSection from "@/app/components/cma/subdivision/SubdivisionCmaSection";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { trackViewContent } from "@/lib/meta-pixel";
 
 // Dynamically import map component with no SSR
 const SubdivisionMap = dynamic(
@@ -47,6 +49,16 @@ export default function SubdivisionPageClient({
     currentTheme,
   } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+
+  // Track subdivision view
+  useEffect(() => {
+    trackViewContent({
+      listingKey: slug,
+      address: subdivision?.name || slug,
+      city: cityId,
+      subdivision: subdivision?.name,
+    });
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if subdivision is favorited
   useEffect(() => {
@@ -178,18 +190,7 @@ export default function SubdivisionPageClient({
             />
           </div>
 
-          {/* Stats with Toggle */}
-          <SubdivisionStats
-            subdivisionSlug={slug}
-            initialStats={{
-              listingCount: subdivision.listingCount,
-              avgPrice: subdivision.avgPrice,
-              medianPrice: subdivision.medianPrice,
-              priceRange: subdivision.priceRange,
-            }}
-          />
-
-          {/* Description */}
+          {/* About */}
           {subdivision.description && (
             <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
               <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4`}>
@@ -197,7 +198,6 @@ export default function SubdivisionPageClient({
               </h2>
               <p className={`${textSecondary} leading-relaxed`}>{subdivision.description}</p>
 
-              {/* Features */}
               {subdivision.features && subdivision.features.length > 0 && (
                 <div className="mt-6">
                   <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>
@@ -220,7 +220,6 @@ export default function SubdivisionPageClient({
                 </div>
               )}
 
-              {/* Community Features */}
               {subdivision.communityFeatures && (
                 <div className="mt-6">
                   <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
@@ -231,6 +230,17 @@ export default function SubdivisionPageClient({
               )}
             </div>
           )}
+
+          {/* Stats with Toggle */}
+          <SubdivisionStats
+            subdivisionSlug={slug}
+            initialStats={{
+              listingCount: subdivision.listingCount,
+              avgPrice: subdivision.avgPrice,
+              medianPrice: subdivision.medianPrice,
+              priceRange: subdivision.priceRange,
+            }}
+          />
 
           {/* Map */}
           {subdivision.coordinates && (
@@ -256,6 +266,9 @@ export default function SubdivisionPageClient({
             </h2>
             <SubdivisionListings subdivisionSlug={slug} />
           </div>
+
+          {/* CMA Market Analysis */}
+          <SubdivisionCmaSection slug={slug} />
 
           {/* Branded Buy/Sell CTA Section */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>

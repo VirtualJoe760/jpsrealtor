@@ -11,6 +11,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { Resend } from "resend";
+import { sendLeadEvent } from "@/lib/meta-capi";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +203,20 @@ export async function POST(req: NextRequest) {
         console.error("[Campaign Submit] Failed to send notification emails:", emailErr);
       }
     }
+
+    // Fire server-side Meta CAPI Lead event (non-blocking)
+    const [first, ...rest] = (userName || "").split(" ");
+    sendLeadEvent(
+      {
+        email: userEmail,
+        phone: userPhone,
+        firstName: first,
+        lastName: rest.join(" "),
+        clientIp: req.headers.get("x-forwarded-for") || undefined,
+        clientUserAgent: req.headers.get("user-agent") || undefined,
+      },
+      { content_category: "campaign_lead", content_name: campaignTitle || campaignSlug }
+    ).catch(() => {});
 
     return NextResponse.json({
       success: true,

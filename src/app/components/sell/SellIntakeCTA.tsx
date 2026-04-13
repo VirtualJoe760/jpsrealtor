@@ -14,6 +14,7 @@ import {
   US_STATES,
 } from "@/lib/format-input";
 import AddressAutocomplete from "@/app/components/common/AddressAutocomplete";
+import { trackLead } from "@/lib/meta-pixel";
 
 interface Props {
   agent: AgentProfile;
@@ -113,6 +114,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Submission failed");
       setSuccess(true);
+      trackLead({ contactType: "sell_inquiry", address: fullAddress });
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
     } finally {

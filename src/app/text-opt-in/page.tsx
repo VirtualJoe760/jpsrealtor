@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { trackLead } from '@/lib/meta-pixel';
 
 export default function TextOptInPage() {
   const [email, setEmail] = useState('');
@@ -55,6 +56,7 @@ export default function TextOptInPage() {
       }
 
       setSubmitted(true);
+      trackLead({ contactType: smsAgreed ? 'sms_optin' : 'newsletter_optin' });
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {

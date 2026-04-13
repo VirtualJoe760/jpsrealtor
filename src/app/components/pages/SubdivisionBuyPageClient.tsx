@@ -1,7 +1,15 @@
 "use client";
 
+import { useTheme } from "@/app/contexts/ThemeContext";
+import { useAgentProfile } from "@/app/hooks/useAgentProfile";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import MarketSnapshot from "@/app/components/buy/MarketSnapshot";
+import AgentValueProps from "@/app/components/buy/AgentValueProps";
+import BuyingJourney from "@/app/components/buy/BuyingJourney";
+import BuyIntakeCTA from "@/app/components/buy/BuyIntakeCTA";
+import { trackViewContent } from "@/lib/meta-pixel";
 
 interface SubdivisionBuyPageClientProps {
   subdivisionName: string;
@@ -18,224 +26,183 @@ export default function SubdivisionBuyPageClient({
   slug,
   region,
 }: SubdivisionBuyPageClientProps) {
-  const {
-    cardBg,
-    cardBorder,
-    textPrimary,
-    textSecondary,
-    buttonPrimary,
-    buttonSecondary,
-    shadow,
-  } = useThemeClasses();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const { agent } = useAgentProfile();
+
+  useEffect(() => {
+    trackViewContent({
+      listingKey: `buy-${slug}`,
+      address: `Buy in ${subdivisionName}`,
+      city: cityName,
+      subdivision: subdivisionName,
+    });
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prevent hydration mismatch — only render slideshow after mount
+  const [mounted, setMounted] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [currentPhoto, setCurrentPhoto] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    fetch(`/api/subdivisions/${slug}/listings?limit=8&propertyType=A&sort=price-high&skipStats=true`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data?.listings) return;
+        const urls = data.listings
+          .map((l: any) => {
+            // Try media array first, then fallback fields
+            const media = l.media || l.Media;
+            if (media && media.length > 0) {
+              const primary = media.find((m: any) =>
+                (m.mediaCategory || m.MediaCategory || "").toLowerCase().includes("primary")
+              ) || media[0];
+              return primary?.uri1024 || primary?.Uri1024 || primary?.uri800 || primary?.Uri800 || primary?.uri640 || primary?.Uri640;
+            }
+            return l.photoUrl || l.primaryPhotoUrl;
+          })
+          .filter(Boolean);
+        if (urls.length > 0) setPhotos(urls);
+      })
+      .catch(() => {});
+  }, [slug, mounted]);
+
+  // Auto-rotate photos
+  useEffect(() => {
+    if (photos.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentPhoto((prev) => (prev + 1) % photos.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [photos.length]);
 
   return (
-    <div className="min-h-screen py-12 px-4" data-page="subdivision-buy">
-      <div className="max-w-5xl mx-auto">
-        {/* Hero Section */}
-        <div className={`${cardBg} ${cardBorder} border rounded-3xl p-8 md:p-16 ${shadow} mb-12 text-center`}>
-          <h1 className={`text-5xl md:text-6xl font-bold ${textPrimary} mb-6 drop-shadow-2xl`}>
-            Buy Your Dream Home in {subdivisionName}
-          </h1>
-          <p className={`text-xl md:text-2xl ${textSecondary} mb-8 leading-relaxed`}>
-            {cityName}, {region} • Your Trusted Real Estate Expert
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              href={`/neighborhoods/${cityId}/${slug}`}
-              className={`px-8 py-4 ${buttonPrimary} font-semibold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
-            >
-              View {subdivisionName} Listings
-            </Link>
-            <a
-              href="/#contact"
-              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-2xl text-lg"
-            >
-              Contact Joey Today
-            </a>
-          </div>
+    <div className="min-h-screen" data-page="subdivision-buy">
+      {/* Hero with Subdivision Listing Photos */}
+      <section className="relative w-full h-[85vh] min-h-[550px] overflow-hidden bg-black">
+        {/* Slideshow — only render after mount to avoid hydration mismatch */}
+        <div className="absolute inset-0" suppressHydrationWarning>
+          {mounted && photos.length > 0 ? (
+            photos.map((photo, i) => (
+              <div
+                key={photo}
+                className="absolute inset-0 transition-opacity duration-1000"
+                style={{ opacity: i === currentPhoto ? 1 : 0 }}
+              >
+                <Image
+                  src={photo}
+                  alt={`${subdivisionName} property ${i + 1}`}
+                  fill
+                  className="object-cover"
+                  priority={i === 0}
+                  sizes="100vw"
+                  unoptimized={
+                    photo.includes("media.crmls.org") ||
+                    photo.includes("sparkplatform.com")
+                  }
+                />
+              </div>
+            ))
+          ) : agent.heroPhoto ? (
+            <Image
+              src={agent.heroPhoto}
+              alt={subdivisionName}
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
+          ) : null}
         </div>
 
-        {/* Introduction */}
-        <section className="mb-12">
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
-            <h2 className={`text-4xl font-bold ${textPrimary} mb-6`}>
-              Why Choose {subdivisionName}?
-            </h2>
-            <p className={`text-lg ${textSecondary} leading-relaxed mb-6`}>
-              {subdivisionName} is one of the most sought-after communities in {cityName}, {region}. This exclusive neighborhood offers the perfect blend of luxury, convenience, and community living. Whether you're a first-time homebuyer or looking to upgrade, {subdivisionName} provides an exceptional lifestyle in a prime location.
-            </p>
-            <p className={`text-lg ${textSecondary} leading-relaxed`}>
-              As your dedicated real estate professional, I'm <strong>Joey Sardella</strong>, and I specialize in helping buyers find their perfect home in {subdivisionName}. With deep knowledge of this community and the local market, I'll guide you through every step of the home-buying process.
-            </p>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 pointer-events-none" />
+
+        {/* Photo counter */}
+        {photos.length > 1 && (
+          <div className="absolute top-6 right-6 z-20 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium border border-white/10">
+            {currentPhoto + 1} / {photos.length}
           </div>
-        </section>
+        )}
 
-        {/* Community Benefits */}
-        <section className="mb-12">
-          <h2 className={`text-4xl font-bold ${textPrimary} mb-8 text-center`}>
-            {subdivisionName} Lifestyle Benefits
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}>
-              <div className="text-4xl mb-4">🏘️</div>
-              <h3 className={`text-2xl font-bold ${textPrimary} mb-3`}>Exclusive Community</h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Living in {subdivisionName} means being part of an exclusive community with well-maintained properties, engaged neighbors, and a strong sense of belonging.
-              </p>
-            </div>
-
-            <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}>
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className={`text-2xl font-bold ${textPrimary} mb-3`}>Prime Location</h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Conveniently located in {cityName}, you'll have easy access to shopping, dining, entertainment, top-rated schools, and major employment centers.
-              </p>
-            </div>
-
-            <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}>
-              <div className="text-4xl mb-4">✨</div>
-              <h3 className={`text-2xl font-bold ${textPrimary} mb-3`}>Quality Construction</h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Homes in {subdivisionName} are built to high standards with quality materials and modern design, ensuring long-term value and enjoyment.
-              </p>
-            </div>
-
-            <div className={`${cardBg} ${cardBorder} border rounded-xl p-6 ${shadow}`}>
-              <div className="text-4xl mb-4">📈</div>
-              <h3 className={`text-2xl font-bold ${textPrimary} mb-3`}>Strong Investment</h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Properties in {subdivisionName} have shown consistent appreciation, making it not just a great place to live, but also a smart investment.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Why Work With Me */}
-        <section className="mb-12">
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
-            <h2 className={`text-4xl font-bold ${textPrimary} mb-6 text-center`}>
-              Your {subdivisionName} Buying Expert
-            </h2>
-            <p className={`text-lg ${textSecondary} leading-relaxed mb-6`}>
-              As a real estate professional specializing in {cityName} and its premier communities, I have extensive knowledge of {subdivisionName}'s market dynamics, property values, and available homes.
+        {/* Content */}
+        <div className="relative z-20 h-full flex flex-col justify-end pb-12 md:pb-16 px-6 max-w-5xl mx-auto">
+          <div className="space-y-3">
+            <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.2em] text-white/70">
+              Buy a Home in
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-              <div className="text-center">
-                <div className="text-4xl mb-3">🏡</div>
-                <h3 className={`text-xl font-bold ${textPrimary} mb-2`}>Community Expert</h3>
-                <p className={`${textSecondary} text-sm`}>
-                  Deep knowledge of {subdivisionName}'s amenities, HOA, and lifestyle
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl mb-3">💰</div>
-                <h3 className={`text-xl font-bold ${textPrimary} mb-2`}>Market Insights</h3>
-                <p className={`${textSecondary} text-sm`}>
-                  Up-to-date pricing data and market trends specific to this community
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl mb-3">🤝</div>
-                <h3 className={`text-xl font-bold ${textPrimary} mb-2`}>Dedicated Service</h3>
-                <p className={`${textSecondary} text-sm`}>
-                  Personalized attention from initial search to closing and beyond
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* The Process */}
-        <section className="mb-12">
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
-            <h2 className={`text-4xl font-bold ${textPrimary} mb-8 text-center`}>
-              Your Home-Buying Journey
-            </h2>
-            <div className="space-y-6">
-              {[
-                {
-                  num: 1,
-                  title: "Initial Consultation",
-                  desc: `We'll discuss your needs, budget, and what you're looking for in a ${subdivisionName} home. I'll help you understand the current market and get pre-approved.`
-                },
-                {
-                  num: 2,
-                  title: "Find Your Perfect Home",
-                  desc: `I'll curate a personalized list of available homes in ${subdivisionName} and arrange private showings. You'll get instant alerts when new properties become available.`
-                },
-                {
-                  num: 3,
-                  title: "Make a Competitive Offer",
-                  desc: "I'll provide market analysis to help you craft a strong offer that gets accepted, while protecting your interests and negotiating favorable terms."
-                },
-                {
-                  num: 4,
-                  title: "Inspections & Due Diligence",
-                  desc: "I'll coordinate home inspections, review HOA documents, and ensure you have all the information needed to make an informed decision."
-                },
-                {
-                  num: 5,
-                  title: "Close with Confidence",
-                  desc: `I'll manage all closing details and be there when you receive the keys to your new ${subdivisionName} home.`
-                }
-              ].map((step) => (
-                <div key={step.num} className="flex gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-black font-bold text-xl">
-                    {step.num}
-                  </div>
-                  <div>
-                    <h3 className={`text-2xl font-bold ${textPrimary} mb-2`}>{step.title}</h3>
-                    <p className={`${textSecondary} leading-relaxed`}>{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="mb-12">
-          <div className={`${cardBg} ${cardBorder} border-2 rounded-2xl p-8 md:p-12 ${shadow} text-center`}>
-            <h2 className={`text-4xl md:text-5xl font-bold ${textPrimary} mb-6`}>
-              Ready to Call {subdivisionName} Home?
-            </h2>
-            <p className={`text-xl ${textSecondary} mb-8 leading-relaxed max-w-3xl mx-auto`}>
-              Let's find your perfect home in this exceptional community. Contact me today for a free consultation and personalized home search.
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <a
-                href="/#contact"
-                className="px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all duration-200 shadow-lg hover:shadow-2xl text-lg"
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[0.95] text-white drop-shadow-2xl">
+              {subdivisionName}
+            </h1>
+            <p className="text-lg md:text-xl text-white/90 font-medium pt-1">
+              {cityName}, {region} • with{" "}
+              <span
+                style={{ color: agent.brandColor }}
+                className="font-bold"
               >
-                Schedule Your Free Consultation
-              </a>
+                {agent.name}
+              </span>
+            </p>
+
+            <div className="flex flex-wrap gap-3 pt-3">
               <Link
                 href={`/neighborhoods/${cityId}/${slug}`}
-                className={`px-10 py-5 ${buttonSecondary} font-bold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
+                className="px-6 py-3 rounded-xl font-semibold text-white transition-all shadow-2xl hover:scale-105"
+                style={{
+                  background: `linear-gradient(135deg, ${agent.brandColor}, ${agent.secondaryColor})`,
+                }}
               >
-                View {subdivisionName} Listings
+                Browse {subdivisionName} Listings
+              </Link>
+              <Link
+                href="/book-appointment"
+                className="px-6 py-3 rounded-xl font-semibold text-white border border-white/20 bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all hover:scale-105"
+              >
+                Book Consultation
               </Link>
             </div>
-          </div>
-        </section>
 
-        {/* Additional Links */}
-        <section className="text-center">
-          <div className="inline-flex flex-wrap gap-4 justify-center">
-            <Link
-              href={`/neighborhoods/${cityId}/${slug}/sell`}
-              className={`${textSecondary} hover:${textPrimary} underline text-lg`}
-            >
-              Selling a Home in {subdivisionName}?
-            </Link>
-            <Link
-              href={`/neighborhoods/${cityId}`}
-              className={`${textSecondary} hover:${textPrimary} underline text-lg`}
-            >
-              Explore Other {cityName} Communities
-            </Link>
+            {/* Agent badge */}
+            <div className="flex items-center gap-4 pt-5">
+              {agent.headshot && (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border border-white/30 shadow-lg bg-neutral-800">
+                  <Image
+                    src={agent.headshot}
+                    alt={agent.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <div>
+                <p className="text-white font-bold text-lg">{agent.name}</p>
+                {agent.brokerageName && (
+                  <p className="text-white/70 text-sm">
+                    {agent.brokerageName}
+                    {agent.licenseNumber && ` • DRE# ${agent.licenseNumber}`}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
+
+      {/* Body — mirrors city buy page structure */}
+      <div className="max-w-5xl mx-auto mt-16 space-y-16 px-4">
+        <MarketSnapshot cityId={cityId} cityName={subdivisionName} />
+        <AgentValueProps agent={agent} />
+        <BuyingJourney brandColor={agent.brandColor} />
+        <BuyIntakeCTA
+          agent={agent}
+          cityName={subdivisionName}
+          cityId={cityId}
+        />
       </div>
     </div>
   );

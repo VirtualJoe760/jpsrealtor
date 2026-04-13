@@ -9,6 +9,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { STATES } from "@/app/constants/states";
 import { useTheme } from '@/app/contexts/ThemeContext';
 import SpaticalBackground from '@/app/components/backgrounds/SpaticalBackground';
+import { trackCompleteRegistration } from '@/lib/meta-pixel';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -106,7 +107,8 @@ export default function SignUpPage() {
         return;
       }
 
-      // Registration successful - redirect to verification page
+      // Registration successful - track and redirect to verification page
+      trackCompleteRegistration('email');
       router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error) {
       setError("An unexpected error occurred. Please try again.");

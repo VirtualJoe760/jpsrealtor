@@ -6,6 +6,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
+import { sendCompleteRegistrationEvent } from "@/lib/meta-capi";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
@@ -157,6 +158,17 @@ export async function POST(request: NextRequest) {
         // Don't fail registration if SendFox fails
       }
     }
+
+    // Fire server-side Meta CAPI CompleteRegistration event (non-blocking)
+    const [first, ...rest] = (body.name || "").split(" ");
+    sendCompleteRegistrationEvent({
+      email: body.email,
+      phone: body.phone,
+      firstName: first,
+      lastName: rest.join(" "),
+      clientIp: request.headers.get("x-forwarded-for") || undefined,
+      clientUserAgent: request.headers.get("user-agent") || undefined,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

@@ -16,6 +16,7 @@ import NearbyListingsMap from "@/app/components/mls/NearbyListingsMap";
 import CMAReport from "@/app/components/cma/CMAReport";
 
 import type { IUnifiedListing } from "@/models/unified-listing";
+import { trackViewContent } from "@/lib/meta-pixel";
 
 // Community aside panel for the right column
 function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: {
@@ -190,6 +191,19 @@ export default function ListingClient({
 
   const [copied, setCopied] = useState(false);
   const daysOnMarket = calculateDaysOnMarket(listing);
+
+  // Track listing view on mount
+  useEffect(() => {
+    trackViewContent({
+      listingKey: listing.listingKey || listing.listingId || "",
+      address: address,
+      price: listing.listPrice,
+      bedrooms: listing.bedroomsTotal,
+      bathrooms: listing.bathroomsTotalDecimal,
+      city: listing.city as string,
+      subdivision: listing.subdivisionName,
+    });
+  }, [listing.listingKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate subdivision URL
   const getSubdivisionUrl = () => {
