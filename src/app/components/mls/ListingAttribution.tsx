@@ -5,6 +5,8 @@ import clsx from "clsx";
 import Image from "next/image";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import type { IUnifiedListing } from "@/models/unified-listing";
+import { trackEvent } from "@/lib/meta-pixel";
+import { trackClickToCall } from "@/lib/google-ads";
 
 /**
  * IDX Listing Attribution (subtle, blends in, whole block clickable)
@@ -39,6 +41,8 @@ export default function ListingAttribution({
 
   const handleCall = () => {
     if (typeof window !== "undefined") {
+      trackEvent("Contact", { contactType: "phone_click" });
+      trackClickToCall({ phoneNumber: "7608336334", source: "listing_attribution" });
       window.location.href = "tel:7608336334";
     }
   };

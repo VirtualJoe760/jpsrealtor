@@ -6,8 +6,8 @@ import { Phone, Calendar, Instagram, Facebook, Youtube, Check, Loader2 } from "l
 import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 import { formatPhone, toE164US, formatPrice, parsePrice } from "@/lib/format-input";
-import { trackLead } from "@/lib/meta-pixel";
-import { trackGenerateLead } from "@/lib/google-ads";
+import { trackLead, trackEvent } from "@/lib/meta-pixel";
+import { trackGenerateLead, trackClickToCall } from "@/lib/google-ads";
 
 interface Props {
   agent: AgentProfile;
@@ -124,6 +124,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
                 href={`tel:${agent.phone.replace(/\D/g, "")}`}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-lg"
                 style={{ background: `linear-gradient(135deg, ${agent.brandColor}, ${agent.secondaryColor})` }}
+                onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: agent.phone, source: "buy_intake" }); }}
               >
                 <Phone className="w-4 h-4" />
                 {agent.phone}

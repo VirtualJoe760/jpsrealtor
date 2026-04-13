@@ -3,6 +3,8 @@
 import { BuildingOffice2Icon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import { trackEvent } from "@/lib/meta-pixel";
+import { trackClickToCall } from "@/lib/google-ads";
 
 export default function ContactInfo() {
   const { textPrimary, textSecondary, textMuted, currentTheme } = useThemeClasses();
@@ -43,7 +45,7 @@ export default function ContactInfo() {
               <PhoneIcon className={`h-7 w-6 ${textMuted}`} aria-hidden="true" />
             </dt>
             <dd>
-              <Link href="tel:+1-760-833-6334" className={isLight ? "hover:text-gray-800" : "hover:text-gray-300"}>
+              <Link href="tel:+1-760-833-6334" className={isLight ? "hover:text-gray-800" : "hover:text-gray-300"} onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: "760-833-6334", source: "contact_page" }); }}>
                 +1 (760) 833-6334
               </Link>
             </dd>

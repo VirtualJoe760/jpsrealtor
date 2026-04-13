@@ -14,8 +14,8 @@ import {
   US_STATES,
 } from "@/lib/format-input";
 import AddressAutocomplete from "@/app/components/common/AddressAutocomplete";
-import { trackLead } from "@/lib/meta-pixel";
-import { trackGenerateLead } from "@/lib/google-ads";
+import { trackLead, trackEvent } from "@/lib/meta-pixel";
+import { trackGenerateLead, trackClickToCall } from "@/lib/google-ads";
 
 interface Props {
   agent: AgentProfile;
@@ -158,6 +158,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
                 href={`tel:${agent.phone.replace(/\D/g, "")}`}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-lg"
                 style={{ background: `linear-gradient(135deg, ${agent.brandColor}, ${agent.secondaryColor})` }}
+                onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: agent.phone, source: "sell_intake" }); }}
               >
                 <Phone className="w-4 h-4" />
                 {agent.phone}

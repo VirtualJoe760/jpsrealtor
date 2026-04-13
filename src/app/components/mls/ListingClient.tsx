@@ -16,8 +16,8 @@ import NearbyListingsMap from "@/app/components/mls/NearbyListingsMap";
 import CMAReport from "@/app/components/cma/CMAReport";
 
 import type { IUnifiedListing } from "@/models/unified-listing";
-import { trackViewContent } from "@/lib/meta-pixel";
-import { trackViewListing } from "@/lib/google-ads";
+import { trackViewContent, trackEvent } from "@/lib/meta-pixel";
+import { trackViewListing, trackClickToCall } from "@/lib/google-ads";
 
 // Community aside panel for the right column
 function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: {
@@ -611,6 +611,7 @@ export default function ListingClient({
                     ? 'border-2 border-gray-300 bg-white/60 hover:bg-white text-gray-900'
                     : 'border border-neutral-600 bg-neutral-900/50 hover:bg-neutral-800/50 text-white'
                 }`}
+                onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: "7603333676", source: "listing_detail" }); }}
               >
                 <Phone className="w-5 h-5" />
                 <span className="hidden sm:inline">Call</span>

@@ -30,6 +30,8 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapControl } from "../hooks/useMapControl";
+import { trackEvent } from "@/lib/meta-pixel";
+import { trackClickToCall } from "@/lib/google-ads";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -408,6 +410,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                   : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-emerald-400"
               }`}
               title="Call 760-833-6334"
+              onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: "760-833-6334", source: "sidebar" }); }}
             >
               <Phone className="w-4 h-4" />
             </a>

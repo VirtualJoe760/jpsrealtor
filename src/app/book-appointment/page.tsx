@@ -5,6 +5,8 @@ import VariableHero from "@/components/VariableHero";
 import TidyCalEmbed from "@/app/components/TidyCalEmbed";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
+import { trackEvent } from "@/lib/meta-pixel";
+import { trackClickToCall } from "@/lib/google-ads";
 
 export default function BookAppointmentPage() {
   const { currentTheme } = useTheme();
@@ -109,6 +111,7 @@ export default function BookAppointmentPage() {
               <a
                 href="tel:760-833-6334"
                 className="font-semibold transition-colors text-emerald-400 hover:text-emerald-300"
+                onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: "760-833-6334", source: "book_appointment" }); }}
               >
                 (760) 833-6334
               </a>
