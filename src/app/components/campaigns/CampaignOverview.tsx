@@ -10,8 +10,7 @@ import {
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 import CampaignPipelineWizard from './pipeline/CampaignPipelineWizard';
 import DirectMailPipelineWizard from './pipeline/DirectMailPipelineWizard';
-import GoogleAdsPipelineWizard from './pipeline/GoogleAdsPipelineWizard';
-import MetaAdsPipelineWizard from './pipeline/MetaAdsPipelineWizard';
+import DigitalAdsPipelineWizard from './pipeline/DigitalAdsPipelineWizard';
 
 interface Campaign {
   id: string;
@@ -53,7 +52,7 @@ interface CampaignOverviewProps {
   onRefresh?: () => void;
 }
 
-type Strategy = 'voicemail' | 'directMail' | 'googleAds' | 'metaAds' | null;
+type Strategy = 'voicemail' | 'directMail' | 'digitalAds' | null;
 
 export default function CampaignOverview({ campaign, onRefresh }: CampaignOverviewProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary, border } = useThemeClasses();
@@ -70,10 +69,8 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
           return <CampaignPipelineWizard campaign={campaign} initialStrategy="voicemail" onRefresh={onRefresh} />;
         case 'directMail':
           return <DirectMailPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
-        case 'googleAds':
-          return <GoogleAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
-        case 'metaAds':
-          return <MetaAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+        case 'digitalAds':
+          return <DigitalAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
         default:
           return null;
       }
@@ -120,29 +117,16 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
       },
     },
     {
-      id: 'googleAds' as Strategy,
-      name: 'Google Ads',
-      description: 'Search and display ads targeting neighborhoods and custom audiences',
+      id: 'digitalAds' as Strategy,
+      name: 'Digital Ads',
+      description: 'Launch Google and Meta ads tied to your landing pages with geo-targeting',
       icon: MegaphoneIcon,
       color: isLight ? 'purple' : 'indigo',
-      active: campaign.activeStrategies.googleAds,
+      active: campaign.activeStrategies.googleAds || campaign.activeStrategies.metaAds,
       stats: {
         clicks: campaign.analytics.adClicks || 0,
         conversions: campaign.analytics.adConversions || 0,
         spend: campaign.analytics.adSpend ? `$${campaign.analytics.adSpend.toFixed(2)}` : '$0.00',
-      },
-    },
-    {
-      id: 'metaAds' as Strategy,
-      name: 'Meta Ads',
-      description: 'Facebook and Instagram ads with custom audiences and lookalikes',
-      icon: MegaphoneIcon,
-      color: isLight ? 'pink' : 'rose',
-      active: campaign.activeStrategies.metaAds,
-      stats: {
-        impressions: campaign.analytics.adImpressions || 0,
-        clicks: campaign.analytics.adClicks || 0,
-        conversions: campaign.analytics.adConversions || 0,
       },
     },
   ];

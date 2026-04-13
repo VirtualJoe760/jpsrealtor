@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTheme } from '@/app/contexts/ThemeContext';
 import { useThemeClasses } from '@/app/contexts/ThemeContext';
 import PipelineStepIndicator, { DIRECT_MAIL_STEPS } from './PipelineStepIndicator';
 import PipelineContactsStep from './PipelineContactsStep';
 import { MAIL_PRICING } from '@/lib/thanksio';
+
+const PinDropMap = dynamic(() => import('../PinDropMap'), { ssr: false });
 
 type MailType = 'postcard_4x6' | 'postcard_6x9' | 'postcard_6x11' | 'letter' | 'notecard';
 
@@ -51,6 +54,12 @@ export default function DirectMailPipelineWizard({
   const [contactCount, setContactCount] = useState(campaign.totalContacts || 0);
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Recipient mode: CRM contacts or radius send
+  const [recipientMode, setRecipientMode] = useState<'contacts' | 'radius'>('contacts');
+  const [radiusCenter, setRadiusCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusAddress, setRadiusAddress] = useState('');
+  const [radiusMiles, setRadiusMiles] = useState(5);
 
   const [design, setDesign] = useState<MailDesign>({
     mailType: 'postcard_4x6',
@@ -132,14 +141,109 @@ export default function DirectMailPipelineWizard({
       />
 
       <div className="mt-8">
-        {/* Step 1: Contacts */}
+        {/* Step 1: Contacts / Recipients */}
         {currentStep === 'contacts' && (
-          <PipelineContactsStep
-            campaign={campaign}
-            contactCount={contactCount}
-            onNext={() => handleNext('contacts')}
-            onBack={undefined}
-          />
+          <div className="space-y-6">
+            <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
+              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Choose Recipients</h3>
+              <p className={`text-sm ${textSecondary} mb-4`}>
+                Mail to your CRM contacts or send to every address in a radius.
+              </p>
+
+              {/* Mode Toggle */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setRecipientMode('contacts')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
+                    recipientMode === 'contacts'
+                      ? isLight ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  CRM Contacts ({contactCount})
+                </button>
+                <button
+                  onClick={() => setRecipientMode('radius')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
+                    recipientMode === 'radius'
+                      ? isLight ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Radius Send
+                </button>
+              </div>
+
+              {recipientMode === 'radius' && (
+                <div className="space-y-4">
+                  <p className={`text-sm ${textSecondary}`}>
+                    Drop a pin on the map to mail to every residential address within your radius.
+                    Thanks.io handles address resolution — no contact list needed.
+                  </p>
+
+                  {/* Radius slider */}
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      Radius: <span className={`font-semibold ${textPrimary}`}>{radiusMiles} miles</span>
+                    </label>
+                    <input
+                      type="range" min="1" max="25" value={radiusMiles}
+                      onChange={(e) => setRadiusMiles(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className={`flex justify-between text-xs ${textSecondary}`}>
+                      <span>1 mi</span>
+                      <span>10 mi</span>
+                      <span>25 mi</span>
+                    </div>
+                  </div>
+
+                  <PinDropMap
+                    lat={radiusCenter?.lat}
+                    lng={radiusCenter?.lng}
+                    radiusMiles={radiusMiles}
+                    onChange={(loc) => {
+                      setRadiusCenter({ lat: loc.lat, lng: loc.lng });
+                      if (loc.address) setRadiusAddress(loc.address);
+                    }}
+                    height="350px"
+                    searchPlaceholder="Search for a listing address, neighborhood, or city..."
+                  />
+
+                  {radiusAddress && (
+                    <p className={`text-sm ${textSecondary}`}>
+                      Sending to all addresses near: <span className={`font-medium ${textPrimary}`}>{radiusAddress}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Show contacts manager when in contacts mode */}
+            {recipientMode === 'contacts' && (
+              <PipelineContactsStep
+                campaign={campaign}
+                contactCount={contactCount}
+                onNext={() => handleNext('contacts')}
+                onBack={undefined}
+              />
+            )}
+
+            {/* Next button for radius mode */}
+            {recipientMode === 'radius' && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleNext('contacts')}
+                  disabled={!radiusCenter}
+                  className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${
+                    isLight ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Design Mail Piece →
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Step 2: Design */}
