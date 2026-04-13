@@ -5,7 +5,10 @@ export type CampaignType =
   | 'past_clients'
   | 'neighborhood_expireds'
   | 'high_equity'
-  | 'custom';
+  | 'custom'
+  | 'direct_mail'
+  | 'digital_ads'
+  | 'multi_channel';
 
 export type CampaignStatus =
   | 'draft'
@@ -35,6 +38,9 @@ export interface ICampaign extends Document {
     voicemail: boolean;
     email: boolean;
     text: boolean;
+    directMail: boolean;
+    googleAds: boolean;
+    metaAds: boolean;
   };
 
   // Campaign Status
@@ -67,6 +73,81 @@ export interface ICampaign extends Document {
   selectedRecordingId?: string;
   selectedRecordingName?: string;
 
+  // Thanks.io Direct Mail Config
+  thanksioConfig?: {
+    mailType: 'postcard_4x6' | 'postcard_6x9' | 'postcard_6x11' | 'letter' | 'notecard';
+    frontImageUrl?: string;
+    backImageUrl?: string;
+    message?: string;
+    handwritingStyle?: number;
+    qrUrl?: string;
+    returnAddress?: {
+      name: string;
+      address: string;
+      city: string;
+      state: string;
+      zip: string;
+    };
+    templateId?: string;
+  };
+
+  // Google Ads Config
+  googleAdsConfig?: {
+    campaignId?: string;
+    adGroupId?: string;
+    budget: number;
+    bidStrategy: 'maximize_conversions' | 'maximize_clicks' | 'target_cpa';
+    targetCpa?: number;
+    geoTargeting: {
+      type: 'radius' | 'zip' | 'city';
+      center?: { lat: number; lng: number };
+      radiusMiles?: number;
+      zipCodes?: string[];
+      cityIds?: number[];
+    };
+    landingPageUrl: string;
+    adType: 'search' | 'display' | 'performance_max';
+    headlines?: string[];
+    descriptions?: string[];
+    imageUrls?: string[];
+    startDate?: Date;
+    endDate?: Date;
+  };
+
+  // Meta Ads Config
+  metaAdsConfig?: {
+    campaignId?: string;
+    adSetId?: string;
+    adId?: string;
+    objective: 'OUTCOME_LEADS' | 'OUTCOME_TRAFFIC' | 'OUTCOME_AWARENESS';
+    budget: number;
+    geoTargeting: {
+      type: 'radius' | 'zip';
+      center?: { lat: number; lng: number };
+      radiusMiles?: number;
+      zipCodes?: string[];
+    };
+    placements: ('facebook_feed' | 'instagram_feed' | 'instagram_stories' | 'instagram_reels' | 'audience_network')[];
+    landingPageUrl: string;
+    headline?: string;
+    primaryText?: string;
+    description?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    callToAction: 'LEARN_MORE' | 'SIGN_UP' | 'GET_OFFER' | 'CONTACT_US';
+    customAudienceId?: string;
+    lookalikeAudienceId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  };
+
+  // Radius Send Config (thanks.io radius feature)
+  radiusConfig?: {
+    center: { lat: number; lng: number };
+    radiusMiles: number;
+    address: string;
+  };
+
   // Analytics
   stats: {
     totalContacts: number;
@@ -76,6 +157,13 @@ export interface ICampaign extends Document {
     delivered: number;
     listened: number;
     failed: number;
+    mailSent: number;
+    mailDelivered: number;
+    qrScans: number;
+    adImpressions: number;
+    adClicks: number;
+    adConversions: number;
+    adSpend: number;
   };
 
   // Anti-Spam Tracking
@@ -122,6 +210,9 @@ const CampaignSchema = new Schema<ICampaign>(
         'neighborhood_expireds',
         'high_equity',
         'custom',
+        'direct_mail',
+        'digital_ads',
+        'multi_channel',
       ],
       required: true,
     },
@@ -141,6 +232,18 @@ const CampaignSchema = new Schema<ICampaign>(
         default: false,
       },
       text: {
+        type: Boolean,
+        default: false,
+      },
+      directMail: {
+        type: Boolean,
+        default: false,
+      },
+      googleAds: {
+        type: Boolean,
+        default: false,
+      },
+      metaAds: {
         type: Boolean,
         default: false,
       },
@@ -204,6 +307,114 @@ const CampaignSchema = new Schema<ICampaign>(
     selectedRecordingId: String,
     selectedRecordingName: String,
 
+    // Thanks.io Direct Mail Config
+    thanksioConfig: {
+      mailType: {
+        type: String,
+        enum: ['postcard_4x6', 'postcard_6x9', 'postcard_6x11', 'letter', 'notecard'],
+      },
+      frontImageUrl: String,
+      backImageUrl: String,
+      message: String,
+      handwritingStyle: Number,
+      qrUrl: String,
+      returnAddress: {
+        name: String,
+        address: String,
+        city: String,
+        state: String,
+        zip: String,
+      },
+      templateId: String,
+    },
+
+    // Google Ads Config
+    googleAdsConfig: {
+      campaignId: String,
+      adGroupId: String,
+      budget: Number,
+      bidStrategy: {
+        type: String,
+        enum: ['maximize_conversions', 'maximize_clicks', 'target_cpa'],
+      },
+      targetCpa: Number,
+      geoTargeting: {
+        type: {
+          type: String,
+          enum: ['radius', 'zip', 'city'],
+        },
+        center: {
+          lat: Number,
+          lng: Number,
+        },
+        radiusMiles: Number,
+        zipCodes: [String],
+        cityIds: [Number],
+      },
+      landingPageUrl: String,
+      adType: {
+        type: String,
+        enum: ['search', 'display', 'performance_max'],
+      },
+      headlines: [String],
+      descriptions: [String],
+      imageUrls: [String],
+      startDate: Date,
+      endDate: Date,
+    },
+
+    // Meta Ads Config
+    metaAdsConfig: {
+      campaignId: String,
+      adSetId: String,
+      adId: String,
+      objective: {
+        type: String,
+        enum: ['OUTCOME_LEADS', 'OUTCOME_TRAFFIC', 'OUTCOME_AWARENESS'],
+      },
+      budget: Number,
+      geoTargeting: {
+        type: {
+          type: String,
+          enum: ['radius', 'zip'],
+        },
+        center: {
+          lat: Number,
+          lng: Number,
+        },
+        radiusMiles: Number,
+        zipCodes: [String],
+      },
+      placements: [{
+        type: String,
+        enum: ['facebook_feed', 'instagram_feed', 'instagram_stories', 'instagram_reels', 'audience_network'],
+      }],
+      landingPageUrl: String,
+      headline: String,
+      primaryText: String,
+      description: String,
+      imageUrl: String,
+      videoUrl: String,
+      callToAction: {
+        type: String,
+        enum: ['LEARN_MORE', 'SIGN_UP', 'GET_OFFER', 'CONTACT_US'],
+      },
+      customAudienceId: String,
+      lookalikeAudienceId: String,
+      startDate: Date,
+      endDate: Date,
+    },
+
+    // Radius Send Config
+    radiusConfig: {
+      center: {
+        lat: Number,
+        lng: Number,
+      },
+      radiusMiles: Number,
+      address: String,
+    },
+
     // Analytics
     stats: {
       totalContacts: {
@@ -231,6 +442,34 @@ const CampaignSchema = new Schema<ICampaign>(
         default: 0,
       },
       failed: {
+        type: Number,
+        default: 0,
+      },
+      mailSent: {
+        type: Number,
+        default: 0,
+      },
+      mailDelivered: {
+        type: Number,
+        default: 0,
+      },
+      qrScans: {
+        type: Number,
+        default: 0,
+      },
+      adImpressions: {
+        type: Number,
+        default: 0,
+      },
+      adClicks: {
+        type: Number,
+        default: 0,
+      },
+      adConversions: {
+        type: Number,
+        default: 0,
+      },
+      adSpend: {
         type: Number,
         default: 0,
       },
@@ -289,6 +528,7 @@ CampaignSchema.methods.updateStats = async function () {
     campaignId: this._id,
   });
 
+  // Voicemail stats
   const scripts = await VoicemailScript.aggregate([
     { $match: { campaignId: this._id } },
     {
@@ -332,7 +572,7 @@ CampaignSchema.methods.updateStats = async function () {
     },
   ]);
 
-  const stats = scripts[0] || {
+  const voicemailStats = scripts[0] || {
     scriptsGenerated: 0,
     audioGenerated: 0,
     sent: 0,
@@ -341,9 +581,74 @@ CampaignSchema.methods.updateStats = async function () {
     failed: 0,
   };
 
+  // Direct mail stats
+  let mailStats = { mailSent: 0, mailDelivered: 0, qrScans: 0 };
+  try {
+    const DirectMailPiece = models.DirectMailPiece || model('DirectMailPiece');
+    const mailAgg = await DirectMailPiece.aggregate([
+      { $match: { campaignId: this._id } },
+      {
+        $group: {
+          _id: null,
+          mailSent: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['submitted', 'printing', 'mailed', 'delivered']] }, 1, 0],
+            },
+          },
+          mailDelivered: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0],
+            },
+          },
+          qrScans: {
+            $sum: {
+              $cond: [{ $ne: ['$qrScannedAt', null] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+    if (mailAgg[0]) mailStats = mailAgg[0];
+  } catch {
+    // DirectMailPiece model may not be registered yet
+  }
+
+  // Ad campaign stats
+  let adStats = { adImpressions: 0, adClicks: 0, adConversions: 0, adSpend: 0 };
+  try {
+    const AdCampaignRecord = models.AdCampaignRecord || model('AdCampaignRecord');
+    const adAgg = await AdCampaignRecord.aggregate([
+      { $match: { campaignId: this._id } },
+      { $sort: { snapshotDate: -1 } },
+      {
+        $group: {
+          _id: '$platform',
+          adImpressions: { $first: '$metrics.impressions' },
+          adClicks: { $first: '$metrics.clicks' },
+          adConversions: { $first: '$metrics.conversions' },
+          adSpend: { $first: '$metrics.spend' },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          adImpressions: { $sum: '$adImpressions' },
+          adClicks: { $sum: '$adClicks' },
+          adConversions: { $sum: '$adConversions' },
+          adSpend: { $sum: '$adSpend' },
+        },
+      },
+    ]);
+    if (adAgg[0]) adStats = adAgg[0];
+  } catch {
+    // AdCampaignRecord model may not be registered yet
+  }
+
   this.stats = {
     totalContacts,
-    ...stats,
+    ...voicemailStats,
+    ...mailStats,
+    ...adStats,
   };
 
   await this.save();

@@ -13,7 +13,7 @@ import PipelineSendSimpleStep from './PipelineSendSimpleStep';
 
 interface CampaignPipelineWizardProps {
   campaign: any; // Accepts any campaign object with an id
-  initialStrategy?: 'voicemail' | 'text' | 'email';
+  initialStrategy?: 'voicemail' | 'text' | 'email' | 'directMail' | 'googleAds' | 'metaAds';
   onRefresh?: () => void;
   voicemailMode?: 'simple' | 'full'; // New prop for voicemail mode
 }
