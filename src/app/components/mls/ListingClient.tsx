@@ -17,6 +17,7 @@ import CMAReport from "@/app/components/cma/CMAReport";
 
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { trackViewContent } from "@/lib/meta-pixel";
+import { trackViewListing } from "@/lib/google-ads";
 
 // Community aside panel for the right column
 function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: {
@@ -200,6 +201,13 @@ export default function ListingClient({
       price: listing.listPrice,
       bedrooms: listing.bedroomsTotal,
       bathrooms: listing.bathroomsTotalDecimal,
+      city: listing.city as string,
+      subdivision: listing.subdivisionName,
+    });
+    trackViewListing({
+      listingKey: listing.listingKey || listing.listingId || "",
+      address: address,
+      price: listing.listPrice,
       city: listing.city as string,
       subdivision: listing.subdivisionName,
     });

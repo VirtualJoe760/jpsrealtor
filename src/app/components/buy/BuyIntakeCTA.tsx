@@ -7,6 +7,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 import { formatPhone, toE164US, formatPrice, parsePrice } from "@/lib/format-input";
 import { trackLead } from "@/lib/meta-pixel";
+import { trackGenerateLead } from "@/lib/google-ads";
 
 interface Props {
   agent: AgentProfile;
@@ -82,6 +83,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
       if (!res.ok) throw new Error(data?.error || "Submission failed");
       setSuccess(true);
       trackLead({ contactType: "buy_inquiry", address: cityName });
+      trackGenerateLead({ source: "buy_inquiry" });
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
     } finally {

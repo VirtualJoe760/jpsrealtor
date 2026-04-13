@@ -15,6 +15,7 @@ import {
 } from "@/lib/format-input";
 import AddressAutocomplete from "@/app/components/common/AddressAutocomplete";
 import { trackLead } from "@/lib/meta-pixel";
+import { trackGenerateLead } from "@/lib/google-ads";
 
 interface Props {
   agent: AgentProfile;
@@ -115,6 +116,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
       if (!res.ok) throw new Error(data?.error || "Submission failed");
       setSuccess(true);
       trackLead({ contactType: "sell_inquiry", address: fullAddress });
+      trackGenerateLead({ source: "sell_inquiry" });
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
     } finally {

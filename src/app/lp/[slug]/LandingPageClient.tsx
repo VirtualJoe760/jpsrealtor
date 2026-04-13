@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ReactNode, useState, useEffect } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { trackLead, trackViewContent } from "@/lib/meta-pixel";
+import { trackGenerateLead } from "@/lib/google-ads";
 
 interface LandingPageClientProps {
   post: Post;
@@ -221,6 +222,7 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
                   if (data.success) {
                     setFormSubmitted(true);
                     trackLead({ contactType: `campaign_${post.slugId}` });
+                    trackGenerateLead({ source: `campaign_${post.slugId}` });
                   } else {
                     setFormError(data.error || "Something went wrong");
                   }

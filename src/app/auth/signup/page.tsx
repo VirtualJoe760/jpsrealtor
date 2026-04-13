@@ -10,6 +10,7 @@ import { STATES } from "@/app/constants/states";
 import { useTheme } from '@/app/contexts/ThemeContext';
 import SpaticalBackground from '@/app/components/backgrounds/SpaticalBackground';
 import { trackCompleteRegistration } from '@/lib/meta-pixel';
+import { trackSignUp } from '@/lib/google-ads';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -109,6 +110,7 @@ export default function SignUpPage() {
 
       // Registration successful - track and redirect to verification page
       trackCompleteRegistration('email');
+      trackSignUp('email');
       router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error) {
       setError("An unexpected error occurred. Please try again.");
