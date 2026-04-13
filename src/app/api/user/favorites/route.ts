@@ -33,13 +33,36 @@ export async function GET(request: NextRequest) {
 
     const likedListings = user.likedListings || [];
 
-    // Deduplicate favorites
+    // Deduplicate favorites and flatten listingData to top level
     const seenKeys = new Set<string>();
-    const favorites = likedListings.filter((fav: any) => {
-      if (seenKeys.has(fav.listingKey)) return false;
-      seenKeys.add(fav.listingKey);
-      return true;
-    });
+    const favorites = likedListings
+      .filter((fav: any) => {
+        if (seenKeys.has(fav.listingKey)) return false;
+        seenKeys.add(fav.listingKey);
+        return true;
+      })
+      .map((fav: any) => {
+        const plain = typeof fav.toObject === "function" ? fav.toObject() : { ...fav };
+        const ld = plain.listingData || {};
+        // Merge listingData fields into top level (top-level fields take precedence if they exist)
+        return {
+          ...ld,
+          ...plain,
+          // Ensure key display fields are always at top level
+          listPrice: plain.listPrice ?? ld.listPrice ?? ld.ListPrice,
+          address: plain.address ?? ld.address ?? ld.unparsedAddress ?? ld.UnparsedAddress,
+          unparsedAddress: plain.unparsedAddress ?? ld.unparsedAddress ?? ld.UnparsedAddress,
+          bedsTotal: plain.bedsTotal ?? ld.bedsTotal ?? ld.BedroomsTotal ?? ld.bedroomsTotal,
+          bathroomsTotalInteger: plain.bathroomsTotalInteger ?? ld.bathroomsTotalInteger ?? ld.BathroomsTotalDecimal ?? ld.bathroomsTotalDecimal,
+          livingArea: plain.livingArea ?? ld.livingArea ?? ld.LivingArea,
+          subdivisionName: plain.subdivisionName ?? plain.subdivision ?? ld.subdivisionName ?? ld.SubdivisionName,
+          city: plain.city ?? ld.city ?? ld.City,
+          slugAddress: plain.slugAddress ?? ld.slugAddress,
+          mlsId: plain.mlsId ?? ld.mlsId,
+          mlsSource: plain.mlsSource ?? ld.mlsSource,
+          primaryPhotoUrl: plain.primaryPhotoUrl ?? ld.primaryPhotoUrl,
+        };
+      });
 
     return NextResponse.json({
       favorites,
