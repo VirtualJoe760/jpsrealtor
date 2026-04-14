@@ -310,8 +310,6 @@ export default function DigitalAdsPipelineWizard({
 
                     {/* Pin Drop Map */}
                     <PinDropMap
-                      lat={geoCenter?.lat}
-                      lng={geoCenter?.lng}
                       radiusMiles={radiusMiles}
                       onChange={(loc) => {
                         setGeoCenter({ lat: loc.lat, lng: loc.lng });

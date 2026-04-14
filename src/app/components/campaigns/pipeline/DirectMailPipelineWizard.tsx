@@ -199,8 +199,6 @@ export default function DirectMailPipelineWizard({
                   </div>
 
                   <PinDropMap
-                    lat={radiusCenter?.lat}
-                    lng={radiusCenter?.lng}
                     radiusMiles={radiusMiles}
                     onChange={(loc) => {
                       setRadiusCenter({ lat: loc.lat, lng: loc.lng });

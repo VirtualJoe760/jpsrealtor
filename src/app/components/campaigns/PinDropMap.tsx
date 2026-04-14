@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '@/app/contexts/ThemeContext';
@@ -21,103 +21,112 @@ const PinIcon = L.icon({
 });
 
 interface PinDropMapProps {
-  lat?: number;
-  lng?: number;
+  /** Initial radius in miles (updates handled internally via parent re-render are safe since map doesn't remount) */
   radiusMiles?: number;
+  /** Called when user clicks the map or selects a search result */
   onChange: (location: { lat: number; lng: number; address?: string }) => void;
   height?: string;
   searchPlaceholder?: string;
 }
 
 /**
- * Manages the marker + circle imperatively so React doesn't fight Leaflet's DOM.
- * This avoids the "removeChild" crash when radius or position changes.
+ * Imperative map content — manages marker + circle via Leaflet API directly.
+ * Never causes React to touch Leaflet's DOM nodes.
  */
 function MapContent({
-  lat,
-  lng,
-  radiusMiles,
-  onMapClick,
+  onLocationChange,
+  radiusMilesRef,
   isLight,
 }: {
-  lat?: number;
-  lng?: number;
-  radiusMiles?: number;
-  onMapClick: (lat: number, lng: number) => void;
+  onLocationChange: (lat: number, lng: number, address?: string) => void;
+  radiusMilesRef: React.MutableRefObject<number>;
   isLight: boolean;
 }) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const circleRef = useRef<L.Circle | null>(null);
 
-  // Handle map clicks
+  const placePin = useCallback((lat: number, lng: number) => {
+    const pos = L.latLng(lat, lng);
+
+    // Marker
+    if (markerRef.current) {
+      markerRef.current.setLatLng(pos);
+    } else {
+      markerRef.current = L.marker(pos, { icon: PinIcon }).addTo(map);
+    }
+
+    // Circle
+    const radiusMeters = radiusMilesRef.current * 1609.34;
+    if (radiusMeters > 0) {
+      if (circleRef.current) {
+        circleRef.current.setLatLng(pos);
+        circleRef.current.setRadius(radiusMeters);
+      } else {
+        circleRef.current = L.circle(pos, {
+          radius: radiusMeters,
+          color: isLight ? '#3b82f6' : '#10b981',
+          fillColor: isLight ? '#3b82f6' : '#10b981',
+          fillOpacity: 0.1,
+          weight: 2,
+        }).addTo(map);
+      }
+    }
+
+    map.flyTo(pos, 13, { duration: 0.8 });
+  }, [map, isLight, radiusMilesRef]);
+
+  // Handle map clicks — reverse geocode then place pin
   useMapEvents({
     click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+      const { lat, lng } = e.latlng;
+      placePin(lat, lng);
+
+      // Reverse geocode in background
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+        { headers: { 'User-Agent': 'jpsrealtor.com' } }
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          onLocationChange(lat, lng, data.display_name || undefined);
+        })
+        .catch(() => {
+          onLocationChange(lat, lng);
+        });
     },
   });
 
-  // Update marker + circle when lat/lng/radius change
+  // Expose placePin so parent can call it (for search results)
   useEffect(() => {
-    if (lat && lng) {
-      const pos = L.latLng(lat, lng);
-
-      // Marker
-      if (markerRef.current) {
-        markerRef.current.setLatLng(pos);
-      } else {
-        markerRef.current = L.marker(pos, { icon: PinIcon }).addTo(map);
-      }
-
-      // Circle
-      const radiusMeters = (radiusMiles || 0) * 1609.34;
-      if (radiusMeters > 0) {
-        if (circleRef.current) {
-          circleRef.current.setLatLng(pos);
-          circleRef.current.setRadius(radiusMeters);
-        } else {
-          circleRef.current = L.circle(pos, {
-            radius: radiusMeters,
-            color: isLight ? '#3b82f6' : '#10b981',
-            fillColor: isLight ? '#3b82f6' : '#10b981',
-            fillOpacity: 0.1,
-            weight: 2,
-          }).addTo(map);
-        }
-      } else if (circleRef.current) {
-        map.removeLayer(circleRef.current);
-        circleRef.current = null;
-      }
-
-      // Fly to the pin
-      map.flyTo(pos, 13, { duration: 0.8 });
-    } else {
-      // No pin — remove marker and circle
-      if (markerRef.current) {
-        map.removeLayer(markerRef.current);
-        markerRef.current = null;
-      }
-      if (circleRef.current) {
-        map.removeLayer(circleRef.current);
-        circleRef.current = null;
-      }
-    }
-  }, [lat, lng, map, isLight]);
-
-  // Update circle radius without re-creating it
-  useEffect(() => {
-    if (circleRef.current && radiusMiles) {
-      circleRef.current.setRadius(radiusMiles * 1609.34);
-    }
-  }, [radiusMiles]);
+    (map as any)._pinDropPlacePin = placePin;
+  }, [map, placePin]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (markerRef.current) map.removeLayer(markerRef.current);
-      if (circleRef.current) map.removeLayer(circleRef.current);
+      if (markerRef.current) { try { map.removeLayer(markerRef.current); } catch {} }
+      if (circleRef.current) { try { map.removeLayer(circleRef.current); } catch {} }
     };
   }, [map]);
+
+  return null;
+}
+
+/**
+ * Updates circle radius without touching the marker or causing remounts.
+ */
+function RadiusUpdater({ radiusMiles }: { radiusMiles: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Find our circle layer and update its radius
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Circle) {
+        layer.setRadius(radiusMiles * 1609.34);
+      }
+    });
+  }, [radiusMiles, map]);
 
   return null;
 }
@@ -128,10 +137,8 @@ interface SearchResult {
   lng: number;
 }
 
-export default function PinDropMap({
-  lat,
-  lng,
-  radiusMiles,
+function PinDropMapInner({
+  radiusMiles = 10,
   onChange,
   height = '300px',
   searchPlaceholder = 'Search address or neighborhood...',
@@ -139,38 +146,45 @@ export default function PinDropMap({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
 
+  // Internal pin state (not passed to parent — avoids re-render loop)
+  const [pinLocation, setPinLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const radiusMilesRef = useRef(radiusMiles);
 
-  // Default center: Coachella Valley
-  const defaultCenter: [number, number] = [33.7225, -116.3738];
+  // Keep ref in sync
+  radiusMilesRef.current = radiusMiles;
 
-  const handleMapClick = useCallback(
-    async (clickLat: number, clickLng: number) => {
-      // Reverse geocode to get address
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickLat}&lon=${clickLng}&zoom=16&addressdetails=1`,
-          { headers: { 'User-Agent': 'jpsrealtor.com' } }
-        );
-        const data = await res.json();
-        onChange({
-          lat: clickLat,
-          lng: clickLng,
-          address: data.display_name || undefined,
-        });
-      } catch {
-        onChange({ lat: clickLat, lng: clickLng });
+  // Stable callback ref to avoid re-renders
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const handleLocationChange = useCallback((lat: number, lng: number, address?: string) => {
+    setPinLocation({ lat, lng, address });
+    onChangeRef.current({ lat, lng, address });
+  }, []);
+
+  // Handle search result selection
+  const handleResultSelect = useCallback((result: SearchResult) => {
+    setSearchQuery(result.display_name);
+    setShowResults(false);
+
+    // Place pin via the map's imperative API
+    if (mapRef.current) {
+      const placePin = (mapRef.current as any)._pinDropPlacePin;
+      if (placePin) {
+        placePin(result.lat, result.lng);
       }
-    },
-    [onChange]
-  );
+    }
+    handleLocationChange(result.lat, result.lng, result.display_name);
+  }, [handleLocationChange]);
 
-  // Debounced search using existing Nominatim proxy
+  // Debounced search
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -204,16 +218,6 @@ export default function PinDropMap({
     }, 400);
   };
 
-  const handleResultSelect = (result: SearchResult) => {
-    onChange({
-      lat: result.lat,
-      lng: result.lng,
-      address: result.display_name,
-    });
-    setSearchQuery(result.display_name);
-    setShowResults(false);
-  };
-
   // Close results on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -228,6 +232,9 @@ export default function PinDropMap({
   const tileUrl = isLight
     ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
     : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+  // Default center: Coachella Valley
+  const defaultCenter: [number, number] = [33.7225, -116.3738];
 
   return (
     <div className="space-y-2">
@@ -253,7 +260,6 @@ export default function PinDropMap({
           )}
         </div>
 
-        {/* Search Results Dropdown */}
         {showResults && searchResults.length > 0 && (
           <div
             className={`absolute z-[1000] w-full mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto ${
@@ -277,35 +283,43 @@ export default function PinDropMap({
         )}
       </div>
 
-      {/* Map — MapContainer mounts once, MapContent handles updates imperatively */}
+      {/* Map */}
       <div className="rounded-lg overflow-hidden border" style={{ height }}>
         <MapContainer
           center={defaultCenter}
           zoom={10}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
+          ref={mapRef}
         >
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url={tileUrl}
           />
           <MapContent
-            lat={lat}
-            lng={lng}
-            radiusMiles={radiusMiles}
-            onMapClick={handleMapClick}
+            onLocationChange={handleLocationChange}
+            radiusMilesRef={radiusMilesRef}
             isLight={isLight}
           />
+          <RadiusUpdater radiusMiles={radiusMiles} />
         </MapContainer>
       </div>
 
-      {/* Coordinates display */}
-      {lat && lng && (
+      {/* Info line */}
+      {pinLocation && (
         <p className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
-          {lat.toFixed(6)}, {lng.toFixed(6)}
-          {radiusMiles && ` — ${radiusMiles} mile radius`}
+          {pinLocation.lat.toFixed(6)}, {pinLocation.lng.toFixed(6)} — {radiusMiles} mile radius
+          {pinLocation.address && (
+            <span className={`block ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
+              {pinLocation.address}
+            </span>
+          )}
         </p>
       )}
     </div>
   );
 }
+
+// Memoize to prevent parent re-renders from remounting the map
+const PinDropMap = memo(PinDropMapInner);
+export default PinDropMap;
