@@ -7,6 +7,7 @@ interface FormField {
   label: string;
   type: string;
   required: boolean;
+  options?: string[];
 }
 
 export interface LandingPageConfig {
@@ -14,6 +15,7 @@ export interface LandingPageConfig {
   heroType: "photo" | "video";
   youtubeUrl: string;
   videoAutoplay: boolean;
+  themeOverride: "" | "lightgradient" | "blackspace";
   formEnabled: boolean;
   formHeading: string;
   formFields: FormField[];
@@ -26,6 +28,7 @@ export const DEFAULT_LANDING_PAGE_CONFIG: LandingPageConfig = {
   heroType: "photo",
   youtubeUrl: "",
   videoAutoplay: true,
+  themeOverride: "",
   formEnabled: false,
   formHeading: "Get Started",
   formFields: [
@@ -118,6 +121,44 @@ export default function LandingPageOptions({
         </div>
       </div>
 
+      {/* Theme Override */}
+      <div>
+        <label
+          className={`block text-sm font-medium mb-2 ${
+            isLight ? "text-gray-700" : "text-gray-300"
+          }`}
+        >
+          Page Theme
+        </label>
+        <div className="flex gap-2">
+          {([
+            { value: "" as const, label: "User Default" },
+            { value: "lightgradient" as const, label: "Light" },
+            { value: "blackspace" as const, label: "Dark" },
+          ]).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => update({ themeOverride: opt.value })}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border-2 ${
+                config.themeOverride === opt.value
+                  ? isLight
+                    ? "border-blue-500 bg-blue-100 text-blue-700"
+                    : "border-emerald-500 bg-emerald-950/30 text-emerald-400"
+                  : isLight
+                    ? "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+                    : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className={`text-xs mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          Force light or dark mode, or let it follow the visitor&apos;s preference.
+        </p>
+      </div>
+
       {/* YouTube URL + Autoplay */}
       {config.heroType === "video" && (
         <div>
@@ -207,71 +248,148 @@ export default function LandingPageOptions({
                 Form Fields
               </label>
               <div className="space-y-2">
-                {config.formFields.map((field, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-2 p-2 rounded-lg ${
-                      isLight
-                        ? "bg-white border border-gray-200"
-                        : "bg-gray-800 border border-gray-700"
-                    }`}
-                  >
-                    <input
-                      type="text"
-                      value={field.label}
-                      onChange={(e) => {
-                        const updated = [...config.formFields];
-                        updated[idx] = { ...updated[idx], label: e.target.value };
-                        update({ formFields: updated });
-                      }}
-                      className={`flex-1 px-2 py-1 text-xs rounded ${
-                        isLight ? "bg-gray-50 text-gray-900" : "bg-gray-900 text-white"
-                      }`}
-                      placeholder="Field label"
-                    />
-                    <select
-                      value={field.type}
-                      onChange={(e) => {
-                        const updated = [...config.formFields];
-                        updated[idx] = { ...updated[idx], type: e.target.value };
-                        update({ formFields: updated });
-                      }}
-                      className={`px-2 py-1 text-xs rounded ${
-                        isLight ? "bg-gray-50 text-gray-900" : "bg-gray-900 text-white"
+                {config.formFields.map((field, idx) => {
+                  const needsOptions = ["select", "radio", "checkbox"].includes(field.type);
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded-lg ${
+                        isLight
+                          ? "bg-white border border-gray-200"
+                          : "bg-gray-800 border border-gray-700"
                       }`}
                     >
-                      <option value="text">Text</option>
-                      <option value="email">Email</option>
-                      <option value="tel">Phone</option>
-                      <option value="number">Number</option>
-                      <option value="textarea">Long Text</option>
-                      <option value="select">Dropdown</option>
-                      <option value="checkbox">Checkbox</option>
-                    </select>
-                    <label className="flex items-center gap-1 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={field.required}
-                        onChange={(e) => {
-                          const updated = [...config.formFields];
-                          updated[idx] = { ...updated[idx], required: e.target.checked };
-                          update({ formFields: updated });
-                        }}
-                        className="w-3 h-3"
-                      />
-                      <span className={isLight ? "text-gray-600" : "text-gray-400"}>Req</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({ formFields: config.formFields.filter((_, i) => i !== idx) });
-                      }}
-                      className="text-red-500 hover:text-red-700 text-xs px-1"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={field.label}
+                          onChange={(e) => {
+                            const updated = [...config.formFields];
+                            updated[idx] = { ...updated[idx], label: e.target.value };
+                            update({ formFields: updated });
+                          }}
+                          className={`flex-1 px-2 py-1 text-xs rounded ${
+                            isLight ? "bg-gray-50 text-gray-900" : "bg-gray-900 text-white"
+                          }`}
+                          placeholder="Field label"
+                        />
+                        <select
+                          value={field.type}
+                          onChange={(e) => {
+                            const updated = [...config.formFields];
+                            const newType = e.target.value;
+                            const needsOpts = ["select", "radio", "checkbox"].includes(newType);
+                            updated[idx] = {
+                              ...updated[idx],
+                              type: newType,
+                              options: needsOpts && !updated[idx].options?.length
+                                ? ["Option 1"]
+                                : needsOpts
+                                  ? updated[idx].options
+                                  : undefined,
+                            };
+                            update({ formFields: updated });
+                          }}
+                          className={`px-2 py-1 text-xs rounded ${
+                            isLight ? "bg-gray-50 text-gray-900" : "bg-gray-900 text-white"
+                          }`}
+                        >
+                          <option value="text">Text</option>
+                          <option value="email">Email</option>
+                          <option value="tel">Phone</option>
+                          <option value="number">Number</option>
+                          <option value="textarea">Long Text</option>
+                          <option value="select">Dropdown</option>
+                          <option value="radio">Radio</option>
+                          <option value="checkbox">Checkbox</option>
+                          <option value="yesno">Yes / No</option>
+                        </select>
+                        <label className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => {
+                              const updated = [...config.formFields];
+                              updated[idx] = { ...updated[idx], required: e.target.checked };
+                              update({ formFields: updated });
+                            }}
+                            className="w-3 h-3"
+                          />
+                          <span className={isLight ? "text-gray-600" : "text-gray-400"}>Req</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            update({ formFields: config.formFields.filter((_, i) => i !== idx) });
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs px-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Options editor for select, radio, checkbox */}
+                      {needsOptions && (
+                        <div className="mt-2 ml-2 space-y-1">
+                          <p className={`text-[10px] uppercase tracking-wide font-semibold ${
+                            isLight ? "text-gray-500" : "text-gray-500"
+                          }`}>
+                            Options
+                          </p>
+                          {(field.options || []).map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                  const updated = [...config.formFields];
+                                  const opts = [...(updated[idx].options || [])];
+                                  opts[optIdx] = e.target.value;
+                                  updated[idx] = { ...updated[idx], options: opts };
+                                  update({ formFields: updated });
+                                }}
+                                placeholder={`Option ${optIdx + 1}`}
+                                className={`flex-1 px-2 py-0.5 text-xs rounded ${
+                                  isLight ? "bg-gray-50 text-gray-900" : "bg-gray-900 text-white"
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...config.formFields];
+                                  const opts = (updated[idx].options || []).filter((_, i) => i !== optIdx);
+                                  updated[idx] = { ...updated[idx], options: opts };
+                                  update({ formFields: updated });
+                                }}
+                                className="text-red-500 hover:text-red-700 text-[10px] px-0.5"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...config.formFields];
+                              updated[idx] = {
+                                ...updated[idx],
+                                options: [...(updated[idx].options || []), ""],
+                              };
+                              update({ formFields: updated });
+                            }}
+                            className={`text-[10px] font-medium px-2 py-0.5 rounded transition-colors ${
+                              isLight
+                                ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                            }`}
+                          >
+                            + Option
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <button
                 type="button"

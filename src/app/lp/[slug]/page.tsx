@@ -7,7 +7,7 @@ import { getPostBySlug } from "@/utils/fetchPosts";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import YouTube from "@/components/mdx/YouTube";
 import MDXLink from "@/app/components/mdx/Link";
-import ArticlePageClient from "@/app/insights/[category]/[slugId]/ArticlePageClient";
+import LandingPageClient from "./LandingPageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 
@@ -105,9 +105,8 @@ export default async function LandingPage({
           section="landing-page"
         />
         <BreadcrumbJsonLd items={breadcrumbItems} />
-        <ArticlePageClient
+        <LandingPageClient
           post={post}
-          category="landing-page"
           mdxContent={mdxContent}
         />
       </>

@@ -618,7 +618,38 @@ const CMA_TOOLS = [
 
 ---
 
-**Status**: Strategy complete, ready for implementation
-**Estimated timeline**: 6 weeks
-**Estimated storage**: 3.6 GB (well within limits)
-**Estimated value**: 4-5x more data for AI CMAs
+**Status**: ✅ Subdivision CMAs in production (April 2026). City CMAs planned.
+
+---
+
+## Subdivision CMA System — Implemented April 2026
+
+### Pre-computed CMA Stats
+A nightly Python cron (`build-subdivision-cma.py`) pre-computes `cmaStats` on each subdivision document. The frontend serves these via simple findOne lookups — no math at request time.
+
+### API Routes
+- `GET /api/cma/subdivision/[slug]` — Returns cmaStats + salesHistory (up to 50 from `unified_closed_listings`)
+- `GET /api/cma/subdivision/[slug]/narrative` — Groq AI market narrative (cached 24h on the doc)
+
+### Frontend Components (`src/app/components/cma/subdivision/`)
+| Component | Type | Description |
+|-----------|------|-------------|
+| `SubdivisionCmaSection` | Wrapper | Fetches data, composes all sub-components |
+| `CmaMarketSnapshot` | Stat cards | 6 cards: avg price, avg $/sqft, avg DOM, inventory, SP/LP ratio, price range |
+| `CmaMarketNarrative` | AI text | Groq-generated 2-3 paragraph market insight |
+| `CmaActiveVsClosed` | Bar charts | 3 grouped bar charts (price, $/sqft, DOM) using shadcn ChartContainer |
+| `CmaSubTypeBreakdown` | Donut + bar | Property type distribution + median price by type |
+| `CmaPriceMetrics` | Area chart | Active vs closed price spread (min/median/max) |
+| `CmaSalesTimeline` | Line chart | Last 12 sales — list price vs sale price at close date |
+| `CmaCompsTable` | Card list | Paginated past sales with Google Maps satellite thumbnails |
+| `CmaQualityBadge` | Badge | Confidence indicator (high/medium/low/insufficient) |
+
+### Integration
+Embedded in `SubdivisionPageClient.tsx` above the Buy/Sell CTA. Self-fetches, shows skeleton while loading, hides if no data.
+
+### Excluded Data
+- Co-Ownership subtype filtered out at API level
+- Sales without list price excluded from timeline
+
+### cmaStats Schema
+See the VPS documentation (`docs/current-session.md` or the Subdivision CMA System doc pasted in terminal) for the full `cmaStats` schema including totals, active, closed, bySubType, profile, topComps, and quality blocks.

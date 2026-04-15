@@ -342,6 +342,7 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
     if ((article as any).heroType) lines.push(`heroType: "${(article as any).heroType}"`);
     if ((article as any).youtubeUrl) lines.push(`youtubeUrl: "${escapeYAML((article as any).youtubeUrl)}"`);
     if ((article as any).videoAutoplay !== undefined) lines.push(`videoAutoplay: ${(article as any).videoAutoplay}`);
+    if ((article as any).themeOverride) lines.push(`themeOverride: "${(article as any).themeOverride}"`);
     if ((article as any).formEnabled) {
       lines.push(`formEnabled: true`);
       lines.push(`formHeading: "${escapeYAML((article as any).formHeading || 'Get Started')}"`);
@@ -353,6 +354,12 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
         lines.push(`    label: "${escapeYAML(field.label)}"`);
         lines.push(`    type: "${field.type}"`);
         lines.push(`    required: ${field.required}`);
+        if (field.options && field.options.length > 0) {
+          lines.push(`    options:`);
+          field.options.forEach((opt: string) => {
+            lines.push(`      - "${escapeYAML(opt)}"`);
+          });
+        }
       });
     }
   }

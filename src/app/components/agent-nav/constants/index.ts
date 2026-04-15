@@ -10,6 +10,7 @@ import {
   Mail,
   UserCircle,
   CreditCard,
+  Settings,
 } from 'lucide-react';
 import type { NavItem } from '../types';
 
@@ -57,6 +58,13 @@ export const getNavItems = (isTeamLeader: boolean = false): NavItem[] => [
     href: '/agent/cms',
     label: 'CMS',
     icon: FileText,
+    exact: false,
+    show: true,
+  },
+  {
+    href: '/agent/settings',
+    label: 'Settings',
+    icon: Settings,
     exact: false,
     show: true,
   },

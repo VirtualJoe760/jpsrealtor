@@ -239,6 +239,7 @@ export default function EmailInbox({ isLight }: EmailInboxProps) {
                         // TODO: Implement tag modal
                         console.log('Tag email:', email.id);
                       }}
+                      onClose={collapseEmail}
                       isLight={isLight}
                     />
                   )}

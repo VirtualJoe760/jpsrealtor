@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
         heroImage: profile?.heroImage,
         heroPhoto: profile?.heroPhoto,
         teamLogo: profile?.teamLogo,
+        brokerLogo: profile?.brokerLogo,
         galleryPhotos: profile?.galleryPhotos,
 
         // Social links (check both socialMedia object and top-level)

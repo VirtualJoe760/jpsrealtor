@@ -136,49 +136,122 @@ export default function LandingPagePreview({
               {formHeading}
             </h2>
             <div className="space-y-4">
-              {formFields.map((field: any, idx: number) => (
-                <div key={idx}>
-                  {field.type === "checkbox" ? (
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        disabled
-                        className={`mt-1 w-5 h-5 rounded ${isLight ? "accent-blue-600" : "accent-emerald-500"}`}
-                      />
-                      <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                        {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </span>
-                    </label>
-                  ) : (
-                    <>
-                      <label className={`block text-sm font-medium mb-1 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                        {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </label>
-                      {field.type === "textarea" ? (
-                        <textarea
-                          rows={4}
-                          disabled
-                          className={`w-full px-4 py-3 rounded-lg border text-sm ${
-                            isLight ? "bg-gray-50 border-gray-300" : "bg-gray-800 border-gray-700"
-                          }`}
-                          placeholder={field.label}
-                        />
-                      ) : (
-                        <input
-                          type={field.type}
-                          disabled
-                          className={`w-full px-4 py-3 rounded-lg border text-sm ${
-                            isLight ? "bg-gray-50 border-gray-300" : "bg-gray-800 border-gray-700"
-                          }`}
-                          placeholder={field.label}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
+              {formFields.map((field: any, idx: number) => {
+                const inputCls = `w-full px-4 py-3 rounded-lg border text-sm ${
+                  isLight ? "bg-gray-50 border-gray-300 text-gray-900" : "bg-gray-800 border-gray-700 text-white"
+                }`;
+                const labelCls = `block text-sm font-medium mb-1 ${isLight ? "text-gray-700" : "text-gray-300"}`;
+                const reqMark = field.required ? <span className="text-red-500 ml-1">*</span> : null;
+
+                return (
+                  <div key={idx}>
+                    {/* Yes / No */}
+                    {field.type === "yesno" && (
+                      <>
+                        <label className={labelCls}>{field.label}{reqMark}</label>
+                        <div className="flex gap-3 mt-1">
+                          {["Yes", "No"].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              disabled
+                              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border-2 ${
+                                isLight
+                                  ? "border-gray-200 bg-white text-gray-600"
+                                  : "border-gray-700 bg-gray-800 text-gray-400"
+                              }`}
+                            >
+                              {val}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Radio */}
+                    {field.type === "radio" && (
+                      <>
+                        <label className={labelCls}>{field.label}{reqMark}</label>
+                        <div className="flex flex-col gap-2 mt-1">
+                          {(field.options || []).map((opt: string, oi: number) => (
+                            <label key={oi} className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                disabled
+                                className={`w-4 h-4 ${isLight ? "accent-blue-600" : "accent-emerald-500"}`}
+                              />
+                              <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Checkbox with options or single toggle */}
+                    {field.type === "checkbox" && (
+                      <>
+                        {field.options && field.options.length > 0 ? (
+                          <>
+                            <label className={labelCls}>{field.label}{reqMark}</label>
+                            <div className="flex flex-col gap-2 mt-1">
+                              {field.options.map((opt: string, oi: number) => (
+                                <label key={oi} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    disabled
+                                    className={`w-4 h-4 rounded ${isLight ? "accent-blue-600" : "accent-emerald-500"}`}
+                                  />
+                                  <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>{opt}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <label className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              disabled
+                              className={`mt-1 w-5 h-5 rounded ${isLight ? "accent-blue-600" : "accent-emerald-500"}`}
+                            />
+                            <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                              {field.label}{reqMark}
+                            </span>
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    {/* Dropdown / Select */}
+                    {field.type === "select" && (
+                      <>
+                        <label className={labelCls}>{field.label}{reqMark}</label>
+                        <select disabled className={inputCls}>
+                          <option>Select...</option>
+                          {(field.options || []).map((opt: string, oi: number) => (
+                            <option key={oi}>{opt}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+
+                    {/* Textarea */}
+                    {field.type === "textarea" && (
+                      <>
+                        <label className={labelCls}>{field.label}{reqMark}</label>
+                        <textarea rows={4} disabled className={inputCls} placeholder={field.label} />
+                      </>
+                    )}
+
+                    {/* Standard inputs: text, email, tel, number */}
+                    {!["checkbox", "radio", "select", "textarea", "yesno"].includes(field.type) && (
+                      <>
+                        <label className={labelCls}>{field.label}{reqMark}</label>
+                        <input type={field.type} disabled className={inputCls} placeholder={field.label} />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
               <button
                 disabled
                 className={`w-full py-4 rounded-lg font-bold text-lg text-white ${

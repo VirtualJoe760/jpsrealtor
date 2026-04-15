@@ -679,6 +679,40 @@ src/
 
 ---
 
+---
+
+## Landing Pages (`/lp/`) — Added April 2026
+
+### Overview
+Landing pages use a dedicated layout and client component separate from blog articles. They're created in the CMS with category "Landing Page" and route to `/lp/{slug}`.
+
+### Key Files
+- `src/app/lp/layout.tsx` — Layout with `LandingPageFooter`
+- `src/app/lp/[slug]/page.tsx` — Server component, fetches post by slug
+- `src/app/lp/[slug]/LandingPageClient.tsx` — Client renderer (no back link, no article badge, no date)
+- `src/app/lp/LandingPageFooter.tsx` — Agent headshot, contact info, broker logo
+- `src/app/agent/cms/components/LandingPageOptions.tsx` — CMS config UI
+
+### Landing Page Options (CMS)
+- **Standalone Page** — removes sidebar/nav for custom domain use
+- **Hero Type** — photo or video
+- **Theme Override** — force light, dark, or user default
+- **Lead Capture Form** — configurable fields with types: text, email, tel, number, textarea, dropdown, radio, checkbox, yes/no
+  - Fields support `options[]` for select/radio/checkbox types
+  - Form submits to `/api/campaign/submit` (shared with campaign pages)
+- **Form fields** serialized to MDX frontmatter by `publishing-pipeline.ts`
+
+### Data Flow
+1. CMS spreads `lpConfig` into publish payload
+2. `publishing-pipeline.ts` writes landing page fields to MDX frontmatter (standalone, heroType, themeOverride, formEnabled, formFields with options, formRecipients)
+3. `fetchPosts.ts` parses all landing page fields from frontmatter into `Post` type
+4. `LandingPageClient` renders the page with theme override on mount, form rendering, and all field types
+
+### ClientLayoutWrapper Changes
+- `/lp/` routes: sidebar hidden, mobile nav hidden, no sidebar margin on main content, `overflow-x-hidden` removed
+
+---
+
 **All systems operational ✅**
-**Last deployment:** December 1, 2025
+**Last deployment:** April 12, 2026
 **Status:** Production Ready

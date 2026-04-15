@@ -7,52 +7,48 @@ import { notFound } from "next/navigation";
 import SubdivisionBuyPageClient from "@/app/components/pages/SubdivisionBuyPageClient";
 
 interface BuySubdivisionPageProps {
-  params: {
+  params: Promise<{
     cityId: string;
     slug: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({
   params,
 }: BuySubdivisionPageProps): Promise<Metadata> {
+  const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+  const subdivision = await Subdivision.findOne({ slug }).lean();
 
   if (!subdivision) {
-    return {
-      title: "Subdivision Not Found",
-    };
+    return { title: "Subdivision Not Found" };
   }
 
-  // Validate cityId matches subdivision's city
   const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== params.cityId) {
-    return {
-      title: "Subdivision Not Found",
-    };
+  if (!cityData || cityData.city.id !== cityId) {
+    return { title: "Subdivision Not Found" };
   }
 
   return {
     title: `Buy a Home in ${subdivision.name} | ${subdivision.city}, ${subdivision.region}`,
     description: `Looking to buy a home in ${subdivision.name}? Work with Joey Sardella, your trusted real estate expert for ${subdivision.city}. Find your dream home in this exclusive community today.`,
-    keywords: `buy a home in ${subdivision.name}, buy a house in ${subdivision.name}, ${subdivision.name} real estate, ${subdivision.name} homes for sale, ${subdivision.city} realtor`,
+    keywords: `buy a home in ${subdivision.name}, ${subdivision.name} homes for sale, ${subdivision.city} realtor`,
   };
 }
 
 export default async function BuySubdivisionPage({ params }: BuySubdivisionPageProps) {
+  const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+  const subdivision = await Subdivision.findOne({ slug }).lean();
 
   if (!subdivision) {
     notFound();
   }
 
-  // Validate cityId matches subdivision's city
   const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== params.cityId) {
+  if (!cityData || cityData.city.id !== cityId) {
     notFound();
   }
 
@@ -60,8 +56,8 @@ export default async function BuySubdivisionPage({ params }: BuySubdivisionPageP
     <SubdivisionBuyPageClient
       subdivisionName={subdivision.name}
       cityName={subdivision.city}
-      cityId={params.cityId}
-      slug={params.slug}
+      cityId={cityId}
+      slug={slug}
       region={subdivision.region}
     />
   );

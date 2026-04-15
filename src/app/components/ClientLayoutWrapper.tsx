@@ -57,6 +57,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   // Listing detail pages - hide sidebar and nav completely
   const isListingDetailPage = pathname?.startsWith('/mls-listings/') && pathname !== '/mls-listings';
 
+  // Landing pages - hide sidebar and nav for clean standalone experience
+  const isLandingPage = pathname?.startsWith('/lp/');
+
   // Determine which background to show
   const shouldShowSpatialBackground = !pagesWithoutBackground.some(page => pathname?.startsWith(page))
     && !pagesWithMapBackground.some(page => pathname?.startsWith(page));
@@ -82,8 +85,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <MapBackground />
       )}
 
-      {/* Desktop: Always visible sidebar (except on listing detail pages) */}
-      {(
+      {/* Desktop: Always visible sidebar (except on listing detail and landing pages) */}
+      {!isLandingPage && (
         <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
           <EnhancedSidebar />
         </div>
@@ -95,8 +98,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main content with sidebar spacing on desktop */}
       <div
         data-main-content
-        className={`relative z-10 transition-[margin] duration-300 overflow-x-hidden ${
-          isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'
+        className={`relative z-10 transition-[margin] duration-300 ${
+          isLandingPage ? '' : `overflow-x-hidden ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'}`
         }`}
       >
         <div style={{ pointerEvents: 'auto' }}>
@@ -104,8 +107,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Mobile Bottom Nav (hidden on listing detail pages) */}
-      <MobileBottomNav />
+      {/* Mobile Bottom Nav (hidden on listing detail and landing pages) */}
+      {!isLandingPage && <MobileBottomNav />}
 
       {/* Toast Notifications */}
       <ToastContainer

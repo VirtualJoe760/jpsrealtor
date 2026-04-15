@@ -7,52 +7,48 @@ import { notFound } from "next/navigation";
 import SubdivisionSellPageClient from "@/app/components/pages/SubdivisionSellPageClient";
 
 interface SellSubdivisionPageProps {
-  params: {
+  params: Promise<{
     cityId: string;
     slug: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({
   params,
 }: SellSubdivisionPageProps): Promise<Metadata> {
+  const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+  const subdivision = await Subdivision.findOne({ slug }).lean();
 
   if (!subdivision) {
-    return {
-      title: "Subdivision Not Found",
-    };
+    return { title: "Subdivision Not Found" };
   }
 
-  // Validate cityId matches subdivision's city
   const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== params.cityId) {
-    return {
-      title: "Subdivision Not Found",
-    };
+  if (!cityData || cityData.city.id !== cityId) {
+    return { title: "Subdivision Not Found" };
   }
 
   return {
     title: `Sell Your ${subdivision.name} Home | ${subdivision.city}, ${subdivision.region}`,
     description: `Ready to sell your home in ${subdivision.name}? Get top dollar with Joey Sardella, your trusted real estate expert for ${subdivision.city}. Professional marketing and expert pricing.`,
-    keywords: `sell my home ${subdivision.name}, sell my house ${subdivision.name}, ${subdivision.name} real estate agent, list my home ${subdivision.name}, ${subdivision.city} realtor`,
+    keywords: `sell my home ${subdivision.name}, ${subdivision.name} real estate agent, ${subdivision.city} realtor`,
   };
 }
 
 export default async function SellSubdivisionPage({ params }: SellSubdivisionPageProps) {
+  const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug: params.slug }).lean();
+  const subdivision = await Subdivision.findOne({ slug }).lean();
 
   if (!subdivision) {
     notFound();
   }
 
-  // Validate cityId matches subdivision's city
   const cityData = findCityByName(subdivision.city);
-  if (!cityData || cityData.city.id !== params.cityId) {
+  if (!cityData || cityData.city.id !== cityId) {
     notFound();
   }
 
@@ -60,8 +56,8 @@ export default async function SellSubdivisionPage({ params }: SellSubdivisionPag
     <SubdivisionSellPageClient
       subdivisionName={subdivision.name}
       cityName={subdivision.city}
-      cityId={params.cityId}
-      slug={params.slug}
+      cityId={cityId}
+      slug={slug}
       region={subdivision.region}
     />
   );

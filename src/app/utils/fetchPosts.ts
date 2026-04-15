@@ -25,6 +25,20 @@ const parsePostFile = (filePath: string): Post => {
     altText: data.altText || "",
     keywords: data.keywords || [],
     content: content || "",
+
+    // Landing page fields
+    ...(data.standalone !== undefined && { standalone: data.standalone }),
+    ...(data.heroType && { heroType: data.heroType }),
+    ...(data.youtubeUrl && { youtubeUrl: data.youtubeUrl }),
+    ...(data.videoAutoplay !== undefined && { videoAutoplay: data.videoAutoplay }),
+    ...(data.themeOverride && { themeOverride: data.themeOverride }),
+
+    // Lead capture form
+    ...(data.formEnabled && { formEnabled: data.formEnabled }),
+    ...(data.formHeading && { formHeading: data.formHeading }),
+    ...(data.formButtonText && { formButtonText: data.formButtonText }),
+    ...(data.formRecipients && { formRecipients: data.formRecipients }),
+    ...(data.formFields && { formFields: data.formFields }),
   } as Post;
 };
 

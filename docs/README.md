@@ -248,7 +248,34 @@ Completed work sessions, migration reports, and archived documentation.
 
 ## 🔄 Recent Changes
 
-### January 14, 2026 ⭐ **LATEST**
+### April 10-12, 2026 ⭐ **LATEST**
+- ✅ **Landing Pages (`/lp/`)** — Dedicated layout, form builder, theme override, agent footer
+  - `LandingPageClient` replaces ArticlePageClient for `/lp/` routes
+  - CMS form builder: radio, yes/no, checkbox with options, dropdown with options
+  - Publishing pipeline writes form config + theme override to MDX frontmatter
+  - Landing page footer with agent headshot, contact info, broker logo
+  - Sidebar/nav hidden on `/lp/` routes via `ClientLayoutWrapper`
+- ✅ **Agent Settings Wizard** (`/agent/settings`) — 7-step onboarding wizard
+  - Steps: Identity, Branding, Photos, Content, Social, Domain/SEO, Service Areas
+  - Per-step save via existing `PUT /api/user/profile` deep merge
+  - Reusable `ImageUploadField` with Cloudinary integration
+  - Branding step: font family, theme mode (both/light/dark), light+dark logo variants
+  - Settings nav item added; dashboard slimmed from 1841→400 lines (edit mode extracted)
+- ✅ **Subdivision CMA Components** — Pre-computed market analysis on neighborhood pages
+  - API: `GET /api/cma/subdivision/[slug]` — pure findOne from pre-computed cmaStats
+  - API: `GET /api/cma/subdivision/[slug]/narrative` — Groq-powered AI market narrative (cached 24h)
+  - Sales history from `unified_closed_listings` (up to 50 recent, excludes Co-Ownership)
+  - Components: MarketSnapshot, ActiveVsClosed (bar charts), SubTypeBreakdown (donut+bar), PriceMetrics (area chart), SalesTimeline (line chart), CompsTable (paginated cards with satellite thumbnails), QualityBadge, MarketNarrative
+  - All charts use shadcn `ChartContainer`/`ChartConfig` pattern with recharts
+  - Integrated into `SubdivisionPageClient` above the Buy/Sell CTA
+- ✅ **Subdivision Buy/Sell Pages** — Rebuilt to mirror city buy/sell pages
+  - Hero with listing photo slideshow from `/api/subdivisions/[slug]/listings`
+  - Agent branding (headshot, name, brokerage, brand colors)
+  - Reuses city components: MarketSnapshot, AgentValueProps, BuyingJourney, SellingJourney, IntakeCTAs
+  - Fixed `params` to use `Promise<{}>` pattern (Next.js 15+)
+- ✅ **shadcn CSS variable fix** — `.theme-lightgradient` now sets `--background: white` for proper tooltip rendering
+
+### January 14, 2026
 - ✅ **CRM Documentation Overhaul** - Comprehensive refactoring documentation
   - Created `CRM_DOCUMENTATION_INDEX.md` - Complete CRM system hub
   - Created `CRM_REFACTOR_PRIORITIES.md` - Analysis of 7 components (8,836 lines)

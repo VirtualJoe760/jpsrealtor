@@ -348,10 +348,10 @@ a {
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 0%; /* Black */
+  :root, .theme-lightgradient {
+    --background: 0 0% 100%; /* White */
     --foreground: 222.2 84% 4.9%; /* Deep dark brown */
-    --card: 0 0% 0%; /* White */
+    --card: 0 0% 100%; /* White */
     --card-foreground: 222.2 84% 4.9%; /* Deep dark brown */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 222.2 84% 4.9%; /* Deep dark brown */
@@ -375,7 +375,7 @@ a {
     --chart-5: 27 87% 67%; /* Golden yellow */
     --radius: 0.5rem; /* Border radius */
   }
-  .dark {
+  .dark, .theme-blackspace {
     --background: 0 0% 0%; /* Black */
     --foreground: 210 40% 98%; /* Very light blue */
     --card: 0 0% 0%; /* Deep dark brown */
