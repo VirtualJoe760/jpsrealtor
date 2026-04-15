@@ -10,7 +10,7 @@ import {
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 import CampaignPipelineWizard from './pipeline/CampaignPipelineWizard';
 import DirectMailPipelineWizard from './pipeline/DirectMailPipelineWizard';
-import DigitalAdsPipelineWizard from './pipeline/DigitalAdsPipelineWizard';
+import CommunityAdWizard from './pipeline/CommunityAdWizard';
 
 interface Campaign {
   id: string;
@@ -70,7 +70,7 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
         case 'directMail':
           return <DirectMailPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
         case 'digitalAds':
-          return <DigitalAdsPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+          return <CommunityAdWizard campaign={campaign} onRefresh={onRefresh} />;
         default:
           return null;
       }
@@ -118,8 +118,8 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
     },
     {
       id: 'digitalAds' as Strategy,
-      name: 'Digital Ads',
-      description: 'Launch Google and Meta ads tied to your landing pages with geo-targeting',
+      name: 'Community Ads',
+      description: 'Google PPC for search traffic + Meta retargeting for your community pages',
       icon: MegaphoneIcon,
       color: isLight ? 'purple' : 'indigo',
       active: campaign.activeStrategies.googleAds || campaign.activeStrategies.metaAds,
