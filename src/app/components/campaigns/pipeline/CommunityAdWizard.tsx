@@ -45,12 +45,15 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
 
   // --- Step 1: Page Selection ---
+  type PageType = 'community' | 'landing' | 'blog' | 'custom';
+  const [pageType, setPageType] = useState<PageType>('community');
   const [communities, setCommunities] = useState<CommunityPage[]>([]);
-  const [communitySearch, setCommunitySearch] = useState('');
+  const [landingPages, setLandingPages] = useState<CommunityPage[]>([]);
+  const [blogPosts, setBlogPosts] = useState<CommunityPage[]>([]);
+  const [pageSearch, setPageSearch] = useState('');
   const [selectedPage, setSelectedPage] = useState<CommunityPage | null>(null);
   const [customUrl, setCustomUrl] = useState('');
-  const [useCustomUrl, setUseCustomUrl] = useState(false);
-  const [loadingCommunities, setLoadingCommunities] = useState(false);
+  const [loadingPages, setLoadingPages] = useState(false);
 
   // --- Step 2: Audience ---
   const [metaAudienceType, setMetaAudienceType] = useState<'contacts' | 'visitors'>('visitors');
@@ -83,29 +86,57 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
   }`;
 
-  // Fetch communities for page selector
+  // Fetch all page types for selector
   useEffect(() => {
-    const fetchCommunities = async () => {
-      setLoadingCommunities(true);
+    const fetchPages = async () => {
+      setLoadingPages(true);
       try {
-        const res = await fetch('/api/subdivisions?limit=200&sortBy=listingCount');
-        const data = await res.json();
-        if (data.subdivisions) {
-          setCommunities(data.subdivisions.map((s: any) => ({
+        // Fetch communities
+        const subRes = await fetch('/api/subdivisions?limit=200&sortBy=listingCount');
+        const subData = await subRes.json();
+        if (subData.subdivisions) {
+          setCommunities(subData.subdivisions.map((s: any) => ({
             name: s.name,
-            city: s.city,
+            city: s.city || '',
             slug: s.slug,
             url: `/neighborhoods/${s.cityId || s.city?.toLowerCase().replace(/\s+/g, '-')}/${s.slug}/buy`,
             listingCount: s.listingCount || s.cmaStats?.totalListings || 0,
           })));
         }
+
+        // Fetch landing pages
+        const lpRes = await fetch('/api/articles/list?category=landing-page&limit=50');
+        const lpData = await lpRes.json();
+        if (lpData.articles) {
+          setLandingPages(lpData.articles.map((a: any) => ({
+            name: a.title,
+            city: '',
+            slug: a.slug,
+            url: `/lp/${a.slug}`,
+          })));
+        }
+
+        // Fetch blog posts
+        const blogRes = await fetch('/api/articles/list?limit=50');
+        const blogData = await blogRes.json();
+        if (blogData.articles) {
+          setBlogPosts(blogData.articles
+            .filter((a: any) => a.category !== 'landing-page')
+            .map((a: any) => ({
+              name: a.title,
+              city: a.category?.replace(/-/g, ' ') || '',
+              slug: a.slug,
+              url: `/insights/${a.category}/${a.slug}`,
+            }))
+          );
+        }
       } catch {
-        // Fallback — communities will load from search
+        // Fallback — pages will be empty
       } finally {
-        setLoadingCommunities(false);
+        setLoadingPages(false);
       }
     };
-    fetchCommunities();
+    fetchPages();
   }, []);
 
   // Auto-generate keywords + ad copy when page is selected
@@ -115,34 +146,71 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     const name = selectedPage.name;
     const city = selectedPage.city;
 
-    // Auto-suggest keywords
-    setKeywords([
-      `${name} homes for sale`,
-      `${city} homes for sale`,
-      `homes for sale in ${name}`,
-      `${name} real estate`,
-      `${name} ${city} homes`,
-    ]);
+    if (pageType === 'community') {
+      setKeywords([
+        `${name} homes for sale`,
+        `${city} homes for sale`,
+        `homes for sale in ${name}`,
+        `${name} real estate`,
+        `${name} ${city} homes`,
+      ]);
+      setGoogleHeadlines([
+        `${name} Homes for Sale`.substring(0, 30),
+        `Browse ${name} Listings`.substring(0, 30),
+        `${city} Real Estate`.substring(0, 30),
+      ]);
+      setGoogleDescriptions([
+        `View all homes for sale in ${name}, ${city}. See prices, photos & market stats. Contact JP Sardella today.`.substring(0, 90),
+        `Find your dream home in ${name}. Browse active listings with virtual tours and neighborhood details.`.substring(0, 90),
+      ]);
+      setMetaHeadline(`Homes for Sale in ${name}`.substring(0, 40));
+      setMetaPrimaryText(`Looking for a home in ${name}, ${city}? Browse active listings with prices, photos, and market data. See what's available today.`);
 
-    // Auto-generate Google ad copy
-    setGoogleHeadlines([
-      `${name} Homes for Sale`.substring(0, 30),
-      `Browse ${name} Listings`.substring(0, 30),
-      `${city} Real Estate`.substring(0, 30),
-    ]);
-    setGoogleDescriptions([
-      `View all homes for sale in ${name}, ${city}. See prices, photos & market stats. Contact JP Sardella today.`.substring(0, 90),
-      `Find your dream home in ${name}. Browse active listings with virtual tours and neighborhood details.`.substring(0, 90),
-    ]);
+    } else if (pageType === 'landing') {
+      // Landing page — keywords from the title
+      const titleWords = name.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+      setKeywords([
+        name.toLowerCase().substring(0, 50),
+        ...titleWords.slice(0, 3).map(w => `${w} real estate`),
+      ].filter(Boolean));
+      setGoogleHeadlines([
+        name.substring(0, 30),
+        `Learn More — Free Guide`.substring(0, 30),
+        `JP Sardella, Realtor`.substring(0, 30),
+      ]);
+      setGoogleDescriptions([
+        `${name}. Expert guidance from JP Sardella, DRE 02106916. Get started today.`.substring(0, 90),
+        `Free resource for home buyers and sellers in the Coachella Valley. Learn more now.`.substring(0, 90),
+      ]);
+      setMetaHeadline(name.substring(0, 40));
+      setMetaPrimaryText(`${name}. Get expert real estate guidance from JP Sardella. Click to learn more.`);
 
-    // Auto-generate Meta ad copy
-    setMetaHeadline(`Homes for Sale in ${name}`.substring(0, 40));
-    setMetaPrimaryText(`Looking for a home in ${name}, ${city}? Browse active listings with prices, photos, and market data. See what's available today.`);
-  }, [selectedPage]);
+    } else if (pageType === 'blog') {
+      // Blog post — keywords from title + category
+      const category = city; // city field holds category for blog posts
+      setKeywords([
+        name.toLowerCase().substring(0, 50),
+        `${category} coachella valley`,
+        `coachella valley real estate`,
+      ].filter(Boolean));
+      setGoogleHeadlines([
+        name.substring(0, 30),
+        `Coachella Valley Insights`.substring(0, 30),
+        `Read the Full Article`.substring(0, 30),
+      ]);
+      setGoogleDescriptions([
+        `${name}. Real estate insights from JP Sardella, your Coachella Valley expert.`.substring(0, 90),
+        `Stay informed on the Coachella Valley market. Expert analysis and local knowledge.`.substring(0, 90),
+      ]);
+      setMetaHeadline(name.substring(0, 40));
+      setMetaPrimaryText(`${name}. Stay informed with expert Coachella Valley real estate insights from JP Sardella.`);
+    }
+  }, [selectedPage, pageType]);
 
-  const filteredCommunities = communities.filter(c =>
-    c.name.toLowerCase().includes(communitySearch.toLowerCase()) ||
-    c.city.toLowerCase().includes(communitySearch.toLowerCase())
+  const activeList = pageType === 'community' ? communities : pageType === 'landing' ? landingPages : pageType === 'blog' ? blogPosts : [];
+  const filteredPages = activeList.filter(c =>
+    c.name.toLowerCase().includes(pageSearch.toLowerCase()) ||
+    c.city.toLowerCase().includes(pageSearch.toLowerCase())
   ).slice(0, 20);
 
   const steps = STEPS.map(s => s.id);
@@ -175,7 +243,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
       : [...metaPlacements, p]);
   };
 
-  const pageUrl = useCustomUrl ? customUrl : (selectedPage?.url ? `https://jpsrealtor.com${selectedPage.url}` : '');
+  const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://jpsrealtor.com${selectedPage.url}` : '');
   const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
 
   const handleLaunch = async () => {
@@ -240,68 +308,72 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                 Choose which community or neighborhood page to promote. Google PPC will drive search traffic to this page, and Meta will retarget visitors.
               </p>
 
-              {/* Toggle: Community vs Custom URL */}
-              <div className="flex gap-3 mb-4">
-                <button
-                  onClick={() => setUseCustomUrl(false)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    !useCustomUrl
-                      ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
-                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Community Page
-                </button>
-                <button
-                  onClick={() => setUseCustomUrl(true)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    useCustomUrl
-                      ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
-                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Custom URL
-                </button>
+              {/* Page Type Tabs */}
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {([
+                  { id: 'community' as PageType, label: 'Community' },
+                  { id: 'landing' as PageType, label: 'Landing Page' },
+                  { id: 'blog' as PageType, label: 'Blog Post' },
+                  { id: 'custom' as PageType, label: 'Custom URL' },
+                ]).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setPageType(tab.id); setSelectedPage(null); setPageSearch(''); }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      pageType === tab.id
+                        ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
+                        : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {!useCustomUrl ? (
+              {pageType !== 'custom' ? (
                 <>
                   {/* Search */}
                   <input
                     type="text"
-                    value={communitySearch}
-                    onChange={(e) => setCommunitySearch(e.target.value)}
-                    placeholder="Search communities..."
+                    value={pageSearch}
+                    onChange={(e) => setPageSearch(e.target.value)}
+                    placeholder={
+                      pageType === 'community' ? 'Search communities...'
+                        : pageType === 'landing' ? 'Search landing pages...'
+                        : 'Search blog posts...'
+                    }
                     className={`${inputClasses} mb-4`}
                   />
 
-                  {/* Community List */}
+                  {/* Page List */}
                   <div className="max-h-64 overflow-y-auto space-y-2">
-                    {loadingCommunities ? (
-                      <p className={`text-sm ${textSecondary} text-center py-4`}>Loading communities...</p>
-                    ) : filteredCommunities.length === 0 ? (
-                      <p className={`text-sm ${textSecondary} text-center py-4`}>No communities found</p>
+                    {loadingPages ? (
+                      <p className={`text-sm ${textSecondary} text-center py-4`}>Loading...</p>
+                    ) : filteredPages.length === 0 ? (
+                      <p className={`text-sm ${textSecondary} text-center py-4`}>
+                        {pageType === 'community' ? 'No communities found' : pageType === 'landing' ? 'No landing pages found' : 'No blog posts found'}
+                      </p>
                     ) : (
-                      filteredCommunities.map((community) => (
+                      filteredPages.map((page) => (
                         <button
-                          key={community.slug}
-                          onClick={() => setSelectedPage(community)}
+                          key={page.slug}
+                          onClick={() => setSelectedPage(page)}
                           className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                            selectedPage?.slug === community.slug
+                            selectedPage?.slug === page.slug
                               ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
                               : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
                           }`}
                         >
                           <div className="flex justify-between items-center">
                             <div>
-                              <p className={`font-medium ${textPrimary}`}>{community.name}</p>
-                              <p className={`text-xs ${textSecondary}`}>{community.city}</p>
+                              <p className={`font-medium ${textPrimary}`}>{page.name}</p>
+                              {page.city && <p className={`text-xs ${textSecondary} capitalize`}>{page.city}</p>}
                             </div>
-                            {community.listingCount > 0 && (
+                            {page.listingCount != null && page.listingCount > 0 && (
                               <span className={`text-xs px-2 py-1 rounded-full ${
                                 isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
                               }`}>
-                                {community.listingCount} listings
+                                {page.listingCount} listings
                               </span>
                             )}
                           </div>
@@ -315,13 +387,13 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   type="url"
                   value={customUrl}
                   onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://jpsrealtor.com/neighborhoods/..."
+                  placeholder="https://jpsrealtor.com/..."
                   className={inputClasses}
                 />
               )}
 
               {/* Selected page summary */}
-              {(selectedPage || customUrl) && (
+              {(selectedPage || (pageType === 'custom' && customUrl)) && (
                 <div className={`mt-4 p-3 rounded-lg ${isLight ? 'bg-purple-50 border border-purple-200' : 'bg-indigo-900/20 border border-indigo-700/50'}`}>
                   <p className={`text-sm font-medium ${textPrimary}`}>
                     {selectedPage ? `${selectedPage.name} — ${selectedPage.city}` : 'Custom URL'}
@@ -334,7 +406,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
             <div className="flex justify-end">
               <button
                 onClick={() => handleNext('page')}
-                disabled={!selectedPage && !customUrl}
+                disabled={!selectedPage && !(pageType === 'custom' && customUrl)}
                 className={`px-6 py-3 rounded-lg font-medium text-white ${
                   isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
