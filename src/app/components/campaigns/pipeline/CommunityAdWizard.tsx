@@ -48,7 +48,9 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   type PageType = 'community' | 'landing' | 'blog' | 'custom';
   const [pageType, setPageType] = useState<PageType>('community');
   // Directory drill-down state
-  const [directory, setDirectory] = useState<any[]>([]);
+  const [regions, setRegions] = useState<any[]>([]);
+  const [subdivisions, setSubdivisions] = useState<any[]>([]);
+  const [loadingSubs, setLoadingSubs] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -96,12 +98,11 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     const fetchPages = async () => {
       setLoadingPages(true);
       try {
-        if (pageType === 'community' && directory.length === 0) {
-          const res = await fetch('/api/neighborhoods/directory');
+        if (pageType === 'community' && regions.length === 0) {
+          // Lightweight reference endpoint — just names and slugs
+          const res = await fetch('/api/neighborhoods/reference');
           const data = await res.json();
-          if (data.success && data.data) {
-            setDirectory(data.data);
-          }
+          if (data.regions) setRegions(data.regions);
         } else if (pageType === 'landing' && landingPages.length === 0) {
           const res = await fetch('/api/articles/list?category=landing-page&limit=50');
           const data = await res.json();
@@ -133,6 +134,24 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     };
     fetchPages();
   }, [pageType]);
+
+  // Lazy-load subdivisions when a city is selected
+  useEffect(() => {
+    if (!selectedCity) { setSubdivisions([]); return; }
+    const fetchSubs = async () => {
+      setLoadingSubs(true);
+      try {
+        const res = await fetch(`/api/neighborhoods/reference?city=${selectedCity}`);
+        const data = await res.json();
+        if (data.subdivisions) setSubdivisions(data.subdivisions);
+      } catch {
+        setSubdivisions([]);
+      } finally {
+        setLoadingSubs(false);
+      }
+    };
+    fetchSubs();
+  }, [selectedCity]);
 
   // Auto-generate keywords + ad copy when page is selected
   useEffect(() => {
@@ -212,7 +231,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   ).slice(0, 20);
 
   // Directory drill-down helpers
-  const currentRegion = directory.find((r: any) => r.slug === selectedRegion);
+  const currentRegion = regions.find((r: any) => r.slug === selectedRegion);
   const currentCounty = currentRegion?.counties?.find((c: any) => c.slug === selectedCounty);
   const currentCity = currentCounty?.cities?.find((c: any) => c.slug === selectedCity);
 
@@ -379,20 +398,17 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                   <div className="max-h-72 overflow-y-auto space-y-1">
                     {loadingPages ? (
-                      <p className={`text-sm ${textSecondary} text-center py-4`}>Loading neighborhoods...</p>
+                      <p className={`text-sm ${textSecondary} text-center py-4`}>Loading...</p>
                     ) : !selectedRegion ? (
                       /* Level 1: Regions */
-                      directory.map((region: any) => (
+                      regions.map((region: any) => (
                         <button key={region.slug} onClick={() => setSelectedRegion(region.slug)}
                           className={`w-full text-left p-3 rounded-lg border transition-all ${
                             isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
                           }`}>
                           <div className="flex justify-between items-center">
                             <p className={`font-medium ${textPrimary}`}>{region.name}</p>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs ${textSecondary}`}>{region.listings?.toLocaleString()} listings</span>
-                              <span className={textSecondary}>›</span>
-                            </div>
+                            <span className={textSecondary}>›</span>
                           </div>
                         </button>
                       ))
@@ -406,7 +422,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                           <div className="flex justify-between items-center">
                             <p className={`font-medium ${textPrimary}`}>{county.name}</p>
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs ${textSecondary}`}>{county.listings?.toLocaleString()} listings</span>
+                              <span className={`text-xs ${textSecondary}`}>{county.cities?.length} cities</span>
                               <span className={textSecondary}>›</span>
                             </div>
                           </div>
@@ -421,40 +437,31 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                           }`}>
                           <div className="flex justify-between items-center">
                             <p className={`font-medium ${textPrimary}`}>{city.name}</p>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs ${textSecondary}`}>{city.listings?.toLocaleString()} listings</span>
-                              <span className={textSecondary}>›</span>
-                            </div>
+                            <span className={textSecondary}>›</span>
                           </div>
                         </button>
                       ))
                     ) : (
-                      /* Level 4: Subdivisions */
-                      (currentCity?.subdivisions || []).length === 0 ? (
-                        <p className={`text-sm ${textSecondary} text-center py-4`}>No subdivisions in {currentCity?.name}</p>
+                      /* Level 4: Subdivisions (lazy-loaded) */
+                      loadingSubs ? (
+                        <p className={`text-sm ${textSecondary} text-center py-4`}>Loading subdivisions...</p>
+                      ) : subdivisions.length === 0 ? (
+                        <p className={`text-sm ${textSecondary} text-center py-4`}>No subdivisions found in {currentCity?.name}</p>
                       ) : (
-                        (currentCity?.subdivisions || []).map((sub: any) => (
+                        subdivisions.map((sub: any) => (
                           <button key={sub.slug}
                             onClick={() => setSelectedPage({
                               name: sub.name,
                               city: currentCity.name,
                               slug: sub.slug,
                               url: `/neighborhoods/${currentCity.slug}/${sub.slug}/buy`,
-                              listingCount: sub.listings,
                             })}
                             className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
                               selectedPage?.slug === sub.slug
                                 ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
                                 : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
                             }`}>
-                            <div className="flex justify-between items-center">
-                              <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
-                              {sub.listings > 0 && (
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
-                                }`}>{sub.listings} listings</span>
-                              )}
-                            </div>
+                            <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
                           </button>
                         ))
                       )
