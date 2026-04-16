@@ -5,15 +5,11 @@ import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '@/app/contexts/ThemeContext';
 
-// Fix Leaflet icon issue in Next.js
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import markerRetina from 'leaflet/dist/images/marker-icon-2x.png';
-
+// Leaflet marker icons via CDN (avoids Next.js static import issues with dynamic imports)
 const PinIcon = L.icon({
-  iconUrl: markerIcon.src,
-  iconRetinaUrl: markerRetina.src,
-  shadowUrl: markerShadow.src,
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -77,8 +73,9 @@ function MapContent({
   }, [map, isLight, radiusMilesRef]);
 
   // Handle map clicks — reverse geocode then place pin
+  // Right-click to drop pin (prevents accidental drops while panning)
   useMapEvents({
-    click(e) {
+    contextmenu(e) {
       const { lat, lng } = e.latlng;
       placePin(lat, lng);
 
