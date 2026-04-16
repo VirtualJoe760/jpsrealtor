@@ -47,7 +47,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   // --- Step 1: Page Selection ---
   type PageType = 'community' | 'landing' | 'blog' | 'custom';
   const [pageType, setPageType] = useState<PageType>('community');
-  const [communities, setCommunities] = useState<CommunityPage[]>([]);
+  // Directory drill-down state
+  const [directory, setDirectory] = useState<any[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  // Other page types
   const [landingPages, setLandingPages] = useState<CommunityPage[]>([]);
   const [blogPosts, setBlogPosts] = useState<CommunityPage[]>([]);
   const [pageSearch, setPageSearch] = useState('');
@@ -86,58 +91,48 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
   }`;
 
-  // Fetch all page types for selector
+  // Fetch page data based on page type
   useEffect(() => {
     const fetchPages = async () => {
       setLoadingPages(true);
       try {
-        // Fetch communities
-        const subRes = await fetch('/api/subdivisions?limit=200&sortBy=listingCount');
-        const subData = await subRes.json();
-        if (subData.subdivisions) {
-          setCommunities(subData.subdivisions.map((s: any) => ({
-            name: s.name,
-            city: s.city || '',
-            slug: s.slug,
-            url: `/neighborhoods/${s.cityId || s.city?.toLowerCase().replace(/\s+/g, '-')}/${s.slug}/buy`,
-            listingCount: s.listingCount || s.cmaStats?.totalListings || 0,
-          })));
-        }
-
-        // Fetch landing pages
-        const lpRes = await fetch('/api/articles/list?category=landing-page&limit=50');
-        const lpData = await lpRes.json();
-        if (lpData.articles) {
-          setLandingPages(lpData.articles.map((a: any) => ({
-            name: a.title,
-            city: '',
-            slug: a.slug,
-            url: `/lp/${a.slug}`,
-          })));
-        }
-
-        // Fetch blog posts
-        const blogRes = await fetch('/api/articles/list?limit=50');
-        const blogData = await blogRes.json();
-        if (blogData.articles) {
-          setBlogPosts(blogData.articles
-            .filter((a: any) => a.category !== 'landing-page')
-            .map((a: any) => ({
-              name: a.title,
-              city: a.category?.replace(/-/g, ' ') || '',
-              slug: a.slug,
-              url: `/insights/${a.category}/${a.slug}`,
-            }))
-          );
+        if (pageType === 'community' && directory.length === 0) {
+          const res = await fetch('/api/neighborhoods/directory');
+          const data = await res.json();
+          if (data.success && data.data) {
+            setDirectory(data.data);
+          }
+        } else if (pageType === 'landing' && landingPages.length === 0) {
+          const res = await fetch('/api/articles/list?category=landing-page&limit=50');
+          const data = await res.json();
+          if (data.articles) {
+            setLandingPages(data.articles.map((a: any) => ({
+              name: a.title, city: '', slug: a.slug, url: `/lp/${a.slug}`,
+            })));
+          }
+        } else if (pageType === 'blog' && blogPosts.length === 0) {
+          const res = await fetch('/api/articles/list?limit=50');
+          const data = await res.json();
+          if (data.articles) {
+            setBlogPosts(data.articles
+              .filter((a: any) => a.category !== 'landing-page')
+              .map((a: any) => ({
+                name: a.title,
+                city: a.category?.replace(/-/g, ' ') || '',
+                slug: a.slug,
+                url: `/insights/${a.category}/${a.slug}`,
+              }))
+            );
+          }
         }
       } catch {
-        // Fallback — pages will be empty
+        // Fallback
       } finally {
         setLoadingPages(false);
       }
     };
     fetchPages();
-  }, []);
+  }, [pageType]);
 
   // Auto-generate keywords + ad copy when page is selected
   useEffect(() => {
@@ -207,11 +202,19 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     }
   }, [selectedPage, pageType]);
 
-  const activeList = pageType === 'community' ? communities : pageType === 'landing' ? landingPages : pageType === 'blog' ? blogPosts : [];
-  const filteredPages = activeList.filter(c =>
+  // Filtered lists for landing pages and blog posts
+  const filteredLandingPages = landingPages.filter(c =>
+    c.name.toLowerCase().includes(pageSearch.toLowerCase())
+  ).slice(0, 20);
+  const filteredBlogPosts = blogPosts.filter(c =>
     c.name.toLowerCase().includes(pageSearch.toLowerCase()) ||
     c.city.toLowerCase().includes(pageSearch.toLowerCase())
   ).slice(0, 20);
+
+  // Directory drill-down helpers
+  const currentRegion = directory.find((r: any) => r.slug === selectedRegion);
+  const currentCounty = currentRegion?.counties?.find((c: any) => c.slug === selectedCounty);
+  const currentCity = currentCounty?.cities?.find((c: any) => c.slug === selectedCity);
 
   const steps = STEPS.map(s => s.id);
 
@@ -318,7 +321,14 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                 ]).map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => { setPageType(tab.id); setSelectedPage(null); setPageSearch(''); }}
+                    onClick={() => {
+                      setPageType(tab.id);
+                      setSelectedPage(null);
+                      setPageSearch('');
+                      setSelectedRegion(null);
+                      setSelectedCounty(null);
+                      setSelectedCity(null);
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       pageType === tab.id
                         ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
@@ -330,65 +340,164 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                 ))}
               </div>
 
-              {pageType !== 'custom' ? (
+              {/* ---- COMMUNITY: Drill-down Region → County → City → Subdivision ---- */}
+              {pageType === 'community' && (
+                <div>
+                  {/* Breadcrumb */}
+                  {(selectedRegion || selectedCounty || selectedCity) && (
+                    <div className={`flex items-center gap-1 text-sm mb-3 flex-wrap`}>
+                      <button onClick={() => { setSelectedRegion(null); setSelectedCounty(null); setSelectedCity(null); setSelectedPage(null); }}
+                        className={`${isLight ? 'text-purple-600 hover:text-purple-700' : 'text-indigo-400 hover:text-indigo-300'}`}>
+                        All Regions
+                      </button>
+                      {selectedRegion && currentRegion && (
+                        <>
+                          <span className={textSecondary}>/</span>
+                          <button onClick={() => { setSelectedCounty(null); setSelectedCity(null); setSelectedPage(null); }}
+                            className={`${isLight ? 'text-purple-600 hover:text-purple-700' : 'text-indigo-400 hover:text-indigo-300'}`}>
+                            {currentRegion.name}
+                          </button>
+                        </>
+                      )}
+                      {selectedCounty && currentCounty && (
+                        <>
+                          <span className={textSecondary}>/</span>
+                          <button onClick={() => { setSelectedCity(null); setSelectedPage(null); }}
+                            className={`${isLight ? 'text-purple-600 hover:text-purple-700' : 'text-indigo-400 hover:text-indigo-300'}`}>
+                            {currentCounty.name}
+                          </button>
+                        </>
+                      )}
+                      {selectedCity && currentCity && (
+                        <>
+                          <span className={textSecondary}>/</span>
+                          <span className={`font-medium ${textPrimary}`}>{currentCity.name}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="max-h-72 overflow-y-auto space-y-1">
+                    {loadingPages ? (
+                      <p className={`text-sm ${textSecondary} text-center py-4`}>Loading neighborhoods...</p>
+                    ) : !selectedRegion ? (
+                      /* Level 1: Regions */
+                      directory.map((region: any) => (
+                        <button key={region.slug} onClick={() => setSelectedRegion(region.slug)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                            isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                          }`}>
+                          <div className="flex justify-between items-center">
+                            <p className={`font-medium ${textPrimary}`}>{region.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${textSecondary}`}>{region.listings?.toLocaleString()} listings</span>
+                              <span className={textSecondary}>›</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : !selectedCounty ? (
+                      /* Level 2: Counties */
+                      (currentRegion?.counties || []).map((county: any) => (
+                        <button key={county.slug} onClick={() => setSelectedCounty(county.slug)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                            isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                          }`}>
+                          <div className="flex justify-between items-center">
+                            <p className={`font-medium ${textPrimary}`}>{county.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${textSecondary}`}>{county.listings?.toLocaleString()} listings</span>
+                              <span className={textSecondary}>›</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : !selectedCity ? (
+                      /* Level 3: Cities */
+                      (currentCounty?.cities || []).map((city: any) => (
+                        <button key={city.slug} onClick={() => setSelectedCity(city.slug)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                            isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                          }`}>
+                          <div className="flex justify-between items-center">
+                            <p className={`font-medium ${textPrimary}`}>{city.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${textSecondary}`}>{city.listings?.toLocaleString()} listings</span>
+                              <span className={textSecondary}>›</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      /* Level 4: Subdivisions */
+                      (currentCity?.subdivisions || []).length === 0 ? (
+                        <p className={`text-sm ${textSecondary} text-center py-4`}>No subdivisions in {currentCity?.name}</p>
+                      ) : (
+                        (currentCity?.subdivisions || []).map((sub: any) => (
+                          <button key={sub.slug}
+                            onClick={() => setSelectedPage({
+                              name: sub.name,
+                              city: currentCity.name,
+                              slug: sub.slug,
+                              url: `/neighborhoods/${currentCity.slug}/${sub.slug}/buy`,
+                              listingCount: sub.listings,
+                            })}
+                            className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                              selectedPage?.slug === sub.slug
+                                ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
+                                : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
+                            }`}>
+                            <div className="flex justify-between items-center">
+                              <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
+                              {sub.listings > 0 && (
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
+                                }`}>{sub.listings} listings</span>
+                              )}
+                            </div>
+                          </button>
+                        ))
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ---- LANDING PAGES & BLOG POSTS: Searchable list ---- */}
+              {(pageType === 'landing' || pageType === 'blog') && (
                 <>
-                  {/* Search */}
-                  <input
-                    type="text"
-                    value={pageSearch}
-                    onChange={(e) => setPageSearch(e.target.value)}
-                    placeholder={
-                      pageType === 'community' ? 'Search communities...'
-                        : pageType === 'landing' ? 'Search landing pages...'
-                        : 'Search blog posts...'
-                    }
+                  <input type="text" value={pageSearch} onChange={(e) => setPageSearch(e.target.value)}
+                    placeholder={pageType === 'landing' ? 'Search landing pages...' : 'Search blog posts...'}
                     className={`${inputClasses} mb-4`}
                   />
-
-                  {/* Page List */}
                   <div className="max-h-64 overflow-y-auto space-y-2">
                     {loadingPages ? (
                       <p className={`text-sm ${textSecondary} text-center py-4`}>Loading...</p>
-                    ) : filteredPages.length === 0 ? (
+                    ) : (pageType === 'landing' ? filteredLandingPages : filteredBlogPosts).length === 0 ? (
                       <p className={`text-sm ${textSecondary} text-center py-4`}>
-                        {pageType === 'community' ? 'No communities found' : pageType === 'landing' ? 'No landing pages found' : 'No blog posts found'}
+                        {pageType === 'landing' ? 'No landing pages found' : 'No blog posts found'}
                       </p>
                     ) : (
-                      filteredPages.map((page) => (
-                        <button
-                          key={page.slug}
-                          onClick={() => setSelectedPage(page)}
+                      (pageType === 'landing' ? filteredLandingPages : filteredBlogPosts).map((page) => (
+                        <button key={page.slug} onClick={() => setSelectedPage(page)}
                           className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
                             selectedPage?.slug === page.slug
                               ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
                               : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className={`font-medium ${textPrimary}`}>{page.name}</p>
-                              {page.city && <p className={`text-xs ${textSecondary} capitalize`}>{page.city}</p>}
-                            </div>
-                            {page.listingCount != null && page.listingCount > 0 && (
-                              <span className={`text-xs px-2 py-1 rounded-full ${
-                                isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400'
-                              }`}>
-                                {page.listingCount} listings
-                              </span>
-                            )}
-                          </div>
+                          }`}>
+                          <p className={`font-medium ${textPrimary}`}>{page.name}</p>
+                          {page.city && <p className={`text-xs ${textSecondary} capitalize`}>{page.city}</p>}
                         </button>
                       ))
                     )}
                   </div>
                 </>
-              ) : (
-                <input
-                  type="url"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://jpsrealtor.com/..."
-                  className={inputClasses}
+              )}
+
+              {/* ---- CUSTOM URL ---- */}
+              {pageType === 'custom' && (
+                <input type="url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)}
+                  placeholder="https://jpsrealtor.com/..." className={inputClasses}
                 />
               )}
 
@@ -396,7 +505,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               {(selectedPage || (pageType === 'custom' && customUrl)) && (
                 <div className={`mt-4 p-3 rounded-lg ${isLight ? 'bg-purple-50 border border-purple-200' : 'bg-indigo-900/20 border border-indigo-700/50'}`}>
                   <p className={`text-sm font-medium ${textPrimary}`}>
-                    {selectedPage ? `${selectedPage.name} — ${selectedPage.city}` : 'Custom URL'}
+                    {selectedPage ? `${selectedPage.name}${selectedPage.city ? ` — ${selectedPage.city}` : ''}` : 'Custom URL'}
                   </p>
                   <p className={`text-xs ${isLight ? 'text-purple-600' : 'text-indigo-400'}`}>{pageUrl}</p>
                 </div>
