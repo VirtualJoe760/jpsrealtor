@@ -400,6 +400,38 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                     </div>
                   )}
 
+                  {/* Buy / Sell / Community toggle — shown when city is selected */}
+                  {selectedCity && (
+                    <div className="flex gap-2 mb-3">
+                      {([
+                        { id: 'buy' as const, label: 'Buy Page' },
+                        { id: 'sell' as const, label: 'Sell Page' },
+                        { id: 'community' as const, label: 'Community Page' },
+                      ]).map((v) => (
+                        <button key={v.id}
+                          onClick={() => {
+                            setCommunityPageVariant(v.id);
+                            if (selectedPage && currentCity) {
+                              setSelectedPage({
+                                ...selectedPage,
+                                url: v.id === 'community'
+                                  ? `/neighborhoods/${currentCity.slug}/${selectedPage.slug}`
+                                  : `/neighborhoods/${currentCity.slug}/${selectedPage.slug}/${v.id}`,
+                              });
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            communityPageVariant === v.id
+                              ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
+                              : isLight ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="max-h-72 overflow-y-auto space-y-1">
                     {loadingPages ? (
                       <p className={`text-sm ${textSecondary} text-center py-4`}>Loading...</p>
@@ -446,39 +478,8 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                         </button>
                       ))
                     ) : (
-                      /* Level 4: Page variant toggle + Subdivisions */
+                      /* Level 4: Subdivisions (lazy-loaded) */
                       <>
-                        {/* Buy / Sell / Community toggle */}
-                        <div className="flex gap-2 mb-3">
-                          {([
-                            { id: 'buy' as const, label: 'Buy Page' },
-                            { id: 'sell' as const, label: 'Sell Page' },
-                            { id: 'community' as const, label: 'Community Page' },
-                          ]).map((v) => (
-                            <button key={v.id}
-                              onClick={() => {
-                                setCommunityPageVariant(v.id);
-                                if (selectedPage && currentCity) {
-                                  setSelectedPage({
-                                    ...selectedPage,
-                                    url: v.id === 'community'
-                                      ? `/neighborhoods/${currentCity.slug}/${selectedPage.slug}`
-                                      : `/neighborhoods/${currentCity.slug}/${selectedPage.slug}/${v.id}`,
-                                  });
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                communityPageVariant === v.id
-                                  ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
-                                  : isLight ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                              }`}
-                            >
-                              {v.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Subdivision list */}
                         {loadingSubs ? (
                           <p className={`text-sm ${textSecondary} text-center py-4`}>Loading subdivisions...</p>
                         ) : subdivisions.length === 0 ? (
