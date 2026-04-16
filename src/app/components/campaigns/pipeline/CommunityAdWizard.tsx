@@ -504,7 +504,6 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                           ))
                         )}
                       </>
-                    )
                     )}
                   </div>
                 </div>
