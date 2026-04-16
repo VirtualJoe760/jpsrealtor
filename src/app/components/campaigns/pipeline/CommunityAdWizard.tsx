@@ -104,26 +104,29 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
           const data = await res.json();
           if (data.regions) setRegions(data.regions);
         } else if (pageType === 'landing' && landingPages.length === 0) {
-          const res = await fetch('/api/articles/list?category=landing-page&limit=50');
+          // Must pass excludeLandingPages=false to get LP articles back
+          const res = await fetch('/api/articles/list?excludeLandingPages=false&limit=100');
           const data = await res.json();
           if (data.articles) {
-            setLandingPages(data.articles.map((a: any) => ({
-              name: a.title, city: '', slug: a.slug, url: `/lp/${a.slug}`,
-            })));
+            setLandingPages(
+              data.articles
+                .filter((a: any) => a.category === 'landing-page')
+                .map((a: any) => ({
+                  name: a.title, city: '', slug: a.slug, url: `/lp/${a.slug}`,
+                }))
+            );
           }
         } else if (pageType === 'blog' && blogPosts.length === 0) {
-          const res = await fetch('/api/articles/list?limit=50');
+          // Default excludeLandingPages=true already filters out LPs
+          const res = await fetch('/api/articles/list?limit=100');
           const data = await res.json();
           if (data.articles) {
-            setBlogPosts(data.articles
-              .filter((a: any) => a.category !== 'landing-page')
-              .map((a: any) => ({
-                name: a.title,
-                city: a.category?.replace(/-/g, ' ') || '',
-                slug: a.slug,
-                url: `/insights/${a.category}/${a.slug}`,
-              }))
-            );
+            setBlogPosts(data.articles.map((a: any) => ({
+              name: a.title,
+              city: a.category?.replace(/-/g, ' ') || '',
+              slug: a.slug,
+              url: `/insights/${a.category}/${a.slug}`,
+            })));
           }
         }
       } catch {
