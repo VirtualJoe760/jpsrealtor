@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
-import City from '@/models/cities';
+import { City } from '@/models/cities';
 import Subdivision from '@/models/subdivisions';
 
 /**
