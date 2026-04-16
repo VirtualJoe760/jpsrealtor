@@ -151,8 +151,17 @@ export default function ContactSelector({ selectedContactIds, onContactsChange, 
     fetchContacts();
   };
 
-  // Get unique tags from all contacts
-  const allTags = Array.from(new Set(contacts.flatMap((c) => c.tags || [])));
+  // Get unique tags from all contacts with counts
+  const allTags = Array.from(new Set(contacts.flatMap((c) => c.tags || []))).sort();
+  const tagCounts: Record<string, number> = {};
+  contacts.forEach((c) => (c.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+
+  // Select all contacts matching a tag
+  const selectByTag = (tag: string) => {
+    const tagContactIds = contacts.filter((c) => c.tags?.includes(tag)).map((c) => c._id);
+    const merged = [...new Set([...selectedContactIds, ...tagContactIds])];
+    onContactsChange(merged);
+  };
 
   return (
     <div className="space-y-6">
@@ -182,6 +191,34 @@ export default function ContactSelector({ selectedContactIds, onContactsChange, 
           )}
         </div>
       </div>
+
+      {/* Quick Select by Tag */}
+      {allTags.length > 0 && (
+        <div>
+          <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+            <TagIcon className="w-4 h-4 inline mr-1" />
+            Select by Tag
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {allTags.map((tag) => {
+              const isFiltering = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => selectByTag(tag)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    isFiltering
+                      ? `${isLight ? 'bg-blue-600' : 'bg-emerald-600'} text-white`
+                      : `${isLight ? 'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700' : 'bg-slate-700 text-gray-300 hover:bg-emerald-900/30 hover:text-emerald-300'}`
+                  }`}
+                >
+                  {tag} ({tagCounts[tag]})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="space-y-4">
@@ -239,11 +276,11 @@ export default function ContactSelector({ selectedContactIds, onContactsChange, 
               </select>
             </div>
 
-            {/* Tag Filter */}
+            {/* Tag Filter (narrows the list) */}
             {allTags.length > 0 && (
               <div>
                 <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                  Tags
+                  Filter by Tag
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {allTags.map((tag) => {
