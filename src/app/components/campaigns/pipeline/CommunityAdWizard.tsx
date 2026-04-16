@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { uploadToCloudinary } from '@/app/utils/cloudinaryUpload';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 import PipelineStepIndicator from './PipelineStepIndicator';
 import type { StepDefinition } from './PipelineStepIndicator';
@@ -79,6 +80,9 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
   // Meta Retargeting
   const [metaImageUrl, setMetaImageUrl] = useState('');
+  const [metaMediaType, setMetaMediaType] = useState<'image' | 'video'>('image');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [metaPrimaryText, setMetaPrimaryText] = useState('');
   const [metaHeadline, setMetaHeadline] = useState('');
   const [metaPlacements, setMetaPlacements] = useState(['facebook_feed', 'instagram_feed']);
@@ -755,19 +759,72 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
               {enableMeta && (
                 <div className="space-y-4">
-                  {/* Image */}
+                  {/* Ad Creative Upload */}
                   <div>
-                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Ad Image URL</label>
-                    <input type="url" value={metaImageUrl}
-                      onChange={(e) => setMetaImageUrl(e.target.value)}
-                      placeholder="https://example.com/community-photo.jpg"
-                      className={inputClasses}
-                    />
-                    {metaImageUrl && (
-                      <div className="mt-2 border rounded-lg overflow-hidden max-w-xs">
-                        <img src={metaImageUrl} alt="Ad" className="w-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <label className={`block text-sm font-medium ${textPrimary} mb-2`}>Ad Creative</label>
+
+                    {/* Upload area */}
+                    {!metaImageUrl ? (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                          isLight
+                            ? 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                            : 'border-gray-600 hover:border-indigo-400 hover:bg-indigo-900/10'
+                        }`}
+                      >
+                        {isUploading ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className={`animate-spin h-8 w-8 border-3 ${isLight ? 'border-purple-600' : 'border-indigo-400'} border-t-transparent rounded-full`} />
+                            <p className={`text-sm ${textSecondary}`}>Uploading to Cloudinary...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={`text-3xl mb-2`}>📸</div>
+                            <p className={`text-sm font-medium ${textPrimary}`}>Click to upload image or video</p>
+                            <p className={`text-xs ${textSecondary} mt-1`}>JPG, PNG, MP4, MOV — max 10MB</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        {metaMediaType === 'video' ? (
+                          <video src={metaImageUrl} controls className="w-full max-h-48 rounded-lg border" />
+                        ) : (
+                          <img src={metaImageUrl} alt="Ad creative" className="w-full max-h-48 object-cover rounded-lg border" />
+                        )}
+                        <button
+                          onClick={() => { setMetaImageUrl(''); setMetaMediaType('image'); }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
                       </div>
                     )}
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsUploading(true);
+                        try {
+                          const urls = await uploadToCloudinary([file], 'jpsrealtor/campaigns/ads');
+                          if (urls[0]) {
+                            setMetaImageUrl(urls[0]);
+                            setMetaMediaType(file.type.startsWith('video/') ? 'video' : 'image');
+                          }
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                        } finally {
+                          setIsUploading(false);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }
+                      }}
+                    />
                   </div>
 
                   {/* Primary Text */}
