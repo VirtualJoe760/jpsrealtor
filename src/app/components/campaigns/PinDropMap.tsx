@@ -31,10 +31,12 @@ interface PinDropMapProps {
  */
 function MapContent({
   onLocationChange,
+  radiusMiles,
   radiusMilesRef,
   isLight,
 }: {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
+  radiusMiles: number;
   radiusMilesRef: React.MutableRefObject<number>;
   isLight: boolean;
 }) {
@@ -94,6 +96,13 @@ function MapContent({
     },
   });
 
+  // Update circle radius when slider changes
+  useEffect(() => {
+    if (circleRef.current) {
+      circleRef.current.setRadius(radiusMiles * 1609.34);
+    }
+  }, [radiusMiles]);
+
   // Expose placePin so parent can call it (for search results)
   useEffect(() => {
     (map as any)._pinDropPlacePin = placePin;
@@ -110,23 +119,6 @@ function MapContent({
   return null;
 }
 
-/**
- * Updates circle radius without touching the marker or causing remounts.
- */
-function RadiusUpdater({ radiusMiles }: { radiusMiles: number }) {
-  const map = useMap();
-
-  useEffect(() => {
-    // Find our circle layer and update its radius
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Circle) {
-        layer.setRadius(radiusMiles * 1609.34);
-      }
-    });
-  }, [radiusMiles, map]);
-
-  return null;
-}
 
 interface SearchResult {
   display_name: string;
@@ -295,10 +287,10 @@ function PinDropMapInner({
           />
           <MapContent
             onLocationChange={handleLocationChange}
+            radiusMiles={radiusMiles}
             radiusMilesRef={radiusMilesRef}
             isLight={isLight}
           />
-          <RadiusUpdater radiusMiles={radiusMiles} />
         </MapContainer>
       </div>
 
