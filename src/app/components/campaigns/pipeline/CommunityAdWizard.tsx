@@ -54,6 +54,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [communityPageVariant, setCommunityPageVariant] = useState<'buy' | 'sell' | 'community'>('buy');
   // Other page types
   const [landingPages, setLandingPages] = useState<CommunityPage[]>([]);
   const [blogPosts, setBlogPosts] = useState<CommunityPage[]>([]);
@@ -445,29 +446,65 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                         </button>
                       ))
                     ) : (
-                      /* Level 4: Subdivisions (lazy-loaded) */
-                      loadingSubs ? (
-                        <p className={`text-sm ${textSecondary} text-center py-4`}>Loading subdivisions...</p>
-                      ) : subdivisions.length === 0 ? (
-                        <p className={`text-sm ${textSecondary} text-center py-4`}>No subdivisions found in {currentCity?.name}</p>
-                      ) : (
-                        subdivisions.map((sub: any) => (
-                          <button key={sub.slug}
-                            onClick={() => setSelectedPage({
-                              name: sub.name,
-                              city: currentCity.name,
-                              slug: sub.slug,
-                              url: `/neighborhoods/${currentCity.slug}/${sub.slug}/buy`,
-                            })}
-                            className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                              selectedPage?.slug === sub.slug
-                                ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
-                                : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
-                            }`}>
-                            <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
-                          </button>
-                        ))
-                      )
+                      /* Level 4: Page variant toggle + Subdivisions */
+                      <>
+                        {/* Buy / Sell / Community toggle */}
+                        <div className="flex gap-2 mb-3">
+                          {([
+                            { id: 'buy' as const, label: 'Buy Page' },
+                            { id: 'sell' as const, label: 'Sell Page' },
+                            { id: 'community' as const, label: 'Community Page' },
+                          ]).map((v) => (
+                            <button key={v.id}
+                              onClick={() => {
+                                setCommunityPageVariant(v.id);
+                                if (selectedPage && currentCity) {
+                                  setSelectedPage({
+                                    ...selectedPage,
+                                    url: v.id === 'community'
+                                      ? `/neighborhoods/${currentCity.slug}/${selectedPage.slug}`
+                                      : `/neighborhoods/${currentCity.slug}/${selectedPage.slug}/${v.id}`,
+                                  });
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                communityPageVariant === v.id
+                                  ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
+                                  : isLight ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                              }`}
+                            >
+                              {v.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Subdivision list */}
+                        {loadingSubs ? (
+                          <p className={`text-sm ${textSecondary} text-center py-4`}>Loading subdivisions...</p>
+                        ) : subdivisions.length === 0 ? (
+                          <p className={`text-sm ${textSecondary} text-center py-4`}>No subdivisions found in {currentCity?.name}</p>
+                        ) : (
+                          subdivisions.map((sub: any) => (
+                            <button key={sub.slug}
+                              onClick={() => setSelectedPage({
+                                name: sub.name,
+                                city: currentCity.name,
+                                slug: sub.slug,
+                                url: communityPageVariant === 'community'
+                                  ? `/neighborhoods/${currentCity.slug}/${sub.slug}`
+                                  : `/neighborhoods/${currentCity.slug}/${sub.slug}/${communityPageVariant}`,
+                              })}
+                              className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                                selectedPage?.slug === sub.slug
+                                  ? isLight ? 'border-purple-500 bg-purple-50' : 'border-indigo-500 bg-indigo-900/30'
+                                  : isLight ? 'border-gray-200 hover:border-gray-300 bg-white' : 'border-gray-700 hover:border-gray-600 bg-gray-800'
+                              }`}>
+                              <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
+                            </button>
+                          ))
+                        )}
+                      </>
+                    )
                     )}
                   </div>
                 </div>
