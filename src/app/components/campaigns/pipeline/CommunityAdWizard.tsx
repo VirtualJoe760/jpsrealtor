@@ -67,7 +67,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [metaAudienceType, setMetaAudienceType] = useState<'contacts' | 'visitors'>('visitors');
   const [geoCenter, setGeoCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [geoAddress, setGeoAddress] = useState('');
-  const [radiusMiles, setRadiusMiles] = useState(10);
+  const [radiusMiles, setRadiusMiles] = useState(5);
 
   // --- Step 3: Configure ---
   // Google PPC
@@ -625,12 +625,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   Radius: <span className={`font-semibold ${textPrimary}`}>{radiusMiles} miles</span>
                 </label>
                 <input
-                  type="range" min="5" max="50" value={radiusMiles}
+                  type="range" min="1" max="50" value={radiusMiles}
                   onChange={(e) => setRadiusMiles(parseInt(e.target.value))}
                   className="w-full"
                 />
                 <div className={`flex justify-between text-xs ${textSecondary}`}>
-                  <span>5 mi</span><span>25 mi</span><span>50 mi</span>
+                  <span>1 mi</span><span>25 mi</span><span>50 mi</span>
                 </div>
               </div>
 
