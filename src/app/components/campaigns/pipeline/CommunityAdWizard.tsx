@@ -276,41 +276,73 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://jpsrealtor.com${selectedPage.url}` : '');
   const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
 
+  const buildPayload = () => ({
+    pageUrl,
+    pageName: selectedPage?.name || 'Custom',
+    google: enableGoogle ? {
+      keywords,
+      headlines: googleHeadlines.filter(Boolean),
+      descriptions: googleDescriptions.filter(Boolean),
+      budget: googleBudget,
+      geoTargeting: geoCenter ? { type: 'radius', center: geoCenter, radiusMiles } : undefined,
+    } : undefined,
+    meta: enableMeta ? {
+      audienceType: metaAudienceType,
+      imageUrl: metaImageUrl,
+      primaryText: metaPrimaryText,
+      headline: metaHeadline,
+      placements: metaPlacements,
+      budget: metaBudget,
+    } : undefined,
+  });
+
+  const handleSaveDraft = async () => {
+    setIsLaunching(true);
+    setLaunchResult(null);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/save-ads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLaunchResult({ success: true, message: 'Ad configuration saved as draft. You can come back to edit or launch later.' });
+        if (!completedSteps.includes('launch')) setCompletedSteps([...completedSteps, 'launch']);
+        onRefresh?.();
+      } else {
+        setLaunchResult({ success: false, message: data.error || 'Failed to save' });
+      }
+    } catch {
+      setLaunchResult({ success: false, message: 'Network error — please try again' });
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+
   const handleLaunch = async () => {
     setIsLaunching(true);
     setLaunchResult(null);
     try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/launch-ads`, {
+      // Save first, then attempt launch
+      const saveRes = await fetch(`/api/campaigns/${campaign.id}/save-ads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pageUrl,
-          pageName: selectedPage?.name || 'Custom',
-          google: enableGoogle ? {
-            keywords,
-            headlines: googleHeadlines.filter(Boolean),
-            descriptions: googleDescriptions.filter(Boolean),
-            budget: googleBudget,
-            geoTargeting: geoCenter ? { type: 'radius', center: geoCenter, radiusMiles } : undefined,
-          } : undefined,
-          meta: enableMeta ? {
-            audienceType: metaAudienceType,
-            imageUrl: metaImageUrl,
-            primaryText: metaPrimaryText,
-            headline: metaHeadline,
-            placements: metaPlacements,
-            budget: metaBudget,
-          } : undefined,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setLaunchResult({ success: true, message: 'Campaign launched successfully!' });
-        if (!completedSteps.includes('launch')) setCompletedSteps([...completedSteps, 'launch']);
-        onRefresh?.();
-      } else {
-        setLaunchResult({ success: false, message: data.error || 'Failed to launch' });
+      if (!saveRes.ok) {
+        const saveData = await saveRes.json();
+        setLaunchResult({ success: false, message: saveData.error || 'Failed to save configuration' });
+        return;
       }
+
+      // TODO: Wire to Google Ads API + Meta Marketing API when credentials are configured
+      setLaunchResult({
+        success: true,
+        message: 'Configuration saved! Google Ads and Meta API integration coming soon — for now your ad setup is saved and ready to launch when APIs are connected.',
+      });
+      if (!completedSteps.includes('launch')) setCompletedSteps([...completedSteps, 'launch']);
+      onRefresh?.();
     } catch {
       setLaunchResult({ success: false, message: 'Network error — please try again' });
     } finally {
@@ -957,22 +989,33 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               )}
 
               {!launchResult?.success && (
-                <button
-                  onClick={handleLaunch}
-                  disabled={isLaunching || (!enableGoogle && !enableMeta)}
-                  className={`w-full py-4 rounded-lg font-semibold text-lg text-white transition-colors ${
-                    isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {isLaunching ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                      Launching...
-                    </span>
-                  ) : (
-                    `Launch Campaign — $${totalBudget}/day`
-                  )}
-                </button>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={isLaunching || (!enableGoogle && !enableMeta)}
+                    className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                      isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-900' : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isLaunching ? 'Saving...' : 'Save as Draft'}
+                  </button>
+                  <button
+                    onClick={handleLaunch}
+                    disabled={isLaunching || (!enableGoogle && !enableMeta)}
+                    className={`w-full py-4 rounded-lg font-semibold text-lg text-white transition-colors ${
+                      isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isLaunching ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                        Saving & Launching...
+                      </span>
+                    ) : (
+                      `Launch Campaign — $${totalBudget}/day`
+                    )}
+                  </button>
+                </div>
               )}
             </div>
 
