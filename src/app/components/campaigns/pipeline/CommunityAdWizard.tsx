@@ -324,24 +324,28 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     setIsLaunching(true);
     setLaunchResult(null);
     try {
-      // Save first, then attempt launch
-      const saveRes = await fetch(`/api/campaigns/${campaign.id}/save-ads`, {
+      // Save config first
+      await fetch(`/api/campaigns/${campaign.id}/save-ads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload()),
       });
-      if (!saveRes.ok) {
-        const saveData = await saveRes.json();
-        setLaunchResult({ success: false, message: saveData.error || 'Failed to save configuration' });
-        return;
-      }
 
-      // TODO: Wire to Google Ads API + Meta Marketing API when credentials are configured
-      setLaunchResult({
-        success: true,
-        message: 'Configuration saved! Google Ads and Meta API integration coming soon — for now your ad setup is saved and ready to launch when APIs are connected.',
+      // Launch via Google Ads API + Meta Marketing API
+      const res = await fetch(`/api/campaigns/${campaign.id}/launch-ads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
       });
-      if (!completedSteps.includes('launch')) setCompletedSteps([...completedSteps, 'launch']);
+      const data = await res.json();
+
+      setLaunchResult({
+        success: data.success,
+        message: data.message || (data.success ? 'Campaigns launched!' : 'Launch failed'),
+      });
+      if (data.success && !completedSteps.includes('launch')) {
+        setCompletedSteps([...completedSteps, 'launch']);
+      }
       onRefresh?.();
     } catch {
       setLaunchResult({ success: false, message: 'Network error — please try again' });
