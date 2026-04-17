@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import Campaign from '@/models/Campaign';
 import AdCampaignRecord from '@/models/AdCampaignRecord';
+import User from '@/models/User';
 import {
   createFullSearchCampaign,
   isGoogleAdsConfigured,
@@ -41,6 +42,11 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Campaign not found' }, { status: 404 });
     }
 
+    // Load agent's ad account credentials from their profile
+    const user = await User.findOne({ email: session.user.email }, { adAccounts: 1 }).lean();
+    const userGoogleAds = (user as any)?.adAccounts?.google;
+    const userMetaAds = (user as any)?.adAccounts?.meta;
+
     const results: {
       google?: { success: boolean; campaignResourceName?: string; error?: string };
       meta?: { success: boolean; campaignId?: string; error?: string };
@@ -48,10 +54,11 @@ export async function POST(
 
     // ------- Google Ads -------
     if (google) {
-      if (!isGoogleAdsConfigured()) {
+      const googleConfigured = isGoogleAdsConfigured() || (userGoogleAds?.refreshToken && userGoogleAds?.customerId);
+      if (!googleConfigured) {
         results.google = {
           success: false,
-          error: 'Google Ads API not configured. Add GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and GOOGLE_ADS_REFRESH_TOKEN to your environment.',
+          error: 'Google Ads not connected. Go to Settings → Ad Accounts to connect your Google Ads account.',
         };
       } else {
         try {
@@ -109,10 +116,11 @@ export async function POST(
 
     // ------- Meta Ads -------
     if (meta) {
-      if (!isMetaAdsConfigured()) {
+      const metaConfigured = isMetaAdsConfigured() || (userMetaAds?.accessToken && userMetaAds?.adAccountId);
+      if (!metaConfigured) {
         results.meta = {
           success: false,
-          error: 'Meta Ads API not configured. Add META_AD_ACCOUNT_ID and META_ADS_ACCESS_TOKEN to your environment.',
+          error: 'Meta Ads not connected. Go to Settings → Ad Accounts to connect your Meta Ads account.',
         };
       } else {
         try {

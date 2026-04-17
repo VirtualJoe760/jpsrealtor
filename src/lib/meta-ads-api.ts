@@ -21,12 +21,16 @@ interface MetaAdsConfig {
   accessToken: string;
 }
 
-function getConfig(): MetaAdsConfig {
-  const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
-  const accessToken = process.env.META_ADS_ACCESS_TOKEN || process.env.META_CAPI_ACCESS_TOKEN || '';
+/**
+ * Get config from user profile (per-agent) or fall back to env vars (single-tenant).
+ * Pass userAdAccounts from the User model's adAccounts.meta field.
+ */
+function getConfig(userAdAccounts?: any): MetaAdsConfig {
+  const adAccountId = userAdAccounts?.adAccountId || process.env.META_AD_ACCOUNT_ID || '';
+  const accessToken = userAdAccounts?.accessToken || process.env.META_ADS_ACCESS_TOKEN || process.env.META_CAPI_ACCESS_TOKEN || '';
 
-  if (!adAccountId) throw new Error('META_AD_ACCOUNT_ID is not configured');
-  if (!accessToken) throw new Error('META_ADS_ACCESS_TOKEN is not configured');
+  if (!adAccountId) throw new Error('META_AD_ACCOUNT_ID is not configured. Connect your Meta Ads account in Settings.');
+  if (!accessToken) throw new Error('META_ADS_ACCESS_TOKEN is not configured. Connect your Meta Ads account in Settings.');
 
   return { adAccountId, accessToken };
 }

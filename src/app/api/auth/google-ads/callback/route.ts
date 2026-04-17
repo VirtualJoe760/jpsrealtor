@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongoose';
+import User from '@/models/User';
 
 /**
  * GET /api/auth/google-ads/callback
  *
- * OAuth callback from Google. Exchanges auth code for refresh token.
- * In production, store the refresh token securely (DB or env).
- * For now, displays it so it can be added to .env.local.
+ * OAuth callback from Google. Exchanges auth code for refresh token
+ * and saves it to the agent's user profile in MongoDB.
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user?.email) {
+    return NextResponse.redirect(new URL('/agent/campaigns?error=unauthorized', request.url));
   }
 
   const { searchParams } = new URL(request.url);
@@ -20,11 +21,11 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
 
   if (error) {
-    return NextResponse.json({ error: `OAuth error: ${error}` }, { status: 400 });
+    return NextResponse.redirect(new URL(`/agent/campaigns?error=${error}`, request.url));
   }
 
   if (!code) {
-    return NextResponse.json({ error: 'No authorization code received' }, { status: 400 });
+    return NextResponse.redirect(new URL('/agent/campaigns?error=no_code', request.url));
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/google-ads/callback`;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.json({ error: 'Google OAuth not configured' }, { status: 500 });
+    return NextResponse.redirect(new URL('/agent/campaigns?error=not_configured', request.url));
   }
 
   try {
@@ -51,33 +52,33 @@ export async function GET(request: NextRequest) {
 
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
-      return NextResponse.json({ error: `Token exchange failed: ${errBody}` }, { status: 400 });
+      console.error('[google-ads callback] Token exchange failed:', errBody);
+      return NextResponse.redirect(new URL('/agent/campaigns?error=token_exchange_failed', request.url));
     }
 
     const tokens = await tokenRes.json();
 
-    // In production, store refresh_token in DB associated with the user
-    // For now, show it so it can be added to env
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head><title>Google Ads Connected</title></head>
-      <body style="font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px;">
-        <h1>Google Ads Connected!</h1>
-        <p>Add this refresh token to your <code>.env.local</code> file:</p>
-        <pre style="background: #f5f5f5; padding: 16px; border-radius: 8px; word-break: break-all;">GOOGLE_ADS_REFRESH_TOKEN=${tokens.refresh_token || 'ERROR: No refresh token returned. Try revoking access and reconnecting.'}</pre>
-        <p>You also need:</p>
-        <pre style="background: #f5f5f5; padding: 16px; border-radius: 8px;">GOOGLE_ADS_DEVELOPER_TOKEN=your_developer_token
-GOOGLE_ADS_CUSTOMER_ID=your_customer_id (no dashes)</pre>
-        <p><a href="/agent/campaigns">← Back to Campaigns</a></p>
-      </body>
-      </html>
-    `;
+    if (!tokens.refresh_token) {
+      return NextResponse.redirect(new URL('/agent/campaigns?error=no_refresh_token', request.url));
+    }
 
-    return new NextResponse(html, {
-      headers: { 'Content-Type': 'text/html' },
-    });
+    // Save refresh token to user profile
+    await dbConnect();
+    await User.findOneAndUpdate(
+      { email: session.user.email },
+      {
+        $set: {
+          'adAccounts.google.refreshToken': tokens.refresh_token,
+          'adAccounts.google.connectedAt': new Date(),
+          'adAccounts.google.status': 'connected',
+        },
+      }
+    );
+
+    // Redirect back to campaigns with success
+    return NextResponse.redirect(new URL('/agent/campaigns?google_ads=connected', request.url));
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[google-ads callback] Error:', err);
+    return NextResponse.redirect(new URL('/agent/campaigns?error=callback_failed', request.url));
   }
 }

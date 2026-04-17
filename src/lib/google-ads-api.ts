@@ -23,11 +23,15 @@ interface GoogleAdsConfig {
   clientSecret: string;
 }
 
-function getConfig(): GoogleAdsConfig {
+/**
+ * Get config from user profile (per-agent) or fall back to env vars (single-tenant).
+ * Pass userAdAccounts from the User model's adAccounts.google field.
+ */
+function getConfig(userAdAccounts?: any): GoogleAdsConfig {
   const config = {
-    developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
-    customerId: process.env.GOOGLE_ADS_CUSTOMER_ID || '',
-    refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
+    developerToken: userAdAccounts?.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+    customerId: userAdAccounts?.customerId || process.env.GOOGLE_ADS_CUSTOMER_ID || '',
+    refreshToken: userAdAccounts?.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   };
