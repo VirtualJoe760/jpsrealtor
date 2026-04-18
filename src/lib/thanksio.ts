@@ -1,15 +1,17 @@
 /**
  * Thanks.io API Client
  *
- * API Docs: https://api.thanks.io/api/v2/
- * Pricing: $0.99 (4x6), $1.59 (6x9), $1.99 (letter), $2.79 (notecard) — includes postage
+ * Docs: https://docs.thanks.io
+ * Base URL: https://api.thanks.io/api/v2
+ * Auth: Bearer token
+ * Rate Limit: 60 req/min
  */
 
 const THANKSIO_BASE_URL = 'https://api.thanks.io/api/v2';
 
 function getApiKey(): string {
   const key = process.env.THANKSIO_API_KEY;
-  if (!key) throw new Error('THANKSIO_API_KEY is not configured');
+  if (!key) throw new Error('THANKSIO_API_KEY is not configured. Get your API key at dashboard.thanks.io/profile/api');
   return key;
 }
 
@@ -47,99 +49,96 @@ async function thanksioFetch(
 export type MailType = 'postcard_4x6' | 'postcard_6x9' | 'postcard_6x11' | 'letter' | 'notecard';
 
 export interface Recipient {
-  name: string;
+  name?: string;
+  company?: string;
   address: string;
-  address2?: string;
-  city: string;
-  state: string;
-  zip: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
   country?: string;
-}
-
-export interface SendPostcardParams {
-  front_image_url: string;
-  back_image_url?: string;
-  size?: '4x6' | '6x9' | '6x11';
-  message?: string;
-  handwriting_style?: number;
-  recipients: Recipient[];
-  return_name?: string;
-  return_address?: string;
-  return_city?: string;
-  return_state?: string;
-  return_zip?: string;
+  email?: string;
+  phone?: string;
   custom1?: string;
   custom2?: string;
   custom3?: string;
   custom4?: string;
-  qr_code_url?: string;
-  mailing_list_id?: string;
-  test?: boolean;
 }
 
-export interface SendLetterParams {
-  file_url: string;
-  recipients: Recipient[];
-  return_name?: string;
-  return_address?: string;
-  return_city?: string;
-  return_state?: string;
-  return_zip?: string;
-  test?: boolean;
+export interface RadiusSearch {
+  address: string;
+  postal_code: string;
+  record_count: number;
+  record_types?: 'all' | 'likelytomove' | 'likelytorefi' | 'absenteeowner' | 'highnetworth';
+  include_condos?: boolean;
+  append_data?: boolean;
+  use_property_owner?: boolean;
+  include_search_address?: boolean;
+  preview?: boolean;
 }
 
-export interface SendNotecardParams {
-  message: string;
-  handwriting_style: number;
+export interface SendMailerBase {
+  // Creative
   front_image_url?: string;
-  recipients: Recipient[];
+  image_template?: number;
+  message?: string;
+  message_template?: number;
+  custom_background_image?: string;
+  use_custom_background?: boolean;
+
+  // Handwriting
+  handwriting_style?: number;
+  handwriting_color?: string;
+  handwriting_realism?: boolean;
+
+  // QR code
+  qrcode_url?: string;
+
+  // Targeting (one required)
+  recipients?: Recipient[];
+  mailing_lists?: number[];
+  radius_search?: RadiusSearch;
+
+  // Return address
   return_name?: string;
   return_address?: string;
+  return_address2?: string;
   return_city?: string;
   return_state?: string;
-  return_zip?: string;
-  qr_code_url?: string;
-  test?: boolean;
+  return_postal_code?: string;
+
+  // Options
+  send_standard_mail?: boolean;
+  preview?: boolean;
+  sub_account?: number;
+  email_additional?: string;
 }
 
-export interface RadiusSendParams {
-  front_image_url: string;
-  back_image_url?: string;
+export interface SendPostcardParams extends SendMailerBase {
   size?: '4x6' | '6x9' | '6x11';
-  message?: string;
-  handwriting_style?: number;
-  latitude: number;
-  longitude: number;
-  radius: number; // in miles
-  return_name?: string;
-  return_address?: string;
-  return_city?: string;
-  return_state?: string;
-  return_zip?: string;
-  qr_code_url?: string;
-  test?: boolean;
+}
+
+export interface SendNotecardParams extends SendMailerBase {
+  message: string;
+}
+
+export interface SendLetterParams extends SendMailerBase {
+  additional_pages?: string;
+  pdf_only_url?: string;
 }
 
 export interface HandwritingStyle {
-  id: number;
+  handwriting_style_id: number;
   name: string;
-  preview_url?: string;
-}
-
-export interface OrderStatus {
-  id: string;
-  status: string;
-  tracking_number?: string;
-  created_at: string;
-  updated_at: string;
+  sample: string;
+  type: string;
 }
 
 export interface ThanksioOrder {
-  id: string;
+  id: string | number;
   status: string;
-  recipients_count: number;
-  cost: number;
-  created_at: string;
+  recipients_count?: number;
+  cost?: number;
+  created_at?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,45 +153,75 @@ export const MAIL_PRICING: Record<MailType, number> = {
   notecard: 2.79,
 };
 
-export function estimateCost(mailType: MailType, recipientCount: number): number {
-  return MAIL_PRICING[mailType] * recipientCount;
+export const RADIUS_SEARCH_COST_PER_RECORD = 0.05;
+export const DATA_APPEND_COST_PER_RECORD = 0.20;
+
+export function estimateCost(
+  mailType: MailType,
+  recipientCount: number,
+  options?: { radiusSearch?: boolean; appendData?: boolean; standardMail?: boolean }
+): number {
+  let perPiece = MAIL_PRICING[mailType];
+  if (options?.standardMail) perPiece -= 0.15;
+
+  let total = perPiece * recipientCount;
+  if (options?.radiusSearch) total += RADIUS_SEARCH_COST_PER_RECORD * recipientCount;
+  if (options?.appendData) total += DATA_APPEND_COST_PER_RECORD * recipientCount;
+
+  return Math.round(total * 100) / 100;
 }
 
 // ---------------------------------------------------------------------------
 // Send Functions
 // ---------------------------------------------------------------------------
 
-/**
- * Send postcards to a list of recipients.
- */
-export async function sendPostcard(params: SendPostcardParams): Promise<ThanksioOrder> {
-  const body: any = {
-    front_image_url: params.front_image_url,
-    size: params.size || '4x6',
-    recipients: params.recipients,
-  };
+function buildSendBody(params: SendMailerBase): any {
+  const body: any = {};
 
-  if (params.back_image_url) body.back_image_url = params.back_image_url;
+  // Creative
+  if (params.front_image_url) body.front_image_url = params.front_image_url;
+  if (params.image_template) body.image_template = params.image_template;
   if (params.message) body.message = params.message;
+  if (params.message_template) body.message_template = params.message_template;
+  if (params.custom_background_image) body.custom_background_image = params.custom_background_image;
+  if (params.use_custom_background) body.use_custom_background = true;
+
+  // Handwriting
   if (params.handwriting_style) body.handwriting_style = params.handwriting_style;
-  if (params.qr_code_url) body.qr_code_url = params.qr_code_url;
-  if (params.mailing_list_id) body.mailing_list_id = params.mailing_list_id;
+  if (params.handwriting_color) body.handwriting_color = params.handwriting_color;
+  if (params.handwriting_realism) body.handwriting_realism = true;
+
+  // QR
+  if (params.qrcode_url) body.qrcode_url = params.qrcode_url;
+
+  // Targeting
+  if (params.recipients) body.recipients = params.recipients;
+  if (params.mailing_lists) body.mailing_lists = params.mailing_lists;
+  if (params.radius_search) body.radius_search = params.radius_search;
 
   // Return address
   if (params.return_name) body.return_name = params.return_name;
   if (params.return_address) body.return_address = params.return_address;
+  if (params.return_address2) body.return_address2 = params.return_address2;
   if (params.return_city) body.return_city = params.return_city;
   if (params.return_state) body.return_state = params.return_state;
-  if (params.return_zip) body.return_zip = params.return_zip;
+  if (params.return_postal_code) body.return_postal_code = params.return_postal_code;
 
-  // Custom merge fields
-  if (params.custom1) body.custom1 = params.custom1;
-  if (params.custom2) body.custom2 = params.custom2;
-  if (params.custom3) body.custom3 = params.custom3;
-  if (params.custom4) body.custom4 = params.custom4;
+  // Options
+  if (params.send_standard_mail) body.send_standard_mail = true;
+  if (params.preview) body.preview = true;
+  if (params.sub_account) body.sub_account = params.sub_account;
+  if (params.email_additional) body.email_additional = params.email_additional;
 
-  // Test mode
-  if (isTestMode() || params.test) body.test = true;
+  return body;
+}
+
+/**
+ * Send postcards (4x6, 6x9, or 6x11).
+ */
+export async function sendPostcard(params: SendPostcardParams): Promise<ThanksioOrder> {
+  const body = buildSendBody(params);
+  body.size = params.size || '4x6';
 
   return thanksioFetch('/send/postcard', {
     method: 'POST',
@@ -201,48 +230,10 @@ export async function sendPostcard(params: SendPostcardParams): Promise<Thanksio
 }
 
 /**
- * Send letters to a list of recipients.
- */
-export async function sendLetter(params: SendLetterParams): Promise<ThanksioOrder> {
-  const body: any = {
-    file_url: params.file_url,
-    recipients: params.recipients,
-  };
-
-  if (params.return_name) body.return_name = params.return_name;
-  if (params.return_address) body.return_address = params.return_address;
-  if (params.return_city) body.return_city = params.return_city;
-  if (params.return_state) body.return_state = params.return_state;
-  if (params.return_zip) body.return_zip = params.return_zip;
-
-  if (isTestMode() || params.test) body.test = true;
-
-  return thanksioFetch('/send/letter', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-}
-
-/**
- * Send handwritten notecards to a list of recipients.
+ * Send folded 4.25x5.5 notecard in envelope.
  */
 export async function sendNotecard(params: SendNotecardParams): Promise<ThanksioOrder> {
-  const body: any = {
-    message: params.message,
-    handwriting_style: params.handwriting_style,
-    recipients: params.recipients,
-  };
-
-  if (params.front_image_url) body.front_image_url = params.front_image_url;
-  if (params.qr_code_url) body.qr_code_url = params.qr_code_url;
-
-  if (params.return_name) body.return_name = params.return_name;
-  if (params.return_address) body.return_address = params.return_address;
-  if (params.return_city) body.return_city = params.return_city;
-  if (params.return_state) body.return_state = params.return_state;
-  if (params.return_zip) body.return_zip = params.return_zip;
-
-  if (isTestMode() || params.test) body.test = true;
+  const body = buildSendBody(params);
 
   return thanksioFetch('/send/notecard', {
     method: 'POST',
@@ -251,46 +242,72 @@ export async function sendNotecard(params: SendNotecardParams): Promise<Thanksio
 }
 
 /**
- * Send postcards to all addresses within a radius of a point.
- * No contact list needed — thanks.io handles address resolution.
+ * Send windowed envelope letter.
  */
-export async function sendRadiusPostcard(params: RadiusSendParams): Promise<ThanksioOrder> {
-  const body: any = {
-    front_image_url: params.front_image_url,
-    size: params.size || '4x6',
-    latitude: params.latitude,
-    longitude: params.longitude,
-    radius: params.radius,
-  };
+export async function sendLetter(params: SendLetterParams): Promise<ThanksioOrder> {
+  const body = buildSendBody(params);
+  if (params.additional_pages) body.additional_pages = params.additional_pages;
+  if (params.pdf_only_url) body.pdf_only_url = params.pdf_only_url;
 
-  if (params.back_image_url) body.back_image_url = params.back_image_url;
-  if (params.message) body.message = params.message;
-  if (params.handwriting_style) body.handwriting_style = params.handwriting_style;
-  if (params.qr_code_url) body.qr_code_url = params.qr_code_url;
+  return thanksioFetch('/send/letter', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
 
-  if (params.return_name) body.return_name = params.return_name;
-  if (params.return_address) body.return_address = params.return_address;
-  if (params.return_city) body.return_city = params.return_city;
-  if (params.return_state) body.return_state = params.return_state;
-  if (params.return_zip) body.return_zip = params.return_zip;
+/**
+ * Send windowless envelope letter.
+ */
+export async function sendWindowlessLetter(params: SendLetterParams): Promise<ThanksioOrder> {
+  const body = buildSendBody(params);
+  if (params.additional_pages) body.additional_pages = params.additional_pages;
+  if (params.pdf_only_url) body.pdf_only_url = params.pdf_only_url;
 
-  if (isTestMode() || params.test) body.test = true;
-
-  return thanksioFetch('/send/radius', {
+  return thanksioFetch('/send/windowlessletter', {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
 // ---------------------------------------------------------------------------
-// Handwriting Styles
+// Preview
 // ---------------------------------------------------------------------------
 
 /**
- * List available handwriting styles for notecards and postcards.
+ * Get a PNG preview of a mail piece without sending it.
+ * Pass preview: true to any send function, or use this helper.
  */
-export async function listHandwritingStyles(): Promise<HandwritingStyle[]> {
+export async function previewPostcard(params: SendPostcardParams): Promise<any> {
+  return sendPostcard({ ...params, preview: true });
+}
+
+export async function previewNotecard(params: SendNotecardParams): Promise<any> {
+  return sendNotecard({ ...params, preview: true });
+}
+
+// ---------------------------------------------------------------------------
+// Handwriting Styles & Templates
+// ---------------------------------------------------------------------------
+
+/**
+ * List available handwriting styles.
+ */
+export async function listHandwritingStyles(): Promise<{ data: HandwritingStyle[] }> {
   return thanksioFetch('/handwriting-styles');
+}
+
+/**
+ * List available image templates.
+ */
+export async function listImageTemplates(): Promise<any> {
+  return thanksioFetch('/image-templates/');
+}
+
+/**
+ * List available message templates.
+ */
+export async function listMessageTemplates(): Promise<any> {
+  return thanksioFetch('/message-templates/');
 }
 
 // ---------------------------------------------------------------------------
@@ -298,25 +315,25 @@ export async function listHandwritingStyles(): Promise<HandwritingStyle[]> {
 // ---------------------------------------------------------------------------
 
 /**
- * Get the status of a specific order.
- */
-export async function getOrderStatus(orderId: string): Promise<OrderStatus> {
-  return thanksioFetch(`/orders/${orderId}`);
-}
-
-/**
  * List recent orders.
  */
-export async function listOrders(page: number = 1): Promise<{ data: ThanksioOrder[]; total: number }> {
-  return thanksioFetch(`/orders?page=${page}`);
+export async function listOrders(): Promise<any> {
+  return thanksioFetch('/orders/list');
 }
 
 /**
- * Cancel an order (only if not yet printed).
+ * Track delivery status of an order.
  */
-export async function cancelOrder(orderId: string): Promise<{ success: boolean }> {
+export async function trackOrder(orderId: string): Promise<any> {
+  return thanksioFetch(`/orders/${orderId}/track`);
+}
+
+/**
+ * Cancel an order (only if status is "Reviewing"). Refunds credits.
+ */
+export async function cancelOrder(orderId: string): Promise<any> {
   return thanksioFetch(`/orders/${orderId}/cancel`, {
-    method: 'POST',
+    method: 'PUT',
   });
 }
 
@@ -325,60 +342,118 @@ export async function cancelOrder(orderId: string): Promise<{ success: boolean }
 // ---------------------------------------------------------------------------
 
 /**
- * Create a mailing list for drip campaigns.
+ * List all mailing lists (paginated).
  */
-export async function createMailingList(
-  name: string,
-  recipients: Recipient[]
-): Promise<{ id: string; name: string; recipients_count: number }> {
-  return thanksioFetch('/mailing-lists', {
+export async function listMailingLists(): Promise<any> {
+  return thanksioFetch('/mailing-lists/');
+}
+
+/**
+ * Create a new mailing list.
+ */
+export async function createMailingList(name: string): Promise<any> {
+  return thanksioFetch('/mailing-lists/', {
     method: 'POST',
-    body: JSON.stringify({ name, recipients }),
+    body: JSON.stringify({ name }),
   });
 }
 
 /**
- * Add recipients to an existing mailing list.
+ * Get mailing list details.
  */
-export async function addToMailingList(
-  listId: string,
-  recipients: Recipient[]
-): Promise<{ recipients_added: number }> {
-  return thanksioFetch(`/mailing-lists/${listId}/recipients`, {
+export async function getMailingList(listId: string): Promise<any> {
+  return thanksioFetch(`/mailing-lists/${listId}`);
+}
+
+/**
+ * Delete a mailing list.
+ */
+export async function deleteMailingList(listId: string): Promise<any> {
+  return thanksioFetch(`/mailing-lists/${listId}`, { method: 'DELETE' });
+}
+
+/**
+ * List recipients in a mailing list.
+ */
+export async function listMailingListRecipients(listId: string): Promise<any> {
+  return thanksioFetch(`/mailing-lists-utils/recipients/${listId}`);
+}
+
+/**
+ * Purchase a radius search mailing list.
+ * Cost: $0.05 per record, up to 10,000 records.
+ */
+export async function buyRadiusSearch(params: RadiusSearch): Promise<any> {
+  return thanksioFetch('/mailing-lists-utils/buy-radius-search', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Recipients
+// ---------------------------------------------------------------------------
+
+/**
+ * Add a single recipient.
+ */
+export async function createRecipient(recipient: Recipient & { mailing_list_id: number }): Promise<any> {
+  return thanksioFetch('/recipients', {
+    method: 'POST',
+    body: JSON.stringify(recipient),
+  });
+}
+
+/**
+ * Add multiple recipients.
+ */
+export async function createMultipleRecipients(
+  recipients: (Recipient & { mailing_list_id: number })[]
+): Promise<any> {
+  return thanksioFetch('/recipients-utils/create-multiple', {
     method: 'POST',
     body: JSON.stringify({ recipients }),
   });
 }
 
 // ---------------------------------------------------------------------------
-// Webhook Types
+// Webhooks
 // ---------------------------------------------------------------------------
 
-export interface ThanksioWebhookEvent {
-  event: 'order.mailed' | 'order.delivered' | 'order.returned' | 'qr.scanned';
-  order_id: string;
-  recipient_id?: string;
-  data?: {
-    tracking_number?: string;
-    scanned_at?: string;
-    scan_location?: { lat: number; lng: number };
-  };
+export type WebhookEventType =
+  | 'order_item.delivered'
+  | 'order_item.status_update'
+  | 'order.status_update'
+  | 'scans.scan_update';
+
+/**
+ * List configured webhooks.
+ */
+export async function listWebhooks(): Promise<any> {
+  return thanksioFetch('/webhooks');
 }
 
 /**
- * Validate a thanks.io webhook payload.
- * Thanks.io signs webhooks — verify the signature header matches.
+ * Create a webhook.
  */
-export function validateWebhookSignature(
-  payload: string,
-  signature: string
-): boolean {
-  // Thanks.io uses HMAC-SHA256 for webhook signing
-  // The secret is the API key
-  const crypto = require('crypto');
-  const expected = crypto
-    .createHmac('sha256', getApiKey())
-    .update(payload)
-    .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+export async function createWebhook(url: string, event: WebhookEventType): Promise<any> {
+  return thanksioFetch('/webhooks', {
+    method: 'POST',
+    body: JSON.stringify({ url, event }),
+  });
+}
+
+/**
+ * Delete a webhook.
+ */
+export async function deleteWebhook(webhookId: string): Promise<any> {
+  return thanksioFetch(`/webhooks/${webhookId}`, { method: 'DELETE' });
+}
+
+// ---------------------------------------------------------------------------
+// Check if configured
+// ---------------------------------------------------------------------------
+
+export function isThanksioConfigured(): boolean {
+  return !!process.env.THANKSIO_API_KEY;
 }
