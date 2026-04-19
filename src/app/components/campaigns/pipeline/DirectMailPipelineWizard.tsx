@@ -55,11 +55,15 @@ export default function DirectMailPipelineWizard({
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Recipient mode: CRM contacts or radius send
-  const [recipientMode, setRecipientMode] = useState<'contacts' | 'radius'>('contacts');
+  // Recipient targeting — both can be enabled
+  const [useContacts, setUseContacts] = useState(true);
+  const [useRadius, setUseRadius] = useState(false);
   const [radiusCenter, setRadiusCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [radiusAddress, setRadiusAddress] = useState('');
   const [radiusMiles, setRadiusMiles] = useState(5);
+  const [radiusRecordCount, setRadiusRecordCount] = useState(200);
+  const [radiusRecordType, setRadiusRecordType] = useState<string>('all');
+  const [radiusPostalCode, setRadiusPostalCode] = useState('');
 
   const [design, setDesign] = useState<MailDesign>({
     mailType: 'postcard_4x6',
@@ -147,100 +151,148 @@ export default function DirectMailPipelineWizard({
             <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
               <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Choose Recipients</h3>
               <p className={`text-sm ${textSecondary} mb-4`}>
-                Mail to your CRM contacts or send to every address in a radius.
+                Select who receives this mailing. You can use campaign contacts, radius send, or both.
               </p>
 
-              {/* Mode Toggle */}
-              <div className="flex gap-3 mb-6">
-                <button
-                  onClick={() => setRecipientMode('contacts')}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
-                    recipientMode === 'contacts'
-                      ? isLight ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
-                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  CRM Contacts ({contactCount})
-                </button>
-                <button
-                  onClick={() => setRecipientMode('radius')}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
-                    recipientMode === 'radius'
-                      ? isLight ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
-                      : isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Radius Send
-                </button>
-              </div>
-
-              {recipientMode === 'radius' && (
-                <div className="space-y-4">
-                  <p className={`text-sm ${textSecondary}`}>
-                    Drop a pin on the map to mail to every residential address within your radius.
-                    Thanks.io handles address resolution — no contact list needed.
-                  </p>
-
-                  {/* Radius slider */}
-                  <div>
-                    <label className={`block text-sm ${textSecondary} mb-1`}>
-                      Radius: <span className={`font-semibold ${textPrimary}`}>{radiusMiles} miles</span>
-                    </label>
-                    <input
-                      type="range" min="1" max="25" value={radiusMiles}
-                      onChange={(e) => setRadiusMiles(parseInt(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className={`flex justify-between text-xs ${textSecondary}`}>
-                      <span>1 mi</span>
-                      <span>10 mi</span>
-                      <span>25 mi</span>
-                    </div>
+              {/* CRM Contacts Toggle */}
+              <div className="space-y-4">
+                <label className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  useContacts
+                    ? isLight ? 'border-green-500 bg-green-50' : 'border-green-500 bg-green-900/20'
+                    : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
+                }`}>
+                  <input type="checkbox" checked={useContacts} onChange={(e) => setUseContacts(e.target.checked)} className="w-5 h-5 rounded" />
+                  <div className="flex-1">
+                    <p className={`font-medium ${textPrimary}`}>Campaign Contacts ({contactCount})</p>
+                    <p className={`text-sm ${textSecondary}`}>Mail to contacts already in this campaign</p>
                   </div>
+                </label>
 
-                  <PinDropMap
-                    radiusMiles={radiusMiles}
-                    onChange={(loc) => {
-                      setRadiusCenter({ lat: loc.lat, lng: loc.lng });
-                      if (loc.address) setRadiusAddress(loc.address);
-                    }}
-                    height="350px"
-                    searchPlaceholder="Search for a listing address, neighborhood, or city..."
-                  />
-
-                  {radiusAddress && (
-                    <p className={`text-sm ${textSecondary}`}>
-                      Sending to all addresses near: <span className={`font-medium ${textPrimary}`}>{radiusAddress}</span>
-                    </p>
-                  )}
-                </div>
-              )}
+                {/* Radius Send Toggle */}
+                <label className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  useRadius
+                    ? isLight ? 'border-green-500 bg-green-50' : 'border-green-500 bg-green-900/20'
+                    : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
+                }`}>
+                  <input type="checkbox" checked={useRadius} onChange={(e) => setUseRadius(e.target.checked)} className="w-5 h-5 rounded" />
+                  <div className="flex-1">
+                    <p className={`font-medium ${textPrimary}`}>Radius Send</p>
+                    <p className={`text-sm ${textSecondary}`}>Mail to every residential address near a location ($0.05/address lookup)</p>
+                  </div>
+                </label>
+              </div>
             </div>
 
-            {/* Show contacts manager when in contacts mode */}
-            {recipientMode === 'contacts' && (
+            {/* CRM Contacts Section */}
+            {useContacts && (
               <PipelineContactsStep
                 campaign={campaign}
                 contactCount={contactCount}
-                onNext={() => handleNext('contacts')}
+                onNext={() => {}}
                 onBack={undefined}
               />
             )}
 
-            {/* Next button for radius mode */}
-            {recipientMode === 'radius' && (
-              <div className="flex justify-end">
-                <button
-                  onClick={() => handleNext('contacts')}
-                  disabled={!radiusCenter}
-                  className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${
-                    isLight ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  Design Mail Piece →
-                </button>
+            {/* Radius Send Section */}
+            {useRadius && (
+              <div className={`${cardBg} ${cardBorder} rounded-lg p-6 space-y-4`}>
+                <h4 className={`font-semibold ${textPrimary}`}>Radius Send Settings</h4>
+
+                {/* Address + ZIP */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className={`block text-sm ${textSecondary} mb-1`}>Center Address</label>
+                    <input type="text" value={radiusAddress}
+                      onChange={(e) => setRadiusAddress(e.target.value)}
+                      placeholder="123 Main St, Palm Springs"
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>ZIP Code</label>
+                    <input type="text" value={radiusPostalCode}
+                      onChange={(e) => setRadiusPostalCode(e.target.value)}
+                      placeholder="92264"
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Record Count */}
+                <div>
+                  <label className={`block text-sm ${textSecondary} mb-1`}>
+                    Number of addresses: <span className={`font-semibold ${textPrimary}`}>{radiusRecordCount}</span>
+                    <span className={`ml-2 text-xs ${isLight ? 'text-green-600' : 'text-green-400'}`}>
+                      (lookup: ${(radiusRecordCount * 0.05).toFixed(2)})
+                    </span>
+                  </label>
+                  <input type="range" min="50" max="2000" step="50" value={radiusRecordCount}
+                    onChange={(e) => setRadiusRecordCount(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className={`flex justify-between text-xs ${textSecondary}`}>
+                    <span>50</span><span>500</span><span>1,000</span><span>2,000</span>
+                  </div>
+                </div>
+
+                {/* Record Type Filter */}
+                <div>
+                  <label className={`block text-sm ${textSecondary} mb-2`}>Target Audience</label>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { id: 'all', label: 'All Residents' },
+                      { id: 'likelytomove', label: 'Likely to Move' },
+                      { id: 'absenteeowner', label: 'Absentee Owners' },
+                      { id: 'highnetworth', label: 'High Net Worth' },
+                    ]).map((rt) => (
+                      <button key={rt.id}
+                        onClick={() => setRadiusRecordType(rt.id)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          radiusRecordType === rt.id
+                            ? isLight ? 'bg-green-600 text-white' : 'bg-emerald-600 text-white'
+                            : isLight ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }`}
+                      >
+                        {rt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Or use map */}
+                <PinDropMap
+                  radiusMiles={radiusMiles}
+                  onChange={(loc) => {
+                    setRadiusCenter({ lat: loc.lat, lng: loc.lng });
+                    if (loc.address) {
+                      setRadiusAddress(loc.address);
+                      // Try to extract ZIP from address
+                      const zipMatch = loc.address.match(/\b(\d{5})\b/);
+                      if (zipMatch) setRadiusPostalCode(zipMatch[1]);
+                    }
+                  }}
+                  height="250px"
+                  searchPlaceholder="Or right-click the map to set a center point..."
+                />
               </div>
             )}
+
+            {/* Next Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => handleNext('contacts')}
+                disabled={!useContacts && !useRadius}
+                className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${
+                  isLight ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                Design Mail Piece →
+              </button>
+            </div>
           </div>
         )}
 
