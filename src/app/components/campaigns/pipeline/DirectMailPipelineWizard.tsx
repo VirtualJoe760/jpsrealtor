@@ -190,6 +190,7 @@ export default function DirectMailPipelineWizard({
                 contactCount={contactCount}
                 onNext={() => {}}
                 onBack={undefined}
+                hideNextButton
               />
             )}
 
