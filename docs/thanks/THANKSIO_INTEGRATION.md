@@ -476,18 +476,20 @@ Handles:
 
 ## Pricing
 
-| Mail Type | Price | Includes |
-|-----------|-------|----------|
-| Postcard 4x6 | $0.99 | Printing + 1st class postage |
-| Postcard 6x9 | $1.59 | Printing + 1st class postage |
-| Postcard 6x11 | $1.99 | Printing + 1st class postage |
-| Letter (windowed) | $1.99 | Printing + envelope + postage |
-| Letter (windowless) | $1.99 | Printing + envelope + postage |
-| Notecard | $2.79 | Printing + envelope + postage |
-| Gift Card | $2.79+ | Card + envelope + postage + gift value |
-| Radius search | $0.05/record | Address lookup fee (on top of mail cost) |
-| Data append | $0.20/record | Add phone + email to radius records |
-| Standard mail | -$0.15/piece | Discount for standard vs 1st class |
+| Mail Type | Paid Plan | Free Plan | Includes |
+|-----------|-----------|-----------|----------|
+| Postcard 4x6 | **$0.65** | $0.99 | Printing + 1st class postage |
+| Postcard 6x9 | **$0.72** | $1.59 | Printing + 1st class postage |
+| Postcard 6x11 | **$0.93** | $1.99 | Printing + 1st class postage |
+| Windowed Letter | **$0.96** | $1.99 | Printing + envelope + postage |
+| Windowless Letter | **$1.16** | $1.16 | Printing + envelope + postage |
+| Notecard | **$1.66** | $2.79 | Printing + envelope + postage |
+| Magnacard | **$1.21** | — | Magnetic postcard |
+| Gift Card | **$1.66+** | $2.79+ | Card + envelope + postage + gift value |
+| Radius search | $0.05/record | $0.05/record | Address lookup fee (on top of mail cost) |
+| Data append | $0.20/record | $0.20/record | Add phone + email to radius records |
+
+**Our account:** Paid Plan (active as of 2026-04-18)
 
 **Credits:** Thanks.io uses a credit system. Buy credits in bulk for volume discounts.
 

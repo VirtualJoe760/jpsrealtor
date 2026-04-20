@@ -145,12 +145,13 @@ export interface ThanksioOrder {
 // Pricing
 // ---------------------------------------------------------------------------
 
+// Pricing reflects Paid Plan rates (dashboard.thanks.io)
 export const MAIL_PRICING: Record<MailType, number> = {
-  postcard_4x6: 0.99,
-  postcard_6x9: 1.59,
-  postcard_6x11: 1.99,
-  letter: 1.99,
-  notecard: 2.79,
+  postcard_4x6: 0.65,
+  postcard_6x9: 0.72,
+  postcard_6x11: 0.93,
+  letter: 0.96,
+  notecard: 1.66,
 };
 
 export const RADIUS_SEARCH_COST_PER_RECORD = 0.05;

@@ -34,11 +34,11 @@ interface MailDesign {
 }
 
 const MAIL_TYPE_OPTIONS: { value: MailType; label: string; price: string; description: string }[] = [
-  { value: 'postcard_4x6', label: 'Postcard (4x6)', price: '$0.99', description: 'Standard postcard — great for just listed/sold' },
-  { value: 'postcard_6x9', label: 'Postcard (6x9)', price: '$1.59', description: 'Large postcard — ideal for CMA reports and highlights' },
-  { value: 'postcard_6x11', label: 'Postcard (6x11)', price: '$1.99', description: 'Oversized postcard — maximum visual impact' },
-  { value: 'letter', label: 'Letter', price: '$1.99', description: 'Printed letter in envelope — detailed CMA, personal outreach' },
-  { value: 'notecard', label: 'Handwritten Notecard', price: '$2.79', description: 'Simulated handwriting — thank you notes, follow-ups' },
+  { value: 'postcard_4x6', label: 'Postcard (4x6)', price: '$0.65', description: 'Standard postcard — great for just listed/sold' },
+  { value: 'postcard_6x9', label: 'Postcard (6x9)', price: '$0.72', description: 'Large postcard — ideal for CMA reports and highlights' },
+  { value: 'postcard_6x11', label: 'Postcard (6x11)', price: '$0.93', description: 'Oversized postcard — maximum visual impact' },
+  { value: 'letter', label: 'Letter', price: '$0.96', description: 'Printed letter in envelope — detailed CMA, personal outreach' },
+  { value: 'notecard', label: 'Handwritten Notecard', price: '$1.66', description: 'Simulated handwriting — thank you notes, follow-ups' },
 ];
 
 export default function DirectMailPipelineWizard({
