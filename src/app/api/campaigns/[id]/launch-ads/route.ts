@@ -152,6 +152,7 @@ export async function POST(
             landingPageUrl: pageUrl,
             budget: meta.budget,
             objective: 'OUTCOME_TRAFFIC',
+            geoTargeting: { type: 'radius' as const },
             headline: meta.headline,
             primaryText: meta.primaryText,
             imageUrl: meta.imageUrl,

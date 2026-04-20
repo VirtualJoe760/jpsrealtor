@@ -2,69 +2,54 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import DirectMailPiece from '@/models/DirectMailPiece';
 import Campaign from '@/models/Campaign';
-import { validateWebhookSignature, type ThanksioWebhookEvent } from '@/lib/thanksio';
-
 /**
  * POST /api/thanksio/webhook
  *
  * Handles thanks.io webhook events:
- * - order.mailed — mail piece has been sent
- * - order.delivered — mail piece confirmed delivered
- * - order.returned — mail piece returned to sender
- * - qr.scanned — recipient scanned the QR code
+ * - order_item.delivered — mail piece confirmed delivered
+ * - order_item.status_update — mail piece status change
+ * - order.status_update — batch order status change
+ * - scans.scan_update — recipient scanned QR code
  */
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-
-    // Validate webhook signature
-    const signature = req.headers.get('x-thanksio-signature') || '';
-    if (signature && !validateWebhookSignature(rawBody, signature)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-
-    const event: ThanksioWebhookEvent = JSON.parse(rawBody);
+    const event = JSON.parse(rawBody);
 
     await connectDB();
 
-    switch (event.event) {
-      case 'order.mailed': {
-        // Update all pieces for this order to "mailed"
-        const mailedResult = await DirectMailPiece.updateMany(
-          { thanksioOrderId: event.order_id, status: { $in: ['submitted', 'printing'] } },
-          {
-            $set: {
-              status: 'mailed',
-              mailedAt: new Date(),
-            },
-          }
-        );
+    // Extract order ID from various event payload formats
+    const orderId = event.order_id || event.data?.order_id || event.id;
 
-        // Update campaign stats
-        if (mailedResult.modifiedCount > 0) {
-          const piece = await DirectMailPiece.findOne({ thanksioOrderId: event.order_id });
-          if (piece) {
-            await Campaign.findByIdAndUpdate(piece.campaignId, {
-              $inc: { 'stats.mailSent': mailedResult.modifiedCount },
-            });
+    switch (event.event) {
+      case 'order_item.status_update':
+      case 'order.status_update': {
+        // Generic status update — update pieces based on new status
+        const newStatus = event.data?.status || event.status;
+        if (newStatus === 'mailed' || newStatus === 'in_transit') {
+          const mailedResult = await DirectMailPiece.updateMany(
+            { thanksioOrderId: String(orderId), status: { $in: ['submitted', 'printing'] } },
+            { $set: { status: 'mailed', mailedAt: new Date() } }
+          );
+          if (mailedResult.modifiedCount > 0) {
+            const piece = await DirectMailPiece.findOne({ thanksioOrderId: String(orderId) });
+            if (piece) {
+              await Campaign.findByIdAndUpdate(piece.campaignId, {
+                $inc: { 'stats.mailSent': mailedResult.modifiedCount },
+              });
+            }
           }
         }
         break;
       }
 
-      case 'order.delivered': {
+      case 'order_item.delivered': {
         const deliveredResult = await DirectMailPiece.updateMany(
-          { thanksioOrderId: event.order_id, status: { $in: ['submitted', 'printing', 'mailed'] } },
-          {
-            $set: {
-              status: 'delivered',
-              deliveredAt: new Date(),
-            },
-          }
+          { thanksioOrderId: String(orderId), status: { $in: ['submitted', 'printing', 'mailed'] } },
+          { $set: { status: 'delivered', deliveredAt: new Date() } }
         );
-
         if (deliveredResult.modifiedCount > 0) {
-          const piece = await DirectMailPiece.findOne({ thanksioOrderId: event.order_id });
+          const piece = await DirectMailPiece.findOne({ thanksioOrderId: String(orderId) });
           if (piece) {
             await Campaign.findByIdAndUpdate(piece.campaignId, {
               $inc: { 'stats.mailDelivered': deliveredResult.modifiedCount },
@@ -74,30 +59,15 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      case 'order.returned': {
-        await DirectMailPiece.updateMany(
-          { thanksioOrderId: event.order_id },
-          {
-            $set: {
-              status: 'returned',
-              returnedAt: new Date(),
-            },
-          }
-        );
-        break;
-      }
-
-      case 'qr.scanned': {
-        // QR scan — update the specific piece and increment campaign qrScans
+      case 'scans.scan_update': {
         const scannedPiece = await DirectMailPiece.findOneAndUpdate(
-          { thanksioOrderId: event.order_id },
+          { thanksioOrderId: String(orderId) },
           {
-            $set: { qrScannedAt: event.data?.scanned_at ? new Date(event.data.scanned_at) : new Date() },
+            $set: { qrScannedAt: new Date() },
             $inc: { qrScanCount: 1 },
           },
           { new: true }
         );
-
         if (scannedPiece) {
           await Campaign.findByIdAndUpdate(scannedPiece.campaignId, {
             $inc: { 'stats.qrScans': 1 },
