@@ -81,7 +81,13 @@ async function main() {
     console.log('🎉 MDX generation complete!\n');
     process.exit(0);
 
-  } catch (error) {
+  } catch (error: any) {
+    // Don't fail the build if MongoDB is unreachable — existing .mdx files in the repo will be used
+    if (error?.name === 'MongooseServerSelectionError' || error?.message?.includes('Server selection timed out')) {
+      console.warn('\n⚠️  Could not connect to MongoDB — using existing MDX files from repo.');
+      console.warn('   This is expected if the database is not accessible from the build server.\n');
+      process.exit(0);
+    }
     console.error('\n❌ Fatal error during MDX generation:');
     console.error(error);
     process.exit(1);
