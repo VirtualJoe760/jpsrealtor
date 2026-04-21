@@ -1,0 +1,29 @@
+# jpsrealtor VPS Cron Schedule
+# Restored 2026-04-20 (clean - xmrig malware entries removed)
+
+# Daily incremental sync (Mon-Sat at 6 AM) - 25 hour window catches all changes
+0 6 * * 1-6 cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/run-pipeline.py --all --incremental >> /var/log/mls-update.log 2>&1
+
+# Weekly FULL sync (Sunday at 3 AM) - catches any missed listings and refreshes all data
+0 3 * * 0 cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/run-pipeline.py --all >> /var/log/mls-update-full.log 2>&1
+
+# Daily status update (7 AM) - checks all Active/Pending listings across all 8 MLSs
+0 7 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/update-status.py >> /var/log/mls-status-update.log 2>&1
+
+# Subdivision CMA build (after MLS sync 6am + status update 7am)
+0 8 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/cma/build-subdivision-cma.py --all >> /var/log/cma/build-subdivision-cma.log 2>&1
+
+# Daily photo cache
+0 9 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/cache-photos.py >> /var/log/photo-cache.log 2>&1
+
+# Daily photo sync for unified_listings (delta only - new/changed listings)
+30 9 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/unified/fetch-photos.py --all --delta >> /var/log/mls-fetch-photos.log 2>&1
+
+# Historical closed listing sync
+0 10 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/historical_closed_sync.py >> /var/log/mls-sync/historical-closed-sync.log 2>&1
+
+# Article request checker (every 5 min)
+*/5 * * * * cd /root/jpsrealtor && /usr/bin/node /root/jpsrealtor/scripts/check-article-requests-simple.js >> /var/log/claude-article-writer.log 2>&1
+
+# MongoDB backup
+0 2 * * * /usr/local/bin/backup_payload_db.sh >> /var/log/payload_backup.log 2>&1
