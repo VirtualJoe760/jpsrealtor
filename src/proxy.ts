@@ -18,14 +18,15 @@ export default withAuth(
     }
 
     // If user is not authenticated and trying to access protected route
-    if (!isAuth && (isDashboard || isAdmin)) {
+    const isAgent = req.nextUrl.pathname.startsWith("/agent");
+    if (!isAuth && (isDashboard || isAdmin || isAgent)) {
       let from = req.nextUrl.pathname;
       if (req.nextUrl.search) {
         from += req.nextUrl.search;
       }
 
       return NextResponse.redirect(
-        new URL("/auth/signin?from=" + encodeURIComponent(from), req.url)
+        new URL("/api/auth/signin?callbackUrl=" + encodeURIComponent(from), req.url)
       );
     }
 
@@ -49,5 +50,6 @@ export const config = {
     "/dashboard/:path*",
     "/admin/:path*",
     "/auth/:path*",
+    "/agent/:path*",
   ],
 };
