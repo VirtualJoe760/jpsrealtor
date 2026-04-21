@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { Resend } from 'resend';
+import { escapeHtml } from '@/lib/security';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -96,10 +97,10 @@ export async function POST(request: NextRequest) {
           </head>
           <body>
             <div class="header">
-              <h2 style="margin: 0; color: #0066cc;">Message from ${fromName}</h2>
+              <h2 style="margin: 0; color: #0066cc;">Message from ${escapeHtml(fromName)}</h2>
             </div>
 
-            ${contactName ? `<p><strong>Hi ${contactName},</strong></p>` : ''}
+            ${contactName ? `<p><strong>Hi ${escapeHtml(contactName)},</strong></p>` : ''}
 
             <div class="message-body">
               ${message.replace(/\n/g, '<br>')}
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
 
             <div class="footer">
               <p>
-                <strong>${fromName}</strong><br>
+                <strong>${escapeHtml(fromName)}</strong><br>
                 Email: <a href="mailto:${fromEmail}">${fromEmail}</a>
               </p>
               <p style="color: #999; font-size: 11px; margin-top: 20px;">

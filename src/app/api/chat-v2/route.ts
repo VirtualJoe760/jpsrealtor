@@ -2,6 +2,8 @@
 // Chat V2 - Industry standard "all tools at once" pattern
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import Groq from "groq-sdk";
 import { ALL_TOOLS } from "@/lib/chat-v2/tools";
 import { SYSTEM_PROMPT } from "@/lib/chat-v2/system-prompt";
@@ -20,8 +22,14 @@ const groq = new Groq({
  */
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate — force userId from session to prevent impersonation
+    const session = await getServerSession(authOptions);
+    const authenticatedUserId = (session?.user as any)?.id;
+
     const body: ChatRequest = await req.json();
-    const { messages, userId, userTier = "free", locationSnapshot } = body;
+    const { messages, userTier = "free", locationSnapshot } = body;
+    // Use session userId if authenticated, fall back to body userId for anonymous chat
+    const userId = authenticatedUserId || body.userId;
 
     // Validate request
     if (!messages || messages.length === 0) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { handleCors } from "@/utils/handleCors";
 import { getListId } from "@/utils/getListId";
+import { escapeHtml, isSafeUrl } from "@/lib/security";
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
@@ -34,20 +35,21 @@ export async function POST(req: NextRequest) {
         <h2>Hello Joe,</h2>
         <p>You have a new contact request from your website. Here are the details:</p>
         <ul>
-          <li><strong>Name:</strong> ${firstName} ${lastName}</li>
-          <li><strong>Phone:</strong> ${phone}</li>
-          <li><strong>Email:</strong> ${email}</li>
-          <li><strong>Address:</strong> ${address}</li>
-          <li><strong>Message:</strong> ${message}</li>
+          <li><strong>Name:</strong> ${escapeHtml(firstName)} ${escapeHtml(lastName)}</li>
+          <li><strong>Phone:</strong> ${escapeHtml(phone)}</li>
+          <li><strong>Email:</strong> ${escapeHtml(email)}</li>
+          <li><strong>Address:</strong> ${escapeHtml(address)}</li>
+          <li><strong>Message:</strong> ${escapeHtml(message)}</li>
         </ul>
         ${
           photos?.length > 0
             ? `<h3>Uploaded Photos:</h3>
                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                  ${photos
+                   .filter((photo: string) => isSafeUrl(photo))
                    .map(
                      (photo: string) =>
-                       `<img src="${photo}" alt="Uploaded Photo" style="width: 150px; height: auto; border-radius: 8px;" />`
+                       `<img src="${escapeHtml(photo)}" alt="Uploaded Photo" style="width: 150px; height: auto; border-radius: 8px;" />`
                    )
                    .join("")}
                </div>`
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
       subject: "Let's keep in touch, I'm here anytime.",
       html: `
         <div>
-          <h1>Thank You, ${firstName} ${lastName}!</h1>
+          <h1>Thank You, ${escapeHtml(firstName)} ${escapeHtml(lastName)}!</h1>
           <p>
             We’re excited to help you achieve your real estate goals here in the beautiful Coachella Valley. 
             Whether you’re buying, selling, or just exploring your options, we’re here to make your experience as seamless as possible.
