@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import CmaMarketSnapshot from "./CmaMarketSnapshot";
 import CmaMarketNarrative from "./CmaMarketNarrative";
@@ -46,8 +46,27 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
   const [city, setCity] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load: only fetch CMA when section scrolls into view
+  // This prevents the slow CMA generation from affecting Core Web Vitals (LCP/CLS)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' } // Start loading 200px before it's visible
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
+    if (!isVisible) return;
     let cancelled = false;
 
     async function fetchCma() {
@@ -73,12 +92,12 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, isVisible]);
 
-  // Loading state
-  if (loading) {
+  // Placeholder before visible (reserves space, prevents CLS)
+  if (!isVisible || loading) {
     return (
-      <div className="space-y-4">
+      <div ref={sectionRef} className="space-y-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' }}>
         <SkeletonBlock className="h-8 w-60" />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
