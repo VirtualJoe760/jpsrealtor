@@ -259,16 +259,18 @@ async function executeSearchHomes(args: {
           }
         });
 
-        const propertyTypes = Object.entries(propertyTypeCounts).map(([subType, count]) => ({
-          type: subType,  // e.g., "Single Family Residence", "Condominium", "Townhouse"
-          count,
-          avgPrice: listings
-            .filter(l => l.propertySubType === subType && l.listPrice)
-            .reduce((sum, l) => sum + (l.listPrice || 0), 0) / count,
-          avgSqft: listings
-            .filter(l => l.propertySubType === subType && l.livingArea)
-            .reduce((sum, l) => sum + (l.livingArea || 0), 0) / count
-        }));
+        const propertyTypes = Object.entries(propertyTypeCounts).map(([subType, count]) => {
+          const typeListings = listings.filter(l => l.propertySubType === subType);
+          const avgPrice = typeListings
+            .filter(l => l.listPrice)
+            .reduce((sum, l) => sum + (l.listPrice || 0), 0) / count;
+          const sqftListings = typeListings.filter(l => l.livingArea && l.livingArea > 0);
+          const avgSqft = sqftListings.length > 0
+            ? sqftListings.reduce((sum, l) => sum + (l.livingArea || 0), 0) / sqftListings.length
+            : 0;
+          const priceSqft = avgSqft > 0 ? Math.round(avgPrice / avgSqft) : 0;
+          return { type: subType, count, avgPrice, avgSqft, priceSqft };
+        });
 
         // Extract city from listings (use most common city if multiple)
         const cityCounts: Record<string, number> = {};
