@@ -14,6 +14,19 @@ import Campaign from '@/models/Campaign';
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
+
+    // Validate webhook — check for a shared secret in query param or header
+    // Thanks.io allows configuring a webhook URL with a secret token
+    const webhookSecret = process.env.THANKSIO_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const url = new URL(req.url);
+      const tokenParam = url.searchParams.get('token');
+      const tokenHeader = req.headers.get('x-webhook-secret');
+      if (tokenParam !== webhookSecret && tokenHeader !== webhookSecret) {
+        return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 });
+      }
+    }
+
     const event = JSON.parse(rawBody);
 
     await connectDB();

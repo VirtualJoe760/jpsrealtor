@@ -10,6 +10,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import Contact from '@/models/Contact';
 import mongoose from 'mongoose';
+import { escapeRegex } from '@/lib/security';
 
 // ============================================================================
 // GET /api/crm/contacts
@@ -54,12 +55,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      // Text search across multiple fields
+      // Text search across multiple fields (escape regex to prevent ReDoS)
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
+        { firstName: { $regex: safeSearch, $options: 'i' } },
+        { lastName: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { phone: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
