@@ -441,72 +441,99 @@ Step 4 (Select Communication Strategies) adds:
 
 ### Phase 1: Foundation (Week 1-2)
 
-- [ ] **Update Campaign model** — Add `directMail`, `googleAds`, `metaAds` to `activeStrategies`. Add `thanksioConfig`, `googleAdsConfig`, `metaAdsConfig` fields. Add new stats fields.
-- [ ] **Create DirectMailPiece model** — New Mongoose model for tracking individual mail pieces
-- [ ] **Create AdCampaignRecord model** — New Mongoose model for ad campaign performance
-- [ ] **Create `src/lib/thanksio.ts`** — Thanks.io API client (auth, send postcard, send letter, send notecard, list handwriting styles, track delivery)
-- [ ] **Create `src/app/api/thanksio/webhook/route.ts`** — Webhook handler for delivery/QR scan events
-- [ ] **Add `THANKSIO_API_KEY` to .env.local and Vercel** — Get API key from thanks.io dashboard
-- [ ] **Create thanks.io account** — Sign up, get API key, enable test mode
-- [ ] **Update CampaignOverview.tsx** — Replace Text Messages card with Direct Mail card, replace Email Campaigns card with Digital Ads card
+- [ ] **Database Schema Updates**
+  - [ ] Update Campaign model — Add `directMail`, `googleAds`, `metaAds` to `activeStrategies`
+  - [ ] Add `thanksioConfig`, `googleAdsConfig`, `metaAdsConfig` config objects to Campaign
+  - [ ] Add new stats fields: `mailSent`, `mailDelivered`, `qrScans`, `adImpressions`, `adClicks`, `adConversions`, `adSpend`
+  - [ ] Create DirectMailPiece model — Track individual mail pieces with status, cost, QR tracking
+  - [ ] Create AdCampaignRecord model — Track ad campaign performance snapshots per platform
+- [ ] **Thanks.io Setup**
+  - [ ] Create thanks.io account — Sign up, enable test mode
+  - [ ] Add `THANKSIO_API_KEY` to .env.local and Vercel
+  - [ ] Create `src/lib/thanksio.ts` — API client (auth, send postcard/letter/notecard, list handwriting styles, track delivery)
+  - [ ] Create `src/app/api/thanksio/webhook/route.ts` — Webhook handler for delivery/QR scan events
+- [ ] **Frontend Strategy Card Swap**
+  - [ ] Update CampaignOverview.tsx — Replace Text Messages card with Direct Mail card
+  - [ ] Update CampaignOverview.tsx — Replace Email Campaigns card with Digital Ads card (Google + Meta)
 
 ### Phase 2: Direct Mail Integration (Week 2-3)
 
-- [ ] **Create `DirectMailDesigner.tsx`** — Template designer with image upload (front/back), message editor with merge variables, handwriting style picker, QR code URL
-- [ ] **Create `DirectMailPreview.tsx`** — Show front/back preview of mail piece with recipient data
-- [ ] **Create `src/app/api/campaigns/[id]/send-mail/route.ts`** — Execution endpoint: fetch contacts, format addresses, batch send via thanks.io API, create DirectMailPiece records, update campaign stats
-- [ ] **Add direct mail to CampaignPipelineWizard** — New pipeline flow: Design template → Preview → Confirm cost → Send
-- [ ] **Add direct mail metrics to CampaignDetailPanel** — Show mailed, delivered, QR scans in Analytics tab
-- [ ] **Create postcard templates** — Pre-built templates: Just Listed, Just Sold, CMA Report, Market Update, Open House Invite, Neighborhood Farming
-- [ ] **Wire thanks.io webhook** — Update DirectMailPiece status on delivery events, update campaign stats on QR scans
+- [ ] **Mail Designer & Preview**
+  - [ ] Create `DirectMailDesigner.tsx` — Image upload (front/back), message editor with merge variables, handwriting style picker, QR code URL
+  - [ ] Create `DirectMailPreview.tsx` — Front/back preview with recipient data populated
+  - [ ] Create postcard templates — Just Listed, Just Sold, CMA Report, Market Update, Open House Invite, Neighborhood Farming
+- [ ] **Send Pipeline**
+  - [ ] Create `src/app/api/campaigns/[id]/send-mail/route.ts` — Fetch contacts, format addresses, batch send via thanks.io, create DirectMailPiece records, update campaign stats
+  - [ ] Add direct mail to CampaignPipelineWizard — New flow: Design template → Preview → Confirm cost → Send
+- [ ] **Tracking & Analytics**
+  - [ ] Wire thanks.io webhook — Update DirectMailPiece status on delivery events
+  - [ ] Add direct mail metrics to CampaignDetailPanel — Show mailed, delivered, QR scans in Analytics tab
+  - [ ] Update campaign stats on QR scan webhook events
 
 ### Phase 3: Google Ads API Integration (Week 3-5)
 
-- [ ] **Apply for Google Ads API developer token** — Go to Google Ads > Tools > API Center, apply for Basic Access
-- [ ] **Set up OAuth 2.0** — Create Google Cloud project, enable Google Ads API, create OAuth credentials, generate refresh token
-- [ ] **Create `src/lib/google-ads-api.ts`** — API client using REST or official Node.js client library: create campaign, create ad group, create responsive search ad, create display ad, set geo-targeting (radius/ZIP), set budget, get performance metrics
-- [ ] **Create `src/app/api/campaigns/[id]/launch-ads/route.ts`** — Create Google Ads campaign from our campaign config: Budget → Campaign → AdGroup → Ad → GeoTargeting → CustomerMatch
-- [ ] **Create `src/app/api/campaigns/[id]/ads-performance/route.ts`** — Pull performance metrics from Google Ads API, update AdCampaignRecord
-- [ ] **Create `AudienceBuilder.tsx`** — UI to select contacts by label/tag/city → upload as Customer Match list
-- [ ] **Create `src/app/api/audiences/sync/route.ts`** — Hash contact emails/phones, upload to Google Ads as customer match list
-- [ ] **Create `AdCampaignBuilder.tsx`** — UI for configuring ad campaigns: select ad type (search/display), write headlines/descriptions, set budget, choose targeting, select landing page
-- [ ] **Create `NeighborhoodTargetingMap.tsx`** — Interactive map component for setting geo-targeting radius around subdivisions/neighborhoods
-- [ ] **Create `LandingPageSelector.tsx`** — Component to pick existing landing page or create new one for the campaign
+- [ ] **Account & Auth Setup**
+  - [ ] Apply for Google Ads API developer token — Google Ads > Tools > API Center, Basic Access (2-7 business days)
+  - [ ] Create Google Cloud project, enable Google Ads API
+  - [ ] Set up OAuth 2.0 credentials, generate refresh token
+  - [ ] Add `GOOGLE_ADS_*` env vars to .env.local and Vercel
+- [ ] **API Client & Endpoints**
+  - [ ] Create `src/lib/google-ads-api.ts` — Create campaign, ad group, responsive search ad, display ad, set geo-targeting, set budget, get performance metrics
+  - [ ] Create `src/app/api/campaigns/[id]/launch-ads/route.ts` — Build full campaign: Budget → Campaign → AdGroup → Ad → GeoTargeting → CustomerMatch
+  - [ ] Create `src/app/api/campaigns/[id]/ads-performance/route.ts` — Pull metrics from Google Ads API, update AdCampaignRecord
+- [ ] **Audience Management**
+  - [ ] Create `src/app/api/audiences/sync/route.ts` — Hash contact emails/phones, upload to Google Ads as customer match list
+  - [ ] Create `AudienceBuilder.tsx` — UI to select contacts by label/tag/city → upload as Customer Match list
+- [ ] **Campaign Builder UI**
+  - [ ] Create `AdCampaignBuilder.tsx` — Select ad type (search/display), write headlines/descriptions, set budget, choose targeting, select landing page
+  - [ ] Create `NeighborhoodTargetingMap.tsx` — Interactive map for setting geo-targeting radius around subdivisions/neighborhoods
+  - [ ] Create `LandingPageSelector.tsx` — Pick existing landing page or create new one for the campaign
 
 ### Phase 4: Meta Ads API Integration (Week 5-7)
 
-- [ ] **Request `ads_management` permission** — Submit for App Review on JPSREALTOR Facebook App (5+ business days)
-- [ ] **Create Meta Ad Account** — In Meta Business Suite if not already existing
-- [ ] **Generate system user token with ads_management** — From Business Settings > System Users
-- [ ] **Create `src/lib/meta-ads-api.ts`** — API client: create campaign, create ad set, create ad creative, create ad, upload images/videos, manage custom audiences, manage lookalike audiences, get performance metrics
-- [ ] **Extend `launch-ads` endpoint** — Add Meta ads creation alongside Google Ads
-- [ ] **Extend `ads-performance` endpoint** — Pull Meta Ads metrics
-- [ ] **Extend `audiences/sync` endpoint** — Upload customer match to Meta Custom Audiences
-- [ ] **Add Meta-specific fields to AdCampaignBuilder** — Placements (Facebook feed, Instagram feed, Stories, Reels), objective selection, creative format (image/video/carousel)
-- [ ] **Create `AdPreview.tsx`** — Show how the ad will appear on Facebook/Instagram
+- [ ] **Account & Auth Setup**
+  - [ ] Request `ads_management` permission — Submit App Review on JPSREALTOR Facebook App (5+ business days)
+  - [ ] Create Meta Ad Account in Business Suite (if not existing)
+  - [ ] Generate system user token with `ads_management` — Business Settings > System Users
+  - [ ] Add `META_ADS_*` env vars to .env.local and Vercel
+- [ ] **API Client**
+  - [ ] Create `src/lib/meta-ads-api.ts` — Create campaign, ad set, ad creative, ad, upload images/videos, manage custom/lookalike audiences, get performance metrics
+- [ ] **Extend Existing Endpoints**
+  - [ ] Extend `launch-ads` route — Add Meta campaign creation alongside Google Ads
+  - [ ] Extend `ads-performance` route — Pull Meta Ads metrics into AdCampaignRecord
+  - [ ] Extend `audiences/sync` route — Upload customer match to Meta Custom Audiences
+- [ ] **Meta-Specific UI**
+  - [ ] Add Meta fields to AdCampaignBuilder — Placements (Facebook feed, Instagram feed, Stories, Reels), objective, creative format (image/video/carousel)
+  - [ ] Create `AdPreview.tsx` — Show how ad will appear on Facebook/Instagram
 
 ### Phase 5: AI Chat Campaign Integration (Week 7-9)
 
-- [ ] **Create `src/lib/chat-v2/campaign-tools.ts`** — Define tool schemas for Groq: `createCampaign`, `selectContacts`, `designPostcard`, `launchGoogleAds`, `launchMetaAds`, `getCampaignPerformance`, `buildAudience`
-- [ ] **Create `src/lib/chat-v2/campaign-executor.ts`** — Execute campaign actions from AI tool calls, with confirmation step before any spending action
-- [ ] **Register campaign tools in tool executor** — Add to existing `src/lib/chat-v2/tool-executors.ts`
-- [ ] **Add campaign context to AI system prompt** — Include available campaigns, contact counts, landing pages, neighborhood data in chat context
-- [ ] **Build confirmation UI** — When AI wants to execute a campaign action (launch ads, send mail), show a confirmation card in chat before proceeding
-- [ ] **Test natural language flows**:
-  - "Create a farming campaign for PGA West"
-  - "Send just-listed postcards to my La Quinta contacts"
-  - "Launch Instagram ads for my new listing"
-  - "How is my PGA West campaign performing?"
+- [ ] **Tool Definitions & Execution**
+  - [ ] Create `src/lib/chat-v2/campaign-tools.ts` — Tool schemas for Groq: `createCampaign`, `selectContacts`, `designPostcard`, `launchGoogleAds`, `launchMetaAds`, `getCampaignPerformance`, `buildAudience`
+  - [ ] Create `src/lib/chat-v2/campaign-executor.ts` — Execute campaign actions from AI tool calls with confirmation step before spending
+  - [ ] Register campaign tools in `src/lib/chat-v2/tool-executors.ts`
+- [ ] **Context & Prompting**
+  - [ ] Add campaign context to AI system prompt — Available campaigns, contact counts, landing pages, neighborhood data
+- [ ] **Confirmation UX**
+  - [ ] Build confirmation UI — Show confirmation card in chat before executing spending actions (launch ads, send mail)
+- [ ] **Validation & Testing**
+  - [ ] "Create a farming campaign for PGA West"
+  - [ ] "Send just-listed postcards to my La Quinta contacts"
+  - [ ] "Launch Instagram ads for my new listing"
+  - [ ] "How is my PGA West campaign performing?"
 
 ### Phase 6: Polish & Analytics (Week 9-10)
 
-- [ ] **Unified campaign analytics dashboard** — Combine voicemail, direct mail, and digital ad metrics in one view
-- [ ] **Cost tracking** — Track per-campaign spend across all channels (thanks.io costs, ad spend)
-- [ ] **ROI calculator** — Compare campaign cost vs lead value
-- [ ] **Campaign templates** — Pre-built multi-channel campaign templates (e.g., "New Listing Package" = postcard + Instagram ad + voicemail)
-- [ ] **Scheduled campaigns** — Cron-based execution for campaigns with future start dates
-- [ ] **A/B testing** — Test different creatives/messages across channels
-- [ ] **Campaign cloning** — Duplicate successful campaigns with new contacts/neighborhoods
+- [ ] **Unified Dashboard**
+  - [ ] Unified campaign analytics — Combine voicemail, direct mail, and digital ad metrics in one view
+  - [ ] Cost tracking — Per-campaign spend across all channels (thanks.io costs, ad spend)
+  - [ ] ROI calculator — Compare campaign cost vs lead value
+- [ ] **Campaign Automation**
+  - [ ] Campaign templates — Pre-built multi-channel templates (e.g., "New Listing Package" = postcard + Instagram ad + voicemail)
+  - [ ] Scheduled campaigns — Cron-based execution for campaigns with future start dates
+  - [ ] Campaign cloning — Duplicate successful campaigns with new contacts/neighborhoods
+- [ ] **Optimization**
+  - [ ] A/B testing — Test different creatives/messages across channels
 
 ---
 

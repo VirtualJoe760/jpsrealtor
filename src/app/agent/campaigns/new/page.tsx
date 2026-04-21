@@ -10,7 +10,7 @@ import {
   CheckIcon,
   PhoneIcon,
   EnvelopeIcon,
-  ChatBubbleLeftIcon,
+  MegaphoneIcon,
   UserGroupIcon,
   MapPinIcon,
   SparklesIcon,
@@ -62,24 +62,24 @@ const campaignTypes = [
 const strategies = [
   {
     id: 'voicemail',
-    label: 'Voicemail Drop',
-    description: 'Automated voicemail messages',
+    label: 'Voice Mails',
+    description: 'Create AI voiceovers and send via Drop Cowboy',
     icon: PhoneIcon,
     color: 'purple',
   },
   {
-    id: 'email',
-    label: 'Email',
-    description: 'Personalized email campaigns',
+    id: 'directMail',
+    label: 'Direct Mail',
+    description: 'Send postcards, letters, and handwritten notes via thanks.io',
     icon: EnvelopeIcon,
-    color: 'blue',
+    color: 'green',
   },
   {
-    id: 'text',
-    label: 'SMS/Text',
-    description: 'Text message outreach',
-    icon: ChatBubbleLeftIcon,
-    color: 'green',
+    id: 'digitalAds',
+    label: 'Community Ads',
+    description: 'Google PPC for search traffic + Meta retargeting',
+    icon: MegaphoneIcon,
+    color: 'blue',
   },
 ];
 
@@ -94,6 +94,9 @@ interface CampaignFormData {
     voicemail: boolean;
     email: boolean;
     text: boolean;
+    directMail: boolean;
+    googleAds: boolean;
+    metaAds: boolean;
   };
   contactIds: string[];
   schedule: 'immediate' | 'scheduled';
@@ -114,9 +117,12 @@ export default function NewCampaignPage() {
     description: '',
     neighborhood: '',
     strategies: {
-      voicemail: true,
-      email: true,
-      text: true,
+      voicemail: false,
+      email: false,
+      text: false,
+      directMail: false,
+      googleAds: false,
+      metaAds: false,
     },
     contactIds: [],
     schedule: 'immediate',
@@ -172,7 +178,7 @@ export default function NewCampaignPage() {
       case 2:
         return formData.name.trim() !== '';
       case 3:
-        return true; // All strategies are always enabled
+        return formData.strategies.voicemail || formData.strategies.directMail || formData.strategies.googleAds || formData.strategies.metaAds;
       case 4:
         return formData.contactIds.length > 0;
       case 5:
@@ -365,82 +371,80 @@ export default function NewCampaignPage() {
               </div>
             )}
 
-            {/* Step 3: Multi-Channel Strategy Overview */}
+            {/* Step 3: Select Strategies */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>
-                  Multi-Channel Communication Strategy
+                  Select Your Channels
                 </h2>
                 <p className={`${textSecondary} mb-6`}>
-                  Your campaign will use all available communication channels for maximum reach and effectiveness
+                  Choose one or more channels for this campaign. You can configure each channel after creating the campaign.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {strategies.map((strategy) => {
                     const Icon = strategy.icon;
+                    const strategyKey = strategy.id === 'digitalAds' ? 'googleAds' : strategy.id;
+                    const isActive = strategy.id === 'digitalAds'
+                      ? formData.strategies.googleAds || formData.strategies.metaAds
+                      : formData.strategies[strategyKey as keyof typeof formData.strategies];
+
+                    const handleToggle = () => {
+                      if (strategy.id === 'digitalAds') {
+                        const newVal = !(formData.strategies.googleAds || formData.strategies.metaAds);
+                        setFormData({
+                          ...formData,
+                          strategies: { ...formData.strategies, googleAds: newVal, metaAds: newVal },
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          strategies: {
+                            ...formData.strategies,
+                            [strategyKey]: !formData.strategies[strategyKey as keyof typeof formData.strategies],
+                          },
+                        });
+                      }
+                    };
+
+                    const colorClasses = {
+                      purple: { bg: isLight ? 'bg-purple-100' : 'bg-purple-900/30', text: isLight ? 'text-purple-600' : 'text-purple-400' },
+                      green: { bg: isLight ? 'bg-green-100' : 'bg-green-900/30', text: isLight ? 'text-green-600' : 'text-green-400' },
+                      blue: { bg: isLight ? 'bg-blue-100' : 'bg-blue-900/30', text: isLight ? 'text-blue-600' : 'text-blue-400' },
+                    };
+                    const colors = colorClasses[strategy.color as keyof typeof colorClasses] || colorClasses.blue;
 
                     return (
-                      <motion.div
+                      <motion.button
                         key={strategy.id}
+                        onClick={handleToggle}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: strategies.indexOf(strategy) * 0.1 }}
-                        className={`${cardBg} rounded-xl border-2 p-6 ${
-                          isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'
+                        className={`${cardBg} rounded-xl border-2 p-6 text-left transition-all ${
+                          isActive
+                            ? isLight ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-emerald-500 shadow-lg shadow-emerald-500/20'
+                            : `${cardBorder} opacity-60 hover:opacity-80`
                         }`}
                       >
                         <div className="flex items-start justify-between mb-4">
-                          <div
-                            className={`p-3 rounded-lg ${
-                              strategy.color === 'purple'
-                                ? isLight
-                                  ? 'bg-purple-100'
-                                  : 'bg-purple-900/30'
-                                : strategy.color === 'blue'
-                                ? isLight
-                                  ? 'bg-blue-100'
-                                  : 'bg-blue-900/30'
-                                : isLight
-                                ? 'bg-green-100'
-                                : 'bg-green-900/30'
-                            }`}
-                          >
-                            <Icon
-                              className={`w-6 h-6 ${
-                                strategy.color === 'purple'
-                                  ? isLight
-                                    ? 'text-purple-600'
-                                    : 'text-purple-400'
-                                  : strategy.color === 'blue'
-                                  ? isLight
-                                    ? 'text-blue-600'
-                                    : 'text-blue-400'
-                                  : isLight
-                                  ? 'text-green-600'
-                                  : 'text-green-400'
-                              }`}
-                            />
+                          <div className={`p-3 rounded-lg ${colors.bg}`}>
+                            <Icon className={`w-6 h-6 ${colors.text}`} />
                           </div>
-                          <div className={`p-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                            <CheckIcon className="w-4 h-4 text-white" />
-                          </div>
+                          {isActive && (
+                            <div className={`p-1 rounded-full ${isLight ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                              <CheckIcon className="w-4 h-4 text-white" />
+                            </div>
+                          )}
                         </div>
                         <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
                           {strategy.label}
                         </h3>
-                        <p className={`text-sm ${textSecondary} mb-3`}>
+                        <p className={`text-sm ${textSecondary}`}>
                           {strategy.description}
                         </p>
-                        <div className={`text-xs font-semibold ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                          ✓ Always Enabled
-                        </div>
-                      </motion.div>
+                      </motion.button>
                     );
                   })}
-                </div>
-                <div className={`${isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/20 border-blue-700/50'} rounded-lg border p-4 mt-6`}>
-                  <p className={`text-sm ${textPrimary}`}>
-                    <strong>Multi-Channel Approach:</strong> All communication channels work together to maximize your campaign's reach. Contacts will receive touchpoints across voicemail, email, and SMS for the best engagement results.
-                  </p>
                 </div>
               </div>
             )}
@@ -487,29 +491,29 @@ export default function NewCampaignPage() {
                   )}
 
                   <div className={`border-t ${border} pt-6`}>
-                    <h3 className={`text-sm font-medium ${textSecondary} mb-2`}>Active Strategies</h3>
-                    <div className="flex gap-3 mt-3">
+                    <h3 className={`text-sm font-medium ${textSecondary} mb-2`}>Active Channels</h3>
+                    <div className="flex flex-wrap gap-3 mt-3">
                       {formData.strategies.voicemail && (
                         <div className={`flex items-center gap-2 px-3 py-2 ${isLight ? 'bg-purple-100' : 'bg-purple-900/30'} rounded-lg`}>
                           <PhoneIcon className={`w-5 h-5 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
                           <span className={`text-sm font-medium ${isLight ? 'text-purple-700' : 'text-purple-300'}`}>
-                            Voicemail
+                            Voice Mails
                           </span>
                         </div>
                       )}
-                      {formData.strategies.email && (
-                        <div className={`flex items-center gap-2 px-3 py-2 ${isLight ? 'bg-blue-100' : 'bg-blue-900/30'} rounded-lg`}>
-                          <EnvelopeIcon className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
-                          <span className={`text-sm font-medium ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
-                            Email
-                          </span>
-                        </div>
-                      )}
-                      {formData.strategies.text && (
+                      {formData.strategies.directMail && (
                         <div className={`flex items-center gap-2 px-3 py-2 ${isLight ? 'bg-green-100' : 'bg-green-900/30'} rounded-lg`}>
-                          <ChatBubbleLeftIcon className={`w-5 h-5 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
+                          <EnvelopeIcon className={`w-5 h-5 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
                           <span className={`text-sm font-medium ${isLight ? 'text-green-700' : 'text-green-300'}`}>
-                            SMS
+                            Direct Mail
+                          </span>
+                        </div>
+                      )}
+                      {(formData.strategies.googleAds || formData.strategies.metaAds) && (
+                        <div className={`flex items-center gap-2 px-3 py-2 ${isLight ? 'bg-blue-100' : 'bg-blue-900/30'} rounded-lg`}>
+                          <MegaphoneIcon className={`w-5 h-5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
+                          <span className={`text-sm font-medium ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
+                            Community Ads
                           </span>
                         </div>
                       )}

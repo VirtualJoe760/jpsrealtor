@@ -37,6 +37,9 @@ interface Campaign {
     voicemail: boolean;
     email: boolean;
     text: boolean;
+    directMail: boolean;
+    googleAds: boolean;
+    metaAds: boolean;
   };
   analytics: {
     voicemailsSent?: number;
@@ -46,6 +49,13 @@ interface Campaign {
     textsSent?: number;
     responses: number;
     conversions: number;
+    mailSent?: number;
+    mailDelivered?: number;
+    qrScans?: number;
+    adImpressions?: number;
+    adClicks?: number;
+    adConversions?: number;
+    adSpend?: number;
   };
   createdAt: string;
   lastActivity: string;

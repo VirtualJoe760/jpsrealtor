@@ -8,6 +8,7 @@ interface PipelineContactsStepProps {
   onNext: () => void;
   onBack?: () => void;
   contactCount: number;
+  hideNextButton?: boolean;
 }
 
 export default function PipelineContactsStep({
@@ -15,6 +16,7 @@ export default function PipelineContactsStep({
   onNext,
   onBack,
   contactCount,
+  hideNextButton,
 }: PipelineContactsStepProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary, border } = useThemeClasses();
   const { currentTheme } = useTheme();
@@ -72,20 +74,22 @@ export default function PipelineContactsStep({
           <div />
         )}
 
-        <button
-          onClick={onNext}
-          disabled={!canProceed}
-          className={`
-            px-6 py-2 rounded-lg font-medium transition-colors
-            ${
-              canProceed
-                ? `${isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white`
-                : `${isLight ? 'bg-gray-200 text-gray-400' : 'bg-gray-700 text-gray-500'} cursor-not-allowed`
-            }
-          `}
-        >
-          Continue to Scripts →
-        </button>
+        {!hideNextButton && (
+          <button
+            onClick={onNext}
+            disabled={!canProceed}
+            className={`
+              px-6 py-2 rounded-lg font-medium transition-colors
+              ${
+                canProceed
+                  ? `${isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white`
+                  : `${isLight ? 'bg-gray-200 text-gray-400' : 'bg-gray-700 text-gray-500'} cursor-not-allowed`
+              }
+            `}
+          >
+            Continue to Scripts →
+          </button>
+        )}
       </div>
     </div>
   );

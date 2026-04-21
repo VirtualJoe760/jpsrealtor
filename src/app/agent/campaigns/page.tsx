@@ -32,6 +32,9 @@ const mockCampaigns = [
       voicemail: true,
       email: true,
       text: false,
+      directMail: false,
+      googleAds: false,
+      metaAds: false,
     },
     analytics: {
       voicemailsSent: 150,
@@ -55,6 +58,9 @@ const mockCampaigns = [
       voicemail: false,
       email: true,
       text: true,
+      directMail: false,
+      googleAds: false,
+      metaAds: false,
     },
     analytics: {
       voicemailsSent: 0,
@@ -80,6 +86,9 @@ const mockCampaigns = [
       voicemail: true,
       email: true,
       text: false,
+      directMail: false,
+      googleAds: false,
+      metaAds: false,
     },
     analytics: {
       voicemailsSent: 89,
@@ -103,6 +112,9 @@ const mockCampaigns = [
       voicemail: true,
       email: true,
       text: false,
+      directMail: false,
+      googleAds: false,
+      metaAds: false,
     },
     analytics: {
       voicemailsSent: 320,

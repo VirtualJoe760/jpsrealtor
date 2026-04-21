@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate at least one strategy is selected
-    if (!strategies || (!strategies.voicemail && !strategies.email && !strategies.text)) {
+    if (!strategies || (!strategies.voicemail && !strategies.email && !strategies.text && !strategies.directMail && !strategies.googleAds && !strategies.metaAds)) {
       return NextResponse.json(
         { success: false, error: 'At least one communication strategy must be selected' },
         { status: 400 }
@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
         voicemail: strategies.voicemail || false,
         email: strategies.email || false,
         text: strategies.text || false,
+        directMail: strategies.directMail || false,
+        googleAds: strategies.googleAds || false,
+        metaAds: strategies.metaAds || false,
       },
       status: initialStatus,
       stats: {

@@ -3,15 +3,23 @@
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useTheme } from '@/app/contexts/ThemeContext';
 
-export type PipelineStep = 'contacts' | 'scripts' | 'review' | 'audio' | 'send';
+export type PipelineStep = string;
 
-interface PipelineStepIndicatorProps {
-  currentStep: PipelineStep;
-  completedSteps: PipelineStep[];
-  onStepClick?: (step: PipelineStep) => void;
+export interface StepDefinition {
+  id: string;
+  label: string;
+  icon: string;
 }
 
-const STEPS: { id: PipelineStep; label: string; icon: string }[] = [
+interface PipelineStepIndicatorProps {
+  steps: StepDefinition[];
+  currentStep: string;
+  completedSteps: string[];
+  onStepClick?: (step: string) => void;
+}
+
+// Default voicemail steps (backwards compatible)
+export const VOICEMAIL_STEPS: StepDefinition[] = [
   { id: 'contacts', label: 'Contacts', icon: '👥' },
   { id: 'scripts', label: 'Scripts', icon: '📝' },
   { id: 'review', label: 'Review', icon: '✏️' },
@@ -19,17 +27,45 @@ const STEPS: { id: PipelineStep; label: string; icon: string }[] = [
   { id: 'send', label: 'Send', icon: '📤' },
 ];
 
+export const VOICEMAIL_SIMPLE_STEPS: StepDefinition[] = [
+  { id: 'contacts', label: 'Contacts', icon: '👥' },
+  { id: 'audio', label: 'Audio', icon: '🎤' },
+  { id: 'send', label: 'Send', icon: '📤' },
+];
+
+export const DIRECT_MAIL_STEPS: StepDefinition[] = [
+  { id: 'contacts', label: 'Contacts', icon: '👥' },
+  { id: 'design', label: 'Design', icon: '🎨' },
+  { id: 'preview', label: 'Preview', icon: '👁️' },
+  { id: 'send', label: 'Send', icon: '📬' },
+];
+
+export const GOOGLE_ADS_STEPS: StepDefinition[] = [
+  { id: 'audience', label: 'Audience', icon: '🎯' },
+  { id: 'campaign', label: 'Campaign', icon: '⚙️' },
+  { id: 'creative', label: 'Creative', icon: '✍️' },
+  { id: 'launch', label: 'Launch', icon: '🚀' },
+];
+
+export const META_ADS_STEPS: StepDefinition[] = [
+  { id: 'audience', label: 'Audience', icon: '🎯' },
+  { id: 'campaign', label: 'Campaign', icon: '⚙️' },
+  { id: 'creative', label: 'Creative', icon: '🖼️' },
+  { id: 'placements', label: 'Placements', icon: '📱' },
+  { id: 'launch', label: 'Launch', icon: '🚀' },
+];
+
 export default function PipelineStepIndicator({
+  steps,
   currentStep,
   completedSteps,
   onStepClick,
 }: PipelineStepIndicatorProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
-  const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
+  const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
-  const handleStepClick = (step: PipelineStep, index: number) => {
-    // Only allow clicking on completed steps or steps before the current step
+  const handleStepClick = (step: string, index: number) => {
     const isClickable = index < currentIndex || completedSteps.includes(step);
     if (isClickable && onStepClick && step !== currentStep) {
       onStepClick(step);
@@ -39,7 +75,7 @@ export default function PipelineStepIndicator({
   return (
     <div className="w-full py-6">
       <div className="flex items-center justify-between">
-        {STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = step.id === currentStep;
           const isPast = index < currentIndex;
@@ -50,7 +86,7 @@ export default function PipelineStepIndicator({
               {/* Step Circle */}
               <div className="flex flex-col items-center">
                 <button
-                  onClick={() => handleStepClick(step.id as PipelineStep, index)}
+                  onClick={() => handleStepClick(step.id, index)}
                   disabled={!isClickable}
                   className={`
                     w-12 h-12 rounded-full flex items-center justify-center
@@ -101,7 +137,7 @@ export default function PipelineStepIndicator({
               </div>
 
               {/* Connector Line */}
-              {index < STEPS.length - 1 && (
+              {index < steps.length - 1 && (
                 <div className="flex-1 h-1 mx-4 relative" style={{ top: '-20px' }}>
                   <div
                     className={`

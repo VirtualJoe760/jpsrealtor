@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import {
   EnvelopeIcon,
-  ChatBubbleLeftIcon,
   MicrophoneIcon,
   ArrowRightIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
 import { useThemeClasses, useTheme } from '@/app/contexts/ThemeContext';
 import CampaignPipelineWizard from './pipeline/CampaignPipelineWizard';
+import DirectMailPipelineWizard from './pipeline/DirectMailPipelineWizard';
+import CommunityAdWizard from './pipeline/CommunityAdWizard';
 
 interface Campaign {
   id: string;
@@ -21,6 +23,9 @@ interface Campaign {
     voicemail: boolean;
     email: boolean;
     text: boolean;
+    directMail: boolean;
+    googleAds: boolean;
+    metaAds: boolean;
   };
   analytics: {
     voicemailsSent?: number;
@@ -30,6 +35,13 @@ interface Campaign {
     textsSent?: number;
     responses: number;
     conversions: number;
+    mailSent?: number;
+    mailDelivered?: number;
+    qrScans?: number;
+    adImpressions?: number;
+    adClicks?: number;
+    adConversions?: number;
+    adSpend?: number;
   };
   createdAt: string;
   lastActivity: string;
@@ -40,7 +52,7 @@ interface CampaignOverviewProps {
   onRefresh?: () => void;
 }
 
-type Strategy = 'voicemail' | 'text' | 'email' | null;
+type Strategy = 'voicemail' | 'directMail' | 'digitalAds' | null;
 
 export default function CampaignOverview({ campaign, onRefresh }: CampaignOverviewProps) {
   const { cardBg, cardBorder, textPrimary, textSecondary, border } = useThemeClasses();
@@ -49,8 +61,21 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
 
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy>(null);
 
-  // If a strategy is selected, show the pipeline wizard
+  // If a strategy is selected, show the appropriate pipeline wizard
   if (selectedStrategy) {
+    const renderWizard = () => {
+      switch (selectedStrategy) {
+        case 'voicemail':
+          return <CampaignPipelineWizard campaign={campaign} initialStrategy="voicemail" onRefresh={onRefresh} />;
+        case 'directMail':
+          return <DirectMailPipelineWizard campaign={campaign} onRefresh={onRefresh} />;
+        case 'digitalAds':
+          return <CommunityAdWizard campaign={campaign} onRefresh={onRefresh} />;
+        default:
+          return null;
+      }
+    };
+
     return (
       <div className="space-y-6">
         <button
@@ -59,7 +84,7 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
         >
           ← Back to Strategy Selection
         </button>
-        <CampaignPipelineWizard campaign={campaign} initialStrategy={selectedStrategy} onRefresh={onRefresh} />
+        {renderWizard()}
       </div>
     );
   }
@@ -79,27 +104,29 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
       },
     },
     {
-      id: 'text' as Strategy,
-      name: 'Text Messages',
-      description: 'Create and send personalized text messages to contacts',
-      icon: ChatBubbleLeftIcon,
+      id: 'directMail' as Strategy,
+      name: 'Direct Mail',
+      description: 'Send postcards, letters, and handwritten notes via thanks.io with QR tracking',
+      icon: EnvelopeIcon,
       color: isLight ? 'green' : 'blue',
-      active: campaign.activeStrategies.text,
+      active: campaign.activeStrategies.directMail,
       stats: {
-        sent: campaign.analytics.textsSent || 0,
-        responses: campaign.analytics.responses || 0,
+        mailed: campaign.analytics.mailSent || 0,
+        delivered: campaign.analytics.mailDelivered || 0,
+        scanned: campaign.analytics.qrScans || 0,
       },
     },
     {
-      id: 'email' as Strategy,
-      name: 'Email Campaigns',
-      description: 'Design and send professional email campaigns',
-      icon: EnvelopeIcon,
+      id: 'digitalAds' as Strategy,
+      name: 'Community Ads',
+      description: 'Google PPC for search traffic + Meta retargeting for your community pages',
+      icon: MegaphoneIcon,
       color: isLight ? 'purple' : 'indigo',
-      active: campaign.activeStrategies.email,
+      active: campaign.activeStrategies.googleAds || campaign.activeStrategies.metaAds,
       stats: {
-        sent: campaign.analytics.emailsSent || 0,
-        opened: campaign.analytics.emailsOpened || 0,
+        clicks: campaign.analytics.adClicks || 0,
+        conversions: campaign.analytics.adConversions || 0,
+        spend: campaign.analytics.adSpend ? `$${campaign.analytics.adSpend.toFixed(2)}` : '$0.00',
       },
     },
   ];
@@ -145,6 +172,22 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
         iconText: isLight ? 'text-indigo-600' : 'text-indigo-400',
         button: isLight ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700',
         text: isLight ? 'text-indigo-700' : 'text-indigo-300',
+      },
+      pink: {
+        bg: isLight ? 'bg-pink-50' : 'bg-pink-900/20',
+        border: isLight ? 'border-pink-200' : 'border-pink-700/50',
+        iconBg: isLight ? 'bg-pink-100' : 'bg-pink-800/50',
+        iconText: isLight ? 'text-pink-600' : 'text-pink-400',
+        button: isLight ? 'bg-pink-600 hover:bg-pink-700' : 'bg-pink-600 hover:bg-pink-700',
+        text: isLight ? 'text-pink-700' : 'text-pink-300',
+      },
+      rose: {
+        bg: isLight ? 'bg-rose-50' : 'bg-rose-900/20',
+        border: isLight ? 'border-rose-200' : 'border-rose-700/50',
+        iconBg: isLight ? 'bg-rose-100' : 'bg-rose-800/50',
+        iconText: isLight ? 'text-rose-600' : 'text-rose-400',
+        button: isLight ? 'bg-rose-600 hover:bg-rose-700' : 'bg-rose-600 hover:bg-rose-700',
+        text: isLight ? 'text-rose-700' : 'text-rose-300',
       },
     };
     return colors[color as keyof typeof colors] || colors.blue;

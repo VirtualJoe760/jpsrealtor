@@ -155,6 +155,24 @@ export interface IUser extends Document {
     metaKeywords?: string[]; // SEO keywords
   };
 
+  // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads)
+  adAccounts?: {
+    google?: {
+      customerId?: string;        // Google Ads Customer ID (no dashes)
+      developerToken?: string;    // API Center developer token
+      refreshToken?: string;      // OAuth refresh token
+      connectedAt?: Date;
+      status?: 'connected' | 'disconnected' | 'pending';
+    };
+    meta?: {
+      adAccountId?: string;       // format: act_XXXXXXXXX
+      accessToken?: string;       // System user or long-lived token with ads_management
+      pageId?: string;            // Facebook Page ID
+      connectedAt?: Date;
+      status?: 'connected' | 'disconnected' | 'pending';
+    };
+  };
+
   // Service Provider specific
   businessName?: string;
   serviceCategory?: string; // e.g., "Plumber", "Contractor", "Electrician"
@@ -579,6 +597,24 @@ const UserSchema = new Schema<IUser>(
       metaTitle: String,
       metaDescription: String,
       metaKeywords: [String],
+    },
+
+    // Ad Platform Accounts
+    adAccounts: {
+      google: {
+        customerId: String,
+        developerToken: String,
+        refreshToken: String,
+        connectedAt: Date,
+        status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
+      meta: {
+        adAccountId: String,
+        accessToken: String,
+        pageId: String,
+        connectedAt: Date,
+        status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
     },
 
     // Service Provider specific
