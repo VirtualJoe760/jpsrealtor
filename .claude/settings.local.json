@@ -80,7 +80,8 @@
       "Bash(echo \"=== $env complete ===\" done)",
       "Bash(1 vercel:*)",
       "Bash(/dev/null echo:*)",
-      "Bash(1 echo:*)"
+      "Bash(1 echo:*)",
+      "Bash(/dev/null printf:*)"
     ],
     "deny": [],
     "ask": []
