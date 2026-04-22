@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import UnifiedListing from '@/models/unified-listing';
 
-export const dynamic = 'force-dynamic';
+// Cache for 1 hour — team listings don't change frequently
+export const revalidate = 3600;
 
 /**
  * GET /api/listings/featured
@@ -22,10 +23,8 @@ export async function GET() {
       $and: [
         {
           $or: [
-            { coListAgentName: /obsidian/i },
-            { coListAgentMarketingName: /obsidian/i },
-            { listAgentName: /joseph.*sardella/i },
             { listAgentName: /sardella/i },
+            { coListAgentName: /obsidian/i },
           ]
         },
         { standardStatus: 'Active' },
