@@ -231,6 +231,22 @@ export default async function RootLayout({
 
                       // Add to body immediately (before React renders)
                       document.body.appendChild(overlay);
+
+                      // SAFETY NET: Auto-remove overlay after 8 seconds max
+                      // Prevents permanent black/white screen if React fails to hydrate
+                      setTimeout(function() {
+                        var staleOverlay = document.getElementById('instant-transition-overlay');
+                        if (staleOverlay) {
+                          staleOverlay.style.transition = 'opacity 0.5s ease-out';
+                          staleOverlay.style.opacity = '0';
+                          setTimeout(function() { staleOverlay.remove(); }, 500);
+                          console.warn('[Blocking Script] Safety net: removed stale overlay after 8s');
+                        }
+                        // Also remove any other transition overlays
+                        document.querySelectorAll('.theme-transition-overlay').forEach(function(el) { el.remove(); });
+                        sessionStorage.removeItem('theme-transition-pair');
+                        sessionStorage.removeItem('theme-transition-timestamp');
+                      }, 8000);
                     } else {
                       // Clear stale data
                       sessionStorage.removeItem('theme-transition-pair');
