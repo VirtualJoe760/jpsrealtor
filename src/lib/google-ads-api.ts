@@ -78,13 +78,23 @@ async function googleAdsRequest(
   const accessToken = await getAccessToken(config);
   const customerId = config.customerId.replace(/-/g, '');
 
+  const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID?.replace(/-/g, '') || '';
+
   const url = `${GOOGLE_ADS_BASE}/customers/${customerId}${endpoint}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'developer-token': config.developerToken,
+    'Content-Type': 'application/json',
+  };
+  // Required when using a Manager Account (MCC) to manage sub-accounts
+  if (loginCustomerId) {
+    headers['login-customer-id'] = loginCustomerId;
+  }
+
   const res = await fetch(url, {
     ...options,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'developer-token': config.developerToken,
-      'Content-Type': 'application/json',
+      ...headers,
       ...options.headers,
     },
   });
