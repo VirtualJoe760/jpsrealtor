@@ -748,12 +748,12 @@ function playEnterAnimation(
       resolve();
     }, totalDuration);
 
-    // SAFETY NET: Force remove ALL overlays after 10 seconds max
+    // SAFETY NET: Force remove ALL overlays after 6 seconds max
     setTimeout(() => {
       document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
       const instantOverlay = document.getElementById('instant-transition-overlay');
       if (instantOverlay) instantOverlay.remove();
-    }, 10000);
+    }, 6000);
   });
 }
 
