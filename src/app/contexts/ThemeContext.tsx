@@ -227,10 +227,38 @@ async function fetchFeaturedListings(): Promise<void> {
 }
 
 /**
+ * Save listings to sessionStorage so they survive page refresh.
+ * Called during EXIT animation before window.location.reload().
+ */
+function cacheFeaturedListings(): void {
+  if (FEATURED_LISTINGS.length > 0) {
+    try {
+      sessionStorage.setItem('featured-listings-cache', JSON.stringify(FEATURED_LISTINGS));
+    } catch {}
+  }
+}
+
+/**
+ * Restore listings from sessionStorage (instant, no API call needed).
+ * Called on page load before ENTER animation fires.
+ */
+function restoreFeaturedListings(): void {
+  if (FEATURED_LISTINGS.length > 0) return; // Already loaded
+  try {
+    const cached = sessionStorage.getItem('featured-listings-cache');
+    if (cached) {
+      FEATURED_LISTINGS = JSON.parse(cached);
+      console.log(`[ThemeContext] Restored ${FEATURED_LISTINGS.length} cached listings from sessionStorage`);
+    }
+  } catch {}
+}
+
+/**
  * Get random Obsidian Group listing
  * Returns null if no listings available
  */
 function getRandomListing(): FeaturedListing | null {
+  if (FEATURED_LISTINGS.length === 0) restoreFeaturedListings(); // Try cache first
   if (FEATURED_LISTINGS.length === 0) return null;
   return FEATURED_LISTINGS[Math.floor(Math.random() * FEATURED_LISTINGS.length)];
 }
@@ -946,6 +974,9 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
       // Update cookie for server-side rendering
       setThemeCookie(newTheme);
+
+      // Cache listings in sessionStorage so ENTER animation has them instantly after refresh
+      cacheFeaturedListings();
 
       // Trigger page refresh (Act 2 will play on mount)
       window.location.reload();
