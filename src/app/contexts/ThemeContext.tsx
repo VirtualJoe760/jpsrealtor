@@ -589,17 +589,22 @@ function playEnterAnimation(
     if (!listing) {
       console.warn('[ThemeTransition] No featured listings available for ENTER, using simple color transition');
 
-      // Create simple solid color overlay
+      // Create simple solid color overlay that fades out
+      overlay.style.transition = 'opacity 0.8s ease-out';
       document.body.appendChild(overlay);
 
-      // Simple fade transition (no property showcase)
-      const simpleDuration = 800; // Faster than full animation
+      // Fade out and remove
+      requestAnimationFrame(() => {
+        overlay.style.opacity = '0';
+      });
 
       setTimeout(() => {
         overlay.remove();
+        // Force-clean any other stale overlays
+        document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
         console.log(`[ThemeTransition] Simple ENTER transition complete`);
         resolve();
-      }, simpleDuration);
+      }, 1000);
       return;
     }
 
@@ -742,6 +747,13 @@ function playEnterAnimation(
       overlay.remove();
       resolve();
     }, totalDuration);
+
+    // SAFETY NET: Force remove ALL overlays after 6 seconds max
+    setTimeout(() => {
+      document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
+      const instantOverlay = document.getElementById('instant-transition-overlay');
+      if (instantOverlay) instantOverlay.remove();
+    }, 6000);
   });
 }
 
