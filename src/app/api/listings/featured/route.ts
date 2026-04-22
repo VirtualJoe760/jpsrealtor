@@ -29,8 +29,11 @@ export async function GET() {
           ]
         },
         { standardStatus: 'Active' },
-        { propertyType: 'A' }, // Residential sale only (not rental, land, commercial)
-        { propertySubType: { $nin: ['Co-Ownership', 'Timeshare', 'Stock Cooperative'] } },
+        { propertyType: 'A' }, // Residential sale only (not B=rental, D=land, C=commercial)
+        { propertySubType: {
+          $in: ['Single Family Residence', 'Condominium', 'Townhouse', 'Manufactured Home'],
+          $nin: ['Co-Ownership', 'Timeshare', 'Stock Cooperative', 'Land', 'Unimproved Land', 'Vacant Land']
+        }},
         { 'photos.0': { $exists: true } }, // Must have at least one photo
         { listPrice: { $gt: 100000 } }, // Filter out placeholder/junk listings
       ]
