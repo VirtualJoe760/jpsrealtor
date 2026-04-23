@@ -105,6 +105,8 @@ export async function GET(request: NextRequest) {
         birthday: user.birthday,
         profileDescription: user.profileDescription,
         realEstateGoals: user.realEstateGoals,
+        realEstatePreferences: user.realEstatePreferences,
+        notificationPreferences: user.notificationPreferences,
         currentAddress: user.currentAddress,
         homeownerStatus: user.homeownerStatus,
         significantOther: user.significantOther,
@@ -146,6 +148,8 @@ export async function PUT(request: NextRequest) {
       birthday,
       profileDescription,
       realEstateGoals,
+      realEstatePreferences,
+      notificationPreferences,
       currentAddress,
       homeownerStatus,
       image,
@@ -187,6 +191,20 @@ export async function PUT(request: NextRequest) {
     else if (brokerageName !== undefined) user.brokerageName = brokerageName;
     if (licenseNumber !== undefined && licenseNumber !== user.licenseNumber) { basicChanges.push(`licenseNumber: "${user.licenseNumber}" → "${licenseNumber}"`); user.licenseNumber = licenseNumber; }
     else if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+
+    // Real Estate Preferences (structured object)
+    if (realEstatePreferences !== undefined) {
+      user.realEstatePreferences = realEstatePreferences;
+      user.markModified('realEstatePreferences');
+      basicChanges.push('realEstatePreferences: updated');
+    }
+
+    // Notification Preferences
+    if (notificationPreferences !== undefined) {
+      user.notificationPreferences = notificationPreferences;
+      user.markModified('notificationPreferences');
+      basicChanges.push('notificationPreferences: updated');
+    }
 
     if (basicChanges.length > 0) {
       console.log(`📝 [PROFILE UPDATE] Basic field changes:`);
@@ -302,6 +320,8 @@ export async function PUT(request: NextRequest) {
         birthday: user.birthday,
         profileDescription: user.profileDescription,
         realEstateGoals: user.realEstateGoals,
+        realEstatePreferences: user.realEstatePreferences,
+        notificationPreferences: user.notificationPreferences,
         currentAddress: user.currentAddress,
         homeownerStatus: user.homeownerStatus,
         brokerageName: user.brokerageName,

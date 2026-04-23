@@ -28,6 +28,27 @@ export interface IUser extends Document {
   birthday?: Date;
   profileDescription?: string; // Who they are and what they love
   realEstateGoals?: string; // What they want real estate wise
+  realEstatePreferences?: {
+    intent?: 'buying' | 'selling' | 'both' | 'browsing';
+    timeline?: string;
+    budgetMin?: number;
+    budgetMax?: number;
+    propertyTypes?: string[];
+    bedrooms?: number;
+    bathrooms?: number;
+    minSqft?: number;
+    preferredCities?: string[];
+    preferredNeighborhoods?: string[];
+    mustHaves?: string[];
+    dealBreakers?: string[];
+  };
+  notificationPreferences?: {
+    emailNewListings?: boolean;
+    emailPriceDrops?: boolean;
+    emailMarketUpdates?: boolean;
+    smsNotifications?: boolean;
+    pushNotifications?: boolean;
+  };
   currentAddress?: string;
   homeownerStatus?: "own" | "rent" | "other";
   significantOther?: mongoose.Types.ObjectId; // Reference to linked partner account
@@ -170,16 +191,6 @@ export interface IUser extends Document {
       pageId?: string;            // Facebook Page ID
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
-    };
-    gbp?: {
-      accountId?: string;         // e.g., "accounts/101108799337549000917"
-      locationId?: string;        // e.g., "locations/7725888369257069197"
-      refreshToken?: string;      // Per-agent OAuth refresh token
-      connectedAt?: Date;
-      status?: 'connected' | 'disconnected' | 'pending';
-      autoPostArticles?: boolean; // Auto-post published articles to GBP (default true)
-      includeImage?: boolean;     // Include featured image in GBP posts (default true)
-      defaultCtaType?: 'LEARN_MORE' | 'BOOK' | 'SIGN_UP' | 'CALL' | 'GET_OFFER'; // CTA button type
     };
   };
 
@@ -476,6 +487,27 @@ const UserSchema = new Schema<IUser>(
     birthday: Date,
     profileDescription: String,
     realEstateGoals: String,
+    realEstatePreferences: {
+      intent: { type: String, enum: ['buying', 'selling', 'both', 'browsing'] },
+      timeline: String,
+      budgetMin: Number,
+      budgetMax: Number,
+      propertyTypes: [String],
+      bedrooms: Number,
+      bathrooms: Number,
+      minSqft: Number,
+      preferredCities: [String],
+      preferredNeighborhoods: [String],
+      mustHaves: [String],
+      dealBreakers: [String],
+    },
+    notificationPreferences: {
+      emailNewListings: { type: Boolean, default: true },
+      emailPriceDrops: { type: Boolean, default: true },
+      emailMarketUpdates: { type: Boolean, default: true },
+      smsNotifications: { type: Boolean, default: false },
+      pushNotifications: { type: Boolean, default: true },
+    },
     currentAddress: String,
     homeownerStatus: {
       type: String,
@@ -624,16 +656,6 @@ const UserSchema = new Schema<IUser>(
         pageId: String,
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
-      },
-      gbp: {
-        accountId: String,
-        locationId: String,
-        refreshToken: String,
-        connectedAt: Date,
-        status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
-        autoPostArticles: { type: Boolean, default: true },
-        includeImage: { type: Boolean, default: true },
-        defaultCtaType: { type: String, enum: ['LEARN_MORE', 'BOOK', 'SIGN_UP', 'CALL', 'GET_OFFER'], default: 'LEARN_MORE' },
       },
     },
 
