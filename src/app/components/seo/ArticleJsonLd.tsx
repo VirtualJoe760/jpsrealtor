@@ -1,4 +1,8 @@
 // Article JSON-LD Schema for blog/insights posts
+// Multi-domain aware: resolves image/author URLs relative to the serving domain.
+
+import { headers } from "next/headers"
+import { getDomainConfig } from "@/lib/domain-utils"
 
 interface ArticleJsonLdProps {
   title: string;
@@ -11,16 +15,24 @@ interface ArticleJsonLdProps {
   section?: string;
 }
 
-export function ArticleJsonLd({
+export async function ArticleJsonLd({
   title,
   description,
   url,
   image,
   datePublished,
   dateModified,
-  authorName = "Joseph Sardella",
+  authorName,
   section,
 }: ArticleJsonLdProps) {
+  const headersList = await headers()
+  const host = headersList.get("host") || "jpsrealtor.com"
+  const cfg = getDomainConfig(host)
+
+  // Fall back to the domain config's default author for owner/platform domains
+  const resolvedAuthor =
+    authorName || (cfg.type === "jpsrealtor" ? "Joseph Sardella" : cfg.siteName)
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -30,23 +42,23 @@ export function ArticleJsonLd({
     ...(image && {
       image: {
         "@type": "ImageObject",
-        url: image.startsWith("http") ? image : `https://jpsrealtor.com${image}`,
+        url: image.startsWith("http") ? image : `${cfg.baseUrl}${image}`,
       },
     }),
     datePublished,
     dateModified: dateModified || datePublished,
     author: {
       "@type": "Person",
-      name: authorName,
-      url: "https://jpsrealtor.com/about",
+      name: resolvedAuthor,
+      url: `${cfg.baseUrl}/about`,
     },
     publisher: {
       "@type": "Organization",
-      name: "JPS Realtor",
-      url: "https://jpsrealtor.com",
+      name: cfg.siteName,
+      url: cfg.baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
+        url: cfg.logoUrl.startsWith("http") ? cfg.logoUrl : `${cfg.baseUrl}${cfg.logoUrl}`,
       },
     },
     ...(section && { articleSection: section }),

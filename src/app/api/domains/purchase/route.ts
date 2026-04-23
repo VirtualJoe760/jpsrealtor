@@ -9,6 +9,7 @@ import {
   purchaseDomain,
   addDomainToProject,
 } from "@/lib/vercel-domains";
+import { runDomainOnboarding } from "@/lib/domain-onboarding";
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,12 +79,34 @@ export async function POST(request: NextRequest) {
       $set: { "agentProfile.customDomain": normalizedDomain },
     });
 
+    // Step 4: Kick off domain onboarding pipeline (non-blocking)
+    // Provisions GSC, submits sitemap, creates GBP post, etc.
+    const onboardingPromise = runDomainOnboarding(
+      user._id.toString(),
+      normalizedDomain
+    ).catch((err) => {
+      console.error(
+        "[domains/purchase] Onboarding pipeline error:",
+        err.message
+      );
+      return null;
+    });
+
+    // Wait briefly for fast steps, but don't block the response
+    const onboardingResult = await Promise.race([
+      onboardingPromise,
+      new Promise((resolve) => setTimeout(() => resolve(null), 5_000)),
+    ]);
+
     return NextResponse.json({
       success: true,
       domain: normalizedDomain,
       purchased: purchaseResult.created,
       connectedToProject: !!projectDomain,
       savedToProfile: true,
+      onboarding: onboardingResult
+        ? { status: "completed", steps: (onboardingResult as any).steps }
+        : { status: "in_progress", message: "Onboarding pipeline running in background" },
     });
   } catch (error: any) {
     console.error("[domains/purchase] Error:", error.message);

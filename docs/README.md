@@ -1,6 +1,6 @@
 # JPSRealtor Documentation
 
-**Last Updated**: December 19, 2025
+**Last Updated**: April 22, 2026
 
 Complete technical documentation for the JPSRealtor platform - a modern real estate application built with Next.js 16, featuring unified MLS data integration (78,904+ listings from 8 MLSs), intelligent map clustering, AI-powered tools, and comprehensive CRM functionality.
 
@@ -173,6 +173,23 @@ Component-first, intent-based real estate AI chat system.
 
 ---
 
+### [🏢 ChatRealty Platform](./chatrealty/) - Multi-Tenant Agent Network ⭐ **NEW APR 2026**
+White-label real estate marketing platform turning the single Next.js app into a network of agent websites with custom domains, AI marketing, and subscription billing.
+
+**Files**:
+- **BUSINESS_ARCHITECTURE.md** - Overall vision, revenue model, and technical architecture
+- **MIDDLEWARE_ROUTING.md** - Multi-domain hostname routing via Next.js middleware
+- **DOMAIN_PROVISIONING.md** - Vercel Domains API integration for automated domain purchase and setup
+- **DOMAIN_MANAGEMENT_UI.md** - Agent domain settings UI (search, purchase, BYO, subdomain, SEO)
+- **DYNAMIC_SITEMAPS.md** - Per-domain sitemap and robots.txt generation
+- **GBP_AUTO_POSTING.md** - GBP CMS pipeline (auto-post articles on publish)
+- **GBP_PER_USER.md** - Per-agent GBP system with OAuth connect flow
+- **AGENT_DIRECTORY.md** - Agent directory page at /directory (replaces NetworkLinks concept)
+- **STRIPE_SUBSCRIPTIONS.md** - Stripe subscription backend (checkout, portal, webhooks, feature gating)
+- **SUBSCRIPTION_UI.md** - Public pricing page and billing step in agent settings wizard
+
+---
+
 ### [📚 Misc](./misc/) - Reference Materials
 Vision documents, analysis reports, and reference guides.
 
@@ -248,7 +265,20 @@ Completed work sessions, migration reports, and archived documentation.
 
 ## 🔄 Recent Changes
 
-### April 10-12, 2026 ⭐ **LATEST**
+### April 22, 2026 ⭐ **LATEST**
+- ✅ **ChatRealty Platform** — Multi-tenant agent network architecture (10 docs)
+  - Middleware hostname routing: chatrealty.io, agent custom domains, subdomains
+  - Domain provisioning via Vercel Domains API (search, purchase, connect)
+  - Domain management UI in agent settings wizard (purchase, BYO, subdomain, SEO)
+  - Dynamic per-domain sitemap and robots.txt generation
+  - GBP auto-posting integrated into CMS article publish pipeline
+  - Per-user GBP system with OAuth connect flow and auto-discovery
+  - Agent directory page at `/directory` (replaces NetworkLinks concept)
+  - Stripe subscription backend (checkout, portal, webhooks, feature gating)
+  - Subscription UI: public pricing page + billing step in settings wizard
+  - Four tiers: Free / Starter ($49) / Professional ($99) / Enterprise ($299)
+
+### April 10-12, 2026
 - ✅ **Landing Pages (`/lp/`)** — Dedicated layout, form builder, theme override, agent footer
   - `LandingPageClient` replaces ArticlePageClient for `/lp/` routes
   - CMS form builder: radio, yes/no, checkbox with options, dropdown with options
@@ -367,9 +397,10 @@ All documentation follows these standards:
 | Misc | 3 | Reference materials |
 | Photos | 2 | Photo management |
 | Debugging | 2 + 23 tests | Debug tools & test scripts |
+| **ChatRealty** | 10 | **Multi-tenant agent network (NEW APR 2026)** |
 | **Historical** | 3 | **Archived documentation (NEW)** |
 
-**Total Active Docs**: ~55 files (organized in 15 directories)
+**Total Active Docs**: ~65 files (organized in 16 directories)
 **Root Files**: 1 (README.md only)
 
 **Recent Deletions** (Dec 19, 2025): 18 outdated chat files removed
@@ -379,6 +410,7 @@ All documentation follows these standards:
 ## 🔍 Finding Information
 
 ### By Topic
+- **ChatRealty platform**: `./chatrealty/BUSINESS_ARCHITECTURE.md` ⭐ **NEW APR 2026**
 - **Chat system**: `./chat/README.md` ⭐ **UPDATED DEC 19**
 - **Map issues**: `./map/MAP_FIXES_COMPLETE.md`
 - **Database**: `./architecture/DATABASE_*.md`
@@ -434,6 +466,7 @@ When adding new documentation:
 ---
 
 **Last Security Audit**: November 29, 2025
-**Last Documentation Reorganization**: December 19, 2025
+**Last Documentation Reorganization**: April 22, 2026
 **Last Chat System Update**: December 19, 2025
+**ChatRealty Platform Docs Added**: April 22, 2026
 **All secrets sanitized and verified safe for public GitHub repository.**

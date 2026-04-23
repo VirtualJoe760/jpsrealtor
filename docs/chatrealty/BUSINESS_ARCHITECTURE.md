@@ -2,7 +2,7 @@
 
 **Date:** April 22, 2026
 **Domain:** chatrealty.io
-**Status:** Vision — foundational pieces in progress
+**Status:** Active development — core infrastructure built
 
 ---
 
@@ -158,13 +158,9 @@ Each domain in the network ranks independently in Google. Authority flows betwee
 | Listing pages | Listing agent's domain | "Listed by [Name]" |
 | JSON-LD structured data | All related domains | `sameAs` arrays |
 
-### Dynamic NetworkLinks Component
+### Agent Directory (replaces NetworkLinks concept)
 
-A shared component queries the agent database and renders contextually relevant cross-links based on:
-- Current page context (city, neighborhood, property type)
-- Current domain (excludes self-links)
-- Agent service areas (only links to relevant agents)
-- Content relevance (matches topics across agent blogs)
+The original vision called for a dynamic NetworkLinks component embedded throughout the site. This was replaced by a dedicated **Agent Directory page** at `/directory` which serves as the public-facing SEO cross-linking hub. Each agent's card links to their custom domain or subdomain, creating natural cross-links between chatrealty.io and tenant sites. See `docs/chatrealty/AGENT_DIRECTORY.md` for full details.
 
 ### Per-Domain SEO Infrastructure
 
@@ -194,6 +190,8 @@ Each domain requires its own:
 | CORS multi-domain | Done | All 3 domains + www variants allowed |
 | Google OAuth redirect URIs | Done | Added for jpsrealtor.com, josephsardella.com, chatrealty.io |
 | GBP API integration | Done | localPosts v4, auto-post articles with title in first line |
+| GBP auto-posting (CMS) | Done | Articles auto-post to GBP on publish, non-blocking. See `GBP_AUTO_POSTING.md` |
+| GBP per-user OAuth | Done | Per-agent GBP connect via OAuth, auto-discovers account/location. See `GBP_PER_USER.md` |
 | Campaign system | Done | 3 channels: voicemail, direct mail, community ads (Google + Meta) |
 | CRM | Done | Contacts, tags, campaigns, lead scoring |
 | AI chat | Done | Claude + Groq, tool-augmented, 5 concurrent conversations |
@@ -202,17 +200,20 @@ Each domain requires its own:
 | CMS + blog | Done | AI article generation, MDX publishing, GBP syndication |
 | Privacy Policy + TOS | Done | Comprehensive, covers all integrations |
 | Footer with legal links | Done | Privacy Policy + Terms of Service on every page |
+| Middleware hostname routing | Done | Resolves domain → agent → rewrites to agent content. See `MIDDLEWARE_ROUTING.md` |
+| chatrealty.io landing page | Done | Platform brand page at `/chat-landing`, served via middleware rewrite |
+| Agent onboarding wizard | Done | 7-step settings wizard: Identity, Branding, Photos, Content, Social, Domain/SEO, Billing |
+| Vercel Domains API integration | Done | Search, purchase, connect domains programmatically. See `DOMAIN_PROVISIONING.md` |
+| Domain management UI | Done | Integrated into agent settings wizard (Domain & SEO step). See `DOMAIN_MANAGEMENT_UI.md` |
+| Dynamic sitemap per domain | Done | Per-domain sitemap.xml and robots.txt from Host header. See `DYNAMIC_SITEMAPS.md` |
+| Agent Directory | Done | Public page at `/directory`, replaces NetworkLinks concept. See `AGENT_DIRECTORY.md` |
+| Stripe subscription system | Done | Checkout, portal, webhooks, feature gating, 4 tiers. See `STRIPE_SUBSCRIPTIONS.md` |
+| Subscription UI | Done | Public pricing page + billing step in settings wizard. See `SUBSCRIPTION_UI.md` |
 
 ## Technical Foundation (To Build)
 
 | Component | Priority | Details |
 |-----------|----------|---------|
-| Middleware hostname routing | High | Resolve domain → agent → rewrite to their content |
-| chatrealty.io landing page | High | Platform brand page, separate from jpsrealtor home |
-| Agent onboarding wizard | High | Apply → verify identity → choose domain → configure profile |
-| Vercel Domains API integration | Medium | Buy, connect, manage domains programmatically |
-| Dynamic sitemap per domain | Medium | Generate unique sitemap based on hostname |
-| NetworkLinks component | Medium | Dynamic cross-linking based on page context |
 | Per-agent GA4 tracking | Medium | Cross-domain or per-agent measurement IDs |
 | GSC auto-verification | Low | Programmatic domain verification via GSC API |
 | Ad spend billing + commission | High | Stripe billing tied to campaign spend + markup |
@@ -263,4 +264,4 @@ More agents join the platform
 
 ---
 
-**Next milestone:** Build middleware hostname routing + chatrealty.io landing page to establish the hub.
+**Next milestone:** Ad spend billing + commission integration (Stripe billing tied to campaign spend) and lead attribution tracking.

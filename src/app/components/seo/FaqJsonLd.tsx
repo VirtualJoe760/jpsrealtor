@@ -1,5 +1,7 @@
 // FAQ JSON-LD Schema for city landing pages
-// Generates FAQPage structured data for rich snippets in SERPs
+// Generates FAQPage structured data for rich snippets in SERPs.
+// getCityFaqs is now domain-aware — callers pass agentName/phone for
+// agent custom domains, or omit them to get defaults for jpsrealtor.com.
 
 interface FaqItem {
   question: string;
@@ -32,14 +34,20 @@ export function FaqJsonLd({ faqs }: FaqJsonLdProps) {
   );
 }
 
-// Pre-built FAQ sets for Coachella Valley cities
-export function getCityFaqs(cityName: string, listingCount?: number): FaqItem[] {
+// Pre-built FAQ sets for Coachella Valley cities.
+// Pass agentName / agentPhone to personalise for agent domains.
+export function getCityFaqs(
+  cityName: string,
+  listingCount?: number,
+  agentName: string = "Joseph Sardella",
+  agentPhone: string = "(760) 333-3676",
+): FaqItem[] {
   const count = listingCount ? listingCount.toLocaleString() : "hundreds of";
 
   return [
     {
       question: `How much do homes cost in ${cityName}?`,
-      answer: `Home prices in ${cityName} vary widely depending on the neighborhood, property type, and amenities. Contact Joseph Sardella for a current market analysis tailored to your budget and preferences.`,
+      answer: `Home prices in ${cityName} vary widely depending on the neighborhood, property type, and amenities. Contact ${agentName} for a current market analysis tailored to your budget and preferences.`,
     },
     {
       question: `Is ${cityName} a good place to buy a home?`,
@@ -47,7 +55,7 @@ export function getCityFaqs(cityName: string, listingCount?: number): FaqItem[] 
     },
     {
       question: `How many homes are for sale in ${cityName} right now?`,
-      answer: `There are currently ${count} active listings in ${cityName}. New listings are added daily — browse the latest on our interactive map or contact Joseph Sardella for off-market opportunities.`,
+      answer: `There are currently ${count} active listings in ${cityName}. New listings are added daily — browse the latest on our interactive map or contact ${agentName} for off-market opportunities.`,
     },
     {
       question: `What neighborhoods are popular in ${cityName}?`,
@@ -55,7 +63,7 @@ export function getCityFaqs(cityName: string, listingCount?: number): FaqItem[] 
     },
     {
       question: `Do I need a real estate agent to buy in ${cityName}?`,
-      answer: `While not legally required, working with a local real estate agent gives you access to market expertise, negotiation skills, and off-market listings. Joseph Sardella specializes in ${cityName} and the broader Coachella Valley — call (760) 333-3676 for a free consultation.`,
+      answer: `While not legally required, working with a local real estate agent gives you access to market expertise, negotiation skills, and off-market listings. ${agentName} specializes in ${cityName} and the broader Coachella Valley — call ${agentPhone} for a free consultation.`,
     },
   ];
 }

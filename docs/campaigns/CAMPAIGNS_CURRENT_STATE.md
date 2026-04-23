@@ -242,6 +242,16 @@ Step 4: SEND
 - ✅ Tag-based contact quick-select
 - ✅ Buy/Sell/Community page variant toggle
 
+## GBP Integration (April 2026)
+
+GBP auto-posting is now integrated into the article publishing pipeline. When an article is published (not draft) via `POST /api/articles/publish`, the pipeline automatically creates a corresponding Google Business Profile post with the article title, excerpt, featured image, and a "Learn More" CTA linking back to the article. GBP posting is non-blocking -- if it fails, the article still publishes normally.
+
+GBP is now **per-user via OAuth**. Each agent can connect their own GBP account through the OAuth flow at `/api/auth/gbp/connect`. On connect, the system auto-discovers the agent's GBP account and location IDs. Per-user credentials are stored in `User.adAccounts.gbp` (refreshToken, accountId, locationId). The platform owner's env var credentials serve as a fallback when no user-specific GBP is connected.
+
+See `docs/chatrealty/GBP_AUTO_POSTING.md` and `docs/chatrealty/GBP_PER_USER.md` for full details.
+
+---
+
 ## What's Pending
 
 - ⏳ Google Ads refresh token (need OAuth flow)

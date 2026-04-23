@@ -155,7 +155,7 @@ export interface IUser extends Document {
     metaKeywords?: string[]; // SEO keywords
   };
 
-  // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads + GBP)
+  // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads)
   adAccounts?: {
     google?: {
       customerId?: string;        // Google Ads Customer ID (no dashes)
@@ -177,6 +177,9 @@ export interface IUser extends Document {
       refreshToken?: string;      // Per-agent OAuth refresh token
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
+      autoPostArticles?: boolean; // Auto-post published articles to GBP (default true)
+      includeImage?: boolean;     // Include featured image in GBP posts (default true)
+      defaultCtaType?: 'LEARN_MORE' | 'BOOK' | 'SIGN_UP' | 'CALL' | 'GET_OFFER'; // CTA button type
     };
   };
 
@@ -628,6 +631,9 @@ const UserSchema = new Schema<IUser>(
         refreshToken: String,
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+        autoPostArticles: { type: Boolean, default: true },
+        includeImage: { type: Boolean, default: true },
+        defaultCtaType: { type: String, enum: ['LEARN_MORE', 'BOOK', 'SIGN_UP', 'CALL', 'GET_OFFER'], default: 'LEARN_MORE' },
       },
     },
 
