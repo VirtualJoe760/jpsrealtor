@@ -1,24 +1,60 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongoose';
+import User from '@/models/User';
 import { publishArticleToGBP, type ArticleForGBP } from '@/lib/gbp-publisher';
-import { listLocalPosts, deleteLocalPost } from '@/lib/gbp-api';
+import { listLocalPosts, deleteLocalPost, type GBPCredentials } from '@/lib/gbp-api';
 
-const GBP_ACCOUNT_ID = 'accounts/101108799337549000917';
-const GBP_LOCATION_ID = 'locations/7725888369257069197';
+// Platform owner fallback (used when user has no GBP connected)
+const FALLBACK_ACCOUNT_ID = 'accounts/101108799337549000917';
+const FALLBACK_LOCATION_ID = 'locations/7725888369257069197';
+
+/**
+ * Resolve the GBP account, location, and credentials for the current user.
+ * Returns per-user config if available, otherwise falls back to env vars.
+ */
+async function resolveUserGBP(email: string): Promise<{
+  accountId: string;
+  locationId: string;
+  credentials?: Partial<GBPCredentials>;
+  isPerUser: boolean;
+}> {
+  await dbConnect();
+  const user = await User.findOne({ email }, { adAccounts: 1 }).lean();
+  const gbp = (user as any)?.adAccounts?.gbp;
+
+  if (gbp?.refreshToken && gbp?.accountId && gbp?.locationId && gbp?.status !== 'disconnected') {
+    return {
+      accountId: gbp.accountId,
+      locationId: gbp.locationId,
+      credentials: { refreshToken: gbp.refreshToken },
+      isPerUser: true,
+    };
+  }
+
+  // Fallback to platform owner env vars
+  return {
+    accountId: FALLBACK_ACCOUNT_ID,
+    locationId: FALLBACK_LOCATION_ID,
+    isPerUser: false,
+  };
+}
 
 /**
  * POST /api/gbp/post
  *
- * Manual GBP posting endpoint for the admin dashboard.
+ * Manual GBP posting endpoint for the dashboard.
  * Creates a Google Business Profile post from article data.
+ * Uses the authenticated user's GBP credentials if connected,
+ * otherwise falls back to platform owner env vars.
  *
  * Body: { title, excerpt, image?, url?, category? }
  */
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,9 +68,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await publishArticleToGBP({ title, excerpt, image, url, category });
+    // Use publishArticleToGBP which handles per-user credential lookup
+    const result = await publishArticleToGBP(
+      { title, excerpt, image, url, category },
+      (session.user as any).id
+    );
 
     if (!result.success) {
+      if (result.skipped) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'No GBP account connected. Go to Settings > Ad Accounts to connect your Google Business Profile.',
+          },
+          { status: 422 }
+        );
+      }
       return NextResponse.json(
         { success: false, error: result.error },
         { status: 502 }
@@ -58,16 +107,18 @@ export async function POST(req: Request) {
 /**
  * GET /api/gbp/post
  *
- * List existing GBP posts for the admin dashboard.
+ * List existing GBP posts for the authenticated user's account.
  */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await listLocalPosts(GBP_ACCOUNT_ID, GBP_LOCATION_ID);
+    const { accountId, locationId, credentials } = await resolveUserGBP(session.user.email);
+
+    const result = await listLocalPosts(accountId, locationId, undefined, credentials);
 
     return NextResponse.json({
       success: true,
@@ -92,7 +143,7 @@ export async function GET() {
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -106,7 +157,9 @@ export async function DELETE(req: Request) {
       );
     }
 
-    await deleteLocalPost(GBP_ACCOUNT_ID, GBP_LOCATION_ID, postName);
+    const { accountId, locationId, credentials } = await resolveUserGBP(session.user.email);
+
+    await deleteLocalPost(accountId, locationId, postName, credentials);
 
     return NextResponse.json({
       success: true,

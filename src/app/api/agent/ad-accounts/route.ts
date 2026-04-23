@@ -32,6 +32,13 @@ export async function GET() {
         status: (user as any)?.adAccounts?.meta?.status || 'disconnected',
         connectedAt: (user as any)?.adAccounts?.meta?.connectedAt || null,
       },
+      gbp: {
+        connected: !!(user as any)?.adAccounts?.gbp?.refreshToken,
+        accountId: (user as any)?.adAccounts?.gbp?.accountId || null,
+        locationId: (user as any)?.adAccounts?.gbp?.locationId || null,
+        status: (user as any)?.adAccounts?.gbp?.status || 'disconnected',
+        connectedAt: (user as any)?.adAccounts?.gbp?.connectedAt || null,
+      },
     });
   } catch (error) {
     console.error('[ad-accounts GET] Error:', error);
@@ -54,8 +61,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { platform, ...credentials } = body;
 
-    if (platform !== 'google' && platform !== 'meta') {
-      return NextResponse.json({ error: 'Invalid platform. Use "google" or "meta".' }, { status: 400 });
+    if (platform !== 'google' && platform !== 'meta' && platform !== 'gbp') {
+      return NextResponse.json({ error: 'Invalid platform. Use "google", "meta", or "gbp".' }, { status: 400 });
     }
 
     const update: any = {};
@@ -103,7 +110,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const platform = searchParams.get('platform');
 
-    if (platform !== 'google' && platform !== 'meta') {
+    if (platform !== 'google' && platform !== 'meta' && platform !== 'gbp') {
       return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });
     }
 

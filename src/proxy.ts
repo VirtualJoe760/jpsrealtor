@@ -1,55 +1,123 @@
-// src/middleware.ts
-// NextAuth middleware to protect routes
+// src/proxy.ts
+// Combined: NextAuth route protection + Multi-domain hostname routing
 
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
+// ---------------------------------------------------------------------------
+// Agent Domain Registry
+// ---------------------------------------------------------------------------
+// TODO: Replace this static Map with an API call to MongoDB once we have an
+// internal lookup endpoint (e.g. GET /api/internal/agent-by-domain?domain=...).
+// Middleware runs on the Edge Runtime and CANNOT import the MongoDB driver
+// directly. An API route or KV store is required for dynamic lookups.
+// ---------------------------------------------------------------------------
+const AGENT_DOMAIN_MAP = new Map<string, string>([
+  // ["customdomain.com", "agentObjectId"]
+  // Example: ["janedoe-realty.com", "6612f1a2c8e4a1b2c3d4e5f6"]
+]);
+
+const OWNER_HOSTNAMES = new Set([
+  "jpsrealtor.com",
+  "www.jpsrealtor.com",
+  "josephsardella.com",
+  "www.josephsardella.com",
+]);
+
+const BYPASS_PREFIXES = [
+  "/api/",
+  "/_next/",
+  "/favicon",
+  "/manifest",
+  "/sw.",
+  "/workbox-",
+  "/icons/",
+  "/images/",
+];
+
+function shouldBypass(pathname: string): boolean {
+  return BYPASS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Never rewrite static assets, APIs, or Next.js internals
+  if (shouldBypass(pathname)) {
+    return NextResponse.next();
+  }
+
+  const hostname = request.headers.get("host") || "";
+  const bareHost = hostname.split(":")[0];
+
+  // -----------------------------------------------------------------------
+  // 1. ChatRealty domains → /chat-landing
+  // -----------------------------------------------------------------------
+  if (bareHost.includes("chatrealty")) {
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/chat-landing";
+      return NextResponse.rewrite(url);
+    }
+    return NextResponse.next();
+  }
+
+  // -----------------------------------------------------------------------
+  // 2. Agent custom domains → /agent/[agentId]
+  // -----------------------------------------------------------------------
+  const agentId = AGENT_DOMAIN_MAP.get(bareHost);
+  if (agentId) {
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = `/agent/${agentId}`;
+      return NextResponse.rewrite(url);
+    }
+    return NextResponse.next();
+  }
+
+  // -----------------------------------------------------------------------
+  // 3. Auth protection for protected routes
+  // -----------------------------------------------------------------------
+  const isAuthPage = pathname.startsWith("/auth");
+  const isDashboard = pathname.startsWith("/dashboard");
+  const isAdmin = pathname.startsWith("/admin");
+  const isAgent = pathname.startsWith("/agent");
+  const isProtected = isDashboard || isAdmin || isAgent;
+
+  if (isAuthPage || isProtected) {
+    const token = await getToken({ req: request });
     const isAuth = !!token;
-    const isAuthPage = req.nextUrl.pathname.startsWith("/auth");
-    const isDashboard = req.nextUrl.pathname.startsWith("/dashboard");
-    const isAdmin = req.nextUrl.pathname.startsWith("/admin");
 
-    // If user is on an auth page and is authenticated, redirect to dashboard
+    // Authenticated user on auth page → redirect to dashboard
     if (isAuthPage && isAuth) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
-    // If user is not authenticated and trying to access protected route
-    const isAgent = req.nextUrl.pathname.startsWith("/agent");
-    if (!isAuth && (isDashboard || isAdmin || isAgent)) {
-      let from = req.nextUrl.pathname;
-      if (req.nextUrl.search) {
-        from += req.nextUrl.search;
+    // Unauthenticated user on protected route → redirect to sign in
+    if (!isAuth && isProtected) {
+      let from = pathname;
+      if (request.nextUrl.search) {
+        from += request.nextUrl.search;
       }
-
       return NextResponse.redirect(
-        new URL("/api/auth/signin?callbackUrl=" + encodeURIComponent(from), req.url)
+        new URL("/api/auth/signin?callbackUrl=" + encodeURIComponent(from), request.url)
       );
     }
 
-    // If user is trying to access admin routes but is not an admin
+    // Non-admin trying to access admin routes → redirect to dashboard
     if (isAdmin && !token?.isAdmin) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: () => true, // Let the middleware function handle authorization
-    },
   }
-);
 
-// Specify which routes to protect
+  // -----------------------------------------------------------------------
+  // 4. Owner domains and localhost → serve normally
+  // -----------------------------------------------------------------------
+  return NextResponse.next();
+}
+
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/admin/:path*",
-    "/auth/:path*",
-    "/agent/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|webmanifest)$).*)",
   ],
 };

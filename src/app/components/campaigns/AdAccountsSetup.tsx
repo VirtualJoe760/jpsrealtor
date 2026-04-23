@@ -8,6 +8,8 @@ interface AdAccountStatus {
   customerId?: string | null;
   adAccountId?: string | null;
   pageId?: string | null;
+  accountId?: string | null;
+  locationId?: string | null;
   status: string;
   connectedAt: string | null;
 }
@@ -19,6 +21,7 @@ export default function AdAccountsSetup() {
 
   const [google, setGoogle] = useState<AdAccountStatus | null>(null);
   const [meta, setMeta] = useState<AdAccountStatus | null>(null);
+  const [gbp, setGbp] = useState<AdAccountStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -43,6 +46,7 @@ export default function AdAccountsSetup() {
         const data = await res.json();
         setGoogle(data.google);
         setMeta(data.meta);
+        setGbp(data.gbp);
         if (data.google?.customerId) setGoogleCustomerId(data.google.customerId);
         if (data.meta?.adAccountId) setMetaAdAccountId(data.meta.adAccountId);
         if (data.meta?.pageId) setMetaPageId(data.meta.pageId);
@@ -110,7 +114,7 @@ export default function AdAccountsSetup() {
     }
   };
 
-  const disconnect = async (platform: 'google' | 'meta') => {
+  const disconnect = async (platform: 'google' | 'meta' | 'gbp') => {
     setSaving(true);
     try {
       await fetch(`/api/agent/ad-accounts?platform=${platform}`, { method: 'DELETE' });
@@ -118,13 +122,16 @@ export default function AdAccountsSetup() {
         setGoogle({ connected: false, status: 'disconnected', connectedAt: null });
         setGoogleCustomerId('');
         setGoogleDevToken('');
-      } else {
+      } else if (platform === 'meta') {
         setMeta({ connected: false, status: 'disconnected', connectedAt: null });
         setMetaAdAccountId('');
         setMetaAccessToken('');
         setMetaPageId('');
+      } else if (platform === 'gbp') {
+        setGbp({ connected: false, status: 'disconnected', connectedAt: null });
       }
-      setMessage(`${platform === 'google' ? 'Google' : 'Meta'} Ads disconnected`);
+      const labels: Record<string, string> = { google: 'Google Ads', meta: 'Meta Ads', gbp: 'Google Business Profile' };
+      setMessage(`${labels[platform]} disconnected`);
     } catch {
       setMessage('Failed to disconnect');
     } finally {
@@ -304,6 +311,82 @@ export default function AdAccountsSetup() {
               </p>
             )}
             <button onClick={() => disconnect('meta')} disabled={saving}
+              className={`text-sm ${isLight ? 'text-red-600 hover:text-red-700' : 'text-red-400 hover:text-red-300'}`}>
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Google Business Profile */}
+      <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              isLight ? 'bg-emerald-100' : 'bg-emerald-900/30'
+            }`}>
+              <span className="text-xl">B</span>
+            </div>
+            <div>
+              <h3 className={`font-semibold ${textPrimary}`}>Google Business Profile</h3>
+              <p className={`text-xs ${textSecondary}`}>Auto-post articles to your GBP listing</p>
+            </div>
+          </div>
+          {gbp?.connected && (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400'
+            }`}>
+              Connected
+            </span>
+          )}
+        </div>
+
+        {!gbp?.connected ? (
+          <div className="space-y-3">
+            <p className={`text-sm ${textSecondary}`}>
+              Connect your Google Business Profile to automatically publish articles as GBP posts
+              when you hit publish.
+            </p>
+
+            <div className={`p-3 rounded-lg ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/10'}`}>
+              <p className={`text-sm font-medium ${textPrimary} mb-2`}>Connect via Google OAuth</p>
+              <p className={`text-xs ${textSecondary} mb-3`}>
+                We will automatically detect your GBP account and location after you grant access.
+              </p>
+              <a
+                href="/api/auth/gbp/connect"
+                className={`inline-block px-4 py-2 rounded-lg text-sm font-medium text-white ${
+                  isLight ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                Connect Google Business Profile
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {gbp.accountId && (
+              <p className={`text-sm ${textSecondary}`}>
+                Account: <span className={`font-medium ${textPrimary}`}>{gbp.accountId}</span>
+              </p>
+            )}
+            {gbp.locationId && (
+              <p className={`text-sm ${textSecondary}`}>
+                Location: <span className={`font-medium ${textPrimary}`}>{gbp.locationId}</span>
+              </p>
+            )}
+            {!gbp.accountId && !gbp.locationId && (
+              <p className={`text-sm ${textSecondary}`}>
+                Connected but account/location not auto-detected.
+                Try disconnecting and reconnecting.
+              </p>
+            )}
+            {gbp.connectedAt && (
+              <p className={`text-xs ${textSecondary}`}>
+                Connected {new Date(gbp.connectedAt).toLocaleDateString()}
+              </p>
+            )}
+            <button onClick={() => disconnect('gbp')} disabled={saving}
               className={`text-sm ${isLight ? 'text-red-600 hover:text-red-700' : 'text-red-400 hover:text-red-300'}`}>
               Disconnect
             </button>

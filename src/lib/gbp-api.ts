@@ -2,8 +2,12 @@
  * Google Business Profile API Client
  *
  * Handles authentication and API calls to GBP for local posts.
- * Uses OAuth2 refresh token flow with credentials from env vars:
+ * Supports per-user credentials (refresh token from user profile)
+ * with fallback to env vars for the platform owner:
  *   GBP_CLIENT_ID, GBP_CLIENT_SECRET, GBP_REFRESH_TOKEN
+ *
+ * Client ID and Client Secret are always from env vars (app-level credentials).
+ * Only the refresh token and account/location IDs are per-user.
  */
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -62,38 +66,78 @@ export interface ListLocalPostsResponse {
   nextPageToken?: string;
 }
 
+/** Credentials object for per-user GBP API calls */
+export interface GBPCredentials {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+}
+
+/** GBP account and location identifiers */
+export interface GBPAccount {
+  accountId: string;  // e.g., "accounts/101108799337549000917"
+  locationId: string; // e.g., "locations/7725888369257069197"
+}
+
 // ── GBP API Client ────────────────────────────────────────────────────────────
 
 const TOKEN_URI = 'https://oauth2.googleapis.com/token';
 const GBP_API_BASE = 'https://mybusiness.googleapis.com/v4';
 
-// Cache the access token with its expiry
-let cachedToken: { token: string; expiresAt: number } | null = null;
+// Cache access tokens per refresh token (keyed by refresh token hash)
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 /**
- * Refresh the OAuth2 access token using the stored refresh token.
- * Caches the token for its lifetime minus a 60-second buffer.
+ * Get a short hash for cache key purposes (not cryptographic).
  */
-export async function refreshAccessToken(): Promise<string> {
-  // Return cached token if still valid
-  if (cachedToken && Date.now() < cachedToken.expiresAt) {
-    return cachedToken.token;
-  }
+function tokenCacheKey(refreshToken: string): string {
+  // Use last 16 chars of the refresh token as cache key
+  return refreshToken.slice(-16);
+}
 
+/**
+ * Resolve GBP credentials from explicit params or env vars (fallback).
+ * Client ID and secret always come from env vars (app-level).
+ * Refresh token can be per-user or from env var (platform owner fallback).
+ */
+export function resolveCredentials(credentials?: Partial<GBPCredentials>): GBPCredentials {
   const clientId = process.env.GBP_CLIENT_ID;
   const clientSecret = process.env.GBP_CLIENT_SECRET;
-  const refreshToken = process.env.GBP_REFRESH_TOKEN;
+  const refreshToken = credentials?.refreshToken || process.env.GBP_REFRESH_TOKEN;
 
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (!clientId || !clientSecret) {
     throw new Error(
-      'Missing GBP credentials. Ensure GBP_CLIENT_ID, GBP_CLIENT_SECRET, and GBP_REFRESH_TOKEN are set in .env.local'
+      'Missing GBP app credentials. Ensure GBP_CLIENT_ID and GBP_CLIENT_SECRET are set in .env.local'
     );
   }
 
+  if (!refreshToken) {
+    throw new Error(
+      'Missing GBP refresh token. Either pass credentials or set GBP_REFRESH_TOKEN in .env.local'
+    );
+  }
+
+  return { clientId, clientSecret, refreshToken };
+}
+
+/**
+ * Refresh the OAuth2 access token using a refresh token.
+ * Caches the token per refresh token for its lifetime minus a 60-second buffer.
+ */
+export async function refreshAccessToken(credentials?: Partial<GBPCredentials>): Promise<string> {
+  const creds = resolveCredentials(credentials);
+  const cacheKey = tokenCacheKey(creds.refreshToken);
+
+  // Return cached token if still valid
+  const cached = tokenCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.token;
+  }
+
   const params = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
+    client_id: creds.clientId,
+    client_secret: creds.clientSecret,
+    refresh_token: creds.refreshToken,
     grant_type: 'refresh_token',
   });
 
@@ -106,10 +150,10 @@ export async function refreshAccessToken(): Promise<string> {
 
   // Cache with 60s buffer before expiry
   const expiresInMs = (data.expires_in || 3600) * 1000;
-  cachedToken = {
+  tokenCache.set(cacheKey, {
     token: data.access_token,
     expiresAt: Date.now() + expiresInMs - 60_000,
-  };
+  });
 
   return data.access_token;
 }
@@ -120,9 +164,10 @@ export async function refreshAccessToken(): Promise<string> {
 async function gbpFetch(
   url: string,
   method: 'GET' | 'POST' | 'DELETE' | 'PATCH' = 'GET',
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  credentials?: Partial<GBPCredentials>
 ): Promise<any> {
-  const accessToken = await refreshAccessToken();
+  const accessToken = await refreshAccessToken(credentials);
 
   const opts: RequestInit = {
     method,
@@ -157,10 +202,11 @@ async function gbpFetch(
 export async function createLocalPost(
   accountId: string,
   locationId: string,
-  post: LocalPost
+  post: LocalPost,
+  credentials?: Partial<GBPCredentials>
 ): Promise<LocalPostResponse> {
   const url = `${GBP_API_BASE}/${accountId}/${locationId}/localPosts`;
-  return gbpFetch(url, 'POST', post as unknown as Record<string, unknown>);
+  return gbpFetch(url, 'POST', post as unknown as Record<string, unknown>, credentials);
 }
 
 /**
@@ -169,11 +215,12 @@ export async function createLocalPost(
 export async function deleteLocalPost(
   accountId: string,
   locationId: string,
-  postName: string
+  postName: string,
+  credentials?: Partial<GBPCredentials>
 ): Promise<void> {
   // postName is the full resource name e.g. accounts/.../locations/.../localPosts/...
   const url = `${GBP_API_BASE}/${postName}`;
-  await gbpFetch(url, 'DELETE');
+  await gbpFetch(url, 'DELETE', undefined, credentials);
 }
 
 /**
@@ -182,11 +229,35 @@ export async function deleteLocalPost(
 export async function listLocalPosts(
   accountId: string,
   locationId: string,
-  pageToken?: string
+  pageToken?: string,
+  credentials?: Partial<GBPCredentials>
 ): Promise<ListLocalPostsResponse> {
   let url = `${GBP_API_BASE}/${accountId}/${locationId}/localPosts`;
   if (pageToken) {
     url += `?pageToken=${encodeURIComponent(pageToken)}`;
   }
-  return gbpFetch(url, 'GET');
+  return gbpFetch(url, 'GET', undefined, credentials);
+}
+
+/**
+ * List GBP accounts accessible by the authenticated user.
+ * Used during OAuth callback to auto-discover accountId.
+ */
+export async function listAccounts(
+  credentials?: Partial<GBPCredentials>
+): Promise<{ accounts?: Array<{ name: string; accountName: string; type: string }> }> {
+  const url = `${GBP_API_BASE}/accounts`;
+  return gbpFetch(url, 'GET', undefined, credentials);
+}
+
+/**
+ * List locations for a GBP account.
+ * Used during OAuth callback to auto-discover locationId.
+ */
+export async function listLocations(
+  accountId: string,
+  credentials?: Partial<GBPCredentials>
+): Promise<{ locations?: Array<{ name: string; locationName: string; storeCode?: string }> }> {
+  const url = `${GBP_API_BASE}/${accountId}/locations`;
+  return gbpFetch(url, 'GET', undefined, credentials);
 }

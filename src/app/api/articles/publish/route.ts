@@ -65,16 +65,20 @@ export async function POST(req: Request) {
     });
 
     // GBP auto-posting (non-blocking — don't fail the publish if GBP errors)
+    // Passes userId so the publisher uses per-user GBP credentials if connected
     let gbpResult: { success: boolean; postName?: string; error?: string } | null = null;
     if (!article.draft) {
       try {
-        gbpResult = await publishArticleToGBP({
-          title: article.title,
-          excerpt: article.excerpt,
-          image: article.featuredImage?.url,
-          url: slugId,
-          category: article.category,
-        });
+        gbpResult = await publishArticleToGBP(
+          {
+            title: article.title,
+            excerpt: article.excerpt,
+            image: article.featuredImage?.url,
+            url: slugId,
+            category: article.category,
+          },
+          session.user.id
+        );
         if (gbpResult.success) {
           console.log(`[PUBLISH] GBP post created: ${gbpResult.postName}`);
         } else {

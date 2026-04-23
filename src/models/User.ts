@@ -155,7 +155,7 @@ export interface IUser extends Document {
     metaKeywords?: string[]; // SEO keywords
   };
 
-  // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads)
+  // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads + GBP)
   adAccounts?: {
     google?: {
       customerId?: string;        // Google Ads Customer ID (no dashes)
@@ -168,6 +168,13 @@ export interface IUser extends Document {
       adAccountId?: string;       // format: act_XXXXXXXXX
       accessToken?: string;       // System user or long-lived token with ads_management
       pageId?: string;            // Facebook Page ID
+      connectedAt?: Date;
+      status?: 'connected' | 'disconnected' | 'pending';
+    };
+    gbp?: {
+      accountId?: string;         // e.g., "accounts/101108799337549000917"
+      locationId?: string;        // e.g., "locations/7725888369257069197"
+      refreshToken?: string;      // Per-agent OAuth refresh token
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
     };
@@ -612,6 +619,13 @@ const UserSchema = new Schema<IUser>(
         adAccountId: String,
         accessToken: String,
         pageId: String,
+        connectedAt: Date,
+        status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
+      gbp: {
+        accountId: String,
+        locationId: String,
+        refreshToken: String,
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
       },
