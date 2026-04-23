@@ -179,7 +179,9 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.jpsrealtor.com' : undefined,
+        // No domain set — cookie automatically scopes to the current hostname
+        // This allows auth to work across jpsrealtor.com, josephsardella.com, chatrealty.io
+        domain: undefined,
       },
     },
   },
