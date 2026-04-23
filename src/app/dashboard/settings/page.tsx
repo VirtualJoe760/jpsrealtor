@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { User, Upload, Loader2, Target, Shield, Bell, Lock, Eye, EyeOff, X, Plus, Check, ChevronDown } from "lucide-react";
+import { User, Upload, Loader2, Target, Shield, Bell, Lock, Eye, EyeOff, X, Plus, Check, ChevronDown, CreditCard, Handshake } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
@@ -140,14 +140,14 @@ const PROPERTY_TYPES = ["Single Family", "Condo/Townhouse", "Land", "Multi-Famil
 const MUST_HAVES = ["Pool", "Garage", "Gated Community", "Golf Course", "Mountain Views", "Single Story", "Updated Kitchen", "Solar", "Casita/Guest House"];
 const DEAL_BREAKERS = ["HOA", "Land Lease", "Major Repairs Needed", "Busy Street", "No Garage"];
 
-type SectionId = "general" | "goals" | "security" | "notifications" | "agent";
+type SectionId = "general" | "goals" | "security" | "notifications" | "join";
 
 const SECTIONS: { id: SectionId; title: string; icon: typeof User }[] = [
   { id: "general", title: "General", icon: User },
   { id: "goals", title: "Real Estate Goals", icon: Target },
   { id: "security", title: "Security", icon: Shield },
   { id: "notifications", title: "Notifications", icon: Bell },
-  { id: "agent", title: "Become an Agent", icon: Lock },
+  { id: "join", title: "Join Our Network", icon: Handshake },
 ];
 
 // ── Main Component ─────────────────────────────────────────────────────────
@@ -191,9 +191,11 @@ export default function SettingsPage() {
     smsNotifications: false, pushNotifications: true,
   });
 
-  // Agent
+  // Agent & Service Partner
   const [isAgent, setIsAgent] = useState(false);
   const [agentInfo, setAgentInfo] = useState({ name: "", agentId: "", team: "", licenseNumber: "", brokerageName: "" });
+  const [isServicePartner, setIsServicePartner] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState({ companyName: "", partnerType: "", status: "" });
 
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${isLight ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500" : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"}`;
   const labelClass = `block text-sm font-medium mb-1.5 ${isLight ? "text-gray-700" : "text-gray-300"}`;
@@ -228,6 +230,14 @@ export default function SettingsPage() {
         const isRE = auth.roles?.includes("realEstateAgent") || false;
         setIsAgent(isRE);
         if (isRE) setAgentInfo({ name: auth.name || "", agentId: auth._id || "", team: auth.teamName || "ChatRealty", licenseNumber: auth.licenseNumber || "", brokerageName: auth.brokerageName || "" });
+        const isSP = auth.roles?.includes("serviceProvider") || false;
+        setIsServicePartner(isSP);
+        if (isSP) {
+          try {
+            const spRes = await fetch("/api/service-partner/profile");
+            if (spRes.ok) { const sp = await spRes.json(); setPartnerInfo({ companyName: sp.profile?.companyName || "", partnerType: sp.profile?.type || "", status: "active" }); }
+          } catch {}
+        }
       }
       if (profileRes.ok) {
         const { profile: p } = await profileRes.json();
@@ -447,29 +457,64 @@ export default function SettingsPage() {
             <div className="flex justify-end mt-6"><button onClick={saveNotifications} disabled={isSaving} className={saveBtnClass}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Preferences"}</button></div>
           </Section>
 
-          {/* ── Become an Agent ────────────────────────────────────────── */}
-          <Section id="agent" title="Become an Agent" icon={Lock} isOpen={openSections.has("agent")} onToggle={() => toggleSection("agent")} isLight={isLight} sectionRef={(el) => { sectionRefs.current.agent = el; }}>
-            {isAgent ? (
-              <>
-                <p className={`text-sm mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>You&apos;re a registered agent on our platform</p>
-                <div className="grid grid-cols-2 gap-4">
-                  {[["Name", agentInfo.name], ["Team", agentInfo.team], ["License #", agentInfo.licenseNumber || "—"], ["Brokerage", agentInfo.brokerageName || "—"]].map(([label, val]) => (
-                    <div key={label}><span className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>{label}</span><p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{val}</p></div>
-                  ))}
+          {/* ── Join Our Network ──────────────────────────────────────── */}
+          <Section id="join" title="Join Our Network" icon={Handshake} isOpen={openSections.has("join")} onToggle={() => toggleSection("join")} isLight={isLight} sectionRef={(el) => { sectionRefs.current.join = el; }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Become an Agent */}
+              <div className={`rounded-xl border p-5 ${isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Lock className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />
+                  <h3 className={`text-base font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Real Estate Agent</h3>
                 </div>
-                <Link href="/agent/settings" className={`inline-block mt-4 text-sm ${isLight ? "text-blue-600" : "text-emerald-400"}`}>Go to Agent Settings →</Link>
-              </>
-            ) : (
-              <>
-                <p className={`text-sm mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Grow your real estate business with our AI-powered platform</p>
-                <ul className={`space-y-3 mb-6 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-                  {["Get your own custom domain and branded landing page", "AI-powered lead generation and client matching", "Multi-channel marketing tools (Google Ads, Meta, direct mail, voicemail)", "Full CRM with contact management and lead scoring", "Automated Google Business Profile posting and SEO"].map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-sm"><Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />{item}</li>
-                  ))}
-                </ul>
-                <Link href="/dashboard/settings/join-us" className={`inline-block px-6 py-2.5 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Apply Now</Link>
-              </>
-            )}
+                {isAgent ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      {[["Name", agentInfo.name], ["Brokerage", agentInfo.brokerageName || "—"]].map(([label, val]) => (
+                        <div key={label}><span className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>{label}</span><p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{val}</p></div>
+                      ))}
+                    </div>
+                    <Link href="/agent/settings" className={`inline-flex items-center gap-1 text-sm font-medium ${isLight ? "text-blue-600" : "text-emerald-400"}`}>Manage Agent Profile →</Link>
+                  </>
+                ) : (
+                  <>
+                    <p className={`text-sm mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Get your own domain, AI-powered CRM, and multi-channel marketing tools.</p>
+                    <ul className={`space-y-1.5 mb-4 ${isLight ? "text-gray-600" : "text-gray-300"}`}>
+                      {["Custom domain & landing page", "AI lead generation", "Google Ads & Meta campaigns", "CRM & contact management"].map((item) => (
+                        <li key={item} className="flex items-center gap-2 text-xs"><Check className={`w-3.5 h-3.5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />{item}</li>
+                      ))}
+                    </ul>
+                    <Link href="/dashboard/settings/join-us" className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Apply as Agent</Link>
+                  </>
+                )}
+              </div>
+
+              {/* Become a Service Partner */}
+              <div className={`rounded-xl border p-5 ${isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Handshake className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />
+                  <h3 className={`text-base font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Service Partner</h3>
+                </div>
+                {isServicePartner ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div><span className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>Company</span><p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{partnerInfo.companyName || "—"}</p></div>
+                      <div><span className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>Type</span><p className={`text-sm font-medium capitalize ${isLight ? "text-gray-900" : "text-white"}`}>{partnerInfo.partnerType?.replace(/_/g, " ") || "—"}</p></div>
+                    </div>
+                    <Link href="/partner/settings" className={`inline-flex items-center gap-1 text-sm font-medium ${isLight ? "text-blue-600" : "text-emerald-400"}`}>Manage Partner Settings →</Link>
+                  </>
+                ) : (
+                  <>
+                    <p className={`text-sm mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Partner with agents for RESPA-compliant co-marketing campaigns.</p>
+                    <ul className={`space-y-1.5 mb-4 ${isLight ? "text-gray-600" : "text-gray-300"}`}>
+                      {["Co-market with local agents", "Featured in partner directory", "RESPA-compliant JMAs", "Shared campaign costs"].map((item) => (
+                        <li key={item} className="flex items-center gap-2 text-xs"><Check className={`w-3.5 h-3.5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />{item}</li>
+                      ))}
+                    </ul>
+                    <Link href="/partner/settings/apply" className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Apply as Partner</Link>
+                  </>
+                )}
+              </div>
+            </div>
           </Section>
 
         </div>

@@ -200,6 +200,33 @@ export interface IUser extends Document {
   serviceAreas?: string[]; // Cities they serve
   certifications?: string[];
 
+  // SERVICE PARTNER: Structured profile for partner directory & co-marketing
+  servicePartnerProfile?: {
+    type?: 'mortgage_broker' | 'title_officer' | 'escrow_officer' | 'real_estate_attorney' | 'property_manager' | 'general_contractor' | 'home_inspector' | 'insurance_agent';
+    companyName?: string;
+    companyLogo?: string; // Cloudinary URL
+    website?: string;
+    phone?: string;
+    bio?: string;
+    licenseNumber?: string;
+    licenseState?: string;
+    licenseExpiry?: Date;
+    nmlsId?: string; // NMLS ID for mortgage brokers
+    certifications?: Array<{
+      name: string;
+      issuedBy: string;
+      year: number;
+      logoUrl?: string;
+    }>;
+    serviceAreas?: Array<{
+      name: string;
+      type: 'city' | 'county' | 'zip' | 'custom';
+    }>;
+    legalDisclaimer?: string; // Required marketing disclaimer text
+    insuranceInfo?: string; // For contractors
+    specializations?: string[];
+  };
+
   // Vacation Rental Host specific
   stripeAccountId?: string;
   stripeOnboarded: boolean;
@@ -220,6 +247,7 @@ export interface IUser extends Document {
   };
 
   // MULTI-TENANT: Subscription & Feature Gates
+  stripeCustomerId?: string; // Stripe customer ID for billing
   subscriptionTier?: "free" | "pro" | "ultimate" | "investor"; // Client subscription tier
   subscriptionStatus?: "active" | "cancelled" | "past_due" | "trialing";
   subscriptionExpiresAt?: Date;
@@ -665,6 +693,36 @@ const UserSchema = new Schema<IUser>(
     serviceAreas: [String],
     certifications: [String],
 
+    // SERVICE PARTNER: Structured profile for partner directory & co-marketing
+    servicePartnerProfile: {
+      type: {
+        type: String,
+        enum: ['mortgage_broker', 'title_officer', 'escrow_officer', 'real_estate_attorney', 'property_manager', 'general_contractor', 'home_inspector', 'insurance_agent'],
+      },
+      companyName: String,
+      companyLogo: String,
+      website: String,
+      phone: String,
+      bio: String,
+      licenseNumber: String,
+      licenseState: String,
+      licenseExpiry: Date,
+      nmlsId: String,
+      certifications: [{
+        name: String,
+        issuedBy: String,
+        year: Number,
+        logoUrl: String,
+      }],
+      serviceAreas: [{
+        name: String,
+        type: { type: String, enum: ['city', 'county', 'zip', 'custom'] },
+      }],
+      legalDisclaimer: String,
+      insuranceInfo: String,
+      specializations: [String],
+    },
+
     // Vacation Rental Host specific
     stripeAccountId: String,
     stripeOnboarded: { type: Boolean, default: false },
@@ -685,6 +743,7 @@ const UserSchema = new Schema<IUser>(
     },
 
     // MULTI-TENANT: Subscription & Feature Gates
+    stripeCustomerId: { type: String, sparse: true },
     subscriptionTier: {
       type: String,
       enum: ["free", "pro", "ultimate", "investor"],
@@ -914,6 +973,8 @@ UserSchema.index({ "activityMetrics.lastActivityAt": -1 }); // For sorting by re
 UserSchema.index({ "activityMetrics.engagementScore": -1 }); // For sorting by engagement
 UserSchema.index({ isAdmin: 1 });
 UserSchema.index({ serviceCategory: 1, serviceAreas: 1 }); // For service provider search
+UserSchema.index({ "servicePartnerProfile.type": 1 }); // For service partner directory
+UserSchema.index({ "servicePartnerProfile.serviceAreas.name": 1 }); // For service partner area search
 UserSchema.index({ "agentApplication.phase": 1 }); // For filtering applications by phase
 UserSchema.index({ team: 1 }); // For team member queries
 UserSchema.index({ isTeamLeader: 1 }); // For team leader queries

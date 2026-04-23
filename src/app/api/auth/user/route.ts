@@ -28,10 +28,18 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      _id: user._id,
       email: user.email,
       name: user.name,
+      roles: user.roles,
       twoFactorEnabled: user.twoFactorEnabled,
       twoFactorEmail: user.twoFactorEmail,
+      twoFactorMethod: user.twoFactorMethod,
+      twoFactorPhone: user.twoFactorPhone,
+      phoneVerified: user.phoneVerified,
+      licenseNumber: user.licenseNumber,
+      brokerageName: user.brokerageName,
+      teamName: (user as any).team?.name,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
