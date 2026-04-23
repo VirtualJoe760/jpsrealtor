@@ -712,3 +712,161 @@ export async function sendLeadWelcomeEmail(
     throw error;
   }
 }
+
+export async function sendPartnerApplicationEmail(
+  email: string,
+  name: string,
+  companyName: string,
+  partnerType: string,
+) {
+  const resend = getResendClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const typeLabel = partnerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  console.log('📧 Sending partner application confirmation to:', email);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      replyTo: 'noreply@jpsrealtor.com',
+      to: email,
+      subject: 'Welcome to ChatRealty — Your Service Partner Application',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#059669,#0d9488);border-radius:16px 16px 0 0;padding:40px 32px;text-align:center;">
+              <h1 style="color:#fff;font-size:24px;margin:0 0 8px;">Application Received</h1>
+              <p style="color:#d1fae5;font-size:14px;margin:0;">ChatRealty Service Partner Network</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;">
+              <p style="color:#334155;font-size:16px;line-height:1.6;">Hi ${name || 'there'},</p>
+              <p style="color:#334155;font-size:16px;line-height:1.6;">
+                Thank you for applying to join the ChatRealty Service Partner Network! We've received your application and it's currently under review.
+              </p>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:24px 0;">
+                <h3 style="color:#166534;font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">Application Summary</h3>
+                <table style="width:100%;font-size:14px;color:#334155;">
+                  <tr><td style="padding:4px 0;color:#64748b;">Company</td><td style="padding:4px 0;font-weight:600;">${companyName}</td></tr>
+                  <tr><td style="padding:4px 0;color:#64748b;">Partner Type</td><td style="padding:4px 0;font-weight:600;">${typeLabel}</td></tr>
+                  <tr><td style="padding:4px 0;color:#64748b;">Status</td><td style="padding:4px 0;font-weight:600;color:#059669;">Pending Review</td></tr>
+                </table>
+              </div>
+              <h3 style="color:#334155;font-size:16px;margin:24px 0 12px;">What happens next?</h3>
+              <ol style="color:#475569;font-size:14px;line-height:1.8;padding-left:20px;">
+                <li>Our team will review your application (typically 1-2 business days)</li>
+                <li>You'll receive an email once your application is approved</li>
+                <li>Once approved, you can set up your full partner profile and start connecting with agents</li>
+              </ol>
+              <div style="text-align:center;margin:32px 0 16px;">
+                <a href="${baseUrl}/partner/settings" style="display:inline-block;background:#059669;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  View Your Partner Dashboard
+                </a>
+              </div>
+              <p style="color:#94a3b8;font-size:13px;text-align:center;">
+                If you have any questions, reply to this email or contact us at help@josephsardella.com
+              </p>
+            </div>
+            <div style="padding:24px 32px;text-align:center;">
+              <p style="color:#94a3b8;font-size:12px;margin:0;">
+                Joseph Sardella | eXp Realty | DRE# 02106916<br/>
+                ChatRealty Service Partner Network
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Partner application email error:', error);
+      return null;
+    }
+
+    console.log('✅ Partner application email sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send partner application email:', error);
+    return null;
+  }
+}
+
+export async function sendPartnerApplicationNotification(
+  applicantEmail: string,
+  applicantName: string,
+  companyName: string,
+  partnerType: string,
+  phone: string,
+  website: string,
+  licenseNumber: string,
+  nmlsId: string,
+) {
+  const resend = getResendClient();
+  const adminEmail = process.env.EMAIL_USER || 'josephsardella@gmail.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const typeLabel = partnerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  console.log('📧 Sending partner application notification to admin:', adminEmail);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'ChatRealty Notifications <noreply@jpsrealtor.com>',
+      replyTo: applicantEmail,
+      to: adminEmail,
+      subject: `[Partner Request] New Application: ${companyName} (${typeLabel})`,
+      headers: {
+        'X-Entity-Ref-ID': `partner-apply-${Date.now()}`,
+      },
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:20px;margin:0 0 4px;">New Service Partner Application</h1>
+              <p style="color:#bfdbfe;font-size:13px;margin:0;">ChatRealty Partner Network</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:0 0 24px;">
+                <table style="width:100%;font-size:14px;color:#334155;">
+                  <tr><td style="padding:6px 0;color:#64748b;width:120px;">Applicant</td><td style="padding:6px 0;font-weight:600;">${applicantName || 'N/A'}</td></tr>
+                  <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;font-weight:600;"><a href="mailto:${applicantEmail}" style="color:#2563eb;">${applicantEmail}</a></td></tr>
+                  <tr><td style="padding:6px 0;color:#64748b;">Company</td><td style="padding:6px 0;font-weight:600;">${companyName}</td></tr>
+                  <tr><td style="padding:6px 0;color:#64748b;">Type</td><td style="padding:6px 0;font-weight:600;">${typeLabel}</td></tr>
+                  ${phone ? `<tr><td style="padding:6px 0;color:#64748b;">Phone</td><td style="padding:6px 0;">${phone}</td></tr>` : ''}
+                  ${website ? `<tr><td style="padding:6px 0;color:#64748b;">Website</td><td style="padding:6px 0;"><a href="${website}" style="color:#2563eb;">${website}</a></td></tr>` : ''}
+                  ${licenseNumber ? `<tr><td style="padding:6px 0;color:#64748b;">License #</td><td style="padding:6px 0;">${licenseNumber}</td></tr>` : ''}
+                  ${nmlsId ? `<tr><td style="padding:6px 0;color:#64748b;">NMLS ID</td><td style="padding:6px 0;">${nmlsId}</td></tr>` : ''}
+                </table>
+              </div>
+              <div style="text-align:center;">
+                <a href="${baseUrl}/agent/partnerships" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  Review in Agent Dashboard
+                </a>
+              </div>
+              <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">
+                Reply to this email to contact the applicant directly.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Admin notification email error:', error);
+      return null;
+    }
+
+    console.log('✅ Admin notification sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send admin notification:', error);
+    return null;
+  }
+}

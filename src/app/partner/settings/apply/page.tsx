@@ -85,14 +85,7 @@ export default function PartnerApplyPage() {
       setError("Phone number is required.");
       return;
     }
-    if (!form.licenseNumber.trim()) {
-      setError("License number is required.");
-      return;
-    }
-    if (!form.licenseState.trim()) {
-      setError("License state is required.");
-      return;
-    }
+    // License fields are optional — not all partner types require licensing
 
     setIsSubmitting(true);
     setError("");
@@ -101,7 +94,17 @@ export default function PartnerApplyPage() {
       const res = await fetch("/api/service-partner/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          type: form.partnerType.toLowerCase().replace(/\s+/g, "_"),
+          companyName: form.companyName,
+          phone: form.phone,
+          website: form.website,
+          licenseNumber: form.licenseNumber,
+          licenseState: form.licenseState,
+          nmlsId: form.nmlsId,
+          bio: form.bio,
+          legalDisclaimer: form.legalDisclaimer,
+        }),
       });
 
       if (!res.ok) {
@@ -393,7 +396,7 @@ export default function PartnerApplyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>
-                      License Number <span className="text-red-500">*</span>
+                      License Number
                     </label>
                     <input
                       type="text"
@@ -407,7 +410,7 @@ export default function PartnerApplyPage() {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      License State <span className="text-red-500">*</span>
+                      License State
                     </label>
                     <input
                       type="text"

@@ -4,10 +4,15 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Mail, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
   const token = searchParams.get("token");
   const email = searchParams.get("email");
 
@@ -17,7 +22,9 @@ function VerifyEmailContent() {
   const [message, setMessage] = useState("");
   const [countdown, setCountdown] = useState(5);
 
-  // Handle email verification when token is present (user clicked email link)
+  const accent = isLight ? "text-blue-600" : "text-emerald-400";
+  const accentBg = isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700";
+
   useEffect(() => {
     if (!token) return;
 
@@ -25,12 +32,9 @@ function VerifyEmailContent() {
       try {
         const response = await fetch("/api/auth/verify", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
-
         const data = await response.json();
 
         if (!response.ok) {
@@ -42,17 +46,13 @@ function VerifyEmailContent() {
         setStatus("success");
         setMessage(data.message || "Your email has been verified successfully!");
 
-        // Start countdown and redirect
         let counter = 5;
         const interval = setInterval(() => {
           counter--;
           setCountdown(counter);
-          if (counter === 0) {
-            clearInterval(interval);
-            router.push("/auth/signin");
-          }
+          if (counter === 0) { clearInterval(interval); router.push("/auth/signin"); }
         }, 1000);
-      } catch (error) {
+      } catch {
         setStatus("error");
         setMessage("An unexpected error occurred. Please try again.");
       }
@@ -61,7 +61,6 @@ function VerifyEmailContent() {
     verifyEmail();
   }, [token, router]);
 
-  // Poll for verification status when waiting (after signup)
   useEffect(() => {
     if (status !== "waiting" || !email) return;
 
@@ -75,187 +74,145 @@ function VerifyEmailContent() {
           setMessage("Email verified successfully!");
           clearInterval(pollInterval);
 
-          // Start countdown and redirect
           let counter = 5;
           const countdownInterval = setInterval(() => {
             counter--;
             setCountdown(counter);
-            if (counter === 0) {
-              clearInterval(countdownInterval);
-              router.push("/auth/signin");
-            }
+            if (counter === 0) { clearInterval(countdownInterval); router.push("/auth/signin"); }
           }, 1000);
         }
       } catch (error) {
         console.error("Polling error:", error);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
-    // Cleanup on unmount
     return () => clearInterval(pollInterval);
   }, [status, email, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8 text-center">
-          {/* Icon */}
-          <div className="mb-6">
-            {status === "verifying" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-full">
-                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-            {status === "waiting" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-500/20 rounded-full">
-                <svg
-                  className="w-12 h-12 text-blue-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            )}
+    <SpaticalBackground showGradient={true}>
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className={`backdrop-blur-sm rounded-2xl shadow-2xl p-8 text-center border ${
+            isLight ? "bg-white/90 border-gray-200" : "bg-gray-900/80 border-gray-700"
+          }`}>
+            {/* Icon */}
+            <div className="mb-6">
+              {status === "verifying" && (
+                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${isLight ? "bg-blue-100" : "bg-emerald-500/20"}`}>
+                  <Loader2 className={`w-10 h-10 animate-spin ${isLight ? "text-blue-600" : "text-emerald-500"}`} />
+                </div>
+              )}
+              {status === "waiting" && (
+                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${isLight ? "bg-blue-100" : "bg-blue-500/20"}`}>
+                  <Mail className={`w-10 h-10 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                </div>
+              )}
+              {status === "success" && (
+                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${isLight ? "bg-green-100" : "bg-emerald-500/20"}`}>
+                  <CheckCircle2 className={`w-10 h-10 ${isLight ? "text-green-600" : "text-emerald-500"}`} />
+                </div>
+              )}
+              {status === "error" && (
+                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${isLight ? "bg-red-100" : "bg-red-500/20"}`}>
+                  <XCircle className={`w-10 h-10 ${isLight ? "text-red-600" : "text-red-500"}`} />
+                </div>
+              )}
+            </div>
+
+            {/* Title */}
+            <h1 className={`text-3xl font-bold mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>
+              {status === "verifying" && "Verifying Your Email..."}
+              {status === "waiting" && "Check Your Email"}
+              {status === "success" && "Email Verified!"}
+              {status === "error" && "Verification Failed"}
+            </h1>
+
+            {/* Message */}
+            <div className={`mb-6 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+              {status === "verifying" && <p>Please wait while we verify your email address...</p>}
+              {status === "waiting" && (
+                <>
+                  <p className="mb-3">
+                    We&apos;ve sent a verification email to{" "}
+                    <strong className={isLight ? "text-gray-900" : "text-white"}>{email}</strong>.
+                  </p>
+                  <p className="text-sm">
+                    Click the link in the email to verify your account.
+                    <br />
+                    This page will automatically update when you verify your email.
+                  </p>
+                </>
+              )}
+              {status === "success" && (
+                <>
+                  <p className="mb-3">{message}</p>
+                  <p>Redirecting to sign in in <strong className={accent}>{countdown}</strong> seconds...</p>
+                </>
+              )}
+              {status === "error" && <p>{message}</p>}
+            </div>
+
+            {/* Actions */}
             {status === "success" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-full">
-                <svg
-                  className="w-12 h-12 text-emerald-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+              <Link href="/auth/signin"
+                className={`inline-block w-full py-3 px-4 text-white font-semibold rounded-lg transition-all ${accentBg}`}>
+                Sign In Now
+              </Link>
+            )}
+
+            {status === "waiting" && (
+              <div className={`mt-6 p-4 rounded-lg border ${
+                isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/50 border-gray-700"
+              }`}>
+                <p className={`text-sm mb-2 font-medium ${isLight ? "text-gray-700" : "text-gray-300"}`}>Didn&apos;t receive the email?</p>
+                <ul className={`text-xs text-left space-y-1 mb-3 ${isLight ? "text-gray-500" : "text-gray-500"}`}>
+                  <li>- Check your spam or junk folder</li>
+                  <li>- Make sure the email address is correct</li>
+                  <li>- Wait a few minutes for the email to arrive</li>
+                </ul>
+                <Link href="/auth/signup"
+                  className={`text-sm underline ${isLight ? "text-blue-600 hover:text-blue-700" : "text-gray-300 hover:text-white"}`}>
+                  Resend verification email
+                </Link>
               </div>
             )}
+
             {status === "error" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-red-500/20 rounded-full">
-                <svg
-                  className="w-12 h-12 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+              <div className="space-y-3">
+                <Link href="/auth/signup"
+                  className={`block w-full py-3 px-4 text-white font-semibold rounded-lg transition-all text-center ${accentBg}`}>
+                  Sign Up Again
+                </Link>
+                <Link href="/"
+                  className={`block w-full py-3 px-4 font-semibold rounded-lg transition-all text-center ${
+                    isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-800 text-white hover:bg-gray-700"
+                  }`}>
+                  Back to Home
+                </Link>
               </div>
             )}
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl font-bold text-white mb-4">
-            {status === "verifying" && "Verifying Your Email..."}
-            {status === "waiting" && "Check Your Email"}
-            {status === "success" && "Email Verified!"}
-            {status === "error" && "Verification Failed"}
-          </h1>
-
-          {/* Message */}
-          <div className="text-gray-400 mb-6">
-            {status === "verifying" && <p>Please wait while we verify your email address...</p>}
-            {status === "waiting" && (
-              <>
-                <p className="mb-3">
-                  We've sent a verification email to <strong className="text-white">{email}</strong>.
-                </p>
-                <p className="text-sm">
-                  Click the link in the email to verify your account.
-                  <br />
-                  This page will automatically update when you verify your email.
-                </p>
-              </>
-            )}
-            {status === "success" && (
-              <>
-                <p className="mb-3">{message}</p>
-                <p>Redirecting to sign in in <strong className="text-emerald-400">{countdown}</strong> seconds...</p>
-              </>
-            )}
-            {status === "error" && <p>{message}</p>}
-          </div>
-
-          {/* Actions */}
-          {status === "success" && (
-            <Link
-              href="/auth/signin"
-              className="inline-block w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-lg transition-all duration-200"
-            >
-              Sign In Now
+          <div className="text-center mt-6">
+            <Link href="/" className={`text-sm transition-colors ${isLight ? "text-gray-500 hover:text-gray-700" : "text-gray-400 hover:text-white"}`}>
+              Back to Home
             </Link>
-          )}
-
-          {status === "waiting" && (
-            <div className="mt-6 p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
-              <p className="text-sm text-gray-400 mb-2">Didn't receive the email?</p>
-              <ul className="text-xs text-gray-500 text-left space-y-1 mb-3">
-                <li>• Check your spam or junk folder</li>
-                <li>• Make sure the email address is correct</li>
-                <li>• Wait a few minutes for the email to arrive</li>
-              </ul>
-              <Link
-                href="/auth/signup"
-                className="text-sm text-gray-300 hover:text-white underline"
-              >
-                Resend verification email
-              </Link>
-            </div>
-          )}
-
-          {status === "error" && (
-            <div className="space-y-3">
-              <Link
-                href="/auth/signup"
-                className="inline-block w-full py-3 px-4 bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black text-white font-semibold rounded-lg transition-all duration-200"
-              >
-                Sign Up Again
-              </Link>
-              <Link
-                href="/"
-                className="inline-block w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all duration-200"
-              >
-                Back to Home
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link
-            href="/"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
-          >
-            Back to Home
-          </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </SpaticalBackground>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-900">
-        <div className="text-white">Loading...</div>
-      </div>
+      <SpaticalBackground showGradient={true}>
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      </SpaticalBackground>
     }>
       <VerifyEmailContent />
     </Suspense>

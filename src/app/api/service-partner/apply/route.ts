@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import { sendPartnerApplicationEmail, sendPartnerApplicationNotification } from "@/lib/email-resend";
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +103,26 @@ export async function POST(request: NextRequest) {
     };
 
     await user.save();
+
+    // Send confirmation email to applicant (non-blocking)
+    sendPartnerApplicationEmail(
+      user.email,
+      user.name || '',
+      companyName,
+      type,
+    ).catch((err) => console.error('[PARTNER APPLY] Applicant email failed:', err));
+
+    // Notify admin of new partner application (non-blocking)
+    sendPartnerApplicationNotification(
+      user.email,
+      user.name || '',
+      companyName,
+      type,
+      phone || '',
+      website || '',
+      licenseNumber || '',
+      nmlsId || '',
+    ).catch((err) => console.error('[PARTNER APPLY] Admin notification failed:', err));
 
     return NextResponse.json({
       success: true,
