@@ -35,6 +35,7 @@ function SettingsContent() {
             licenseNumber: p.licenseNumber || "",
             profileDescription: p.profileDescription || "",
             agentProfile: p.agentProfile || {},
+            adAccounts: p.adAccounts || {},
           });
         }
       } catch (err) {

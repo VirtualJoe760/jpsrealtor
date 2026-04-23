@@ -12,6 +12,12 @@ import {
   Building2,
   Clock,
   FileText,
+  ChevronDown,
+  ChevronRight,
+  Image,
+  Trash2,
+  Upload,
+  Info,
 } from "lucide-react";
 
 interface StepProps {
@@ -40,6 +46,60 @@ const CTA_OPTIONS = [
   { value: "GET_OFFER", label: "Get Offer" },
 ] as const;
 
+const DAYS_OF_WEEK = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
+
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Mon",
+  TUESDAY: "Tue",
+  WEDNESDAY: "Wed",
+  THURSDAY: "Thu",
+  FRIDAY: "Fri",
+  SATURDAY: "Sat",
+  SUNDAY: "Sun",
+};
+
+const PHOTO_CATEGORIES = [
+  { value: "ADDITIONAL", label: "Additional" },
+  { value: "COVER", label: "Cover" },
+  { value: "PROFILE", label: "Profile" },
+  { value: "LOGO", label: "Logo" },
+] as const;
+
+interface GBPMediaItem {
+  name?: string;
+  sourceUrl?: string;
+  googleUrl?: string;
+  thumbnailUrl?: string;
+  mediaFormat?: string;
+  locationAssociation?: {
+    category?: string;
+  };
+  createTime?: string;
+}
+
+interface HoursPeriod {
+  openDay: string;
+  openTime: { hours: number; minutes: number };
+  closeDay: string;
+  closeTime: { hours: number; minutes: number };
+}
+
+interface BusinessInfo {
+  title?: string;
+  profile?: { description?: string };
+  phoneNumbers?: { primaryPhone?: string };
+  websiteUri?: string;
+  regularHours?: { periods: HoursPeriod[] };
+}
+
 export default function GoogleBusinessStep({
   formData,
   updateField,
@@ -58,6 +118,36 @@ export default function GoogleBusinessStep({
   const [newPostSummary, setNewPostSummary] = useState("");
   const [newPostUrl, setNewPostUrl] = useState("");
   const [newPostImage, setNewPostImage] = useState("");
+
+  // Collapsible section state
+  const [infoExpanded, setInfoExpanded] = useState(false);
+  const [photosExpanded, setPhotosExpanded] = useState(false);
+
+  // Business info state
+  const [bizInfo, setBizInfo] = useState<BusinessInfo | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(false);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoDescription, setInfoDescription] = useState("");
+  const [infoPhone, setInfoPhone] = useState("");
+  const [infoWebsite, setInfoWebsite] = useState("");
+  const [infoHours, setInfoHours] = useState<
+    Record<string, { open: string; close: string; closed: boolean }>
+  >(() => {
+    const initial: Record<string, { open: string; close: string; closed: boolean }> = {};
+    DAYS_OF_WEEK.forEach((day) => {
+      initial[day] = { open: "09:00", close: "17:00", closed: false };
+    });
+    return initial;
+  });
+
+  // Photos state
+  const [mediaItems, setMediaItems] = useState<GBPMediaItem[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState("");
+  const [uploadCategory, setUploadCategory] = useState<string>("ADDITIONAL");
+  const [deletingMedia, setDeletingMedia] = useState<string | null>(null);
 
   const gbp = formData.adAccounts?.gbp || {};
   const isConnected = gbp.status === "connected";
@@ -95,11 +185,76 @@ export default function GoogleBusinessStep({
     }
   }, []);
 
+  const fetchBusinessInfo = useCallback(async () => {
+    setLoadingInfo(true);
+    try {
+      const res = await fetch("/api/gbp/info");
+      if (res.ok) {
+        const data = await res.json();
+        const info = data.info as BusinessInfo;
+        setBizInfo(info);
+        setInfoDescription(info?.profile?.description || "");
+        setInfoPhone(info?.phoneNumbers?.primaryPhone || "");
+        setInfoWebsite(info?.websiteUri || "");
+
+        // Parse hours
+        if (info?.regularHours?.periods) {
+          const parsed: Record<string, { open: string; close: string; closed: boolean }> = {};
+          DAYS_OF_WEEK.forEach((day) => {
+            parsed[day] = { open: "09:00", close: "17:00", closed: true };
+          });
+          for (const period of info.regularHours.periods) {
+            const day = period.openDay;
+            if (day && parsed[day]) {
+              const oh = String(period.openTime?.hours || 0).padStart(2, "0");
+              const om = String(period.openTime?.minutes || 0).padStart(2, "0");
+              const ch = String(period.closeTime?.hours || 0).padStart(2, "0");
+              const cm = String(period.closeTime?.minutes || 0).padStart(2, "0");
+              parsed[day] = { open: `${oh}:${om}`, close: `${ch}:${cm}`, closed: false };
+            }
+          }
+          setInfoHours(parsed);
+        }
+      }
+    } catch {
+      // Failed to load business info
+    } finally {
+      setLoadingInfo(false);
+    }
+  }, []);
+
+  const fetchMedia = useCallback(async () => {
+    setLoadingMedia(true);
+    try {
+      const res = await fetch("/api/gbp/media");
+      if (res.ok) {
+        const data = await res.json();
+        setMediaItems(data.mediaItems || []);
+      }
+    } catch {
+      // Failed to load media
+    } finally {
+      setLoadingMedia(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isConnected) {
       fetchPosts();
     }
   }, [isConnected, fetchPosts]);
+
+  useEffect(() => {
+    if (isConnected && infoExpanded && !bizInfo) {
+      fetchBusinessInfo();
+    }
+  }, [isConnected, infoExpanded, bizInfo, fetchBusinessInfo]);
+
+  useEffect(() => {
+    if (isConnected && photosExpanded && mediaItems.length === 0) {
+      fetchMedia();
+    }
+  }, [isConnected, photosExpanded, mediaItems.length, fetchMedia]);
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
@@ -145,6 +300,89 @@ export default function GoogleBusinessStep({
       // Failed to create post
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleSaveBusinessInfo = async () => {
+    setSavingInfo(true);
+    try {
+      // Build regularHours periods from the form state
+      const periods: HoursPeriod[] = [];
+      for (const day of DAYS_OF_WEEK) {
+        const h = infoHours[day];
+        if (!h.closed) {
+          const [oh, om] = h.open.split(":").map(Number);
+          const [ch, cm] = h.close.split(":").map(Number);
+          periods.push({
+            openDay: day,
+            openTime: { hours: oh, minutes: om },
+            closeDay: day,
+            closeTime: { hours: ch, minutes: cm },
+          });
+        }
+      }
+
+      await fetch("/api/gbp/info", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: infoDescription,
+          phoneNumbers: { primaryPhone: infoPhone },
+          websiteUri: infoWebsite,
+          regularHours: { periods },
+        }),
+      });
+
+      // Refresh info after save
+      setBizInfo(null);
+      fetchBusinessInfo();
+    } catch {
+      // Failed to save
+    } finally {
+      setSavingInfo(false);
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!uploadUrl.trim()) return;
+    setUploadingPhoto(true);
+    try {
+      const res = await fetch("/api/gbp/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceUrl: uploadUrl,
+          category: uploadCategory,
+        }),
+      });
+      if (res.ok) {
+        setUploadUrl("");
+        setUploadCategory("ADDITIONAL");
+        setShowUploadForm(false);
+        fetchMedia();
+      }
+    } catch {
+      // Failed to upload
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (mediaName: string) => {
+    setDeletingMedia(mediaName);
+    try {
+      const res = await fetch("/api/gbp/media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaName }),
+      });
+      if (res.ok) {
+        setMediaItems((prev) => prev.filter((m) => m.name !== mediaName));
+      }
+    } catch {
+      // Failed to delete
+    } finally {
+      setDeletingMedia(null);
     }
   };
 
@@ -746,45 +984,478 @@ export default function GoogleBusinessStep({
           </div>
         )}
 
-        {/* ─── Section 4: Business Info Sync ─── */}
+        {/* ─── Section 4: Business Info (Collapsible) ─── */}
         {isConnected && (
           <div className={cardClass}>
-            <h3
-              className={`font-semibold mb-3 ${
-                isLight ? "text-gray-900" : "text-white"
-              }`}
+            <button
+              type="button"
+              onClick={() => setInfoExpanded(!infoExpanded)}
+              className="flex items-center gap-3 w-full text-left"
             >
-              Business Info Sync
-            </h3>
-            <p
-              className={`text-sm mb-3 ${
-                isLight ? "text-gray-600" : "text-gray-300"
-              }`}
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isLight ? "bg-blue-100" : "bg-blue-900/30"
+                }`}
+              >
+                <Info
+                  className={`w-5 h-5 ${
+                    isLight ? "text-blue-600" : "text-blue-400"
+                  }`}
+                />
+              </div>
+              <div className="flex-1">
+                <h3
+                  className={`font-semibold ${
+                    isLight ? "text-gray-900" : "text-white"
+                  }`}
+                >
+                  Business Info
+                </h3>
+                <p
+                  className={`text-xs ${
+                    isLight ? "text-gray-500" : "text-gray-400"
+                  }`}
+                >
+                  Edit description, phone, website, and hours
+                </p>
+              </div>
+              {infoExpanded ? (
+                <ChevronDown
+                  className={`w-5 h-5 ${
+                    isLight ? "text-gray-400" : "text-gray-500"
+                  }`}
+                />
+              ) : (
+                <ChevronRight
+                  className={`w-5 h-5 ${
+                    isLight ? "text-gray-400" : "text-gray-500"
+                  }`}
+                />
+              )}
+            </button>
+
+            {infoExpanded && (
+              <div className="mt-5 space-y-4">
+                {loadingInfo ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2
+                      className={`w-5 h-5 animate-spin ${
+                        isLight ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {/* Business Name (read-only) */}
+                    {bizInfo?.title && (
+                      <div>
+                        <label className={labelClass}>Business Name</label>
+                        <div
+                          className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                            isLight
+                              ? "bg-gray-100 border-gray-300 text-gray-600"
+                              : "bg-gray-800/70 border-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {bizInfo.title}
+                        </div>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isLight ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Business name cannot be edited here
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <div>
+                      <label className={labelClass}>Description</label>
+                      <textarea
+                        rows={4}
+                        value={infoDescription}
+                        onChange={(e) => setInfoDescription(e.target.value)}
+                        placeholder="Describe your business..."
+                        className={inputClass}
+                        maxLength={750}
+                      />
+                      <p
+                        className={`text-xs mt-1 ${
+                          isLight ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {infoDescription.length}/750 characters
+                      </p>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className={labelClass}>Phone Number</label>
+                      <input
+                        type="tel"
+                        value={infoPhone}
+                        onChange={(e) => setInfoPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Website */}
+                    <div>
+                      <label className={labelClass}>Website URL</label>
+                      <input
+                        type="url"
+                        value={infoWebsite}
+                        onChange={(e) => setInfoWebsite(e.target.value)}
+                        placeholder="https://yourwebsite.com"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Business Hours */}
+                    <div>
+                      <label className={labelClass}>Business Hours</label>
+                      <div className="space-y-2">
+                        {DAYS_OF_WEEK.map((day) => (
+                          <div
+                            key={day}
+                            className={`flex items-center gap-3 p-2.5 rounded-lg ${
+                              isLight ? "bg-white" : "bg-gray-900/50"
+                            }`}
+                          >
+                            <span
+                              className={`w-10 text-sm font-medium ${
+                                isLight ? "text-gray-700" : "text-gray-300"
+                              }`}
+                            >
+                              {DAY_LABELS[day]}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInfoHours((prev) => ({
+                                  ...prev,
+                                  [day]: { ...prev[day], closed: !prev[day].closed },
+                                }))
+                              }
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${
+                                !infoHours[day].closed
+                                  ? isLight
+                                    ? "bg-emerald-500"
+                                    : "bg-emerald-600"
+                                  : isLight
+                                  ? "bg-gray-300"
+                                  : "bg-gray-600"
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                                  !infoHours[day].closed
+                                    ? "translate-x-[18px]"
+                                    : "translate-x-[3px]"
+                                }`}
+                              />
+                            </button>
+
+                            {infoHours[day].closed ? (
+                              <span
+                                className={`text-sm ${
+                                  isLight ? "text-gray-400" : "text-gray-500"
+                                }`}
+                              >
+                                Closed
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="time"
+                                  value={infoHours[day].open}
+                                  onChange={(e) =>
+                                    setInfoHours((prev) => ({
+                                      ...prev,
+                                      [day]: { ...prev[day], open: e.target.value },
+                                    }))
+                                  }
+                                  className={`px-2 py-1 rounded border text-sm ${
+                                    isLight
+                                      ? "bg-white border-gray-300 text-gray-900"
+                                      : "bg-gray-800 border-gray-700 text-white"
+                                  }`}
+                                />
+                                <span
+                                  className={`text-xs ${
+                                    isLight ? "text-gray-400" : "text-gray-500"
+                                  }`}
+                                >
+                                  to
+                                </span>
+                                <input
+                                  type="time"
+                                  value={infoHours[day].close}
+                                  onChange={(e) =>
+                                    setInfoHours((prev) => ({
+                                      ...prev,
+                                      [day]: { ...prev[day], close: e.target.value },
+                                    }))
+                                  }
+                                  className={`px-2 py-1 rounded border text-sm ${
+                                    isLight
+                                      ? "bg-white border-gray-300 text-gray-900"
+                                      : "bg-gray-800 border-gray-700 text-white"
+                                  }`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <button
+                      onClick={handleSaveBusinessInfo}
+                      disabled={savingInfo}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+                        isLight
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      }`}
+                    >
+                      {savingInfo ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Save Changes
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Section 5: Photos (Collapsible) ─── */}
+        {isConnected && (
+          <div className={cardClass}>
+            <button
+              type="button"
+              onClick={() => setPhotosExpanded(!photosExpanded)}
+              className="flex items-center gap-3 w-full text-left"
             >
-              Your GBP business hours, description, and photos can be managed
-              through the Google Business Profile dashboard.
-            </p>
-            <a
-              href="https://business.google.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
-                isLight
-                  ? "text-blue-600 hover:text-blue-700"
-                  : "text-blue-400 hover:text-blue-300"
-              }`}
-            >
-              <ExternalLink className="w-4 h-4" />
-              Open Google Business Profile Dashboard
-            </a>
-            <p
-              className={`text-xs mt-3 ${
-                isLight ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Syncing business info directly from this platform is planned for a
-              future update.
-            </p>
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isLight ? "bg-purple-100" : "bg-purple-900/30"
+                }`}
+              >
+                <Image
+                  className={`w-5 h-5 ${
+                    isLight ? "text-purple-600" : "text-purple-400"
+                  }`}
+                />
+              </div>
+              <div className="flex-1">
+                <h3
+                  className={`font-semibold ${
+                    isLight ? "text-gray-900" : "text-white"
+                  }`}
+                >
+                  Photos
+                </h3>
+                <p
+                  className={`text-xs ${
+                    isLight ? "text-gray-500" : "text-gray-400"
+                  }`}
+                >
+                  Manage your GBP photos and images
+                </p>
+              </div>
+              {photosExpanded ? (
+                <ChevronDown
+                  className={`w-5 h-5 ${
+                    isLight ? "text-gray-400" : "text-gray-500"
+                  }`}
+                />
+              ) : (
+                <ChevronRight
+                  className={`w-5 h-5 ${
+                    isLight ? "text-gray-400" : "text-gray-500"
+                  }`}
+                />
+              )}
+            </button>
+
+            {photosExpanded && (
+              <div className="mt-5 space-y-4">
+                {/* Upload Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowUploadForm(!showUploadForm)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      isLight
+                        ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                        : "bg-purple-900/30 text-purple-400 hover:bg-purple-900/50"
+                    }`}
+                  >
+                    {showUploadForm ? (
+                      <>
+                        <X className="w-3.5 h-3.5" />
+                        Cancel
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload Photo
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Upload Form */}
+                {showUploadForm && (
+                  <div
+                    className={`rounded-lg border p-4 ${
+                      isLight
+                        ? "bg-white border-gray-200"
+                        : "bg-gray-900 border-gray-700"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div>
+                        <label className={labelClass}>
+                          Image URL (Cloudinary or public URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={uploadUrl}
+                          onChange={(e) => setUploadUrl(e.target.value)}
+                          placeholder="https://res.cloudinary.com/..."
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Category</label>
+                        <select
+                          value={uploadCategory}
+                          onChange={(e) => setUploadCategory(e.target.value)}
+                          className={inputClass}
+                        >
+                          {PHOTO_CATEGORIES.map((cat) => (
+                            <option key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={handleUploadPhoto}
+                        disabled={uploadingPhoto || !uploadUrl.trim()}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+                          isLight
+                            ? "bg-purple-600 hover:bg-purple-700"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        }`}
+                      >
+                        {uploadingPhoto ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        Upload
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Photos Grid */}
+                {loadingMedia ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2
+                      className={`w-5 h-5 animate-spin ${
+                        isLight ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    />
+                  </div>
+                ) : mediaItems.length === 0 ? (
+                  <p
+                    className={`text-sm text-center py-6 ${
+                      isLight ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    No photos found. Upload your first photo above.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {mediaItems.map((item, i) => (
+                      <div
+                        key={item.name || i}
+                        className={`relative rounded-lg overflow-hidden border group ${
+                          isLight ? "border-gray-200" : "border-gray-700"
+                        }`}
+                      >
+                        {/* Thumbnail */}
+                        <div className="aspect-square relative">
+                          <img
+                            src={
+                              item.thumbnailUrl ||
+                              item.googleUrl ||
+                              item.sourceUrl ||
+                              ""
+                            }
+                            alt="GBP photo"
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Delete overlay */}
+                          {item.name && (
+                            <button
+                              onClick={() => handleDeletePhoto(item.name!)}
+                              disabled={deletingMedia === item.name}
+                              className="absolute top-2 right-2 p-1.5 rounded-full bg-red-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {deletingMedia === item.name ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        {/* Category Badge */}
+                        <div
+                          className={`px-2 py-1.5 text-center ${
+                            isLight ? "bg-gray-50" : "bg-gray-800"
+                          }`}
+                        >
+                          <span
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              item.locationAssociation?.category === "COVER"
+                                ? isLight
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-blue-900/30 text-blue-400"
+                                : item.locationAssociation?.category === "PROFILE"
+                                ? isLight
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-green-900/30 text-green-400"
+                                : item.locationAssociation?.category === "LOGO"
+                                ? isLight
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-amber-900/30 text-amber-400"
+                                : isLight
+                                ? "bg-gray-100 text-gray-600"
+                                : "bg-gray-700 text-gray-400"
+                            }`}
+                          >
+                            {item.locationAssociation?.category || "ADDITIONAL"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

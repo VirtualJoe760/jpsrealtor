@@ -62,8 +62,7 @@ export default function SettingsStepIndicator({
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = step.id === currentStep;
           const isPast = index < currentIndex;
-          const isClickable =
-            (index < currentIndex || isCompleted) && step.id !== currentStep;
+          const isClickable = step.id !== currentStep;
           const Icon = step.icon;
 
           return (

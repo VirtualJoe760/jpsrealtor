@@ -66,6 +66,44 @@ export interface ListLocalPostsResponse {
   nextPageToken?: string;
 }
 
+/** GBP media item (photo) from the Business Information API */
+export interface GBPMediaItem {
+  name?: string;
+  mediaFormat: 'PHOTO' | 'VIDEO';
+  sourceUrl: string;
+  locationAssociation?: {
+    category: 'COVER' | 'PROFILE' | 'LOGO' | 'ADDITIONAL' | 'CATEGORY_UNSPECIFIED';
+  };
+  googleUrl?: string;
+  thumbnailUrl?: string;
+  createTime?: string;
+  description?: string;
+}
+
+export interface ListMediaResponse {
+  mediaItems?: GBPMediaItem[];
+  nextPageToken?: string;
+}
+
+/** GBP business hours period */
+export interface TimePeriod {
+  openDay: string;
+  openTime: { hours: number; minutes: number };
+  closeDay: string;
+  closeTime: { hours: number; minutes: number };
+}
+
+/** GBP location info from the Business Information API */
+export interface GBPLocationInfo {
+  name?: string;
+  title?: string;
+  phoneNumbers?: { primaryPhone?: string; additionalPhones?: string[] };
+  websiteUri?: string;
+  regularHours?: { periods: TimePeriod[] };
+  specialHours?: { specialHourPeriods: any[] };
+  profile?: { description?: string };
+}
+
 /** Credentials object for per-user GBP API calls */
 export interface GBPCredentials {
   clientId: string;
@@ -83,6 +121,7 @@ export interface GBPAccount {
 
 const TOKEN_URI = 'https://oauth2.googleapis.com/token';
 const GBP_API_BASE = 'https://mybusiness.googleapis.com/v4';
+const GBP_BIZ_INFO_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
 
 // Cache access tokens per refresh token (keyed by refresh token hash)
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
@@ -260,4 +299,79 @@ export async function listLocations(
 ): Promise<{ locations?: Array<{ name: string; locationName: string; storeCode?: string }> }> {
   const url = `${GBP_API_BASE}/${accountId}/locations`;
   return gbpFetch(url, 'GET', undefined, credentials);
+}
+
+// ── Business Information API (v1) ────────────────────────────────────────────
+// These use the mybusinessbusinessinformation.googleapis.com/v1 endpoint.
+// Location name format is "locations/XXXX" (no account prefix).
+
+/**
+ * List media items (photos) for a GBP location.
+ */
+export async function listMedia(
+  _accountId: string,
+  locationId: string,
+  credentials?: Partial<GBPCredentials>
+): Promise<ListMediaResponse> {
+  const url = `${GBP_BIZ_INFO_BASE}/${locationId}/media`;
+  return gbpFetch(url, 'GET', undefined, credentials);
+}
+
+/**
+ * Upload a media item (photo) to a GBP location.
+ */
+export async function uploadMedia(
+  _accountId: string,
+  locationId: string,
+  mediaData: {
+    mediaFormat: 'PHOTO';
+    sourceUrl: string;
+    locationAssociation?: { category: 'COVER' | 'PROFILE' | 'LOGO' | 'ADDITIONAL' };
+  },
+  credentials?: Partial<GBPCredentials>
+): Promise<GBPMediaItem> {
+  const url = `${GBP_BIZ_INFO_BASE}/${locationId}/media`;
+  return gbpFetch(url, 'POST', mediaData as unknown as Record<string, unknown>, credentials);
+}
+
+/**
+ * Delete a media item (photo) from a GBP location.
+ * mediaName is the full resource name e.g. "locations/.../media/..."
+ */
+export async function deleteMedia(
+  _accountId: string,
+  _locationId: string,
+  mediaName: string,
+  credentials?: Partial<GBPCredentials>
+): Promise<void> {
+  const url = `${GBP_BIZ_INFO_BASE}/${mediaName}`;
+  await gbpFetch(url, 'DELETE', undefined, credentials);
+}
+
+/**
+ * Get full business info for a GBP location.
+ */
+export async function getLocationInfo(
+  _accountId: string,
+  locationId: string,
+  credentials?: Partial<GBPCredentials>
+): Promise<GBPLocationInfo> {
+  const readMask = 'name,title,phoneNumbers,websiteUri,regularHours,specialHours,profile';
+  const url = `${GBP_BIZ_INFO_BASE}/${locationId}?readMask=${encodeURIComponent(readMask)}`;
+  return gbpFetch(url, 'GET', undefined, credentials);
+}
+
+/**
+ * Update business info for a GBP location.
+ * updateMask specifies which fields to update (comma-separated).
+ */
+export async function updateLocationInfo(
+  _accountId: string,
+  locationId: string,
+  updateData: Partial<GBPLocationInfo>,
+  updateMask: string,
+  credentials?: Partial<GBPCredentials>
+): Promise<GBPLocationInfo> {
+  const url = `${GBP_BIZ_INFO_BASE}/${locationId}?updateMask=${encodeURIComponent(updateMask)}`;
+  return gbpFetch(url, 'PATCH', updateData as unknown as Record<string, unknown>, credentials);
 }

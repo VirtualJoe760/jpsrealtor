@@ -114,6 +114,8 @@ export async function GET(request: NextRequest) {
         isTeamLeader: user.isTeamLeader,
         // MULTI-TENANT: Agent Profile
         agentProfile: user.agentProfile,
+        // Ad platform connections (GBP, Google Ads, Meta)
+        adAccounts: user.adAccounts,
       },
     });
   } catch (error) {
