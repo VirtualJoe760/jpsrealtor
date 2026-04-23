@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { publishArticle, validateForPublish, type ArticleFormData } from '@/lib/publishing-pipeline';
 import { IS_PRODUCTION } from '@/lib/environment';
+import { publishArticleToGBP } from '@/lib/gbp-publisher';
 
 /**
  * POST /api/articles/publish
@@ -63,6 +64,27 @@ export async function POST(req: Request) {
       userEmail: session.user.email || 'noemail@example.com',
     });
 
+    // GBP auto-posting (non-blocking — don't fail the publish if GBP errors)
+    let gbpResult: { success: boolean; postName?: string; error?: string } | null = null;
+    if (!article.draft) {
+      try {
+        gbpResult = await publishArticleToGBP({
+          title: article.title,
+          excerpt: article.excerpt,
+          image: article.featuredImage?.url,
+          url: slugId,
+          category: article.category,
+        });
+        if (gbpResult.success) {
+          console.log(`[PUBLISH] GBP post created: ${gbpResult.postName}`);
+        } else {
+          console.warn(`[PUBLISH] GBP post skipped: ${gbpResult.error}`);
+        }
+      } catch (gbpError) {
+        console.error('[PUBLISH] GBP auto-post failed (non-blocking):', gbpError);
+      }
+    }
+
     // Unified workflow response messages
     const message = IS_PRODUCTION
       ? `Article saved to MongoDB and pushed to main branch! Vercel is rebuilding - your article will be live in 2-3 minutes.`
@@ -77,6 +99,7 @@ export async function POST(req: Request) {
       deployed: true,
       environment: IS_PRODUCTION ? 'production' : 'localhost',
       workflow: 'MongoDB → MDX → Git (main) → Vercel',
+      gbp: gbpResult ? { success: gbpResult.success, postName: gbpResult.postName, error: gbpResult.error } : null,
     });
 
   } catch (error) {
