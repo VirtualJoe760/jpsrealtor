@@ -10,6 +10,7 @@ import {
   Share2,
   Globe,
   MapPin,
+  CreditCard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -20,7 +21,8 @@ export type SettingsStep =
   | "content"
   | "social"
   | "domain"
-  | "areas";
+  | "areas"
+  | "billing";
 
 interface SettingsStepIndicatorProps {
   currentStep: SettingsStep;
@@ -36,6 +38,7 @@ const STEPS: { id: SettingsStep; label: string; icon: LucideIcon }[] = [
   { id: "social", label: "Social", icon: Share2 },
   { id: "domain", label: "Domain & SEO", icon: Globe },
   { id: "areas", label: "Service Areas", icon: MapPin },
+  { id: "billing", label: "Billing", icon: CreditCard },
 ];
 
 export { STEPS };

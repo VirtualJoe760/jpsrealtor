@@ -16,6 +16,7 @@ import ContentStoryStep from "./steps/ContentStoryStep";
 import SocialMediaStep from "./steps/SocialMediaStep";
 import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
+import BillingStep from "./steps/BillingStep";
 
 interface SettingsWizardProps {
   initialData: any;
@@ -122,6 +123,8 @@ export default function SettingsWizard({
         return <DomainSeoStep {...stepProps} />;
       case "areas":
         return <ServiceAreasStep {...stepProps} />;
+      case "billing":
+        return <BillingStep {...stepProps} />;
     }
   };
 
