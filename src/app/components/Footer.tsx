@@ -1,79 +1,28 @@
 "use client";
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useThemeClasses } from '@/app/contexts/ThemeContext';
 
-const navigation = {
-  main: [
-    { name: 'Book a Consultation', href: '/book-appointment' },
-    { name: 'Listings', href: '/mls-listings' }, 
-    { name: 'Home', href: '/' },
-    { name: 'Loans', href: 'https://myloan.intercaplending.com/homehub/signup/cache@intercaplending.com?from_mobile_share=true'},
-    { name: 'Newsletter Signup', href: '/newsletter-signup' },
-    { name: 'Contact', href: '/#contact' }
-  ],
-  social: [
-    {
-      name: 'Facebook',
-      href: 'https://www.facebook.com/JPSardellaRealEstate',
-      iconSrc: '/svg/facebook.svg',
-    },
-    {
-      name: 'LinkedIn',
-      href: 'https://www.linkedin.com/in/josephsardella/',
-      iconSrc: '/svg/linkedin.svg',
-    },
-    {
-      name: 'YouTube',
-      href: 'https://www.youtube.com/@jpsrealtor',
-      iconSrc: '/svg/youtube.svg',
-    },
-  ],
-};
-
-export default function Example() {
-  const { bgPrimary, textPrimary, textSecondary, currentTheme } = useThemeClasses();
+export default function Footer() {
+  const { textSecondary, currentTheme } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
   return (
-    <footer>
-      <div className={`mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8 ${isLight ? 'bg-white' : 'bg-black'}`}>
-        <nav
-          aria-label="Footer"
-          className="-mb-6 flex flex-wrap justify-center gap-x-12 gap-y-3 text-sm/6"
+    <footer className="w-full py-4 px-6">
+      <div className="flex items-center justify-center gap-4 text-xs">
+        <Link
+          href="/privacy-policy"
+          className={`${textSecondary} ${isLight ? 'hover:text-blue-600' : 'hover:text-gray-300'} transition-colors`}
         >
-          {navigation.main.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`${textPrimary} ${isLight ? 'hover:text-emerald-600' : 'hover:text-gray-300'}`}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-16 flex justify-center gap-x-10">
-          {navigation.social.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`${textPrimary} ${isLight ? 'hover:text-emerald-600' : 'hover:text-gray-300'}`}
-            >
-              <span className="sr-only">{item.name}</span>
-              <Image
-                src={item.iconSrc}
-                alt={item.name}
-                width={24}
-                height={24}
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
-        </div>
-        <p className={`mt-10 text-center text-sm/6 ${textSecondary}`}>
-          &copy; Joseph Sardella | Coachella Valley Realtor | eXp Realty | Obsidian Group
-        </p>
+          Privacy Policy
+        </Link>
+        <span className={textSecondary}>|</span>
+        <Link
+          href="/terms-of-service"
+          className={`${textSecondary} ${isLight ? 'hover:text-blue-600' : 'hover:text-gray-300'} transition-colors`}
+        >
+          Terms of Service
+        </Link>
       </div>
     </footer>
   );

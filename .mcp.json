@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "gsc": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-gsc@latest"
+      ],
+      "env": {
+        "GOOGLE_GSC_CREDENTIALS_PATH": "F:/web-clients/joseph-sardella/jpsrealtor/gsc-credentials.json"
+      }
+    }
+  }
+}

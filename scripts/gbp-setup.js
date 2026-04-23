@@ -2,19 +2,18 @@
 /**
  * Google Business Profile API Setup
  *
- * Reuses the existing GSC OAuth credentials and adds GBP scopes.
- * Stores the token at ~/.claude/gbp-token.json
+ * Reads credentials from .env.local (GBP_CLIENT_ID, GBP_CLIENT_SECRET, GBP_REFRESH_TOKEN).
  *
  * Usage:
  *   Step 1: Enable APIs first:
- *     gcloud services enable mybusinessbusinessinformation.googleapis.com mybusinessaccountmanagement.googleapis.com businessprofileperformance.googleapis.com --project=jpsrealtor
+ *     gcloud services enable mybusiness.googleapis.com mybusinessaccountmanagement.googleapis.com mybusinessbusinessinformation.googleapis.com businessprofileperformance.googleapis.com --project=jpsrealtor
  *
  *   Step 2: Run this script:
- *     node scripts/gbp-setup.js auth     # Opens browser for OAuth consent
- *     node scripts/gbp-setup.js accounts  # List your GBP accounts
- *     node scripts/gbp-setup.js locations # List business locations
- *     node scripts/gbp-setup.js info      # Show current business info
- *     node scripts/gbp-setup.js update    # Update business description, hours, etc.
+ *     node scripts/gbp-setup.js auth       # Opens browser for OAuth consent
+ *     node scripts/gbp-setup.js accounts   # List your GBP accounts
+ *     node scripts/gbp-setup.js locations  # List business locations
+ *     node scripts/gbp-setup.js info       # Show current business info
+ *     node scripts/gbp-setup.js post       # Create a test local post
  */
 
 const fs = require('fs');
@@ -22,61 +21,66 @@ const path = require('path');
 const http = require('http');
 const { URL } = require('url');
 
-const CREDS_PATH = path.join(process.env.HOME || process.env.USERPROFILE, '.claude', 'gbp-credentials.json');
-const TOKEN_PATH = path.join(process.env.HOME || process.env.USERPROFILE, '.claude', 'gbp-token.json');
+// ── Load .env.local ────────────────────────────────────────────────────────
+
+function loadEnv() {
+  const envPath = path.join(__dirname, '..', '.env.local');
+  if (!fs.existsSync(envPath)) {
+    console.error('.env.local not found');
+    process.exit(1);
+  }
+  const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const key = trimmed.substring(0, eqIndex);
+    const value = trimmed.substring(eqIndex + 1);
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+loadEnv();
+
+const CLIENT_ID = process.env.GBP_CLIENT_ID;
+const CLIENT_SECRET = process.env.GBP_CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.GBP_REFRESH_TOKEN;
+const AUTH_URI = 'https://accounts.google.com/o/oauth2/auth';
+const TOKEN_URI = 'https://oauth2.googleapis.com/token';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/business.manage',
 ];
 
-function loadCredentials() {
-  const data = JSON.parse(fs.readFileSync(CREDS_PATH, 'utf-8'));
-  return data.installed;
+if (!CLIENT_ID || !CLIENT_SECRET) {
+  console.error('Missing GBP_CLIENT_ID or GBP_CLIENT_SECRET in .env.local');
+  process.exit(1);
 }
 
-function loadToken() {
-  if (!fs.existsSync(TOKEN_PATH)) return null;
-  return JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
-}
+// ── Token Management ───────────────────────────────────────────────────────
 
-function saveToken(token) {
-  fs.writeFileSync(TOKEN_PATH, JSON.stringify(token, null, 2));
-}
+async function refreshAccessToken() {
+  if (!REFRESH_TOKEN) {
+    console.error('No GBP_REFRESH_TOKEN in .env.local. Run: node scripts/gbp-setup.js auth');
+    process.exit(1);
+  }
 
-async function refreshToken(creds, token) {
   const params = new URLSearchParams({
-    client_id: creds.client_id,
-    client_secret: creds.client_secret,
-    refresh_token: token.refresh_token,
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    refresh_token: REFRESH_TOKEN,
     grant_type: 'refresh_token',
   });
 
-  const resp = await fetch(creds.token_uri, {
-    method: 'POST',
-    body: params,
-  });
+  const resp = await fetch(TOKEN_URI, { method: 'POST', body: params });
   const data = await resp.json();
   if (data.error) throw new Error(`Token refresh failed: ${data.error_description || data.error}`);
-
-  token.access_token = data.access_token;
-  if (data.refresh_token) token.refresh_token = data.refresh_token;
-  saveToken(token);
-  return token;
-}
-
-async function getAccessToken() {
-  const creds = loadCredentials();
-  let token = loadToken();
-  if (!token) {
-    console.error('No GBP token found. Run: node scripts/gbp-setup.js auth');
-    process.exit(1);
-  }
-  token = await refreshToken(creds, token);
-  return token.access_token;
+  return data.access_token;
 }
 
 async function apiCall(url, method = 'GET', body = null) {
-  const accessToken = await getAccessToken();
+  const accessToken = await refreshAccessToken();
   const opts = {
     method,
     headers: {
@@ -98,11 +102,10 @@ async function apiCall(url, method = 'GET', body = null) {
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 
 async function doAuth() {
-  const creds = loadCredentials();
   const redirectUri = 'http://localhost:3456';
 
-  const authUrl = new URL(creds.auth_uri);
-  authUrl.searchParams.set('client_id', creds.client_id);
+  const authUrl = new URL(AUTH_URI);
+  authUrl.searchParams.set('client_id', CLIENT_ID);
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('scope', SCOPES.join(' '));
@@ -124,16 +127,15 @@ async function doAuth() {
         return;
       }
 
-      // Exchange code for tokens
       const params = new URLSearchParams({
         code,
-        client_id: creds.client_id,
-        client_secret: creds.client_secret,
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       });
 
-      const tokenResp = await fetch(creds.token_uri, { method: 'POST', body: params });
+      const tokenResp = await fetch(TOKEN_URI, { method: 'POST', body: params });
       const tokenData = await tokenResp.json();
 
       if (tokenData.error) {
@@ -144,16 +146,17 @@ async function doAuth() {
         process.exit(1);
       }
 
-      saveToken(tokenData);
+      console.log('\nAuthorization successful!');
+      console.log('\nAdd this to your .env.local:');
+      console.log(`GBP_REFRESH_TOKEN=${tokenData.refresh_token}`);
+
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('<h1>GBP Authorization successful!</h1><p>You can close this tab.</p>');
-      console.log('\nAuthorization successful! Token saved to', TOKEN_PATH);
+      res.end('<h1>GBP Authorization successful!</h1><p>Copy the refresh token from your terminal into .env.local, then close this tab.</p>');
       server.close();
       resolve();
     });
 
     server.listen(3456, () => {
-      // Try to open browser automatically
       const { exec } = require('child_process');
       exec(`start "" "${authUrl.toString()}"`, () => {});
     });
@@ -249,7 +252,7 @@ async function main() {
       break;
     default:
       console.log('Usage:');
-      console.log('  node scripts/gbp-setup.js auth      # Authorize with Google');
+      console.log('  node scripts/gbp-setup.js auth       # Authorize with Google');
       console.log('  node scripts/gbp-setup.js accounts   # List GBP accounts');
       console.log('  node scripts/gbp-setup.js locations  # List business locations');
       console.log('  node scripts/gbp-setup.js info       # Show full business info');

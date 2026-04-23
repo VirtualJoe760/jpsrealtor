@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function handleCors(req: NextRequest, res: NextResponse): Promise<void> {
   const allowedOrigins = [
-    "http://localhost:3000", // Development
-    "https://www.jpsrealtor.com", // Production
+    "http://localhost:3000",
+    "https://jpsrealtor.com",
+    "https://www.jpsrealtor.com",
+    "https://josephsardella.com",
+    "https://www.josephsardella.com",
+    "https://chatrealty.io",
+    "https://www.chatrealty.io",
   ];
 
   const origin = req.headers.get("origin") || "";
@@ -11,7 +16,7 @@ export async function handleCors(req: NextRequest, res: NextResponse): Promise<v
   if (allowedOrigins.includes(origin)) {
     res.headers.set("Access-Control-Allow-Origin", origin);
   } else {
-    res.headers.set("Access-Control-Allow-Origin", "https://www.jpsrealtor.com");
+    res.headers.set("Access-Control-Allow-Origin", "https://jpsrealtor.com");
   }
 
   res.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");

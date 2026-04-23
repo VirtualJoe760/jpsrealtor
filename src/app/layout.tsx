@@ -282,7 +282,10 @@ export default async function RootLayout({
             </Script>
           </>
         )}
-        <ClientLayoutWrapper initialTheme={serverTheme}>{children}</ClientLayoutWrapper>
+        <ClientLayoutWrapper initialTheme={serverTheme}>
+          {children}
+          <Footer />
+        </ClientLayoutWrapper>
       </body>
     </html>
   );
