@@ -6,6 +6,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import AgentNav from "@/app/components/AgentNav";
 import SettingsWizard from "./components/SettingsWizard";
+import SettingsSidebar from "./components/SettingsSidebar";
 
 function SettingsContent() {
   const { data: session, status } = useSession();
@@ -14,10 +15,11 @@ function SettingsContent() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  const isOnboarding = searchParams.get("onboarding") === "true";
+  const isOnboardingParam = searchParams.get("onboarding") === "true";
 
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWizardMode, setIsWizardMode] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,8 +50,12 @@ function SettingsContent() {
     if (status === "authenticated") {
       fetchProfile();
       localStorage.setItem("agent_settings_visited", "true");
+
+      // Determine mode: wizard for first-time or explicit onboarding
+      const hasCompleted = localStorage.getItem("agent_settings_completed") === "true";
+      setIsWizardMode(isOnboardingParam || !hasCompleted);
     }
-  }, [status]);
+  }, [status, isOnboardingParam]);
 
   if (status === "loading" || isLoading) {
     return (
@@ -100,14 +106,14 @@ function SettingsContent() {
               isLight ? "text-gray-900" : "text-white"
             }`}
           >
-            {isOnboarding ? "Profile Setup" : "Agent Settings"}
+            {isWizardMode ? "Profile Setup" : "Agent Settings"}
           </h1>
           <p
             className={`text-sm ${
               isLight ? "text-gray-500" : "text-gray-400"
             }`}
           >
-            {isOnboarding
+            {isWizardMode
               ? "Complete your profile to personalize your website."
               : "Manage your profile, branding, and website settings."}
           </p>
@@ -115,10 +121,14 @@ function SettingsContent() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto pb-20 md:pb-0 px-4 md:px-6">
-          <SettingsWizard
-            initialData={profileData}
-            isOnboarding={isOnboarding}
-          />
+          {isWizardMode ? (
+            <SettingsWizard
+              initialData={profileData}
+              isOnboarding={true}
+            />
+          ) : (
+            <SettingsSidebar initialData={profileData} />
+          )}
         </div>
       </div>
     </div>

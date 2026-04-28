@@ -219,6 +219,8 @@ export default function SettingsWizard({
                 }
                 toast.success("Profile setup complete!");
                 localStorage.setItem("agent_settings_visited", "true");
+                localStorage.setItem("agent_settings_completed", "true");
+                window.location.href = "/agent/settings";
               }}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors ${
                 isLight
