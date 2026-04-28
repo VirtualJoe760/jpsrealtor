@@ -8,6 +8,7 @@ import CityMap from "@/app/components/cities/CityMap";
 import CityStats from "@/app/components/cities/CityStats";
 import SubdivisionsSection from "@/app/components/cities/SubdivisionsSection";
 import HOASection from "@/app/components/cities/HOASection";
+import NeighborhoodErrorBoundary from "@/app/components/neighborhoods/NeighborhoodErrorBoundary";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { coachellaValleyCities } from "@/app/constants/cities";
@@ -207,17 +208,21 @@ export default function CityPageClient({
         {/* Content */}
         <div className="space-y-8">
           {/* Map View */}
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-            <CityMap
-              cityId={cityId}
-              cityName={city.name}
-              coordinates={cityDoc?.coordinates}
-              height="600px"
-            />
-          </div>
+          <NeighborhoodErrorBoundary sectionName="Map">
+            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+              <CityMap
+                cityId={cityId}
+                cityName={city.name}
+                coordinates={cityDoc?.coordinates}
+                height="600px"
+              />
+            </div>
+          </NeighborhoodErrorBoundary>
 
           {/* Stats with Auto-Cycling */}
-          <CityStats cityId={cityId} initialStats={initialStats} />
+          <NeighborhoodErrorBoundary sectionName="Statistics">
+            <CityStats cityId={cityId} initialStats={initialStats} />
+          </NeighborhoodErrorBoundary>
 
           {/* About City — SEO content from constants (CV cities) or generated content (all others) */}
           {(() => {
@@ -240,8 +245,12 @@ export default function CityPageClient({
           })()}
 
           {/* Dynamic Community Data Sections */}
-          <SubdivisionsSection cityId={cityId} />
-          <HOASection cityId={cityId} />
+          <NeighborhoodErrorBoundary sectionName="Subdivisions">
+            <SubdivisionsSection cityId={cityId} />
+          </NeighborhoodErrorBoundary>
+          <NeighborhoodErrorBoundary sectionName="HOA Information">
+            <HOASection cityId={cityId} />
+          </NeighborhoodErrorBoundary>
 
           {/* FAQ Section — matches FAQPage schema for rich snippets */}
           {(() => {

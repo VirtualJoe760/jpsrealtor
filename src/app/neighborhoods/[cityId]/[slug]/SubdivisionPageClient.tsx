@@ -10,6 +10,7 @@ import SubdivisionListings from "@/app/components/subdivisions/SubdivisionListin
 import SubdivisionPhotoCarousel from "@/app/components/subdivisions/SubdivisionPhotoCarousel";
 import SubdivisionStats from "@/app/components/subdivisions/SubdivisionStats";
 import SubdivisionCmaSection from "@/app/components/cma/subdivision/SubdivisionCmaSection";
+import NeighborhoodErrorBoundary from "@/app/components/neighborhoods/NeighborhoodErrorBoundary";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { trackViewContent } from "@/lib/meta-pixel";
 
@@ -179,17 +180,19 @@ export default function SubdivisionPageClient({
         {/* Content */}
         <div className="space-y-8">
           {/* Photo Carousel */}
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-            <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-              Featured Listings
-            </h2>
-            <SubdivisionPhotoCarousel
-              subdivisionSlug={slug}
-              cityId={cityId}
-              subdivisionName={subdivision.name}
-              limit={20}
-            />
-          </div>
+          <NeighborhoodErrorBoundary sectionName="Photos">
+            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+                Featured Listings
+              </h2>
+              <SubdivisionPhotoCarousel
+                subdivisionSlug={slug}
+                cityId={cityId}
+                subdivisionName={subdivision.name}
+                limit={20}
+              />
+            </div>
+          </NeighborhoodErrorBoundary>
 
           {/* About */}
           {subdivision.description && (
@@ -233,42 +236,48 @@ export default function SubdivisionPageClient({
           )}
 
           {/* Stats with Toggle */}
-          <SubdivisionStats
-            subdivisionSlug={slug}
-            cityId={cityId}
-            initialStats={{
-              listingCount: subdivision.listingCount,
-              avgPrice: subdivision.avgPrice,
-              medianPrice: subdivision.medianPrice,
-              priceRange: subdivision.priceRange,
-            }}
-          />
+          <NeighborhoodErrorBoundary sectionName="Statistics">
+            <SubdivisionStats
+              subdivisionSlug={slug}
+              cityId={cityId}
+              initialStats={{
+                listingCount: subdivision.listingCount,
+                avgPrice: subdivision.avgPrice,
+                medianPrice: subdivision.medianPrice,
+                priceRange: subdivision.priceRange,
+              }}
+            />
+          </NeighborhoodErrorBoundary>
 
           {/* Map */}
           {subdivision.coordinates && (
-            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-                Location & Listings Map
-              </h2>
-              <SubdivisionMap
-                subdivisionSlug={slug}
-                cityId={cityId}
-                subdivision={{
-                  name: subdivision.name,
-                  coordinates: subdivision.coordinates,
-                }}
-                height="500px"
-              />
-            </div>
+            <NeighborhoodErrorBoundary sectionName="Map">
+              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+                  Location & Listings Map
+                </h2>
+                <SubdivisionMap
+                  subdivisionSlug={slug}
+                  cityId={cityId}
+                  subdivision={{
+                    name: subdivision.name,
+                    coordinates: subdivision.coordinates,
+                  }}
+                  height="500px"
+                />
+              </div>
+            </NeighborhoodErrorBoundary>
           )}
 
           {/* Listings */}
-          <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-            <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-              Available Homes
-            </h2>
-            <SubdivisionListings subdivisionSlug={slug} cityId={cityId} />
-          </div>
+          <NeighborhoodErrorBoundary sectionName="Listings">
+            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+                Available Homes
+              </h2>
+              <SubdivisionListings subdivisionSlug={slug} cityId={cityId} />
+            </div>
+          </NeighborhoodErrorBoundary>
 
           {/* CMA Market Analysis */}
           <SubdivisionCmaSection slug={slug} />
