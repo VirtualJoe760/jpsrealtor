@@ -288,272 +288,196 @@ export async function GET(
       }
     }
 
-    // ANALYTICS PATTERN: Get accurate stats from ALL listings, not just the page
-    let listingsQuery;
+    // Shared field projection for listings (used in both aggregation and find paths)
+    const listingProjection: Record<string, 1> = {
+      listingKey: 1, listingId: 1, slugAddress: 1, slug: 1,
+      unparsedAddress: 1, unparsedFirstLineAddress: 1, address: 1,
+      city: 1, stateOrProvince: 1, postalCode: 1,
+      latitude: 1, longitude: 1,
+      listPrice: 1, currentPrice: 1, originalListPrice: 1, associationFee: 1,
+      bedsTotal: 1, bathsTotal: 1, bathroomsTotalDecimal: 1, bathroomsTotalInteger: 1,
+      livingArea: 1, lotSizeArea: 1, lotSizeSqft: 1, yearBuilt: 1,
+      standardStatus: 1, daysOnMarket: 1, onMarketDate: 1, modificationTimestamp: 1,
+      propertyType: 1, propertySubType: 1, subdivisionName: 1, mlsSource: 1, landType: 1,
+      poolYN: 1, pool: 1, spaYN: 1, spa: 1, viewYN: 1, view: 1,
+      fireplaceYN: 1, fireplacesTotal: 1, seniorCommunityYN: 1, gatedCommunity: 1,
+      associationYN: 1, garageSpaces: 1, parkingTotal: 1, stories: 1, levels: 1,
+      publicRemarks: 1, primaryPhoto: 1, media: 1,
+    };
 
-    if (needsAggregation) {
-      // Use aggregation for price-per-sqft sorting
-      listingsQuery = UnifiedListing.aggregate([
-        { $match: baseQuery },
-        {
-          $addFields: {
-            pricePerSqft: {
+    // Price stats facet pipeline (reused in both paths)
+    const priceStatsFacet = [
+      {
+        $addFields: {
+          daysOnMarket: {
+            $cond: [
+              { $ne: ["$onMarketDate", null] },
+              {
+                $floor: {
+                  $divide: [
+                    { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
+                    1000 * 60 * 60 * 24
+                  ]
+                }
+              },
+              null
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgPrice: { $avg: "$listPrice" },
+          minPrice: { $min: "$listPrice" },
+          maxPrice: { $max: "$listPrice" },
+          prices: { $push: "$listPrice" },
+          newListingsCount: {
+            $sum: {
               $cond: [
                 { $and: [
-                  { $gt: ["$livingArea", 0] },
-                  { $ne: ["$livingArea", null] }
+                  { $ne: ["$daysOnMarket", null] },
+                  { $lte: ["$daysOnMarket", 7] }
                 ]},
-                { $divide: ["$listPrice", "$livingArea"] },
-                999999
+                1,
+                0
               ]
             }
           }
-        },
-        { $sort: { pricePerSqft: sortParam === "sqft-low" ? 1 : -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            listingKey: 1,
-            listingId: 1,
-            slugAddress: 1,
-            slug: 1,
-            unparsedAddress: 1,
-            unparsedFirstLineAddress: 1,
-            address: 1,
-            city: 1,
-            stateOrProvince: 1,
-            postalCode: 1,
-            latitude: 1,
-            longitude: 1,
-            listPrice: 1,
-            currentPrice: 1,
-            originalListPrice: 1,
-            associationFee: 1,
-            bedsTotal: 1,
-            bathsTotal: 1,
-            bathroomsTotalDecimal: 1,
-            bathroomsTotalInteger: 1,
-            livingArea: 1,
-            lotSizeArea: 1,
-            lotSizeSqft: 1,
-            yearBuilt: 1,
-            standardStatus: 1,
-            daysOnMarket: 1,
-            onMarketDate: 1,
-            modificationTimestamp: 1,
-            propertyType: 1,
-            propertySubType: 1,
-            subdivisionName: 1,
-            mlsSource: 1,
-            landType: 1,
-            poolYN: 1,
-            pool: 1,
-            spaYN: 1,
-            spa: 1,
-            viewYN: 1,
-            view: 1,
-            fireplaceYN: 1,
-            fireplacesTotal: 1,
-            seniorCommunityYN: 1,
-            gatedCommunity: 1,
-            associationYN: 1,
-            garageSpaces: 1,
-            parkingTotal: 1,
-            stories: 1,
-            levels: 1,
-            publicRemarks: 1,
-            primaryPhoto: 1,
-            media: 1,
-            pricePerSqft: 1
+        }
+      },
+      {
+        $project: {
+          avgPrice: { $round: ["$avgPrice", 0] },
+          minPrice: 1,
+          maxPrice: 1,
+          newListingsCount: 1,
+          medianPrice: {
+            $arrayElemAt: [
+              { $sortArray: { input: "$prices", sortBy: 1 } },
+              { $floor: { $divide: [{ $size: "$prices" }, 2] } }
+            ]
           }
         }
-      ]);
-    } else {
-      listingsQuery = UnifiedListing.find(baseQuery)
-        .sort(sortBy)
-        .skip(skip)
-        .limit(limit)
-        .select({
-          // Identifiers & Links
-          listingKey: 1,
-          listingId: 1,
-          slugAddress: 1,
-          slug: 1,
+      }
+    ];
 
-          // Addresses
-          unparsedAddress: 1,
-          unparsedFirstLineAddress: 1,
-          address: 1,
-          city: 1,
-          stateOrProvince: 1,
-          postalCode: 1,
-
-          // Location
-          latitude: 1,
-          longitude: 1,
-
-          // Pricing
-          listPrice: 1,
-          currentPrice: 1,
-          originalListPrice: 1,
-          associationFee: 1,
-
-          // Property Details - Bedrooms/Bathrooms
-          bedsTotal: 1,
-          bathsTotal: 1,
-          bathroomsTotalDecimal: 1,
-          bathroomsTotalInteger: 1,
-
-          // Property Details - Size
-          livingArea: 1,
-          lotSizeArea: 1,
-          lotSizeSqft: 1,
-          yearBuilt: 1,
-
-          // Status & Timing
-          standardStatus: 1,
-          daysOnMarket: 1,
-          onMarketDate: 1,
-          modificationTimestamp: 1,
-
-          // Property Classification
-          propertyType: 1,
-          propertySubType: 1,
-          subdivisionName: 1,
-          mlsSource: 1,
-          landType: 1,
-
-          // Features
-          poolYN: 1,
-          pool: 1,
-          spaYN: 1,
-          spa: 1,
-          viewYN: 1,
-          view: 1,
-          fireplaceYN: 1,
-          fireplacesTotal: 1,
-          seniorCommunityYN: 1,
-          gatedCommunity: 1,
-          associationYN: 1,
-          garageSpaces: 1,
-          parkingTotal: 1,
-          stories: 1,
-          levels: 1,
-
-          // Description
-          publicRemarks: 1,
-
-          // Photos
-          primaryPhoto: 1,
-          media: 1,
-        })
-        .lean();
-    }
-
-    const [listings, total, stats, propertyTypeStats] = await Promise.all([
-      listingsQuery,
-      UnifiedListing.countDocuments(baseQuery),
-      // CRITICAL: Calculate stats from ALL listings, not just current page
-      // Skip this expensive aggregation when paginating (skipStats=true)
-      skipStats ? Promise.resolve([]) : UnifiedListing.aggregate([
-        { $match: baseQuery },
-        {
-          $addFields: {
-            // Calculate days on market for filtering new listings
-            daysOnMarket: {
+    // Property type breakdown facet pipeline
+    const propertyTypeFacet = [
+      {
+        $group: {
+          _id: "$propertySubType",
+          count: { $sum: 1 },
+          avgPrice: { $avg: "$listPrice" },
+          minPrice: { $min: "$listPrice" },
+          maxPrice: { $max: "$listPrice" },
+          avgPricePerSqft: {
+            $avg: {
               $cond: [
-                { $ne: ["$onMarketDate", null] },
-                {
-                  $floor: {
-                    $divide: [
-                      { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
-                      1000 * 60 * 60 * 24
-                    ]
-                  }
-                },
+                { $and: [
+                  { $gt: ["$livingArea", 0] },
+                  { $gt: ["$listPrice", 0] }
+                ]},
+                { $divide: ["$listPrice", "$livingArea"] },
                 null
               ]
             }
           }
-        },
-        {
-          $group: {
-            _id: null,
-            avgPrice: { $avg: "$listPrice" },
-            minPrice: { $min: "$listPrice" },
-            maxPrice: { $max: "$listPrice" },
-            // Calculate median using percentile
-            prices: { $push: "$listPrice" },
-            // Count "new listings" (past 7 days) from ALL listings
-            newListingsCount: {
-              $sum: {
-                $cond: [
-                  { $and: [
-                    { $ne: ["$daysOnMarket", null] },
-                    { $lte: ["$daysOnMarket", 7] }
-                  ]},
-                  1,
-                  0
-                ]
-              }
-            }
-          }
-        },
-        {
-          $project: {
-            avgPrice: { $round: ["$avgPrice", 0] },
-            minPrice: 1,
-            maxPrice: 1,
-            newListingsCount: 1,
-            // Sort prices and get median
-            medianPrice: {
-              $arrayElemAt: [
-                { $sortArray: { input: "$prices", sortBy: 1 } },
-                { $floor: { $divide: [{ $size: "$prices" }, 2] } }
-              ]
-            }
-          }
         }
-      ]),
-      // Property type breakdown with stats
-      // Skip this expensive aggregation when paginating (skipStats=true)
-      skipStats ? Promise.resolve([]) : UnifiedListing.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: "$propertySubType",
-            count: { $sum: 1 },
-            avgPrice: { $avg: "$listPrice" },
-            minPrice: { $min: "$listPrice" },
-            maxPrice: { $max: "$listPrice" },
-            avgPricePerSqft: {
-              $avg: {
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          avgPrice: { $round: ["$avgPrice", 0] },
+          minPrice: 1,
+          maxPrice: 1,
+          avgPricePerSqft: { $round: ["$avgPricePerSqft", 0] }
+        }
+      },
+      { $sort: { count: -1 as const } }
+    ];
+
+    // OPTIMIZED: Use $facet to scan matching documents once instead of 4 separate queries.
+    // When needsAggregation is true (sqft sorting), listings need $addFields before $sort,
+    // so we run listings separately and combine stats into one facet (3 queries → 2).
+    // When needsAggregation is false, everything fits in a single $facet (4 queries → 1).
+    let listings: any[];
+    let total: number;
+    let stats: any[];
+    let propertyTypeStats: any[];
+
+    if (needsAggregation) {
+      // Price-per-sqft sorting requires $addFields before $sort, which doesn't work
+      // inside $facet alongside the stats pipelines. Run listings separately.
+      const facets: Record<string, any[]> = {
+        total: [{ $count: "count" }],
+      };
+      if (!skipStats) {
+        facets.priceStats = priceStatsFacet;
+        facets.propertyTypeStats = propertyTypeFacet;
+      }
+
+      const [listingsResult, facetResult] = await Promise.all([
+        UnifiedListing.aggregate([
+          { $match: baseQuery },
+          {
+            $addFields: {
+              pricePerSqft: {
                 $cond: [
                   { $and: [
                     { $gt: ["$livingArea", 0] },
-                    { $gt: ["$listPrice", 0] }
+                    { $ne: ["$livingArea", null] }
                   ]},
                   { $divide: ["$listPrice", "$livingArea"] },
-                  null
+                  999999
                 ]
               }
             }
-          }
-        },
-        {
-          $project: {
-            _id: 1,
-            count: 1,
-            avgPrice: { $round: ["$avgPrice", 0] },
-            minPrice: 1,
-            maxPrice: 1,
-            avgPricePerSqft: { $round: ["$avgPricePerSqft", 0] }
-          }
-        },
-        { $sort: { count: -1 } }
-      ])
-    ]);
+          },
+          { $sort: { pricePerSqft: sortParam === "sqft-low" ? 1 as const : -1 as const } },
+          { $skip: skip },
+          { $limit: limit },
+          { $project: { ...listingProjection, pricePerSqft: 1 } }
+        ]),
+        UnifiedListing.aggregate([
+          { $match: baseQuery },
+          { $facet: facets }
+        ])
+      ]);
+
+      const facetData = facetResult[0] || {};
+      listings = listingsResult;
+      total = facetData.total?.[0]?.count || 0;
+      stats = facetData.priceStats || [];
+      propertyTypeStats = facetData.propertyTypeStats || [];
+    } else {
+      // Standard sorting — everything fits in a single $facet aggregation.
+      // This scans the matched documents once instead of 4 separate times.
+      const facets: Record<string, any[]> = {
+        listings: [
+          { $sort: sortBy },
+          { $skip: skip },
+          { $limit: limit },
+          { $project: listingProjection }
+        ],
+        total: [{ $count: "count" }],
+      };
+      if (!skipStats) {
+        facets.priceStats = priceStatsFacet;
+        facets.propertyTypeStats = propertyTypeFacet;
+      }
+
+      const [facetData] = await UnifiedListing.aggregate([
+        { $match: baseQuery },
+        { $facet: facets }
+      ]);
+
+      listings = facetData.listings || [];
+      total = facetData.total?.[0]?.count || 0;
+      stats = facetData.priceStats || [];
+      propertyTypeStats = facetData.propertyTypeStats || [];
+    }
 
     // Attach photos to listings and build full address
     const finalListings = listings.map((listing: any) => {
