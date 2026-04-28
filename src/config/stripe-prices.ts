@@ -126,7 +126,7 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     highlighted: true,
     features: [
       "3,200 marketing credits/month",
-      "Better point rate ($0.80/$1 ad spend)",
+      "Better credit value per dollar",
       "Priority ad placement",
       "Advanced campaign analytics",
       "Custom audience targeting",
@@ -148,7 +148,7 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     marginPercent: 15,
     features: [
       "6,800 marketing credits/month",
-      "Best point rate ($0.85/$1 ad spend)",
+      "Best credit value per dollar",
       "White-glove campaign management",
       "Custom reporting & dashboards",
       "API access",

@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Receipt,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 
 interface SubscriptionData {
@@ -72,7 +73,7 @@ const PLANS = [
       "Launch your marketing with 750 credits/month for ads, direct mail, and voicemail",
     features: [
       "750 marketing credits/month",
-      "$93.75 in ad buying power",
+      "Use credits on any campaign type",
       "Google & Meta Ads",
       "Direct mail campaigns",
       "Voicemail drops",
@@ -93,8 +94,7 @@ const PLANS = [
       "Scale your business with 3,200 credits/month at a better rate",
     features: [
       "3,200 marketing credits/month",
-      "$400 in ad buying power",
-      "Better credit rate ($0.80/$1)",
+      "Better credit value per dollar",
       "Priority ad placement",
       "Advanced campaign analytics",
       "Custom audience targeting",
@@ -114,8 +114,7 @@ const PLANS = [
       "Maximum ROI — 6,800 credits/month at the best rate with white-glove service",
     features: [
       "6,800 marketing credits/month",
-      "$850 in ad buying power",
-      "Best credit rate ($0.85/$1)",
+      "Best credit value per dollar",
       "White-glove campaign management",
       "Custom reporting & dashboards",
       "API access",
@@ -126,6 +125,92 @@ const PLANS = [
     highlighted: false,
   },
 ];
+
+function BuyCreditsSection({ isLight }: { isLight: boolean }) {
+  const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const QUICK_AMOUNTS = [50, 100, 250, 500, 1000];
+
+  const handleTopUp = async () => {
+    const value = parseFloat(amount);
+    if (!value || value < 10) { alert("Minimum purchase is $10"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/points/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: value }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create purchase");
+      }
+    } catch { alert("Failed to create purchase"); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className={`rounded-xl p-5 border ${
+      isLight ? "bg-white border-gray-200 shadow-lg" : "bg-gray-800/50 border-gray-700"
+    }`}>
+      <div className="flex items-center gap-3 mb-4">
+        <Plus className={`w-5 h-5 ${isLight ? "text-amber-600" : "text-amber-400"}`} />
+        <h3 className={`text-lg font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+          Buy More Credits
+        </h3>
+      </div>
+      <p className={`text-sm mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+        Need more credits this month? Purchase additional credits anytime.
+      </p>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {QUICK_AMOUNTS.map((amt) => (
+          <button
+            key={amt}
+            onClick={() => setAmount(amt.toString())}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              amount === amt.toString()
+                ? "bg-amber-600 text-white"
+                : isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            ${amt}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${isLight ? "text-gray-400" : "text-gray-500"}`}>$</span>
+          <input
+            type="number"
+            min="10"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Custom amount"
+            className={`w-full pl-7 pr-3 py-2.5 rounded-lg text-sm border ${
+              isLight
+                ? "border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                : "border-gray-600 bg-gray-700 text-white placeholder-gray-400"
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          />
+        </div>
+        <button
+          onClick={handleTopUp}
+          disabled={loading || !amount}
+          className={`px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors ${
+            loading || !amount ? "opacity-50 cursor-not-allowed" : ""
+          } bg-amber-600 hover:bg-amber-700`}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Purchase"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AgentSubscriptionPage() {
   const { data: session, status } = useSession();
@@ -509,42 +594,9 @@ export default function AgentSubscriptionPage() {
                 </div>
               </div>
 
-              {/* Credit Rate Info */}
-              {currentTier !== "free" && points?.tierConfig && (
-                <div
-                  className={`rounded-xl p-5 border ${
-                    isLight
-                      ? "bg-amber-50 border-amber-200"
-                      : "bg-amber-900/10 border-amber-800/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles
-                      className={`w-5 h-5 ${
-                        isLight ? "text-amber-600" : "text-amber-400"
-                      }`}
-                    />
-                    <h3
-                      className={`font-semibold ${
-                        isLight ? "text-amber-900" : "text-amber-300"
-                      }`}
-                    >
-                      Your Credit Rate
-                    </h3>
-                  </div>
-                  <p
-                    className={`text-sm ${
-                      isLight ? "text-amber-700" : "text-amber-400/80"
-                    }`}
-                  >
-                    As a {points.tierConfig.name} subscriber, every $1 you spend
-                    gives you ${points.tierConfig.adSpendRate.toFixed(2)} in ad
-                    buying power. You can buy additional credits anytime at this
-                    same rate.
-                    {currentTier !== "topagent" &&
-                      " Upgrade your plan for an even better rate."}
-                  </p>
-                </div>
+              {/* Buy More Credits */}
+              {currentTier !== "free" && (
+                <BuyCreditsSection isLight={isLight} />
               )}
             </div>
           )}
@@ -664,17 +716,6 @@ export default function AgentSubscriptionPage() {
                             {plan.credits.toLocaleString()} credits/mo
                           </span>
                         </div>
-                      )}
-
-                      {/* Ad Value */}
-                      {plan.adSpendValue > 0 && (
-                        <p
-                          className={`text-sm mb-4 ${
-                            isLight ? "text-green-600" : "text-green-400"
-                          }`}
-                        >
-                          = ${plan.adSpendValue} in ad buying power
-                        </p>
                       )}
 
                       {/* Description */}
