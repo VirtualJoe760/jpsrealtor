@@ -844,7 +844,7 @@ export async function sendPartnerApplicationNotification(
                 </table>
               </div>
               <div style="text-align:center;">
-                <a href="${baseUrl}/agent/partnerships" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                <a href="${baseUrl}/agent/dashboard" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
                   Review in Agent Dashboard
                 </a>
               </div>
@@ -867,6 +867,232 @@ export async function sendPartnerApplicationNotification(
     return data;
   } catch (error: any) {
     console.error('Failed to send admin notification:', error);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Subscription emails (Pro upgrade / cancellation)
+// ---------------------------------------------------------------------------
+
+export async function sendSubscriptionEmail(
+  email: string,
+  name: string,
+  action: 'subscribed' | 'cancelled',
+  expiresAt?: Date | null,
+) {
+  const resend = getResendClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const firstName = name.split(' ')[0] || 'there';
+
+  const isSubscribed = action === 'subscribed';
+  const subject = isSubscribed
+    ? 'Welcome to Pro — Your Upgrade is Active'
+    : 'Your Pro Subscription Has Been Cancelled';
+
+  const gradientColors = isSubscribed
+    ? 'linear-gradient(135deg,#059669,#10b981)'
+    : 'linear-gradient(135deg,#6b7280,#9ca3af)';
+
+  const heading = isSubscribed
+    ? 'You\'re on Pro!'
+    : 'Subscription Cancelled';
+
+  const body = isSubscribed
+    ? `<p style="color:#334155;font-size:15px;line-height:1.7;">
+        Hey ${firstName}, your Pro upgrade is now active. You have access to:
+      </p>
+      <ul style="color:#334155;font-size:14px;line-height:2;padding-left:20px;">
+        <li>100 AI chat queries per day</li>
+        <li>Unlimited saved listings & searches</li>
+        <li>Price drop & new listing alerts</li>
+        <li>Advanced search filters</li>
+        <li>Priority email support</li>
+      </ul>
+      <p style="color:#334155;font-size:15px;line-height:1.7;">
+        Start exploring — your AI assistant is ready to help you find the perfect home.
+      </p>`
+    : `<p style="color:#334155;font-size:15px;line-height:1.7;">
+        Hey ${firstName}, your Pro subscription has been cancelled.
+        ${expiresAt ? `You'll keep access to Pro features until <strong>${expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong>.` : ''}
+      </p>
+      <p style="color:#334155;font-size:15px;line-height:1.7;">
+        After that, your account will revert to the Free plan. You can re-subscribe anytime from your settings.
+      </p>`;
+
+  const ctaText = isSubscribed ? 'Start Searching' : 'Back to Settings';
+  const ctaUrl = isSubscribed ? `${baseUrl}/map` : `${baseUrl}/dashboard/settings`;
+
+  console.log(`📧 Sending subscription ${action} email to:`, email);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      to: [email],
+      replyTo: 'josephsardella@gmail.com',
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:${gradientColors};border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:24px;margin:0 0 4px;">${heading}</h1>
+              <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;">ChatRealty Pro</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              ${body}
+              <div style="text-align:center;margin:24px 0 0;">
+                <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  ${ctaText}
+                </a>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Subscription email error:', error);
+      return null;
+    }
+    console.log(`✅ Subscription ${action} email sent:`, data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send subscription email:', error);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cancellation notification to admin
+// ---------------------------------------------------------------------------
+
+export async function sendCancellationNotification(
+  userEmail: string,
+  userName: string,
+  reason: string,
+  feedback: string,
+  expiresAt?: Date | null,
+) {
+  const resend = getResendClient();
+  const adminEmail = process.env.EMAIL_USER || 'josephsardella@gmail.com';
+
+  console.log('📧 Sending cancellation notification to admin:', adminEmail);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'ChatRealty Notifications <noreply@jpsrealtor.com>',
+      replyTo: userEmail,
+      to: adminEmail,
+      subject: `[Cancellation] ${userName || userEmail} cancelled Pro`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#dc2626,#ef4444);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:20px;margin:0 0 4px;">Pro Subscription Cancelled</h1>
+              <p style="color:#fecaca;font-size:13px;margin:0;">ChatRealty Billing</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px;margin:0 0 24px;">
+                <table style="width:100%;font-size:14px;color:#334155;">
+                  <tr><td style="padding:6px 0;color:#64748b;width:100px;">User</td><td style="padding:6px 0;font-weight:600;">${userName || 'N/A'}</td></tr>
+                  <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;"><a href="mailto:${userEmail}" style="color:#2563eb;">${userEmail}</a></td></tr>
+                  ${expiresAt ? `<tr><td style="padding:6px 0;color:#64748b;">Access Until</td><td style="padding:6px 0;">${expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
+                  ${reason ? `<tr><td style="padding:6px 0;color:#64748b;">Reason</td><td style="padding:6px 0;font-weight:600;">${reason}</td></tr>` : ''}
+                </table>
+              </div>
+              ${feedback ? `
+                <div style="margin:0 0 24px;">
+                  <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:600;">FEEDBACK</p>
+                  <p style="color:#334155;font-size:14px;margin:0;background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0;">${feedback}</p>
+                </div>
+              ` : ''}
+              <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">
+                Reply to this email to reach the user directly.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Cancellation notification error:', error);
+      return null;
+    }
+    console.log('✅ Cancellation notification sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send cancellation notification:', error);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Email change verification
+// ---------------------------------------------------------------------------
+
+export async function sendEmailChangeVerification(
+  newEmail: string,
+  name: string,
+  token: string,
+) {
+  const resend = getResendClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const verifyUrl = `${baseUrl}/api/auth/confirm-email-change?token=${token}`;
+  const firstName = name.split(' ')[0] || 'there';
+
+  console.log('📧 Sending email change verification to:', newEmail);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      to: [newEmail],
+      subject: 'Confirm your new email address',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:22px;margin:0;">Confirm Your New Email</h1>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              <p style="color:#334155;font-size:15px;line-height:1.7;">
+                Hey ${firstName}, we received a request to change your ChatRealty account email to this address. Click below to confirm:
+              </p>
+              <div style="text-align:center;margin:24px 0;">
+                <a href="${verifyUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  Confirm Email Change
+                </a>
+              </div>
+              <p style="color:#94a3b8;font-size:13px;text-align:center;">
+                This link expires in 1 hour. If you didn't request this change, ignore this email.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Email change verification error:', error);
+      return null;
+    }
+    console.log('✅ Email change verification sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send email change verification:', error);
     return null;
   }
 }

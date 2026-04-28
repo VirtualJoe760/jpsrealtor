@@ -1,5 +1,7 @@
 # Stripe Subscription System
 
+> **DEPRECATED** — This doc is outdated. See [../STRIPE_BILLING_SYSTEM.md](../STRIPE_BILLING_SYSTEM.md) for the current reference.
+
 Backend infrastructure for agent subscription billing via Stripe.
 
 ## Architecture

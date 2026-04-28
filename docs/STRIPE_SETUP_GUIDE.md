@@ -1,7 +1,9 @@
 # Stripe Integration Setup Guide
 
+> **DEPRECATED** — This doc is outdated. See [STRIPE_BILLING_SYSTEM.md](./STRIPE_BILLING_SYSTEM.md) for the current reference.
+
 **Last Updated:** January 17, 2026
-**Status:** In Progress
+**Status:** Superseded
 
 ---
 

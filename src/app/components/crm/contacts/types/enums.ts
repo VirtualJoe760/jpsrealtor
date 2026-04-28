@@ -22,7 +22,8 @@ export enum FilterBy {
   NO_PHONE = 'no-phone',
   NO_ADDRESS = 'no-address',
   BUYERS = 'buyers',
-  SELLERS = 'sellers'
+  SELLERS = 'sellers',
+  FUB_LEADS = 'fub-leads'
 }
 
 export enum SortBy {

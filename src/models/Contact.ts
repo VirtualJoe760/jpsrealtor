@@ -73,7 +73,7 @@ export interface IContact extends Document {
   website?: string;
 
   // Lead Info
-  source?: 'manual' | 'csv_import' | 'google_contacts' | 'outlook' | 'api' | 'website' | 'referral';
+  source?: 'manual' | 'csv_import' | 'google_contacts' | 'outlook' | 'api' | 'website' | 'referral' | 'followupboss';
   status?: 'uncontacted' | 'contacted' | 'qualified' | 'nurturing' | 'client' | 'inactive';
   tags?: string[];  // Freeform tags (buyer, seller, investor, etc.)
 
@@ -99,6 +99,11 @@ export interface IContact extends Document {
   originalData?: any;  // Raw import data for debugging
   originalCreatedDate?: Date;  // Original creation date from source (if available)
   lastModified?: Date;  // Last modification date from source
+
+  // Follow Up Boss (FUB) Integration
+  fubId?: number;  // FUB person ID for dedup
+  fubSyncedAt?: Date;  // Last sync timestamp from FUB
+  fubData?: any;  // Raw FUB person object for debugging
 
   // Prospect Discovery - Duplicate Tracking
   duplicateOf?: mongoose.Types.ObjectId;  // If this contact was merged
@@ -309,7 +314,7 @@ const ContactSchema: Schema = new Schema(
     // Lead Info
     source: {
       type: String,
-      enum: ['manual', 'csv_import', 'google_contacts', 'outlook', 'api', 'website', 'referral'],
+      enum: ['manual', 'csv_import', 'google_contacts', 'outlook', 'api', 'website', 'referral', 'followupboss'],
       default: 'manual',
     },
     status: {
@@ -362,6 +367,11 @@ const ContactSchema: Schema = new Schema(
     originalData: mongoose.Schema.Types.Mixed,
     originalCreatedDate: Date,
     lastModified: Date,
+
+    // Follow Up Boss (FUB) Integration
+    fubId: { type: Number, sparse: true },
+    fubSyncedAt: Date,
+    fubData: mongoose.Schema.Types.Mixed,
 
     // Prospect Discovery - Duplicate Tracking
     duplicateOf: {
@@ -543,6 +553,8 @@ ContactSchema.index({ userId: 1, 'preferences.smsOptIn': 1 });
 ContactSchema.index({ userId: 1, createdAt: -1 });
 ContactSchema.index({ assignedAgent: 1 });
 ContactSchema.index({ firstName: 1, lastName: 1 });
+ContactSchema.index({ userId: 1, fubId: 1 }, { unique: true, sparse: true });
+ContactSchema.index({ userId: 1, source: 1 });
 
 // Text search index
 ContactSchema.index({

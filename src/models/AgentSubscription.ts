@@ -3,7 +3,7 @@
 
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type SubscriptionTier = "free" | "starter" | "professional" | "enterprise";
+export type SubscriptionTier = "free" | "beginner" | "experienced" | "topagent";
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "cancelled" | "paused";
 export type BillingInterval = "monthly" | "annual";
 
@@ -150,7 +150,7 @@ const AgentSubscriptionSchema = new Schema<IAgentSubscription>(
     // Subscription Tier & Status
     tier: {
       type: String,
-      enum: ["free", "starter", "professional", "enterprise"],
+      enum: ["free", "beginner", "experienced", "topagent"],
       default: "free",
       required: true,
     },
@@ -315,7 +315,7 @@ AgentSubscriptionSchema.pre("save", function(next) {
         this.monthlyPrice = 0;
         break;
 
-      case "starter":
+      case "beginner":
         this.features = {
           customDomain: false,
           subdomain: true,
@@ -334,11 +334,11 @@ AgentSubscriptionSchema.pre("save", function(next) {
           apiAccess: false,
           webhooks: false,
         };
-        this.monthlyPrice = 49;
-        this.annualPrice = 470; // ~20% discount
+        this.monthlyPrice = 125;
+        this.annualPrice = 1200;
         break;
 
-      case "professional":
+      case "experienced":
         this.features = {
           customDomain: true,
           subdomain: true,
@@ -354,14 +354,14 @@ AgentSubscriptionSchema.pre("save", function(next) {
           analytics: true,
           exportData: true,
           supportLevel: "priority",
-          apiAccess: true,
+          apiAccess: false,
           webhooks: false,
         };
-        this.monthlyPrice = 99;
-        this.annualPrice = 950; // ~20% discount
+        this.monthlyPrice = 500;
+        this.annualPrice = 4800;
         break;
 
-      case "enterprise":
+      case "topagent":
         this.features = {
           customDomain: true,
           subdomain: true,
@@ -380,8 +380,8 @@ AgentSubscriptionSchema.pre("save", function(next) {
           apiAccess: true,
           webhooks: true,
         };
-        this.monthlyPrice = 299;
-        this.annualPrice = 2870; // ~20% discount
+        this.monthlyPrice = 1000;
+        this.annualPrice = 9600;
         break;
     }
   }

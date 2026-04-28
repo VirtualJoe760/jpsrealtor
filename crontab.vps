@@ -22,6 +22,9 @@
 # Historical closed listing sync
 0 10 * * * cd /root/jpsrealtor && /usr/bin/python3 src/scripts/mls/backend/historical_closed_sync.py >> /var/log/mls-sync/historical-closed-sync.log 2>&1
 
+# FUB lead sync (every 15 minutes)
+*/15 * * * * cd /root/jpsrealtor && .venv/bin/python3 src/scripts/fub/sync-fub-leads.py >> /var/log/fub-sync.log 2>&1
+
 # Article request checker (every 5 min)
 */5 * * * * cd /root/jpsrealtor && /usr/bin/node /root/jpsrealtor/scripts/check-article-requests-simple.js >> /var/log/claude-article-writer.log 2>&1
 

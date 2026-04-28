@@ -136,6 +136,27 @@ export function ContactToolbar({
             ))}
           </select>
 
+          {/* Source Filter Dropdown */}
+          <select
+            value={filterBy}
+            onChange={(e) => onFilterChange(e.target.value as FilterBy)}
+            className={`flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-sm transition-colors ${
+              isLight
+                ? 'bg-white/40 border border-gray-200/30 text-gray-900 hover:bg-white/50'
+                : 'bg-neutral-900/30 border border-gray-700/20 text-white hover:bg-neutral-900/40'
+            } focus:outline-none focus:ring-2 ${
+              isLight ? 'focus:ring-blue-500' : 'focus:ring-emerald-500'
+            }`}
+          >
+            <option value={FilterBy.ALL}>All Sources</option>
+            <option value={FilterBy.FUB_LEADS}>FUB Leads</option>
+            <option value={FilterBy.BUYERS}>Buyers</option>
+            <option value={FilterBy.SELLERS}>Sellers</option>
+            <option value={FilterBy.NO_EMAIL}>No Email</option>
+            <option value={FilterBy.NO_PHONE}>No Phone</option>
+            <option value={FilterBy.NO_ADDRESS}>No Address</option>
+          </select>
+
           {/* Sort Dropdown */}
           <select
             value={sortBy}

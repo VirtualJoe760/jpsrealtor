@@ -133,6 +133,312 @@ function Section({ id, title, icon: Icon, isOpen, onToggle, children, isLight, s
   );
 }
 
+// ── Subscription Section ─────────────────────────────────────────────────
+
+function SubscriptionSection({ isLight }: { isLight: boolean }) {
+  const [tier, setTier] = useState("free");
+  const [subStatus, setSubStatus] = useState("active");
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/user/subscription")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data) {
+          setTier(data.tier || "free");
+          setSubStatus(data.status || "active");
+          setExpiresAt(data.expiresAt || null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const res = await fetch("/api/user/subscription", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else setIsUpgrading(false);
+    } catch { setIsUpgrading(false); }
+  };
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelFeedback, setCancelFeedback] = useState("");
+
+  const CANCEL_REASONS = [
+    "Too expensive",
+    "Not using it enough",
+    "Missing features I need",
+    "Found a better alternative",
+    "Just browsing, not actively searching",
+    "Technical issues",
+    "Other",
+  ];
+
+  const handleCancel = async () => {
+    if (!cancelReason) return;
+    setIsCancelling(true);
+    try {
+      const res = await fetch("/api/user/subscription", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason, feedback: cancelFeedback }),
+      });
+      if (res.ok) { setSubStatus("cancelled"); }
+    } catch {}
+    finally {
+      setIsCancelling(false);
+      setShowCancelModal(false);
+      setCancelReason("");
+      setCancelFeedback("");
+    }
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>;
+  }
+
+  const isPro = tier === "pro" && (subStatus === "active" || subStatus === "cancelled");
+  const isCancelled = subStatus === "cancelled";
+  const accent = isLight ? "text-blue-600" : "text-emerald-400";
+
+  const FREE_FEATURES = ["10 AI chat queries per day", "Save up to 50 favorites", "3 saved searches", "Basic property filters"];
+  const PRO_FEATURES = ["100 AI chat queries per day", "Unlimited saved listings", "Unlimited saved searches", "Price drop & listing alerts", "Advanced search filters", "Priority support"];
+
+  return (
+    <div>
+      {/* Current Plan Banner */}
+      <div className={`rounded-xl border p-4 mb-6 flex items-center justify-between ${
+        isPro
+          ? isLight ? "border-blue-300 bg-blue-50/50" : "border-blue-700 bg-blue-900/10"
+          : isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"
+      }`}>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-lg font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+              {isPro ? "Pro" : "Free"} Plan
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              isCancelled
+                ? isLight ? "bg-amber-100 text-amber-700" : "bg-amber-900/30 text-amber-400"
+                : isPro
+                ? isLight ? "bg-green-100 text-green-700" : "bg-green-900/30 text-green-400"
+                : isLight ? "bg-gray-100 text-gray-600" : "bg-gray-700 text-gray-400"
+            }`}>
+              {isCancelled ? "Cancelling" : isPro ? "Active" : "Free"}
+            </span>
+          </div>
+          {isPro && (
+            <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+              {isCancelled
+                ? `Access until ${expiresAt ? new Date(expiresAt).toLocaleDateString() : "end of billing period"}`
+                : expiresAt
+                ? `Renews ${new Date(expiresAt).toLocaleDateString()}`
+                : "$9.99/month"
+              }
+            </p>
+          )}
+        </div>
+        {isPro && !isCancelled && (
+          <button onClick={() => setShowCancelModal(true)} disabled={isCancelling}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" : "bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800/50"
+            }`}>
+            {isCancelling ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Cancel Subscription"}
+          </button>
+        )}
+      </div>
+
+      {/* Plan Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Free Tier */}
+        <div className={`rounded-xl border p-5 ${
+          !isPro
+            ? isLight ? "border-blue-300 bg-blue-50/50" : "border-emerald-700 bg-emerald-900/10"
+            : isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`text-base font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Free</h3>
+            {!isPro && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isLight ? "bg-blue-100 text-blue-700" : "bg-emerald-900/30 text-emerald-400"}`}>
+                Current
+              </span>
+            )}
+          </div>
+          <p className={`text-2xl font-bold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>$0<span className={`text-sm font-normal ${isLight ? "text-gray-500" : "text-gray-400"}`}>/month</span></p>
+          <ul className={`space-y-2 ${isPro && !isCancelled ? "mb-4" : ""}`}>
+            {FREE_FEATURES.map((f) => (
+              <li key={f} className={`flex items-center gap-2 text-sm ${isLight ? "text-gray-600" : "text-gray-300"}`}>
+                <Check className={`w-4 h-4 flex-shrink-0 ${accent}`} />{f}
+              </li>
+            ))}
+          </ul>
+          {isPro && !isCancelled && (
+            <button onClick={() => setShowCancelModal(true)} disabled={isCancelling}
+              className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                isLight ? "bg-gray-200 text-gray-600 hover:bg-gray-300" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}>
+              {isCancelling ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Downgrade to Free"}
+            </button>
+          )}
+        </div>
+
+        {/* Pro Tier */}
+        <div className={`rounded-xl border p-5 ${
+          isPro
+            ? isLight ? "border-blue-300 bg-blue-50/50 ring-1 ring-blue-400" : "border-emerald-700 bg-emerald-900/10 ring-1 ring-emerald-600"
+            : isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`text-base font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Pro</h3>
+            {isPro && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isLight ? "bg-blue-100 text-blue-700" : "bg-emerald-900/30 text-emerald-400"}`}>
+                Current
+              </span>
+            )}
+          </div>
+          <p className={`text-2xl font-bold mb-3 ${isLight ? "text-gray-900" : "text-white"}`}>$9.99<span className={`text-sm font-normal ${isLight ? "text-gray-500" : "text-gray-400"}`}>/month</span></p>
+          <ul className="space-y-2 mb-4">
+            {PRO_FEATURES.map((f) => (
+              <li key={f} className={`flex items-center gap-2 text-sm ${isLight ? "text-gray-600" : "text-gray-300"}`}>
+                <Check className={`w-4 h-4 flex-shrink-0 ${accent}`} />{f}
+              </li>
+            ))}
+          </ul>
+          {!isPro && (
+            <button onClick={handleUpgrade} disabled={isUpgrading}
+              className={`w-full py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+              }`}>
+              {isUpgrading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Upgrade to Pro"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowCancelModal(false); setCancelReason(""); setCancelFeedback(""); }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className={`relative w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto ${
+              isLight ? "bg-white" : "bg-gray-800 border border-gray-700"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="text-center mb-5">
+              <div className={`w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center ${
+                isLight ? "bg-red-50" : "bg-red-900/20"
+              }`}>
+                <X className={`w-7 h-7 ${isLight ? "text-red-500" : "text-red-400"}`} />
+              </div>
+              <h3 className={`text-lg font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+                We're sorry to see you go
+              </h3>
+              <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Help us improve by letting us know why you're cancelling.
+              </p>
+            </div>
+
+            {/* Reason Selection */}
+            <div className="mb-4">
+              <p className={`text-sm font-medium mb-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                What's the main reason?
+              </p>
+              <div className="space-y-2">
+                {CANCEL_REASONS.map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                      cancelReason === reason
+                        ? isLight ? "bg-red-50 border border-red-300" : "bg-red-900/20 border border-red-700"
+                        : isLight ? "bg-gray-50 border border-gray-200 hover:bg-gray-100" : "bg-gray-700/50 border border-gray-600 hover:bg-gray-700"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cancelReason"
+                      value={reason}
+                      checked={cancelReason === reason}
+                      onChange={() => setCancelReason(reason)}
+                      className="sr-only"
+                    />
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      cancelReason === reason
+                        ? isLight ? "border-red-500" : "border-red-400"
+                        : isLight ? "border-gray-300" : "border-gray-500"
+                    }`}>
+                      {cancelReason === reason && (
+                        <div className={`w-2 h-2 rounded-full ${isLight ? "bg-red-500" : "bg-red-400"}`} />
+                      )}
+                    </div>
+                    <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>{reason}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Additional Feedback */}
+            <div className="mb-5">
+              <p className={`text-sm font-medium mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+                Anything else you'd like us to know? <span className={isLight ? "text-gray-400" : "text-gray-500"}>(optional)</span>
+              </p>
+              <textarea
+                value={cancelFeedback}
+                onChange={(e) => setCancelFeedback(e.target.value)}
+                placeholder="Your feedback helps us improve..."
+                rows={3}
+                className={`w-full px-3 py-2 rounded-lg text-sm border resize-none ${
+                  isLight
+                    ? "border-gray-300 bg-white text-gray-900 placeholder-gray-400"
+                    : "border-gray-600 bg-gray-700 text-white placeholder-gray-400"
+                } focus:outline-none focus:ring-2 ${isLight ? "focus:ring-blue-500" : "focus:ring-blue-500"}`}
+              />
+            </div>
+
+            {/* Warning */}
+            <div className={`rounded-lg p-3 mb-5 ${isLight ? "bg-amber-50 border border-amber-200" : "bg-amber-900/10 border border-amber-800/30"}`}>
+              <p className={`text-sm ${isLight ? "text-amber-700" : "text-amber-400"}`}>
+                You'll keep Pro access until the end of your billing period, then revert to Free.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowCancelModal(false); setCancelReason(""); setCancelFeedback(""); }}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Keep Pro
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={isCancelling || !cancelReason}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                  !cancelReason
+                    ? "opacity-50 cursor-not-allowed bg-red-400"
+                    : isLight ? "bg-red-600 hover:bg-red-700" : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {isCancelling ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Confirm Cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const COACHELLA_CITIES = ["Palm Desert", "La Quinta", "Indian Wells", "Indio", "Cathedral City", "Rancho Mirage", "Palm Springs", "Desert Hot Springs", "Coachella", "Thousand Palms"];
@@ -140,13 +446,14 @@ const PROPERTY_TYPES = ["Single Family", "Condo/Townhouse", "Land", "Multi-Famil
 const MUST_HAVES = ["Pool", "Garage", "Gated Community", "Golf Course", "Mountain Views", "Single Story", "Updated Kitchen", "Solar", "Casita/Guest House"];
 const DEAL_BREAKERS = ["HOA", "Land Lease", "Major Repairs Needed", "Busy Street", "No Garage"];
 
-type SectionId = "general" | "goals" | "security" | "notifications" | "join";
+type SectionId = "general" | "goals" | "security" | "notifications" | "subscription" | "join";
 
 const SECTIONS: { id: SectionId; title: string; icon: typeof User }[] = [
   { id: "general", title: "General", icon: User },
   { id: "goals", title: "Real Estate Goals", icon: Target },
   { id: "security", title: "Security", icon: Shield },
   { id: "notifications", title: "Notifications", icon: Bell },
+  { id: "subscription", title: "Subscription", icon: CreditCard },
   { id: "join", title: "Join Our Network", icon: Handshake },
 ];
 
@@ -191,6 +498,25 @@ export default function SettingsPage() {
     smsNotifications: false, pushNotifications: true,
   });
 
+  // Email change
+  const [userEmail, setUserEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [emailChangeMsg, setEmailChangeMsg] = useState("");
+
+  // 2FA expanded
+  const [showPhoneVerify, setShowPhoneVerify] = useState(false);
+  const [verifyPhone, setVerifyPhone] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [phoneVerifyStep, setPhoneVerifyStep] = useState<"phone" | "code">("phone");
+  const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
+
+  // Delete account
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Agent & Service Partner
   const [isAgent, setIsAgent] = useState(false);
   const [agentInfo, setAgentInfo] = useState({ name: "", agentId: "", team: "", licenseNumber: "", brokerageName: "" });
@@ -227,6 +553,7 @@ export default function SettingsPage() {
         const auth = await authRes.json();
         setTwoFactorEnabled(auth.twoFactorEnabled || false);
         setTwoFactorMethod(auth.twoFactorMethod || "email");
+        setUserEmail(auth.email || session?.user?.email || "");
         const isRE = auth.roles?.includes("realEstateAgent") || false;
         setIsAgent(isRE);
         if (isRE) setAgentInfo({ name: auth.name || "", agentId: auth._id || "", team: auth.teamName || "ChatRealty", licenseNumber: auth.licenseNumber || "", brokerageName: auth.brokerageName || "" });
@@ -316,6 +643,123 @@ export default function SettingsPage() {
     } catch { showMsg("error", "Upload failed"); } finally { setIsUploadingImage(false); }
   };
 
+  const handleEmailChange = async () => {
+    if (!newEmail || !newEmail.includes("@")) { setEmailChangeMsg("Enter a valid email"); return; }
+    setEmailChangeLoading(true);
+    setEmailChangeMsg("");
+    try {
+      const res = await fetch("/api/auth/change-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEmailChangeMsg("Verification email sent! Check your new inbox.");
+        setNewEmail("");
+        setShowEmailChange(false);
+      } else {
+        setEmailChangeMsg(data.error || "Failed to change email");
+      }
+    } catch { setEmailChangeMsg("An error occurred"); }
+    finally { setEmailChangeLoading(false); }
+  };
+
+  const handleSwitchTo2FASMS = async () => {
+    setShowPhoneVerify(true);
+    setPhoneVerifyStep("phone");
+  };
+
+  const handleSendPhoneCode = async () => {
+    if (!verifyPhone || verifyPhone.length < 10) { showMsg("error", "Enter a valid phone number"); return; }
+    setPhoneVerifyLoading(true);
+    try {
+      const res = await fetch("/api/auth/2fa/verify-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: verifyPhone }),
+      });
+      if (res.ok) {
+        setPhoneVerifyStep("code");
+        showMsg("success", "Verification code sent!");
+      } else {
+        const data = await res.json();
+        showMsg("error", data.error || "Failed to send code");
+      }
+    } catch { showMsg("error", "Failed to send code"); }
+    finally { setPhoneVerifyLoading(false); }
+  };
+
+  const handleConfirmPhoneCode = async () => {
+    if (!verifyCode || verifyCode.length !== 6) { showMsg("error", "Enter the 6-digit code"); return; }
+    setPhoneVerifyLoading(true);
+    try {
+      const res = await fetch("/api/auth/2fa/confirm-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: verifyPhone, code: verifyCode }),
+      });
+      if (res.ok) {
+        setTwoFactorMethod("sms");
+        setShowPhoneVerify(false);
+        setVerifyPhone("");
+        setVerifyCode("");
+        showMsg("success", "Phone verified! 2FA switched to SMS.");
+      } else {
+        const data = await res.json();
+        showMsg("error", data.error || "Invalid code");
+      }
+    } catch { showMsg("error", "Verification failed"); }
+    finally { setPhoneVerifyLoading(false); }
+  };
+
+  const handleSwitchToEmail2FA = async () => {
+    try {
+      const res = await fetch("/api/auth/2fa/switch-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "email" }),
+      });
+      if (res.ok) {
+        setTwoFactorMethod("email");
+        setShowPhoneVerify(false);
+        showMsg("success", "2FA switched to Email");
+      } else {
+        showMsg("error", "Failed to switch method");
+      }
+    } catch { showMsg("error", "Failed to switch method"); }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch("/api/auth/delete-account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      if (res.ok) {
+        window.location.href = "/auth/signin?deleted=true";
+      } else {
+        const data = await res.json();
+        showMsg("error", data.error || "Failed to delete account");
+      }
+    } catch { showMsg("error", "Failed to delete account"); }
+    finally { setDeleteLoading(false); setShowDeleteModal(false); setDeletePassword(""); }
+  };
+
+  // Handle email change query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const emailChange = params.get("email_change");
+    if (emailChange === "success") showMsg("success", "Email updated successfully! Please sign in with your new email.");
+    else if (emailChange === "expired") showMsg("error", "Email change link expired. Try again.");
+    else if (emailChange === "taken") showMsg("error", "That email is already in use.");
+    else if (emailChange === "error") showMsg("error", "Email change failed. Try again.");
+    if (emailChange) window.history.replaceState({}, "", "/dashboard/settings");
+  }, []);
+
   if (status === "loading" || isLoading) return (
     <SpaticalBackground showGradient={true}><div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div></SpaticalBackground>
   );
@@ -364,6 +808,28 @@ export default function SettingsPage() {
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
               </label>
             </div>
+            {/* Email */}
+            <div className="mb-4">
+              <label className={labelClass}>Email</label>
+              <div className="flex gap-2 items-center">
+                <input value={userEmail} readOnly className={`${inputClass} flex-1 opacity-70 cursor-default`} />
+                <button onClick={() => setShowEmailChange(!showEmailChange)}
+                  className={`px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}>
+                  Change
+                </button>
+              </div>
+              {showEmailChange && (
+                <div className="mt-2 flex gap-2">
+                  <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="New email address" className={`${inputClass} flex-1`} />
+                  <button onClick={handleEmailChange} disabled={emailChangeLoading}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium text-white whitespace-nowrap ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+                    {emailChangeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Verification"}
+                  </button>
+                </div>
+              )}
+              {emailChangeMsg && <p className={`text-sm mt-1 ${emailChangeMsg.includes("sent") ? "text-green-600" : "text-red-500"}`}>{emailChangeMsg}</p>}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label className={labelClass}>Full Name</label><input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className={inputClass} /></div>
               <div><label className={labelClass}>Phone</label><input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className={inputClass} /></div>
@@ -423,12 +889,76 @@ export default function SettingsPage() {
 
             {/* 2FA */}
             <h3 className={`text-base font-semibold mb-4 ${isLight ? "text-gray-900" : "text-white"}`}>Two-Factor Authentication</h3>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{twoFactorEnabled ? "2FA is enabled" : "2FA is disabled"}</p>
                 {twoFactorEnabled && <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>Method: {twoFactorMethod === "sms" ? "SMS" : "Email"}</p>}
               </div>
               <ToggleSwitch enabled={twoFactorEnabled} onChange={toggle2FA} isLight={isLight} />
+            </div>
+
+            {twoFactorEnabled && (
+              <div className={`rounded-lg p-4 ${isLight ? "bg-gray-50 border border-gray-200" : "bg-gray-700/50 border border-gray-600"}`}>
+                <p className={`text-sm font-medium mb-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>Verification Method</p>
+                <div className="flex gap-2 mb-3">
+                  <button onClick={handleSwitchToEmail2FA}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      twoFactorMethod === "email"
+                        ? isLight ? "bg-blue-600 text-white" : "bg-emerald-600 text-white"
+                        : isLight ? "bg-gray-200 text-gray-600 hover:bg-gray-300" : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                    }`}>Email</button>
+                  <button onClick={handleSwitchTo2FASMS}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      twoFactorMethod === "sms"
+                        ? isLight ? "bg-blue-600 text-white" : "bg-emerald-600 text-white"
+                        : isLight ? "bg-gray-200 text-gray-600 hover:bg-gray-300" : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                    }`}>SMS</button>
+                </div>
+
+                {showPhoneVerify && (
+                  <div className="space-y-3">
+                    {phoneVerifyStep === "phone" ? (
+                      <>
+                        <div><label className={labelClass}>Phone Number</label>
+                          <input value={verifyPhone} onChange={(e) => setVerifyPhone(e.target.value)} placeholder="(760) 555-1234" className={inputClass} />
+                        </div>
+                        <button onClick={handleSendPhoneCode} disabled={phoneVerifyLoading}
+                          className={`w-full py-2 rounded-lg text-sm font-medium text-white ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+                          {phoneVerifyLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Send Verification Code"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div><label className={labelClass}>Enter 6-digit code sent to {verifyPhone}</label>
+                          <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" maxLength={6} className={inputClass} />
+                        </div>
+                        <button onClick={handleConfirmPhoneCode} disabled={phoneVerifyLoading}
+                          className={`w-full py-2 rounded-lg text-sm font-medium text-white ${isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+                          {phoneVerifyLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Verify & Enable SMS"}
+                        </button>
+                        <button onClick={() => { setPhoneVerifyStep("phone"); setVerifyCode(""); }}
+                          className={`w-full py-2 rounded-lg text-sm font-medium ${isLight ? "text-gray-600 hover:bg-gray-100" : "text-gray-400 hover:bg-gray-600"}`}>
+                          Back
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Delete Account */}
+            <div className={`mt-8 pt-6 border-t ${isLight ? "border-gray-200" : "border-gray-700"}`}>
+              <h3 className={`text-base font-semibold mb-2 ${isLight ? "text-red-600" : "text-red-400"}`}>Delete Account</h3>
+              <p className={`text-sm mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+              <button onClick={() => setShowDeleteModal(true)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isLight ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200" : "bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800/50"
+                }`}>
+                Delete My Account
+              </button>
             </div>
           </Section>
 
@@ -455,6 +985,11 @@ export default function SettingsPage() {
               ))}
             </div>
             <div className="flex justify-end mt-6"><button onClick={saveNotifications} disabled={isSaving} className={saveBtnClass}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Preferences"}</button></div>
+          </Section>
+
+          {/* ── Subscription ────────────────────────────────────────── */}
+          <Section id="subscription" title="Subscription" icon={CreditCard} isOpen={openSections.has("subscription")} onToggle={() => toggleSection("subscription")} isLight={isLight} sectionRef={(el) => { sectionRefs.current.subscription = el; }}>
+            <SubscriptionSection isLight={isLight} />
           </Section>
 
           {/* ── Join Our Network ──────────────────────────────────────── */}
@@ -519,6 +1054,42 @@ export default function SettingsPage() {
 
         </div>
       </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowDeleteModal(false); setDeletePassword(""); }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl ${isLight ? "bg-white" : "bg-gray-800 border border-gray-700"}`}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className={`w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center ${isLight ? "bg-red-50" : "bg-red-900/20"}`}>
+                <X className={`w-7 h-7 ${isLight ? "text-red-500" : "text-red-400"}`} />
+              </div>
+              <h3 className={`text-lg font-bold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>Delete Your Account?</h3>
+              <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                This will permanently delete your account, all saved data, favorites, and cancel any active subscriptions. This cannot be undone.
+              </p>
+            </div>
+            <div className="mb-4">
+              <label className={labelClass}>Enter your password to confirm</label>
+              <input type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Your password" className={inputClass} />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setShowDeleteModal(false); setDeletePassword(""); }}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteAccount} disabled={deleteLoading || !deletePassword}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                  !deletePassword ? "opacity-50 cursor-not-allowed bg-red-400" : "bg-red-600 hover:bg-red-700"
+                }`}>
+                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SpaticalBackground>
   );
 }

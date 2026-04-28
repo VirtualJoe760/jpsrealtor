@@ -180,7 +180,7 @@ export async function PUT(request: NextRequest) {
     else if (name !== undefined) user.name = name;
     if (phone !== undefined && phone !== user.phone) { basicChanges.push(`phone: "${user.phone}" → "${phone}"`); user.phone = phone; }
     else if (phone !== undefined) user.phone = phone;
-    if (birthday !== undefined) { user.birthday = birthday ? new Date(birthday) : undefined; }
+    if (birthday !== undefined && birthday !== "") { user.birthday = new Date(birthday); }
     if (profileDescription !== undefined) user.profileDescription = profileDescription;
     if (realEstateGoals !== undefined) user.realEstateGoals = realEstateGoals;
     if (currentAddress !== undefined) user.currentAddress = currentAddress;

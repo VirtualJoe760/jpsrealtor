@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
       query.status = status;
     }
 
+    const source = searchParams.get('source');
+    if (source) {
+      query.source = source;
+    }
+
     if (tag) {
       // Filter by tag
       query.tags = tag;

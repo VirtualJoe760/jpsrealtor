@@ -11,6 +11,9 @@ import User from "@/models/User";
 import AgentSubscription from "@/models/AgentSubscription";
 import { tierFromPriceId } from "@/config/stripe-prices";
 import type { SubscriptionTier, SubscriptionStatus, BillingInterval } from "@/models/AgentSubscription";
+import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
+import type { PointsTier } from "@/models/PointsLedger";
+import { sendSubscriptionEmail } from "@/lib/email-resend";
 
 // ---------------------------------------------------------------------------
 // Stripe SDK — lazy init (same pattern as stripe-identity webhook)
@@ -87,7 +90,87 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        // Handle points top-up (one-time payment)
+        if (session.mode === "payment" && session.metadata?.type === "points_topup") {
+          const topupUserId = session.metadata.userId;
+          const topupPoints = parseInt(session.metadata.points || "0", 10);
+          const topupTier = (session.metadata.tier || "beginner") as PointsTier;
+          const topupAmount = parseFloat(session.metadata.amount || "0");
+
+          if (topupUserId && topupPoints > 0) {
+            const topupTierConfig = POINTS_TIERS[topupTier];
+            let ledger = await PointsLedger.findOne({ userId: topupUserId });
+            if (!ledger) {
+              ledger = new PointsLedger({
+                userId: topupUserId,
+                balance: 0,
+                totalEarned: 0,
+                totalSpent: 0,
+                tier: topupTier,
+                transactions: [],
+              });
+            }
+
+            ledger.creditPoints(
+              topupPoints,
+              "topup_purchase",
+              `Credits top-up — ${topupPoints.toLocaleString()} credits ($${topupAmount})`,
+              {
+                adSpendValue: topupPoints * (topupTierConfig?.adValuePerPoint ?? 0.125),
+                stripePaymentIntentId: typeof session.payment_intent === "string"
+                  ? session.payment_intent
+                  : (session.payment_intent as any)?.id,
+              }
+            );
+            await ledger.save();
+
+            console.log(
+              `[stripe-webhook] Top-up: ${topupPoints} points credited to user=${topupUserId} ($${topupAmount})`
+            );
+          }
+          break;
+        }
+
         if (session.mode !== "subscription") break;
+
+        // Handle user Pro subscription (non-agent)
+        if (session.metadata?.tier === "pro") {
+          const proUserId = session.metadata.userId;
+          const proSubId = typeof session.subscription === "string"
+            ? session.subscription
+            : (session.subscription as Stripe.Subscription)?.id;
+          const proCustomerId = typeof session.customer === "string"
+            ? session.customer
+            : (session.customer as Stripe.Customer)?.id;
+
+          if (proUserId) {
+            const proUser = await User.findById(proUserId);
+            if (proUser) {
+              proUser.subscriptionTier = "pro";
+              proUser.subscriptionStatus = "active";
+              proUser.stripeSubscriptionId = proSubId;
+              proUser.stripeCustomerId = proCustomerId;
+
+              if (proSubId) {
+                const s = getStripe();
+                const sub = await s.subscriptions.retrieve(proSubId);
+                proUser.subscriptionExpiresAt = new Date((sub as any).current_period_end * 1000);
+              }
+
+              await proUser.save();
+
+              // Send welcome email
+              sendSubscriptionEmail(
+                proUser.email,
+                proUser.name || "",
+                "subscribed",
+              ).catch((err) => console.error("[stripe-webhook] Pro subscribe email failed:", err));
+
+              console.log(`[stripe-webhook] User Pro subscription activated: user=${proUserId}`);
+            }
+          }
+          break;
+        }
 
         const userId = session.metadata?.userId;
         const tierMeta = session.metadata?.tier as Exclude<SubscriptionTier, "free"> | undefined;
@@ -114,7 +197,7 @@ export async function POST(request: NextRequest) {
         const priceId = stripeSub.items.data[0]?.price?.id;
         const mapped = priceId ? tierFromPriceId(priceId) : null;
 
-        const tier: Exclude<SubscriptionTier, "free"> = mapped?.tier ?? tierMeta ?? "starter";
+        const tier: Exclude<SubscriptionTier, "free"> = mapped?.tier ?? tierMeta ?? "beginner";
         const billingInterval: BillingInterval = mapped?.interval ?? intervalMeta;
 
         // Upsert AgentSubscription
@@ -148,12 +231,45 @@ export async function POST(request: NextRequest) {
         // Sync to User model
         await User.findByIdAndUpdate(userId, {
           $set: {
-            subscriptionTier: tier === "professional" ? "pro" : tier,
+            subscriptionTier: tier,
             subscriptionStatus: mapStripeStatus(stripeSub.status),
             subscriptionExpiresAt: new Date((stripeSub.items.data[0]?.current_period_end ?? stripeSub.start_date) * 1000),
             stripeSubscriptionId,
           },
         });
+
+        // Credit monthly credits for the subscription tier
+        const pointsTier = tier as string as PointsTier;
+        const tierConfig = POINTS_TIERS[pointsTier];
+        if (tierConfig && tierConfig.monthlyPoints > 0) {
+          let ledger = await PointsLedger.findOne({ userId });
+          if (!ledger) {
+            ledger = new PointsLedger({
+              userId,
+              balance: 0,
+              totalEarned: 0,
+              totalSpent: 0,
+              tier: pointsTier,
+              stripeCustomerId,
+              transactions: [],
+            });
+          } else {
+            ledger.tier = pointsTier;
+          }
+
+          ledger.creditPoints(
+            tierConfig.monthlyPoints,
+            "subscription_credit",
+            `${tierConfig.name} plan — ${tierConfig.monthlyPoints.toLocaleString()} credits`,
+            { adSpendValue: tierConfig.monthlyPoints * tierConfig.adValuePerPoint }
+          );
+          ledger.lastSubscriptionCredit = new Date();
+          await ledger.save();
+
+          console.log(
+            `[stripe-webhook] Credited ${tierConfig.monthlyPoints} points to user=${userId} (${tierConfig.name})`
+          );
+        }
 
         console.log(
           `[stripe-webhook] Subscription created: user=${userId} tier=${tier} sub=${stripeSubscriptionId}`
@@ -214,7 +330,7 @@ export async function POST(request: NextRequest) {
           subscriptionExpiresAt: new Date(itemPeriodEnd * 1000),
         };
         if (mapped) {
-          userUpdate.subscriptionTier = mapped.tier === "professional" ? "pro" : mapped.tier;
+          userUpdate.subscriptionTier = mapped.tier;
         }
 
         await User.findByIdAndUpdate(userId, { $set: userUpdate });
@@ -290,6 +406,39 @@ export async function POST(request: NextRequest) {
             },
           }
         );
+
+        // Credit monthly credits on recurring subscription invoice
+        if (stripeSubscriptionId) {
+          const subForPoints = await AgentSubscription.findOne({ stripeSubscriptionId }).lean();
+          if (subForPoints) {
+            const invoiceTier = subForPoints.tier as string as PointsTier;
+            const invoiceTierConfig = POINTS_TIERS[invoiceTier];
+            if (invoiceTierConfig && invoiceTierConfig.monthlyPoints > 0) {
+              const ledger = await PointsLedger.findOne({ userId: subForPoints.agentId });
+              if (ledger) {
+                // Prevent double-credit: skip if last credit was within 25 days
+                const daysSinceLastCredit = ledger.lastSubscriptionCredit
+                  ? (Date.now() - new Date(ledger.lastSubscriptionCredit).getTime()) / (1000 * 60 * 60 * 24)
+                  : 999;
+
+                if (daysSinceLastCredit > 25) {
+                  ledger.creditPoints(
+                    invoiceTierConfig.monthlyPoints,
+                    "subscription_credit",
+                    `${invoiceTierConfig.name} plan renewal — ${invoiceTierConfig.monthlyPoints.toLocaleString()} credits`,
+                    { adSpendValue: invoiceTierConfig.monthlyPoints * invoiceTierConfig.adValuePerPoint }
+                  );
+                  ledger.lastSubscriptionCredit = new Date();
+                  await ledger.save();
+
+                  console.log(
+                    `[stripe-webhook] Renewal: ${invoiceTierConfig.monthlyPoints} points credited to user=${subForPoints.agentId}`
+                  );
+                }
+              }
+            }
+          }
+        }
 
         console.log(
           `[stripe-webhook] Invoice paid: ${invoice.id} amount=${(invoice.amount_paid ?? 0) / 100}`

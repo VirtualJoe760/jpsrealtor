@@ -33,6 +33,9 @@ export function filterContact(
     case FilterBy.SELLERS:
       return contact.interests?.selling === true;
 
+    case FilterBy.FUB_LEADS:
+      return contact.source === 'followupboss';
+
     case FilterBy.ALL:
     default:
       return true;

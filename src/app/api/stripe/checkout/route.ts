@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     };
 
     // Validate tier
-    if (!tier || !["starter", "professional", "enterprise"].includes(tier)) {
+    if (!tier || !["beginner", "experienced", "topagent"].includes(tier)) {
       return NextResponse.json(
-        { error: "Invalid tier. Must be starter, professional, or enterprise." },
+        { error: "Invalid tier. Must be beginner, experienced, or topagent." },
         { status: 400 }
       );
     }

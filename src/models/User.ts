@@ -19,6 +19,11 @@ export interface IUser extends Document {
   name?: string;
   image?: string;
 
+  // Email Change
+  pendingEmail?: string;
+  pendingEmailToken?: string;
+  pendingEmailExpires?: Date;
+
   // Role System (users can have multiple roles)
   roles: UserRole[];
 
@@ -252,6 +257,9 @@ export interface IUser extends Document {
   subscriptionStatus?: "active" | "cancelled" | "past_due" | "trialing";
   subscriptionExpiresAt?: Date;
   stripeSubscriptionId?: string; // Stripe subscription ID
+  cancellationReason?: string;
+  cancellationFeedback?: string;
+  cancelledAt?: Date;
   usageLimits?: {
     aiQueriesUsedToday: number;
     aiQueriesLimit: number; // Based on tier (free: 10, pro: 100, ultimate: unlimited, investor: unlimited)
@@ -501,6 +509,11 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, required: false }, // Not required for OAuth users
     name: String,
     image: String,
+
+    // Email Change
+    pendingEmail: String,
+    pendingEmailToken: String,
+    pendingEmailExpires: Date,
 
     // Role System
     roles: {
@@ -756,6 +769,9 @@ const UserSchema = new Schema<IUser>(
     },
     subscriptionExpiresAt: Date,
     stripeSubscriptionId: String,
+    cancellationReason: String,
+    cancellationFeedback: String,
+    cancelledAt: Date,
     usageLimits: {
       aiQueriesUsedToday: { type: Number, default: 0 },
       aiQueriesLimit: { type: Number, default: 10 }, // free tier default

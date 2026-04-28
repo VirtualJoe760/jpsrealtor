@@ -50,6 +50,8 @@ export interface Contact {
   originalCreatedDate?: string;
   lastContactDate?: string;
   lastModified?: string;
+  source?: string;
+  fubId?: number;
 }
 
 export interface Tag {

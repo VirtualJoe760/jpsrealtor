@@ -18,6 +18,8 @@ import {
   Mail,
   Eye,
 } from "lucide-react";
+import PointsSection from "./components/PointsSection";
+import PartnershipsSection from "./components/PartnershipsSection";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -549,6 +551,16 @@ export default function AgentDashboard() {
                 </div>
               );
             })()}
+
+          {/* Points Section */}
+          <div className="mb-8">
+            <PointsSection />
+          </div>
+
+          {/* Partnerships Section */}
+          <div className="mb-8">
+            <PartnershipsSection />
+          </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 p-2">
