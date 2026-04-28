@@ -7,22 +7,13 @@ import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
 import { notFound } from "next/navigation";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
+import { createSlug } from "@/lib/utils/slug";
 
 interface SubdivisionPageProps {
   params: Promise<{
     cityId: string;
     slug: string;
   }>;
-}
-
-// Helper to create slug from city name
-function createSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
 }
 
 export async function generateMetadata({
@@ -34,7 +25,7 @@ export async function generateMetadata({
   // Find all subdivisions with this slug, then match by city
   // Many subdivisions share names (e.g. "Downtown") across different cities
   const candidates = await Subdivision.find({ slug }).lean();
-  const subdivision = candidates.find((s) => createSlug(s.city) === cityId) || candidates[0];
+  const subdivision = candidates.find((s) => createSlug(s.city) === cityId);
 
   if (!subdivision || createSlug(subdivision.city) !== cityId) {
     return {

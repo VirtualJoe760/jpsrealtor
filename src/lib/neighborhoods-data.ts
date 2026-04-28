@@ -6,6 +6,7 @@
 
 import dbConnect from '@/lib/mongoose';
 import UnifiedListing from '@/models/unified-listing';
+import { createSlug } from '@/lib/utils/slug';
 
 interface SubdivisionData {
   name: string;
@@ -78,10 +79,6 @@ const COUNTY_TO_REGION: Record<string, string> = {
   'Mono': 'Northern California', 'Inyo': 'Northern California',
   'Stanislaus': 'Northern California', 'San Joaquin': 'Northern California',
 };
-
-function createSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
-}
 
 function getCountyNameForCity(county: string, city: string): string {
   if (county === 'Riverside' && COACHELLA_VALLEY_CITIES.includes(city)) return 'Coachella Valley';

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import { City } from '@/models/cities';
 import Subdivision from '@/models/subdivisions';
+import { createSlug } from '@/lib/utils/slug';
 
 // Cache for 1 hour on Vercel edge
 export const revalidate = 3600;
@@ -19,10 +20,6 @@ const JOSHUA_TREE_CITIES = new Set([
   'Yucca Valley', 'Twentynine Palms', '29 Palms', 'Joshua Tree',
   'Morongo Valley', 'Pioneertown', 'Landers', 'Wonder Valley', 'Sunfair',
 ]);
-
-function createSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
-}
 
 function getDisplayCounty(city: string, actualCounty: string): string {
   if (COACHELLA_VALLEY_CITIES.has(city)) return 'Coachella Valley';

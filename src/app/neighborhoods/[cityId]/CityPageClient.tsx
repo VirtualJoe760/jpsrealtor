@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { coachellaValleyCities } from "@/app/constants/cities";
 import generatedCityContent from "@/data/city-content-generated.json";
+import { createSlug } from "@/lib/utils/slug";
 
 interface CityPageClientProps {
   city: {
@@ -111,16 +112,6 @@ export default function CityPageClient({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Helper to create slug from name
-  const createSlug = (name: string): string => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
   };
 
   // Get back link for city page - goes to county
