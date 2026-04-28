@@ -170,7 +170,7 @@ export default function CityMap({
       statusText={`Showing ${validCount} ${typeLabel} in ${cityName}`}
       actionButton={
         <Link
-          href="/mls-listings"
+          href={`/map?city=${encodeURIComponent(cityName)}`}
           className={`px-4 md:px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
             isLight
               ? "bg-blue-600 hover:bg-blue-700 text-white"
