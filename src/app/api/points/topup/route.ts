@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const user = await User.findOne({ email: session.user.email })
-      .select("_id name email stripeCustomerId")
+      .select("_id name email stripeCustomerId roles")
       .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -50,19 +50,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine rate based on subscriber tier + purchase amount
-    // Non-subscribers or amounts below tier thresholds use amount-based rates:
-    //   <$125:      35% margin ($0.65/$1 ad spend)
-    //   $125-$499:  25% margin ($0.75/$1 ad spend) = Beginner rate
-    //   $500-$999:  20% margin ($0.80/$1 ad spend) = Experienced rate
-    //   $1,000+:    15% margin ($0.85/$1 ad spend) = Top Agent rate
     const ledger = await PointsLedger.findOne({ userId: user._id }).lean();
     const subscriberTier: PointsTier | null = ledger?.tier || null;
+    const isAdmin = (user as any).roles?.includes("admin");
 
-    // Pick the best rate: subscriber's tier rate OR the amount-based rate
     let effectiveTier: PointsTier;
     let adSpendRate: number;
 
-    if (amount >= 1000) {
+    // Admin/direct partners: $1 = $1 ad spend (0% markup)
+    if (isAdmin) {
+      effectiveTier = "topagent";
+      adSpendRate = 1.0;
+    } else if (amount >= 1000) {
       effectiveTier = "topagent";
       adSpendRate = 0.85;
     } else if (amount >= 500) {
@@ -74,13 +73,12 @@ export async function POST(request: NextRequest) {
         : "beginner";
       adSpendRate = POINTS_TIERS[effectiveTier].adSpendRate;
     } else {
-      // Under $125 — use subscriber tier if they have one, otherwise 35% margin
       if (subscriberTier) {
         effectiveTier = subscriberTier;
         adSpendRate = POINTS_TIERS[effectiveTier].adSpendRate;
       } else {
         effectiveTier = "beginner";
-        adSpendRate = 0.65; // Non-subscriber rate for small purchases
+        adSpendRate = 0.65;
       }
     }
 

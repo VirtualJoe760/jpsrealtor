@@ -12,6 +12,9 @@ import {
   createCheckoutSession,
 } from "@/lib/stripe-subscription";
 import type { SubscriptionTier, BillingInterval } from "@/models/AgentSubscription";
+import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
+import type { PointsTier } from "@/models/PointsLedger";
+import { sendSubscriptionEmail } from "@/lib/email-resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +70,63 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // Admin/direct partner: Top Agent tier free, no Stripe checkout needed
+    const isAdmin = user.roles?.includes("admin");
+    if (isAdmin) {
+      const adminTier: Exclude<SubscriptionTier, "free"> = "topagent";
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setFullYear(periodEnd.getFullYear() + 10); // 10-year "subscription"
+
+      await AgentSubscription.findOneAndUpdate(
+        { agentId: user._id },
+        {
+          $set: {
+            tier: adminTier,
+            status: "active",
+            billingInterval: "monthly",
+            startDate: now,
+            currentPeriodStart: now,
+            currentPeriodEnd: periodEnd,
+            isTrialing: false,
+            monthlyPrice: 0,
+          },
+          $setOnInsert: { agentId: user._id },
+        },
+        { upsert: true, new: true }
+      );
+
+      // Credit points
+      const tierConfig = POINTS_TIERS.topagent;
+      let ledger = await PointsLedger.findOne({ userId: user._id });
+      if (!ledger) {
+        ledger = new PointsLedger({
+          userId: user._id,
+          balance: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+          tier: "topagent" as PointsTier,
+          transactions: [],
+        });
+      }
+      ledger.tier = "topagent" as PointsTier;
+      ledger.creditPoints(
+        tierConfig.monthlyPoints,
+        "subscription_credit",
+        `Admin — ${tierConfig.name} plan (complimentary)`,
+        { adSpendValue: tierConfig.monthlyPoints * tierConfig.adValuePerPoint }
+      );
+      ledger.lastSubscriptionCredit = now;
+      await ledger.save();
+
+      // Send email
+      sendSubscriptionEmail(user.email, user.name || "", "subscribed")
+        .catch((err) => console.error("[checkout] Admin email failed:", err));
+
+      const redirectUrl = successUrl || `${process.env.NEXTAUTH_URL || "https://jpsrealtor.com"}/subscription/success?plan=agent`;
+      return NextResponse.json({ url: redirectUrl, admin: true });
     }
 
     // Create or retrieve Stripe customer
