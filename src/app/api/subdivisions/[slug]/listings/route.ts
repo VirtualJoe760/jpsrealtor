@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Subdivision from "@/models/subdivisions";
 import UnifiedListing from "@/models/unified-listing";
+import { escapeRegex } from "@/lib/security";
 
 export async function GET(
   req: NextRequest,
@@ -115,7 +116,8 @@ export async function GET(
       ];
     } else {
       // Case-insensitive regex match for subdivision name
-      baseQuery.subdivisionName = new RegExp(`^${subdivisionName.replace(/[-\s]/g, '[-\\s]')}$`, 'i');
+      // Escape special regex chars first, then allow hyphens/spaces to match interchangeably
+      baseQuery.subdivisionName = new RegExp(`^${escapeRegex(subdivisionName).replace(/[-\s]/g, '[-\\s]')}$`, 'i');
       // Only add city filter if we have metadata
       if (subdivision?.city) {
         baseQuery.city = subdivision.city;
