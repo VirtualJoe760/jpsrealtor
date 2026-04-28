@@ -2,10 +2,14 @@
  * Shared neighborhoods data fetcher
  * Used by both the API route and the city page server component
  * to avoid serverless self-referencing issues on Vercel.
+ *
+ * Uses pre-built City and Subdivision models for fast reads (~200ms)
+ * instead of aggregating unified_listings (~15s).
  */
 
 import dbConnect from '@/lib/mongoose';
-import UnifiedListing from '@/models/unified-listing';
+import { City } from '@/models/cities';
+import Subdivision from '@/models/subdivisions';
 import { createSlug } from '@/lib/utils/slug';
 
 interface SubdivisionData {
@@ -89,7 +93,6 @@ function getCountyNameForCity(county: string, city: string): string {
 /**
  * Find a city by slug in the neighborhoods directory.
  * Returns the city data and county name, or null if not found.
- * This calls the DB directly — safe to use in server components.
  */
 export async function findCityBySlug(slug: string): Promise<{ city: CityData; countyName: string } | null> {
   const data = await getNeighborhoodsDirectory();
@@ -107,15 +110,15 @@ export async function findCityBySlug(slug: string): Promise<{ city: CityData; co
 }
 
 /**
- * Get the full neighborhoods directory data from MongoDB.
- * Cached in memory for the duration of the serverless function invocation.
+ * Get the full neighborhoods directory from pre-built City and Subdivision models.
+ * Fast (~200ms) compared to the old aggregation approach (~15s).
+ * Cached in memory for 1 minute.
  */
 let cachedData: RegionData[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60 * 1000; // 1 minute
 
 export async function getNeighborhoodsDirectory(): Promise<RegionData[] | null> {
-  // Simple in-memory cache for the serverless function lifetime
   if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
     return cachedData;
   }
@@ -123,119 +126,74 @@ export async function getNeighborhoodsDirectory(): Promise<RegionData[] | null> 
   try {
     await dbConnect();
 
-    const listings = await UnifiedListing.aggregate([
-      {
-        $match: {
-          standardStatus: 'Active',
-          listPrice: { $exists: true, $ne: null, $gt: 0 },
-          city: { $exists: true, $nin: [null, ''] },
-          countyOrParish: { $exists: true, $nin: [null, ''] }
-        }
-      },
-      {
-        $group: {
-          _id: { county: '$countyOrParish', city: '$city', subdivision: '$subdivisionName' },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: { county: '$_id.county', city: '$_id.city' },
-          cityCount: { $sum: '$count' },
-          subdivisions: {
-            $push: {
-              $cond: [
-                { $and: [
-                  { $ne: ['$_id.subdivision', null] },
-                  { $ne: ['$_id.subdivision', ''] },
-                  { $ne: ['$_id.subdivision', 'Not Applicable'] },
-                  { $ne: ['$_id.subdivision', 'N/A'] },
-                  { $ne: ['$_id.subdivision', 'NA'] },
-                  { $ne: ['$_id.subdivision', 'None'] },
-                  { $ne: ['$_id.subdivision', 'NONE'] },
-                  { $ne: ['$_id.subdivision', 'not applicable'] },
-                  { $ne: ['$_id.subdivision', 'Other'] },
-                  { $ne: ['$_id.subdivision', 'Unknown'] },
-                  { $ne: ['$_id.subdivision', 'Custom'] }
-                ]},
-                { name: '$_id.subdivision', count: '$count' },
-                '$$REMOVE'
-              ]
-            }
-          }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.county',
-          countyCount: { $sum: '$cityCount' },
-          cities: {
-            $push: { name: '$_id.city', count: '$cityCount', subdivisions: '$subdivisions' }
-          }
-        }
-      },
-      { $sort: { countyCount: -1 } }
+    // Use pre-built models (fast indexed reads) instead of aggregating raw listings
+    const [cities, subdivisions] = await Promise.all([
+      City.find({ listingCount: { $gt: 0 } })
+        .select('name slug county region listingCount avgPrice')
+        .sort({ listingCount: -1 })
+        .lean(),
+      Subdivision.find({ listingCount: { $gt: 0 } })
+        .select('name slug city listingCount')
+        .sort({ listingCount: -1 })
+        .lean(),
     ]);
 
-    // Build region → county → city hierarchy
-    const regionMap = new Map<string, { counties: Map<string, { cities: CityData[]; listings: number }> }>();
-
-    for (const countyGroup of listings) {
-      for (const cityData of countyGroup.cities) {
-        const actualCounty = countyGroup._id;
-        const displayCounty = getCountyNameForCity(actualCounty, cityData.name);
-        const region = COUNTY_TO_REGION[actualCounty] || 'Other';
-
-        const subdivisions = (cityData.subdivisions || [])
-          .filter((sub: any) => sub && sub.name && !sub.name.toLowerCase().startsWith('other') && sub.name.toLowerCase() !== 'unknown')
-          .map((sub: any) => ({
-            name: sub.name,
-            slug: createSlug(sub.name),
-            listings: sub.count,
-          }))
-          .sort((a: SubdivisionData, b: SubdivisionData) => b.listings - a.listings);
-
-        if (!regionMap.has(region)) {
-          regionMap.set(region, { counties: new Map() });
-        }
-        const regionEntry = regionMap.get(region)!;
-        const countyKey = displayCounty;
-        if (!regionEntry.counties.has(countyKey)) {
-          regionEntry.counties.set(countyKey, { cities: [], listings: 0 });
-        }
-        const countyEntry = regionEntry.counties.get(countyKey)!;
-        countyEntry.cities.push({
-          name: cityData.name,
-          slug: createSlug(cityData.name),
-          listings: cityData.count,
-          subdivisions,
-        });
-        countyEntry.listings += cityData.count;
+    // Index subdivisions by city
+    const subsByCity: Record<string, SubdivisionData[]> = {};
+    for (const sub of subdivisions) {
+      const cityName = (sub as any).city;
+      const name = (sub as any).name;
+      if (!name || ['Not Applicable', 'N/A', 'NA', 'None', 'NONE', 'Other', 'Unknown', 'Custom', 'not applicable'].includes(name)) {
+        continue;
       }
-    }
-
-    // Convert to array format
-    const result: RegionData[] = [];
-    for (const [regionName, regionData] of regionMap) {
-      const counties: CountyData[] = [];
-      for (const [countyName, countyData] of regionData.counties) {
-        countyData.cities.sort((a, b) => b.listings - a.listings);
-        counties.push({
-          name: countyName,
-          slug: createSlug(countyName) + '-county',
-          listings: countyData.listings,
-          cities: countyData.cities,
-        });
-      }
-      counties.sort((a, b) => b.listings - a.listings);
-      result.push({
-        name: regionName,
-        slug: createSlug(regionName),
-        listings: counties.reduce((sum, c) => sum + c.listings, 0),
-        counties,
+      if (!subsByCity[cityName]) subsByCity[cityName] = [];
+      subsByCity[cityName].push({
+        name,
+        slug: (sub as any).slug,
+        listings: (sub as any).listingCount || 0,
       });
     }
-    result.sort((a, b) => b.listings - a.listings);
+
+    // Build hierarchy: Region → County → City → Subdivisions
+    const regionMap: Record<string, Record<string, CityData[]>> = {};
+
+    for (const city of cities) {
+      const cityName = (city as any).name;
+      const actualCounty = (city as any).county || 'Other';
+      const region = COUNTY_TO_REGION[actualCounty] || 'Other';
+      const displayCounty = getCountyNameForCity(actualCounty, cityName);
+
+      if (!regionMap[region]) regionMap[region] = {};
+      if (!regionMap[region][displayCounty]) regionMap[region][displayCounty] = [];
+
+      regionMap[region][displayCounty].push({
+        name: cityName,
+        slug: (city as any).slug,
+        listings: (city as any).listingCount || 0,
+        subdivisions: (subsByCity[cityName] || []).sort((a, b) => b.listings - a.listings),
+      });
+    }
+
+    // Convert to sorted array
+    const result: RegionData[] = Object.entries(regionMap)
+      .map(([regionName, counties]) => {
+        const countiesData: CountyData[] = Object.entries(counties)
+          .map(([countyName, citiesList]) => ({
+            name: countyName,
+            slug: createSlug(countyName) + '-county',
+            listings: citiesList.reduce((sum, c) => sum + c.listings, 0),
+            cities: citiesList.sort((a, b) => b.listings - a.listings),
+          }))
+          .sort((a, b) => b.listings - a.listings);
+
+        return {
+          name: regionName,
+          slug: createSlug(regionName),
+          listings: countiesData.reduce((sum, c) => sum + c.listings, 0),
+          counties: countiesData,
+        };
+      })
+      .sort((a, b) => b.listings - a.listings);
 
     cachedData = result;
     cacheTime = Date.now();
