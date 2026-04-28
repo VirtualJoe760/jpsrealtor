@@ -32,7 +32,7 @@ export default function CityStats({
 }: CityStatsProps) {
   const [currentType, setCurrentType] = useState<"sale" | "rental">("sale");
   const [stats, setStats] = useState<Stats>(initialStats);
-  const [saleStats, setSaleStats] = useState<Stats | null>(null);
+  const [saleStats, setSaleStats] = useState<Stats | null>(initialStats ?? null);
   const [rentalStats, setRentalStats] = useState<Stats | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -45,18 +45,20 @@ export default function CityStats({
 
     async function fetchStatsIncrementally() {
       try {
-        // Fetch sale stats first (priority)
-        const saleRes = await fetch(`/api/cities/${cityId}/stats?propertyType=sale`);
-        if (saleRes.ok && isMounted) {
-          const saleData = await saleRes.json();
-          setSaleStats(saleData.stats);
-          // Immediately show sale stats
-          if (currentType === "sale") {
-            setStats(saleData.stats);
+        // Skip sale fetch if server already provided initialStats
+        if (!initialStats) {
+          const saleRes = await fetch(`/api/cities/${cityId}/stats?propertyType=sale`);
+          if (saleRes.ok && isMounted) {
+            const saleData = await saleRes.json();
+            setSaleStats(saleData.stats);
+            // Immediately show sale stats
+            if (currentType === "sale") {
+              setStats(saleData.stats);
+            }
           }
         }
 
-        // Then fetch rental stats (lower priority)
+        // Always fetch rental stats (not provided by server)
         const rentalRes = await fetch(`/api/cities/${cityId}/stats?propertyType=rental`);
         if (rentalRes.ok && isMounted) {
           const rentalData = await rentalRes.json();
