@@ -997,9 +997,9 @@ UserSchema.index({ isTeamLeader: 1 }); // For team leader queries
 UserSchema.index({ clientType: 1 }); // For client queries
 
 // MULTI-TENANT: Indexes for new fields
-UserSchema.index({ "agentProfile.subdomain": 1 }); // Subdomain lookup (e.g., joseph.chatrealty.io)
+// agentProfile.subdomain already has unique: true in field definition
 UserSchema.index({ "agentProfile.customDomain": 1 }); // Custom domain lookup (e.g., josephsardella.com)
-UserSchema.index({ agentRelationship: 1 }); // Find all clients of an agent
+// agentRelationship already has index: true in field definition
 UserSchema.index({ "representationAgreement.agentId": 1, "representationAgreement.status": 1 }); // Active agreements
 UserSchema.index({ "representationAgreement.expiresAt": 1 }); // Find expiring agreements
 UserSchema.index({ subscriptionTier: 1 }); // Filter by subscription tier

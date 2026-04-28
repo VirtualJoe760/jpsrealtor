@@ -129,7 +129,7 @@ const ContactCampaignSchema = new Schema<IContactCampaign>(
 ContactCampaignSchema.index({ campaignId: 1, status: 1 });
 ContactCampaignSchema.index({ contactId: 1, campaignId: 1 }, { unique: true });
 ContactCampaignSchema.index({ userId: 1, campaignId: 1 });
-ContactCampaignSchema.index({ importBatchId: 1 });
+// importBatchId already has index: true in field definition
 
 // Virtual for contact details
 ContactCampaignSchema.virtual('contact', {

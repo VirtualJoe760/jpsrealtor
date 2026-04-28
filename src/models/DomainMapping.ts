@@ -148,7 +148,7 @@ const DomainMappingSchema = new Schema<IDomainMapping>(
 );
 
 // Indexes
-DomainMappingSchema.index({ domain: 1 }, { unique: true });
+// domain already has unique: true in field definition
 DomainMappingSchema.index({ agentId: 1 });
 DomainMappingSchema.index({ subdivisionId: 1 });
 DomainMappingSchema.index({ status: 1 });

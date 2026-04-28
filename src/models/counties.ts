@@ -129,7 +129,7 @@ const CountySchema = new Schema<ICounty>(
 );
 
 // Indexes
-CountySchema.index({ slug: 1 });
+// slug already has unique: true in field definition
 CountySchema.index({ region: 1 });
 CountySchema.index({ normalizedName: 1 });
 CountySchema.index({ isOcean: 1, listingCount: -1 }); // For filtering ocean counties and sorting by count

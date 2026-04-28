@@ -76,7 +76,7 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>(
 
 // Compound index for efficient queries
 PushSubscriptionSchema.index({ userId: 1, active: 1 });
-PushSubscriptionSchema.index({ endpoint: 1 }, { unique: true });
+// endpoint already has unique: true in field definition
 
 // Method to mark subscription as inactive (instead of deleting)
 PushSubscriptionSchema.methods.deactivate = function () {

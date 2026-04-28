@@ -28,7 +28,8 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
   const itemsPerPage = 12;
 
   // Theme support
-  const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, bgTertiary } = useThemeClasses();
+  const { cardBg, cardBorder, textPrimary, textSecondary, textMuted, shadow, bgTertiary, currentTheme } = useThemeClasses();
+  const isLight = currentTheme === "lightgradient";
 
   useEffect(() => {
     // Defer subdivisions loading by 500ms to prioritize critical content
@@ -164,25 +165,23 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
           <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
               currentPage === 1
-                ? `${bgTertiary} ${textMuted} cursor-not-allowed`
-                : `${cardBg} ${textPrimary} hover:${bgTertiary}`
-            }`}
+                ? "opacity-50 cursor-not-allowed"
+                : isLight ? "hover:bg-gray-100" : "hover:bg-gray-700"
+            } ${cardBg} ${cardBorder} ${textPrimary}`}
           >
             ← Previous
           </button>
 
           {/* Page Numbers */}
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-            // Show first page, last page, current page, and pages around current
             const showPage =
               page === 1 ||
               page === totalPages ||
               (page >= currentPage - 1 && page <= currentPage + 1);
 
             if (!showPage) {
-              // Show ellipsis
               if (page === currentPage - 2 || page === currentPage + 2) {
                 return (
                   <span key={page} className={`px-2 ${textMuted}`}>
@@ -197,10 +196,12 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`w-10 h-10 rounded-lg border font-medium transition-colors ${
                   currentPage === page
-                    ? "bg-emerald-500 text-black"
-                    : `${cardBg} ${textPrimary} hover:${bgTertiary}`
+                    ? isLight
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-blue-500 text-white border-blue-500"
+                    : `${cardBg} ${cardBorder} ${textPrimary} ${isLight ? "hover:bg-gray-100" : "hover:bg-gray-700"}`
                 }`}
               >
                 {page}
@@ -212,11 +213,11 @@ export default function SubdivisionsSection({ cityId }: SubdivisionsSectionProps
           <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
               currentPage === totalPages
-                ? `${bgTertiary} ${textMuted} cursor-not-allowed`
-                : `${cardBg} ${textPrimary} hover:${bgTertiary}`
-            }`}
+                ? "opacity-50 cursor-not-allowed"
+                : isLight ? "hover:bg-gray-100" : "hover:bg-gray-700"
+            } ${cardBg} ${cardBorder} ${textPrimary}`}
           >
             Next →
           </button>

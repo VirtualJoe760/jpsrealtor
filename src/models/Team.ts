@@ -235,7 +235,7 @@ TeamSchema.index({ isActive: 1 });
 TeamSchema.index({ agents: 1 });
 
 // MULTI-TENANT: Indexes for new fields
-TeamSchema.index({ slug: 1 }, { unique: true, sparse: true });
+// slug already has unique: true, sparse: true in field definition
 TeamSchema.index({ "members.userId": 1 });
 TeamSchema.index({ status: 1 });
 TeamSchema.index({ dataBrokerRights: 1 }); // Find data broker teams

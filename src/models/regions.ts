@@ -137,7 +137,7 @@ const RegionSchema = new Schema<IRegion>(
 );
 
 // Indexes
-RegionSchema.index({ slug: 1 });
+// slug already has unique: true in field definition
 RegionSchema.index({ normalizedName: 1 });
 RegionSchema.index({ listingCount: -1 }); // For sorting by listing count
 RegionSchema.index({ 'coordinates.latitude': 1, 'coordinates.longitude': 1 }); // For geospatial queries

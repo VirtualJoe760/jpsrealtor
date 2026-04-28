@@ -113,7 +113,7 @@ const CitySchema = new Schema<ICity>(
 );
 
 // Indexes
-CitySchema.index({ slug: 1 });
+// slug already has unique: true in field definition (creates index automatically)
 CitySchema.index({ county: 1, region: 1 });
 CitySchema.index({ normalizedName: 1 });
 CitySchema.index({ isOcean: 1, listingCount: -1 }); // For filtering ocean cities and sorting by count
