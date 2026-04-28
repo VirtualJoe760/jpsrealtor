@@ -17,7 +17,7 @@ import SocialMediaStep from "./steps/SocialMediaStep";
 import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
-import BillingStep from "./steps/BillingStep";
+// BillingStep removed — billing is now in /agent/subscription
 
 interface SettingsWizardProps {
   initialData: any;
@@ -126,8 +126,6 @@ export default function SettingsWizard({
         return <ServiceAreasStep {...stepProps} />;
       case "gbp":
         return <GoogleBusinessStep {...stepProps} />;
-      case "billing":
-        return <BillingStep {...stepProps} />;
     }
   };
 
