@@ -22,12 +22,14 @@ interface Photo {
 
 interface SubdivisionPhotoCarouselProps {
   subdivisionSlug: string;
+  cityId?: string;
   subdivisionName: string;
   limit?: number;
 }
 
 export default function SubdivisionPhotoCarousel({
   subdivisionSlug,
+  cityId,
   subdivisionName,
   limit = 20,
 }: SubdivisionPhotoCarouselProps) {
@@ -50,7 +52,7 @@ export default function SubdivisionPhotoCarousel({
 
     try {
       const response = await fetch(
-        `/api/subdivisions/${subdivisionSlug}/photos?limit=${limit}`
+        `/api/subdivisions/${subdivisionSlug}/photos?limit=${limit}${cityId ? `&city=${cityId}` : ''}`
       );
 
       if (!response.ok) {

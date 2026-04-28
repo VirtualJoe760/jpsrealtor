@@ -13,6 +13,7 @@ interface Subdivision {
 
 interface SubdivisionMapProps {
   subdivisionSlug: string;
+  cityId?: string;
   subdivision: Subdivision;
   onListingClick?: (listing: MapListing) => void;
   height?: string;
@@ -27,6 +28,7 @@ const FILTER_OPTIONS = [
 
 export default function SubdivisionMap({
   subdivisionSlug,
+  cityId,
   subdivision,
   onListingClick,
   height = "400px",
@@ -48,7 +50,7 @@ export default function SubdivisionMap({
         const propertyType = propertyTypeMap[propertyTypeFilter] || "A";
 
         const response = await fetch(
-          `/api/subdivisions/${subdivisionSlug}/listings?limit=100&propertyType=${propertyType}`
+          `/api/subdivisions/${subdivisionSlug}/listings?limit=100&propertyType=${propertyType}${cityId ? `&city=${cityId}` : ''}`
         );
         if (response.ok) {
           const data = await response.json();

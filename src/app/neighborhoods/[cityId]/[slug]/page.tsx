@@ -31,17 +31,12 @@ export async function generateMetadata({
   const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug }).lean();
+  // Find all subdivisions with this slug, then match by city
+  // Many subdivisions share names (e.g. "Downtown") across different cities
+  const candidates = await Subdivision.find({ slug }).lean();
+  const subdivision = candidates.find((s) => createSlug(s.city) === cityId) || candidates[0];
 
-  if (!subdivision) {
-    return {
-      title: "Subdivision Not Found",
-    };
-  }
-
-  // Validate cityId matches subdivision's city by comparing slugs
-  const citySlug = createSlug(subdivision.city);
-  if (citySlug !== cityId) {
+  if (!subdivision || createSlug(subdivision.city) !== cityId) {
     return {
       title: "Subdivision Not Found",
     };
@@ -62,15 +57,11 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
   const { cityId, slug } = await params;
   await dbConnect();
 
-  const subdivision = await Subdivision.findOne({ slug }).lean();
+  // Find correct subdivision for this city (many share names like "Downtown")
+  const candidates = await Subdivision.find({ slug }).lean();
+  const subdivision = candidates.find((s) => createSlug(s.city) === cityId);
 
   if (!subdivision) {
-    notFound();
-  }
-
-  // Validate cityId matches subdivision's city by comparing slugs
-  const citySlug = createSlug(subdivision.city);
-  if (citySlug !== cityId) {
     notFound();
   }
 

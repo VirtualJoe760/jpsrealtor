@@ -80,41 +80,8 @@ export default function NeighborhoodsPage() {
     fetchNeighborhoods();
   }, []);
 
-  // Fetch average property tax rate for California
-  useEffect(() => {
-    async function fetchAvgPropertyTax() {
-      try {
-        // Fetch property tax data from major CA counties
-        const majorCounties = ['Los Angeles', 'San Diego', 'Orange', 'Riverside', 'San Bernardino'];
-        const taxRates: number[] = [];
-
-        for (const county of majorCounties) {
-          try {
-            const response = await fetch(`/api/analytics/market-stats?county=${encodeURIComponent(county)}&stats=tax`);
-            if (response.ok) {
-              const data = await response.json();
-              if (data.propertyTax?.averageRate) {
-                taxRates.push(data.propertyTax.averageRate);
-              }
-            }
-          } catch (err) {
-            console.error(`Error fetching tax rate for ${county}:`, err);
-          }
-        }
-
-        // Calculate average if we got any data
-        if (taxRates.length > 0) {
-          const avg = taxRates.reduce((sum, rate) => sum + rate, 0) / taxRates.length;
-          setAvgPropertyTax(avg);
-        }
-      } catch (error) {
-        console.error('Error fetching average property tax:', error);
-        // Keep default of 1.15%
-      }
-    }
-
-    fetchAvgPropertyTax();
-  }, []);
+  // CA average property tax is ~1.15% — static value, no need for expensive API calls
+  // (The old approach fetched 5 county tax rates taking 15-27s each)
 
   const toggleRegion = (slug: string) => {
     const newSet = new Set(expandedRegions);

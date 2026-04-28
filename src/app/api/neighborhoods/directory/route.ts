@@ -30,6 +30,39 @@ function getDisplayCounty(city: string, actualCounty: string): string {
   return actualCounty;
 }
 
+// Proper county-to-region mapping (the City model's region field is unreliable)
+const COUNTY_TO_REGION: Record<string, string> = {
+  'Los Angeles': 'Southern California', 'Orange': 'Southern California',
+  'Riverside': 'Southern California', 'San Bernardino': 'Southern California',
+  'San Diego': 'Southern California', 'Ventura': 'Southern California',
+  'Imperial': 'Southern California', 'Santa Barbara': 'Southern California',
+  'Kern': 'Central California', 'San Luis Obispo': 'Central California',
+  'Fresno': 'Central California', 'Madera': 'Central California',
+  'Merced': 'Central California', 'Tulare': 'Central California',
+  'Kings': 'Central California', 'Monterey': 'Central California',
+  'San Benito': 'Central California', 'Santa Cruz': 'Central California',
+  'Alameda': 'Northern California', 'Contra Costa': 'Northern California',
+  'Marin': 'Northern California', 'Napa': 'Northern California',
+  'San Francisco': 'Northern California', 'San Mateo': 'Northern California',
+  'Santa Clara': 'Northern California', 'Solano': 'Northern California',
+  'Sonoma': 'Northern California', 'Sacramento': 'Northern California',
+  'Placer': 'Northern California', 'El Dorado': 'Northern California',
+  'Yolo': 'Northern California', 'Butte': 'Northern California',
+  'Shasta': 'Northern California', 'Tehama': 'Northern California',
+  'Lake': 'Northern California', 'Mendocino': 'Northern California',
+  'Humboldt': 'Northern California', 'Del Norte': 'Northern California',
+  'Siskiyou': 'Northern California', 'Modoc': 'Northern California',
+  'Lassen': 'Northern California', 'Plumas': 'Northern California',
+  'Sierra': 'Northern California', 'Nevada': 'Northern California',
+  'Yuba': 'Northern California', 'Sutter': 'Northern California',
+  'Colusa': 'Northern California', 'Glenn': 'Northern California',
+  'Trinity': 'Northern California', 'Mariposa': 'Northern California',
+  'Tuolumne': 'Northern California', 'Calaveras': 'Northern California',
+  'Amador': 'Northern California', 'Alpine': 'Northern California',
+  'Mono': 'Northern California', 'Inyo': 'Northern California',
+  'Stanislaus': 'Northern California', 'San Joaquin': 'Northern California',
+};
+
 /**
  * GET /api/neighborhoods/directory
  *
@@ -75,7 +108,7 @@ export async function GET() {
     for (const city of cities) {
       const cityName = (city as any).name;
       const actualCounty = (city as any).county || 'Other';
-      const region = (city as any).region || 'Other';
+      const region = COUNTY_TO_REGION[actualCounty] || 'Other';
       const displayCounty = getDisplayCounty(cityName, actualCounty);
 
       if (!regionMap[region]) regionMap[region] = {};
@@ -95,7 +128,7 @@ export async function GET() {
         const countiesData = Object.entries(counties)
           .map(([countyName, citiesList]) => ({
             name: countyName,
-            slug: createSlug(countyName),
+            slug: createSlug(countyName) + '-county',
             listings: citiesList.reduce((sum: number, c: any) => sum + c.listings, 0),
             cities: citiesList.sort((a: any, b: any) => b.listings - a.listings),
           }))

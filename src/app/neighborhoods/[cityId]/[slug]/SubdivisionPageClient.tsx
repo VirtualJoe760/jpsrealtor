@@ -185,6 +185,7 @@ export default function SubdivisionPageClient({
             </h2>
             <SubdivisionPhotoCarousel
               subdivisionSlug={slug}
+              cityId={cityId}
               subdivisionName={subdivision.name}
               limit={20}
             />
@@ -234,6 +235,7 @@ export default function SubdivisionPageClient({
           {/* Stats with Toggle */}
           <SubdivisionStats
             subdivisionSlug={slug}
+            cityId={cityId}
             initialStats={{
               listingCount: subdivision.listingCount,
               avgPrice: subdivision.avgPrice,
@@ -250,6 +252,7 @@ export default function SubdivisionPageClient({
               </h2>
               <SubdivisionMap
                 subdivisionSlug={slug}
+                cityId={cityId}
                 subdivision={{
                   name: subdivision.name,
                   coordinates: subdivision.coordinates,
@@ -264,7 +267,7 @@ export default function SubdivisionPageClient({
             <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
               Available Homes
             </h2>
-            <SubdivisionListings subdivisionSlug={slug} />
+            <SubdivisionListings subdivisionSlug={slug} cityId={cityId} />
           </div>
 
           {/* CMA Market Analysis */}

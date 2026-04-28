@@ -607,7 +607,9 @@ export async function GET(
     }
 
     // Fetch primary photos from Spark Replication API (batch)
-    const photoMap = await fetchPrimaryPhotos(listings);
+    // Skip when caller only needs coordinates (e.g., map pins)
+    const skipPhotos = searchParams.get("skipPhotos") === "true";
+    const photoMap = skipPhotos ? new Map<string, string>() : await fetchPrimaryPhotos(listings);
 
     // Combine listings with photos
     const listingsWithPhotos = listings.map((listing: any, index: number) => {

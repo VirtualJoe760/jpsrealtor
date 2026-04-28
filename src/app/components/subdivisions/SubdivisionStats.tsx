@@ -5,6 +5,7 @@ import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 interface SubdivisionStatsProps {
   subdivisionSlug: string;
+  cityId?: string;
   initialStats: {
     listingCount: number;
     avgPrice: number;
@@ -28,6 +29,7 @@ interface Stats {
 
 export default function SubdivisionStats({
   subdivisionSlug,
+  cityId,
   initialStats
 }: SubdivisionStatsProps) {
   const [currentType, setCurrentType] = useState<"sale" | "rental">("sale");
@@ -44,8 +46,8 @@ export default function SubdivisionStats({
     async function fetchAllStats() {
       try {
         const [saleRes, rentalRes] = await Promise.all([
-          fetch(`/api/subdivisions/${subdivisionSlug}/stats?propertyType=sale`),
-          fetch(`/api/subdivisions/${subdivisionSlug}/stats?propertyType=rental`)
+          fetch(`/api/subdivisions/${subdivisionSlug}/stats?propertyType=sale${cityId ? `&city=${cityId}` : ''}`),
+          fetch(`/api/subdivisions/${subdivisionSlug}/stats?propertyType=rental${cityId ? `&city=${cityId}` : ''}`)
         ]);
 
         if (saleRes.ok) {

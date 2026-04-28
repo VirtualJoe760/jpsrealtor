@@ -36,12 +36,14 @@ interface SubdivisionInfo {
 
 interface SubdivisionListingsProps {
   subdivisionSlug: string;
+  cityId?: string;
   onListingSelect?: (listing: Listing) => void;
   propertyTypeFilter?: "all" | "sale" | "rental";
 }
 
 export default function SubdivisionListings({
   subdivisionSlug,
+  cityId,
   onListingSelect,
   propertyTypeFilter: externalPropertyTypeFilter,
 }: SubdivisionListingsProps) {
@@ -137,6 +139,7 @@ export default function SubdivisionListings({
 
       if (minPrice) params.append("minPrice", minPrice);
       if (maxPrice) params.append("maxPrice", maxPrice);
+      if (cityId) params.append("city", cityId);
 
       const response = await fetch(
         `/api/subdivisions/${subdivisionSlug}/listings?${params.toString()}`

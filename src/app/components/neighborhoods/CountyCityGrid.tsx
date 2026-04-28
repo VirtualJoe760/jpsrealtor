@@ -22,9 +22,10 @@ interface CountyData {
 
 interface CountyCityGridProps {
   county: CountyData;
+  regionSlug?: string;
 }
 
-export default function CountyCityGrid({ county }: CountyCityGridProps) {
+export default function CountyCityGrid({ county, regionSlug }: CountyCityGridProps) {
   const {
     cardBg,
     cardBorder,
@@ -51,7 +52,7 @@ export default function CountyCityGrid({ county }: CountyCityGridProps) {
       <div className="max-w-7xl mx-auto mb-8">
         {/* Back to Neighborhoods Button */}
         <Link
-          href="/neighborhoods"
+          href={regionSlug ? `/neighborhoods/${regionSlug}` : "/neighborhoods"}
           className={`inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-lg transition-all ${
             isLight
               ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -59,7 +60,7 @@ export default function CountyCityGrid({ county }: CountyCityGridProps) {
           }`}
         >
           <ChevronLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">Back to All Regions</span>
+          <span className="text-sm font-medium">{regionSlug ? "Back to Region" : "Back to All Regions"}</span>
         </Link>
 
         {/* Title and Description */}

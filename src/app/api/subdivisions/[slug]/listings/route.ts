@@ -57,23 +57,39 @@ export async function GET(
     const garageSpaces = searchParams.get("garageSpaces") ? parseInt(searchParams.get("garageSpaces")!) : undefined;
     const stories = searchParams.get("stories") ? parseInt(searchParams.get("stories")!) : undefined;
 
-    // Find subdivision metadata (optional - may not exist for all subdivisions)
-    const subdivision = await Subdivision.findOne({ slug }).lean();
+    // Find subdivision metadata — filter by city if provided to handle duplicate names
+    const cityParam = searchParams.get("city");
+    let subdivision;
+    if (cityParam) {
+      const candidates = await Subdivision.find({ slug }).lean();
+      const citySlug = cityParam.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      subdivision = candidates.find((s: any) => {
+        const sCitySlug = (s.city || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+        return sCitySlug === citySlug || sCitySlug === cityParam;
+      }) || candidates[0];
+    } else {
+      subdivision = await Subdivision.findOne({ slug }).lean();
+    }
 
     // If no metadata, infer subdivision name from slug
-    // Convert "madison-club" → "Madison Club" for database query
     const subdivisionName = subdivision
       ? subdivision.name
       : slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
-    console.log(`[Subdivision Listings API] Slug: ${slug}, Subdivision: ${subdivisionName}, Has Metadata: ${!!subdivision}`);
+    const subdivisionCity = subdivision?.city || cityParam || null;
+
+    console.log(`[Subdivision Listings API] Slug: ${slug}, Subdivision: ${subdivisionName}, City: ${subdivisionCity}, Has Metadata: ${!!subdivision}`);
 
     // Build query for listings - unified collection
     const baseQuery: any = {
       standardStatus: "Active",
-      // Exclude Co-Ownership properties (fractional ownership/timeshares)
       propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
     };
+
+    // Filter by city if known (prevents cross-city data mixing)
+    if (subdivisionCity) {
+      baseQuery.city = subdivisionCity;
+    }
 
     // Apply property type filter conditionally
     // A=Residential Sale, B=Residential Lease (Rental), C=Multifamily, D=Land

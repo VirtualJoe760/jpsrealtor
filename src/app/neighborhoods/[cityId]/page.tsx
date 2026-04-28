@@ -137,16 +137,16 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
     notFound(); // Returns a 404 page
   }
 
-  // Handle region pages - regions are shown in the directory, not as individual pages
+  // Handle region pages - show counties in this region
   if (pageData.type === 'region' && pageData.region) {
-    // Redirect to neighborhoods directory
-    notFound();
+    const RegionCountyGrid = require('@/app/components/neighborhoods/RegionCountyGrid').default;
+    return <RegionCountyGrid region={pageData.region} />;
   }
 
-  // Handle county pages - use CountyCityGrid component
+  // Handle county pages - show cities in this county
   if (pageData.type === 'county' && pageData.county) {
     const CountyCityGrid = require('@/app/components/neighborhoods/CountyCityGrid').default;
-    return <CountyCityGrid county={pageData.county} />;
+    return <CountyCityGrid county={pageData.county} regionSlug={pageData.region?.slug} />;
   }
 
   // Handle city pages - existing functionality

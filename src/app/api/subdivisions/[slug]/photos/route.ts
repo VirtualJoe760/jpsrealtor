@@ -17,8 +17,19 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    // Find subdivision
-    const subdivision = await Subdivision.findOne({ slug }).lean();
+    // Find subdivision — filter by city if provided to handle duplicate names
+    const cityParam = searchParams.get("city");
+    let subdivision;
+    if (cityParam) {
+      const candidates = await Subdivision.find({ slug }).lean();
+      const citySlug = cityParam.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      subdivision = candidates.find((s: any) => {
+        const sCitySlug = (s.city || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+        return sCitySlug === citySlug || sCitySlug === cityParam;
+      }) || candidates[0];
+    } else {
+      subdivision = await Subdivision.findOne({ slug }).lean();
+    }
 
     if (!subdivision) {
       return NextResponse.json(
