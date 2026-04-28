@@ -181,7 +181,7 @@ export default function AgentSubscriptionPage() {
         body: JSON.stringify({
           tier,
           billingInterval: "monthly",
-          successUrl: `${window.location.origin}/agent/subscription?success=true`,
+          successUrl: `${window.location.origin}/subscription/success?plan=agent`,
           cancelUrl: `${window.location.origin}/agent/subscription?cancelled=true`,
         }),
       });

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Search, MapPin, MessageSquare, CheckCircle2, Sparkles } from "lucide-react";
+import { Home, Search, MapPin, MessageSquare, CheckCircle2, Sparkles, LayoutDashboard, Coins } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 export default function SubscriptionSuccess() {
@@ -15,13 +16,22 @@ export default function SubscriptionSuccess() {
     shadow,
   } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+  const searchParams = useSearchParams();
+  const isAgent = searchParams.get("plan") === "agent";
 
-  const navigationItems = [
-    { label: "Back to Dashboard", href: "/dashboard/settings", icon: Home, color: "blue", description: "View your account settings" },
-    { label: "Search for Homes", href: "/map", icon: Search, color: "emerald", description: "Browse Coachella Valley listings" },
-    { label: "AI Chat", href: "/?view=chat", icon: MessageSquare, color: "purple", description: "Ask our AI about properties" },
-    { label: "Neighborhoods", href: "/neighborhoods", icon: MapPin, color: "amber", description: "Explore local communities" },
-  ];
+  const navigationItems = isAgent
+    ? [
+        { label: "Agent Dashboard", href: "/agent/dashboard", icon: LayoutDashboard, color: "blue", description: "View your credits and campaigns" },
+        { label: "Manage Subscription", href: "/agent/subscription", icon: Coins, color: "emerald", description: "View plan details and billing" },
+        { label: "Search for Homes", href: "/map", icon: Search, color: "purple", description: "Browse listings on the map" },
+        { label: "Neighborhoods", href: "/neighborhoods", icon: MapPin, color: "amber", description: "Explore local communities" },
+      ]
+    : [
+        { label: "Back to Dashboard", href: "/dashboard/settings", icon: Home, color: "blue", description: "View your account settings" },
+        { label: "Search for Homes", href: "/map", icon: Search, color: "emerald", description: "Browse Coachella Valley listings" },
+        { label: "AI Chat", href: "/?view=chat", icon: MessageSquare, color: "purple", description: "Ask our AI about properties" },
+        { label: "Neighborhoods", href: "/neighborhoods", icon: MapPin, color: "amber", description: "Explore local communities" },
+      ];
 
   const getIconBgColor = (color: string) => {
     const colors: Record<string, string> = {
@@ -73,17 +83,20 @@ export default function SubscriptionSuccess() {
           <h1
             className={`text-4xl md:text-5xl font-bold mb-3 ${textPrimary}`}
           >
-            Welcome to Pro!
+            {isAgent ? "You're All Set!" : "Welcome to Pro!"}
           </h1>
           <div className="flex items-center justify-center gap-2 mb-3">
             <Sparkles className={`w-5 h-5 ${isLight ? "text-blue-500" : "text-blue-400"}`} />
             <span className={`text-lg font-medium ${isLight ? "text-blue-600" : "text-blue-400"}`}>
-              Your upgrade is active
+              Your {isAgent ? "agent plan" : "upgrade"} is active
             </span>
             <Sparkles className={`w-5 h-5 ${isLight ? "text-blue-500" : "text-blue-400"}`} />
           </div>
           <p className={`${textSecondary} text-base max-w-lg mx-auto`}>
-            You now have unlimited saves, 100 AI queries per day, price alerts, and advanced search filters. Let's put them to work.
+            {isAgent
+              ? "Your marketing credits have been loaded. Start running campaigns with Google Ads, Meta Ads, direct mail, and voicemail drops."
+              : "You now have unlimited saves, 100 AI queries per day, price alerts, and advanced search filters. Let's put them to work."
+            }
           </p>
         </motion.div>
 
@@ -134,14 +147,24 @@ export default function SubscriptionSuccess() {
             What's unlocked
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              "100 AI chat queries per day",
-              "Unlimited saved listings",
-              "Unlimited saved searches",
-              "Price drop & new listing alerts",
-              "Advanced search filters",
-              "Priority email support",
-            ].map((feature) => (
+            {(isAgent
+              ? [
+                  "Marketing credits loaded",
+                  "Google & Meta Ads campaigns",
+                  "Direct mail campaigns",
+                  "Voicemail drops",
+                  "Partner cost-splitting",
+                  "Campaign analytics",
+                ]
+              : [
+                  "100 AI chat queries per day",
+                  "Unlimited saved listings",
+                  "Unlimited saved searches",
+                  "Price drop & new listing alerts",
+                  "Advanced search filters",
+                  "Priority email support",
+                ]
+            ).map((feature) => (
               <div key={feature} className="flex items-center gap-2">
                 <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${isLight ? "text-green-600" : "text-green-400"}`} />
                 <span className={`text-sm ${textSecondary}`}>{feature}</span>

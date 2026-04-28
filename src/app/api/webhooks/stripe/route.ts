@@ -271,6 +271,16 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Send agent subscription confirmation email
+        const subscribedUser = await User.findById(userId).select("email name").lean();
+        if (subscribedUser?.email) {
+          sendSubscriptionEmail(
+            subscribedUser.email,
+            subscribedUser.name || "",
+            "subscribed",
+          ).catch((err) => console.error("[stripe-webhook] Agent subscribe email failed:", err));
+        }
+
         console.log(
           `[stripe-webhook] Subscription created: user=${userId} tier=${tier} sub=${stripeSubscriptionId}`
         );
