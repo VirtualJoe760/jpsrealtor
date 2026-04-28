@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import ListingsMap, { MapListing } from "@/app/components/map/ListingsMap";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { getCityCenter } from "@/lib/geo-centers";
 
 interface CityMapProps {
   cityId: string;
@@ -169,16 +170,27 @@ export default function CityMap({
       }
       statusText={`Showing ${validCount} ${typeLabel} in ${cityName}`}
       actionButton={
-        <Link
-          href={`/map?city=${encodeURIComponent(cityName)}`}
-          className={`px-4 md:px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-            isLight
-              ? "bg-blue-600 hover:bg-blue-700 text-white"
-              : "bg-blue-500 hover:bg-blue-400 text-white"
-          }`}
-        >
-          View All Listings &rarr;
-        </Link>
+        (() => {
+          const center = getCityCenter(cityName);
+          const lat = center?.lat || coordinates?.latitude;
+          const lng = center?.lng || coordinates?.longitude;
+          const zoom = center?.zoom || 11;
+          const href = lat && lng
+            ? `/chap?view=map&lat=${lat}&lng=${lng}&zoom=${zoom}`
+            : `/chap?view=map`;
+          return (
+            <Link
+              href={href}
+              className={`px-4 md:px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                isLight
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-blue-500 hover:bg-blue-400 text-white"
+              }`}
+            >
+              View All Listings &rarr;
+            </Link>
+          );
+        })()
       }
     />
   );
