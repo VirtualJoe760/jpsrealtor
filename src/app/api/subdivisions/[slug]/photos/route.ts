@@ -71,7 +71,7 @@ export async function GET(
         const photosRes = await fetch(
           `${baseUrl}/api/listings/${listing.listingKey}/photos`,
           {
-            cache: "no-store",
+            next: { revalidate: 3600 },
             headers: { "Accept": "application/json" }
           }
         );
@@ -164,6 +164,10 @@ export async function GET(
         name: subdivision.name,
         city: subdivision.city,
       },
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
+      }
     });
   } catch (error) {
     console.error("❌ Error fetching subdivision photos:", error);
