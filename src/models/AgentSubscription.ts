@@ -282,11 +282,9 @@ const AgentSubscriptionSchema = new Schema<IAgentSubscription>(
 // Indexes for performance
 AgentSubscriptionSchema.index({ agentId: 1, status: 1 }); // Find active subscriptions
 AgentSubscriptionSchema.index({ tier: 1 }); // Filter by tier
-AgentSubscriptionSchema.index({ currentPeriodEnd: 1 }); // Find expiring subscriptions
-AgentSubscriptionSchema.index({ stripeCustomerId: 1 });
-AgentSubscriptionSchema.index({ stripeSubscriptionId: 1 }, { unique: true, sparse: true });
+// currentPeriodEnd, stripeCustomerId, stripeSubscriptionId already have index: true in field definitions
 AgentSubscriptionSchema.index({ isTrialing: 1 }); // Find trials
-AgentSubscriptionSchema.index({ referredBy: 1 }); // Track referrals
+// referredBy already has index: true in field definition
 
 // Pre-save hook to set feature limits based on tier
 AgentSubscriptionSchema.pre("save", function(next) {
