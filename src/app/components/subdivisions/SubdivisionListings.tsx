@@ -56,8 +56,6 @@ export default function SubdivisionListings({
   const [subdivision, setSubdivision] = useState<SubdivisionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const ITEMS_PER_PAGE = 9;
   const [displayPage, setDisplayPage] = useState(1);
@@ -74,7 +72,7 @@ export default function SubdivisionListings({
 
   useEffect(() => {
     fetchListings();
-  }, [subdivisionSlug, page, minPrice, maxPrice, minBeds, maxBeds, minBaths, maxBaths, minSqft, maxSqft]);
+  }, [subdivisionSlug, minPrice, maxPrice, minBeds, maxBeds, minBaths, maxBaths, minSqft, maxSqft]);
 
   // Filter listings based on property type and additional filters
   // PropertyType codes: A = Residential (Sale), B = Residential Lease (Rental), C = Multi-Family
@@ -132,7 +130,6 @@ export default function SubdivisionListings({
 
     try {
       const params = new URLSearchParams({
-        page: page.toString(),
         limit: "100",
         propertyType: "all",
       });
@@ -153,7 +150,6 @@ export default function SubdivisionListings({
 
       setListings(data.listings || []);
       setSubdivision(data.subdivision);
-      setTotalPages(data.pagination?.pages || 1);
     } catch (err) {
       console.error("Error fetching subdivision listings:", err);
       setError("Failed to load listings");
@@ -168,7 +164,7 @@ export default function SubdivisionListings({
   };
 
   const handleFilterApply = () => {
-    setPage(1); // Reset to first page
+    setDisplayPage(1);
     fetchListings();
   };
 
@@ -181,7 +177,7 @@ export default function SubdivisionListings({
     setMaxBaths("");
     setMinSqft("");
     setMaxSqft("");
-    setPage(1);
+    setDisplayPage(1);
   };
 
   if (loading && filteredListings.length === 0) {
