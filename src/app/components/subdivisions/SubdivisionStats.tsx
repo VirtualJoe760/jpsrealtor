@@ -67,8 +67,10 @@ export default function SubdivisionStats({
     fetchAllStats();
   }, [subdivisionSlug]);
 
-  // Auto-cycle between sale and rental every 5 seconds
+  // Auto-cycle between sale and rental every 5 seconds (only if both data types are loaded)
   useEffect(() => {
+    if (!saleStats || !rentalStats) return;
+
     const interval = setInterval(() => {
       setIsTransitioning(true);
 
@@ -79,7 +81,7 @@ export default function SubdivisionStats({
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [saleStats, rentalStats]);
 
   // Update displayed stats when type changes
   useEffect(() => {

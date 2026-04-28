@@ -74,8 +74,10 @@ export default function CityStats({
     };
   }, [cityId]);
 
-  // Auto-cycle between sale and rental every 5 seconds
+  // Auto-cycle between sale and rental every 5 seconds (only if both data types are loaded)
   useEffect(() => {
+    if (!saleStats || !rentalStats) return;
+
     const interval = setInterval(() => {
       setIsTransitioning(true);
 
@@ -86,7 +88,7 @@ export default function CityStats({
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [saleStats, rentalStats]);
 
   // Update displayed stats when type changes
   useEffect(() => {
