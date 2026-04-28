@@ -26,7 +26,7 @@ export async function GET(
       subdivision = candidates.find((s: any) => {
         const sCitySlug = (s.city || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
         return sCitySlug === citySlug || sCitySlug === cityParam;
-      }) || candidates[0];
+      });
     } else {
       subdivision = await Subdivision.findOne({ slug }).lean();
     }
