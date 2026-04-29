@@ -768,36 +768,43 @@ export default function DomainSeoStep({
       <div className={cardClass}>
         <h3 className={`text-lg font-semibold mb-4 ${tc.textPrimary}`}>Subdomain &amp; SEO</h3>
         <div className="space-y-5">
-          {/* Subdomain */}
+          {/* Subdomain — assigned by admin on approval, read-only */}
           <div>
-            <label className={labelClass}>Subdomain</label>
-            <div className="flex items-center gap-0">
-              <input
-                type="text"
-                value={ap.subdomain || ""}
-                onChange={(e) =>
-                  updateField(
-                    "agentProfile.subdomain",
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
-                  )
-                }
-                placeholder="yourname"
-                className={`flex-1 px-4 py-3 rounded-l-lg border-y border-l text-sm focus:outline-none focus:ring-2 ${
-                  isLight
-                    ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
-                    : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
-                }`}
-              />
-              <span
-                className={`px-4 py-3 rounded-r-lg border text-sm font-medium ${
-                  isLight
-                    ? "bg-gray-100 border-gray-300 text-gray-500"
-                    : "bg-gray-700 border-gray-700 text-gray-400"
-                }`}
-              >
-                .jpsrealtor.com
-              </span>
-            </div>
+            <label className={labelClass}>Your Subdomain</label>
+            {ap.subdomain ? (
+              <>
+                <div className="flex items-center gap-0">
+                  <div className={`flex-1 px-4 py-3 rounded-l-lg border-y border-l text-sm ${
+                    isLight
+                      ? "bg-gray-50 border-gray-300 text-gray-900"
+                      : "bg-gray-800/50 border-gray-700 text-white"
+                  }`}>
+                    <a
+                      href={`https://${ap.subdomain}.chatrealty.io`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`font-medium ${isLight ? "text-blue-600 hover:text-blue-700" : "text-blue-400 hover:text-blue-300"}`}
+                    >
+                      {ap.subdomain}
+                    </a>
+                  </div>
+                  <span className={`px-4 py-3 rounded-r-lg border text-sm font-medium ${
+                    isLight ? "bg-gray-100 border-gray-300 text-gray-500" : "bg-gray-700 border-gray-700 text-gray-400"
+                  }`}>
+                    .chatrealty.io
+                  </span>
+                </div>
+                <p className={`text-xs mt-1 ${tc.textMuted}`}>
+                  Your subdomain is active once you subscribe to a plan.
+                </p>
+              </>
+            ) : (
+              <div className={`px-4 py-3 rounded-lg border text-sm ${
+                isLight ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-amber-900/10 border-amber-800/30 text-amber-400"
+              }`}>
+                Your subdomain will be assigned when your agent account is approved.
+              </div>
+            )}
           </div>
 
           {/* Meta Title */}
