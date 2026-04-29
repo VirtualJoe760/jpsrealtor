@@ -572,10 +572,22 @@ const UserSchema = new Schema<IUser>(
       // Photos & Media
       headshot: String,
       heroPhoto: String,
+      heroPhotoDark: String,
       teamPhoto: String,
       officePhoto: String,
       galleryPhotos: [String],
       videoIntro: String,
+      insightsBannerImage: String,
+
+      // Logos
+      brokerLogo: String,
+      brokerLogoDark: String,
+      teamLogo: String,
+      teamLogoDark: String,
+
+      // Branding
+      fontFamily: String,
+      themeMode: { type: String, enum: ["both", "light", "dark"], default: "both" },
 
       // Custom Backgrounds (4 variations)
       customBackgrounds: {
@@ -588,6 +600,7 @@ const UserSchema = new Schema<IUser>(
       // Landing Page Content
       headline: String,
       tagline: String,
+      personalStory: String,
       valuePropositions: [{
         icon: String,
         title: String,
