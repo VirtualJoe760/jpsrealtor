@@ -31,7 +31,14 @@ interface DomainMapping {
   createdAt: string;
 }
 
-type TabKey = "pending" | "all";
+type TabKey = "pending" | "all" | "vercel";
+
+interface VercelDomain {
+  name: string;
+  apexName: string;
+  verified: boolean;
+  createdAt: number;
+}
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   pending_approval: "bg-amber-100 text-amber-700",
@@ -85,6 +92,8 @@ export default function AdminDomainsPage() {
   } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  const [vercelDomains, setVercelDomains] = useState<VercelDomain[]>([]);
+
   const pendingDomains = allDomains.filter(
     (d) => d.status === "pending_approval"
   );
@@ -92,11 +101,18 @@ export default function AdminDomainsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/domains");
-      if (res.ok) {
-        const data = await res.json();
+      const [mappingsRes, vercelRes] = await Promise.all([
+        fetch("/api/admin/domains"),
+        fetch("/api/domains/list").catch(() => null),
+      ]);
+      if (mappingsRes.ok) {
+        const data = await mappingsRes.json();
         setAllDomains(data.domains || []);
         setCounts(data.counts || {});
+      }
+      if (vercelRes?.ok) {
+        const data = await vercelRes.json();
+        setVercelDomains(data.domains || []);
       }
     } catch (error) {
       console.error("Failed to fetch domains:", error);
@@ -239,6 +255,27 @@ export default function AdminDomainsPage() {
             }`}
           >
             {allDomains.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab("vercel")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "vercel"
+              ? "bg-blue-600 text-white"
+              : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
+          }`}
+        >
+          Vercel Project
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === "vercel"
+                ? "bg-white/20 text-white"
+                : isLight
+                  ? "bg-gray-200 text-gray-600"
+                  : "bg-gray-700 text-gray-400"
+            }`}
+          >
+            {vercelDomains.length}
           </span>
         </button>
       </div>
@@ -491,6 +528,61 @@ export default function AdminDomainsPage() {
                             </a>
                           )}
                         </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vercel Project Domains Tab */}
+      {activeTab === "vercel" && (
+        <div>
+          {vercelDomains.length === 0 ? (
+            <div className={`${cardBg} border ${border} rounded-xl p-12 text-center`}>
+              <Globe size={40} className={`mx-auto mb-3 ${textSecondary}`} />
+              <p className={`text-lg font-semibold ${textPrimary}`}>No Vercel domains found</p>
+              <p className={`text-sm mt-1 ${textSecondary}`}>
+                VERCEL_PROJECT_ID may not be configured, or the project has no domains.
+              </p>
+            </div>
+          ) : (
+            <div className={`${cardBg} border ${border} rounded-xl overflow-hidden`}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`border-b ${border}`}>
+                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Domain</th>
+                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Apex</th>
+                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Status</th>
+                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Added</th>
+                    <th className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vercelDomains.map((d) => (
+                    <tr key={d.name} className={`border-b ${border} last:border-0`}>
+                      <td className={`px-4 py-3 font-medium ${textPrimary}`}>{d.name}</td>
+                      <td className={`px-4 py-3 ${textSecondary}`}>{d.apexName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          d.verified
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {d.verified ? "Verified" : "Unverified"}
+                        </span>
+                      </td>
+                      <td className={`px-4 py-3 ${textSecondary}`}>
+                        {new Date(d.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <a href={`https://${d.name}`} target="_blank" rel="noopener noreferrer"
+                          className={`p-1.5 rounded inline-block transition-colors ${isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-white/10 text-gray-400"}`}>
+                          <ExternalLink size={16} />
+                        </a>
                       </td>
                     </tr>
                   ))}
