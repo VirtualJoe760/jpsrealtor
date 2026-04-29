@@ -14,21 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-interface VercelDomain {
-  name: string;
-  apexName: string;
-  verified: boolean;
-  verification: any[];
-  createdAt: number;
-  updatedAt: number;
-}
-
 interface DomainMapping {
   _id: string;
   domain: string;
+  agentId: string;
   agentEmail: string;
-  subdivisionName: string;
+  subdivisionName?: string;
   targetPath: string;
+  mappingType: "agent_landing" | "community_page" | "custom";
   status: string;
   sslStatus: string;
   dnsConfigured: boolean;
@@ -38,16 +31,53 @@ interface DomainMapping {
   createdAt: string;
 }
 
+type TabKey = "pending" | "all";
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  pending_approval: "bg-amber-100 text-amber-700",
+  approved: "bg-blue-100 text-blue-700",
+  pending_dns: "bg-amber-100 text-amber-700",
+  pending_verification: "bg-amber-100 text-amber-700",
+  active: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
+  failed: "bg-red-100 text-red-700",
+  suspended: "bg-gray-200 text-gray-600",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending_approval: "Pending Approval",
+  approved: "Approved",
+  pending_dns: "Pending DNS",
+  pending_verification: "Verifying",
+  active: "Active",
+  rejected: "Rejected",
+  failed: "Failed",
+  suspended: "Suspended",
+};
+
+const MAPPING_TYPE_LABELS: Record<string, string> = {
+  agent_landing: "Agent Landing",
+  community_page: "Community",
+  custom: "Custom",
+};
+
+function formatTarget(mapping: DomainMapping): string {
+  if (mapping.mappingType === "agent_landing") return "Agent Homepage";
+  if (mapping.mappingType === "community_page" && mapping.subdivisionName) {
+    return `Community: ${mapping.subdivisionName}`;
+  }
+  return mapping.targetPath;
+}
+
 export default function AdminDomainsPage() {
   const { textPrimary, textSecondary, border, cardBg, currentTheme } =
     useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
-  const [vercelDomains, setVercelDomains] = useState<VercelDomain[]>([]);
-  const [domainMappings, setDomainMappings] = useState<DomainMapping[]>([]);
+  const [allDomains, setAllDomains] = useState<DomainMapping[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectModal, setRejectModal] = useState<{
     id: string;
@@ -55,25 +85,17 @@ export default function AdminDomainsPage() {
   } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  const pendingDomains = allDomains.filter(
+    (d) => d.status === "pending_approval"
+  );
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Vercel domains and admin domain mappings in parallel
-      const [vercelRes, adminRes] = await Promise.all([
-        fetch("/api/domains/list"),
-        fetch(
-          `/api/admin/domains${filter !== "all" ? `?status=${filter}` : ""}`
-        ),
-      ]);
-
-      if (vercelRes.ok) {
-        const data = await vercelRes.json();
-        setVercelDomains(data.domains || []);
-      }
-
-      if (adminRes.ok) {
-        const data = await adminRes.json();
-        setDomainMappings(data.domains || []);
+      const res = await fetch("/api/admin/domains");
+      if (res.ok) {
+        const data = await res.json();
+        setAllDomains(data.domains || []);
         setCounts(data.counts || {});
       }
     } catch (error) {
@@ -85,7 +107,7 @@ export default function AdminDomainsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [filter]);
+  }, []);
 
   const handleAction = async (
     domainId: string,
@@ -115,55 +137,30 @@ export default function AdminDomainsPage() {
     }
   };
 
-  const statusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "pending_approval":
-        return <Clock className="w-4 h-4 text-amber-500" />;
-      case "pending_dns":
-        return <Clock className="w-4 h-4 text-blue-500" />;
-      case "rejected":
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      case "suspended":
-        return <Ban className="w-4 h-4 text-gray-500" />;
-      case "failed":
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-500" />;
-    }
+  const statusBadge = (status: string) => {
+    const cls = STATUS_BADGE_CLASSES[status] || "bg-gray-100 text-gray-600";
+    const label = STATUS_LABELS[status] || status;
+    return (
+      <span
+        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${cls}`}
+      >
+        {label}
+      </span>
+    );
   };
 
-  const statusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      pending_approval: "Pending Approval",
-      approved: "Approved",
-      pending_dns: "Pending DNS",
-      pending_verification: "Verifying",
-      active: "Active",
-      rejected: "Rejected",
-      failed: "Failed",
-      suspended: "Suspended",
-    };
-    return labels[status] || status;
+  const mappingTypeBadge = (type: string) => {
+    const label = MAPPING_TYPE_LABELS[type] || type;
+    return (
+      <span
+        className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+          isLight ? "bg-blue-50 text-blue-600" : "bg-blue-900/40 text-blue-300"
+        }`}
+      >
+        {label}
+      </span>
+    );
   };
-
-  const filterTabs = [
-    {
-      key: "all",
-      label: "All",
-      count: Object.values(counts).reduce((a, b) => a + b, 0),
-    },
-    {
-      key: "pending_approval",
-      label: "Pending",
-      count: counts.pending_approval || 0,
-    },
-    { key: "pending_dns", label: "DNS Setup", count: counts.pending_dns || 0 },
-    { key: "active", label: "Active", count: counts.active || 0 },
-    { key: "rejected", label: "Rejected", count: counts.rejected || 0 },
-    { key: "suspended", label: "Suspended", count: counts.suspended || 0 },
-  ];
 
   if (loading) {
     return (
@@ -180,8 +177,8 @@ export default function AdminDomainsPage() {
         <div>
           <h2 className={`text-2xl font-bold ${textPrimary}`}>Domains</h2>
           <p className={`text-sm mt-1 ${textSecondary}`}>
-            {vercelDomains.length} Vercel domains &middot;{" "}
-            {domainMappings.length} agent requests
+            {pendingDomains.length} pending &middot; {allDomains.length} total
+            mappings
           </p>
         </div>
         <button
@@ -194,264 +191,315 @@ export default function AdminDomainsPage() {
         </button>
       </div>
 
-      {/* Vercel Project Domains */}
-      <div className={`${cardBg} border ${border} rounded-xl p-4`}>
-        <h3 className={`text-lg font-semibold mb-3 ${textPrimary}`}>
-          Vercel Project Domains
-        </h3>
-        {vercelDomains.length === 0 ? (
-          <p className={`text-sm ${textSecondary}`}>No domains configured</p>
-        ) : (
-          <div className="space-y-2">
-            {vercelDomains.map((d) => (
-              <div
-                key={d.name}
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  isLight ? "bg-gray-50" : "bg-white/5"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Globe size={16} className="text-blue-500" />
-                  <div>
-                    <div className={`font-medium text-sm ${textPrimary}`}>
-                      {d.name}
-                    </div>
-                    <div className={`text-xs ${textSecondary}`}>
-                      Apex: {d.apexName} &middot; Added{" "}
-                      {new Date(d.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {d.verified ? (
-                    <span className="flex items-center gap-1 text-xs text-green-600">
-                      <CheckCircle size={14} /> Verified
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs text-amber-600">
-                      <Clock size={14} /> Pending
-                    </span>
-                  )}
-                  <a
-                    href={`https://${d.name}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-1 rounded transition-colors ${
-                      isLight ? "hover:bg-gray-200" : "hover:bg-white/10"
-                    }`}
-                  >
-                    <ExternalLink size={14} className={textSecondary} />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Agent Domain Requests */}
-      <div>
-        <h3 className={`text-lg font-semibold mb-3 ${textPrimary}`}>
-          Agent Domain Requests
-        </h3>
-
-        {/* Filter Tabs */}
-        <div
-          className={`flex gap-1 mb-4 p-1 rounded-lg border ${
-            isLight
-              ? "bg-gray-100 border-gray-200"
-              : "bg-white/5 border-white/10"
+      {/* Tab Switcher */}
+      <div
+        className={`flex gap-1 p-1 rounded-lg border w-fit ${
+          isLight
+            ? "bg-gray-100 border-gray-200"
+            : "bg-white/5 border-white/10"
+        }`}
+      >
+        <button
+          onClick={() => setActiveTab("pending")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "pending"
+              ? "bg-blue-600 text-white"
+              : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
           }`}
         >
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                filter === tab.key
-                  ? "bg-blue-600 text-white"
-                  : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
+          Pending Requests
+          {pendingDomains.length > 0 && (
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                activeTab === "pending"
+                  ? "bg-white/20 text-white"
+                  : "bg-amber-100 text-amber-700"
               }`}
             >
-              {tab.label}
-              {tab.count > 0 && (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    filter === tab.key
-                      ? "bg-white/20 text-white"
-                      : tab.key === "pending_approval"
-                        ? "bg-amber-100 text-amber-700"
-                        : isLight
-                          ? "bg-gray-200 text-gray-600"
-                          : "bg-gray-700 text-gray-400"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Domain Mapping List */}
-        {domainMappings.length === 0 ? (
-          <div
-            className={`${cardBg} border ${border} rounded-xl p-12 text-center`}
+              {pendingDomains.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("all")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "all"
+              ? "bg-blue-600 text-white"
+              : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
+          }`}
+        >
+          All Domains
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === "all"
+                ? "bg-white/20 text-white"
+                : isLight
+                  ? "bg-gray-200 text-gray-600"
+                  : "bg-gray-700 text-gray-400"
+            }`}
           >
-            <Globe
-              size={40}
-              className={`mx-auto mb-3 ${isLight ? "text-gray-300" : "text-gray-600"}`}
-            />
-            <p className={textSecondary}>
-              {filter === "all"
-                ? "No domain requests yet"
-                : `No ${statusLabel(filter).toLowerCase()} domains`}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {domainMappings.map((domain) => (
-              <div
-                key={domain._id}
-                className={`${cardBg} border ${border} rounded-xl p-4`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {statusIcon(domain.status)}
-                      <span className={`font-semibold ${textPrimary}`}>
-                        {domain.domain}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                          domain.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : domain.status === "pending_approval"
-                              ? "bg-amber-100 text-amber-700"
-                              : domain.status === "pending_dns"
-                                ? "bg-blue-100 text-blue-700"
-                                : domain.status === "rejected"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {statusLabel(domain.status)}
-                      </span>
-                    </div>
-                    <div
-                      className={`text-sm space-y-0.5 ${textSecondary}`}
-                    >
-                      <p>
-                        <span className="font-medium">Agent:</span>{" "}
-                        {domain.agentEmail}
-                      </p>
-                      <p>
-                        <span className="font-medium">Community:</span>{" "}
-                        {domain.subdivisionName}
-                      </p>
-                      <p>
-                        <span className="font-medium">Path:</span>{" "}
-                        {domain.targetPath}
-                      </p>
-                      <p className="text-xs">
-                        Submitted{" "}
-                        {new Date(domain.createdAt).toLocaleDateString()}
-                        {domain.reviewedBy && (
-                          <>
-                            {" "}
-                            &middot; Reviewed by {domain.reviewedBy} on{" "}
-                            {new Date(
-                              domain.reviewedAt!
-                            ).toLocaleDateString()}
-                          </>
-                        )}
-                      </p>
-                      {domain.rejectionReason && (
-                        <p className="text-xs text-red-500">
-                          Reason: {domain.rejectionReason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+            {allDomains.length}
+          </span>
+        </button>
+      </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {domain.status === "pending_approval" && (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleAction(domain._id, "approve")
-                          }
-                          disabled={actionLoading === domain._id}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            setRejectModal({
-                              id: domain._id,
-                              domain: domain.domain,
-                            })
-                          }
-                          disabled={actionLoading === domain._id}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {(domain.status === "active" ||
-                      domain.status === "pending_dns") && (
+      {/* Pending Requests Tab */}
+      {activeTab === "pending" && (
+        <div>
+          {pendingDomains.length === 0 ? (
+            <div
+              className={`${cardBg} border ${border} rounded-xl p-12 text-center`}
+            >
+              <CheckCircle
+                size={40}
+                className={`mx-auto mb-3 ${isLight ? "text-green-300" : "text-green-600/50"}`}
+              />
+              <p className={`font-medium ${textPrimary}`}>All caught up</p>
+              <p className={`text-sm mt-1 ${textSecondary}`}>
+                No pending domain requests to review.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDomains.map((domain) => (
+                <div
+                  key={domain._id}
+                  className={`${cardBg} border ${border} rounded-xl p-5`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Domain name */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <Globe size={18} className="text-blue-500 flex-shrink-0" />
+                        <span className={`text-lg font-semibold ${textPrimary}`}>
+                          {domain.domain}
+                        </span>
+                        {mappingTypeBadge(domain.mappingType)}
+                      </div>
+
+                      {/* Details grid */}
+                      <div
+                        className={`text-sm space-y-1 ml-[26px] ${textSecondary}`}
+                      >
+                        <p>
+                          <span className="font-medium">Agent:</span>{" "}
+                          {domain.agentEmail}
+                        </p>
+                        <p>
+                          <span className="font-medium">Target:</span>{" "}
+                          {formatTarget(domain)}
+                        </p>
+                        <p className="text-xs">
+                          Submitted{" "}
+                          {new Date(domain.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 flex-shrink-0 pt-1">
+                      <button
+                        onClick={() => handleAction(domain._id, "approve")}
+                        disabled={actionLoading === domain._id}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Approve
+                      </button>
                       <button
                         onClick={() =>
-                          handleAction(domain._id, "suspend")
+                          setRejectModal({
+                            id: domain._id,
+                            domain: domain.domain,
+                          })
                         }
                         disabled={actionLoading === domain._id}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          isLight
-                            ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                            : "bg-gray-700 hover:bg-gray-600 text-gray-200"
-                        }`}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                       >
-                        <Ban className="w-3.5 h-3.5" />
-                        Suspend
+                        <XCircle className="w-4 h-4" />
+                        Reject
                       </button>
-                    )}
-                    {domain.status === "active" && (
-                      <a
-                        href={`https://${domain.domain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isLight ? "hover:bg-gray-100" : "hover:bg-white/10"
-                        }`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                    {(domain.status === "rejected" ||
-                      domain.status === "suspended") && (
-                      <button
-                        onClick={() =>
-                          handleAction(domain._id, "approve")
-                        }
-                        disabled={actionLoading === domain._id}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        Re-approve
-                      </button>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* All Domains Tab */}
+      {activeTab === "all" && (
+        <div className={`${cardBg} border ${border} rounded-xl overflow-hidden`}>
+          {allDomains.length === 0 ? (
+            <div className="p-12 text-center">
+              <Globe
+                size={40}
+                className={`mx-auto mb-3 ${isLight ? "text-gray-300" : "text-gray-600"}`}
+              />
+              <p className={textSecondary}>No domain mappings yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr
+                    className={`border-b ${border} ${
+                      isLight ? "bg-gray-50" : "bg-white/5"
+                    }`}
+                  >
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Domain
+                    </th>
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Agent
+                    </th>
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Target
+                    </th>
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Type
+                    </th>
+                    <th
+                      className={`text-left px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Created
+                    </th>
+                    <th
+                      className={`text-right px-4 py-3 font-medium ${textSecondary}`}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allDomains.map((domain) => (
+                    <tr
+                      key={domain._id}
+                      className={`border-b last:border-b-0 ${border} ${
+                        isLight ? "hover:bg-gray-50" : "hover:bg-white/[0.02]"
+                      } transition-colors`}
+                    >
+                      <td className={`px-4 py-3 font-medium ${textPrimary}`}>
+                        <div className="flex items-center gap-2">
+                          <Globe size={14} className="text-blue-500 flex-shrink-0" />
+                          {domain.domain}
+                        </div>
+                      </td>
+                      <td className={`px-4 py-3 ${textSecondary}`}>
+                        {domain.agentEmail}
+                      </td>
+                      <td className={`px-4 py-3 ${textSecondary}`}>
+                        <span className="max-w-[200px] truncate block">
+                          {formatTarget(domain)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">{statusBadge(domain.status)}</td>
+                      <td className="px-4 py-3">
+                        {mappingTypeBadge(domain.mappingType)}
+                      </td>
+                      <td className={`px-4 py-3 ${textSecondary}`}>
+                        {new Date(domain.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 justify-end">
+                          {domain.status === "pending_approval" && (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleAction(domain._id, "approve")
+                                }
+                                disabled={actionLoading === domain._id}
+                                className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
+                                title="Approve"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setRejectModal({
+                                    id: domain._id,
+                                    domain: domain.domain,
+                                  })
+                                }
+                                disabled={actionLoading === domain._id}
+                                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors disabled:opacity-50"
+                                title="Reject"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                          {(domain.status === "active" ||
+                            domain.status === "pending_dns") && (
+                            <button
+                              onClick={() =>
+                                handleAction(domain._id, "suspend")
+                              }
+                              disabled={actionLoading === domain._id}
+                              className={`p-1.5 rounded-md transition-colors disabled:opacity-50 ${
+                                isLight
+                                  ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                                  : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                              }`}
+                              title="Suspend"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {(domain.status === "rejected" ||
+                            domain.status === "suspended") && (
+                            <button
+                              onClick={() =>
+                                handleAction(domain._id, "approve")
+                              }
+                              disabled={actionLoading === domain._id}
+                              className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
+                              title="Re-approve"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {domain.status === "active" && (
+                            <a
+                              href={`https://${domain.domain}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`p-1.5 rounded-md transition-colors ${
+                                isLight
+                                  ? "hover:bg-gray-100"
+                                  : "hover:bg-white/10"
+                              }`}
+                              title="Visit"
+                            >
+                              <ExternalLink
+                                className={`w-3.5 h-3.5 ${textSecondary}`}
+                              />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Reject Modal */}
       {rejectModal && (
@@ -461,14 +509,12 @@ export default function AdminDomainsPage() {
               isLight ? "bg-white" : "bg-gray-900"
             }`}
           >
-            <h3
-              className={`text-lg font-semibold mb-2 ${textPrimary}`}
-            >
+            <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>
               Reject Domain Request
             </h3>
             <p className={`text-sm mb-4 ${textSecondary}`}>
-              Rejecting <strong>{rejectModal.domain}</strong>. Provide a
-              reason for the agent.
+              Rejecting <strong>{rejectModal.domain}</strong>. Provide a reason
+              for the agent.
             </p>
             <textarea
               value={rejectReason}
