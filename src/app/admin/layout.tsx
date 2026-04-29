@@ -9,13 +9,9 @@ import {
   LayoutDashboard,
   UserCheck,
   Handshake,
-  Users,
   CreditCard,
-  Mail,
   Globe,
   UserCog,
-  Contact,
-  FileText,
   Home,
   Menu,
   X,
@@ -24,15 +20,11 @@ import {
 
 const sidebarItems = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/agent-applications", label: "Agent Applications", icon: UserCheck },
-  { href: "/admin/partner-applications", label: "Partner Applications", icon: Handshake },
-  { href: "/admin/partnerships", label: "Partnerships", icon: Users },
+  { href: "/admin/applications/agents", label: "Agent Applications", icon: UserCheck },
+  { href: "/admin/applications/partners", label: "Partner Applications", icon: Handshake },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
-  { href: "/admin/campaigns", label: "Campaigns", icon: Mail },
   { href: "/admin/domains", label: "Domains", icon: Globe },
   { href: "/admin/users", label: "Users", icon: UserCog },
-  { href: "/admin/crm", label: "CRM", icon: Contact },
-  { href: "/admin/content", label: "Content", icon: FileText },
   { href: "/admin/homepage-builder", label: "Homepage Builder", icon: Home },
 ];
 
