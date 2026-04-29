@@ -39,9 +39,11 @@ export async function GET() {
  * Creates a new domain mapping.
  *
  * Body: {
- *   domain: string,          // e.g., "indianwellsccrealestate.com"
- *   subdivisionSlug: string, // e.g., "indian-wells-country-club"
- *   cityId: string,          // e.g., "indian-wells"
+ *   domain: string,                          // e.g., "johndoe.com"
+ *   targetType: "agent_landing" | "community_page",
+ *   targetPath?: string,                     // defaults to "/" for agent_landing
+ *   cityId?: string,                         // required for community_page
+ *   subdivisionSlug?: string,                // optional, for community_page
  *   seoTitle?: string,
  *   seoDescription?: string,
  * }
@@ -60,18 +62,41 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { domain, subdivisionSlug, cityId, seoTitle, seoDescription } = body;
+  const {
+    domain,
+    targetType = "agent_landing",
+    subdivisionSlug,
+    cityId,
+    seoTitle,
+    seoDescription,
+  } = body;
 
-  // Validate inputs
-  if (!domain || !subdivisionSlug || !cityId) {
+  // Validate domain is provided
+  if (!domain) {
     return NextResponse.json(
-      { error: "domain, subdivisionSlug, and cityId are required" },
+      { error: "domain is required" },
+      { status: 400 }
+    );
+  }
+
+  // Validate targetType
+  if (!["agent_landing", "community_page"].includes(targetType)) {
+    return NextResponse.json(
+      { error: 'targetType must be "agent_landing" or "community_page"' },
+      { status: 400 }
+    );
+  }
+
+  // For community_page, cityId is required
+  if (targetType === "community_page" && !cityId) {
+    return NextResponse.json(
+      { error: "cityId is required for community_page target type" },
       { status: 400 }
     );
   }
 
   // Normalize domain (lowercase, strip protocol/path/www)
-  let cleanDomain = domain
+  const cleanDomain = domain
     .toLowerCase()
     .trim()
     .replace(/^https?:\/\//, "")
@@ -91,42 +116,61 @@ export async function POST(req: NextRequest) {
   const existing = await DomainMapping.findOne({ domain: cleanDomain });
   if (existing) {
     return NextResponse.json(
-      { error: "This domain is already mapped to a community page" },
+      { error: "This domain is already mapped" },
       { status: 409 }
     );
   }
 
-  // Find the subdivision
-  const subdivision = await Subdivision.findOne({ slug: subdivisionSlug }).lean();
-  if (!subdivision) {
-    return NextResponse.json(
-      { error: "Subdivision not found" },
-      { status: 404 }
-    );
-  }
-
-  // Build target path
-  const targetPath = `/neighborhoods/${cityId}/${subdivisionSlug}`;
-
-  // Create the mapping as pending_approval (admin must approve before Vercel registration)
-  const mapping = await DomainMapping.create({
+  // Build mapping data based on targetType
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mappingData: Record<string, any> = {
     domain: cleanDomain,
     agentId: user._id,
     agentEmail: session.user.email,
-    subdivisionId: subdivision._id,
-    subdivisionName: subdivision.name,
-    targetPath,
-    cityId,
-    subdivisionSlug,
+    mappingType: targetType,
     status: "pending_approval",
     sslStatus: "not_started",
     dnsConfigured: false,
-    seoTitle: seoTitle || `${subdivision.name} Real Estate`,
-    seoDescription:
-      seoDescription ||
-      `Browse homes for sale in ${subdivision.name}, ${subdivision.city}. View listings, photos, and community information.`,
     purchasedViaVercel: false,
-  });
+  };
+
+  if (targetType === "agent_landing") {
+    // Agent homepage — no subdivision fields needed
+    mappingData.targetPath = "/";
+    mappingData.seoTitle = seoTitle || "Real Estate Agent";
+    mappingData.seoDescription =
+      seoDescription || "Your trusted local real estate agent.";
+  } else {
+    // community_page — look up subdivision if slug provided
+    let targetPath = `/neighborhoods/${cityId}`;
+
+    if (subdivisionSlug) {
+      const subdivision = await Subdivision.findOne({ slug: subdivisionSlug }).lean();
+      if (!subdivision) {
+        return NextResponse.json(
+          { error: "Subdivision not found" },
+          { status: 404 }
+        );
+      }
+      targetPath = `/neighborhoods/${cityId}/${subdivisionSlug}`;
+      mappingData.subdivisionId = subdivision._id;
+      mappingData.subdivisionName = subdivision.name;
+      mappingData.subdivisionSlug = subdivisionSlug;
+      mappingData.seoTitle = seoTitle || `${subdivision.name} Real Estate`;
+      mappingData.seoDescription =
+        seoDescription ||
+        `Browse homes for sale in ${subdivision.name}. View listings, photos, and community information.`;
+    } else {
+      mappingData.seoTitle = seoTitle || `${cityId} Real Estate`;
+      mappingData.seoDescription =
+        seoDescription || `Browse homes for sale in ${cityId}.`;
+    }
+
+    mappingData.targetPath = targetPath;
+    mappingData.cityId = cityId;
+  }
+
+  const mapping = await DomainMapping.create(mappingData);
 
   const purchaseUrl = getDomainPurchaseUrl(cleanDomain);
 

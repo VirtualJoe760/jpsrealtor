@@ -2,47 +2,58 @@
 // Admin API for managing domain mapping requests
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import DomainMapping from "@/models/DomainMapping";
-import User from "@/models/User";
 import {
   addDomainToProject,
   removeDomainFromProject,
   getDnsInstructions,
 } from "@/services/vercel-domains";
 
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return null;
-
-  await dbConnect();
-  const user = await User.findOne({ email: session.user.email });
-  if (!user?.isAdmin) return null;
-
-  return user;
-}
+// Status sort priority — pending items surface first
+const STATUS_PRIORITY: Record<string, number> = {
+  pending_approval: 0,
+  pending_dns: 1,
+  pending_verification: 2,
+  approved: 3,
+  active: 4,
+  failed: 5,
+  rejected: 6,
+  suspended: 7,
+};
 
 /**
  * GET /api/admin/domains
- * Lists all domain mapping requests with optional status filter.
+ * Lists ALL domain mappings with agent info.
+ * Sorted by status (pending first), then by createdAt desc.
  */
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) {
+  const admin = await verifyAdmin();
+  if (!admin.authorized) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status"); // pending_approval, active, rejected, etc.
+  await dbConnect();
 
-  const query: any = {};
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const query: Record<string, any> = {};
   if (status) query.status = status;
 
   const mappings = await DomainMapping.find(query)
     .sort({ createdAt: -1 })
     .lean();
+
+  // Sort: pending statuses first, then by createdAt desc within each group
+  const sorted = mappings.sort((a, b) => {
+    const aPriority = STATUS_PRIORITY[a.status] ?? 99;
+    const bPriority = STATUS_PRIORITY[b.status] ?? 99;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   // Group counts by status for dashboard stats
   const counts = await DomainMapping.aggregate([
@@ -55,27 +66,29 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    domains: mappings,
+    domains: sorted,
     counts: statusCounts,
-    total: mappings.length,
+    total: sorted.length,
   });
 }
 
 /**
- * PATCH /api/admin/domains
+ * PUT /api/admin/domains
  * Approve or reject a domain mapping request.
  *
  * Body: {
  *   domainId: string,
- *   action: "approve" | "reject" | "suspend",
+ *   action: "approve" | "reject",
  *   rejectionReason?: string,
  * }
  */
-export async function PATCH(req: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) {
+export async function PUT(req: NextRequest) {
+  const admin = await verifyAdmin();
+  if (!admin.authorized) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  await dbConnect();
 
   const { domainId, action, rejectionReason } = await req.json();
 
@@ -100,12 +113,105 @@ export async function PATCH(req: NextRequest) {
       let vercelResult;
       try {
         vercelResult = await addDomainToProject(mapping.domain);
-      } catch (error: any) {
-        console.error("[Admin Domain Approve] Vercel API error:", error.message);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error("[Admin Domain Approve] Vercel API error:", msg);
         return NextResponse.json(
           {
             error: "Failed to register domain with Vercel",
-            details: error.message,
+            details: msg,
+          },
+          { status: 502 }
+        );
+      }
+
+      mapping.status = "approved";
+      mapping.vercelDomainId = vercelResult?.name || mapping.domain;
+      mapping.vercelVerified = vercelResult?.verified || false;
+      mapping.reviewedBy = admin.email;
+      mapping.reviewedAt = new Date();
+
+      await mapping.save();
+
+      const dnsInstructions = getDnsInstructions(mapping.domain);
+
+      return NextResponse.json({
+        mapping,
+        dnsInstructions,
+        message: `Domain ${mapping.domain} approved and registered with Vercel.`,
+      });
+    }
+
+    case "reject": {
+      mapping.status = "rejected";
+      mapping.reviewedBy = admin.email;
+      mapping.reviewedAt = new Date();
+      mapping.rejectionReason = rejectionReason || "Request denied by admin";
+
+      await mapping.save();
+
+      return NextResponse.json({
+        mapping,
+        message: `Domain ${mapping.domain} rejected.`,
+      });
+    }
+
+    default:
+      return NextResponse.json(
+        { error: 'Invalid action. Use: "approve" or "reject"' },
+        { status: 400 }
+      );
+  }
+}
+
+/**
+ * PATCH /api/admin/domains
+ * Approve, reject, or suspend a domain mapping request.
+ * (Legacy endpoint — prefer PUT for approve/reject)
+ *
+ * Body: {
+ *   domainId: string,
+ *   action: "approve" | "reject" | "suspend",
+ *   rejectionReason?: string,
+ * }
+ */
+export async function PATCH(req: NextRequest) {
+  const admin = await verifyAdmin();
+  if (!admin.authorized) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await dbConnect();
+
+  const { domainId, action, rejectionReason } = await req.json();
+
+  if (!domainId || !action) {
+    return NextResponse.json(
+      { error: "domainId and action are required" },
+      { status: 400 }
+    );
+  }
+
+  const mapping = await DomainMapping.findById(domainId);
+  if (!mapping) {
+    return NextResponse.json(
+      { error: "Domain mapping not found" },
+      { status: 404 }
+    );
+  }
+
+  switch (action) {
+    case "approve": {
+      let vercelResult;
+      try {
+        vercelResult = await addDomainToProject(mapping.domain);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error("[Admin Domain Approve] Vercel API error:", msg);
+        return NextResponse.json(
+          {
+            error: "Failed to register domain with Vercel",
+            details: msg,
           },
           { status: 502 }
         );
@@ -143,15 +249,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     case "suspend": {
-      // Remove from Vercel if it was previously active
       if (
         mapping.status === "active" ||
         mapping.status === "pending_dns"
       ) {
         try {
           await removeDomainFromProject(mapping.domain);
-        } catch (error: any) {
-          console.error("[Admin Domain Suspend] Vercel removal error:", error.message);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error("[Admin Domain Suspend] Vercel removal error:", msg);
         }
       }
 

@@ -14,11 +14,14 @@ export interface IDomainMapping extends Document {
   agentEmail: string; // Denormalized for quick lookups
 
   // Target page
-  subdivisionId: mongoose.Types.ObjectId;
-  subdivisionName: string; // Denormalized (e.g., "Indian Wells Country Club")
+  subdivisionId?: mongoose.Types.ObjectId;
+  subdivisionName?: string; // Denormalized (e.g., "Indian Wells Country Club")
   targetPath: string; // Full path (e.g., "/neighborhoods/indian-wells/indian-wells-country-club")
-  cityId: string; // URL city segment (e.g., "indian-wells")
-  subdivisionSlug: string; // URL slug segment (e.g., "indian-wells-country-club")
+  cityId?: string; // URL city segment (e.g., "indian-wells")
+  subdivisionSlug?: string; // URL slug segment (e.g., "indian-wells-country-club")
+
+  // Type of domain mapping
+  mappingType: "agent_landing" | "community_page" | "custom";
 
   // Domain provisioning status
   status:
@@ -89,12 +92,18 @@ const DomainMappingSchema = new Schema<IDomainMapping>(
     subdivisionId: {
       type: Schema.Types.ObjectId,
       ref: "Subdivision",
-      required: true,
     },
-    subdivisionName: { type: String, required: true },
+    subdivisionName: String,
     targetPath: { type: String, required: true },
-    cityId: { type: String, required: true },
-    subdivisionSlug: { type: String, required: true },
+    cityId: String,
+    subdivisionSlug: String,
+
+    // Type of domain mapping
+    mappingType: {
+      type: String,
+      enum: ["agent_landing", "community_page", "custom"],
+      default: "agent_landing",
+    },
 
     status: {
       type: String,
