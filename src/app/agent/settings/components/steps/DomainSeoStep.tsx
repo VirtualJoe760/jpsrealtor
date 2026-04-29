@@ -62,7 +62,7 @@ export default function DomainSeoStep({
   const metaDescription = ap.metaDescription || "";
   const metaKeywords: string[] = ap.metaKeywords || [];
 
-  // Domain state
+  // Domain state — derived from user model, not Vercel global list
   const [domains, setDomains] = useState<ConnectedDomain[]>([]);
   const [domainsLoading, setDomainsLoading] = useState(true);
   const [connectDomain, setConnectDomain] = useState("");
@@ -84,16 +84,49 @@ export default function DomainSeoStep({
   // Keywords
   const [keywordsText, setKeywordsText] = useState<string>(metaKeywords.join(", "));
 
+  // Build user's domain list from their profile + verify status from Vercel
   const fetchDomains = useCallback(async () => {
     try {
+      // Get the user's domains from their profile
+      const userDomains: string[] = [];
+      if (ap.customDomain) userDomains.push(ap.customDomain);
+      if (ap.subdomain) userDomains.push(`${ap.subdomain}.jpsrealtor.com`);
+
+      if (userDomains.length === 0) {
+        setDomains([]);
+        setDomainsLoading(false);
+        return;
+      }
+
+      // Fetch Vercel project domains to get verification status
       const res = await fetch("/api/domains/list");
       if (res.ok) {
         const data = await res.json();
-        setDomains(data.domains || []);
+        const allVercelDomains: ConnectedDomain[] = data.domains || [];
+
+        // Only show domains that belong to this user
+        const userConnected = userDomains.map((name) => {
+          const vercelMatch = allVercelDomains.find(
+            (d) => d.name === name || d.apexName === name
+          );
+          return {
+            name,
+            apexName: vercelMatch?.apexName || name,
+            verified: vercelMatch?.verified ?? false,
+            verification: vercelMatch?.verification || [],
+            createdAt: vercelMatch?.createdAt || Date.now(),
+          };
+        });
+        setDomains(userConnected);
+      } else {
+        // If Vercel API fails, still show user domains without status
+        setDomains(userDomains.map((name) => ({
+          name, apexName: name, verified: false, verification: [], createdAt: Date.now(),
+        })));
       }
     } catch {}
     finally { setDomainsLoading(false); }
-  }, []);
+  }, [ap.customDomain, ap.subdomain]);
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -112,17 +145,22 @@ export default function DomainSeoStep({
 
   const handleConnect = async () => {
     if (!connectDomain) return;
+    const normalized = connectDomain.toLowerCase().trim();
     setConnectLoading(true);
     setConnectError("");
     setConnectSuccess("");
     try {
+      // Add to Vercel project
       const res = await fetch("/api/agent/domains", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: connectDomain.toLowerCase().trim() }),
+        body: JSON.stringify({ domain: normalized }),
       });
       if (res.ok) {
-        setConnectSuccess(`${connectDomain} connected! Configure DNS to complete setup.`);
+        // Save to user's agentProfile.customDomain
+        updateField("agentProfile.customDomain", normalized);
+        await onSave({ agentProfile: { customDomain: normalized } });
+        setConnectSuccess(`${normalized} connected! Configure DNS to complete setup.`);
         setConnectDomain("");
         await fetchDomains();
       } else {
@@ -138,6 +176,11 @@ export default function DomainSeoStep({
     setRemoveLoading(domainName);
     try {
       await fetch(`/api/agent/domains/${encodeURIComponent(domainName)}`, { method: "DELETE" });
+      // Clear from user profile if it matches customDomain
+      if (domainName === ap.customDomain) {
+        updateField("agentProfile.customDomain", "");
+        await onSave({ agentProfile: { customDomain: "" } });
+      }
       await fetchDomains();
     } catch {}
     finally { setRemoveLoading(null); }
@@ -189,6 +232,9 @@ export default function DomainSeoStep({
         body: JSON.stringify({ domain: searchResult.domain }),
       });
       if (purchaseRes.ok) {
+        // Save to user profile
+        updateField("agentProfile.customDomain", searchResult.domain);
+        await onSave({ agentProfile: { customDomain: searchResult.domain } });
         setPurchaseResult(`${searchResult.domain} purchased and connected!`);
         setSearchResult(null);
         setSearchQuery("");
