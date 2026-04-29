@@ -51,9 +51,24 @@ export async function proxy(request: NextRequest) {
   const bareHost = hostname.split(":")[0];
 
   // -----------------------------------------------------------------------
-  // 1. ChatRealty domains → /chat-landing
+  // 1. ChatRealty domains — platform vs agent subdomains
   // -----------------------------------------------------------------------
   if (bareHost.includes("chatrealty")) {
+    // Extract subdomain: "johndoe.chatrealty.io" → "johndoe"
+    const chatParts = bareHost.split("chatrealty");
+    const subPart = chatParts[0]?.replace(/\.$/, ""); // strip trailing dot
+    const subdomain = subPart?.split(".").filter(s => s && s !== "www").pop();
+
+    // Agent subdomain (johndoe.chatrealty.io)
+    if (subdomain) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/agent-site${pathname}`;
+      const response = NextResponse.rewrite(url);
+      response.headers.set("x-agent-subdomain", subdomain);
+      return response;
+    }
+
+    // Platform root (chatrealty.io or www.chatrealty.io)
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/chat-landing";
