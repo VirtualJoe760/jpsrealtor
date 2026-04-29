@@ -6,6 +6,7 @@ import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { addDomainToProject } from "@/lib/vercel-domains";
+import { sendAgentApprovalEmail } from "@/lib/email-resend";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,13 @@ export async function PUT(request: NextRequest) {
       );
 
       console.log(`[agent-approve] Approved ${user.email}, subdomain: ${subdomainFull}`);
+
+      // Send welcome email with subdomain info (non-blocking)
+      sendAgentApprovalEmail(
+        user.email,
+        user.name || "",
+        finalSubdomain,
+      ).catch((err) => console.error("[agent-approve] Welcome email failed:", err));
 
       return NextResponse.json({
         success: true,
