@@ -53,7 +53,8 @@ export default function DirectMailPipelineWizard({
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [contactCount, setContactCount] = useState(campaign.totalContacts || 0);
   const [isSending, setIsSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string; canBackfill?: boolean } | null>(null);
 
   // Recipient targeting — both can be enabled
   const [useContacts, setUseContacts] = useState(true);
@@ -101,6 +102,35 @@ export default function DirectMailPipelineWizard({
 
   const estimatedCost = (MAIL_PRICING[design.mailType] || 0.99) * contactCount;
 
+  const handleBackfillAddresses = async () => {
+    setIsBackfilling(true);
+    try {
+      const res = await fetch('/api/crm/contacts/backfill-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok && data.updated > 0) {
+        setSendResult({
+          success: true,
+          message: `Fixed ${data.updated} contact addresses. You can now send!`,
+        });
+      } else if (res.ok && data.updated === 0) {
+        setSendResult({
+          success: false,
+          message: 'Could not resolve city/state from zip codes. Please update contact addresses manually.',
+        });
+      } else {
+        setSendResult({ success: false, message: data.error || 'Failed to fix addresses' });
+      }
+    } catch {
+      setSendResult({ success: false, message: 'Network error — please try again' });
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
   const handleSend = async () => {
     setIsSending(true);
     setSendResult(null);
@@ -126,7 +156,11 @@ export default function DirectMailPipelineWizard({
         }
         onRefresh?.();
       } else {
-        setSendResult({ success: false, message: data.error || 'Failed to send mail' });
+        setSendResult({
+          success: false,
+          message: data.error || 'Failed to send mail',
+          canBackfill: data.canBackfill || false,
+        });
       }
     } catch (err) {
       setSendResult({ success: false, message: 'Network error — please try again' });
@@ -636,6 +670,24 @@ export default function DirectMailPipelineWizard({
                   }`}>
                     {sendResult.message}
                   </p>
+                  {!sendResult.success && sendResult.canBackfill && (
+                    <button
+                      onClick={handleBackfillAddresses}
+                      disabled={isBackfilling}
+                      className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                        isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
+                      } disabled:opacity-50`}
+                    >
+                      {isBackfilling ? (
+                        <span className="flex items-center gap-2">
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          Fixing addresses...
+                        </span>
+                      ) : (
+                        'Fix Addresses (lookup city/state from zip)'
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
 

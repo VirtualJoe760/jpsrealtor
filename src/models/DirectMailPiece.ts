@@ -112,10 +112,10 @@ const DirectMailPieceSchema = new Schema<IDirectMailPiece>(
       required: true,
     },
     recipientAddress: {
-      street: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      zip: { type: String, required: true },
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      zip: { type: String, default: '' },
     },
 
     // Return address

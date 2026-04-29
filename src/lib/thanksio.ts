@@ -24,6 +24,9 @@ async function thanksioFetch(
   options: RequestInit = {}
 ): Promise<any> {
   const url = `${THANKSIO_BASE_URL}${endpoint}`;
+  if (options.body) {
+    console.log(`[thanksio] ${options.method || 'GET'} ${endpoint} payload:`, options.body);
+  }
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -50,10 +53,13 @@ export type MailType = 'postcard_4x6' | 'postcard_6x9' | 'postcard_6x11' | 'lett
 
 export interface Recipient {
   name?: string;
+  first_name?: string;
+  last_name?: string;
   company?: string;
   address: string;
+  address2?: string;
   city?: string;
-  state?: string;
+  province?: string;
   postal_code?: string;
   country?: string;
   email?: string;

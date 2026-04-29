@@ -259,10 +259,14 @@ export default function PartnerApplyPage() {
                       isLight ? "text-gray-700" : "text-gray-300"
                     }`}
                   >
-                    Once approved, you can set up your partner profile and start
-                    connecting with agents.
+                    Once verified, your Partner Profile will be unlocked. You&apos;ll be able to customize your profile, upload your company logo, and start connecting with agents for co-marketing partnerships.
                   </p>
                 </div>
+              </div>
+              <div className={`mt-6 p-4 rounded-lg border text-sm ${
+                isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-amber-900/20 border-amber-700 text-amber-300"
+              }`}>
+                A confirmation email has been sent to your inbox. You&apos;ll receive another email once your application has been reviewed and approved. Your Partner Profile dashboard will become available after verification.
               </div>
               <Link
                 href="/dashboard"

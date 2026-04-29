@@ -76,6 +76,9 @@ export async function POST(
       qrcode_url: qrUrl || undefined,
     };
 
+    console.log('[send-mail] qrUrl from body:', JSON.stringify(qrUrl));
+    console.log('[send-mail] commonParams:', JSON.stringify(commonParams, null, 2));
+
     // Return address
     if (returnAddress) {
       commonParams.return_name = returnAddress.name;
@@ -148,14 +151,35 @@ export async function POST(
         }, { status: 400 });
       }
 
-      // Build recipients from contacts
+      // Helper: check if an address object has usable data
+      const hasAddressData = (addr: any): boolean => {
+        if (!addr) return false;
+        if (typeof addr === 'string') return addr.trim().length > 0;
+        return !!(addr.street || addr.city || addr.state || addr.zip);
+      };
+
+      // Build recipients with all available fields per Thanks.io CSV template:
+      // Name, First Name, Last Name, Company, Address, Address 2, City, State, Postal Code, Country, Email, Phone
       const recipients: Recipient[] = contacts
-        .filter((c: any) => c.address || c.mailingAddress)
+        .filter((c: any) => hasAddressData(c.mailingAddress) || hasAddressData(c.address))
         .map((c: any) => {
-          const addr = c.mailingAddress || c.address || {};
+          const addr = (hasAddressData(c.mailingAddress) ? c.mailingAddress : c.address) || {};
+          const isString = typeof addr === 'string';
+          const primaryEmail = c.emails?.find((e: any) => e.isPrimary)?.address || c.emails?.[0]?.address || c.email;
+          const primaryPhone = c.phones?.find((p: any) => p.isPrimary)?.number || c.phones?.[0]?.number || c.phone;
+
           return {
             name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || undefined,
-            address: typeof addr === 'string' ? addr : `${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}`,
+            first_name: c.firstName || undefined,
+            last_name: c.lastName || undefined,
+            company: c.organization || undefined,
+            address: isString ? addr : addr.street || '',
+            city: isString ? undefined : addr.city || undefined,
+            province: isString ? undefined : addr.state || undefined,
+            postal_code: isString ? undefined : addr.zip || undefined,
+            country: (isString ? undefined : addr.country) || 'US',
+            email: primaryEmail || undefined,
+            phone: primaryPhone || undefined,
           };
         });
 
@@ -163,6 +187,27 @@ export async function POST(
         return NextResponse.json({
           success: false,
           error: 'No contacts have mailing addresses. Add addresses to contacts first.',
+        }, { status: 400 });
+      }
+
+      // Validate recipients have complete address data before sending
+      const incomplete = recipients.filter(r => !r.address || !r.city || !r.province || !r.postal_code);
+      if (incomplete.length > 0) {
+        const sampleNames = incomplete.slice(0, 5).map(r => r.name || 'Unknown').join(', ');
+        const missingFields = [];
+        if (incomplete.some(r => !r.address)) missingFields.push('street');
+        if (incomplete.some(r => !r.city)) missingFields.push('city');
+        if (incomplete.some(r => !r.province)) missingFields.push('state');
+        if (incomplete.some(r => !r.postal_code)) missingFields.push('zip');
+
+        return NextResponse.json({
+          success: false,
+          error: `${incomplete.length} of ${recipients.length} contacts have incomplete addresses (missing: ${missingFields.join(', ')}). Run address backfill to fix.`,
+          incompleteCount: incomplete.length,
+          totalCount: recipients.length,
+          missingFields,
+          sampleContacts: sampleNames,
+          canBackfill: incomplete.some(r => r.postal_code),
         }, { status: 400 });
       }
 
@@ -182,9 +227,9 @@ export async function POST(
 
       // Create DirectMailPiece records for each contact
       const pieces = contacts
-        .filter((c: any) => c.address || c.mailingAddress)
+        .filter((c: any) => hasAddressData(c.mailingAddress) || hasAddressData(c.address))
         .map((c: any) => {
-          const addr = c.mailingAddress || c.address || {};
+          const addr = (hasAddressData(c.mailingAddress) ? c.mailingAddress : c.address) || {};
           return {
             campaignId: campaign._id,
             contactId: c._id,
