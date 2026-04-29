@@ -1,16 +1,27 @@
-// src/app/admin/domains/page.tsx
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useTheme } from "@/app/contexts/ThemeContext";
-import AdminNav from "@/app/components/AdminNav";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import {
-  Globe, CheckCircle, XCircle, Clock, AlertTriangle, Ban,
-  RefreshCw, ExternalLink, ChevronDown,
+  Globe,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  Ban,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "react-toastify";
+
+interface VercelDomain {
+  name: string;
+  apexName: string;
+  verified: boolean;
+  verification: any[];
+  createdAt: number;
+  updatedAt: number;
+}
 
 interface DomainMapping {
   _id: string;
@@ -28,38 +39,42 @@ interface DomainMapping {
 }
 
 export default function AdminDomainsPage() {
-  const { data: session, status: authStatus } = useSession();
-  const router = useRouter();
-  const { currentTheme } = useTheme();
+  const { textPrimary, textSecondary, border, cardBg, currentTheme } =
+    useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
-  const [domains, setDomains] = useState<DomainMapping[]>([]);
+  const [vercelDomains, setVercelDomains] = useState<VercelDomain[]>([]);
+  const [domainMappings, setDomainMappings] = useState<DomainMapping[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectModal, setRejectModal] = useState<{ id: string; domain: string } | null>(null);
+  const [rejectModal, setRejectModal] = useState<{
+    id: string;
+    domain: string;
+  } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  useEffect(() => {
-    if (authStatus === "unauthenticated") router.push("/auth/signin");
-  }, [authStatus, router]);
-
-  useEffect(() => {
-    if (session) fetchDomains();
-  }, [session, filter]);
-
-  const fetchDomains = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const params = filter !== "all" ? `?status=${filter}` : "";
-      const res = await fetch(`/api/admin/domains${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setDomains(data.domains || []);
+      // Fetch Vercel domains and admin domain mappings in parallel
+      const [vercelRes, adminRes] = await Promise.all([
+        fetch("/api/domains/list"),
+        fetch(
+          `/api/admin/domains${filter !== "all" ? `?status=${filter}` : ""}`
+        ),
+      ]);
+
+      if (vercelRes.ok) {
+        const data = await vercelRes.json();
+        setVercelDomains(data.domains || []);
+      }
+
+      if (adminRes.ok) {
+        const data = await adminRes.json();
+        setDomainMappings(data.domains || []);
         setCounts(data.counts || {});
-      } else if (res.status === 403) {
-        router.push("/");
       }
     } catch (error) {
       console.error("Failed to fetch domains:", error);
@@ -68,7 +83,15 @@ export default function AdminDomainsPage() {
     }
   };
 
-  const handleAction = async (domainId: string, action: string, reason?: string) => {
+  useEffect(() => {
+    fetchData();
+  }, [filter]);
+
+  const handleAction = async (
+    domainId: string,
+    action: string,
+    reason?: string
+  ) => {
     setActionLoading(domainId);
     try {
       const res = await fetch("/api/admin/domains", {
@@ -76,18 +99,16 @@ export default function AdminDomainsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domainId, action, rejectionReason: reason }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
         toast.success(data.message);
-        fetchDomains();
+        fetchData();
         setRejectModal(null);
         setRejectReason("");
       } else {
         toast.error(data.error || "Action failed");
       }
-    } catch (error) {
+    } catch {
       toast.error("Action failed");
     } finally {
       setActionLoading(null);
@@ -96,13 +117,20 @@ export default function AdminDomainsPage() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "active": return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "pending_approval": return <Clock className="w-4 h-4 text-amber-500" />;
-      case "pending_dns": return <Clock className="w-4 h-4 text-blue-500" />;
-      case "rejected": return <XCircle className="w-4 h-4 text-red-500" />;
-      case "suspended": return <Ban className="w-4 h-4 text-gray-500" />;
-      case "failed": return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      default: return <Clock className="w-4 h-4 text-gray-500" />;
+      case "active":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "pending_approval":
+        return <Clock className="w-4 h-4 text-amber-500" />;
+      case "pending_dns":
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      case "rejected":
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case "suspended":
+        return <Ban className="w-4 h-4 text-gray-500" />;
+      case "failed":
+        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -121,50 +149,120 @@ export default function AdminDomainsPage() {
   };
 
   const filterTabs = [
-    { key: "all", label: "All", count: Object.values(counts).reduce((a, b) => a + b, 0) },
-    { key: "pending_approval", label: "Pending", count: counts.pending_approval || 0 },
+    {
+      key: "all",
+      label: "All",
+      count: Object.values(counts).reduce((a, b) => a + b, 0),
+    },
+    {
+      key: "pending_approval",
+      label: "Pending",
+      count: counts.pending_approval || 0,
+    },
     { key: "pending_dns", label: "DNS Setup", count: counts.pending_dns || 0 },
     { key: "active", label: "Active", count: counts.active || 0 },
     { key: "rejected", label: "Rejected", count: counts.rejected || 0 },
     { key: "suspended", label: "Suspended", count: counts.suspended || 0 },
   ];
 
-  if (authStatus === "loading" || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+      <div className={`flex items-center justify-center h-64 ${textSecondary}`}>
+        <div className="animate-pulse">Loading domains...</div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${isLight ? "bg-gray-50" : "bg-gray-950"}`}>
-      <AdminNav />
-      <div className="max-w-6xl mx-auto px-4 py-8 pt-20">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className={`text-2xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-              Domain Requests
-            </h1>
-            <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-              Review and manage agent custom domain mappings
-            </p>
-          </div>
-          <button
-            onClick={fetchDomains}
-            className={`p-2 rounded-lg transition-colors ${
-              isLight ? "hover:bg-gray-200" : "hover:bg-gray-800"
-            }`}
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className={`text-2xl font-bold ${textPrimary}`}>Domains</h2>
+          <p className={`text-sm mt-1 ${textSecondary}`}>
+            {vercelDomains.length} Vercel domains &middot;{" "}
+            {domainMappings.length} agent requests
+          </p>
         </div>
+        <button
+          onClick={fetchData}
+          className={`p-2 rounded-lg transition-colors ${
+            isLight ? "hover:bg-gray-100" : "hover:bg-white/5"
+          }`}
+        >
+          <RefreshCw size={18} className={textSecondary} />
+        </button>
+      </div>
+
+      {/* Vercel Project Domains */}
+      <div className={`${cardBg} border ${border} rounded-xl p-4`}>
+        <h3 className={`text-lg font-semibold mb-3 ${textPrimary}`}>
+          Vercel Project Domains
+        </h3>
+        {vercelDomains.length === 0 ? (
+          <p className={`text-sm ${textSecondary}`}>No domains configured</p>
+        ) : (
+          <div className="space-y-2">
+            {vercelDomains.map((d) => (
+              <div
+                key={d.name}
+                className={`flex items-center justify-between p-3 rounded-lg ${
+                  isLight ? "bg-gray-50" : "bg-white/5"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Globe size={16} className="text-blue-500" />
+                  <div>
+                    <div className={`font-medium text-sm ${textPrimary}`}>
+                      {d.name}
+                    </div>
+                    <div className={`text-xs ${textSecondary}`}>
+                      Apex: {d.apexName} &middot; Added{" "}
+                      {new Date(d.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {d.verified ? (
+                    <span className="flex items-center gap-1 text-xs text-green-600">
+                      <CheckCircle size={14} /> Verified
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs text-amber-600">
+                      <Clock size={14} /> Pending
+                    </span>
+                  )}
+                  <a
+                    href={`https://${d.name}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-1 rounded transition-colors ${
+                      isLight ? "hover:bg-gray-200" : "hover:bg-white/10"
+                    }`}
+                  >
+                    <ExternalLink size={14} className={textSecondary} />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Agent Domain Requests */}
+      <div>
+        <h3 className={`text-lg font-semibold mb-3 ${textPrimary}`}>
+          Agent Domain Requests
+        </h3>
 
         {/* Filter Tabs */}
-        <div className={`flex gap-1 mb-6 p-1 rounded-lg border ${
-          isLight ? "bg-gray-100 border-gray-200" : "bg-gray-900 border-gray-800"
-        }`}>
+        <div
+          className={`flex gap-1 mb-4 p-1 rounded-lg border ${
+            isLight
+              ? "bg-gray-100 border-gray-200"
+              : "bg-white/5 border-white/10"
+          }`}
+        >
           {filterTabs.map((tab) => (
             <button
               key={tab.key}
@@ -172,22 +270,22 @@ export default function AdminDomainsPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 filter === tab.key
                   ? "bg-blue-600 text-white"
-                  : isLight
-                    ? "text-gray-700 hover:bg-gray-200"
-                    : "text-gray-400 hover:bg-gray-800"
+                  : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
               }`}
             >
               {tab.label}
               {tab.count > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  filter === tab.key
-                    ? "bg-white/20 text-white"
-                    : tab.key === "pending_approval"
-                      ? "bg-amber-100 text-amber-700"
-                      : isLight
-                        ? "bg-gray-200 text-gray-600"
-                        : "bg-gray-700 text-gray-400"
-                }`}>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    filter === tab.key
+                      ? "bg-white/20 text-white"
+                      : tab.key === "pending_approval"
+                        ? "bg-amber-100 text-amber-700"
+                        : isLight
+                          ? "bg-gray-200 text-gray-600"
+                          : "bg-gray-700 text-gray-400"
+                  }`}
+                >
                   {tab.count}
                 </span>
               )}
@@ -195,64 +293,77 @@ export default function AdminDomainsPage() {
           ))}
         </div>
 
-        {/* Domain List */}
-        {domains.length === 0 ? (
-          <div className={`text-center py-16 rounded-xl border ${
-            isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-800"
-          }`}>
-            <Globe className={`w-12 h-12 mx-auto mb-4 ${isLight ? "text-gray-300" : "text-gray-600"}`} />
-            <p className={`${isLight ? "text-gray-500" : "text-gray-500"}`}>
-              {filter === "all" ? "No domain requests yet" : `No ${statusLabel(filter).toLowerCase()} domains`}
+        {/* Domain Mapping List */}
+        {domainMappings.length === 0 ? (
+          <div
+            className={`${cardBg} border ${border} rounded-xl p-12 text-center`}
+          >
+            <Globe
+              size={40}
+              className={`mx-auto mb-3 ${isLight ? "text-gray-300" : "text-gray-600"}`}
+            />
+            <p className={textSecondary}>
+              {filter === "all"
+                ? "No domain requests yet"
+                : `No ${statusLabel(filter).toLowerCase()} domains`}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {domains.map((domain) => (
+            {domainMappings.map((domain) => (
               <div
                 key={domain._id}
-                className={`p-4 rounded-xl border ${
-                  domain.status === "pending_approval"
-                    ? isLight
-                      ? "bg-amber-50 border-amber-200"
-                      : "bg-amber-950/10 border-amber-800/50"
-                    : isLight
-                      ? "bg-white border-gray-200"
-                      : "bg-gray-900 border-gray-800"
-                }`}
+                className={`${cardBg} border ${border} rounded-xl p-4`}
               >
                 <div className="flex items-start justify-between gap-4">
-                  {/* Domain info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       {statusIcon(domain.status)}
-                      <span className={`font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>
+                      <span className={`font-semibold ${textPrimary}`}>
                         {domain.domain}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                        domain.status === "active" ? "bg-green-100 text-green-700" :
-                        domain.status === "pending_approval" ? "bg-amber-100 text-amber-700" :
-                        domain.status === "pending_dns" ? "bg-blue-100 text-blue-700" :
-                        domain.status === "rejected" ? "bg-red-100 text-red-700" :
-                        "bg-gray-100 text-gray-600"
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                          domain.status === "active"
+                            ? "bg-green-100 text-green-700"
+                            : domain.status === "pending_approval"
+                              ? "bg-amber-100 text-amber-700"
+                              : domain.status === "pending_dns"
+                                ? "bg-blue-100 text-blue-700"
+                                : domain.status === "rejected"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
                         {statusLabel(domain.status)}
                       </span>
                     </div>
-
-                    <div className={`text-sm space-y-0.5 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                    <div
+                      className={`text-sm space-y-0.5 ${textSecondary}`}
+                    >
                       <p>
-                        <span className="font-medium">Agent:</span> {domain.agentEmail}
+                        <span className="font-medium">Agent:</span>{" "}
+                        {domain.agentEmail}
                       </p>
                       <p>
-                        <span className="font-medium">Community:</span> {domain.subdivisionName}
+                        <span className="font-medium">Community:</span>{" "}
+                        {domain.subdivisionName}
                       </p>
                       <p>
-                        <span className="font-medium">Path:</span> {domain.targetPath}
+                        <span className="font-medium">Path:</span>{" "}
+                        {domain.targetPath}
                       </p>
                       <p className="text-xs">
-                        Submitted {new Date(domain.createdAt).toLocaleDateString()}
+                        Submitted{" "}
+                        {new Date(domain.createdAt).toLocaleDateString()}
                         {domain.reviewedBy && (
-                          <> · Reviewed by {domain.reviewedBy} on {new Date(domain.reviewedAt!).toLocaleDateString()}</>
+                          <>
+                            {" "}
+                            &middot; Reviewed by {domain.reviewedBy} on{" "}
+                            {new Date(
+                              domain.reviewedAt!
+                            ).toLocaleDateString()}
+                          </>
                         )}
                       </p>
                       {domain.rejectionReason && (
@@ -268,7 +379,9 @@ export default function AdminDomainsPage() {
                     {domain.status === "pending_approval" && (
                       <>
                         <button
-                          onClick={() => handleAction(domain._id, "approve")}
+                          onClick={() =>
+                            handleAction(domain._id, "approve")
+                          }
                           disabled={actionLoading === domain._id}
                           className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                         >
@@ -276,7 +389,12 @@ export default function AdminDomainsPage() {
                           Approve
                         </button>
                         <button
-                          onClick={() => setRejectModal({ id: domain._id, domain: domain.domain })}
+                          onClick={() =>
+                            setRejectModal({
+                              id: domain._id,
+                              domain: domain.domain,
+                            })
+                          }
                           disabled={actionLoading === domain._id}
                           className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                         >
@@ -285,9 +403,12 @@ export default function AdminDomainsPage() {
                         </button>
                       </>
                     )}
-                    {(domain.status === "active" || domain.status === "pending_dns") && (
+                    {(domain.status === "active" ||
+                      domain.status === "pending_dns") && (
                       <button
-                        onClick={() => handleAction(domain._id, "suspend")}
+                        onClick={() =>
+                          handleAction(domain._id, "suspend")
+                        }
                         disabled={actionLoading === domain._id}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           isLight
@@ -305,15 +426,18 @@ export default function AdminDomainsPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`p-1.5 rounded-lg transition-colors ${
-                          isLight ? "hover:bg-gray-100" : "hover:bg-gray-800"
+                          isLight ? "hover:bg-gray-100" : "hover:bg-white/10"
                         }`}
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    {(domain.status === "rejected" || domain.status === "suspended") && (
+                    {(domain.status === "rejected" ||
+                      domain.status === "suspended") && (
                       <button
-                        onClick={() => handleAction(domain._id, "approve")}
+                        onClick={() =>
+                          handleAction(domain._id, "approve")
+                        }
                         disabled={actionLoading === domain._id}
                         className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                       >
@@ -332,14 +456,19 @@ export default function AdminDomainsPage() {
       {/* Reject Modal */}
       {rejectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-xl p-6 ${
-            isLight ? "bg-white" : "bg-gray-900"
-          }`}>
-            <h3 className={`text-lg font-semibold mb-2 ${isLight ? "text-gray-900" : "text-white"}`}>
+          <div
+            className={`w-full max-w-md rounded-xl p-6 ${
+              isLight ? "bg-white" : "bg-gray-900"
+            }`}
+          >
+            <h3
+              className={`text-lg font-semibold mb-2 ${textPrimary}`}
+            >
               Reject Domain Request
             </h3>
-            <p className={`text-sm mb-4 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-              Rejecting <strong>{rejectModal.domain}</strong>. Provide a reason for the agent.
+            <p className={`text-sm mb-4 ${textSecondary}`}>
+              Rejecting <strong>{rejectModal.domain}</strong>. Provide a
+              reason for the agent.
             </p>
             <textarea
               value={rejectReason}
@@ -354,15 +483,22 @@ export default function AdminDomainsPage() {
             />
             <div className="flex gap-2 justify-end">
               <button
-                onClick={() => { setRejectModal(null); setRejectReason(""); }}
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectReason("");
+                }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  isLight ? "bg-gray-100 text-gray-700" : "bg-gray-800 text-gray-300"
+                  isLight
+                    ? "bg-gray-100 text-gray-700"
+                    : "bg-gray-800 text-gray-300"
                 }`}
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleAction(rejectModal.id, "reject", rejectReason)}
+                onClick={() =>
+                  handleAction(rejectModal.id, "reject", rejectReason)
+                }
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
               >
                 Reject Domain
