@@ -387,14 +387,15 @@ export default function GoogleBusinessStep({
   };
 
   const handleSave = () => {
+    const currentGbp = formData.adAccounts?.gbp || {};
     onSave({
       adAccounts: {
         ...formData.adAccounts,
         gbp: {
-          ...gbp,
-          autoPostArticles,
-          includeImage,
-          defaultCtaType,
+          ...currentGbp,
+          autoPostArticles: currentGbp.autoPostArticles !== false,
+          includeImage: currentGbp.includeImage !== false,
+          defaultCtaType: currentGbp.defaultCtaType || "LEARN_MORE",
         },
       },
     });
