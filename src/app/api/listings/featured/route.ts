@@ -18,29 +18,27 @@ export async function GET() {
     await dbConnect();
 
     // Query for Obsidian Group / Joseph Sardella team listings ONLY
-    // Restricted to residential sales with photos
+    // Uses listAgentKey for fast indexed lookup instead of regex on name
+    const AGENT_KEY = '20200107210308238447000000'; // Joseph Sardella's agent key
+
     const listings = await UnifiedListing.find({
-      $and: [
-        {
-          $or: [
-            { listAgentName: /sardella/i },
-            { coListAgentName: /obsidian/i },
-          ]
-        },
-        { standardStatus: 'Active' },
-        { propertyType: 'A' }, // Residential sale only (not B=rental, D=land, C=commercial)
-        { propertySubType: {
-          $in: ['Single Family Residence', 'Condominium', 'Townhouse', 'Manufactured Home'],
-          $nin: ['Co-Ownership', 'Timeshare', 'Stock Cooperative', 'Land', 'Unimproved Land', 'Vacant Land']
-        }},
-        { 'photos.0': { $exists: true } }, // Must have at least one photo
-        { listPrice: { $gt: 100000 } }, // Filter out placeholder/junk listings
-      ]
+      standardStatus: 'Active',
+      propertyType: 'A',
+      listPrice: { $gt: 100000 },
+      $or: [
+        { listAgentKey: AGENT_KEY },
+        { coListAgentKey: AGENT_KEY },
+      ],
     })
-      .select('listingKey address city listPrice photos unparsedAddress bedsTotal bathroomsTotalInteger livingArea')
-      .sort({ listPrice: -1 }) // Show highest value properties first
-      .limit(15)
-      .lean();
+      .select('listingKey address city listPrice photos unparsedAddress bedsTotal bathroomsTotalInteger livingArea propertySubType')
+      .sort({ listPrice: -1 })
+      .limit(20)
+      .lean()
+      .then(results => results.filter((l: any) =>
+        // Post-filter: exclude co-ownership/timeshares, require photos
+        !['Co-Ownership', 'Timeshare'].includes(l.propertySubType) &&
+        l.photos?.length > 0
+      ).slice(0, 15));
 
     // Transform to clean format
     const featured = listings.map((listing: any) => {
