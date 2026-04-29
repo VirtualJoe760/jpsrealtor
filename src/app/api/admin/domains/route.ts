@@ -8,8 +8,8 @@ import DomainMapping from "@/models/DomainMapping";
 import {
   addDomainToProject,
   removeDomainFromProject,
-  getDnsInstructions,
-} from "@/services/vercel-domains";
+  listProjectDomains,
+} from "@/lib/vercel-domains";
 
 // Status sort priority — pending items surface first
 const STATUS_PRIORITY: Record<string, number> = {
@@ -109,36 +109,68 @@ export async function PUT(req: NextRequest) {
 
   switch (action) {
     case "approve": {
-      // Register domain with Vercel
+      // Check if domain already exists on Vercel project
+      let alreadyOnVercel = false;
       let vercelResult;
       try {
-        vercelResult = await addDomainToProject(mapping.domain);
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error("[Admin Domain Approve] Vercel API error:", msg);
-        return NextResponse.json(
-          {
-            error: "Failed to register domain with Vercel",
-            details: msg,
-          },
-          { status: 502 }
+        const existingDomains = await listProjectDomains();
+        const found = existingDomains.find(
+          (d) => d.name === mapping.domain || d.apexName === mapping.domain
         );
+        if (found) {
+          alreadyOnVercel = true;
+          vercelResult = found;
+          console.log(`[Admin Domain Approve] ${mapping.domain} already on Vercel, skipping registration`);
+        }
+      } catch {
+        // If list fails, try adding anyway
       }
 
-      mapping.status = "approved";
+      // Only add to Vercel if not already there
+      if (!alreadyOnVercel) {
+        try {
+          vercelResult = await addDomainToProject(mapping.domain);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          // "domain already exists" is not an error
+          if (msg.includes("already") || msg.includes("409")) {
+            alreadyOnVercel = true;
+            console.log(`[Admin Domain Approve] ${mapping.domain} already exists on Vercel`);
+          } else {
+            console.error("[Admin Domain Approve] Vercel API error:", msg);
+            return NextResponse.json(
+              { error: "Failed to register domain with Vercel", details: msg },
+              { status: 502 }
+            );
+          }
+        }
+      }
+
+      // If domain already exists and is verified, mark as active immediately
+      const isVerified = vercelResult?.verified ?? false;
+      mapping.status = alreadyOnVercel && isVerified ? "active" : "approved";
       mapping.vercelDomainId = vercelResult?.name || mapping.domain;
-      mapping.vercelVerified = vercelResult?.verified || false;
+      mapping.vercelVerified = isVerified;
       mapping.reviewedBy = admin.email;
       mapping.reviewedAt = new Date();
+      if (alreadyOnVercel && isVerified) {
+        mapping.dnsConfigured = true;
+        mapping.sslStatus = "issued";
+      }
 
       await mapping.save();
 
-      const dnsInstructions = getDnsInstructions(mapping.domain);
-
       return NextResponse.json({
         mapping,
-        dnsInstructions,
-        message: `Domain ${mapping.domain} approved and registered with Vercel.`,
+        alreadyOnVercel,
+        message: alreadyOnVercel && isVerified
+          ? `Domain ${mapping.domain} already active on Vercel — marked as active.`
+          : `Domain ${mapping.domain} approved and registered with Vercel.`,
+        dnsInstructions: !isVerified ? {
+          type: "CNAME",
+          name: mapping.domain,
+          value: "cname.vercel-dns.com",
+        } : null,
       });
     }
 
@@ -225,11 +257,9 @@ export async function PATCH(req: NextRequest) {
 
       await mapping.save();
 
-      const dnsInstructions = getDnsInstructions(mapping.domain);
-
       return NextResponse.json({
         mapping,
-        dnsInstructions,
+        dnsInstructions: { type: "CNAME", name: mapping.domain, value: "cname.vercel-dns.com" },
         message: `Domain ${mapping.domain} approved and registered with Vercel. Agent needs to configure DNS.`,
       });
     }
