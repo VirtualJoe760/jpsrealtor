@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import { addDomainToProject } from "@/lib/vercel-domains";
 
 export const dynamic = "force-dynamic";
 
@@ -90,11 +91,46 @@ export async function PUT(request: NextRequest) {
       user.agentApplication.phase = "final_approved";
       user.agentApplication.finalApprovedAt = new Date();
       user.agentApplication.finalReviewNotes = reason || "Approved by admin";
+
+      // Generate subdomain from name: "John Doe" → "johndoe"
+      const userName = (user.name || user.email.split("@")[0]).toLowerCase();
+      const subdomain = userName.replace(/[^a-z0-9]/g, "");
+
+      // Check for subdomain conflicts and append number if needed
+      let finalSubdomain = subdomain;
+      let attempt = 0;
+      while (true) {
+        const existing = await User.findOne({
+          "agentProfile.subdomain": finalSubdomain,
+          _id: { $ne: user._id },
+        });
+        if (!existing) break;
+        attempt++;
+        finalSubdomain = `${subdomain}${attempt}`;
+      }
+
+      // Initialize agentProfile if needed and set subdomain
+      if (!user.agentProfile) {
+        user.agentProfile = {} as any;
+      }
+      user.agentProfile.subdomain = finalSubdomain;
+      user.markModified("agentProfile");
+
       await user.save();
+
+      // Register subdomain with Vercel (non-blocking)
+      // Subdomain only becomes visible/active once agent subscribes
+      const subdomainFull = `${finalSubdomain}.chatrealty.io`;
+      addDomainToProject(subdomainFull).catch((err) =>
+        console.error(`[agent-approve] Vercel subdomain registration failed for ${subdomainFull}:`, err)
+      );
+
+      console.log(`[agent-approve] Approved ${user.email}, subdomain: ${subdomainFull}`);
 
       return NextResponse.json({
         success: true,
-        message: "Agent application approved. User granted realEstateAgent role.",
+        message: `Agent approved. Subdomain: ${subdomainFull} (active after subscription)`,
+        subdomain: subdomainFull,
       });
     } else {
       // Reject
