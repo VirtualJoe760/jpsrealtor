@@ -68,6 +68,144 @@ const MAPPING_TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
+// Platform master domains (chatrealty.io, jpsrealtor.com, vercel.app)
+const PLATFORM_APEX_DOMAINS = ["chatrealty.io", "jpsrealtor.com", "vercel.app"];
+
+function VercelDomainsGrouped({
+  domains,
+  agentDomains,
+  isLight,
+  textPrimary,
+  textSecondary,
+  border,
+  cardBg,
+}: {
+  domains: VercelDomain[];
+  agentDomains: DomainMapping[];
+  isLight: boolean;
+  textPrimary: string;
+  textSecondary: string;
+  border: string;
+  cardBg: string;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(["platform"]));
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  // Group domains: platform vs agent-owned
+  const platformDomains = domains.filter((d) =>
+    PLATFORM_APEX_DOMAINS.some((apex) => d.apexName === apex || d.name.endsWith(apex))
+  );
+
+  // Build agent map from DomainMapping records
+  const agentMap = new Map<string, { email: string; domains: VercelDomain[] }>();
+  const unmatchedAgent: VercelDomain[] = [];
+
+  for (const d of domains) {
+    if (platformDomains.includes(d)) continue;
+    // Try to match to an agent via DomainMapping
+    const mapping = agentDomains.find((m) => m.domain === d.name || m.domain === d.apexName);
+    if (mapping) {
+      const key = mapping.agentEmail;
+      if (!agentMap.has(key)) agentMap.set(key, { email: key, domains: [] });
+      agentMap.get(key)!.domains.push(d);
+    } else {
+      unmatchedAgent.push(d);
+    }
+  }
+
+  const renderDomainRow = (d: VercelDomain) => (
+    <div key={d.name} className={`flex items-center justify-between px-4 py-2.5 border-b last:border-0 ${border}`}>
+      <div className="flex items-center gap-3">
+        <Globe size={14} className={textSecondary} />
+        <span className={`text-sm font-medium ${textPrimary}`}>{d.name}</span>
+        {d.name !== d.apexName && (
+          <span className={`text-xs ${textSecondary}`}>({d.apexName})</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+          d.verified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+        }`}>
+          {d.verified ? "Verified" : "Unverified"}
+        </span>
+        <span className={`text-xs ${textSecondary}`}>{new Date(d.createdAt).toLocaleDateString()}</span>
+        <a href={`https://${d.name}`} target="_blank" rel="noopener noreferrer"
+          className={`p-1 rounded transition-colors ${isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-white/10 text-gray-400"}`}>
+          <ExternalLink size={14} />
+        </a>
+      </div>
+    </div>
+  );
+
+  const renderAccordion = (key: string, title: string, subtitle: string, badge: string, badgeColor: string, items: VercelDomain[]) => (
+    <div key={key} className={`${cardBg} border ${border} rounded-xl overflow-hidden`}>
+      <button
+        onClick={() => toggle(key)}
+        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${isLight ? "hover:bg-gray-50" : "hover:bg-white/5"}`}
+      >
+        <div className="flex items-center gap-3">
+          <span className={`px-2 py-0.5 rounded text-xs font-bold ${badgeColor}`}>{badge}</span>
+          <div>
+            <span className={`font-semibold ${textPrimary}`}>{title}</span>
+            <span className={`text-xs ml-2 ${textSecondary}`}>{subtitle}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm ${textSecondary}`}>{items.length} domain{items.length !== 1 ? "s" : ""}</span>
+          <span className={`transition-transform ${expanded.has(key) ? "rotate-180" : ""}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+        </div>
+      </button>
+      {expanded.has(key) && items.length > 0 && (
+        <div className={`border-t ${border}`}>
+          {items.map(renderDomainRow)}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {renderAccordion(
+        "platform",
+        "ChatRealty",
+        "Platform master domains",
+        "MASTER",
+        isLight ? "bg-blue-100 text-blue-700" : "bg-blue-900/50 text-blue-300",
+        platformDomains
+      )}
+      {Array.from(agentMap.entries()).map(([email, data]) =>
+        renderAccordion(
+          email,
+          email,
+          "Agent domains",
+          "AGENT",
+          isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-900/50 text-emerald-300",
+          data.domains
+        )
+      )}
+      {unmatchedAgent.length > 0 &&
+        renderAccordion(
+          "unassigned",
+          "Unassigned",
+          "Domains not linked to any agent",
+          "?",
+          isLight ? "bg-gray-100 text-gray-600" : "bg-gray-700 text-gray-400",
+          unmatchedAgent
+        )
+      }
+    </div>
+  );
+}
+
 function formatTarget(mapping: DomainMapping): string {
   if (mapping.mappingType === "agent_landing") return "Agent Homepage";
   if (mapping.mappingType === "community_page" && mapping.subdivisionName) {
@@ -538,7 +676,7 @@ export default function AdminDomainsPage() {
         </div>
       )}
 
-      {/* Vercel Project Domains Tab */}
+      {/* Vercel Project Domains Tab — grouped by owner */}
       {activeTab === "vercel" && (
         <div>
           {vercelDomains.length === 0 ? (
@@ -550,45 +688,15 @@ export default function AdminDomainsPage() {
               </p>
             </div>
           ) : (
-            <div className={`${cardBg} border ${border} rounded-xl overflow-hidden`}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={`border-b ${border}`}>
-                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Domain</th>
-                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Apex</th>
-                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Status</th>
-                    <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Added</th>
-                    <th className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>Link</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vercelDomains.map((d) => (
-                    <tr key={d.name} className={`border-b ${border} last:border-0`}>
-                      <td className={`px-4 py-3 font-medium ${textPrimary}`}>{d.name}</td>
-                      <td className={`px-4 py-3 ${textSecondary}`}>{d.apexName}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          d.verified
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}>
-                          {d.verified ? "Verified" : "Unverified"}
-                        </span>
-                      </td>
-                      <td className={`px-4 py-3 ${textSecondary}`}>
-                        {new Date(d.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <a href={`https://${d.name}`} target="_blank" rel="noopener noreferrer"
-                          className={`p-1.5 rounded inline-block transition-colors ${isLight ? "hover:bg-gray-100 text-gray-500" : "hover:bg-white/10 text-gray-400"}`}>
-                          <ExternalLink size={16} />
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <VercelDomainsGrouped
+              domains={vercelDomains}
+              agentDomains={allDomains}
+              isLight={isLight}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              border={border}
+              cardBg={cardBg}
+            />
           )}
         </div>
       )}
