@@ -84,7 +84,7 @@ export default function BrandingStep({
       return (
         <ImageUploadField
           label={title}
-          fieldPath="agentProfile"
+          fieldPath={field}
           folder="jpsrealtor/logos"
           value={value}
           isLight={isLight}
@@ -115,7 +115,7 @@ export default function BrandingStep({
             </div>
             <ImageUploadField
               label=""
-              fieldPath="agentProfile"
+              fieldPath={lightField}
               folder="jpsrealtor/logos"
               value={lightValue}
               isLight={isLight}
@@ -133,7 +133,7 @@ export default function BrandingStep({
             </div>
             <ImageUploadField
               label=""
-              fieldPath="agentProfile"
+              fieldPath={darkField}
               folder="jpsrealtor/logos"
               value={darkValue}
               isLight={isLight}

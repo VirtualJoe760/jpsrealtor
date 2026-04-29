@@ -88,7 +88,7 @@ export default function PhotosMediaStep({
 
         <ImageUploadField
           label="Transparent Headshot"
-          fieldPath="agentProfile"
+          fieldPath="agentProfile.headshot"
           folder="jpsrealtor/headshots"
           value={formData.agentProfile?.headshot}
           isLight={isLight}
@@ -122,7 +122,7 @@ export default function PhotosMediaStep({
               </div>
               <ImageUploadField
                 label=""
-                fieldPath="agentProfile"
+                fieldPath="agentProfile.heroPhoto"
                 folder="jpsrealtor/hero"
                 value={formData.agentProfile?.heroPhoto}
                 isLight={isLight}
@@ -142,7 +142,7 @@ export default function PhotosMediaStep({
               </div>
               <ImageUploadField
                 label=""
-                fieldPath="agentProfile"
+                fieldPath="agentProfile.heroPhotoDark"
                 folder="jpsrealtor/hero"
                 value={formData.agentProfile?.heroPhotoDark}
                 isLight={isLight}
@@ -158,7 +158,7 @@ export default function PhotosMediaStep({
           // Single mode
           <ImageUploadField
             label=""
-            fieldPath="agentProfile"
+            fieldPath={showLight ? "agentProfile.heroPhoto" : "agentProfile.heroPhotoDark"}
             folder="jpsrealtor/hero"
             value={showLight ? formData.agentProfile?.heroPhoto : formData.agentProfile?.heroPhotoDark}
             isLight={isLight}
