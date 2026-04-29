@@ -884,7 +884,16 @@ const UserSchema = new Schema<IUser>(
       swipedAt: { type: Date, default: Date.now },
       subdivision: String,
       city: String,
+      county: String,
       propertySubType: String,
+      sourceContext: {
+        page: String,
+        section: String,
+        filter: String,
+      },
+      viewDuration: Number,
+      detailsViewed: Boolean,
+      photosViewed: Number,
     }],
     statusChangedListings: [{
       listingKey: { type: String, required: true },
@@ -931,11 +940,34 @@ const UserSchema = new Schema<IUser>(
         name: String,
         count: Number,
       }],
+      topCounties: [{
+        name: String,
+        count: Number,
+      }],
       topPropertySubTypes: [{
-        type: { type: String },  // Use { type: { type: String } } because 'type' is a Mongoose keyword
+        type: { type: String },
         count: Number,
       }],
       lastUpdated: Date,
+    },
+
+    // Search History (for AI personalization)
+    searchHistory: [{
+      query: String,
+      timestamp: { type: Date, default: Date.now },
+      resultsCount: Number,
+      swipedCount: Number,
+    }],
+
+    // Preference Patterns (AI-derived)
+    preferencePatterns: {
+      avgPriceRange: { min: Number, max: Number },
+      preferredBeds: [Number],
+      preferredBaths: [Number],
+      preferredSqftRange: { min: Number, max: Number },
+      preferredFeatures: [String],
+      preferredStyles: [String],
+      lastCalculated: Date,
     },
 
     // Activity Tracking
