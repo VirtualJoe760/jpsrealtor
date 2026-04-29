@@ -34,11 +34,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all users with team population
-    const users = await User.find({})
+    // Parse query params for search and role filter
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search");
+    const role = searchParams.get("role");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (role && role !== "all") {
+      if (role === "admin") {
+        query.isAdmin = true;
+      } else {
+        query.roles = role;
+      }
+    }
+
+    const total = await User.countDocuments(query);
+
+    // Get users with team population
+    const users = await User.find(query)
       .populate('team', 'name description')
       .select('-password')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     return NextResponse.json({
@@ -55,9 +85,13 @@ export async function GET(request: NextRequest) {
         brokerageName: user.brokerageName,
         licenseNumber: user.licenseNumber,
         profileDescription: user.profileDescription,
+        subscriptionTier: user.subscriptionTier,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       })),
+      total,
+      page,
+      limit,
     });
   } catch (error) {
     console.error("Error fetching users:", error);

@@ -58,6 +58,7 @@ export default function AdminUsersPage() {
   const [formData, setFormData] = useState<UserFormData>({});
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -152,10 +153,18 @@ export default function AdminUsersPage() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch =
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesRole =
+      roleFilter === "all" ||
+      (roleFilter === "admin" && user.isAdmin) ||
+      (roleFilter !== "admin" && user.roles.includes(roleFilter));
+
+    return matchesSearch && matchesRole;
+  });
 
   if (status === "loading" || loading) {
     return (
@@ -186,9 +195,9 @@ export default function AdminUsersPage() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
+        {/* Search & Role Filter */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
             <input
               type="text"
@@ -202,6 +211,21 @@ export default function AdminUsersPage() {
               } focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
           </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className={`px-4 py-3 rounded-lg ${
+              isLight
+                ? "bg-white border border-gray-300 text-gray-900"
+                : "bg-slate-800 border border-slate-700 text-white"
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="realEstateAgent">Agent</option>
+            <option value="serviceProvider">Service Partner</option>
+            <option value="endUser">End User</option>
+          </select>
         </div>
 
         {/* Users Table */}
