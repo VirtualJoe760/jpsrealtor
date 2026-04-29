@@ -150,36 +150,30 @@ export default function DomainSeoStep({
     setConnectError("");
     setConnectSuccess("");
     try {
-      // Add to Vercel project
-      const res = await fetch("/api/agent/domains", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: normalized }),
-      });
-      if (res.ok) {
-        // Save to user's agentProfile.customDomain
-        updateField("agentProfile.customDomain", normalized);
-        await onSave({ agentProfile: { customDomain: normalized } });
-        setConnectSuccess(`${normalized} connected! Configure DNS to complete setup.`);
-        setConnectDomain("");
-        await fetchDomains();
-      } else {
-        const data = await res.json();
-        setConnectError(data.error || "Failed to connect domain");
-      }
-    } catch { setConnectError("Failed to connect domain"); }
+      // Save to user's agentProfile.customDomain
+      updateField("agentProfile.customDomain", normalized);
+      await onSave({ agentProfile: { customDomain: normalized } });
+      setConnectSuccess(`${normalized} saved! Point your DNS CNAME to cname.vercel-dns.com to activate.`);
+      setConnectDomain("");
+      await fetchDomains();
+    } catch { setConnectError("Failed to save domain"); }
     finally { setConnectLoading(false); }
   };
 
   const handleRemove = async (domainName: string) => {
-    if (!confirm(`Remove ${domainName} from your project?`)) return;
+    if (!confirm(`Remove ${domainName} from your profile?`)) return;
     setRemoveLoading(domainName);
     try {
-      await fetch(`/api/agent/domains/${encodeURIComponent(domainName)}`, { method: "DELETE" });
-      // Clear from user profile if it matches customDomain
-      if (domainName === ap.customDomain) {
-        updateField("agentProfile.customDomain", "");
-        await onSave({ agentProfile: { customDomain: "" } });
+      // Clear from user profile
+      if (domainName === ap.customDomain || domainName === `${ap.subdomain}.jpsrealtor.com`) {
+        if (domainName === ap.customDomain) {
+          updateField("agentProfile.customDomain", "");
+          await onSave({ agentProfile: { customDomain: "" } });
+        }
+        if (domainName === `${ap.subdomain}.jpsrealtor.com`) {
+          updateField("agentProfile.subdomain", "");
+          await onSave({ agentProfile: { subdomain: "" } });
+        }
       }
       await fetchDomains();
     } catch {}
