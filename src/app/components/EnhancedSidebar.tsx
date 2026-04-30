@@ -234,13 +234,13 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             <Image
               src={
                 isLight
-                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/chatrealty-logo.png")
-                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/chatrealty-logo-dark.png")
+                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/chatrealty-logo-light-1436x356.png")
+                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/chatrealty-logo-dark-1436x356.png")
               }
               alt={branding.teamName || branding.brokerageName || "ChatRealty"}
-              width={160}
-              height={40}
-              className="object-contain max-h-[40px] max-w-[160px]"
+              width={220}
+              height={50}
+              className="object-contain"
             />
           </div>
         )}
