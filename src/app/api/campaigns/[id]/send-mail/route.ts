@@ -16,6 +16,11 @@ import {
   type Recipient,
   type RadiusSearch,
 } from '@/lib/thanksio';
+import PointsLedger from '@/models/PointsLedger';
+import {
+  estimateDirectMailCredits,
+  DIRECT_MAIL_CREDITS,
+} from '@/config/credit-costs';
 
 /**
  * POST /api/campaigns/[id]/send-mail
@@ -90,6 +95,14 @@ export async function POST(
 
     let order: any;
     let mailPiecesCreated = 0;
+    let totalCredits = 0;
+
+    // --- Credit check: calculate and debit before sending ---
+    const recipientEstimate = radiusSend ? (radiusRecordCount || 200) : 0; // contacts counted below
+    if (radiusSend) {
+      totalCredits = estimateDirectMailCredits(mailType as MailType, recipientEstimate, { radiusSearch: true });
+    }
+    // For CRM sends, credits are calculated after we know the recipient count (see below)
 
     if (radiusSend) {
       // --- Radius Send ---
@@ -102,6 +115,22 @@ export async function POST(
       };
 
       commonParams.radius_search = radiusSearch;
+
+      // Debit credits for radius send
+      const ledger = await PointsLedger.findOne({ userId });
+      if (!ledger || ledger.balance < totalCredits) {
+        return NextResponse.json({
+          success: false,
+          error: `Insufficient credits. Need ${totalCredits} credits, have ${ledger?.balance || 0}.`,
+          creditsRequired: totalCredits,
+          creditsAvailable: ledger?.balance || 0,
+        }, { status: 400 });
+      }
+      ledger.debitPoints(totalCredits, 'campaign_spend', `Direct mail: ${mailType} radius send (${recipientEstimate} recipients)`, {
+        channel: 'direct_mail',
+        campaignId: campaign._id,
+      });
+      await ledger.save();
 
       // Determine mail type and send
       if (mailType === 'notecard') {
@@ -133,6 +162,7 @@ export async function POST(
         status: 'submitted',
         submittedAt: new Date(),
         cost: estimateCost(mailType as MailType, mailPiecesCreated, { radiusSearch: true }),
+        creditCost: totalCredits,
         isRadiusSend: true,
         qrUrl,
       });
@@ -213,6 +243,23 @@ export async function POST(
 
       commonParams.recipients = recipients;
 
+      // Debit credits for CRM contact send
+      totalCredits = estimateDirectMailCredits(mailType as MailType, recipients.length);
+      const ledger = await PointsLedger.findOne({ userId });
+      if (!ledger || ledger.balance < totalCredits) {
+        return NextResponse.json({
+          success: false,
+          error: `Insufficient credits. Need ${totalCredits} credits, have ${ledger?.balance || 0}.`,
+          creditsRequired: totalCredits,
+          creditsAvailable: ledger?.balance || 0,
+        }, { status: 400 });
+      }
+      ledger.debitPoints(totalCredits, 'campaign_spend', `Direct mail: ${mailType} to ${recipients.length} contacts`, {
+        channel: 'direct_mail',
+        campaignId: campaign._id,
+      });
+      await ledger.save();
+
       // Send based on mail type
       if (mailType === 'notecard') {
         order = await sendNotecard({ ...commonParams, message: message || 'Thank you!' });
@@ -248,6 +295,7 @@ export async function POST(
             status: 'submitted',
             submittedAt: new Date(),
             cost: estimateCost(mailType as MailType, 1),
+            creditCost: DIRECT_MAIL_CREDITS[mailType as MailType] || 6,
             isRadiusSend: false,
             qrUrl,
           };
@@ -276,8 +324,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `${mailPiecesCreated} mail piece${mailPiecesCreated !== 1 ? 's' : ''} submitted to thanks.io!`,
+      message: `${mailPiecesCreated} mail piece${mailPiecesCreated !== 1 ? 's' : ''} submitted! ${totalCredits} credits used.`,
       mailPiecesCreated,
+      creditsUsed: totalCredits,
       orderId: order.id || order.data?.id,
       testMode: process.env.THANKSIO_TEST_MODE === 'true',
     });

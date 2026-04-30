@@ -4,7 +4,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle, XCircle, Briefcase } from "lucide-react";
-import AdminNav from "@/app/components/AdminNav";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
 
@@ -97,7 +96,6 @@ export default function AdminPartnerApplicationsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <AdminNav />
         <div className={`${textSecondary} text-center py-12`}>Loading partner applications...</div>
       </div>
     );
@@ -105,8 +103,6 @@ export default function AdminPartnerApplicationsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <AdminNav />
-
       <div className="mb-6">
         <h1 className={`text-2xl font-bold ${textPrimary}`}>Partner Applications</h1>
         <p className={`${textSecondary} mt-1`}>Review and manage service partner registrations</p>

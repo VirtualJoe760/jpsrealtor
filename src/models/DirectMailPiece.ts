@@ -59,7 +59,8 @@ export interface IDirectMailPiece extends Document {
   qrScanCount: number;
 
   // Cost
-  cost: number;
+  cost: number;           // Dollar cost (platform cost to Thanks.io)
+  creditCost: number;     // Credits charged to the user
 
   // Radius send (no contact, sent to address directly)
   isRadiusSend: boolean;
@@ -150,6 +151,10 @@ const DirectMailPieceSchema = new Schema<IDirectMailPiece>(
 
     // Cost
     cost: {
+      type: Number,
+      default: 0,
+    },
+    creditCost: {
       type: Number,
       default: 0,
     },

@@ -8,7 +8,6 @@ import {FileText, Plus, Search, Eye, Edit, Trash2, TrendingUp, EyeOff, Newspaper
 import Image from "next/image";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import ArticleGenerator from "@/app/components/ArticleGenerator";
-import AdminNav from "@/app/components/AdminNav";
 
 type Article = {
   title: string;
@@ -210,8 +209,6 @@ export default function ArticlesAdminPage() {
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-articles">
       <div className="max-w-7xl mx-auto">
-        <AdminNav />
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

@@ -9,6 +9,8 @@ import Contact from '@/models/Contact';
 import ContactCampaign from '@/models/ContactCampaign';
 import User from '@/models/User';
 import CampaignExecution from '@/models/CampaignExecution';
+import PointsLedger from '@/models/PointsLedger';
+import { estimateVoicemailCredits, VOICEMAIL_DROP_CREDITS } from '@/config/credit-costs';
 import { Types } from 'mongoose';
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
@@ -156,6 +158,18 @@ export async function POST(
       contactMap = new Map(
         contacts.map((c: any) => [c._id.toString(), c])
       );
+    }
+
+    // Credit balance check before sending
+    const totalCreditsNeeded = estimateVoicemailCredits(contacts.length);
+    const ledger = await PointsLedger.findOne({ userId });
+    if (!ledger || ledger.balance < totalCreditsNeeded) {
+      return NextResponse.json({
+        success: false,
+        error: `Insufficient credits. Need ${totalCreditsNeeded} credits, have ${ledger?.balance || 0}.`,
+        creditsRequired: totalCreditsNeeded,
+        creditsAvailable: ledger?.balance || 0,
+      }, { status: 400 });
     }
 
     // Send voicemails via Drop Cowboy
@@ -362,6 +376,16 @@ export async function POST(
       }
     }
 
+    // Debit credits for successful sends only
+    const creditsUsed = successCount * VOICEMAIL_DROP_CREDITS;
+    if (creditsUsed > 0) {
+      ledger.debitPoints(creditsUsed, 'campaign_spend', `Voicemail campaign "${campaign.name}" — ${successCount} drops`, {
+        channel: 'voicemail_drop',
+        campaignId: campaign._id,
+      });
+      await ledger.save();
+    }
+
     // Update campaign stats
     console.log('\n📊 Updating campaign stats...');
     await campaign.updateStats();
@@ -438,6 +462,7 @@ export async function POST(
       totalScripts: scripts.length,
       successCount,
       failureCount,
+      creditsUsed,
       results,
     });
 

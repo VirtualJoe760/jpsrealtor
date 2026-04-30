@@ -14,7 +14,6 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  DollarSign,
   Target,
 } from "lucide-react";
 
@@ -99,7 +98,7 @@ export default function PointsSection() {
   const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (!amount || amount < 10) {
-      alert("Minimum top-up is $10");
+      alert("Minimum purchase is $10");
       return;
     }
 
@@ -153,7 +152,6 @@ export default function PointsSection() {
   }
 
   const balance = data?.balance ?? 0;
-  const adSpend = data?.adSpendAvailable ?? 0;
   const tier = data?.tierConfig;
   const transactions = data?.transactions ?? [];
   const visibleTransactions = showAllTransactions
@@ -230,15 +228,15 @@ export default function PointsSection() {
           }`}
         >
           <p className={`text-xs font-medium mb-1 ${isLight ? "text-green-700" : "text-green-400"}`}>
-            Ad Buying Power
+            Credits Spent
           </p>
           <p className={`text-3xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-            ${adSpend.toFixed(2)}
+            {(data?.totalSpent ?? 0).toLocaleString()}
           </p>
           <div className="flex items-center gap-1 mt-1">
-            <DollarSign className={`w-3 h-3 ${isLight ? "text-green-500" : "text-green-400"}`} />
+            <Coins className={`w-3 h-3 ${isLight ? "text-green-500" : "text-green-400"}`} />
             <p className={`text-xs ${isLight ? "text-green-600" : "text-green-400/70"}`}>
-              {tier ? `$${tier.adSpendRate} per $1 spent` : "—"}
+              {tier ? tier.name : "—"}
             </p>
           </div>
         </div>
@@ -299,7 +297,7 @@ export default function PointsSection() {
             }`}
           >
             <p className={`text-sm font-medium mb-3 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
-              Quick top-up {tier && `(${tier.name} rate: $${tier.adSpendRate}/$1)`}
+              Purchase credits {tier && `(${tier.name} tier)`}
             </p>
             <div className="flex flex-wrap gap-2 mb-3">
               {QUICK_AMOUNTS.map((amt) => (
@@ -314,7 +312,7 @@ export default function PointsSection() {
                       : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                   }`}
                 >
-                  ${amt}
+                  ${amt} {tier ? `(${Math.floor(amt / (tier.monthlyPrice / tier.monthlyPoints)).toLocaleString()} cr)` : ''}
                 </button>
               ))}
             </div>
@@ -352,7 +350,6 @@ export default function PointsSection() {
             {topUpAmount && parseFloat(topUpAmount) >= 10 && tier && (
               <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
                 ${topUpAmount} = ~{Math.floor(parseFloat(topUpAmount) / (tier.monthlyPrice / tier.monthlyPoints)).toLocaleString()} credits
-                = ${(Math.floor(parseFloat(topUpAmount) / (tier.monthlyPrice / tier.monthlyPoints)) * tier.adValuePerPoint).toFixed(2)} in ad spend
               </p>
             )}
           </div>
@@ -436,7 +433,7 @@ export default function PointsSection() {
                         )}
                         {tx.adSpendValue && (
                           <span className={`text-xs ${isLight ? "text-green-600" : "text-green-400"}`}>
-                            ${tx.adSpendValue.toFixed(2)} ad value
+                            {Math.round(tx.adSpendValue * 8)} credits value
                           </span>
                         )}
                       </div>

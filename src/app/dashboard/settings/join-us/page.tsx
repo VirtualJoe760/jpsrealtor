@@ -3,7 +3,7 @@
 // src/app/dashboard/settings/join-us/page.tsx
 // Agent application form (Phase 1) - accessible to all users
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -41,6 +41,24 @@ export default function JoinUsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [hasExistingApplication, setHasExistingApplication] = useState(false);
+
+  // Check if user already has an application on mount
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetch("/api/user/profile")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user?.agentApplication?.phase) {
+            setHasExistingApplication(true);
+          }
+          if (data.user?.roles?.includes("realEstateAgent")) {
+            router.push("/agent/dashboard");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [status, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -126,13 +144,15 @@ export default function JoinUsPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // If they already have an application, show the success state instead of an error
+        if (data.error?.includes("already have an application")) {
+          setHasExistingApplication(true);
+          return;
+        }
         throw new Error(data.error || "Failed to submit application");
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 3000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -156,20 +176,46 @@ export default function JoinUsPage() {
     return null;
   }
 
-  if (success) {
+  if (success || hasExistingApplication) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-            <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+            <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h2>
-          <p className="text-gray-600 mb-4">
-            Thank you for applying to join the ChatRealty team. We'll review your application and notify you of our decision within 2-3 business days.
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            {success ? "Application Submitted!" : "Application Under Review"}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {success
+              ? "Thank you for applying to join the ChatRealty team! We're excited to review your application."
+              : "Your application has been received and is currently being reviewed by our team."}
           </p>
-          <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-left space-y-2">
+            <p className="text-sm text-blue-800 font-medium">What happens next?</p>
+            <ul className="text-sm text-blue-700 space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5">1.</span>
+                Our team will review your license and credentials
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5">2.</span>
+                You&apos;ll receive an email once your application is approved
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5">3.</span>
+                Your agent dashboard and subdomain will be activated automatically
+              </li>
+            </ul>
+          </div>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );

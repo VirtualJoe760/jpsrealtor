@@ -12,6 +12,7 @@ import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { Resend } from "resend";
 import { sendLeadEvent } from "@/lib/meta-capi";
+import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,8 @@ export async function POST(req: NextRequest) {
       const tempPassword = crypto.randomBytes(16).toString("hex");
       const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
+      const signupOrigin = await resolveSignupOrigin(req, "campaign");
+
       user = await User.create({
         email: userEmail,
         password: hashedPassword,
@@ -88,7 +91,9 @@ export async function POST(req: NextRequest) {
         roles: ["endUser"],
         emailVerified: false,
         source: `campaign:${campaignSlug}`,
+        signupOrigin,
       });
+      linkUserToAgent(user._id.toString(), user.name, user.email, userPhone, signupOrigin).catch(() => {});
 
       isNewUser = true;
 

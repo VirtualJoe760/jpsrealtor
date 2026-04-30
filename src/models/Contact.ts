@@ -149,6 +149,9 @@ export interface IContact extends Document {
   lastContactDate?: Date;
   lastContactMethod?: 'sms' | 'email' | 'phone' | 'in-person';
 
+  // Linked User Account — if the contact has a ChatRealty account
+  linkedUserId?: mongoose.Types.ObjectId;
+
   // Assigned To
   assignedAgent?: string;  // User ID of assigned agent
 
@@ -449,6 +452,9 @@ const ContactSchema: Schema = new Schema(
       type: String,
       enum: ['sms', 'email', 'phone', 'in-person'],
     },
+
+    // Linked user account (if contact has a ChatRealty account)
+    linkedUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
 
     // Assigned To
     assignedAgent: String,

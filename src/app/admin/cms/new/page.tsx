@@ -20,7 +20,6 @@ import {
   Globe,
   X,
 } from "lucide-react";
-import AdminNav from "@/app/components/AdminNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 
 type TabType = "generate" | "edit" | "preview";
@@ -327,8 +326,6 @@ export default function NewArticlePage() {
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-new-article">
       <div className="max-w-7xl mx-auto">
-        <AdminNav />
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

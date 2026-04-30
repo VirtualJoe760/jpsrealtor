@@ -11,6 +11,9 @@ import {
   Ban,
   RefreshCw,
   ExternalLink,
+  Database,
+  Cloud,
+  Shield,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -31,7 +34,30 @@ interface DomainMapping {
   createdAt: string;
 }
 
-type TabKey = "pending" | "all" | "vercel";
+interface AgentInfo {
+  name?: string;
+  phone?: string;
+  licenseNumber?: string;
+  brokerageName?: string;
+  image?: string;
+}
+
+type TabKey = "pending" | "all" | "registry" | "vercel";
+
+interface RegistryDomain {
+  _id: string;
+  domain: string;
+  type: "platform" | "agent_subdomain" | "agent_custom" | "community";
+  status: "active" | "pending" | "suspended" | "decommissioned";
+  ownerEmail?: string;
+  ownerType: string;
+  target: { type: string; path: string; agentSubdomain?: string };
+  vercel: { registered: boolean; verified: boolean; sslStatus: string };
+  cloudflare: { registered: boolean; status?: string; zoneId?: string; nameserversUpdated?: boolean; nameservers?: string[]; registrar?: string; nameserverCheckedAt?: string };
+  gsc: { registered: boolean; verified: boolean };
+  analytics: { gaEnabled: boolean; measurementId?: string };
+  createdAt: string;
+}
 
 interface VercelDomain {
   name: string;
@@ -74,6 +100,7 @@ const PLATFORM_APEX_DOMAINS = ["chatrealty.io", "jpsrealtor.com", "vercel.app"];
 function VercelDomainsGrouped({
   domains,
   agentDomains,
+  agents,
   isLight,
   textPrimary,
   textSecondary,
@@ -82,6 +109,7 @@ function VercelDomainsGrouped({
 }: {
   domains: VercelDomain[];
   agentDomains: DomainMapping[];
+  agents: Record<string, AgentInfo>;
   isLight: boolean;
   textPrimary: string;
   textSecondary: string;
@@ -182,16 +210,24 @@ function VercelDomainsGrouped({
         isLight ? "bg-blue-100 text-blue-700" : "bg-blue-900/50 text-blue-300",
         platformDomains
       )}
-      {Array.from(agentMap.entries()).map(([email, data]) =>
-        renderAccordion(
+      {Array.from(agentMap.entries()).map(([email, data]) => {
+        const info = agents[email];
+        const title = info?.name || email;
+        const details = [
           email,
+          info?.phone,
+          info?.brokerageName,
+          info?.licenseNumber ? `DRE# ${info.licenseNumber}` : null,
+        ].filter(Boolean).join(" · ");
+        return renderAccordion(
           email,
-          "Agent domains",
+          title,
+          details,
           "AGENT",
           isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-900/50 text-emerald-300",
           data.domains
-        )
-      )}
+        );
+      })}
       {unmatchedAgent.length > 0 &&
         renderAccordion(
           "unassigned",
@@ -231,6 +267,9 @@ export default function AdminDomainsPage() {
   const [rejectReason, setRejectReason] = useState("");
 
   const [vercelDomains, setVercelDomains] = useState<VercelDomain[]>([]);
+  const [registryDomains, setRegistryDomains] = useState<RegistryDomain[]>([]);
+  const [registryCounts, setRegistryCounts] = useState<Record<string, number>>({});
+  const [agents, setAgents] = useState<Record<string, AgentInfo>>({});
 
   const pendingDomains = allDomains.filter(
     (d) => d.status === "pending_approval"
@@ -239,18 +278,25 @@ export default function AdminDomainsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [mappingsRes, vercelRes] = await Promise.all([
+      const [mappingsRes, vercelRes, registryRes] = await Promise.all([
         fetch("/api/admin/domains"),
         fetch("/api/domains/list").catch(() => null),
+        fetch("/api/domains/registry").catch(() => null),
       ]);
       if (mappingsRes.ok) {
         const data = await mappingsRes.json();
         setAllDomains(data.domains || []);
         setCounts(data.counts || {});
+        setAgents(data.agents || {});
       }
       if (vercelRes?.ok) {
         const data = await vercelRes.json();
         setVercelDomains(data.domains || []);
+      }
+      if (registryRes?.ok) {
+        const data = await registryRes.json();
+        setRegistryDomains(data.domains || []);
+        setRegistryCounts(data.counts || {});
       }
     } catch (error) {
       console.error("Failed to fetch domains:", error);
@@ -262,6 +308,13 @@ export default function AdminDomainsPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const [nsModal, setNsModal] = useState<{
+    domain: string;
+    nameservers: string[];
+    registrar?: string;
+    message: string;
+  } | null>(null);
 
   const handleAction = async (
     domainId: string,
@@ -278,6 +331,10 @@ export default function AdminDomainsPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message);
+        // Show nameserver instructions modal if Cloudflare was provisioned
+        if (data.nameserverInstructions) {
+          setNsModal(data.nameserverInstructions);
+        }
         fetchData();
         setRejectModal(null);
         setRejectReason("");
@@ -288,6 +345,25 @@ export default function AdminDomainsPage() {
       toast.error("Action failed");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleCheckNameservers = async (registryId?: string) => {
+    try {
+      const res = await fetch("/api/domains/registry/check-nameservers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registryId ? { registryId } : { all: true }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message);
+        fetchData();
+      } else {
+        toast.error(data.error || "Check failed");
+      }
+    } catch {
+      toast.error("Check failed");
     }
   };
 
@@ -396,6 +472,27 @@ export default function AdminDomainsPage() {
           </span>
         </button>
         <button
+          onClick={() => setActiveTab("registry")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "registry"
+              ? "bg-blue-600 text-white"
+              : `${textSecondary} ${isLight ? "hover:bg-gray-200" : "hover:bg-white/10"}`
+          }`}
+        >
+          Registry
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === "registry"
+                ? "bg-white/20 text-white"
+                : isLight
+                  ? "bg-purple-100 text-purple-600"
+                  : "bg-purple-900/50 text-purple-300"
+            }`}
+          >
+            {registryDomains.length}
+          </span>
+        </button>
+        <button
           onClick={() => setActiveTab("vercel")}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === "vercel"
@@ -458,8 +555,20 @@ export default function AdminDomainsPage() {
                       >
                         <p>
                           <span className="font-medium">Agent:</span>{" "}
-                          {domain.agentEmail}
+                          {agents[domain.agentEmail]?.name || domain.agentEmail}
+                          {agents[domain.agentEmail]?.name && (
+                            <span className="ml-1 text-xs">({domain.agentEmail})</span>
+                          )}
                         </p>
+                        {(agents[domain.agentEmail]?.phone || agents[domain.agentEmail]?.brokerageName) && (
+                          <p className="text-xs">
+                            {[
+                              agents[domain.agentEmail]?.phone,
+                              agents[domain.agentEmail]?.brokerageName,
+                              agents[domain.agentEmail]?.licenseNumber ? `DRE# ${agents[domain.agentEmail].licenseNumber}` : null,
+                            ].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
                         <p>
                           <span className="font-medium">Target:</span>{" "}
                           {formatTarget(domain)}
@@ -575,7 +684,15 @@ export default function AdminDomainsPage() {
                         </div>
                       </td>
                       <td className={`px-4 py-3 ${textSecondary}`}>
-                        {domain.agentEmail}
+                        <div>
+                          <span className={`text-sm ${textPrimary}`}>{agents[domain.agentEmail]?.name || domain.agentEmail}</span>
+                          {agents[domain.agentEmail]?.name && (
+                            <p className="text-xs">{domain.agentEmail}</p>
+                          )}
+                          {agents[domain.agentEmail]?.phone && (
+                            <p className="text-xs">{agents[domain.agentEmail].phone}</p>
+                          )}
+                        </div>
                       </td>
                       <td className={`px-4 py-3 ${textSecondary}`}>
                         <span className="max-w-[200px] truncate block">
@@ -676,6 +793,244 @@ export default function AdminDomainsPage() {
         </div>
       )}
 
+      {/* Registry Tab */}
+      {activeTab === "registry" && (
+        <div>
+          {/* Registry type counts */}
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            {(["platform", "agent_subdomain", "agent_custom", "community"] as const).map((t) => (
+              <div key={t} className={`${cardBg} border ${border} rounded-xl p-4 text-center`}>
+                <p className={`text-2xl font-bold ${textPrimary}`}>{registryCounts[t] || 0}</p>
+                <p className={`text-xs ${textSecondary} capitalize`}>{t.replace("_", " ")}</p>
+              </div>
+            ))}
+          </div>
+
+          {registryDomains.length === 0 ? (
+            <div className={`${cardBg} border ${border} rounded-xl p-12 text-center`}>
+              <Database size={40} className={`mx-auto mb-3 ${textSecondary}`} />
+              <p className={`font-medium ${textPrimary}`}>No registry records</p>
+              <p className={`text-sm mt-1 ${textSecondary}`}>
+                Run the seed to populate from Vercel domains.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/domains/registry/seed", { method: "POST" });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast.success(`Seed complete: ${data.results.platformSeeded} platform, ${data.results.agentSubdomainsSeeded} subdomains, ${data.results.domainMappingsMigrated} mappings migrated`);
+                      fetchData();
+                    } else {
+                      toast.error(data.error || "Seed failed");
+                    }
+                  } catch {
+                    toast.error("Seed failed");
+                  }
+                }}
+                className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Seed from Vercel + DomainMappings
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/domains/registry/cloudflare-provision", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ all: true }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast.success(`Cloudflare: ${data.succeeded}/${data.total} domains provisioned`);
+                      fetchData();
+                    } else {
+                      toast.error(data.error || "Cloudflare provisioning failed");
+                    }
+                  } catch {
+                    toast.error("Cloudflare provisioning failed");
+                  }
+                }}
+                className="mt-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Provision All on Cloudflare
+              </button>
+            </div>
+          ) : (
+            <>
+            {/* Cloudflare provision button for unregistered domains */}
+            {registryDomains.some((d) => !d.cloudflare.registered && d.type !== "agent_subdomain") && (
+              <div className={`${cardBg} border ${border} rounded-xl p-4 mb-4 flex items-center justify-between`}>
+                <div className="flex items-center gap-2">
+                  <Cloud size={18} className="text-orange-500" />
+                  <span className={`text-sm ${textPrimary}`}>
+                    {registryDomains.filter((d) => !d.cloudflare.registered && d.type !== "agent_subdomain").length} domain(s) not yet on Cloudflare
+                  </span>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/domains/registry/cloudflare-provision", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ all: true }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        toast.success(`Cloudflare: ${data.succeeded}/${data.total} domains provisioned`);
+                        fetchData();
+                      } else {
+                        toast.error(data.error || "Provisioning failed");
+                      }
+                    } catch {
+                      toast.error("Provisioning failed");
+                    }
+                  }}
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Provision All on Cloudflare
+                </button>
+              </div>
+            )}
+            {/* Pending nameserver updates banner */}
+            {registryDomains.some((d) => d.cloudflare.registered && !d.cloudflare.nameserversUpdated && d.cloudflare.status !== "active" && d.type !== "agent_subdomain") && (
+              <div className={`${cardBg} border ${border} rounded-xl p-4 mb-4 flex items-center justify-between`}>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-amber-500" />
+                  <span className={`text-sm ${textPrimary}`}>
+                    {registryDomains.filter((d) => d.cloudflare.registered && !d.cloudflare.nameserversUpdated && d.cloudflare.status !== "active" && d.type !== "agent_subdomain").length} domain(s) awaiting nameserver update
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCheckNameservers()}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Check All Nameservers
+                </button>
+              </div>
+            )}
+            <div className={`${cardBg} border ${border} rounded-xl overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={`border-b ${border} ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
+                      <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Domain</th>
+                      <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Type</th>
+                      <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Owner</th>
+                      <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Target</th>
+                      <th className={`text-center px-4 py-3 font-medium ${textSecondary}`}>Vercel</th>
+                      <th className={`text-center px-4 py-3 font-medium ${textSecondary}`}>Cloudflare</th>
+                      <th className={`text-center px-4 py-3 font-medium ${textSecondary}`}>GSC</th>
+                      <th className={`text-center px-4 py-3 font-medium ${textSecondary}`}>GA4</th>
+                      <th className={`text-center px-4 py-3 font-medium ${textSecondary}`}>NS</th>
+                      <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registryDomains.map((rd) => {
+                      const typeColors: Record<string, string> = {
+                        platform: isLight ? "bg-blue-50 text-blue-700" : "bg-blue-900/40 text-blue-300",
+                        agent_subdomain: isLight ? "bg-emerald-50 text-emerald-700" : "bg-emerald-900/40 text-emerald-300",
+                        agent_custom: isLight ? "bg-amber-50 text-amber-700" : "bg-amber-900/40 text-amber-300",
+                        community: isLight ? "bg-purple-50 text-purple-700" : "bg-purple-900/40 text-purple-300",
+                      };
+                      const statusColors: Record<string, string> = {
+                        active: "bg-green-100 text-green-700",
+                        pending: "bg-amber-100 text-amber-700",
+                        suspended: "bg-gray-200 text-gray-600",
+                        decommissioned: "bg-red-100 text-red-700",
+                      };
+                      return (
+                        <tr key={rd._id} className={`border-b last:border-b-0 ${border} ${isLight ? "hover:bg-gray-50" : "hover:bg-white/[0.02]"} transition-colors`}>
+                          <td className={`px-4 py-3 font-medium ${textPrimary}`}>
+                            <div className="flex items-center gap-2">
+                              <Globe size={14} className="text-blue-500 flex-shrink-0" />
+                              <span className="truncate max-w-[200px]">{rd.domain}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${typeColors[rd.type] || ""}`}>
+                              {rd.type.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3 ${textSecondary} text-xs`}>
+                            {rd.ownerEmail || rd.ownerType}
+                          </td>
+                          <td className={`px-4 py-3 ${textSecondary} text-xs`}>
+                            <span className="truncate max-w-[150px] block">{rd.target.path}</span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {rd.vercel.registered ? (
+                              rd.vercel.verified ? (
+                                <CheckCircle size={16} className="mx-auto text-green-500" />
+                              ) : (
+                                <Clock size={16} className="mx-auto text-amber-500" />
+                              )
+                            ) : (
+                              <XCircle size={16} className="mx-auto text-gray-400" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {rd.cloudflare.registered ? (
+                              rd.cloudflare.status === "active" ? (
+                                <Cloud size={16} className="mx-auto text-orange-500" />
+                              ) : (
+                                <Clock size={16} className="mx-auto text-amber-500" />
+                              )
+                            ) : (
+                              <XCircle size={16} className="mx-auto text-gray-400" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {rd.gsc.registered ? (
+                              rd.gsc.verified ? (
+                                <CheckCircle size={16} className="mx-auto text-green-500" />
+                              ) : (
+                                <Clock size={16} className="mx-auto text-amber-500" />
+                              )
+                            ) : (
+                              <XCircle size={16} className="mx-auto text-gray-400" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {rd.analytics.gaEnabled ? (
+                              <Shield size={16} className="mx-auto text-green-500" />
+                            ) : (
+                              <XCircle size={16} className="mx-auto text-gray-400" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {!rd.cloudflare.registered || rd.type === "agent_subdomain" ? (
+                              <span className={`text-[10px] ${textSecondary}`}>—</span>
+                            ) : rd.cloudflare.nameserversUpdated || rd.cloudflare.status === "active" ? (
+                              <span title="Nameservers active"><CheckCircle size={16} className="mx-auto text-green-500" /></span>
+                            ) : (
+                              <button
+                                onClick={() => handleCheckNameservers(rd._id)}
+                                className="group relative"
+                                title={`Pending NS update${rd.cloudflare.nameservers?.length ? `: ${rd.cloudflare.nameservers.join(", ")}` : ""}`}
+                              >
+                                <AlertTriangle size={16} className="mx-auto text-amber-500 group-hover:text-amber-600" />
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColors[rd.status] || ""}`}>
+                              {rd.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Vercel Project Domains Tab — grouped by owner */}
       {activeTab === "vercel" && (
         <div>
@@ -691,6 +1046,7 @@ export default function AdminDomainsPage() {
             <VercelDomainsGrouped
               domains={vercelDomains}
               agentDomains={allDomains}
+              agents={agents}
               isLight={isLight}
               textPrimary={textPrimary}
               textSecondary={textSecondary}
@@ -698,6 +1054,55 @@ export default function AdminDomainsPage() {
               cardBg={cardBg}
             />
           )}
+        </div>
+      )}
+
+      {/* Nameserver Instructions Modal */}
+      {nsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className={`w-full max-w-lg rounded-xl p-6 ${
+              isLight ? "bg-white" : "bg-gray-900"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={20} className="text-amber-500" />
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>
+                Nameserver Update Required
+              </h3>
+            </div>
+            <p className={`text-sm mb-4 ${textSecondary}`}>
+              The domain has been provisioned on Cloudflare, but the nameservers at
+              {nsModal.registrar ? ` ${nsModal.registrar}` : " the registrar"} need to be updated
+              for DNS to flow through Cloudflare.
+            </p>
+            <div
+              className={`rounded-lg p-4 mb-4 font-mono text-sm ${
+                isLight ? "bg-gray-50 border border-gray-200" : "bg-gray-800 border border-gray-700"
+              }`}
+            >
+              <p className={`text-xs font-sans font-medium mb-2 ${textSecondary}`}>
+                Set nameservers to:
+              </p>
+              {nsModal.nameservers.map((ns) => (
+                <div key={ns} className={`py-1 ${textPrimary}`}>
+                  {ns}
+                </div>
+              ))}
+            </div>
+            <p className={`text-xs mb-4 ${textSecondary}`}>
+              Cloudflare zone will activate once nameservers propagate (usually 15min–24hrs).
+              You can check the status from the Registry tab.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setNsModal(null)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

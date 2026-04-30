@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already has an application
-    if (user.agentApplication) {
+    // Check if user already has a submitted application (phase is set)
+    if (user.agentApplication?.phase) {
       return NextResponse.json(
         { error: "You already have an application in progress" },
         { status: 400 }

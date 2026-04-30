@@ -48,6 +48,27 @@ export async function GET() {
     { $group: { _id: null, mrr: { $sum: "$monthlyPrice" } } }
   ]);
 
+  // Recent activity: latest signups, agent approvals, etc.
+  const recentUsers = await User.find({})
+    .select("name email roles signupOrigin createdAt image")
+    .sort({ createdAt: -1 })
+    .limit(15)
+    .lean();
+
+  const recentActivity = recentUsers.map((u) => ({
+    type: u.roles?.includes("realEstateAgent")
+      ? "agent_approved"
+      : u.roles?.includes("serviceProvider")
+        ? "partner_joined"
+        : "user_signup",
+    name: u.name || u.email.split("@")[0],
+    email: u.email,
+    domain: u.signupOrigin?.domain,
+    agentId: u.signupOrigin?.agentId,
+    method: u.signupOrigin?.method,
+    createdAt: u.createdAt,
+  }));
+
   return NextResponse.json({
     totalUsers,
     activeAgents,
@@ -58,5 +79,6 @@ export async function GET() {
     totalPartnerships: partnerships,
     credits: creditStats[0] || { totalBalance: 0, totalEarned: 0, totalSpent: 0 },
     mrr: mrrResult[0]?.mrr || 0,
+    recentActivity,
   });
 }

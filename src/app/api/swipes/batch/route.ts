@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
+import { resolveSignupOrigin } from "@/lib/signup-origin";
 
 const DISLIKE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -73,12 +74,15 @@ export async function POST(request: NextRequest) {
       user = await User.findOne({ anonymousId });
       if (!user) {
         // Create new anonymous user
+        const signupOrigin = await resolveSignupOrigin(request, "anonymous");
+
         user = new User({
           email: `anon-${anonymousId}@temp.local`,
           password: "anonymous", // Will never be used for login
           anonymousId,
           roles: ["endUser"],
           emailVerified: null,
+          signupOrigin,
         });
       }
     }

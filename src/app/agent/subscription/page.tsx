@@ -37,12 +37,10 @@ interface PointsData {
   totalEarned: number;
   totalSpent: number;
   tier: string;
-  adSpendAvailable: number;
   tierConfig: {
     name: string;
     monthlyPrice: number;
     monthlyPoints: number;
-    adSpendRate: number;
   };
 }
 
@@ -52,7 +50,6 @@ const PLANS = [
     name: "Free",
     price: 0,
     credits: 0,
-    adSpendValue: 0,
     description: "Get started with a basic agent profile",
     features: [
       "Agent subdomain",
@@ -68,7 +65,6 @@ const PLANS = [
     name: "Beginner",
     price: 125,
     credits: 750,
-    adSpendValue: 93.75,
     description:
       "Launch your marketing with 750 credits/month for ads, direct mail, and voicemail",
     features: [
@@ -89,7 +85,6 @@ const PLANS = [
     name: "Experienced",
     price: 500,
     credits: 3200,
-    adSpendValue: 400,
     description:
       "Scale your business with 3,200 credits/month at a better rate",
     features: [
@@ -109,7 +104,6 @@ const PLANS = [
     name: "Top Agent",
     price: 1000,
     credits: 6800,
-    adSpendValue: 850,
     description:
       "Maximum ROI — 6,800 credits/month at the best rate with white-glove service",
     features: [
@@ -126,10 +120,18 @@ const PLANS = [
   },
 ];
 
+// Quick-buy options: dollar amount -> approximate credits at a typical tier rate
+const QUICK_CREDIT_OPTIONS = [
+  { dollars: 50, credits: 300 },
+  { dollars: 100, credits: 640 },
+  { dollars: 250, credits: 1600 },
+  { dollars: 500, credits: 3200 },
+  { dollars: 1000, credits: 6800 },
+];
+
 function BuyCreditsSection({ isLight }: { isLight: boolean }) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const QUICK_AMOUNTS = [50, 100, 250, 500, 1000];
 
   const handleTopUp = async () => {
     const value = parseFloat(amount);
@@ -166,19 +168,19 @@ function BuyCreditsSection({ isLight }: { isLight: boolean }) {
         Need more credits this month? Purchase additional credits anytime.
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
-        {QUICK_AMOUNTS.map((amt) => (
+        {QUICK_CREDIT_OPTIONS.map((opt) => (
           <button
-            key={amt}
-            onClick={() => setAmount(amt.toString())}
+            key={opt.dollars}
+            onClick={() => setAmount(opt.dollars.toString())}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              amount === amt.toString()
+              amount === opt.dollars.toString()
                 ? "bg-amber-600 text-white"
                 : isLight
                 ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
-            ${amt}
+            {opt.credits.toLocaleString()} credits
           </button>
         ))}
       </div>
@@ -190,7 +192,7 @@ function BuyCreditsSection({ isLight }: { isLight: boolean }) {
             min="10"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Custom amount"
+            placeholder="Dollar amount"
             className={`w-full pl-7 pr-3 py-2.5 rounded-lg text-sm border ${
               isLight
                 ? "border-gray-300 bg-white text-gray-900 placeholder-gray-400"
@@ -482,7 +484,7 @@ export default function AgentSubscriptionPage() {
                         isLight ? "text-gray-400" : "text-gray-500"
                       }`}
                     >
-                      ${(points?.adSpendAvailable ?? 0).toFixed(2)} ad value
+                      available credits
                     </p>
                   </div>
 
@@ -549,10 +551,7 @@ export default function AgentSubscriptionPage() {
                         isLight ? "text-gray-400" : "text-gray-500"
                       }`}
                     >
-                      $
-                      {PLANS.find((p) => p.tier === currentTier)
-                        ?.adSpendValue ?? 0}{" "}
-                      ad value
+                      refreshes each billing cycle
                     </p>
                   </div>
                 </div>
@@ -619,8 +618,7 @@ export default function AgentSubscriptionPage() {
                     isLight ? "text-gray-500" : "text-gray-400"
                   }`}
                 >
-                  Higher tiers include more credits and a better rate on every
-                  dollar
+                  Higher tiers include more monthly credits and better value
                 </p>
               </div>
 
@@ -682,40 +680,45 @@ export default function AgentSubscriptionPage() {
                         {plan.name}
                       </h3>
 
-                      {/* Price */}
-                      <div className="mb-3">
-                        <span
-                          className={`text-4xl font-bold ${
-                            isLight ? "text-gray-900" : "text-white"
-                          }`}
-                        >
-                          ${plan.price}
-                        </span>
-                        {plan.price > 0 && (
+                      {/* Credits — Primary Metric */}
+                      {plan.credits > 0 ? (
+                        <div className="mb-2">
                           <span
-                            className={`text-sm ${
+                            className={`text-4xl font-bold ${
+                              isLight ? "text-gray-900" : "text-white"
+                            }`}
+                          >
+                            {plan.credits.toLocaleString()}
+                          </span>
+                          <span
+                            className={`text-sm ml-1 ${
                               isLight ? "text-gray-500" : "text-gray-400"
                             }`}
                           >
-                            /mo
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Credits Badge */}
-                      {plan.credits > 0 && (
-                        <div
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg mb-3 ${
-                            isLight
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-amber-900/20 text-amber-300 border border-amber-800/50"
-                          }`}
-                        >
-                          <Coins className="w-4 h-4" />
-                          <span className="text-sm font-semibold">
-                            {plan.credits.toLocaleString()} credits/mo
+                            credits/mo
                           </span>
                         </div>
+                      ) : (
+                        <div className="mb-2">
+                          <span
+                            className={`text-4xl font-bold ${
+                              isLight ? "text-gray-900" : "text-white"
+                            }`}
+                          >
+                            Free
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Price — Secondary */}
+                      {plan.price > 0 && (
+                        <p
+                          className={`text-sm mb-3 ${
+                            isLight ? "text-gray-500" : "text-gray-400"
+                          }`}
+                        >
+                          ${plan.price}/mo
+                        </p>
                       )}
 
                       {/* Description */}

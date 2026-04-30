@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
+import { resolveSignupOrigin } from '@/lib/signup-origin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,9 +34,12 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       // Create new user with consent
+      const signupOrigin = await resolveSignupOrigin(req, "consent");
+
       user = new User({
         email: email.toLowerCase(),
         roles: ['endUser'],
+        signupOrigin,
       });
     }
 

@@ -7,6 +7,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { addDomainToProject } from "@/lib/vercel-domains";
 import { sendAgentApprovalEmail } from "@/lib/email-resend";
+import { generateSubdomain } from "@/lib/generate-subdomain";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET() {
     await dbConnect();
 
     const applications = await User.find({
-      agentApplication: { $exists: true },
+      "agentApplication.phase": { $exists: true, $ne: null },
     })
       .select("name email agentApplication createdAt")
       .sort({ "agentApplication.submittedAt": -1 })
@@ -93,24 +94,8 @@ export async function PUT(request: NextRequest) {
       user.agentApplication.finalApprovedAt = new Date();
       user.agentApplication.finalReviewNotes = reason || "Approved by admin";
 
-      // Generate subdomain from name: "John Doe" → "johndoe"
-      const userName = (user.name || user.email.split("@")[0]).toLowerCase();
-      const subdomain = userName.replace(/[^a-z0-9]/g, "");
-
-      // Check for subdomain conflicts and append number if needed
-      let finalSubdomain = subdomain;
-      let attempt = 0;
-      while (true) {
-        const existing = await User.findOne({
-          "agentProfile.subdomain": finalSubdomain,
-          _id: { $ne: user._id },
-        });
-        if (!existing) break;
-        attempt++;
-        finalSubdomain = `${subdomain}${attempt}`;
-      }
-
-      // Initialize agentProfile if needed and set subdomain
+      // Generate unique subdomain from name (shared utility handles conflicts + reserved words)
+      const finalSubdomain = await generateSubdomain(user.name, user.email, user._id);
       if (!user.agentProfile) {
         user.agentProfile = {} as any;
       }

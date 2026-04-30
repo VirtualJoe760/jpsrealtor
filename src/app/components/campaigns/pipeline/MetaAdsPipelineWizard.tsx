@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import { adBudgetToCredits, AD_SPEND_CREDITS_PER_DOLLAR } from '@/config/credit-costs';
 import PipelineStepIndicator, { META_ADS_STEPS } from './PipelineStepIndicator';
 
 type Objective = 'OUTCOME_LEADS' | 'OUTCOME_TRAFFIC' | 'OUTCOME_AWARENESS';
@@ -328,7 +329,7 @@ export default function MetaAdsPipelineWizard({
 
               {/* Budget */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget ($)</label>
+                <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
                 <input
                   type="number"
                   min="1"
@@ -337,7 +338,7 @@ export default function MetaAdsPipelineWizard({
                   className={inputClasses}
                 />
                 <p className={`text-xs ${textSecondary} mt-1`}>
-                  Estimated monthly spend: ${(config.budget * 30).toFixed(0)}
+                  Estimated monthly: {adBudgetToCredits(config.budget, 30)} credits
                 </p>
               </div>
 
@@ -547,7 +548,7 @@ export default function MetaAdsPipelineWizard({
                   </div>
                   <div>
                     <span className={textSecondary}>Daily Budget: </span>
-                    <span className={`font-medium ${isLight ? 'text-green-600' : 'text-green-400'}`}>${config.budget}/day</span>
+                    <span className={`font-medium ${isLight ? 'text-green-600' : 'text-green-400'}`}>{config.budget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
                   </div>
                   <div>
                     <span className={textSecondary}>Placements: </span>
@@ -627,7 +628,7 @@ export default function MetaAdsPipelineWizard({
                       Launching Meta Ads...
                     </span>
                   ) : (
-                    `Launch Meta Ads — $${config.budget}/day`
+                    `Launch Meta Ads — ${config.budget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day`
                   )}
                 </button>
               )}

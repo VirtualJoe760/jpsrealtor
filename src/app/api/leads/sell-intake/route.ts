@@ -15,6 +15,7 @@ import Contact from "@/models/Contact";
 import VerificationToken from "@/models/verificationToken";
 import { sendLeadWelcomeEmail } from "@/lib/email-resend";
 import { sendLeadEvent } from "@/lib/meta-capi";
+import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -229,13 +230,16 @@ export async function POST(request: NextRequest) {
           // Random placeholder password — user will set their own (or use OAuth)
           const tempPassword = randomBytes(24).toString("hex");
           const hashed = await bcrypt.hash(tempPassword, 12);
+          const signupOrigin = await resolveSignupOrigin(request, "sell_intake");
           user = await User.create({
             email: lower,
             password: hashed,
             name: `${firstName} ${lastName}`.trim(),
             phone: phone || undefined,
             roles: ["endUser"],
+            signupOrigin,
           });
+          linkUserToAgent(user._id.toString(), `${firstName} ${lastName}`.trim(), email, phone, signupOrigin).catch(() => {});
           accountCreated = true;
         }
 

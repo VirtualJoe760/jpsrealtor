@@ -489,6 +489,15 @@ export interface IUser extends Document {
   // Tutorial Preferences
   tutorialAvatarId?: string; // Which avatar to use for tutorial (e.g., "toasty", "default")
 
+  // Signup Origin — tracks which website and agent the user came from
+  signupOrigin?: {
+    domain: string;          // Full hostname at signup (e.g. "josephsardella.com", "chatrealty.io")
+    subdomain?: string;      // Agent subdomain if applicable (e.g. "josephsardella")
+    agentId?: mongoose.Types.ObjectId;  // The agent who owns the domain
+    method: string;          // "register" | "google" | "facebook" | "buy_intake" | "sell_intake" | "campaign" | "anonymous" | "consent"
+    ip?: string;             // IP at signup
+  };
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -1019,6 +1028,15 @@ const UserSchema = new Schema<IUser>(
     // Tutorial Preferences
     tutorialAvatarId: { type: String, default: 'toasty' }, // Default to Toasty for all users
 
+    // Signup Origin
+    signupOrigin: {
+      domain: String,
+      subdomain: String,
+      agentId: { type: Schema.Types.ObjectId, ref: "User" },
+      method: String,
+      ip: String,
+    },
+
     // Metadata
     lastLoginAt: Date,
   },
@@ -1071,8 +1089,8 @@ UserSchema.statics.isAdminEmail = function(email: string): boolean {
   return email.toLowerCase() === "josephsardella@gmail.com";
 };
 
-// Pre-save hook to set admin status
-UserSchema.pre("save", function(next) {
+// Pre-save hook to set admin status and auto-generate agent subdomain
+UserSchema.pre("save", async function(next) {
   if (this.isNew || this.isModified("email")) {
     const UserModel = this.constructor as any;
     if (UserModel.isAdminEmail(this.email)) {
@@ -1083,6 +1101,27 @@ UserSchema.pre("save", function(next) {
       }
     }
   }
+
+  // Auto-generate subdomain for newly promoted agents who don't have one yet
+  // Only runs when roles were modified and agent role was just added
+  if (
+    this.isModified("roles") &&
+    this.roles?.includes("realEstateAgent") &&
+    (!this.agentProfile?.subdomain)
+  ) {
+    try {
+      const { generateSubdomain } = await import("@/lib/generate-subdomain");
+      const subdomain = await generateSubdomain(this.name, this.email, this._id);
+      if (!this.agentProfile) {
+        this.agentProfile = {} as any;
+      }
+      this.agentProfile.subdomain = subdomain;
+      this.markModified("agentProfile");
+    } catch (err) {
+      console.error("[User pre-save] Subdomain generation failed:", err);
+    }
+  }
+
   next();
 });
 

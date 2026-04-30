@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { uploadToCloudinary } from '@/app/utils/cloudinaryUpload';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import { adBudgetToCredits, AD_SPEND_CREDITS_PER_DOLLAR } from '@/config/credit-costs';
 import PipelineStepIndicator from './PipelineStepIndicator';
 import type { StepDefinition } from './PipelineStepIndicator';
 
@@ -772,12 +773,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                   {/* Budget */}
                   <div>
-                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget ($)</label>
+                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
                     <input type="number" min="5" value={googleBudget}
                       onChange={(e) => setGoogleBudget(parseFloat(e.target.value) || 0)}
                       className={inputClasses}
                     />
-                    <p className={`text-xs ${textSecondary} mt-1`}>~${(googleBudget * 30).toFixed(0)}/month</p>
+                    <p className={`text-xs ${textSecondary} mt-1`}>~{adBudgetToCredits(googleBudget, 30)} credits/month</p>
                   </div>
                 </div>
               )}
@@ -901,12 +902,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                   {/* Budget */}
                   <div>
-                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget ($)</label>
+                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
                     <input type="number" min="5" value={metaBudget}
                       onChange={(e) => setMetaBudget(parseFloat(e.target.value) || 0)}
                       className={inputClasses}
                     />
-                    <p className={`text-xs ${textSecondary} mt-1`}>~${(metaBudget * 30).toFixed(0)}/month</p>
+                    <p className={`text-xs ${textSecondary} mt-1`}>~{adBudgetToCredits(metaBudget, 30)} credits/month</p>
                   </div>
                 </div>
               )}
@@ -947,7 +948,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   <div className={`p-4 rounded-lg ${isLight ? 'bg-blue-50 border border-blue-200' : 'bg-blue-900/20 border border-blue-700/50'}`}>
                     <div className="flex justify-between items-center mb-2">
                       <h4 className={`font-medium ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>Google Search PPC</h4>
-                      <span className={`font-semibold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>${googleBudget}/day</span>
+                      <span className={`font-semibold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>{googleBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
                     </div>
                     <div className={`text-sm ${textSecondary} space-y-1`}>
                       <p>Keywords: {keywords.length} ({keywords.slice(0, 3).join(', ')}{keywords.length > 3 ? '...' : ''})</p>
@@ -961,7 +962,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   <div className={`p-4 rounded-lg ${isLight ? 'bg-pink-50 border border-pink-200' : 'bg-pink-900/20 border border-pink-700/50'}`}>
                     <div className="flex justify-between items-center mb-2">
                       <h4 className={`font-medium ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>Meta Retargeting</h4>
-                      <span className={`font-semibold ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>${metaBudget}/day</span>
+                      <span className={`font-semibold ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>{metaBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
                     </div>
                     <div className={`text-sm ${textSecondary} space-y-1`}>
                       <p>Audience: {metaAudienceType === 'visitors' ? 'Website Visitors (Pixel)' : 'CRM Contacts'}</p>
@@ -975,8 +976,8 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               {/* Total Budget */}
               <div className={`p-4 rounded-lg mb-6 text-center ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
                 <p className={`text-sm ${textSecondary}`}>Total Daily Budget</p>
-                <p className={`text-3xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>${totalBudget}/day</p>
-                <p className={`text-sm ${textSecondary}`}>~${(totalBudget * 30).toFixed(0)}/month</p>
+                <p className={`text-3xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>{totalBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</p>
+                <p className={`text-sm ${textSecondary}`}>~{adBudgetToCredits(totalBudget, 30)} credits/month</p>
               </div>
 
               {/* Launch Result */}
@@ -1016,7 +1017,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                         Saving & Launching...
                       </span>
                     ) : (
-                      `Launch Campaign — $${totalBudget}/day`
+                      `Launch Campaign — ${totalBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day`
                     )}
                   </button>
                 </div>

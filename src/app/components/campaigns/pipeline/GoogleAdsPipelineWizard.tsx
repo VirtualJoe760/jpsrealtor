@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import { adBudgetToCredits, AD_SPEND_CREDITS_PER_DOLLAR } from '@/config/credit-costs';
 import PipelineStepIndicator, { GOOGLE_ADS_STEPS } from './PipelineStepIndicator';
 import PipelineContactsStep from './PipelineContactsStep';
 
@@ -302,7 +303,7 @@ export default function GoogleAdsPipelineWizard({
 
               {/* Budget */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget ($)</label>
+                <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
                 <input
                   type="number"
                   min="1"
@@ -311,7 +312,7 @@ export default function GoogleAdsPipelineWizard({
                   className={inputClasses}
                 />
                 <p className={`text-xs ${textSecondary} mt-1`}>
-                  Estimated monthly spend: ${(config.budget * 30).toFixed(0)}
+                  Estimated monthly: {adBudgetToCredits(config.budget, 30)} credits
                 </p>
               </div>
 
@@ -331,7 +332,7 @@ export default function GoogleAdsPipelineWizard({
 
               {config.bidStrategy === 'target_cpa' && (
                 <div className="mb-4">
-                  <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Target CPA ($)</label>
+                  <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Target CPA (credits)</label>
                   <input
                     type="number"
                     min="1"
@@ -491,7 +492,7 @@ export default function GoogleAdsPipelineWizard({
                   </div>
                   <div>
                     <span className={textSecondary}>Daily Budget: </span>
-                    <span className={`font-medium ${isLight ? 'text-green-600' : 'text-green-400'}`}>${config.budget}/day</span>
+                    <span className={`font-medium ${isLight ? 'text-green-600' : 'text-green-400'}`}>{config.budget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
                   </div>
                   <div>
                     <span className={textSecondary}>Bid Strategy: </span>
@@ -557,7 +558,7 @@ export default function GoogleAdsPipelineWizard({
                       Launching Google Ads...
                     </span>
                   ) : (
-                    `Launch Google Ads Campaign — $${config.budget}/day`
+                    `Launch Google Ads Campaign — ${config.budget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day`
                   )}
                 </button>
               )}

@@ -768,26 +768,26 @@ export default function DomainSeoStep({
       <div className={cardClass}>
         <h3 className={`text-lg font-semibold mb-4 ${tc.textPrimary}`}>Subdomain &amp; SEO</h3>
         <div className="space-y-5">
-          {/* Subdomain — assigned by admin on approval, read-only */}
+          {/* Subdomain — auto-generated from name, editable by agent */}
           <div>
             <label className={labelClass}>Your Subdomain</label>
             {ap.subdomain ? (
               <>
                 <div className="flex items-center gap-0">
-                  <div className={`flex-1 px-4 py-3 rounded-l-lg border-y border-l text-sm ${
-                    isLight
-                      ? "bg-gray-50 border-gray-300 text-gray-900"
-                      : "bg-gray-800/50 border-gray-700 text-white"
-                  }`}>
-                    <a
-                      href={`https://${ap.subdomain}.chatrealty.io`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`font-medium ${isLight ? "text-blue-600 hover:text-blue-700" : "text-blue-400 hover:text-blue-300"}`}
-                    >
-                      {ap.subdomain}
-                    </a>
-                  </div>
+                  <input
+                    type="text"
+                    value={ap.subdomain}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "");
+                      updateField("agentProfile.subdomain", val);
+                    }}
+                    maxLength={30}
+                    className={`flex-1 px-4 py-3 rounded-l-lg border-y border-l text-sm font-medium ${
+                      isLight
+                        ? "bg-white border-gray-300 text-gray-900"
+                        : "bg-gray-800/50 border-gray-700 text-white"
+                    }`}
+                  />
                   <span className={`px-4 py-3 rounded-r-lg border text-sm font-medium ${
                     isLight ? "bg-gray-100 border-gray-300 text-gray-500" : "bg-gray-700 border-gray-700 text-gray-400"
                   }`}>
@@ -795,7 +795,7 @@ export default function DomainSeoStep({
                   </span>
                 </div>
                 <p className={`text-xs mt-1 ${tc.textMuted}`}>
-                  Your subdomain is active once you subscribe to a plan.
+                  Lowercase letters and numbers only. Active once you subscribe to a plan.
                 </p>
               </>
             ) : (

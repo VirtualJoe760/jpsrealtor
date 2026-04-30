@@ -126,7 +126,7 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
       stats: {
         clicks: campaign.analytics.adClicks || 0,
         conversions: campaign.analytics.adConversions || 0,
-        spend: campaign.analytics.adSpend ? `$${campaign.analytics.adSpend.toFixed(2)}` : '$0.00',
+        spend: campaign.analytics.adSpend ? `${Math.round(campaign.analytics.adSpend * 8)} credits` : '0 credits',
       },
     },
   ];

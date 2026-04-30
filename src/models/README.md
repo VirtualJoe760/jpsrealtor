@@ -106,6 +106,7 @@ tier: { type: String, enum: ["free", "beginner", "experienced", "topagent"] }
 | PlatformConfig.ts | platform_config | Platform homepage config |
 | Article.ts | articles | Blog/CMS articles |
 | DomainMapping.ts | domain_mappings | Community domain mappings |
+| DomainRegistry.ts | domain_registry | Centralized domain registry (all services) |
 | Team.ts | teams | Agent teams |
 | Label.ts | labels | Contact labels |
 | ImportBatch.ts | importbatches | Contact import tracking |

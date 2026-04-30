@@ -104,7 +104,19 @@ export const authOptions: NextAuthOptions = {
             roles: ["endUser"],
             isAdmin: false,
             lastLoginAt: new Date(),
+            signupOrigin: {
+              domain: "unknown", // OAuth callbacks don't have request context; backfilled on first page load
+              method: account.provider, // "google" or "facebook"
+            },
           });
+
+          // Link to agent if signed up on agent domain (non-blocking)
+          // Note: OAuth callback has limited origin data but agentId may be set
+          const { linkUserToAgent } = await import("@/lib/signup-origin");
+          const origin = existingUser.signupOrigin
+            ? { ...existingUser.signupOrigin, agentId: existingUser.signupOrigin.agentId?.toString() }
+            : { domain: "unknown", method: account.provider };
+          linkUserToAgent(existingUser._id.toString(), existingUser.name, existingUser.email, undefined, origin).catch(() => {});
         } else {
           // Update existing user's info and last login
           existingUser.name = user.name || existingUser.name;

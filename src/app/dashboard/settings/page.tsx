@@ -523,6 +523,9 @@ export default function SettingsPage() {
   const [isServicePartner, setIsServicePartner] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState({ companyName: "", partnerType: "", status: "" });
 
+  // Agent approval modal
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${isLight ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500" : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"}`;
   const labelClass = `block text-sm font-medium mb-1.5 ${isLight ? "text-gray-700" : "text-gray-300"}`;
 
@@ -556,7 +559,14 @@ export default function SettingsPage() {
         setUserEmail(auth.email || session?.user?.email || "");
         const isRE = auth.roles?.includes("realEstateAgent") || false;
         setIsAgent(isRE);
-        if (isRE) setAgentInfo({ name: auth.name || "", agentId: auth._id || "", team: auth.teamName || "ChatRealty", licenseNumber: auth.licenseNumber || "", brokerageName: auth.brokerageName || "" });
+        if (isRE) {
+          setAgentInfo({ name: auth.name || "", agentId: auth._id || "", team: auth.teamName || "ChatRealty", licenseNumber: auth.licenseNumber || "", brokerageName: auth.brokerageName || "" });
+          // Show approval modal if agent hasn't seen it yet
+          const dismissKey = `agent_approved_seen_${auth._id}`;
+          if (!localStorage.getItem(dismissKey)) {
+            setShowApprovalModal(true);
+          }
+        }
         const isSP = auth.roles?.includes("serviceProvider") || false;
         setIsServicePartner(isSP);
         if (isSP) {
@@ -766,8 +776,73 @@ export default function SettingsPage() {
 
   const saveBtnClass = `px-6 py-2.5 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"} disabled:opacity-50`;
 
+  const dismissApprovalModal = () => {
+    setShowApprovalModal(false);
+    if (agentInfo.agentId) {
+      localStorage.setItem(`agent_approved_seen_${agentInfo.agentId}`, "true");
+    }
+  };
+
   return (
     <SpaticalBackground showGradient={true}>
+      {/* Agent Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${isLight ? "bg-white" : "bg-gray-900"}`}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-blue-600 px-6 py-8 text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-white/20 backdrop-blur mb-4">
+                <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-1">Welcome to the Team!</h2>
+              <p className="text-white/80 text-sm">Your agent application has been approved</p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-6">
+              <p className={`text-sm mb-5 ${isLight ? "text-gray-600" : "text-gray-300"}`}>
+                Congratulations{agentInfo.name ? `, ${agentInfo.name.split(" ")[0]}` : ""}! You now have access to the full agent dashboard with campaigns, CRM, analytics, and your own branded subdomain.
+              </p>
+
+              <div className={`rounded-xl p-4 mb-5 space-y-2.5 ${isLight ? "bg-blue-50 border border-blue-100" : "bg-blue-900/20 border border-blue-800/30"}`}>
+                <p className={`text-sm font-medium ${isLight ? "text-blue-800" : "text-blue-300"}`}>Next steps:</p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isLight ? "bg-blue-200 text-blue-700" : "bg-blue-800 text-blue-300"}`}>1</span>
+                    <p className={`text-sm ${isLight ? "text-blue-700" : "text-blue-200"}`}>Check your email for onboarding instructions</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isLight ? "bg-blue-200 text-blue-700" : "bg-blue-800 text-blue-300"}`}>2</span>
+                    <p className={`text-sm ${isLight ? "text-blue-700" : "text-blue-200"}`}>Complete your agent profile and branding</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isLight ? "bg-blue-200 text-blue-700" : "bg-blue-800 text-blue-300"}`}>3</span>
+                    <p className={`text-sm ${isLight ? "text-blue-700" : "text-blue-200"}`}>Choose a subscription plan to activate your subdomain</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { dismissApprovalModal(); router.push("/agent/dashboard"); }}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white rounded-xl text-sm font-semibold transition-all"
+                >
+                  Go to Agent Dashboard
+                </button>
+                <button
+                  onClick={dismissApprovalModal}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen py-8 px-4 max-w-4xl mx-auto">
         <Link href="/dashboard" className={`inline-flex items-center gap-1 text-sm mb-6 ${isLight ? "text-blue-600" : "text-emerald-400"}`}>← Back to Dashboard</Link>
 

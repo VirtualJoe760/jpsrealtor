@@ -153,6 +153,46 @@ Credits can be spent on four channels:
 - `direct_mail` — Physical direct mail via Thanks.io
 - `voicemail_drop` — Ringless voicemail drops
 
+### Unified Credit Cost Table
+
+Everything on the platform costs credits, not dollars. The conversion is **1 credit = $0.125 ad-spend value**, rounded up per unit.
+
+#### Direct Mail (Thanks.io)
+
+| Mail Type | Credits/Piece | Platform Cost | Collects | Extra Margin |
+|-----------|:---:|---:|---:|---:|
+| Postcard 4×6 | **6** | $0.65 | $0.75 | +$0.10 |
+| Postcard 6×9 | **6** | $0.72 | $0.75 | +$0.03 |
+| Postcard 6×11 | **8** | $0.93 | $1.00 | +$0.07 |
+| Letter (windowed) | **8** | $0.96 | $1.00 | +$0.04 |
+| Handwritten Notecard | **14** | $1.66 | $1.75 | +$0.09 |
+| Radius lookup | **1**/record | $0.05 | $0.125 | +$0.075 |
+| Data append | **2**/record | $0.20 | $0.25 | +$0.05 |
+
+#### Voicemail Drops (Drop Cowboy)
+
+| Item | Credits | Platform Cost | Collects | Extra Margin |
+|------|:---:|---:|---:|---:|
+| Voicemail drop (per contact) | **1** | ~$0.10 | $0.125 | +$0.025 |
+
+#### Digital Ads (Google & Meta)
+
+| Item | Credits | Notes |
+|------|:---:|-------|
+| $1 ad spend | **8** | Straight conversion, no additional markup |
+
+#### Example Credit Costs
+
+| Scenario | Pieces | Credits/Piece | Total Credits |
+|----------|:---:|:---:|:---:|
+| 200 postcards (4×6) via radius | 200 | 6 + 1 (lookup) | **1,400** |
+| 50 handwritten notecards | 50 | 14 | **700** |
+| 100 voicemail drops | 100 | 1 | **100** |
+| $10/day Google Ads (30 days) | — | 80/day | **2,400** |
+| $5/day Meta Ads (14 days) | — | 40/day | **560** |
+
+**Config file:** `src/config/credit-costs.ts`
+
 ---
 
 ## Stripe Products & Price IDs

@@ -7,6 +7,7 @@ import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
 import { sendCompleteRegistrationEvent } from "@/lib/meta-capi";
+import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
@@ -64,12 +65,16 @@ export async function POST(request: NextRequest) {
     const forwarded = request.headers.get('x-forwarded-for');
     const ipAddress = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown';
 
+    // Resolve signup origin from request context
+    const signupOrigin = await resolveSignupOrigin(request, "register");
+
     // Create user with optional marketing consent data
     const userData: any = {
       email: email.toLowerCase(),
       password: hashedPassword,
       name: name || undefined,
       roles: ["endUser"], // Default role
+      signupOrigin,
     };
 
     // Add optional fields if provided
@@ -105,6 +110,9 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await User.create(userData);
+
+    // If signed up on an agent's domain, add as client contact (non-blocking)
+    linkUserToAgent(user._id.toString(), name, email, phone, signupOrigin).catch(() => {});
 
     // Generate verification token
     const token = crypto.randomBytes(32).toString("hex");

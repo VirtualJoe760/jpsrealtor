@@ -10,7 +10,20 @@ import {
   DollarSign,
   Coins,
   Clock,
+  Globe,
+  UserPlus,
+  Shield,
 } from "lucide-react";
+
+interface ActivityItem {
+  type: "user_signup" | "agent_approved" | "partner_joined";
+  name: string;
+  email: string;
+  domain?: string;
+  agentId?: string;
+  method?: string;
+  createdAt: string;
+}
 
 interface AdminStats {
   totalUsers: number;
@@ -22,6 +35,7 @@ interface AdminStats {
   totalPartnerships: number;
   credits: { totalBalance: number; totalEarned: number; totalSpent: number };
   mrr: number;
+  recentActivity?: ActivityItem[];
 }
 
 export default function AdminOverviewPage() {
@@ -60,6 +74,18 @@ export default function AdminOverviewPage() {
     );
   }
 
+  const formatTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  };
+
   const statCards = [
     { label: "Total Users", value: stats?.totalUsers ?? 0, icon: Users, color: "text-blue-500" },
     { label: "Active Agents", value: stats?.activeAgents ?? 0, icon: UserCheck, color: "text-green-500" },
@@ -95,12 +121,62 @@ export default function AdminOverviewPage() {
         })}
       </div>
 
-      {/* Recent Activity placeholder */}
+      {/* Recent Activity */}
       <div className={`${cardBg} border ${border} rounded-xl p-6`}>
         <h3 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Recent Activity</h3>
-        <div className={`text-sm ${textSecondary} text-center py-8`}>
-          Activity feed coming soon...
-        </div>
+        {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+          <div className="space-y-3">
+            {stats.recentActivity.map((item, i) => {
+              const Icon = item.type === "agent_approved" ? UserCheck
+                : item.type === "partner_joined" ? Handshake
+                : UserPlus;
+              const iconColor = item.type === "agent_approved" ? "text-green-500"
+                : item.type === "partner_joined" ? "text-purple-500"
+                : "text-blue-500";
+              const label = item.type === "agent_approved" ? "Agent approved"
+                : item.type === "partner_joined" ? "Partner joined"
+                : "New signup";
+              const timeAgo = formatTimeAgo(item.createdAt);
+
+              return (
+                <div key={i} className={`flex items-center gap-3 py-2 ${i > 0 ? `border-t ${border}` : ""}`}>
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${isLight ? "bg-gray-100" : "bg-white/5"}`}>
+                    <Icon size={16} className={iconColor} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${textPrimary}`}>
+                      <span className="font-medium">{item.name}</span>
+                      <span className={`ml-1.5 ${textSecondary}`}>— {label}</span>
+                    </p>
+                    <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
+                      <span>{item.email}</span>
+                      {item.domain && item.domain !== "unknown" && (
+                        <>
+                          <span>·</span>
+                          <span className="flex items-center gap-1">
+                            <Globe size={10} />
+                            {item.domain}
+                          </span>
+                        </>
+                      )}
+                      {item.method && (
+                        <>
+                          <span>·</span>
+                          <span>{item.method}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-xs flex-shrink-0 ${textSecondary}`}>{timeAgo}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={`text-sm ${textSecondary} text-center py-8`}>
+            No recent activity yet.
+          </div>
+        )}
       </div>
     </div>
   );

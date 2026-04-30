@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongoose';
+import PointsLedger from '@/models/PointsLedger';
+import { estimateVoicemailCredits, VOICEMAIL_DROP_CREDITS } from '@/config/credit-costs';
+import { Types } from 'mongoose';
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
 const DROP_COWBOY_SECRET = process.env.DROP_COWBOY_SECRET;
@@ -96,6 +102,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Credit balance check before sending
+    // NOTE: This legacy route may be called without session auth context.
+    // If no session is available, credit checking is skipped — consider
+    // migrating callers to the authenticated campaign send routes.
+    const session = await getServerSession(authOptions);
+    let ledger: any = null;
+    let userId: Types.ObjectId | null = null;
+
+    if (session?.user) {
+      await dbConnect();
+      userId = new Types.ObjectId((session.user as any).id);
+      const totalCreditsNeeded = estimateVoicemailCredits(contacts.length);
+      ledger = await PointsLedger.findOne({ userId });
+      if (!ledger || ledger.balance < totalCreditsNeeded) {
+        return NextResponse.json({
+          success: false,
+          error: `Insufficient credits. Need ${totalCreditsNeeded} credits, have ${ledger?.balance || 0}.`,
+          creditsRequired: totalCreditsNeeded,
+          creditsAvailable: ledger?.balance || 0,
+        }, { status: 400 });
+      }
+    } else {
+      console.warn('⚠️ No authenticated session — skipping credit balance check');
+    }
+
     // Step 1: Upload audio to Drop Cowboy
     console.log('\n🎵 STEP 1: Uploading audio to Drop Cowboy...');
     const audioArrayBuffer = await audioFile.arrayBuffer();
@@ -125,6 +156,16 @@ export async function POST(req: NextRequest) {
       campaignName
     );
 
+    // Debit credits for successful sends only (if authenticated)
+    let creditsUsed = 0;
+    if (ledger && results.successes > 0) {
+      creditsUsed = results.successes * VOICEMAIL_DROP_CREDITS;
+      ledger.debitPoints(creditsUsed, 'campaign_spend', `Legacy voicemail campaign "${campaignName}" — ${results.successes} drops`, {
+        channel: 'voicemail_drop',
+      });
+      await ledger.save();
+    }
+
     console.log('\n🎉 CAMPAIGN COMPLETE:');
     console.log('   ✅ Successful:', results.successes);
     console.log('   ❌ Failed:', results.failures);
@@ -138,6 +179,7 @@ export async function POST(req: NextRequest) {
       totalContacts: contacts.length,
       successCount: results.successes,
       failureCount: results.failures,
+      creditsUsed,
       results: results.details,
     });
 

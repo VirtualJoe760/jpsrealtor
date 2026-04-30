@@ -21,7 +21,6 @@ import {
   ArrowLeft,
   FileEdit,
 } from "lucide-react";
-import AdminNav from "@/app/components/AdminNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 
@@ -312,8 +311,6 @@ export default function EditArticlePage() {
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-edit-article">
       <div className="max-w-7xl mx-auto">
-        <AdminNav />
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

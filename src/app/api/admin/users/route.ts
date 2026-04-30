@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
         licenseNumber: user.licenseNumber,
         profileDescription: user.profileDescription,
         subscriptionTier: user.subscriptionTier,
+        signupOrigin: user.signupOrigin,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       })),
@@ -99,5 +100,53 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch users" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * DELETE /api/admin/users
+ * Bulk delete users by IDs. Cannot delete your own account.
+ * Body: { ids: string[] }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await dbConnect();
+
+    const currentUser = await User.findOne({ email: session.user.email });
+    if (!currentUser?.isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { ids } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: "ids array is required" }, { status: 400 });
+    }
+
+    // Prevent self-deletion
+    const selfId = currentUser._id.toString();
+    const safeIds = ids.filter((id: string) => id !== selfId);
+    if (safeIds.length < ids.length) {
+      console.warn("[admin/users DELETE] Blocked self-deletion attempt");
+    }
+
+    if (safeIds.length === 0) {
+      return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
+    }
+
+    const result = await User.deleteMany({ _id: { $in: safeIds } });
+
+    return NextResponse.json({
+      success: true,
+      deleted: result.deletedCount,
+      message: `${result.deletedCount} account${result.deletedCount !== 1 ? "s" : ""} deleted`,
+    });
+  } catch (error) {
+    console.error("Error bulk deleting users:", error);
+    return NextResponse.json({ error: "Failed to delete users" }, { status: 500 });
   }
 }

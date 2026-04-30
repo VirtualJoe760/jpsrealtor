@@ -6,7 +6,12 @@ import { useTheme } from '@/app/contexts/ThemeContext';
 import { useThemeClasses } from '@/app/contexts/ThemeContext';
 import PipelineStepIndicator, { DIRECT_MAIL_STEPS } from './PipelineStepIndicator';
 import PipelineContactsStep from './PipelineContactsStep';
-import { MAIL_PRICING } from '@/lib/thanksio';
+import {
+  DIRECT_MAIL_CREDITS,
+  DIRECT_MAIL_LABELS,
+  RADIUS_LOOKUP_CREDITS,
+  estimateDirectMailCredits,
+} from '@/config/credit-costs';
 
 const PinDropMap = dynamic(() => import('../PinDropMap'), { ssr: false });
 
@@ -33,13 +38,12 @@ interface MailDesign {
   };
 }
 
-const MAIL_TYPE_OPTIONS: { value: MailType; label: string; price: string; description: string }[] = [
-  { value: 'postcard_4x6', label: 'Postcard (4x6)', price: '$0.65', description: 'Standard postcard — great for just listed/sold' },
-  { value: 'postcard_6x9', label: 'Postcard (6x9)', price: '$0.72', description: 'Large postcard — ideal for CMA reports and highlights' },
-  { value: 'postcard_6x11', label: 'Postcard (6x11)', price: '$0.93', description: 'Oversized postcard — maximum visual impact' },
-  { value: 'letter', label: 'Letter', price: '$0.96', description: 'Printed letter in envelope — detailed CMA, personal outreach' },
-  { value: 'notecard', label: 'Handwritten Notecard', price: '$1.66', description: 'Simulated handwriting — thank you notes, follow-ups' },
-];
+const MAIL_TYPE_OPTIONS: { value: MailType; label: string; credits: number; description: string }[] = Object.entries(DIRECT_MAIL_LABELS).map(([key, val]) => ({
+  value: key as MailType,
+  label: val.label,
+  credits: val.credits,
+  description: val.description,
+}));
 
 export default function DirectMailPipelineWizard({
   campaign,
@@ -100,7 +104,7 @@ export default function DirectMailPipelineWizard({
     }
   };
 
-  const estimatedCost = (MAIL_PRICING[design.mailType] || 0.99) * contactCount;
+  const estimatedCredits = estimateDirectMailCredits(design.mailType, contactCount, { radiusSearch: useRadius });
 
   const handleBackfillAddresses = async () => {
     setIsBackfilling(true);
@@ -211,7 +215,7 @@ export default function DirectMailPipelineWizard({
                   <input type="checkbox" checked={useRadius} onChange={(e) => setUseRadius(e.target.checked)} className="w-5 h-5 rounded" />
                   <div className="flex-1">
                     <p className={`font-medium ${textPrimary}`}>Radius Send</p>
-                    <p className={`text-sm ${textSecondary}`}>Mail to every residential address near a location ($0.05/address lookup)</p>
+                    <p className={`text-sm ${textSecondary}`}>Mail to every residential address near a location ({RADIUS_LOOKUP_CREDITS} credit/address lookup)</p>
                   </div>
                 </label>
               </div>
@@ -262,7 +266,7 @@ export default function DirectMailPipelineWizard({
                   <label className={`block text-sm ${textSecondary} mb-1`}>
                     Number of addresses: <span className={`font-semibold ${textPrimary}`}>{radiusRecordCount}</span>
                     <span className={`ml-2 text-xs ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                      (lookup: ${(radiusRecordCount * 0.05).toFixed(2)})
+                      (lookup: {radiusRecordCount * RADIUS_LOOKUP_CREDITS} credits)
                     </span>
                   </label>
                   <input type="range" min="50" max="2000" step="50" value={radiusRecordCount}
@@ -364,7 +368,7 @@ export default function DirectMailPipelineWizard({
                           <p className={`text-sm ${textSecondary}`}>{opt.description}</p>
                         </div>
                         <span className={`text-lg font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                          {opt.price}
+                          {opt.credits} credits
                         </span>
                       </div>
                     </button>
@@ -538,9 +542,9 @@ export default function DirectMailPipelineWizard({
                     </span>
                   </div>
                   <div>
-                    <span className={textSecondary}>Price per piece: </span>
+                    <span className={textSecondary}>Credits per piece: </span>
                     <span className={`font-medium ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                      ${MAIL_PRICING[design.mailType]?.toFixed(2)}
+                      {DIRECT_MAIL_CREDITS[design.mailType]} credits
                     </span>
                   </div>
                   <div>
@@ -550,7 +554,7 @@ export default function DirectMailPipelineWizard({
                   <div>
                     <span className={textSecondary}>Estimated total: </span>
                     <span className={`font-bold text-lg ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                      ${estimatedCost.toFixed(2)}
+                      {estimatedCredits.toLocaleString()} credits
                     </span>
                   </div>
                 </div>
@@ -646,12 +650,12 @@ export default function DirectMailPipelineWizard({
               {/* Cost Summary */}
               <div className={`p-6 rounded-lg mb-6 ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
                 <div className="text-center">
-                  <p className={`text-sm ${textSecondary} mb-1`}>Total Cost</p>
+                  <p className={`text-sm ${textSecondary} mb-1`}>Total Credits</p>
                   <p className={`text-3xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>
-                    ${estimatedCost.toFixed(2)}
+                    {estimatedCredits.toLocaleString()} credits
                   </p>
                   <p className={`text-sm ${textSecondary} mt-1`}>
-                    {contactCount} {MAIL_TYPE_OPTIONS.find(o => o.value === design.mailType)?.label}s × ${MAIL_PRICING[design.mailType]?.toFixed(2)}
+                    {contactCount} {MAIL_TYPE_OPTIONS.find(o => o.value === design.mailType)?.label}s × {DIRECT_MAIL_CREDITS[design.mailType]} credits
                   </p>
                 </div>
               </div>
@@ -706,7 +710,7 @@ export default function DirectMailPipelineWizard({
                       Sending to thanks.io...
                     </span>
                   ) : (
-                    `Send ${contactCount} Mail Pieces — $${estimatedCost.toFixed(2)}`
+                    `Send ${contactCount} Mail Pieces — ${estimatedCredits.toLocaleString()} credits`
                   )}
                 </button>
               )}
