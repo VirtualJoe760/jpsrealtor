@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
         licenseNumber: user.licenseNumber,
         profileDescription: user.profileDescription,
         subscriptionTier: user.subscriptionTier,
+        subdomain: user.agentProfile?.subdomain,
         signupOrigin: user.signupOrigin,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,

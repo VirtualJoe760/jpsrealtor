@@ -20,9 +20,12 @@ import {
 } from "lucide-react";
 import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
+import { useImpersonation } from "@/lib/hooks/useImpersonation";
+import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
+  const impersonation = useImpersonation();
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -42,8 +45,29 @@ export default function AgentDashboard() {
   });
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-  // Fetch agent profile
+  // Fetch agent profile — use impersonated agent data if admin is viewing a subdomain
   useEffect(() => {
+    if (impersonation.loading) return;
+
+    if (impersonation.isImpersonating && impersonation.agent) {
+      // Admin viewing another agent's dashboard
+      const a = impersonation.agent;
+      setAgentProfile({
+        name: a.name || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        brokerageName: a.brokerageName || "",
+        licenseNumber: a.licenseNumber || "",
+        profileDescription: "",
+        image: "",
+        team: null,
+        isTeamLeader: false,
+        agentProfile: a.agentProfile || null,
+      });
+      setIsLoadingProfile(false);
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
         const response = await fetch("/api/user/profile");
@@ -74,7 +98,7 @@ export default function AgentDashboard() {
     if (status === "authenticated" && session) {
       fetchProfile();
     }
-  }, [status, session]);
+  }, [status, session, impersonation.loading, impersonation.isImpersonating, impersonation.agent]);
 
   if (status === "loading") {
     return (
@@ -96,8 +120,10 @@ export default function AgentDashboard() {
 
   const user = session?.user as any;
   const isAgent = user?.roles?.includes("realEstateAgent");
+  const isAdmin = user?.isAdmin;
 
-  if (!isAgent) {
+  // Allow admins to view agent dashboards via impersonation
+  if (!isAgent && !impersonation.isImpersonating) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -149,6 +175,15 @@ export default function AgentDashboard() {
 
   return (
     <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col overflow-hidden">
+      {/* Impersonation Banner */}
+      {impersonation.isImpersonating && impersonation.agent && impersonation.subdomain && (
+        <ImpersonationBanner
+          agentName={impersonation.agent.name}
+          agentEmail={impersonation.agent.email}
+          subdomain={impersonation.subdomain}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 md:py-4 md:py-8">
         {/* Agent Navigation */}
         <div className="flex-shrink-0">

@@ -61,6 +61,16 @@ export async function proxy(request: NextRequest) {
 
     // Agent subdomain (johndoe.chatrealty.io)
     if (subdomain) {
+      // If path starts with /agent/ or /admin/, let it pass through normally
+      // so admins can view agent dashboards via their subdomain.
+      // The x-agent-subdomain header tells the page whose data to load.
+      if (pathname.startsWith("/agent/") || pathname.startsWith("/admin/") || pathname.startsWith("/dashboard/")) {
+        const response = NextResponse.next();
+        response.headers.set("x-agent-subdomain", subdomain);
+        return response;
+      }
+
+      // All other paths → rewrite to the public agent-site page
       const url = request.nextUrl.clone();
       url.pathname = `/agent-site${pathname}`;
       const response = NextResponse.rewrite(url);

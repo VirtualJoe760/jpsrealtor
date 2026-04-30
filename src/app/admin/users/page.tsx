@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Edit2, X, Check, Shield, Search, Globe, Calendar, Clock,
+  Edit2, X, Check, Shield, Search, Globe, Calendar, Clock, Eye,
   Users as UsersIcon, List, LayoutGrid, ChevronDown, UserPlus,
 } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
@@ -21,6 +21,7 @@ interface User {
   brokerageName?: string;
   licenseNumber?: string;
   profileDescription?: string;
+  subdomain?: string;
   signupOrigin?: { domain?: string; subdomain?: string; agentId?: string; method?: string };
   createdAt: string;
   lastLoginAt?: string;
@@ -626,6 +627,19 @@ export default function AdminUsersPage() {
                       <p className={`text-xs font-medium mb-1 ${textSecondary}`}>DESCRIPTION</p>
                       <p className={`text-sm ${textPrimary}`}>{selectedUser.profileDescription}</p>
                     </div>
+                  )}
+
+                  {/* View Agent Dashboard link — for agents with subdomains */}
+                  {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (
+                    <a
+                      href={`https://${selectedUser.subdomain}.chatrealty.io/agent/dashboard`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Eye size={14} />
+                      View Agent Dashboard
+                    </a>
                   )}
                 </>
               )}
