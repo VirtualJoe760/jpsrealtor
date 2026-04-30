@@ -213,10 +213,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             <Image
               src={
                 isLight
-                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/obsidian-logo-black.png")
-                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/logo-white-obsidian.png")
+                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/chatrealty-logo.png")
+                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/chatrealty-logo-dark.png")
               }
-              alt={branding.teamName || branding.brokerageName || "Logo"}
+              alt={branding.teamName || branding.brokerageName || "ChatRealty"}
               width={220}
               height={50}
               className="object-contain"
