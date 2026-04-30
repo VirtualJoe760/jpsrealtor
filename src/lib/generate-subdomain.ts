@@ -70,5 +70,70 @@ export async function generateSubdomain(
     final = `${base}${attempt}`;
   }
 
+  // Auto-register with Vercel (fire-and-forget)
+  registerSubdomainWithVercel(final).catch((err) =>
+    console.error(`[generate-subdomain] Vercel registration failed for ${final}.chatrealty.io:`, err)
+  );
+
   return final;
+}
+
+/**
+ * Register a subdomain with Vercel so it resolves to our deployment.
+ * Non-blocking — failures are logged but don't prevent the subdomain from being saved.
+ */
+export async function registerSubdomainWithVercel(subdomain: string): Promise<void> {
+  const token = process.env.VERCEL_API_TOKEN;
+  const projectId = process.env.VERCEL_PROJECT_ID;
+  if (!token || !projectId) {
+    console.warn("[generate-subdomain] VERCEL_API_TOKEN or VERCEL_PROJECT_ID not set, skipping registration");
+    return;
+  }
+
+  const domain = `${subdomain}.chatrealty.io`;
+  const teamId = process.env.VERCEL_TEAM_ID;
+  const url = `https://api.vercel.com/v10/projects/${projectId}/domains${teamId ? `?teamId=${teamId}` : ""}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: domain }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    // 409 = already registered, which is fine
+    if (res.status === 409) {
+      console.log(`[generate-subdomain] ${domain} already registered with Vercel`);
+      return;
+    }
+    throw new Error(`Vercel API ${res.status}: ${body}`);
+  }
+
+  console.log(`[generate-subdomain] Registered ${domain} with Vercel`);
+}
+
+/**
+ * Remove a subdomain from Vercel (when agent is demoted).
+ */
+export async function removeSubdomainFromVercel(subdomain: string): Promise<void> {
+  const token = process.env.VERCEL_API_TOKEN;
+  const projectId = process.env.VERCEL_PROJECT_ID;
+  if (!token || !projectId) return;
+
+  const domain = `${subdomain}.chatrealty.io`;
+  const teamId = process.env.VERCEL_TEAM_ID;
+  const url = `https://api.vercel.com/v9/projects/${projectId}/domains/${domain}${teamId ? `?teamId=${teamId}` : ""}`;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok && res.status !== 404) {
+    const body = await res.text();
+    throw new Error(`Vercel API ${res.status}: ${body}`);
+  }
+
+  console.log(`[generate-subdomain] Removed ${domain} from Vercel`);
 }
