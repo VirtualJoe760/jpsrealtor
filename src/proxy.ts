@@ -51,13 +51,25 @@ export async function proxy(request: NextRequest) {
   const bareHost = hostname.split(":")[0];
 
   // -----------------------------------------------------------------------
-  // 1. ChatRealty domains — platform vs agent subdomains
+  // 1. ChatRealty domains + localhost subdomains — platform vs agent
   // -----------------------------------------------------------------------
+  // Detect subdomain from chatrealty.io OR {sub}.localhost for dev
+  let detectedSubdomain: string | undefined;
+
   if (bareHost.includes("chatrealty")) {
-    // Extract subdomain: "johndoe.chatrealty.io" → "johndoe"
     const chatParts = bareHost.split("chatrealty");
-    const subPart = chatParts[0]?.replace(/\.$/, ""); // strip trailing dot
-    const subdomain = subPart?.split(".").filter(s => s && s !== "www").pop();
+    const subPart = chatParts[0]?.replace(/\.$/, "");
+    detectedSubdomain = subPart?.split(".").filter(s => s && s !== "www").pop() || undefined;
+  } else if (bareHost.endsWith(".localhost") || bareHost.match(/^[a-z0-9]+\.localhost$/)) {
+    // Dev: "bethanyklier.localhost" → "bethanyklier"
+    const sub = bareHost.split(".localhost")[0];
+    if (sub && sub !== "www" && sub !== "localhost") {
+      detectedSubdomain = sub;
+    }
+  }
+
+  if (bareHost.includes("chatrealty") || detectedSubdomain) {
+    const subdomain = detectedSubdomain;
 
     // Agent subdomain (johndoe.chatrealty.io)
     if (subdomain) {

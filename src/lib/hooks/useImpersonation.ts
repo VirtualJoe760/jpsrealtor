@@ -42,6 +42,12 @@ function getSubdomain(): string | null {
     return sub || null;
   }
 
+  // Dev: "bethanyklier.localhost" → "bethanyklier"
+  if (host.endsWith(".localhost")) {
+    const sub = host.split(".localhost")[0];
+    if (sub && sub !== "www") return sub;
+  }
+
   return null;
 }
 

@@ -49,12 +49,20 @@ async function getSubdomain(): Promise<string | null> {
 
   // Fallback: extract from host
   const host = hdrs.get("host") || "";
-  if (host.includes("chatrealty.io")) {
-    const parts = host.split(".chatrealty.io")[0].split(".");
+  const bareHost = host.split(":")[0];
+
+  if (bareHost.includes("chatrealty.io")) {
+    const parts = bareHost.split(".chatrealty.io")[0].split(".");
     const sub = parts[parts.length - 1];
-    if (sub && sub !== "www" && sub !== "chatrealty" && !host.startsWith("chatrealty.io")) {
+    if (sub && sub !== "www" && sub !== "chatrealty" && !bareHost.startsWith("chatrealty.io")) {
       return sub;
     }
+  }
+
+  // Dev: "bethanyklier.localhost:3000" → "bethanyklier"
+  if (bareHost.endsWith(".localhost")) {
+    const sub = bareHost.split(".localhost")[0];
+    if (sub && sub !== "www") return sub;
   }
 
   return null;
@@ -145,6 +153,9 @@ export default async function AgentSitePage() {
     );
   }
 
+  // Check if profile is mostly empty (needs setup)
+  const needsSetup = !profile?.headshot && !profile?.heroPhoto && !profile?.headline;
+
   // ----- Active subscription — branded page ----- //
   return (
     <div className="min-h-screen bg-white">
@@ -152,20 +163,24 @@ export default async function AgentSitePage() {
       <section
         className="relative flex items-center justify-center text-white"
         style={{
-          minHeight: "70vh",
+          minHeight: needsSetup ? "60vh" : "70vh",
           background: profile?.heroPhoto
             ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${profile.heroPhoto}) center/cover no-repeat`
-            : primaryColor,
+            : `linear-gradient(135deg, ${primaryColor} 0%, #374151 100%)`,
         }}
       >
         <div className="relative z-10 text-center px-4 max-w-3xl mx-auto space-y-6">
-          {/* Headshot */}
-          {profile?.headshot && (
+          {/* Headshot or placeholder */}
+          {profile?.headshot ? (
             <img
               src={profile.headshot}
               alt={agent.name || "Agent headshot"}
               className="w-32 h-32 rounded-full mx-auto border-4 border-white/80 object-cover shadow-lg"
             />
+          ) : (
+            <div className="w-32 h-32 rounded-full mx-auto border-4 border-white/30 bg-white/10 flex items-center justify-center text-5xl font-bold text-white/60">
+              {agent.name?.charAt(0) || "?"}
+            </div>
           )}
 
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight drop-shadow-md">
@@ -180,11 +195,15 @@ export default async function AgentSitePage() {
             <p className="text-sm opacity-70">DRE #{agent.licenseNumber}</p>
           )}
 
-          {profile?.headline && (
+          {profile?.headline ? (
             <h2 className="text-2xl md:text-3xl font-light mt-2">
               {profile.headline}
             </h2>
-          )}
+          ) : needsSetup ? (
+            <p className="text-lg opacity-60 italic">
+              Complete your agent profile to customize this page
+            </p>
+          ) : null}
 
           {profile?.tagline && (
             <p className="text-lg opacity-80 max-w-xl mx-auto">
@@ -216,6 +235,26 @@ export default async function AgentSitePage() {
           </div>
         </div>
       </section>
+
+      {/* Setup prompt for agents who haven't customized yet */}
+      {needsSetup && (
+        <section className="py-12 px-4">
+          <div className="max-w-lg mx-auto text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Customize Your Site</h2>
+            <p className="text-gray-600">
+              Upload your headshot, add a hero photo, write a headline, and set your brand colors to make this page your own.
+            </p>
+            <p className="text-sm text-gray-400">
+              Go to Agent Dashboard &rarr; Settings &rarr; Branding to get started.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="py-8 text-center text-sm text-gray-400 border-t">
