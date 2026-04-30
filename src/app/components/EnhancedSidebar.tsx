@@ -91,29 +91,50 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch agent branding data
+  // Fetch agent branding data — from subdomain agent or logged-in user
   useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/user/profile")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.profile) return;
-        const p = data.profile;
-        const ap = p.agentProfile || {};
-        setBranding({
-          agentName: p.name,
-          brokerageName: p.brokerageName || ap.brokerageName,
-          teamName: ap.teamName || p.team?.name,
-          licenseNumber: p.licenseNumber || ap.licenseNumber,
-          phone: ap.cellPhone || ap.officePhone || p.phone,
-          email: p.email,
-          teamLogo: ap.teamLogo,
-          teamLogoDark: ap.teamLogoDark,
-          brokerLogo: ap.brokerLogo,
-          brokerLogoDark: ap.brokerLogoDark,
-        });
-      })
-      .catch(() => {});
+    // Detect subdomain to load the domain owner's branding (even if not logged in)
+    const host = typeof window !== "undefined" ? window.location.hostname : "";
+    let subdomain: string | null = null;
+    if (host.includes("chatrealty")) {
+      const parts = host.split("chatrealty")[0]?.replace(/\.$/, "");
+      subdomain = parts?.split(".").filter((s) => s && s !== "www").pop() || null;
+    } else if (host.endsWith(".localhost")) {
+      const sub = host.split(".localhost")[0];
+      if (sub && sub !== "www") subdomain = sub;
+    }
+
+    if (subdomain) {
+      // On an agent subdomain — fetch branding from public endpoint
+      fetch(`/api/agent-branding?subdomain=${encodeURIComponent(subdomain)}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data?.branding) setBranding(data.branding);
+        })
+        .catch(() => {});
+    } else if (status === "authenticated") {
+      // On main domain — use logged-in user's profile
+      fetch("/api/user/profile")
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data?.profile) return;
+          const p = data.profile;
+          const ap = p.agentProfile || {};
+          setBranding({
+            agentName: p.name,
+            brokerageName: p.brokerageName || ap.brokerageName,
+            teamName: ap.teamName || p.team?.name,
+            licenseNumber: p.licenseNumber || ap.licenseNumber,
+            phone: ap.cellPhone || ap.officePhone || p.phone,
+            email: p.email,
+            teamLogo: ap.teamLogo,
+            teamLogoDark: ap.teamLogoDark,
+            brokerLogo: ap.brokerLogo,
+            brokerLogoDark: ap.brokerLogoDark,
+          });
+        })
+        .catch(() => {});
+    }
   }, [status]);
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
@@ -217,9 +238,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                   : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/chatrealty-logo-dark.png")
               }
               alt={branding.teamName || branding.brokerageName || "ChatRealty"}
-              width={220}
-              height={50}
-              className="object-contain"
+              width={160}
+              height={40}
+              className="object-contain max-h-[40px] max-w-[160px]"
             />
           </div>
         )}
@@ -403,23 +424,20 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         </div>
 
         {/* Agent Branding - Required Agency Treatment */}
-        {!effectivelyCollapsed && (
-          <div className={`px-4 pt-3 pb-2 mx-3 border-t overflow-hidden ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
-            <p
-              className={`text-xs text-center leading-relaxed whitespace-nowrap ${isLight ? "text-gray-500" : "text-neutral-500"}`}
-              style={{ minWidth: '220px' }}
-            >
-              {branding.agentName || session?.user?.name || "Agent"}
+        {!effectivelyCollapsed && branding.agentName && (
+          <div className={`px-4 pt-3 pb-2 mx-3 border-t ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
+            <p className={`text-[11px] text-center leading-relaxed ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
+              {branding.agentName}
               {branding.brokerageName && (
                 <>
-                  <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+                  <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
                   {branding.brokerageName}
                 </>
               )}
               {(branding.teamName || branding.licenseNumber) && <br />}
               {branding.teamName && branding.teamName}
               {branding.teamName && branding.licenseNumber && (
-                <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+                <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
               )}
               {branding.licenseNumber && `DRE# ${branding.licenseNumber}`}
             </p>
