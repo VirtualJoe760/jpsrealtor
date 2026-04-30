@@ -51,6 +51,20 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Agent/team branding data
+  const [branding, setBranding] = useState<{
+    agentName?: string;
+    brokerageName?: string;
+    teamName?: string;
+    licenseNumber?: string;
+    phone?: string;
+    email?: string;
+    teamLogo?: string;
+    teamLogoDark?: string;
+    brokerLogo?: string;
+    brokerLogoDark?: string;
+  }>({});
+
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
     setMounted(true);
@@ -76,6 +90,31 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Fetch agent branding data
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/user/profile")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.profile) return;
+        const p = data.profile;
+        const ap = p.agentProfile || {};
+        setBranding({
+          agentName: p.name,
+          brokerageName: p.brokerageName || ap.brokerageName,
+          teamName: ap.teamName || p.team?.name,
+          licenseNumber: p.licenseNumber || ap.licenseNumber,
+          phone: ap.cellPhone || ap.officePhone || p.phone,
+          email: p.email,
+          teamLogo: ap.teamLogo,
+          teamLogoDark: ap.teamLogoDark,
+          brokerLogo: ap.brokerLogo,
+          brokerLogoDark: ap.brokerLogoDark,
+        });
+      })
+      .catch(() => {});
+  }, [status]);
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
 
@@ -172,8 +211,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         {!effectivelyCollapsed && (
           <div className="flex items-center">
             <Image
-              src={isLight ? "/images/brand/obsidian-logo-black.png" : "/images/brand/logo-white-obsidian.png"}
-              alt="Obsidian Group"
+              src={
+                isLight
+                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/obsidian-logo-black.png")
+                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/logo-white-obsidian.png")
+              }
+              alt={branding.teamName || branding.brokerageName || "Logo"}
               width={220}
               height={50}
               className="object-contain"
@@ -366,13 +409,19 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
               className={`text-xs text-center leading-relaxed whitespace-nowrap ${isLight ? "text-gray-500" : "text-neutral-500"}`}
               style={{ minWidth: '220px' }}
             >
-              Joseph Sardella
-              <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              eXp Realty
-              <br />
-              Obsidian Group
-              <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              DRE# 02106916
+              {branding.agentName || session?.user?.name || "Agent"}
+              {branding.brokerageName && (
+                <>
+                  <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+                  {branding.brokerageName}
+                </>
+              )}
+              {(branding.teamName || branding.licenseNumber) && <br />}
+              {branding.teamName && branding.teamName}
+              {branding.teamName && branding.licenseNumber && (
+                <span className={`mx-1.5 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+              )}
+              {branding.licenseNumber && `DRE# ${branding.licenseNumber}`}
             </p>
           </div>
         )}
@@ -402,29 +451,33 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             >
               <Calendar className="w-4 h-4" />
             </a>
-            <a
-              href="tel:760-833-6334"
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                isLight
-                  ? "bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-600"
-                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-emerald-400"
-              }`}
-              title="Call 760-833-6334"
-              onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: "760-833-6334", source: "sidebar" }); }}
-            >
-              <Phone className="w-4 h-4" />
-            </a>
-            <a
-              href="mailto:josephsardella@gmail.com"
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                isLight
-                  ? "bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600"
-                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
-              }`}
-              title="Email josephsardella@gmail.com"
-            >
-              <Mail className="w-4 h-4" />
-            </a>
+            {branding.phone && (
+              <a
+                href={`tel:${branding.phone.replace(/\D/g, "")}`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  isLight
+                    ? "bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-600"
+                    : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-emerald-400"
+                }`}
+                title={`Call ${branding.phone}`}
+                onClick={() => { trackEvent("Contact", { contactType: "phone_click" }); trackClickToCall({ phoneNumber: branding.phone!, source: "sidebar" }); }}
+              >
+                <Phone className="w-4 h-4" />
+              </a>
+            )}
+            {branding.email && (
+              <a
+                href={`mailto:${branding.email}`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  isLight
+                    ? "bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600"
+                    : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                }`}
+                title={`Email ${branding.email}`}
+              >
+                <Mail className="w-4 h-4" />
+              </a>
+            )}
           </div>
         )}
       </div>
