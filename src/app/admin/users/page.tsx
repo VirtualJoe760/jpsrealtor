@@ -712,18 +712,25 @@ export default function AdminUsersPage() {
                           )}
                         </a>
                         {/* Admin site activation toggle */}
-                        <button
-                          onClick={() => toggleSiteForceActive(selectedUser)}
-                          className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium transition-colors ${
-                            selectedUser.siteForceActive
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : isLight
+                        {isLive ? (
+                          <button
+                            onClick={() => toggleSiteForceActive(selectedUser)}
+                            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium transition-colors bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            Take Site Offline
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleSiteForceActive(selectedUser)}
+                            className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium transition-colors ${
+                              isLight
                                 ? "bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200"
                                 : "bg-gray-800/50 hover:bg-gray-700 text-gray-400 border border-gray-700"
-                          }`}
-                        >
-                          {selectedUser.siteForceActive ? "Take Site Offline" : "Activate Site Without Subscription"}
-                        </button>
+                            }`}
+                          >
+                            Activate Site Without Subscription
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
