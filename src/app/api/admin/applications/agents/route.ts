@@ -115,8 +115,8 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Agent approved. Subdomain: ${subdomainFull} (active after subscription)`,
-        subdomain: subdomainFull,
+        message: `Agent approved. Subdomain: ${finalSubdomain}.chatrealty.io (active after subscription)`,
+        subdomain: `${finalSubdomain}.chatrealty.io`,
       });
     } else {
       // Reject
