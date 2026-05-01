@@ -8,6 +8,7 @@ interface AgentProfile {
   name: string;
   email: string;
   phone: string;
+  website?: string;
   agentProfile?: {
     headshot?: string;
     profilePhoto?: string;
@@ -15,6 +16,9 @@ interface AgentProfile {
     licenseNumber?: string;
     teamLogo?: string;
     brokerLogo?: string;
+    brokerLogoDark?: string;
+    customDomain?: string;
+    subdomain?: string;
   };
 }
 
@@ -24,7 +28,18 @@ export default function LandingPageFooter() {
   const [agent, setAgent] = useState<AgentProfile | null>(null);
 
   useEffect(() => {
-    fetch("/api/agent/public")
+    // Detect subdomain to load the correct agent's profile
+    const host = window.location.hostname;
+    let subParam = "";
+    if (host.includes("chatrealty")) {
+      const parts = host.split("chatrealty")[0]?.replace(/\.$/, "");
+      const sub = parts?.split(".").filter((s: string) => s && s !== "www").pop();
+      if (sub) subParam = `?subdomain=${sub}`;
+    } else if (host.endsWith(".localhost")) {
+      const sub = host.split(".localhost")[0];
+      if (sub && sub !== "www") subParam = `?subdomain=${sub}`;
+    }
+    fetch(`/api/agent/public${subParam}`)
       .then((res) => res.json())
       .then((data) => setAgent(data.profile))
       .catch(() => {});
@@ -33,8 +48,14 @@ export default function LandingPageFooter() {
   if (!agent) return null;
 
   const headshot = agent.agentProfile?.headshot || agent.agentProfile?.profilePhoto;
-  // Platform-level eXp logo — all agents are under one team
-  const logo = isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png";
+  // Use agent's broker logo if available, fall back to platform eXp logo
+  const logo = isLight
+    ? (agent.agentProfile?.brokerLogo || "/images/brand/exp-Realty-Logo-black.png")
+    : (agent.agentProfile?.brokerLogoDark || agent.agentProfile?.brokerLogo || "/images/brand/EXP-white-square.png");
+  const agentWebsite = agent.agentProfile?.customDomain
+    || (agent.agentProfile?.subdomain ? `${agent.agentProfile.subdomain}.chatrealty.io` : null)
+    || agent.website
+    || "chatrealty.io";
 
   return (
     <footer className="px-4">
@@ -80,10 +101,10 @@ export default function LandingPageFooter() {
             )}
             <p>
               <a
-                href="https://jpsrealtor.com"
+                href={`https://${agentWebsite}`}
                 className={`hover:underline font-medium ${isLight ? "text-gray-700" : "text-gray-300"}`}
               >
-                jpsrealtor.com
+                {agentWebsite}
               </a>
             </p>
           </div>
