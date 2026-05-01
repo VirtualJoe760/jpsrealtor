@@ -70,6 +70,7 @@ export interface IUser extends Document {
   agentProfile?: {
     // Photos & Media
     headshot?: string; // Primary profile photo (Cloudinary URL)
+    headshotTransparent?: string; // Transparent background headshot for OG images (Cloudinary URL)
     heroPhoto?: string; // Landing page hero background (Cloudinary URL)
     teamPhoto?: string; // Team group photo (Cloudinary URL)
     officePhoto?: string; // Office/brokerage photo (Cloudinary URL)
@@ -167,6 +168,7 @@ export interface IUser extends Document {
     }>;
 
     // Domain & Branding (for multi-tenancy)
+    siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
     customDomain?: string; // e.g., "josephsardella.com"
     subdomain?: string; // e.g., "joseph" (becomes joseph.chatrealty.io)
     brandColors?: {
@@ -580,6 +582,7 @@ const UserSchema = new Schema<IUser>(
     agentProfile: {
       // Photos & Media
       headshot: String,
+      headshotTransparent: String,
       heroPhoto: String,
       heroPhotoDark: String,
       teamPhoto: String,
@@ -690,6 +693,7 @@ const UserSchema = new Schema<IUser>(
       }],
 
       // Domain & Branding
+      siteName: String,
       customDomain: String,
       subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
       brandColors: {

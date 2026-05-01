@@ -8,7 +8,7 @@ import Team from "@/models/Team";
 
 // Cloudinary asset fields in agentProfile that store URLs
 const CLOUDINARY_PHOTO_FIELDS = [
-  "profilePhoto", "headshot", "coverPhoto", "heroImage", "heroPhoto",
+  "profilePhoto", "headshot", "headshotTransparent", "coverPhoto", "heroImage", "heroPhoto",
   "insightsBannerImage", "teamLogo", "teamPhoto", "officePhoto",
 ] as const;
 
