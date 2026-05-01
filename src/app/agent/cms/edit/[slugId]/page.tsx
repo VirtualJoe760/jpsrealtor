@@ -25,6 +25,7 @@ import AgentNav from "@/app/components/AgentNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 import CMSModal, { type CMSModalProps } from "../../cms-page/components/CMSModal";
+import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../../components/LandingPageOptions";
 import { useDeploymentStatus } from "../../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "edit" | "preview";
@@ -72,6 +73,9 @@ export default function EditArticlePage() {
     },
   });
 
+  // Landing page config (separate state for LP-specific settings)
+  const [lpConfig, setLpConfig] = useState<LandingPageConfig>(DEFAULT_LANDING_PAGE_CONFIG);
+
   const [keywordInput, setKeywordInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -102,6 +106,25 @@ export default function EditArticlePage() {
     }
   }, [status, slugId]);
 
+  // Extract landing page config from article data (MongoDB or MDX frontmatter)
+  const loadLpConfig = (article: any) => {
+    if (article.category !== 'landing-page' && article.section !== 'landing-page') return;
+    setLpConfig({
+      standalone: article.standalone === true || article.standalone === 'true',
+      heroType: article.heroType || 'photo',
+      youtubeUrl: article.youtubeUrl || '',
+      videoAutoplay: article.videoAutoplay !== false && article.videoAutoplay !== 'false',
+      themeOverride: article.themeOverride || '',
+      formEnabled: article.formEnabled === true || article.formEnabled === 'true',
+      formHeading: article.formHeading || 'Get Started',
+      formButtonText: article.formButtonText || 'Submit',
+      formRecipients: article.formRecipients || '',
+      formFields: typeof article.formFields === 'string'
+        ? JSON.parse(article.formFields)
+        : article.formFields || DEFAULT_LANDING_PAGE_CONFIG.formFields,
+    });
+  };
+
   const loadArticle = async () => {
     try {
       setIsLoading(true);
@@ -129,6 +152,7 @@ export default function EditArticlePage() {
             featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
             seo: dbArticle.seo || { title: '', description: '', keywords: [] },
           });
+          loadLpConfig(dbArticle);
         } else {
           // Fallback to MDX for content
           const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
@@ -144,6 +168,7 @@ export default function EditArticlePage() {
               featuredImage: article.featuredImage,
               seo: article.seo,
             });
+            loadLpConfig(article);
           } else {
             throw new Error('Article found in list but content not accessible');
           }
@@ -165,6 +190,7 @@ export default function EditArticlePage() {
             featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
             seo: dbArticle.seo || { title: '', description: '', keywords: [] },
           });
+          loadLpConfig(dbArticle);
         } else {
           // Not in MongoDB, try loading from published MDX file
           console.log('Article not in MongoDB, trying MDX file');
@@ -185,6 +211,7 @@ export default function EditArticlePage() {
             featuredImage: article.featuredImage,
             seo: article.seo,
           });
+          loadLpConfig(article);
         }
       }
 
@@ -272,10 +299,11 @@ export default function EditArticlePage() {
             excerpt: formData.excerpt,
             content: formData.content,
             category: formData.category,
-            draft: isDraft,  // Add draft flag
+            draft: isDraft,
             visibility: formData.visibility,
             featuredImage: formData.featuredImage,
             seo: formData.seo,
+            ...(formData.category === "landing-page" ? lpConfig : {}),
           },
         }),
       });
@@ -721,6 +749,15 @@ export default function EditArticlePage() {
                   <option value="landing-page">Landing Page</option>
                 </select>
               </div>
+
+              {/* Landing Page Options */}
+              {formData.category === "landing-page" && (
+                <LandingPageOptions
+                  config={lpConfig}
+                  onChange={setLpConfig}
+                  isLight={isLight}
+                />
+              )}
 
               {/* Visibility Toggle */}
               <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
