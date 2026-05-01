@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "white" }}>
       <div style={{ display: "flex", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: 60, paddingTop: 60, paddingBottom: 60, flex: 1 }}>
-          <img src={logoUrl} alt="ChatRealty" width={280} height={70} style={{ marginBottom: 40 }} />
+          <img src={logoUrl} alt="ChatRealty" width={400} height={100} style={{ marginBottom: 40 }} />
           <div style={{ display: "flex", flexDirection: "column" }}>
             {lines.map((line, i) => (
               <div key={i} style={{ fontSize: line.size, fontWeight: line.bold ? 700 : 400, color: line.color, marginBottom: 8 }}>
