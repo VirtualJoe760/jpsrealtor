@@ -1,20 +1,22 @@
 // src/proxy.ts
 // Combined: NextAuth route protection + Multi-domain hostname routing
+//
+// Domain hierarchy:
+//   chatrealty.io (+ localhost in dev) → platform homepage (/chat-landing)
+//   jpsrealtor.com / josephsardella.com → owner homepage (insights page)
+//   agent.chatrealty.io (+ agent.localhost) → admin-only owner preview
+//   {slug}.chatrealty.io (+ {slug}.localhost) → agent public site
+//   custom-domain.com → agent custom domain (future)
 
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 // ---------------------------------------------------------------------------
-// Agent Domain Registry
+// Domain Registry
 // ---------------------------------------------------------------------------
-// TODO: Replace this static Map with an API call to MongoDB once we have an
-// internal lookup endpoint (e.g. GET /api/internal/agent-by-domain?domain=...).
-// Middleware runs on the Edge Runtime and CANNOT import the MongoDB driver
-// directly. An API route or KV store is required for dynamic lookups.
-// ---------------------------------------------------------------------------
+
 const AGENT_DOMAIN_MAP = new Map<string, string>([
   // ["customdomain.com", "agentObjectId"]
-  // Example: ["janedoe-realty.com", "6612f1a2c8e4a1b2c3d4e5f6"]
 ]);
 
 const OWNER_HOSTNAMES = new Set([
@@ -23,6 +25,9 @@ const OWNER_HOSTNAMES = new Set([
   "josephsardella.com",
   "www.josephsardella.com",
 ]);
+
+// "agent" subdomain is reserved for admin access to the owner's homepage
+const ADMIN_ONLY_SUBDOMAINS = new Set(["agent"]);
 
 const BYPASS_PREFIXES = [
   "/api/",
@@ -51,9 +56,16 @@ export async function proxy(request: NextRequest) {
   const bareHost = hostname.split(":")[0];
 
   // -----------------------------------------------------------------------
-  // 1. ChatRealty domains + localhost subdomains — platform vs agent
+  // 1. Owner domains (jpsrealtor.com, josephsardella.com) → serve normally
+  //    These get the insights homepage at / and full site access.
   // -----------------------------------------------------------------------
-  // Detect subdomain from chatrealty.io OR {sub}.localhost for dev
+  if (OWNER_HOSTNAMES.has(bareHost)) {
+    return handleAuthProtection(request, pathname);
+  }
+
+  // -----------------------------------------------------------------------
+  // 2. Detect subdomain from chatrealty.io OR {sub}.localhost for dev
+  // -----------------------------------------------------------------------
   let detectedSubdomain: string | undefined;
 
   if (bareHost.includes("chatrealty")) {
@@ -68,39 +80,119 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (bareHost.includes("chatrealty") || detectedSubdomain) {
+  // -----------------------------------------------------------------------
+  // 3. "agent" subdomain — admin-only access to owner's homepage
+  //    agent.chatrealty.io / agent.localhost → shows jpsrealtor.com content
+  // -----------------------------------------------------------------------
+  if (detectedSubdomain && ADMIN_ONLY_SUBDOMAINS.has(detectedSubdomain)) {
+    // Always let auth pages through (so login doesn't loop)
+    if (pathname.startsWith("/auth") || pathname.startsWith("/api/auth")) {
+      return NextResponse.next();
+    }
+
+    const token = await getToken({ req: request });
+
+    // Must be logged in
+    if (!token) {
+      const callbackUrl = encodeURIComponent(pathname + request.nextUrl.search);
+      return NextResponse.redirect(
+        new URL(`/auth/signin?callbackUrl=${callbackUrl}`, request.url)
+      );
+    }
+
+    // Must be admin
+    if (!token.isAdmin && !token.impersonatedBy) {
+      // Redirect non-admins to the platform homepage
+      return NextResponse.redirect(new URL("http://localhost:3000/", request.url));
+    }
+
+    // Admin sees the site with admin banner header
+    const response = NextResponse.next();
+    response.headers.set("x-admin-preview", "true");
+    response.headers.set("x-owner-domain", "jpsrealtor.com");
+    return response;
+  }
+
+  // -----------------------------------------------------------------------
+  // 4. Agent subdomains ({slug}.chatrealty.io / {slug}.localhost)
+  // -----------------------------------------------------------------------
+  if (detectedSubdomain) {
     const subdomain = detectedSubdomain;
 
-    // Agent subdomain (johndoe.chatrealty.io)
-    if (subdomain) {
-      // If path starts with /agent/ or /admin/, let it pass through normally
-      // so admins can view agent dashboards via their subdomain.
-      // The x-agent-subdomain header tells the page whose data to load.
-      if (pathname.startsWith("/agent/") || pathname.startsWith("/admin/") || pathname.startsWith("/dashboard/")) {
-        const response = NextResponse.next();
-        response.headers.set("x-agent-subdomain", subdomain);
-        return response;
+    // Let auth, agent, admin, and dashboard routes pass through normally
+    const passthroughPrefixes = ["/auth", "/agent", "/admin", "/dashboard"];
+    const isPassthrough = passthroughPrefixes.some(
+      (p) => pathname === p || pathname.startsWith(p + "/")
+    );
+
+    if (isPassthrough) {
+      // For protected routes on subdomains, enforce auth
+      const protectedPrefixes = ["/agent", "/admin", "/dashboard"];
+      const isProtected = protectedPrefixes.some(
+        (p) => pathname === p || pathname.startsWith(p + "/")
+      );
+
+      if (isProtected) {
+        const token = await getToken({ req: request });
+        if (!token) {
+          const callbackUrl = encodeURIComponent(pathname + request.nextUrl.search);
+          return NextResponse.redirect(
+            new URL(`/auth/signin?callbackUrl=${callbackUrl}`, request.url)
+          );
+        }
+        // Non-admin trying to access /admin on a subdomain
+        if ((pathname === "/admin" || pathname.startsWith("/admin/")) && !token.isAdmin) {
+          return NextResponse.redirect(new URL("/dashboard", request.url));
+        }
+
+        // Admin on agent subdomain — redirect to chooser if not already impersonating
+        const isAdminUser = token.isAdmin === true;
+        const isAlreadyImpersonating = !!token.impersonatedBy;
+        const isAdminAccessPage = pathname === "/auth/admin-access" || pathname.startsWith("/auth/admin-access");
+        if (isAdminUser && !isAlreadyImpersonating && !isAdminAccessPage) {
+          const callbackUrl = encodeURIComponent(pathname + request.nextUrl.search);
+          return NextResponse.redirect(
+            new URL(`/auth/admin-access?subdomain=${subdomain}&callbackUrl=${callbackUrl}`, request.url)
+          );
+        }
       }
 
-      // All other paths → rewrite to the public agent-site page
+      const response = NextResponse.next();
+      response.headers.set("x-agent-subdomain", subdomain);
+      return response;
+    }
+
+    // Root path → rewrite to agent-site for the branded homepage
+    if (pathname === "/") {
       const url = request.nextUrl.clone();
-      url.pathname = `/agent-site${pathname}`;
+      url.pathname = "/agent-site";
       const response = NextResponse.rewrite(url);
       response.headers.set("x-agent-subdomain", subdomain);
       return response;
     }
 
-    // Platform root (chatrealty.io or www.chatrealty.io)
-    if (pathname === "/") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/chat-landing";
-      return NextResponse.rewrite(url);
-    }
-    return NextResponse.next();
+    // All other paths — serve normally with agent subdomain header.
+    const response = NextResponse.next();
+    response.headers.set("x-agent-subdomain", subdomain);
+    return response;
   }
 
   // -----------------------------------------------------------------------
-  // 2. Agent custom domains → /agent/[agentId]
+  // 5. Platform root (chatrealty.io, www.chatrealty.io, bare localhost)
+  //    Show the ChatRealty platform landing page at /
+  // -----------------------------------------------------------------------
+  const isPlatform =
+    bareHost.includes("chatrealty") ||
+    bareHost === "localhost";
+
+  if (isPlatform && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/chat-landing";
+    return NextResponse.rewrite(url);
+  }
+
+  // -----------------------------------------------------------------------
+  // 6. Agent custom domains → /agent/[agentId]
   // -----------------------------------------------------------------------
   const agentId = AGENT_DOMAIN_MAP.get(bareHost);
   if (agentId) {
@@ -113,8 +205,15 @@ export async function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------
-  // 3. Auth protection for protected routes
+  // 7. Auth protection for all other routes
   // -----------------------------------------------------------------------
+  return handleAuthProtection(request, pathname);
+}
+
+// -----------------------------------------------------------------------
+// Shared auth protection logic
+// -----------------------------------------------------------------------
+async function handleAuthProtection(request: NextRequest, pathname: string) {
   const isAuthPage = pathname.startsWith("/auth");
   const isDashboard = pathname.startsWith("/dashboard");
   const isAdmin = pathname.startsWith("/admin");
@@ -147,9 +246,6 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // -----------------------------------------------------------------------
-  // 4. Owner domains and localhost → serve normally
-  // -----------------------------------------------------------------------
   return NextResponse.next();
 }
 
