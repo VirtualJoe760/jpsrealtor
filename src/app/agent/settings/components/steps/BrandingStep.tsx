@@ -1,7 +1,6 @@
 "use client";
 
 import { Loader2, Sun, Moon, SunMoon } from "lucide-react";
-import ImageUploadField from "../shared/ImageUploadField";
 
 interface StepProps {
   formData: any;
@@ -35,8 +34,6 @@ export default function BrandingStep({
   isSaving,
 }: StepProps) {
   const themeMode: ThemeMode = formData.agentProfile?.themeMode || "both";
-  const showLight = themeMode === "both" || themeMode === "light";
-  const showDark = themeMode === "both" || themeMode === "dark";
 
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
     isLight
@@ -48,103 +45,13 @@ export default function BrandingStep({
     isLight ? "text-gray-700" : "text-gray-300"
   }`;
 
-  const cardClass = `rounded-xl border p-4 ${
-    isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/40 border-gray-700"
-  }`;
-
   const handleSave = () => {
     onSave({
       agentProfile: {
         fontFamily: formData.agentProfile?.fontFamily || "Raleway",
         themeMode,
-        brokerLogo: formData.agentProfile?.brokerLogo || null,
-        teamLogo: formData.agentProfile?.teamLogo || null,
-        brokerLogoDark: showDark ? (formData.agentProfile?.brokerLogoDark || null) : null,
-        teamLogoDark: showDark ? (formData.agentProfile?.teamLogoDark || null) : null,
       },
     });
-  };
-
-  // Render a logo section (Broker or Team) with the right upload slots
-  const renderLogoSection = (
-    title: string,
-    lightField: string,
-    darkField: string,
-    lightValue: string | undefined,
-    darkValue: string | undefined,
-  ) => {
-    // Only one mode — single upload, no mode label needed
-    if (!showLight || !showDark) {
-      const field = showLight ? lightField : darkField;
-      const value = showLight ? lightValue : darkValue;
-      const helpText = showLight
-        ? "Logo for light backgrounds (dark-colored logo recommended)"
-        : "Logo for dark backgrounds (light/white logo recommended)";
-
-      return (
-        <ImageUploadField
-          label={title}
-          fieldPath={field}
-          folder="jpsrealtor/logos"
-          value={value}
-          isLight={isLight}
-          aspectRatio="aspect-video"
-          helpText={helpText}
-          onUploaded={(url) => updateField(field, url)}
-        />
-      );
-    }
-
-    // Both modes — side-by-side cards
-    return (
-      <div>
-        <h3
-          className={`text-sm font-semibold mb-3 ${
-            isLight ? "text-gray-800" : "text-gray-200"
-          }`}
-        >
-          {title}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={cardClass}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Sun size={14} className="text-amber-500" />
-              <span className={`text-xs font-medium ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-                Light Mode
-              </span>
-            </div>
-            <ImageUploadField
-              label=""
-              fieldPath={lightField}
-              folder="jpsrealtor/logos"
-              value={lightValue}
-              isLight={isLight}
-              aspectRatio="aspect-video"
-              helpText="Dark-colored logo for light backgrounds"
-              onUploaded={(url) => updateField(lightField, url)}
-            />
-          </div>
-          <div className={cardClass}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Moon size={14} className={isLight ? "text-gray-700" : "text-gray-300"} />
-              <span className={`text-xs font-medium ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-                Dark Mode
-              </span>
-            </div>
-            <ImageUploadField
-              label=""
-              fieldPath={darkField}
-              folder="jpsrealtor/logos"
-              value={darkValue}
-              isLight={isLight}
-              aspectRatio="aspect-video"
-              helpText="Light/white logo for dark backgrounds"
-              onUploaded={(url) => updateField(darkField, url)}
-            />
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -167,7 +74,7 @@ export default function BrandingStep({
           isLight ? "text-gray-500" : "text-gray-400"
         }`}
       >
-        Customize your font, theme mode, and logos.
+        Customize your font and theme mode.
       </p>
 
       {/* Font Family */}
@@ -246,24 +153,6 @@ export default function BrandingStep({
         >
           {THEME_OPTIONS.find((o) => o.id === themeMode)?.desc}
         </p>
-      </div>
-
-      {/* Logos */}
-      <div className={showLight && showDark ? "space-y-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
-        {renderLogoSection(
-          "Broker Logo",
-          "agentProfile.brokerLogo",
-          "agentProfile.brokerLogoDark",
-          formData.agentProfile?.brokerLogo,
-          formData.agentProfile?.brokerLogoDark,
-        )}
-        {renderLogoSection(
-          "Team Logo",
-          "agentProfile.teamLogo",
-          "agentProfile.teamLogoDark",
-          formData.agentProfile?.teamLogo,
-          formData.agentProfile?.teamLogoDark,
-        )}
       </div>
 
       {/* Save & Continue */}

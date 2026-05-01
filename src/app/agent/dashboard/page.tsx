@@ -21,7 +21,6 @@ import {
 import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
-import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -50,7 +49,7 @@ export default function AgentDashboard() {
     if (impersonation.loading) return;
 
     if (impersonation.isImpersonating && impersonation.agent) {
-      // Admin viewing another agent's dashboard
+      // Admin impersonating another agent — use their profile data
       const a = impersonation.agent;
       setAgentProfile({
         name: a.name || "",
@@ -59,7 +58,7 @@ export default function AgentDashboard() {
         brokerageName: a.brokerageName || "",
         licenseNumber: a.licenseNumber || "",
         profileDescription: "",
-        image: "",
+        image: a.image || a.agentProfile?.headshot || "",
         team: null,
         isTeamLeader: false,
         agentProfile: a.agentProfile || null,
@@ -175,14 +174,7 @@ export default function AgentDashboard() {
 
   return (
     <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col overflow-hidden">
-      {/* Impersonation Banner */}
-      {impersonation.isImpersonating && impersonation.agent && impersonation.subdomain && (
-        <ImpersonationBanner
-          agentName={impersonation.agent.name}
-          agentEmail={impersonation.agent.email}
-          subdomain={impersonation.subdomain}
-        />
-      )}
+      {/* Impersonation banner is rendered globally in providers.tsx */}
 
       <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-hidden pt-16 md:pt-0 md:py-4 md:py-8">
         {/* Agent Navigation */}
@@ -204,7 +196,7 @@ export default function AgentDashboard() {
               isLight ? "text-gray-600" : "text-gray-400"
             }`}
           >
-            Welcome back, {user?.name || user?.email}
+            Welcome back, {agentProfile.name || user?.name || user?.email}
           </p>
           {user?.isTeamLeader && (
             <p
@@ -438,7 +430,6 @@ export default function AgentDashboard() {
               const requiredFields = [
                 { name: "Name", value: agentProfile.name },
                 { name: "Phone", value: agentProfile.phone },
-                { name: "Brokerage Name", value: agentProfile.brokerageName },
                 {
                   name: "Banner Photo",
                   value: agentProfile.agentProfile?.heroPhoto,
@@ -446,10 +437,6 @@ export default function AgentDashboard() {
                 {
                   name: "Headshot",
                   value: agentProfile.agentProfile?.headshot,
-                },
-                {
-                  name: "Broker Logo",
-                  value: agentProfile.agentProfile?.brokerLogo,
                 },
                 {
                   name: "Headline",

@@ -234,8 +234,8 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             <Image
               src={
                 isLight
-                  ? (branding.teamLogo || branding.brokerLogo || "/images/brand/chatrealty-logo-light-1436x356.png")
-                  : (branding.teamLogoDark || branding.teamLogo || branding.brokerLogoDark || branding.brokerLogo || "/images/brand/chatrealty-logo-dark-1436x356.png")
+                  ? "/images/brand/chatrealty-logo-light-1436x356.png"
+                  : "/images/brand/chatrealty-logo-dark-1436x356.png"
               }
               alt={branding.teamName || branding.brokerageName || "ChatRealty"}
               width={220}
@@ -428,18 +428,16 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           <div className={`px-4 pt-3 pb-2 mx-3 border-t ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
             <p className={`text-[11px] text-center leading-relaxed ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
               {branding.agentName}
-              {branding.brokerageName && (
+              {branding.licenseNumber && (
                 <>
                   <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-                  {branding.brokerageName}
+                  DRE# {branding.licenseNumber}
                 </>
               )}
-              {(branding.teamName || branding.licenseNumber) && <br />}
-              {branding.teamName && branding.teamName}
-              {branding.teamName && branding.licenseNumber && (
-                <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              )}
-              {branding.licenseNumber && `DRE# ${branding.licenseNumber}`}
+              <br />
+              eXp Realty
+              <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+              chatRealty
             </p>
           </div>
         )}

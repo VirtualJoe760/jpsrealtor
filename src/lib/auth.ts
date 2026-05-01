@@ -9,6 +9,41 @@ import bcrypt from "bcryptjs";
 import dbConnect from "./mongoose";
 import User from "@/models/User";
 
+/**
+ * Determine the cookie domain for session sharing across subdomains.
+ *
+ * This handles the PRIMARY login domain's cookie. For cross-domain auth
+ * (e.g., jpsrealtor.com → chatrealty.io), see /api/auth/transfer + /api/auth/receive.
+ *
+ * Dev: undefined — browsers reject ".localhost" as a cookie domain, so each
+ *   hostname (localhost, bethanyklier.localhost) gets its own cookie. Users log
+ *   in on whichever hostname they're visiting and it works. Cross-subdomain
+ *   auth in dev uses /api/auth/transfer → /api/auth/receive.
+ *
+ * Prod: ".chatrealty.io" / ".jpsrealtor.com" — real TLDs support domain cookies,
+ *   so all subdomains share the session automatically.
+ */
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') {
+    // Don't set cookie domain in dev — ".localhost" is not supported by browsers.
+    // Each hostname gets its own cookie; cross-subdomain uses transfer flow.
+    return undefined;
+  }
+
+  // In production, determine apex domain from NEXTAUTH_URL
+  const nextAuthUrl = process.env.NEXTAUTH_URL || '';
+  try {
+    const hostname = new URL(nextAuthUrl).hostname.replace(/^www\./, '');
+    if (hostname.endsWith('chatrealty.io')) return '.chatrealty.io';
+    if (hostname.endsWith('jpsrealtor.com')) return '.jpsrealtor.com';
+    if (hostname.endsWith('josephsardella.com')) return '.josephsardella.com';
+  } catch {
+    // Invalid URL, fall through
+  }
+
+  return undefined;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -165,6 +200,11 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isAdmin = token.isAdmin;
         (session.user as any).twoFactorEnabled = token.twoFactorEnabled;
         (session.user as any).requiresTwoFactor = token.requiresTwoFactor;
+        // Admin impersonation
+        if (token.impersonatedBy) {
+          (session.user as any).impersonatedBy = token.impersonatedBy;
+          (session.user as any).impersonatedByName = token.impersonatedByName;
+        }
       }
 
       return session;
@@ -191,9 +231,12 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        // No domain set — cookie automatically scopes to the current hostname
-        // This allows auth to work across jpsrealtor.com, josephsardella.com, chatrealty.io
-        domain: undefined,
+        // Domain must be set to share cookies across subdomains:
+        //   Dev: .localhost → works for bethanyklier.localhost, etc.
+        //   Prod: .chatrealty.io → works for *.chatrealty.io subdomains
+        // For non-chatrealty domains (jpsrealtor.com, josephsardella.com),
+        // cookies are set without domain so they scope to the exact hostname.
+        domain: getCookieDomain(),
       },
     },
   },

@@ -20,6 +20,7 @@ import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
 import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
 import { getMapCenter } from "@/lib/geo-centers";
+import { getDefaultSiteName } from "@/lib/domain-classify";
 
 // New modular components
 import ChatInput from "./ChatInput";
@@ -59,6 +60,32 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent, hasUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Site name: from agent profile (siteName field) or domain default
+  const [siteName, setSiteName] = useState("chatRealty");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Set hostname-based default first
+    setSiteName(getDefaultSiteName(window.location.hostname));
+    // Then check if agent has a custom siteName via branding API
+    const hostname = window.location.hostname;
+    const isSubdomain =
+      hostname.endsWith(".localhost") ||
+      (hostname.includes("chatrealty") && hostname !== "chatrealty.io" && hostname !== "www.chatrealty.io");
+    if (isSubdomain) {
+      const sub = hostname.includes("chatrealty")
+        ? hostname.split("chatrealty")[0]?.replace(/\.$/, "").split(".").pop()
+        : hostname.split(".localhost")[0];
+      if (sub) {
+        fetch(`/api/agent-branding?subdomain=${sub}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => {
+            if (data?.branding?.siteName) setSiteName(data.branding.siteName);
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
 
   // Cycling placeholder text (conditional based on mode)
   const placeholders = mode === 'contact_import'
@@ -1210,7 +1237,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                 />
 
                 <h1 className={`text-5xl md:text-6xl font-light tracking-wider ${isLight ? "text-gray-900" : "text-white"}`}>
-                  JPSREALTOR
+                  {siteName}
                 </h1>
               </div>
 

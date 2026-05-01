@@ -31,12 +31,10 @@ export default function IdentityStep({
     onSave({
       name: formData.name,
       phone: formData.phone,
-      brokerageName: formData.brokerageName,
       licenseNumber: formData.licenseNumber,
       agentProfile: {
+        siteName: formData.agentProfile?.siteName,
         cellPhone: formData.agentProfile?.cellPhone,
-        officeAddress: formData.agentProfile?.officeAddress,
-        officePhone: formData.agentProfile?.officePhone,
       },
     });
   };
@@ -114,18 +112,6 @@ export default function IdentityStep({
           />
         </div>
 
-        {/* Brokerage Name */}
-        <div>
-          <label className={labelClass}>Brokerage Name</label>
-          <input
-            type="text"
-            value={formData.brokerageName || ""}
-            onChange={(e) => updateField("brokerageName", e.target.value)}
-            placeholder="Acme Realty"
-            className={inputClass}
-          />
-        </div>
-
         {/* License Number */}
         <div>
           <label className={labelClass}>License Number</label>
@@ -133,37 +119,24 @@ export default function IdentityStep({
             type="text"
             value={formData.licenseNumber || ""}
             onChange={(e) => updateField("licenseNumber", e.target.value)}
-            placeholder="DRE #01234567"
+            placeholder="01234567"
             className={inputClass}
           />
         </div>
 
-        {/* Office Address (full width) */}
+        {/* Site Name */}
         <div className="md:col-span-2">
-          <label className={labelClass}>Office Address</label>
+          <label className={labelClass}>Site Name</label>
           <input
             type="text"
-            value={formData.agentProfile?.officeAddress || ""}
-            onChange={(e) =>
-              updateField("agentProfile.officeAddress", e.target.value)
-            }
-            placeholder="123 Main St, Suite 100, City, ST 12345"
+            value={formData.agentProfile?.siteName || ""}
+            onChange={(e) => updateField("agentProfile.siteName", e.target.value)}
+            placeholder="chatRealty"
             className={inputClass}
           />
-        </div>
-
-        {/* Office Phone */}
-        <div>
-          <label className={labelClass}>Office Phone</label>
-          <input
-            type="tel"
-            value={formData.agentProfile?.officePhone || ""}
-            onChange={(e) =>
-              updateField("agentProfile.officePhone", e.target.value)
-            }
-            placeholder="(555) 000-1111"
-            className={inputClass}
-          />
+          <p className={`text-xs mt-1 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
+            Displayed on your chat page. Defaults to &quot;chatRealty&quot; if left blank.
+          </p>
         </div>
       </div>
 

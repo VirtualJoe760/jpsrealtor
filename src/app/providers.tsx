@@ -4,6 +4,7 @@
 import { SessionProvider } from "next-auth/react";
 import { ReactNode, useEffect } from "react";
 import { ChatProvider } from "./components/chat/ChatProvider";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -40,6 +41,7 @@ export function Providers({ children }: ProvidersProps) {
       // Add retry logic with exponential backoff
       refetchWhenOffline={false}
     >
+      <ImpersonationBanner />
       <ChatProvider>
         {children}
       </ChatProvider>

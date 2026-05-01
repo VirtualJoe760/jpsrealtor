@@ -1,6 +1,6 @@
 // src/lib/hooks/useImpersonation.ts
-// Client-side hook: detects if an admin is viewing an agent's subdomain
-// and provides the target agent's data for impersonation view.
+// Client-side hook: detects if an admin is impersonating an agent
+// via JWT-based impersonation (/api/auth/impersonate).
 
 "use client";
 
@@ -10,11 +10,15 @@ import { useSession } from "next-auth/react";
 interface ImpersonationState {
   /** True while checking impersonation status */
   loading: boolean;
-  /** True if admin is viewing another agent's subdomain */
+  /** True if admin is impersonating another user via JWT */
   isImpersonating: boolean;
-  /** The subdomain being viewed */
+  /** The subdomain being viewed (if on agent subdomain) */
   subdomain: string | null;
-  /** The target agent's profile (if impersonating) */
+  /** Admin email who is impersonating */
+  impersonatedBy: string | null;
+  /** Admin name who is impersonating */
+  impersonatedByName: string | null;
+  /** The target agent's profile (fetched from session) */
   agent: {
     _id: string;
     name: string;
@@ -23,14 +27,12 @@ interface ImpersonationState {
     brokerageName?: string;
     licenseNumber?: string;
     agentProfile?: any;
+    image?: string;
   } | null;
 }
 
 /**
  * Extract subdomain from current hostname.
- * "johndoe.chatrealty.io" → "johndoe"
- * "localhost" → null
- * "chatrealty.io" → null
  */
 function getSubdomain(): string | null {
   if (typeof window === "undefined") return null;
@@ -42,7 +44,6 @@ function getSubdomain(): string | null {
     return sub || null;
   }
 
-  // Dev: "bethanyklier.localhost" → "bethanyklier"
   if (host.endsWith(".localhost")) {
     const sub = host.split(".localhost")[0];
     if (sub && sub !== "www") return sub;
@@ -52,42 +53,77 @@ function getSubdomain(): string | null {
 }
 
 export function useImpersonation(): ImpersonationState {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [state, setState] = useState<ImpersonationState>({
     loading: true,
     isImpersonating: false,
     subdomain: null,
+    impersonatedBy: null,
+    impersonatedByName: null,
     agent: null,
   });
 
   useEffect(() => {
+    if (status === "loading") return;
+
     const subdomain = getSubdomain();
-    const isAdmin = (session?.user as any)?.isAdmin;
+    const user = session?.user as any;
+    const impersonatedBy = user?.impersonatedBy as string | undefined;
 
-    if (!subdomain || !isAdmin) {
-      setState({ loading: false, isImpersonating: false, subdomain, agent: null });
-      return;
-    }
-
-    // Admin on an agent subdomain — fetch that agent's data
-    fetch(`/api/admin/impersonate?subdomain=${encodeURIComponent(subdomain)}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.agent) {
+    // JWT-based impersonation: the session IS the agent's data
+    if (impersonatedBy && user) {
+      // Fetch full profile for the impersonated user
+      fetch("/api/user/profile")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const profile = data?.profile;
           setState({
             loading: false,
             isImpersonating: true,
             subdomain,
-            agent: data.agent,
+            impersonatedBy,
+            impersonatedByName: user.impersonatedByName || null,
+            agent: profile
+              ? {
+                  _id: user.id,
+                  name: profile.name || user.name,
+                  email: profile.email || user.email,
+                  phone: profile.phone,
+                  brokerageName: profile.brokerageName,
+                  licenseNumber: profile.licenseNumber,
+                  agentProfile: profile.agentProfile,
+                  image: profile.image,
+                }
+              : {
+                  _id: user.id,
+                  name: user.name,
+                  email: user.email,
+                },
           });
-        } else {
-          setState({ loading: false, isImpersonating: false, subdomain, agent: null });
-        }
-      })
-      .catch(() => {
-        setState({ loading: false, isImpersonating: false, subdomain, agent: null });
-      });
-  }, [session]);
+        })
+        .catch(() => {
+          setState({
+            loading: false,
+            isImpersonating: true,
+            subdomain,
+            impersonatedBy,
+            impersonatedByName: user.impersonatedByName || null,
+            agent: { _id: user.id, name: user.name, email: user.email },
+          });
+        });
+      return;
+    }
+
+    // Not impersonating
+    setState({
+      loading: false,
+      isImpersonating: false,
+      subdomain,
+      impersonatedBy: null,
+      impersonatedByName: null,
+      agent: null,
+    });
+  }, [session, status]);
 
   return state;
 }

@@ -28,5 +28,8 @@ declare module "next-auth/jwt" {
     id: string;
     roles: UserRole[];
     isAdmin: boolean;
+    // Admin impersonation: set when admin is viewing as another user
+    impersonatedBy?: string;  // Admin's email who is impersonating
+    impersonatedByName?: string; // Admin's name
   }
 }

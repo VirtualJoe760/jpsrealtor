@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   await dbConnect();
 
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("name email phone licenseNumber brokerageName agentProfile.teamName agentProfile.cellPhone agentProfile.officePhone agentProfile.teamLogo agentProfile.teamLogoDark agentProfile.brokerLogo agentProfile.brokerLogoDark")
+    .select("name email phone licenseNumber brokerageName agentProfile.siteName agentProfile.teamName agentProfile.cellPhone agentProfile.officePhone agentProfile.teamLogo agentProfile.teamLogoDark agentProfile.brokerLogo agentProfile.brokerLogoDark")
     .lean();
 
   if (!agent) {
@@ -25,8 +25,10 @@ export async function GET(request: NextRequest) {
   const ap = (agent as any).agentProfile || {};
 
   return NextResponse.json({
+    agentName: agent.name,
     branding: {
       agentName: agent.name,
+      siteName: ap.siteName,
       email: agent.email,
       phone: ap.cellPhone || ap.officePhone || agent.phone,
       brokerageName: agent.brokerageName,

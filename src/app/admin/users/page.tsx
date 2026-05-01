@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Edit2, X, Check, Shield, Search, Globe, Calendar, Clock, Eye,
-  Users as UsersIcon, List, LayoutGrid, ChevronDown, UserPlus,
+  Users as UsersIcon, List, LayoutGrid, ChevronDown, UserPlus, LogIn,
 } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
@@ -85,6 +85,7 @@ export default function AdminUsersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [impersonateLoading, setImpersonateLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -212,6 +213,33 @@ export default function AdminUsersPage() {
     finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleImpersonate = async (user: User) => {
+    if (!user.subdomain) {
+      toast.error("User has no subdomain — cannot impersonate");
+      return;
+    }
+    setImpersonateLoading(true);
+    try {
+      const res = await fetch("/api/auth/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", subdomain: user.subdomain }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message);
+        // Redirect to the agent dashboard
+        window.location.href = "/agent/dashboard";
+      } else {
+        toast.error(data.error || "Impersonation failed");
+      }
+    } catch {
+      toast.error("Impersonation failed");
+    } finally {
+      setImpersonateLoading(false);
     }
   };
 
@@ -629,17 +657,31 @@ export default function AdminUsersPage() {
                     </div>
                   )}
 
-                  {/* View Agent Dashboard link — for agents with subdomains */}
+                  {/* Impersonate + View Agent Dashboard — for agents with subdomains */}
                   {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (
-                    <a
-                      href={`https://${selectedUser.subdomain}.chatrealty.io/agent/dashboard`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <Eye size={14} />
-                      View Agent Dashboard
-                    </a>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => handleImpersonate(selectedUser)}
+                        disabled={impersonateLoading}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-amber-500 hover:bg-amber-600 text-black disabled:opacity-50"
+                      >
+                        <LogIn size={14} />
+                        {impersonateLoading ? "Switching..." : `Log in as ${selectedUser.name || "Agent"}`}
+                      </button>
+                      <a
+                        href={`https://${selectedUser.subdomain}.chatrealty.io/agent/dashboard`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                          isLight
+                            ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                            : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                        }`}
+                      >
+                        <Eye size={14} />
+                        Open Subdomain
+                      </a>
+                    </div>
                   )}
                 </>
               )}

@@ -33,7 +33,8 @@ export default function LandingPageFooter() {
   if (!agent) return null;
 
   const headshot = agent.agentProfile?.headshot || agent.agentProfile?.profilePhoto;
-  const logo = agent.agentProfile?.brokerLogo || agent.agentProfile?.teamLogo;
+  // Platform-level eXp logo — all agents are under one team
+  const logo = isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png";
 
   return (
     <footer className="px-4">
@@ -88,20 +89,16 @@ export default function LandingPageFooter() {
           </div>
         </div>
 
-        {/* Broker logo — right */}
-        {logo && (
-          <div className="relative flex-shrink-0 w-20 h-20 md:w-28 md:h-28 mb-8">
-            <Image
-              src={logo}
-              alt="Brokerage"
-              fill
-              className={`object-contain ${
-                isLight ? "" : "brightness-0 invert opacity-80"
-              }`}
-              sizes="(max-width: 768px) 80px, 112px"
-            />
-          </div>
-        )}
+        {/* eXp Realty logo — right */}
+        <div className="relative flex-shrink-0 w-20 h-20 md:w-28 md:h-28 mb-8">
+          <Image
+            src={logo}
+            alt="eXp Realty"
+            fill
+            className="object-contain"
+            sizes="(max-width: 768px) 80px, 112px"
+          />
+        </div>
       </div>
     </footer>
   );
