@@ -159,10 +159,50 @@ export function getDomainConfig(hostname: string): DomainSeoConfig {
 
 /**
  * Async version that reads hostname from headers.
+ * For agent subdomains, enriches the config with the agent's name and dynamic OG image.
  */
 export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
   const hostname = await getHostnameFromHeaders()
-  return getDomainConfig(hostname)
+  const config = getDomainConfig(hostname)
+
+  // Enrich agent subdomain config with real agent data
+  if (config.type === 'agent') {
+    const bare = normalizeHostname(hostname)
+
+    // Extract subdomain from chatrealty or localhost
+    let subdomain: string | undefined
+    if (bare.includes('chatrealty')) {
+      const parts = bare.split('chatrealty')[0]?.replace(/\.$/, '')
+      subdomain = parts?.split('.').filter(s => s && s !== 'www').pop()
+    } else if (bare.endsWith('.localhost')) {
+      const sub = bare.split('.localhost')[0]
+      if (sub && sub !== 'www') subdomain = sub
+    }
+
+    if (subdomain) {
+      try {
+        const mongoose = await import('mongoose')
+        const db = mongoose.default.connection.db
+        if (db) {
+          const agent = await db.collection('users').findOne(
+            { 'agentProfile.subdomain': subdomain },
+            { projection: { name: 1, brokerageName: 1, 'agentProfile.headline': 1, 'agentProfile.metaTitle': 1, 'agentProfile.metaDescription': 1 } }
+          )
+          if (agent) {
+            config.siteName = agent.name || config.siteName
+            config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
+            config.titleTemplate = `%s | ${agent.name}`
+            config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
+            config.ogImage = `/api/og?subdomain=${subdomain}`
+          }
+        }
+      } catch {
+        // Non-blocking — use defaults
+      }
+    }
+  }
+
+  return config
 }
 
 // ─────────────────────────────────────────────────────
