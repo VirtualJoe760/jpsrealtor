@@ -162,16 +162,9 @@ export async function proxy(request: NextRequest) {
       return response;
     }
 
-    // Root path → rewrite to agent-site for the branded homepage
-    if (pathname === "/") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/agent-site";
-      const response = NextResponse.rewrite(url);
-      response.headers.set("x-agent-subdomain", subdomain);
-      return response;
-    }
-
-    // All other paths — serve normally with agent subdomain header.
+    // All paths (including /) — serve normally with agent subdomain header.
+    // The insights homepage reads x-agent-subdomain via /api/agent/public
+    // to load the correct agent's data.
     const response = NextResponse.next();
     response.headers.set("x-agent-subdomain", subdomain);
     return response;

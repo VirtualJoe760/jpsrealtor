@@ -19,19 +19,32 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    // For now: Use env variable to identify primary agent
-    // Future: Map req.headers.host → database → agent
-    const primaryAgentEmail = process.env.PRIMARY_AGENT_EMAIL || "josephsardella@gmail.com";
+    // Detect which agent to show:
+    // 1. x-agent-subdomain header (set by proxy for agent subdomains)
+    // 2. hostname lookup (agent custom domains)
+    // 3. Fallback to PRIMARY_AGENT_EMAIL (owner domains like jpsrealtor.com)
+    const subdomain = request.headers.get("x-agent-subdomain");
+    const host = (request.headers.get("host") || "").split(":")[0];
 
-    console.log(`[GET /api/agent/public] Fetching public profile for primary agent: ${primaryAgentEmail}`);
+    let agent;
 
-    // Find the primary agent (include legacy top-level fields for fallback)
-    const agent = await User.findOne({ email: primaryAgentEmail })
-      .select('name email phone licenseNumber brokerageName agentProfile')
-      .lean();
+    if (subdomain) {
+      // Agent subdomain — look up by subdomain
+      agent = await User.findOne({ "agentProfile.subdomain": subdomain })
+        .select("name email phone licenseNumber brokerageName agentProfile")
+        .lean();
+    }
 
     if (!agent) {
-      console.error(`[GET /api/agent/public] Primary agent not found: ${primaryAgentEmail}`);
+      // Fallback to primary agent (owner domains)
+      const primaryAgentEmail = process.env.PRIMARY_AGENT_EMAIL || "josephsardella@gmail.com";
+      agent = await User.findOne({ email: primaryAgentEmail })
+        .select("name email phone licenseNumber brokerageName agentProfile")
+        .lean();
+    }
+
+    if (!agent) {
+      console.error(`[GET /api/agent/public] Agent not found for subdomain=${subdomain} host=${host}`);
       return NextResponse.json(
         { error: "Agent profile not found" },
         { status: 404 }
