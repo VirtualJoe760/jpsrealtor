@@ -128,9 +128,16 @@ export default async function AgentSitePage() {
     status: { $in: ["active", "trialing"] },
   }).lean();
 
-  // Check if the current viewer is an admin — admins bypass subscription check
-  const admin = await verifyAdmin();
-  const isAdmin = admin.authorized;
+  // Check if the current viewer is an admin or the agent themselves — bypass subscription gate
+  const session = await (await import("next-auth")).getServerSession((await import("@/lib/auth")).authOptions);
+  const viewerEmail = session?.user?.email;
+  const viewerIsAdmin = !!(viewerEmail && (
+    viewerEmail === "josephsardella@gmail.com" ||
+    (session?.user as any)?.isAdmin ||
+    (session?.user as any)?.impersonatedBy
+  ));
+  const viewerIsAgent = viewerEmail === agent.email;
+  const isAdmin = viewerIsAdmin || viewerIsAgent;
 
   return (
     <AgentSiteClient
