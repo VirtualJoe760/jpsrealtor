@@ -1,11 +1,15 @@
 "use client";
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useThemeClasses } from '@/app/contexts/ThemeContext';
 
 export default function Footer() {
+  const pathname = usePathname();
   const { textSecondary, currentTheme } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
+
+  if (pathname !== '/') return null;
 
   return (
     <footer className="w-full py-4 px-6">

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Eye, Edit, EyeOff, Trash2 } from 'lucide-react';
+import { Eye, Edit, EyeOff, Trash2, Globe, Lock } from 'lucide-react';
 import type { Article } from '../types';
 import { formatCategoryLabel } from '../utils';
 import DeploymentStatusBadge from './DeploymentStatusBadge';
@@ -75,8 +75,19 @@ export function ArticleListItem({
         </div>
 
         {/* Status Column */}
-        <div className="w-40">
+        <div className="w-40 flex items-center gap-2">
           <DeploymentStatusBadge slug={article.slug} isDraft={article.draft} />
+          {article.visibility === 'public' ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+              <Globe className="w-3 h-3" />
+              Public
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400">
+              <Lock className="w-3 h-3" />
+              Private
+            </span>
+          )}
         </div>
 
         {/* Actions Column */}
@@ -149,6 +160,18 @@ export function ArticleListItem({
         <span>{article.date}</span>
         <span>•</span>
         <DeploymentStatusBadge slug={article.slug} isDraft={article.draft} />
+        <span>•</span>
+        {article.visibility === 'public' ? (
+          <span className="inline-flex items-center gap-1 text-blue-400">
+            <Globe className="w-3 h-3" />
+            Public
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-gray-400">
+            <Lock className="w-3 h-3" />
+            Private
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

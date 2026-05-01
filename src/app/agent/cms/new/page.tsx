@@ -65,6 +65,7 @@ export default function NewArticlePage() {
       publicId: "",
       alt: "",
     },
+    visibility: "private" as "public" | "private",
     seo: {
       title: "",
       description: "",
@@ -333,6 +334,7 @@ export default function NewArticlePage() {
             content: formData.content,
             category: formData.category,
             tags: formData.tags,
+            visibility: formData.visibility,
             featuredImage: formData.featuredImage,
             seo: formData.seo,
             ...(formData.category === "landing-page" ? lpConfig : {}),
@@ -651,6 +653,54 @@ export default function NewArticlePage() {
                   <option value="real-estate-tips">Real Estate Tips</option>
                   <option value="landing-page">Landing Page</option>
                 </select>
+              </div>
+
+              {/* Visibility Toggle */}
+              <div>
+                <label
+                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                >
+                  Visibility
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, visibility: "private" }))
+                    }
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                      formData.visibility === "private"
+                        ? isLight
+                          ? "bg-gray-200 border-2 border-gray-400 text-gray-800"
+                          : "bg-gray-700 border-2 border-gray-500 text-white"
+                        : isLight
+                          ? "bg-white border-2 border-slate-300 text-gray-500 hover:border-gray-400"
+                          : "bg-gray-800 border-2 border-gray-700 text-gray-400 hover:border-gray-600"
+                    }`}
+                  >
+                    Private
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, visibility: "public" }))
+                    }
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                      formData.visibility === "public"
+                        ? isLight
+                          ? "bg-blue-100 border-2 border-blue-400 text-blue-800"
+                          : "bg-blue-900/40 border-2 border-blue-500 text-blue-300"
+                        : isLight
+                          ? "bg-white border-2 border-slate-300 text-gray-500 hover:border-blue-400"
+                          : "bg-gray-800 border-2 border-gray-700 text-gray-400 hover:border-blue-600"
+                    }`}
+                  >
+                    Public
+                  </button>
+                </div>
+                <p className={`text-xs ${textMuted} mt-2`}>
+                  Private articles are only visible on your domain. Public articles are visible on all domains.
+                </p>
               </div>
 
               {/* Landing Page Options */}

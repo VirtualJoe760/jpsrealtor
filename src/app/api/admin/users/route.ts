@@ -71,6 +71,25 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
+    // Batch lookup agent names for users that signed up via an agent domain
+    const agentIds = [...new Set(
+      users
+        .map((u: any) => u.signupOrigin?.agentId)
+        .filter(Boolean)
+    )] as string[];
+
+    let agentNameMap: Record<string, string> = {};
+    if (agentIds.length > 0) {
+      const mongoose = await import("mongoose");
+      const agents = await User.find(
+        { _id: { $in: agentIds.map((id: string) => new mongoose.Types.ObjectId(id)) } },
+        { name: 1 }
+      ).lean();
+      agentNameMap = Object.fromEntries(
+        agents.map((a: any) => [a._id.toString(), a.name || a.email || "Unknown Agent"])
+      );
+    }
+
     return NextResponse.json({
       users: users.map(user => ({
         _id: user._id,
@@ -89,6 +108,9 @@ export async function GET(request: NextRequest) {
         subdomain: user.agentProfile?.subdomain,
         siteForceActive: user.agentProfile?.siteForceActive || false,
         signupOrigin: user.signupOrigin,
+        clientOfAgent: user.signupOrigin?.agentId
+          ? agentNameMap[String(user.signupOrigin.agentId)] || null
+          : null,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       })),

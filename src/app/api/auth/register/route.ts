@@ -124,10 +124,15 @@ export async function POST(request: NextRequest) {
       expires,
     });
 
+    // Build origin base URL from request host
+    const reqHost = request.headers.get("host") || "";
+    const protocol = reqHost.includes("localhost") ? "http" : "https";
+    const originBaseUrl = `${protocol}://${reqHost}`;
+
     // Send verification email
     let emailSent = false;
     try {
-      await sendVerificationEmail(email, token, name || email);
+      await sendVerificationEmail(email, token, name || email, signupOrigin.agentId, originBaseUrl);
       emailSent = true;
       console.log('✅ Registration email sent to:', email);
     } catch (emailError) {

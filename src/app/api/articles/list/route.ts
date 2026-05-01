@@ -15,6 +15,7 @@ interface Article {
   date: string;
   slug: string;
   topics?: string[];
+  visibility?: string;
   authorId?: string;
   authorName?: string;
 }
@@ -36,8 +37,11 @@ export async function GET(request: Request) {
 
     // Check session for agent scoping
     const session = await getServerSession(authOptions);
-    const isAdmin = session?.user?.isAdmin;
+    const isImpersonating = !!(session?.user as any)?.impersonatedBy;
+    const isAdmin = session?.user?.isAdmin && !isImpersonating;
     const userId = session?.user?.id;
+
+    console.log('[Articles List] Agent scoping:', { userId, isAdmin, isImpersonating, email: session?.user?.email });
 
     if (IS_PRODUCTION) {
       // PRODUCTION: Fetch from MongoDB
@@ -73,6 +77,7 @@ export async function GET(request: Request) {
         }),
         slug: doc.slug,
         topics: doc.tags,
+        visibility: doc.visibility || 'private',
         authorId: doc.author.id.toString(),
         authorName: doc.author.name,
       }));
@@ -124,6 +129,7 @@ export async function GET(request: Request) {
           date: data.date || '',
           slug: data.slugId || filename.replace('.mdx', ''),
           topics: data.keywords || [],
+          visibility: data.visibility || 'private',
           authorId: data.authorId,
           authorName: data.authorName,
         });

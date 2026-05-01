@@ -25,7 +25,7 @@ export default function InsightsList({
     <section className="mx-auto max-w-4xl px-6 py-10">
       <div className="space-y-12">
         {posts.map((post) => {
-          const { slugId, title, image, altText, description, date } = post; // Explicit destructuring
+          const { slugId, title, image, altText, description, date, authorName, section } = post;
 
           return (
             <div
@@ -51,6 +51,9 @@ export default function InsightsList({
                   </Link>
                 </h2>
                 <p className={`text-sm mb-4 ${textMuted}`}>
+                  {authorName && section !== "landing-page" && (
+                    <span className="font-medium">{authorName} · </span>
+                  )}
                   {new Date(date).toLocaleDateString()}
                 </p>
                 <p className={textSecondary}>{description}</p>

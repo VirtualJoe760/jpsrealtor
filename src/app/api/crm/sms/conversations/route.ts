@@ -127,3 +127,55 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// ============================================================================
+// DELETE /api/crm/sms/conversations?phoneNumber=...
+// Delete all messages in a conversation thread
+// ============================================================================
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const phoneNumber = searchParams.get('phoneNumber');
+
+    if (!phoneNumber) {
+      return NextResponse.json(
+        { success: false, error: 'phoneNumber is required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+    const result = await SMSMessage.deleteMany({
+      userId: userObjectId,
+      $or: [
+        { from: phoneNumber },
+        { to: phoneNumber },
+      ],
+    });
+
+    console.log('[Conversations API] Deleted', result.deletedCount, 'messages for phone:', phoneNumber);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error: any) {
+    console.error('[Conversations API] Delete error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}

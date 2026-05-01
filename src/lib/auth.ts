@@ -10,38 +10,25 @@ import dbConnect from "./mongoose";
 import User from "@/models/User";
 
 /**
- * Determine the cookie domain for session sharing across subdomains.
+ * Determine the cookie domain for session sharing.
  *
- * This handles the PRIMARY login domain's cookie. For cross-domain auth
- * (e.g., jpsrealtor.com → chatrealty.io), see /api/auth/transfer + /api/auth/receive.
+ * All authentication is centralized on chatrealty.io. Agent subdomains
+ * (e.g., bethanyklier.chatrealty.io) and the hub (chatrealty.io) share
+ * cookies via ".chatrealty.io". Custom domains (jpsrealtor.com, etc.)
+ * use the /api/auth/transfer → /api/auth/receive flow to receive their
+ * own session cookie.
  *
- * Dev: undefined — browsers reject ".localhost" as a cookie domain, so each
- *   hostname (localhost, bethanyklier.localhost) gets its own cookie. Users log
- *   in on whichever hostname they're visiting and it works. Cross-subdomain
- *   auth in dev uses /api/auth/transfer → /api/auth/receive.
- *
- * Prod: ".chatrealty.io" / ".jpsrealtor.com" — real TLDs support domain cookies,
- *   so all subdomains share the session automatically.
+ * Dev: undefined — let the browser scope the cookie to the hostname.
+ * Prod: ".chatrealty.io" — centralized auth domain for all subdomains.
  */
 function getCookieDomain(): string | undefined {
   if (process.env.NODE_ENV !== 'production') {
-    // Don't set cookie domain in dev — ".localhost" is not supported by browsers.
-    // Each hostname gets its own cookie; cross-subdomain uses transfer flow.
+    // Dev: let browser scope to hostname (localhost, *.localhost, etc.)
     return undefined;
   }
 
-  // In production, determine apex domain from NEXTAUTH_URL
-  const nextAuthUrl = process.env.NEXTAUTH_URL || '';
-  try {
-    const hostname = new URL(nextAuthUrl).hostname.replace(/^www\./, '');
-    if (hostname.endsWith('chatrealty.io')) return '.chatrealty.io';
-    if (hostname.endsWith('jpsrealtor.com')) return '.jpsrealtor.com';
-    if (hostname.endsWith('josephsardella.com')) return '.josephsardella.com';
-  } catch {
-    // Invalid URL, fall through
-  }
-
-  return undefined;
+  // Prod: centralized auth on chatrealty.io
+  return '.chatrealty.io';
 }
 
 export const authOptions: NextAuthOptions = {

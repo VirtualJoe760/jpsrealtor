@@ -3,9 +3,34 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, FormEvent, Suspense } from "react";
+import { useState, useEffect, FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+
+/** Returns true when the current hostname is the auth hub (chatrealty.io or localhost). */
+function isAuthHub(): boolean {
+  const h = window.location.hostname;
+  return (
+    h === "localhost" ||
+    h.endsWith(".localhost") ||
+    h === "chatrealty.io" ||
+    h === "www.chatrealty.io"
+  );
+}
+
+/** Build the chatrealty.io sign-in URL, preserving a returnTo back to the current page. */
+function getAuthHubRedirectUrl(): string {
+  const returnTo = encodeURIComponent(window.location.href);
+  return `https://chatrealty.io/auth/signin?returnTo=${returnTo}`;
+}
+
+/** Read the returnTo value from either Next searchParams or raw window.location.search. */
+function getReturnTo(searchParams: URLSearchParams): string | null {
+  return (
+    searchParams.get("returnTo") ||
+    new URLSearchParams(window.location.search).get("returnTo")
+  );
+}
 
 function SignInForm() {
   const searchParams = useSearchParams();
@@ -25,73 +50,59 @@ function SignInForm() {
   const isLight = currentTheme === "lightgradient";
 
   const callbackUrl = searchParams.get("from") || "/dashboard";
+  const returnTo = searchParams.get("returnTo");
   const errorParam = searchParams.get("error");
+
+  // Redirect non-hub production domains to chatrealty.io for centralized auth
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && !isAuthHub()) {
+      window.location.replace(getAuthHubRedirectUrl());
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    console.log("🔐 Starting sign in process...", {
-      email,
-      callbackUrl,
-      hasPassword: !!password
-    });
-
     try {
       const result = await signIn("credentials", {
         email,
         password,
-        callbackUrl: callbackUrl,
         redirect: false,
       });
 
-      console.log("📋 Sign in result:", result);
-      console.log("📋 Result details:", {
-        ok: result?.ok,
-        error: result?.error,
-        status: result?.status,
-        url: result?.url
-      });
-
       if (result?.error) {
-        console.error("❌ Sign in error:", result.error);
-        setError(result.error);
+        console.warn("Sign in failed:", result.error);
+        if (result.error === "Invalid credentials") {
+          setError("Incorrect email or password. Please try again or use Forgot Password.");
+        } else {
+          setError(result.error);
+        }
         setIsLoading(false);
       } else if (result?.ok) {
-        console.log("✅ Sign in successful! Checking session...");
-
         // Check if 2FA is required by making a quick session check
         try {
-          console.log("🔄 Fetching session from /api/auth/session...");
           const response = await fetch("/api/auth/session");
-          console.log("📡 Session response status:", response.status);
-
           const session = await response.json();
-          console.log("📦 Session data:", session);
-          console.log("📦 Has user?", !!session?.user);
-          console.log("📦 User email:", session?.user?.email);
 
           if (session?.user?.requiresTwoFactor) {
-            console.log("🔐 2FA required, redirecting to 2FA page");
             sessionStorage.setItem("2fa_email", email);
             window.location.href = `/auth/2fa?from=${encodeURIComponent(callbackUrl)}`;
+          } else if (returnTo) {
+            // Cross-domain return: transfer session to the originating domain
+            window.location.replace(`/api/auth/transfer?target=${encodeURIComponent(returnTo)}`);
           } else if (session?.user) {
-            console.log("✅ Session valid! Redirecting to:", callbackUrl);
             window.location.href = callbackUrl;
           } else {
-            console.warn("⚠️ No user in session after successful login!");
-            console.log("⚠️ This means the session wasn't created properly");
-            console.log("⚠️ Attempting redirect anyway to:", callbackUrl);
             window.location.href = callbackUrl;
           }
         } catch (sessionError) {
-          console.error("❌ Session fetch error:", sessionError);
           window.location.href = callbackUrl;
         }
       }
     } catch (error) {
-      console.error("Sign in exception:", error);
+      console.warn("Sign in exception:", error);
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -232,7 +243,14 @@ function SignInForm() {
             {/* Google Sign In */}
             <button
               type="button"
-              onClick={() => signIn("google", { callbackUrl: callbackUrl })}
+              onClick={() => {
+                const rt = getReturnTo(searchParams);
+                signIn("google", {
+                  callbackUrl: rt
+                    ? `/api/auth/transfer?target=${encodeURIComponent(rt)}`
+                    : callbackUrl,
+                });
+              }}
               className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-3 ${
                 isLight
                   ? "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"

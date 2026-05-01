@@ -89,7 +89,7 @@ export default function ComposeView({
   };
 
   return (
-    <div className={`fixed inset-0 pt-16 md:col-span-7 md:static md:pt-0 md:${cardBg} md:rounded-xl md:border md:${border} md:shadow-lg flex flex-col overflow-hidden h-full bg-transparent`}>
+    <div className={`fixed inset-x-0 top-0 h-[100dvh] pt-16 md:col-span-7 md:static md:pt-0 md:h-full md:${cardBg} md:rounded-xl md:border md:${border} md:shadow-lg flex flex-col overflow-hidden bg-transparent`}>
       {/* Header - Similar to ThreadHeader */}
       <div className={`p-3 md:p-4 md:border-b md:${border} md:${
         isLight ? 'md:bg-gray-50' : 'md:bg-gray-900/50'

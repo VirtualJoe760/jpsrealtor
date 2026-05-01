@@ -17,6 +17,7 @@ interface ConversationListProps {
   onSearchChange: (query: string) => void;
   contacts: Contact[];
   onNewConversation: () => void;
+  onDeleteConversation: (phoneNumber: string) => void;
   mobileView: MobileView;
   isLight: boolean;
   border: string;
@@ -33,6 +34,7 @@ export default function ConversationList({
   onSearchChange,
   contacts,
   onNewConversation,
+  onDeleteConversation,
   mobileView,
   isLight,
   border,
@@ -93,6 +95,7 @@ export default function ConversationList({
               conversation={conv}
               isSelected={selectedConversation?.phoneNumber === conv.phoneNumber}
               onClick={() => onSelectConversation(conv)}
+              onDelete={onDeleteConversation}
               isLight={isLight}
               border={border}
               textPrimary={textPrimary}

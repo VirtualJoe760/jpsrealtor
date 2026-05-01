@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { unpublishArticle, isArticlePublished } from '@/lib/publishing-pipeline';
 import { IS_PRODUCTION } from '@/lib/environment';
+import { getArticleBySlug } from '@/lib/services/article.service';
 
 /**
  * DELETE /api/articles/unpublish
@@ -10,15 +11,17 @@ import { IS_PRODUCTION } from '@/lib/environment';
  * Dual-environment unpublishing:
  * LOCALHOST: Deletes MDX file from src/posts/
  * PRODUCTION: Deletes from MongoDB + triggers Vercel rebuild
+ *
+ * Agents can unpublish their own articles. Admins can unpublish any article.
  */
 export async function DELETE(req: Request) {
   try {
-    // Check auth
+    // Check auth — any authenticated user (agents + admins)
     const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 403 }
+        { error: 'Unauthorized. Please sign in.' },
+        { status: 401 }
       );
     }
 
@@ -31,6 +34,20 @@ export async function DELETE(req: Request) {
         { error: 'Missing required parameter: slugId' },
         { status: 400 }
       );
+    }
+
+    // Ownership check — agents can only unpublish their own articles
+    const isImpersonating = !!(session.user as any)?.impersonatedBy;
+    const isAdmin = (session.user as any)?.isAdmin && !isImpersonating;
+    const userId = (session.user as any)?.id;
+    if (!isAdmin) {
+      const article = await getArticleBySlug(slugId);
+      if (article && article.author?.id?.toString() !== userId) {
+        return NextResponse.json(
+          { error: 'Forbidden. You can only unpublish your own articles.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if article is published

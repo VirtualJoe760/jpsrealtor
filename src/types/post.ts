@@ -19,6 +19,13 @@ export interface Post {
   keywords?: string[];
   content: string;
 
+  // Author (auto-applied for articles, not landing pages)
+  authorId?: string;
+  authorName?: string;
+
+  // Visibility
+  visibility?: 'public' | 'private';
+
   // Landing page fields
   standalone?: boolean;
   heroType?: "photo" | "video";

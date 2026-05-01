@@ -518,9 +518,10 @@ export async function deployToMain(
       };
     }
 
-    // On a different branch — commit here, cherry-pick onto main, push, switch back
-    console.log('💼 Stashing other changes...');
-    await execAsync('git stash push -m "CMS publish temp stash"').catch(() => {});
+    // On a different branch — commit the staged article, cherry-pick onto main, push, switch back.
+    // Use --keep-index so the staged article file survives the stash.
+    console.log('💼 Stashing other changes (keeping staged article)...');
+    await execAsync('git stash push --keep-index --include-untracked -m "CMS publish temp stash"').catch(() => {});
 
     console.log('💾 Committing on current branch...');
     const { stdout: commitOutput } = await execAsync(

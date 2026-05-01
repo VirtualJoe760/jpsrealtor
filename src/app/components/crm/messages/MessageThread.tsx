@@ -74,9 +74,9 @@ export default function MessageThread({
 
   return (
     <div className={`
-      ${mobileView === 'thread' ? 'fixed inset-0 pt-16 bg-transparent' : 'hidden'}
+      ${mobileView === 'thread' ? 'fixed inset-x-0 top-0 h-[100dvh] pt-16 bg-transparent' : 'hidden'}
       md:col-span-7 md:static md:pt-0 md:${cardBg} md:rounded-xl md:border md:${border} md:shadow-lg
-      flex flex-col overflow-hidden h-full md:flex
+      flex flex-col overflow-hidden md:h-full md:flex
     `}>
       {/* Header */}
       <ThreadHeader

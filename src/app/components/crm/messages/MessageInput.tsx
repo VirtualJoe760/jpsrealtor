@@ -38,7 +38,7 @@ export default function MessageInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`p-3 md:p-4 pb-24 md:pb-4 md:border-t md:${border} md:${cardBg} md:bg-transparent`}>
+    <form onSubmit={handleSubmit} className={`p-3 md:p-4 pb-4 md:border-t md:${border} md:${cardBg} md:bg-transparent`}>
       <div className="flex items-end gap-2 md:gap-3">
         <div className="flex-1 relative">
           <textarea
@@ -56,7 +56,7 @@ export default function MessageInput({
               isLight ? 'border-gray-300 bg-white' : 'border-gray-600 bg-gray-800'
             } ${
               isLight ? 'text-slate-900' : 'text-white'
-            } placeholder-gray-500 resize-none focus:outline-none focus:ring-0 text-sm md:text-base max-h-32 shadow-none`}
+            } placeholder-gray-500 resize-none focus:outline-none focus:ring-0 text-base max-h-32 shadow-none`}
             style={{ minHeight: '44px', boxShadow: 'none' }}
           />
           <div className="absolute bottom-2 right-2 text-[9px] text-gray-500">

@@ -24,6 +24,9 @@ export interface Article {
   image?: string;
   published?: boolean;
   draft?: boolean; // Draft status (inverse of published)
+  visibility?: 'public' | 'private';
+  authorId?: string;
+  authorName?: string;
 }
 
 /**

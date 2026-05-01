@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { IS_PRODUCTION } from '@/lib/environment';
-import { setDraftStatus, articleExists } from '@/lib/services/article.service';
+import { setDraftStatus, articleExists, getArticleBySlug } from '@/lib/services/article.service';
 import { triggerVercelRebuild } from '@/lib/publishing-pipeline';
 
 /**
@@ -12,9 +14,20 @@ import { triggerVercelRebuild } from '@/lib/publishing-pipeline';
  * Dual-environment draft status toggling:
  * LOCALHOST: Updates draft flag in MDX frontmatter
  * PRODUCTION: Updates status in MongoDB + triggers Vercel rebuild
+ *
+ * Agents can toggle their own articles. Admins can toggle any article.
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please sign in.' },
+        { status: 401 }
+      );
+    }
+
     const { slugId, draft } = await request.json();
 
     if (!slugId) {
@@ -22,6 +35,19 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'slugId is required' },
         { status: 400 }
       );
+    }
+
+    // Ownership check — agents can only modify their own articles
+    const isImpersonating = !!(session?.user as any)?.impersonatedBy;
+    const isAdmin = (session?.user as any)?.isAdmin && !isImpersonating;
+    if (!isAdmin) {
+      const article = await getArticleBySlug(slugId);
+      if (article && article.author?.id?.toString() !== userId) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden. You can only modify your own articles.' },
+          { status: 403 }
+        );
+      }
     }
 
     if (IS_PRODUCTION) {
@@ -78,6 +104,14 @@ export async function POST(request: NextRequest) {
       // Read the current MDX file
       const fileContent = await fs.readFile(filePath, 'utf-8');
       const { data: frontmatter, content } = matter(fileContent);
+
+      // Ownership check for MDX path
+      if (!isAdmin && frontmatter.authorId && frontmatter.authorId !== userId) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden. You can only modify your own articles.' },
+          { status: 403 }
+        );
+      }
 
       // Update draft flag
       frontmatter.draft = draft;

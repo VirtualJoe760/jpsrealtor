@@ -17,13 +17,167 @@ function getResendClient(): Resend {
   return resendInstance;
 }
 
+export interface EmailAgent {
+  name: string;
+  headshot?: string;
+  brokerage: string;
+  licenseNumber: string;
+  phone: string;
+  email: string;
+  website: string;
+  brandColor: string;
+  secondaryColor: string;
+  instagram?: string;
+  facebook?: string;
+  youtube?: string;
+}
+
+const DEFAULT_AGENT: EmailAgent = {
+  name: 'Joseph Sardella',
+  headshot: 'https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/headshots/head-shot-2026.png',
+  brokerage: 'eXp Realty',
+  licenseNumber: '02106916',
+  phone: '(760) 333-3676',
+  email: 'josephsardella@gmail.com',
+  website: 'jpsrealtor.com',
+  brandColor: '#3b82f6',
+  secondaryColor: '#1e3a8a',
+  instagram: 'https://instagram.com/jpsrealtor',
+  facebook: 'https://facebook.com/jpsrealtor',
+  youtube: 'https://youtube.com/@jpsrealtor',
+};
+
+const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || 'jpsrealtor.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'josephsardella@gmail.com';
+
+/**
+ * Resolve an EmailAgent from a userId string or an already-resolved object.
+ * Falls back to DEFAULT_AGENT when no user is found or no agentProfile exists.
+ */
+async function resolveEmailAgent(
+  agentOrId?: string | EmailAgent
+): Promise<EmailAgent> {
+  if (!agentOrId) return DEFAULT_AGENT;
+  if (typeof agentOrId !== 'string') return agentOrId;
+
+  try {
+    const mongoose = await import('mongoose');
+    const db = mongoose.default.connection.db;
+    if (!db) return DEFAULT_AGENT;
+
+    const user = await db.collection('users').findOne(
+      { _id: new mongoose.Types.ObjectId(agentOrId) },
+      {
+        projection: {
+          name: 1,
+          image: 1,
+          brokerageName: 1,
+          licenseNumber: 1,
+          phone: 1,
+          email: 1,
+          'agentProfile.brandColor': 1,
+          'agentProfile.secondaryColor': 1,
+          'agentProfile.subdomain': 1,
+          'agentProfile.instagram': 1,
+          'agentProfile.facebook': 1,
+          'agentProfile.youtube': 1,
+        },
+      }
+    );
+    if (!user) return DEFAULT_AGENT;
+
+    return {
+      name: user.name || DEFAULT_AGENT.name,
+      headshot: user.image || DEFAULT_AGENT.headshot,
+      brokerage: user.brokerageName || DEFAULT_AGENT.brokerage,
+      licenseNumber: user.licenseNumber || DEFAULT_AGENT.licenseNumber,
+      phone: user.phone || DEFAULT_AGENT.phone,
+      email: user.email || DEFAULT_AGENT.email,
+      website: user.agentProfile?.subdomain
+        ? `${user.agentProfile.subdomain}.chatrealty.io`
+        : DEFAULT_AGENT.website,
+      brandColor: user.agentProfile?.brandColor || DEFAULT_AGENT.brandColor,
+      secondaryColor: user.agentProfile?.secondaryColor || DEFAULT_AGENT.secondaryColor,
+      instagram: user.agentProfile?.instagram || DEFAULT_AGENT.instagram,
+      facebook: user.agentProfile?.facebook || DEFAULT_AGENT.facebook,
+      youtube: user.agentProfile?.youtube || DEFAULT_AGENT.youtube,
+    };
+  } catch {
+    return DEFAULT_AGENT;
+  }
+}
+
+/** From line for agent-branded emails */
+function emailFrom(agent: EmailAgent): string {
+  return `${agent.name} via ChatRealty <noreply@${NOREPLY_DOMAIN}>`;
+}
+
+/** From line for platform-level emails (no agent branding) */
+function platformFrom(): string {
+  return `ChatRealty <noreply@${NOREPLY_DOMAIN}>`;
+}
+
+/** Reusable HTML email signature block */
+function emailSignature(agent: EmailAgent): string {
+  const phoneDigits = agent.phone.replace(/\D/g, '');
+  const signatureHeadshot = agent.headshot
+    ? agent.headshot.replace(
+        '/upload/',
+        '/upload/c_thumb,g_face,w_200,h_200,r_max,f_auto,q_auto/'
+      )
+    : '';
+
+  return `
+    <div class="signature" style="margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;font-size:14px;line-height:1.8;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+          ${signatureHeadshot ? `<td width="96" valign="top" style="padding-right:20px;">
+            <img src="${signatureHeadshot}" alt="${agent.name}" width="80" height="80" style="display:block;width:80px;height:80px;border-radius:50%;border:3px solid ${agent.brandColor};" />
+          </td>` : ''}
+          <td valign="middle">
+            <p style="margin:0;font-size:17px;font-weight:700;color:#0f172a;line-height:1.3;">${agent.name}</p>
+            <p style="margin:4px 0 0;font-size:13px;color:#6b7280;line-height:1.4;">REALTOR® · ${agent.brokerage}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#9ca3af;line-height:1.4;">DRE# ${agent.licenseNumber}</p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:#374151;">
+        📞 <a href="tel:${phoneDigits}" style="color:${agent.brandColor};text-decoration:none;font-weight:600;">${agent.phone}</a><br/>
+        ✉️ <a href="mailto:${agent.email}" style="color:${agent.brandColor};text-decoration:none;font-weight:600;">${agent.email}</a><br/>
+        🌐 <a href="https://${agent.website}" style="color:${agent.brandColor};text-decoration:none;font-weight:600;">${agent.website}</a>
+      </p>
+      ${agent.instagram || agent.facebook || agent.youtube ? `
+      <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;">
+        ${agent.instagram ? `<a href="${agent.instagram}" style="color:#9ca3af;text-decoration:none;">Instagram</a>` : ''}
+        ${agent.instagram && agent.facebook ? ' · ' : ''}
+        ${agent.facebook ? `<a href="${agent.facebook}" style="color:#9ca3af;text-decoration:none;">Facebook</a>` : ''}
+        ${(agent.instagram || agent.facebook) && agent.youtube ? ' · ' : ''}
+        ${agent.youtube ? `<a href="${agent.youtube}" style="color:#9ca3af;text-decoration:none;">YouTube</a>` : ''}
+      </p>` : ''}
+    </div>`;
+}
+
+/** Reusable HTML email footer */
+function emailFooter(agent: EmailAgent): string {
+  return `
+    <div style="background-color:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.6;">
+        © ${new Date().getFullYear()} ${agent.name} · ${agent.brokerage}<br/>
+        Powered by <a href="https://chatrealty.io" style="color:#9ca3af;text-decoration:none;font-weight:600;">ChatRealty</a>
+      </p>
+    </div>`;
+}
+
 export async function sendVerificationEmail(
   email: string,
   token: string,
-  name: string
+  name: string,
+  agentOrId?: string | EmailAgent,
+  baseUrl?: string
 ) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
-  const verificationUrl = `${baseUrl}/auth/verify-email?token=${token}`;
+  const agent = await resolveEmailAgent(agentOrId);
+  const base = baseUrl || process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
+  const verificationUrl = `${base}/auth/verify-email?token=${token}`;
 
   console.log('📧 Sending verification email via Resend to:', email);
   console.log('🔗 Verification URL:', verificationUrl);
@@ -31,9 +185,9 @@ export async function sendVerificationEmail(
   try {
     const resend = getResendClient();
     const data = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      from: emailFrom(agent),
       to: [email],
-      replyTo: 'noreply@jpsrealtor.com',
+      replyTo: `noreply@${NOREPLY_DOMAIN}`,
       subject: 'Verify your email address',
       html: `
         <!DOCTYPE html>
@@ -57,7 +211,7 @@ export async function sendVerificationEmail(
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               }
               .header {
-                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                background: linear-gradient(135deg, ${agent.secondaryColor} 0%, ${agent.brandColor} 100%);
                 color: white;
                 padding: 40px 30px;
                 text-align: center;
@@ -73,7 +227,7 @@ export async function sendVerificationEmail(
               .button {
                 display: inline-block;
                 padding: 14px 32px;
-                background: #3b82f6;
+                background: ${agent.brandColor};
                 color: white !important;
                 text-decoration: none;
                 border-radius: 6px;
@@ -81,32 +235,13 @@ export async function sendVerificationEmail(
                 font-weight: 600;
               }
               .button:hover {
-                background: #2563eb;
+                opacity: 0.9;
               }
               .link-fallback {
                 word-break: break-all;
-                color: #3b82f6;
+                color: ${agent.brandColor};
                 font-size: 13px;
                 margin: 20px 0;
-              }
-              .signature {
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 14px;
-                line-height: 1.8;
-              }
-              .signature-name {
-                font-weight: 600;
-                margin-bottom: 5px;
-              }
-              .signature-info {
-                color: #666;
-                margin: 2px 0;
-              }
-              .signature-links a {
-                color: #3b82f6;
-                text-decoration: none;
               }
               .footer {
                 background: #f9fafb;
@@ -121,11 +256,11 @@ export async function sendVerificationEmail(
           <body>
             <div class="container">
               <div class="header">
-                <h1>Welcome to JPSRealtor!</h1>
+                <h1>Welcome!</h1>
               </div>
               <div class="content">
                 <p>Hi ${name},</p>
-                <p>Thank you for creating an account with JPSRealtor. To get started, please verify your email address by clicking the button below:</p>
+                <p>Thank you for creating an account. To get started, please verify your email address by clicking the button below:</p>
                 <p style="text-align: center;">
                   <a href="${verificationUrl}" class="button">Verify Email Address</a>
                 </p>
@@ -134,25 +269,9 @@ export async function sendVerificationEmail(
                 <p style="color: #666; font-size: 14px;">This verification link will expire in 24 hours.</p>
                 <p style="color: #666; font-size: 14px; margin-top: 30px;">If you didn't create this account, you can safely ignore this email.</p>
 
-                <div class="signature">
-                  <p class="signature-name">Sincerely,</p>
-                  <p class="signature-name">Joseph Sardella</p>
-                  <p class="signature-info">DRE: 02106916</p>
-                  <p class="signature-info">Obsidian Group - eXp Realty</p>
-                  <br>
-                  <p class="signature-info signature-links">
-                    E: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a><br>
-                    W: <a href="mailto:joseph@obsidianregroup.com">joseph@obsidianregroup.com</a> (for transactions)<br>
-                    P: <a href="tel:+17603333676">(760) 333-3676</a><br>
-                    W: <a href="tel:+17608336334">(760) 833-6334</a><br>
-                    <a href="https://www.obsidianregroup.com">www.obsidianregroup.com</a><br>
-                    <a href="https://jpsrealtor.com">https://jpsrealtor.com</a>
-                  </p>
-                </div>
+                ${emailSignature(agent)}
               </div>
-              <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} Joseph Sardella - Obsidian Group, eXp Realty. All rights reserved.</p>
-              </div>
+              ${emailFooter(agent)}
             </div>
           </body>
         </html>
@@ -173,16 +292,18 @@ export async function sendVerificationEmail(
 export async function send2FACode(
   email: string,
   code: string,
-  name: string
+  name: string,
+  agentOrId?: string | EmailAgent
 ) {
+  const agent = await resolveEmailAgent(agentOrId);
   console.log('📧 Sending 2FA code via Resend to:', email);
 
   try {
     const resend = getResendClient();
     const data = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      from: emailFrom(agent),
       to: [email],
-      replyTo: 'noreply@jpsrealtor.com',
+      replyTo: `noreply@${NOREPLY_DOMAIN}`,
       subject: 'Your Two-Factor Authentication Code',
       html: `
         <!DOCTYPE html>
@@ -206,7 +327,7 @@ export async function send2FACode(
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               }
               .header {
-                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                background: linear-gradient(135deg, ${agent.secondaryColor} 0%, ${agent.brandColor} 100%);
                 color: white;
                 padding: 40px 30px;
                 text-align: center;
@@ -221,7 +342,7 @@ export async function send2FACode(
               }
               .code-container {
                 background: #f9fafb;
-                border: 2px solid #3b82f6;
+                border: 2px solid ${agent.brandColor};
                 border-radius: 8px;
                 padding: 30px;
                 text-align: center;
@@ -232,27 +353,8 @@ export async function send2FACode(
                 font-size: 36px;
                 font-weight: bold;
                 letter-spacing: 10px;
-                color: #1e3a8a;
+                color: ${agent.secondaryColor};
                 font-family: 'Courier New', monospace;
-              }
-              .signature {
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 14px;
-                line-height: 1.8;
-              }
-              .signature-name {
-                font-weight: 600;
-                margin-bottom: 5px;
-              }
-              .signature-info {
-                color: #666;
-                margin: 2px 0;
-              }
-              .signature-links a {
-                color: #3b82f6;
-                text-decoration: none;
               }
               .footer {
                 background: #f9fafb;
@@ -278,25 +380,9 @@ export async function send2FACode(
                 <p style="color: #666; font-size: 14px; text-align: center;">This code will expire in 10 minutes.</p>
                 <p style="color: #dc2626; font-size: 14px; margin-top: 30px;"><strong>Security Notice:</strong> If you didn't request this code, please ignore this email and consider changing your password immediately.</p>
 
-                <div class="signature">
-                  <p class="signature-name">Sincerely,</p>
-                  <p class="signature-name">Joseph Sardella</p>
-                  <p class="signature-info">DRE: 02106916</p>
-                  <p class="signature-info">Obsidian Group - eXp Realty</p>
-                  <br>
-                  <p class="signature-info signature-links">
-                    E: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a><br>
-                    W: <a href="mailto:joseph@obsidianregroup.com">joseph@obsidianregroup.com</a> (for transactions)<br>
-                    P: <a href="tel:+17603333676">(760) 333-3676</a><br>
-                    W: <a href="tel:+17608336334">(760) 833-6334</a><br>
-                    <a href="https://www.obsidianregroup.com">www.obsidianregroup.com</a><br>
-                    <a href="https://jpsrealtor.com">https://jpsrealtor.com</a>
-                  </p>
-                </div>
+                ${emailSignature(agent)}
               </div>
-              <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} Joseph Sardella - Obsidian Group, eXp Realty. All rights reserved.</p>
-              </div>
+              ${emailFooter(agent)}
             </div>
           </body>
         </html>
@@ -317,17 +403,19 @@ export async function send2FACode(
 export async function sendPasswordResetEmail(
   email: string,
   resetUrl: string,
-  name: string
+  name: string,
+  agentOrId?: string | EmailAgent
 ) {
+  const agent = await resolveEmailAgent(agentOrId);
   console.log('📧 Sending password reset email via Resend to:', email);
   console.log('🔗 Reset URL:', resetUrl);
 
   try {
     const resend = getResendClient();
     const data = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      from: emailFrom(agent),
       to: [email],
-      replyTo: 'noreply@jpsrealtor.com',
+      replyTo: `noreply@${NOREPLY_DOMAIN}`,
       subject: 'Reset your password',
       html: `
         <!DOCTYPE html>
@@ -421,7 +509,7 @@ export async function sendPasswordResetEmail(
               <div class="content">
                 <h2>Hi ${name},</h2>
                 <p>
-                  We received a request to reset your password for your Joey Sardella Real Estate account.
+                  We received a request to reset your password for your ChatRealty account.
                 </p>
                 <p>
                   Click the button below to reset your password:
@@ -441,8 +529,8 @@ export async function sendPasswordResetEmail(
                 </p>
               </div>
               <div class="footer">
-                <p><strong>Joey Sardella Real Estate</strong></p>
-                <p>Your trusted partner in real estate</p>
+                <p><strong>${agent.name} · ${agent.brokerage}</strong></p>
+                <p>Powered by <a href="https://chatrealty.io" style="color:#718096;text-decoration:none;">ChatRealty</a></p>
                 <p style="font-size: 12px; margin-top: 20px;">
                   This is an automated email. Please do not reply to this message.
                 </p>
@@ -494,18 +582,18 @@ export async function sendLeadWelcomeEmail(
 
   // Sensible defaults so the template never has gaps
   const a = {
-    name: agent.name || "Joseph Sardella",
-    headshot: agent.headshot || "",
-    brokerage: agent.brokerage || "eXp Realty",
-    licenseNumber: agent.licenseNumber || "02106916",
-    phone: agent.phone || "(760) 333-3676",
-    email: agent.email || "joseph@jpsrealtor.com",
-    website: agent.website || "jpsrealtor.com",
-    brandColor: agent.brandColor || "#10b981",
-    secondaryColor: agent.secondaryColor || "#06b6d4",
-    instagram: agent.instagram || "https://instagram.com/jpsrealtor",
-    facebook: agent.facebook || "https://facebook.com/jpsrealtor",
-    youtube: agent.youtube || "https://youtube.com/@jpsrealtor",
+    name: agent.name || DEFAULT_AGENT.name,
+    headshot: agent.headshot || DEFAULT_AGENT.headshot || "",
+    brokerage: agent.brokerage || DEFAULT_AGENT.brokerage,
+    licenseNumber: agent.licenseNumber || DEFAULT_AGENT.licenseNumber,
+    phone: agent.phone || DEFAULT_AGENT.phone,
+    email: agent.email || DEFAULT_AGENT.email,
+    website: agent.website || DEFAULT_AGENT.website,
+    brandColor: agent.brandColor || DEFAULT_AGENT.brandColor,
+    secondaryColor: agent.secondaryColor || DEFAULT_AGENT.secondaryColor,
+    instagram: agent.instagram || DEFAULT_AGENT.instagram,
+    facebook: agent.facebook || DEFAULT_AGENT.facebook,
+    youtube: agent.youtube || DEFAULT_AGENT.youtube,
   };
 
   // Round-crop the Cloudinary headshot to 200x200 for the email signature.
@@ -523,7 +611,7 @@ export async function sendLeadWelcomeEmail(
   try {
     const resend = getResendClient();
     const data = await resend.emails.send({
-      from: `${a.name} <noreply@jpsrealtor.com>`,
+      from: `${a.name} via ChatRealty <noreply@${NOREPLY_DOMAIN}>`,
       to: [email],
       replyTo: `${a.email}`,
       subject: `Welcome to ${a.name.split(" ")[0]} Real Estate — verify your email`,
@@ -720,15 +808,15 @@ export async function sendPartnerApplicationEmail(
   partnerType: string,
 ) {
   const resend = getResendClient();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const typeLabel = partnerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   console.log('📧 Sending partner application confirmation to:', email);
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
-      replyTo: 'noreply@jpsrealtor.com',
+      from: platformFrom(),
+      replyTo: `noreply@${NOREPLY_DOMAIN}`,
       to: email,
       subject: 'Welcome to ChatRealty — Your Service Partner Application',
       html: `
@@ -766,12 +854,11 @@ export async function sendPartnerApplicationEmail(
                 </a>
               </div>
               <p style="color:#94a3b8;font-size:13px;text-align:center;">
-                If you have any questions, reply to this email or contact us at help@josephsardella.com
+                If you have any questions, reply to this email or contact us at support@chatrealty.io
               </p>
             </div>
             <div style="padding:24px 32px;text-align:center;">
               <p style="color:#94a3b8;font-size:12px;margin:0;">
-                Joseph Sardella | eXp Realty | DRE# 02106916<br/>
                 ChatRealty Service Partner Network
               </p>
             </div>
@@ -805,15 +892,15 @@ export async function sendPartnerApplicationNotification(
   nmlsId: string,
 ) {
   const resend = getResendClient();
-  const adminEmail = process.env.EMAIL_USER || 'josephsardella@gmail.com';
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const adminEmail = ADMIN_EMAIL;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const typeLabel = partnerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   console.log('📧 Sending partner application notification to admin:', adminEmail);
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'ChatRealty Notifications <noreply@jpsrealtor.com>',
+      from: platformFrom(),
       replyTo: applicantEmail,
       to: adminEmail,
       subject: `[Partner Request] New Application: ${companyName} (${typeLabel})`,
@@ -882,7 +969,7 @@ export async function sendSubscriptionEmail(
   expiresAt?: Date | null,
 ) {
   const resend = getResendClient();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const firstName = name.split(' ')[0] || 'there';
 
   const isSubscribed = action === 'subscribed';
@@ -927,9 +1014,9 @@ export async function sendSubscriptionEmail(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      from: platformFrom(),
       to: [email],
-      replyTo: 'josephsardella@gmail.com',
+      replyTo: ADMIN_EMAIL,
       subject,
       html: `
         <!DOCTYPE html>
@@ -979,13 +1066,13 @@ export async function sendCancellationNotification(
   expiresAt?: Date | null,
 ) {
   const resend = getResendClient();
-  const adminEmail = process.env.EMAIL_USER || 'josephsardella@gmail.com';
+  const adminEmail = ADMIN_EMAIL;
 
   console.log('📧 Sending cancellation notification to admin:', adminEmail);
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'ChatRealty Notifications <noreply@jpsrealtor.com>',
+      from: platformFrom(),
       replyTo: userEmail,
       to: adminEmail,
       subject: `[Cancellation] ${userName || userEmail} cancelled Pro`,
@@ -1046,7 +1133,7 @@ export async function sendEmailChangeVerification(
   token: string,
 ) {
   const resend = getResendClient();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const verifyUrl = `${baseUrl}/api/auth/confirm-email-change?token=${token}`;
   const firstName = name.split(' ')[0] || 'there';
 
@@ -1054,7 +1141,7 @@ export async function sendEmailChangeVerification(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Joey Sardella Real Estate <noreply@jpsrealtor.com>',
+      from: platformFrom(),
       to: [newEmail],
       subject: 'Confirm your new email address',
       html: `
@@ -1103,7 +1190,7 @@ export async function sendAgentApprovalEmail(
   subdomain: string,
 ) {
   const resend = getResendClient();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const firstName = name.split(' ')[0] || 'there';
   const subdomainUrl = `https://${subdomain}.chatrealty.io`;
 
@@ -1111,9 +1198,9 @@ export async function sendAgentApprovalEmail(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'ChatRealty <noreply@jpsrealtor.com>',
+      from: platformFrom(),
       to: [email],
-      replyTo: 'josephsardella@gmail.com',
+      replyTo: ADMIN_EMAIL,
       subject: 'Welcome to ChatRealty — Your Agent Account is Approved!',
       html: `
         <!DOCTYPE html>

@@ -27,6 +27,7 @@ export interface IArticle extends Document {
   // Status
   status: ArticleStatus;
   featured: boolean;
+  visibility?: 'public' | 'private';
 
   // Media (Cloudinary)
   featuredImage: {
@@ -136,6 +137,11 @@ const ArticleSchema = new Schema<IArticle>(
       default: false,
       index: true,
     },
+    visibility: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'private',
+    },
 
     // Media (Cloudinary)
     featuredImage: {
@@ -225,6 +231,7 @@ ArticleSchema.index({ year: 1, month: 1, status: 1 }); // Date archive
 ArticleSchema.index({ tags: 1, status: 1 }); // Tag filtering
 ArticleSchema.index({ featured: 1, status: 1, publishedAt: -1 }); // Featured articles
 ArticleSchema.index({ "metadata.views": -1 }); // Popular articles
+ArticleSchema.index({ "author.id": 1, status: 1, publishedAt: -1 }); // Agent's articles
 // Note: slug index is already defined in schema with unique: true (line 84)
 
 // Text index for search

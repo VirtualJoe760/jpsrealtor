@@ -198,6 +198,25 @@ export default function MessagesPage() {
     }
   };
 
+  const handleDeleteConversation = async (phoneNumber: string) => {
+    try {
+      const res = await fetch(`/api/crm/sms/conversations?phoneNumber=${encodeURIComponent(phoneNumber)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Clear selection if the deleted conversation was selected
+        if (selectedConversation?.phoneNumber === phoneNumber) {
+          setSelectedConversation(null);
+          setMobileView('list');
+        }
+        fetchConversations();
+      }
+    } catch (error) {
+      console.error('[Messages] Error deleting conversation:', error);
+    }
+  };
+
   const handleOpenCompose = () => {
     setShowComposeView(true);
     setMobileView('thread');
@@ -303,6 +322,7 @@ export default function MessagesPage() {
               onSearchChange={setSearchQuery}
               contacts={contacts}
               onNewConversation={handleOpenCompose}
+              onDeleteConversation={handleDeleteConversation}
               mobileView={mobileView}
               isLight={isLight}
               border={border}

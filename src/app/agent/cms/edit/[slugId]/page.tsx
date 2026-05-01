@@ -64,6 +64,7 @@ export default function EditArticlePage() {
       publicId: "",
       alt: "",
     },
+    visibility: "private" as "public" | "private",
     seo: {
       title: "",
       description: "",
@@ -106,43 +107,85 @@ export default function EditArticlePage() {
       setIsLoading(true);
       setError(null);
 
-      // First, try to load from MongoDB by slug
-      const dbResponse = await fetch(`/api/articles?search=${slugId}&limit=1`);
-      const dbData = await dbResponse.json();
+      // First, try agent-scoped list API (respects ownership)
+      const listResponse = await fetch(`/api/articles/list?excludeLandingPages=false`);
+      const listData = await listResponse.json();
+      const listArticle = listData.articles?.find((a: any) => a.slug === slugId);
 
-      // Check if we found the article in MongoDB (by matching slug)
-      const dbArticle = dbData.articles?.find((a: any) => a.slug === slugId);
+      if (listArticle) {
+        console.log('Loading article from agent-scoped list API');
+        // We have metadata but need full content — try MongoDB
+        const dbResponse = await fetch(`/api/articles?search=${slugId}&limit=1`);
+        const dbData = await dbResponse.json();
+        const dbArticle = dbData.articles?.find((a: any) => a.slug === slugId);
 
-      if (dbArticle) {
-        // Article found in MongoDB, use it
-        console.log('Loading article from MongoDB');
-        setFormData({
-          title: dbArticle.title || '',
-          excerpt: dbArticle.excerpt || '',
-          content: dbArticle.content || '',
-          category: dbArticle.category || 'articles',
-          featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
-          seo: dbArticle.seo || { title: '', description: '', keywords: [] },
-        });
-      } else {
-        // Not in MongoDB, try loading from published MDX file
-        console.log('Article not in MongoDB, trying MDX file');
-        const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
-        const mdxData = await mdxResponse.json();
-
-        if (!mdxData.success) {
-          throw new Error(mdxData.error || 'Article not found in MongoDB or MDX files');
+        if (dbArticle) {
+          setFormData({
+            title: dbArticle.title || '',
+            excerpt: dbArticle.excerpt || '',
+            content: dbArticle.content || '',
+            category: dbArticle.category || 'articles',
+            visibility: dbArticle.visibility || listArticle.visibility || 'private',
+            featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
+            seo: dbArticle.seo || { title: '', description: '', keywords: [] },
+          });
+        } else {
+          // Fallback to MDX for content
+          const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
+          const mdxData = await mdxResponse.json();
+          if (mdxData.success) {
+            const article = mdxData.article;
+            setFormData({
+              title: article.title,
+              excerpt: article.excerpt,
+              content: article.content,
+              category: article.category,
+              visibility: article.visibility || listArticle.visibility || 'private',
+              featuredImage: article.featuredImage,
+              seo: article.seo,
+            });
+          } else {
+            throw new Error('Article found in list but content not accessible');
+          }
         }
+      } else {
+        // Fallback: try deprecated API directly
+        console.log('Article not in list API, trying deprecated API');
+        const dbResponse = await fetch(`/api/articles?search=${slugId}&limit=1`);
+        const dbData = await dbResponse.json();
+        const dbArticle = dbData.articles?.find((a: any) => a.slug === slugId);
 
-        const article = mdxData.article;
-        setFormData({
-          title: article.title,
-          excerpt: article.excerpt,
-          content: article.content,
-          category: article.category,
-          featuredImage: article.featuredImage,
-          seo: article.seo,
-        });
+        if (dbArticle) {
+          setFormData({
+            title: dbArticle.title || '',
+            excerpt: dbArticle.excerpt || '',
+            content: dbArticle.content || '',
+            category: dbArticle.category || 'articles',
+            visibility: dbArticle.visibility || 'private',
+            featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
+            seo: dbArticle.seo || { title: '', description: '', keywords: [] },
+          });
+        } else {
+          // Not in MongoDB, try loading from published MDX file
+          console.log('Article not in MongoDB, trying MDX file');
+          const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
+          const mdxData = await mdxResponse.json();
+
+          if (!mdxData.success) {
+            throw new Error(mdxData.error || 'Article not found in MongoDB or MDX files');
+          }
+
+          const article = mdxData.article;
+          setFormData({
+            title: article.title,
+            excerpt: article.excerpt,
+            content: article.content,
+            category: article.category,
+            visibility: article.visibility || 'private',
+            featuredImage: article.featuredImage,
+            seo: article.seo,
+          });
+        }
       }
 
     } catch (error) {
@@ -230,6 +273,7 @@ export default function EditArticlePage() {
             content: formData.content,
             category: formData.category,
             draft: isDraft,  // Add draft flag
+            visibility: formData.visibility,
             featuredImage: formData.featuredImage,
             seo: formData.seo,
           },
@@ -676,6 +720,54 @@ export default function EditArticlePage() {
                   <option value="real-estate-tips">Real Estate Tips</option>
                   <option value="landing-page">Landing Page</option>
                 </select>
+              </div>
+
+              {/* Visibility Toggle */}
+              <div className={`${cardBg} ${cardBorder} rounded-xl p-6`}>
+                <label
+                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                >
+                  Visibility
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, visibility: "private" }))
+                    }
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                      formData.visibility === "private"
+                        ? isLight
+                          ? "bg-gray-200 border-2 border-gray-400 text-gray-800"
+                          : "bg-gray-700 border-2 border-gray-500 text-white"
+                        : isLight
+                          ? "bg-white border-2 border-slate-300 text-gray-500 hover:border-gray-400"
+                          : "bg-gray-800 border-2 border-gray-700 text-gray-400 hover:border-gray-600"
+                    }`}
+                  >
+                    Private
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, visibility: "public" }))
+                    }
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                      formData.visibility === "public"
+                        ? isLight
+                          ? "bg-blue-100 border-2 border-blue-400 text-blue-800"
+                          : "bg-blue-900/40 border-2 border-blue-500 text-blue-300"
+                        : isLight
+                          ? "bg-white border-2 border-slate-300 text-gray-500 hover:border-blue-400"
+                          : "bg-gray-800 border-2 border-gray-700 text-gray-400 hover:border-blue-600"
+                    }`}
+                  >
+                    Public
+                  </button>
+                </div>
+                <p className={`text-xs ${textMuted} mt-2`}>
+                  Private articles are only visible on your domain. Public articles are visible on all domains.
+                </p>
               </div>
 
               {/* Content Editor with Regenerate */}
