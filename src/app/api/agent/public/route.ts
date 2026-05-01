@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import AgentSubscription from "@/models/AgentSubscription";
 
 /**
  * GET /api/agent/public
@@ -99,10 +100,20 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    console.log(`[GET /api/agent/public] Successfully fetched profile for ${agent.name}`);
+    // Check subscription status — determines if the site is live or "Coming Soon"
+    const subscription = await AgentSubscription.findOne({
+      agentId: (agent as any)._id,
+      status: { $in: ["active", "trialing"] },
+    }).select("tier status").lean();
+
+    // Owner domains (jpsrealtor.com) are always considered active
+    const isOwnerDomain = !subdomain;
+    const hasActiveSubscription = isOwnerDomain || !!subscription;
 
     return NextResponse.json({
       profile: publicProfile,
+      subscription: subscription ? { tier: subscription.tier, status: subscription.status } : null,
+      hasActiveSubscription,
     }, {
       headers: {
         // Cache for 5 minutes

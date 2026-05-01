@@ -73,6 +73,7 @@ const InsightsPage = () => {
   const articlesPerPage = 6;
   const [bannerImage, setBannerImage] = useState<string | undefined>(undefined);
   const [agentProfile, setAgentProfile] = useState<any>(null);
+  const [siteActive, setSiteActive] = useState(true);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   // Set initial view mode based on screen size
@@ -150,6 +151,7 @@ const InsightsPage = () => {
       if (response.ok) {
         const data = await response.json();
         setAgentProfile(data.profile);
+        setSiteActive(data.hasActiveSubscription !== false);
         // Set banner image if available
         if (data.profile?.agentProfile?.insightsBannerImage) {
           setBannerImage(data.profile.agentProfile.insightsBannerImage);
@@ -245,6 +247,40 @@ const InsightsPage = () => {
   const endIndex = startIndex + articlesPerPage;
   const paginatedArticles = displayedArticles.slice(startIndex, endIndex);
 
+
+  // Check if viewer is the agent owner or admin — they bypass the subscription gate
+  const userEmail = (session?.user as any)?.email;
+  const isAdmin = (session?.user as any)?.isAdmin || (session?.user as any)?.impersonatedBy;
+  const isAgentOwner = userEmail && agentProfile?.email && userEmail === agentProfile.email;
+  const showComingSoon = !siteActive && !isAdmin && !isAgentOwner;
+
+  if (showComingSoon && agentProfile) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center px-4`}>
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl font-bold ${
+            isLight ? "bg-gray-200 text-gray-500" : "bg-gray-700 text-gray-300"
+          }`}>
+            {agentProfile.name?.charAt(0) || "?"}
+          </div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>{agentProfile.name}</h1>
+          {agentProfile.brokerageName && (
+            <p className={textSecondary}>{agentProfile.brokerageName}</p>
+          )}
+          <div className={`${cardBg} rounded-xl shadow-sm ${cardBorder} p-6 space-y-3`}>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Coming Soon</h2>
+            <p className={`${textSecondary} text-sm leading-relaxed`}>
+              {agentProfile.name}&apos;s real estate site is under construction. Check back soon for listings, market insights, and more.
+            </p>
+          </div>
+          <p className={`text-xs ${textMuted}`}>
+            Powered by{" "}
+            <a href="https://chatrealty.io" className="underline hover:text-gray-600">ChatRealty</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

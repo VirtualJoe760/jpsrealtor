@@ -22,6 +22,7 @@ interface User {
   licenseNumber?: string;
   profileDescription?: string;
   subdomain?: string;
+  subscriptionTier?: string;
   signupOrigin?: { domain?: string; subdomain?: string; agentId?: string; method?: string };
   createdAt: string;
   lastLoginAt?: string;
@@ -669,7 +670,7 @@ export default function AdminUsersPage() {
                         {impersonateLoading ? "Switching..." : `Log in as ${selectedUser.name || "Agent"}`}
                       </button>
                       <a
-                        href={`https://${selectedUser.subdomain}.chatrealty.io/agent/dashboard`}
+                        href={`https://${selectedUser.subdomain}.chatrealty.io`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -679,7 +680,12 @@ export default function AdminUsersPage() {
                         }`}
                       >
                         <Eye size={14} />
-                        Open Subdomain
+                        View Subdomain
+                        {selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free" ? (
+                          <span className="px-1.5 py-0.5 text-[10px] rounded bg-green-100 text-green-700">Live</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 text-[10px] rounded bg-amber-100 text-amber-700">Coming Soon</span>
+                        )}
                       </a>
                     </div>
                   )}
