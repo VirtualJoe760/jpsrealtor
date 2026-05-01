@@ -134,8 +134,19 @@ const InsightsPage = () => {
 
   const loadAgentProfile = async () => {
     try {
-      // Use public agent API - works for all users (authenticated or not)
-      const response = await fetch("/api/agent/public");
+      // Detect subdomain from hostname so each agent domain loads the right data
+      const host = window.location.hostname;
+      let subParam = "";
+      if (host.includes("chatrealty")) {
+        const parts = host.split("chatrealty")[0]?.replace(/\.$/, "");
+        const sub = parts?.split(".").filter(s => s && s !== "www").pop();
+        if (sub) subParam = `?subdomain=${sub}`;
+      } else if (host.endsWith(".localhost")) {
+        const sub = host.split(".localhost")[0];
+        if (sub && sub !== "www") subParam = `?subdomain=${sub}`;
+      }
+
+      const response = await fetch(`/api/agent/public${subParam}`);
       if (response.ok) {
         const data = await response.json();
         setAgentProfile(data.profile);

@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
     // 1. x-agent-subdomain header (set by proxy for agent subdomains)
     // 2. hostname lookup (agent custom domains)
     // 3. Fallback to PRIMARY_AGENT_EMAIL (owner domains like jpsrealtor.com)
-    const subdomain = request.headers.get("x-agent-subdomain");
+    const subdomain = request.nextUrl.searchParams.get("subdomain")
+      || request.headers.get("x-agent-subdomain");
     const host = (request.headers.get("host") || "").split(":")[0];
 
     let agent;
