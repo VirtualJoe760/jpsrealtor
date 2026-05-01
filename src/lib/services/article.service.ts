@@ -140,10 +140,17 @@ export async function createArticle(
   await connectDB();
 
   const docData = convertFormDataToMongoDoc(data, userId, userName, userEmail);
-  const article = await Article.create(docData);
+  const slug = docData.slug || generateSlugFromTitle(data.title);
 
-  console.log(`[ArticleService] Created article: ${article.slug} (${article._id})`);
-  return article;
+  // Upsert: update if slug exists (e.g., retry after failed deploy), create if not
+  const article = await Article.findOneAndUpdate(
+    { slug },
+    { $set: docData },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  console.log(`[ArticleService] Created article: ${article!.slug} (${article!._id})`);
+  return article!;
 }
 
 /**

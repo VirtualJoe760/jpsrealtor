@@ -14,10 +14,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!(session?.user as any)?.isAdmin) {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: "Unauthorized - Admin access required" },
-        { status: 403 }
+        { error: "Unauthorized - Please sign in" },
+        { status: 401 }
       );
     }
 

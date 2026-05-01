@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Post } from "@/types/post";
-import { ArrowLeft, Calendar, BookOpen } from "lucide-react";
+import { ArrowLeft, Calendar, BookOpen, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode } from "react";
@@ -59,17 +59,27 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
           }`}>
             {post.title || "Untitled Post"}
           </h1>
-          <div className={`flex items-center gap-2 ${
+          <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 ${
             isLight ? 'text-gray-600' : 'text-gray-400'
           }`}>
-            <Calendar className="w-4 h-4" />
-            <span className="text-sm">
-              Published on {new Date(post.date).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
+            {post.authorName && post.section !== "landing-page" && (
+              <div className="flex items-center gap-1.5">
+                <User className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {post.authorName}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm">
+                {new Date(post.date).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
           </div>
         </motion.div>
 
