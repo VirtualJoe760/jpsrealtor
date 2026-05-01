@@ -722,7 +722,7 @@ export default function AdminUsersPage() {
                                 : "bg-gray-800/50 hover:bg-gray-700 text-gray-400 border border-gray-700"
                           }`}
                         >
-                          {selectedUser.siteForceActive ? "Site Active (Admin Override)" : "Activate Site Without Subscription"}
+                          {selectedUser.siteForceActive ? "Take Site Offline" : "Activate Site Without Subscription"}
                         </button>
                       </div>
                     );
