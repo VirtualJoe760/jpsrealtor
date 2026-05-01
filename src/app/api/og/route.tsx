@@ -68,103 +68,88 @@ export async function GET(request: NextRequest) {
           width: "100%",
           height: "100%",
           display: "flex",
+          flexDirection: "column",
           backgroundColor: "white",
-          position: "relative",
         }}
       >
-        {/* Left section — logo + agent info */}
+        {/* Main content row */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: "60px",
             flex: 1,
           }}
         >
-          {/* ChatRealty Logo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${baseUrl}/images/brand/chatrealty-logo-light-1436x356.png`}
-            alt="ChatRealty"
-            width={280}
-            height={70}
-            style={{ objectFit: "contain", marginBottom: 40 }}
-          />
-
-          {/* Agent Name */}
-          {agent?.name && (
-            <div
-              style={{
-                fontSize: 42,
-                fontWeight: 700,
-                color: primaryColor,
-                marginBottom: 8,
-              }}
-            >
-              {agent.name}
-            </div>
-          )}
-
-          {/* Brokerage */}
-          {agent?.brokerageName && (
-            <div
-              style={{
-                fontSize: 22,
-                color: "#6b7280",
-                marginBottom: 6,
-              }}
-            >
-              {agent.brokerageName}
-            </div>
-          )}
-
-          {/* License */}
-          {agent?.licenseNumber && (
-            <div
-              style={{
-                fontSize: 16,
-                color: "#9ca3af",
-              }}
-            >
-              DRE# {agent.licenseNumber}
-            </div>
-          )}
-        </div>
-
-        {/* Right section — headshot */}
-        {headshotUrl && (
+          {/* Left section — logo + agent info */}
           <div
             style={{
               display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "flex-end",
-              width: 480,
-              position: "relative",
+              flexDirection: "column",
+              justifyContent: "center",
+              padding: "60px",
+              flex: 1,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={headshotUrl}
-              alt={agent?.name || "Agent"}
-              style={{
-                height: "100%",
-                maxWidth: 480,
-                objectFit: "contain",
-                objectPosition: "bottom right",
-              }}
+              src={`${baseUrl}/images/brand/chatrealty-logo-light-1436x356.png`}
+              alt="ChatRealty"
+              width={280}
+              height={70}
+              style={{ objectFit: "contain", marginBottom: 40 }}
             />
+
+            {agent?.name ? (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontSize: 42, fontWeight: 700, color: primaryColor, marginBottom: 8 }}>
+                  {agent.name}
+                </div>
+                {agent.brokerageName && (
+                  <div style={{ fontSize: 22, color: "#6b7280", marginBottom: 6 }}>
+                    {agent.brokerageName}
+                  </div>
+                )}
+                {agent.licenseNumber && (
+                  <div style={{ fontSize: 16, color: "#9ca3af" }}>
+                    DRE# {agent.licenseNumber}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 28, color: "#6b7280" }}>
+                AI-Powered Real Estate
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right section — headshot */}
+          {headshotUrl ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "flex-end",
+                width: 480,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={headshotUrl}
+                alt={agent?.name || "Agent"}
+                height={580}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+          ) : (
+            <div style={{ display: "flex", width: 100 }} />
+          )}
+        </div>
 
         {/* Bottom accent bar */}
         <div
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
+            display: "flex",
             height: 6,
+            width: "100%",
             background: `linear-gradient(to right, ${primaryColor}, #3b82f6)`,
           }}
         />
