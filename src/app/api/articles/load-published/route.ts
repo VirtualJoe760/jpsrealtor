@@ -16,14 +16,16 @@ import { getArticleBySlug } from '@/lib/services/article.service';
  */
 export async function GET(req: Request) {
   try {
-    // Check auth
+    // Check auth — agents and admins can load articles for editing
     const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 403 }
+        { error: 'Unauthorized. Please sign in.' },
+        { status: 401 }
       );
     }
+    const isAdmin = session.user.isAdmin && !(session.user as any).impersonatedBy;
+    const userId = session.user.id;
 
     const { searchParams } = new URL(req.url);
     const slugId = searchParams.get('slugId');
@@ -43,6 +45,14 @@ export async function GET(req: Request) {
         return NextResponse.json(
           { error: `Article ${slugId} not found in database` },
           { status: 404 }
+        );
+      }
+
+      // Ownership check: agents can only load their own articles
+      if (!isAdmin && doc.author.id.toString() !== userId) {
+        return NextResponse.json(
+          { error: 'You do not have permission to edit this article' },
+          { status: 403 }
         );
       }
 
@@ -86,6 +96,14 @@ export async function GET(req: Request) {
       try {
         const fileContents = await fs.readFile(filePath, 'utf-8');
         const { data: frontmatter, content } = matter(fileContents);
+
+        // Ownership check for non-admins
+        if (!isAdmin && frontmatter.authorId && frontmatter.authorId !== userId) {
+          return NextResponse.json(
+            { error: 'You do not have permission to edit this article' },
+            { status: 403 }
+          );
+        }
 
         // Map frontmatter to article format
         const article = {

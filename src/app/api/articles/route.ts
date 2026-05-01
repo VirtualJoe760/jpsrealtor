@@ -67,13 +67,18 @@ export async function GET(req: NextRequest) {
 
     // Execute query
     const skip = (page - 1) * limit;
+    const articleQuery = Article.find(query)
+      .sort({ publishedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Only exclude content for list views, not single article fetches (edit page needs content)
+    if (!search || limit > 1) {
+      articleQuery.select("-content");
+    }
+
     const [articles, total] = await Promise.all([
-      Article.find(query)
-        .sort({ publishedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .select("-content") // Exclude full content in list
-        .lean(),
+      articleQuery.lean(),
       Article.countDocuments(query),
     ]);
 
