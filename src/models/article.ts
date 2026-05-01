@@ -27,6 +27,7 @@ export interface IArticle extends Document {
   // Status
   status: ArticleStatus;
   featured: boolean;
+  visibility?: 'public' | 'private';
 
   // Media (Cloudinary)
   featuredImage: {
@@ -135,6 +136,11 @@ const ArticleSchema = new Schema<IArticle>(
       type: Boolean,
       default: false,
       index: true,
+    },
+    visibility: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'private',
     },
 
     // Media (Cloudinary)

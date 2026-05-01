@@ -1,7 +1,7 @@
 // src/app/auth/signup/page.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -16,6 +16,18 @@ export default function SignUpPage() {
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
+
+  // Redirect non-hub production domains to chatrealty.io for centralized signup
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hostname;
+    const isDev = h === "localhost" || h.endsWith(".localhost");
+    if (isDev) return; // Dev: allow signup on any hostname
+    const isHub = h === "chatrealty.io" || h === "www.chatrealty.io";
+    if (!isHub) {
+      window.location.replace("https://chatrealty.io/auth/signup");
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     name: "",

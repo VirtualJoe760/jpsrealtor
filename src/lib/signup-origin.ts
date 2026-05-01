@@ -27,7 +27,20 @@ export async function resolveSignupOrigin(
     || undefined;
 
   // Check if middleware set an agent subdomain
-  const subdomain = headers.get("x-agent-subdomain") || undefined;
+  let subdomain = headers.get("x-agent-subdomain") || undefined;
+
+  // Extract subdomain from *.localhost (local dev)
+  if (!subdomain && host.endsWith(".localhost")) {
+    subdomain = host.replace(/\.localhost$/, "");
+  }
+
+  // Extract subdomain from *.chatrealty.io
+  if (!subdomain && host.endsWith(".chatrealty.io")) {
+    const sub = host.replace(/\.chatrealty\.io$/, "");
+    if (sub && sub !== "www") {
+      subdomain = sub;
+    }
+  }
 
   const origin: SignupOrigin = {
     domain: host || "unknown",

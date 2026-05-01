@@ -22,8 +22,28 @@ export default function MobileBottomNav() {
   const didLongPress = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Hide on preview and campaign pages
-  if (pathname?.startsWith("/articles/preview") || pathname?.startsWith("/campaign")) return null;
+  // Close menu on outside tap
+  useEffect(() => {
+    if (!searchMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setSearchMenuOpen(false);
+      }
+    };
+    // Use a slight delay so the menu option click can register first
+    const id = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }, 100);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [searchMenuOpen]);
+
+  // Hide on preview, campaign, and messages pages
+  if (pathname?.startsWith("/articles/preview") || pathname?.startsWith("/campaign") || pathname?.startsWith("/agent/messages")) return null;
 
   const isSearchActive = pathname === "/chap" || pathname === "/neighborhoods";
 
@@ -77,26 +97,6 @@ export default function MobileBottomNav() {
       router.push(path);
     }
   };
-
-  // Close menu on outside tap
-  useEffect(() => {
-    if (!searchMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setSearchMenuOpen(false);
-      }
-    };
-    // Use a slight delay so the menu option click can register first
-    const id = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
-    }, 100);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [searchMenuOpen]);
 
   const searchOptions = [
     { label: "Chat", icon: MessageSquare, path: "/chap" },

@@ -23,6 +23,9 @@ export interface Post {
   authorId?: string;
   authorName?: string;
 
+  // Visibility
+  visibility?: 'public' | 'private';
+
   // Landing page fields
   standalone?: boolean;
   heroType?: "photo" | "video";

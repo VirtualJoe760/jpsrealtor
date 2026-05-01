@@ -30,6 +30,9 @@ const parsePostFile = (filePath: string): Post => {
     ...(data.authorId && { authorId: data.authorId }),
     ...(data.authorName && { authorName: data.authorName }),
 
+    // Visibility
+    ...(data.visibility && { visibility: data.visibility }),
+
     // Landing page fields
     ...(data.standalone !== undefined && { standalone: data.standalone }),
     ...(data.heroType && { heroType: data.heroType }),

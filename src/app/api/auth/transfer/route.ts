@@ -43,21 +43,29 @@ function isAllowedTarget(url: string): boolean {
 
 export async function GET(req: NextRequest) {
   const target = req.nextUrl.searchParams.get("target");
+  const host = req.headers.get("host") || "unknown";
+
+  console.log("[Auth Transfer] Initiated:", { target, host });
 
   if (!target) {
+    console.warn("[Auth Transfer] Missing target parameter");
     return NextResponse.json({ error: "target parameter is required" }, { status: 400 });
   }
 
   if (!isAllowedTarget(target)) {
+    console.warn("[Auth Transfer] Disallowed domain:", target);
     return NextResponse.json({ error: "Target domain not allowed" }, { status: 403 });
   }
 
   // Check if user has a session
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
+    console.warn("[Auth Transfer] No session found, redirecting without auth");
     // Not logged in — just redirect to target without auth
     return NextResponse.redirect(target);
   }
+
+  console.log("[Auth Transfer] Session found:", { email: session.user.email, name: session.user.name });
 
   // Generate a short-lived transfer token using NextAuth's JWT encoder
   // This token contains the session data and expires in 30 seconds
@@ -89,6 +97,8 @@ export async function GET(req: NextRequest) {
   const receiveUrl = new URL("/api/auth/receive", targetUrl.origin);
   receiveUrl.searchParams.set("token", transferToken);
   receiveUrl.searchParams.set("redirect", targetUrl.pathname + targetUrl.search + targetUrl.hash);
+
+  console.log("[Auth Transfer] Issuing transfer token, redirecting to:", receiveUrl.origin);
 
   return NextResponse.redirect(receiveUrl.toString());
 }

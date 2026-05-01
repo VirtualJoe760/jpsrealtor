@@ -32,10 +32,19 @@ export async function GET(req: NextRequest) {
 
     // Status filter (only admins can see drafts/archived)
     const session = await getServerSession(authOptions);
-    if ((session?.user as any)?.isAdmin) {
+    const isImpersonating = !!(session?.user as any)?.impersonatedBy;
+    const isAdmin = (session?.user as any)?.isAdmin && !isImpersonating;
+    const userId = (session?.user as any)?.id;
+
+    if (isAdmin) {
       if (status) query.status = status;
     } else {
       query.status = "published";
+    }
+
+    // Agent scoping: non-admins only see their own articles
+    if (!isAdmin && userId) {
+      query['author.id'] = userId;
     }
 
     // Category filter

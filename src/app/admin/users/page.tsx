@@ -25,6 +25,7 @@ interface User {
   subscriptionTier?: string;
   siteForceActive?: boolean;
   signupOrigin?: { domain?: string; subdomain?: string; agentId?: string; method?: string };
+  clientOfAgent?: string | null;
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -378,6 +379,7 @@ export default function AdminUsersPage() {
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>User</th>
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Roles</th>
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Origin</th>
+                    <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Client of</th>
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Joined</th>
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Last Active</th>
                     <th className={`text-left px-4 py-3 font-medium ${textSecondary}`}>Site</th>
@@ -432,6 +434,9 @@ export default function AdminUsersPage() {
                         ) : (
                           <span className={`text-xs ${textSecondary}`}>—</span>
                         )}
+                      </td>
+                      <td className={`px-4 py-3 text-xs ${textPrimary}`}>
+                        {user.clientOfAgent || <span className={textSecondary}>—</span>}
                       </td>
                       <td className={`px-4 py-3 text-xs ${textSecondary}`}>
                         {user.createdAt ? formatTimeAgo(user.createdAt) : "—"}

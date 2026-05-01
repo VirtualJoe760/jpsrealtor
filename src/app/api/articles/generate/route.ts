@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { createChatCompletion, GROQ_MODELS, GroqTool } from '@/lib/groq';
 import { digestAIResponse } from '@/lib/article-digester';
+import dbConnect from '@/lib/mongoose';
+import User from '@/models/User';
 
 // Increase timeout for AI generation (60 seconds)
 export const maxDuration = 60;
@@ -36,6 +38,16 @@ export async function POST(request: Request) {
     }
 
     console.log('[Article Generation] Validated input:', { topic, category, hasKeywords: !!keywords, tone, length });
+
+    // Load agent's profile for personalized content
+    await dbConnect();
+    const agentUser = await User.findOne({ email: (session.user as any).email })
+      .select("name phone agentProfile.cellPhone agentProfile.headline agentProfile.serviceAreas")
+      .lean();
+
+    const agentName = (agentUser as any)?.name || session.user.name || "your agent";
+    const agentPhone = (agentUser as any)?.agentProfile?.cellPhone || (agentUser as any)?.phone || "";
+    const agentEmail = (session.user as any).email || "";
 
     // Define tools for article generation
     const tools: GroqTool[] = [
@@ -109,7 +121,7 @@ TONE: ${tone || "confident and direct"}
 Use the generate_article_mdx tool to create the landing page.`;
 
     // Create system prompt with writing guidelines
-    const systemPrompt = category === "landing-page" ? landingPagePrompt : `You are an expert real estate content writer for jpsrealtor.com, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
+    const systemPrompt = category === "landing-page" ? landingPagePrompt : `You are an expert real estate content writer for ${agentName}, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
 
 CRITICAL FORMATTING RULES:
 - Output ONLY the article content, NO labels or meta-text
@@ -167,10 +179,10 @@ MDX COMPONENTS (use when appropriate):
 CONTACT INFO (always include at end):
 ## Get Expert Guidance
 
-Ready to make your move in the Coachella Valley? Contact Joseph Sardella for personalized real estate guidance.
+Ready to make your move? Contact ${agentName} for personalized real estate guidance.
 
-📞 Call or Text: **+1 (760) 833-6334**
-📧 Email: **josephsardella@gmail.com**
+${agentPhone ? `📞 Call or Text: **${agentPhone}**` : ''}
+${agentEmail ? `📧 Email: **${agentEmail}**` : ''}
 
 KEYWORDS TO INCLUDE:
 Always mention: Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage

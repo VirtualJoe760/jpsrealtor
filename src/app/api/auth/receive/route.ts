@@ -16,13 +16,26 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   const redirect = req.nextUrl.searchParams.get("redirect") || "/";
 
+  // Build absolute redirect URL from Host header (not req.url which may be internal)
+  const host = req.headers.get("host") || "localhost";
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  const absoluteRedirectUrl = `${protocol}://${host}${redirect}`;
+
+  const hostname = host.split(":")[0];
+
+  console.log("[Auth Receive] Initiated:", {
+    hostname,
+    redirect,
+    hasToken: !!token,
+  });
+
   if (!token) {
-    return NextResponse.redirect(new URL(redirect, req.url));
+    return NextResponse.redirect(absoluteRedirectUrl);
   }
 
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    return NextResponse.redirect(new URL(redirect, req.url));
+    return NextResponse.redirect(absoluteRedirectUrl);
   }
 
   // Decode and validate the transfer token
@@ -31,12 +44,14 @@ export async function GET(req: NextRequest) {
     decoded = await decode({ token, secret });
   } catch {
     // Token expired or invalid — redirect without auth
-    return NextResponse.redirect(new URL(redirect, req.url));
+    return NextResponse.redirect(absoluteRedirectUrl);
   }
 
   if (!decoded?.email || !decoded?.transferAuth) {
-    return NextResponse.redirect(new URL(redirect, req.url));
+    return NextResponse.redirect(absoluteRedirectUrl);
   }
+
+  console.log("[Auth Receive] Transfer token valid:", { email: decoded.email });
 
   // Look up the user to build a full session token
   await dbConnect();
@@ -45,8 +60,14 @@ export async function GET(req: NextRequest) {
     .lean();
 
   if (!user) {
-    return NextResponse.redirect(new URL(redirect, req.url));
+    return NextResponse.redirect(absoluteRedirectUrl);
   }
+
+  console.log("[Auth Receive] User found:", {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+  });
 
   // Build a full NextAuth-compatible JWT (same shape as the jwt callback in auth.ts)
   const sessionToken = await encode({
@@ -67,7 +88,6 @@ export async function GET(req: NextRequest) {
   });
 
   // Determine cookie name and domain for the current hostname
-  const hostname = req.headers.get("host")?.split(":")[0] || "localhost";
   const isProduction = process.env.NODE_ENV === "production";
   const cookieName = isProduction
     ? "__Secure-next-auth.session-token"
@@ -85,8 +105,10 @@ export async function GET(req: NextRequest) {
     cookieDomain = ".localhost";
   }
 
+  console.log("[Auth Receive] Setting session cookie:", { cookieName, cookieDomain });
+
   // Build the redirect response and set the session cookie
-  const response = NextResponse.redirect(new URL(redirect, req.url));
+  const response = NextResponse.redirect(absoluteRedirectUrl);
 
   response.cookies.set(cookieName, sessionToken, {
     httpOnly: true,
@@ -96,6 +118,8 @@ export async function GET(req: NextRequest) {
     maxAge: 30 * 24 * 60 * 60,
     ...(cookieDomain && { domain: cookieDomain }),
   });
+
+  console.log("[Auth Receive] Redirecting to:", absoluteRedirectUrl);
 
   return response;
 }
