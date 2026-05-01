@@ -8,7 +8,6 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
 import { sendAgentApplicationEmail } from "@/lib/email-agent-application";
-import { addDomainToProject } from "@/lib/vercel-domains";
 
 export const dynamic = 'force-dynamic';
 
@@ -109,13 +108,7 @@ export async function PUT(
 
       await applicant.save(); // pre-save hook auto-generates subdomain
 
-      // Register subdomain with Vercel (non-blocking)
-      if (applicant.agentProfile?.subdomain) {
-        const subdomainFull = `${applicant.agentProfile.subdomain}.chatrealty.io`;
-        addDomainToProject(subdomainFull).catch((err) =>
-          console.error(`[review-final] Vercel subdomain registration failed for ${subdomainFull}:`, err)
-        );
-      }
+      // Wildcard DNS handles subdomain — no Vercel registration needed
 
       // Send approval email
       try {

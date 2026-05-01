@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { addDomainToProject } from "@/lib/vercel-domains";
 import { sendAgentApprovalEmail } from "@/lib/email-resend";
 import { generateSubdomain } from "@/lib/generate-subdomain";
 
@@ -104,14 +103,8 @@ export async function PUT(request: NextRequest) {
 
       await user.save();
 
-      // Register subdomain with Vercel (non-blocking)
-      // Subdomain only becomes visible/active once agent subscribes
-      const subdomainFull = `${finalSubdomain}.chatrealty.io`;
-      addDomainToProject(subdomainFull).catch((err) =>
-        console.error(`[agent-approve] Vercel subdomain registration failed for ${subdomainFull}:`, err)
-      );
-
-      console.log(`[agent-approve] Approved ${user.email}, subdomain: ${subdomainFull}`);
+      // Wildcard DNS (*.chatrealty.io) handles all subdomains — no Vercel registration needed
+      console.log(`[agent-approve] Approved ${user.email}, subdomain: ${finalSubdomain}.chatrealty.io`);
 
       // Send welcome email with subdomain info (non-blocking)
       sendAgentApprovalEmail(

@@ -6,7 +6,6 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
 import mongoose from "mongoose";
-import { registerSubdomainWithVercel, removeSubdomainFromVercel } from "@/lib/generate-subdomain";
 
 // Ensure Team model is registered
 const ensureModelsLoaded = () => {
@@ -138,36 +137,24 @@ export async function PUT(
 
     await user.save();
 
-    // Manage Vercel subdomain + domain registry based on role changes
-    const subdomain = user.agentProfile?.subdomain;
-    if (subdomain && body.roles !== undefined) {
-      if (hasAgentRoleAfter && !hadAgentRoleBefore) {
-        // Promoted to agent — register subdomain with Vercel
-        registerSubdomainWithVercel(subdomain).catch((err) =>
-          console.error(`[admin/users] Vercel register failed for ${subdomain}:`, err)
+    // Manage domain registry based on role changes
+    // Note: No Vercel registration needed — *.chatrealty.io wildcard handles all subdomains
+    if (body.roles !== undefined && !hasAgentRoleAfter && hadAgentRoleBefore) {
+      // Demoted from agent — suspend any custom domains linked to this agent
+      try {
+        const DomainMapping = (await import("@/models/DomainMapping")).default;
+        const DomainRegistry = (await import("@/models/DomainRegistry")).default;
+        await DomainMapping.updateMany(
+          { agentId: user._id },
+          { $set: { status: "suspended" } }
         );
-      } else if (!hasAgentRoleAfter && hadAgentRoleBefore) {
-        // Demoted from agent — remove subdomain from Vercel + suspend linked domains
-        removeSubdomainFromVercel(subdomain).catch((err) =>
-          console.error(`[admin/users] Vercel remove failed for ${subdomain}:`, err)
+        await DomainRegistry.updateMany(
+          { ownerId: user._id },
+          { $set: { status: "suspended" } }
         );
-
-        // Suspend any custom domains linked to this agent
-        try {
-          const DomainMapping = (await import("@/models/DomainMapping")).default;
-          const DomainRegistry = (await import("@/models/DomainRegistry")).default;
-          await DomainMapping.updateMany(
-            { agentId: user._id },
-            { $set: { status: "suspended" } }
-          );
-          await DomainRegistry.updateMany(
-            { ownerId: user._id },
-            { $set: { status: "suspended" } }
-          );
-          console.log(`[admin/users] Suspended domains for demoted agent ${user.email}`);
-        } catch (err) {
-          console.error(`[admin/users] Failed to suspend domains:`, err);
-        }
+        console.log(`[admin/users] Suspended domains for demoted agent ${user.email}`);
+      } catch (err) {
+        console.error(`[admin/users] Failed to suspend domains:`, err);
       }
     }
 
