@@ -165,8 +165,9 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
   const hostname = await getHostnameFromHeaders()
   const config = getDomainConfig(hostname)
 
-  // Enrich agent subdomain config with real agent data
-  if (config.type === 'agent') {
+  // Enrich with dynamic OG image from the agent's profile
+  // Works for: agent subdomains, owner domains (jpsrealtor.com), and custom domains
+  if (config.type === 'agent' || config.type === 'jpsrealtor') {
     const bare = normalizeHostname(hostname)
 
     // Extract subdomain from chatrealty or localhost
@@ -179,8 +180,31 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
       if (sub && sub !== 'www') subdomain = sub
     }
 
+    // For owner/custom domains, look up the agent by customDomain
+    if (!subdomain) {
+      try {
+        const dbConnect = (await import('@/lib/mongoose')).default
+        await dbConnect()
+        const mongoose = await import('mongoose')
+        const db = mongoose.default.connection.db
+        if (db) {
+          const agent = await db.collection('users').findOne(
+            { 'agentProfile.customDomain': bare },
+            { projection: { 'agentProfile.subdomain': 1 } }
+          )
+          if (agent) {
+            subdomain = (agent as any).agentProfile?.subdomain
+          }
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
     if (subdomain) {
       try {
+        const dbConnect = (await import('@/lib/mongoose')).default
+        await dbConnect()
         const mongoose = await import('mongoose')
         const db = mongoose.default.connection.db
         if (db) {
@@ -189,11 +213,17 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
             { projection: { name: 1, brokerageName: 1, 'agentProfile.headline': 1, 'agentProfile.metaTitle': 1, 'agentProfile.metaDescription': 1 } }
           )
           if (agent) {
-            config.siteName = agent.name || config.siteName
-            config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
-            config.titleTemplate = `%s | ${agent.name}`
-            config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
-            config.ogImage = `/api/og?subdomain=${subdomain}`
+            if (config.type === 'agent') {
+              config.siteName = agent.name || config.siteName
+              config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
+              config.titleTemplate = `%s | ${agent.name}`
+              config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
+            }
+            // Use the dynamic OG image for all agent-owned domains
+            const ogBase = process.env.NODE_ENV === 'production'
+              ? 'https://chatrealty.io'
+              : `http://localhost:${process.env.PORT || 3000}`
+            config.ogImage = `${ogBase}/api/og?subdomain=${subdomain}`
           }
         }
       } catch {
