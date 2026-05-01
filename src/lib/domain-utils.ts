@@ -181,6 +181,8 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
 
     if (subdomain) {
       try {
+        const dbConnect = (await import('@/lib/mongoose')).default
+        await dbConnect()
         const mongoose = await import('mongoose')
         const db = mongoose.default.connection.db
         if (db) {
@@ -193,7 +195,12 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
             config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
             config.titleTemplate = `%s | ${agent.name}`
             config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
-            config.ogImage = `/api/og?subdomain=${subdomain}`
+            // Use absolute URL via the platform domain so OG image works even if
+            // the agent subdomain isn't fully provisioned on Vercel yet.
+            const ogBase = process.env.NODE_ENV === 'production'
+              ? 'https://chatrealty.io'
+              : 'http://localhost:3000'
+            config.ogImage = `${ogBase}/api/og?subdomain=${subdomain}`
           }
         }
       } catch {

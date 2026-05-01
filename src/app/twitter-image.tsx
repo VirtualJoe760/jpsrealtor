@@ -1,137 +1,66 @@
+// src/app/twitter-image.tsx
+// Dynamic Twitter card image — same as OG image, delegates to /api/og.
+
 import { ImageResponse } from 'next/og'
+import { headers } from 'next/headers'
 
-export const runtime = 'edge'
-
-export const alt = 'Joseph Sardella - Palm Desert Real Estate Agent'
-export const size = {
-  width: 1200,
-  height: 630,
-}
+export const runtime = 'nodejs'
+export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function TwitterImage() {
+  const hdrs = await headers()
+  const host = hdrs.get('host') || 'localhost:3000'
+  const proto = hdrs.get('x-forwarded-proto') || 'http'
+  const bareHost = host.split(':')[0]
+
+  // Detect subdomain
+  let subdomain: string | undefined
+  if (bareHost.includes('chatrealty')) {
+    const parts = bareHost.split('chatrealty')[0]?.replace(/\.$/, '')
+    subdomain = parts?.split('.').filter(s => s && s !== 'www').pop()
+  } else if (bareHost.endsWith('.localhost')) {
+    const sub = bareHost.split('.localhost')[0]
+    if (sub && sub !== 'www') subdomain = sub
+  }
+
+  // Fetch the OG image from our API route
+  const ogUrl = `${proto}://${host}/api/og${subdomain ? `?subdomain=${subdomain}` : ''}`
+
+  try {
+    const res = await fetch(ogUrl)
+    if (res.ok) {
+      const buffer = await res.arrayBuffer()
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+        },
+      })
+    }
+  } catch {
+    // Fall through to fallback
+  }
+
+  // Fallback
+  const isJps = bareHost.includes('jpsrealtor') || bareHost.includes('josephsardella')
+  const title = isJps ? 'Joseph Sardella' : 'chatRealty'
+  const subtitle = isJps ? 'Palm Desert Real Estate Agent' : 'AI-Powered Real Estate'
+
   return new ImageResponse(
     (
-      <div
-        style={{
-          height: '100%',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#0a0a0a',
-          backgroundImage: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)',
-        }}
-      >
-        {/* Left side - Agent Photo */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '400px',
-            height: '100%',
-            position: 'relative',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png"
-            alt="Joseph Sardella"
-            style={{
-              width: '320px',
-              height: '400px',
-              objectFit: 'cover',
-              borderRadius: '20px',
-              border: '4px solid #10b981',
-            }}
-          />
+      <div style={{
+        width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', backgroundColor: 'white',
+      }}>
+        <div style={{ fontSize: 64, fontWeight: 700, color: '#1e3a5f', marginBottom: 16 }}>
+          {title}
         </div>
-
-        {/* Right side - Text Content */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: '40px',
-            flex: 1,
-          }}
-        >
-          {/* Name */}
-          <div
-            style={{
-              fontSize: 56,
-              fontWeight: 700,
-              color: '#ffffff',
-              marginBottom: '8px',
-              lineHeight: 1.1,
-            }}
-          >
-            Joseph Sardella
-          </div>
-
-          {/* Title */}
-          <div
-            style={{
-              fontSize: 28,
-              fontWeight: 400,
-              color: '#10b981',
-              marginBottom: '24px',
-            }}
-          >
-            Real Estate Professional
-          </div>
-
-          {/* Tagline */}
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 400,
-              color: '#a1a1aa',
-              marginBottom: '32px',
-              maxWidth: '500px',
-              lineHeight: 1.4,
-            }}
-          >
-            Your trusted guide to buying, selling, and investing in the Coachella Valley real estate market.
-          </div>
-
-          {/* Location Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'rgba(16, 185, 129, 0.15)',
-              padding: '12px 20px',
-              borderRadius: '30px',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <div style={{ fontSize: 18, color: '#10b981' }}>
-              Palm Desert & Coachella Valley
-            </div>
-          </div>
-
-          {/* Website */}
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 500,
-              color: '#71717a',
-              marginTop: '24px',
-            }}
-          >
-            jpsrealtor.com
-          </div>
+        <div style={{ fontSize: 28, color: '#6b7280' }}>
+          {subtitle}
         </div>
       </div>
     ),
-    {
-      ...size,
-    }
+    { ...size }
   )
 }
