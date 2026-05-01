@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
         profileDescription: user.profileDescription,
         subscriptionTier: user.subscriptionTier,
         subdomain: user.agentProfile?.subdomain,
+        siteForceActive: user.agentProfile?.siteForceActive || false,
         signupOrigin: user.signupOrigin,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,

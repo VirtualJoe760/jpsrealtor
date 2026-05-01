@@ -171,6 +171,7 @@ export interface IUser extends Document {
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
     customDomain?: string; // e.g., "josephsardella.com"
     subdomain?: string; // e.g., "joseph" (becomes joseph.chatrealty.io)
+    siteForceActive?: boolean; // Admin override — makes site live without subscription
     brandColors?: {
       primary?: string; // Hex color
       secondary?: string; // Hex color
@@ -696,6 +697,7 @@ const UserSchema = new Schema<IUser>(
       siteName: String,
       customDomain: String,
       subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
+      siteForceActive: { type: Boolean, default: false }, // Admin override — makes site live without subscription
       brandColors: {
         primary: String,
         secondary: String,

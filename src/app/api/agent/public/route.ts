@@ -106,9 +106,10 @@ export async function GET(request: NextRequest) {
       status: { $in: ["active", "trialing"] },
     }).select("tier status").lean();
 
-    // Owner domains (jpsrealtor.com) are always considered active
+    // Site is active if: owner domain, active subscription, or admin force-activated
     const isOwnerDomain = !subdomain;
-    const hasActiveSubscription = isOwnerDomain || !!subscription;
+    const isForceActive = !!(agent.agentProfile as any)?.siteForceActive;
+    const hasActiveSubscription = isOwnerDomain || !!subscription || isForceActive;
 
     return NextResponse.json({
       profile: publicProfile,

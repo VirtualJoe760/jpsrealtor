@@ -23,6 +23,7 @@ interface User {
   profileDescription?: string;
   subdomain?: string;
   subscriptionTier?: string;
+  siteForceActive?: boolean;
   signupOrigin?: { domain?: string; subdomain?: string; agentId?: string; method?: string };
   createdAt: string;
   lastLoginAt?: string;
@@ -215,6 +216,27 @@ export default function AdminUsersPage() {
       setDeleteLoading(false);
       setShowDeleteModal(false);
     }
+  };
+
+  // Toggle site force-active (admin override for subscription gate)
+  const toggleSiteForceActive = async (user: User) => {
+    const newValue = !user.siteForceActive;
+    try {
+      const res = await fetch(`/api/admin/users/${user._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteForceActive: newValue }),
+      });
+      if (res.ok) {
+        toast.success(newValue ? "Site activated (admin override)" : "Site deactivated — subscription required");
+        const data = await fetch("/api/admin/users").then((r) => r.json());
+        setUsers(data.users || []);
+        const updated = (data.users || []).find((u: User) => u._id === user._id);
+        if (updated) setSelectedUser(updated);
+      } else {
+        toast.error("Failed to update");
+      }
+    } catch { toast.error("Error"); }
   };
 
   const handleImpersonate = async (user: User) => {
@@ -659,36 +681,52 @@ export default function AdminUsersPage() {
                   )}
 
                   {/* Impersonate + View Agent Dashboard — for agents with subdomains */}
-                  {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => handleImpersonate(selectedUser)}
-                        disabled={impersonateLoading}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-amber-500 hover:bg-amber-600 text-black disabled:opacity-50"
-                      >
-                        <LogIn size={14} />
-                        {impersonateLoading ? "Switching..." : `Log in as ${selectedUser.name || "Agent"}`}
-                      </button>
-                      <a
-                        href={`https://${selectedUser.subdomain}.chatrealty.io`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                          isLight
-                            ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                            : "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                        }`}
-                      >
-                        <Eye size={14} />
-                        View Subdomain
-                        {selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free" ? (
-                          <span className="px-1.5 py-0.5 text-[10px] rounded bg-green-100 text-green-700">Live</span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 text-[10px] rounded bg-amber-100 text-amber-700">Coming Soon</span>
-                        )}
-                      </a>
-                    </div>
-                  )}
+                  {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (() => {
+                    const isLive = !!(selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free") || selectedUser.siteForceActive;
+                    return (
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => handleImpersonate(selectedUser)}
+                          disabled={impersonateLoading}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-amber-500 hover:bg-amber-600 text-black disabled:opacity-50"
+                        >
+                          <LogIn size={14} />
+                          {impersonateLoading ? "Switching..." : `Log in as ${selectedUser.name || "Agent"}`}
+                        </button>
+                        <a
+                          href={`https://${selectedUser.subdomain}.chatrealty.io`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                            isLight
+                              ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                              : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                          }`}
+                        >
+                          <Eye size={14} />
+                          View Subdomain
+                          {isLive ? (
+                            <span className="px-1.5 py-0.5 text-[10px] rounded bg-green-100 text-green-700">Live</span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 text-[10px] rounded bg-amber-100 text-amber-700">Coming Soon</span>
+                          )}
+                        </a>
+                        {/* Admin site activation toggle */}
+                        <button
+                          onClick={() => toggleSiteForceActive(selectedUser)}
+                          className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium transition-colors ${
+                            selectedUser.siteForceActive
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : isLight
+                                ? "bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200"
+                                : "bg-gray-800/50 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                          }`}
+                        >
+                          {selectedUser.siteForceActive ? "Site Active (Admin Override)" : "Activate Site Without Subscription"}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>

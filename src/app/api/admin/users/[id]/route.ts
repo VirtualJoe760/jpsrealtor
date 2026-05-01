@@ -120,13 +120,19 @@ export async function PUT(
     allowedFields.forEach(field => {
       if (body[field] !== undefined) {
         if (field === 'team') {
-          // Handle team assignment
           user[field] = body[field] ? new mongoose.Types.ObjectId(body[field]) : null;
         } else {
           user[field] = body[field];
         }
       }
     });
+
+    // Handle siteForceActive toggle (stored in agentProfile)
+    if (body.siteForceActive !== undefined) {
+      if (!user.agentProfile) user.agentProfile = {} as any;
+      user.agentProfile.siteForceActive = !!body.siteForceActive;
+      user.markModified("agentProfile");
+    }
 
     const hasAgentRoleAfter = user.roles?.includes("realEstateAgent") || false;
 
