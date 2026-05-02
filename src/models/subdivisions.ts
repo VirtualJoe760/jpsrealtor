@@ -127,6 +127,67 @@ export interface ISubdivision extends Document {
     needsUpdate?: boolean;
   };
 
+  // === CMA STATS (Pre-computed by VPS nightly cron) ===
+  cmaStats?: {
+    lastUpdated: Date;
+    sampleWindow: {
+      months: number;
+      startDate: Date;
+      endDate: Date;
+      listingCap: number;
+    };
+    active: {
+      count: number;
+      medianPrice: number;
+      avgPrice: number;
+      minPrice: number;
+      maxPrice: number;
+      medianPricePerSqft: number;
+      avgPricePerSqft: number;
+      avgDom: number;
+      medianSqft: number;
+      avgSqft: number;
+      avgBeds: number;
+      avgBaths: number;
+    };
+    closed: {
+      count: number;
+      medianClosePrice: number;
+      avgClosePrice: number;
+      medianPricePerSqft: number;
+      avgPricePerSqft: number;
+      avgDom: number;
+      saleToListRatio: number;
+      minClosePrice: number;
+      maxClosePrice: number;
+      avgPriceReductionPct: number;
+      sampleStartDate: Date;
+      sampleEndDate: Date;
+    };
+    absorptionRate: number;
+    quality: {
+      confidence: string; // "high" | "good" | "medium" | "low" | "insufficient"
+      notes: string[];
+    };
+    bySubType: Array<{
+      subType: string;
+      activeCount: number;
+      closedCount: number;
+      medianSalePrice: number;
+      avgSalePpsf: number;
+      avgDom: number;
+      avgSaleToListRatio: number;
+      sampleStartDate: Date;
+      sampleEndDate: Date;
+    }>;
+    subdivisionProfile?: Record<string, unknown>;
+    topActiveComps?: unknown[];
+    topClosedComps?: unknown[];
+    trends?: Record<string, unknown>;
+    narrative?: string;
+    narrativeGeneratedAt?: Date;
+  };
+
   // Data sources
   mlsSources: string[]; // ["GPS", "CRMLS", "manual"]
   hasManualData: boolean; // If enriched from JSON files
@@ -259,6 +320,9 @@ const SubdivisionSchema = new Schema<ISubdivision>(
       lastVerified: Date,
       needsUpdate: Boolean,
     },
+
+    // === CMA STATS (Pre-computed by VPS nightly cron) ===
+    cmaStats: { type: Schema.Types.Mixed },
 
     // Data sources
     mlsSources: { type: [String], required: true, default: [] },

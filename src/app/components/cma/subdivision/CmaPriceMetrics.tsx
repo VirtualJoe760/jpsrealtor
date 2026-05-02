@@ -12,15 +12,15 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface CmaPriceMetricsProps {
   active: {
-    minListPrice: number;
-    medianListPrice: number;
-    maxListPrice: number;
+    minPrice: number;
+    medianPrice: number;
+    maxPrice: number;
     [key: string]: unknown;
   };
   closed: {
-    minSalePrice: number;
-    medianSalePrice: number;
-    maxSalePrice: number;
+    minClosePrice: number;
+    medianClosePrice: number;
+    maxClosePrice: number;
     [key: string]: unknown;
   };
 }
@@ -46,18 +46,18 @@ export default function CmaPriceMetrics({
   const data = [
     {
       label: "Min",
-      activePrice: active.minListPrice,
-      closedPrice: closed.minSalePrice,
+      activePrice: active.minPrice,
+      closedPrice: closed.minClosePrice,
     },
     {
       label: "Median",
-      activePrice: active.medianListPrice,
-      closedPrice: closed.medianSalePrice,
+      activePrice: active.medianPrice,
+      closedPrice: closed.medianClosePrice,
     },
     {
       label: "Max",
-      activePrice: active.maxListPrice,
-      closedPrice: closed.maxSalePrice,
+      activePrice: active.maxPrice,
+      closedPrice: closed.maxClosePrice,
     },
   ];
 

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
-type Confidence = "high" | "medium" | "low" | "insufficient";
+type Confidence = "high" | "good" | "medium" | "low" | "insufficient";
 
 interface Quality {
   confidence: Confidence;
@@ -24,6 +24,12 @@ const CONFIDENCE_CONFIG: Record<
 > = {
   high: {
     label: "High Confidence",
+    lightBg: "bg-green-100 border-green-300",
+    darkBg: "bg-green-900/30 border-green-700/40",
+    text: "text-green-700 dark:text-green-400",
+  },
+  good: {
+    label: "Good Confidence",
     lightBg: "bg-green-100 border-green-300",
     darkBg: "bg-green-900/30 border-green-700/40",
     text: "text-green-700 dark:text-green-400",
@@ -58,7 +64,7 @@ export default function CmaQualityBadge({
   const [showNotes, setShowNotes] = useState(false);
 
   const { quality, closed } = cmaStats;
-  const config = CONFIDENCE_CONFIG[quality.confidence];
+  const config = CONFIDENCE_CONFIG[quality.confidence] || CONFIDENCE_CONFIG.medium;
 
   return (
     <div className="relative inline-block">
@@ -72,7 +78,7 @@ export default function CmaQualityBadge({
       >
         <span
           className={`w-1.5 h-1.5 rounded-full ${
-            quality.confidence === "high"
+            quality.confidence === "high" || quality.confidence === "good"
               ? "bg-green-500"
               : quality.confidence === "medium"
                 ? "bg-yellow-500"

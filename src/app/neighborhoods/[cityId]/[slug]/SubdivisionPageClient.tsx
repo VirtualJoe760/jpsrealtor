@@ -280,7 +280,9 @@ export default function SubdivisionPageClient({
           </NeighborhoodErrorBoundary>
 
           {/* CMA Market Analysis */}
-          <SubdivisionCmaSection slug={slug} />
+          <NeighborhoodErrorBoundary sectionName="Market Analysis">
+            <SubdivisionCmaSection slug={slug} />
+          </NeighborhoodErrorBoundary>
 
           {/* Branded Buy/Sell CTA Section */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>

@@ -12,14 +12,16 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface CmaActiveVsClosedProps {
   active: {
-    avgListPrice: number;
-    avgListPpsf: number;
-    avgDomCurrent: number;
+    avgPrice: number;
+    avgPricePerSqft: number;
+    avgDom: number;
+    [key: string]: unknown;
   };
   closed: {
-    avgSalePrice: number;
-    avgSalePpsf: number;
-    avgDaysOnMarket: number;
+    avgClosePrice: number;
+    avgPricePerSqft: number;
+    avgDom: number;
+    [key: string]: unknown;
   };
 }
 
@@ -40,28 +42,28 @@ export default function CmaActiveVsClosed({
     {
       title: "Avg Price",
       data: [
-        { name: "Active", active: active.avgListPrice, closed: closed.avgSalePrice },
+        { name: "Active", active: active.avgPrice, closed: closed.avgClosePrice },
       ],
-      activeVal: active.avgListPrice,
-      closedVal: closed.avgSalePrice,
+      activeVal: active.avgPrice,
+      closedVal: closed.avgClosePrice,
       tickFormat: (v: number) => formatCurrency(v),
     },
     {
       title: "Avg $/SqFt",
       data: [
-        { name: "$/SqFt", active: Math.round(active.avgListPpsf), closed: Math.round(closed.avgSalePpsf) },
+        { name: "$/SqFt", active: Math.round(active.avgPricePerSqft), closed: Math.round(closed.avgPricePerSqft) },
       ],
-      activeVal: Math.round(active.avgListPpsf),
-      closedVal: Math.round(closed.avgSalePpsf),
+      activeVal: Math.round(active.avgPricePerSqft),
+      closedVal: Math.round(closed.avgPricePerSqft),
       tickFormat: (v: number) => `$${v}`,
     },
     {
       title: "Avg Days on Market",
       data: [
-        { name: "DOM", active: Math.round(active.avgDomCurrent), closed: Math.round(closed.avgDaysOnMarket) },
+        { name: "DOM", active: Math.round(active.avgDom), closed: Math.round(closed.avgDom) },
       ],
-      activeVal: Math.round(active.avgDomCurrent),
-      closedVal: Math.round(closed.avgDaysOnMarket),
+      activeVal: Math.round(active.avgDom),
+      closedVal: Math.round(closed.avgDom),
       tickFormat: (v: number) => `${v}`,
     },
   ];

@@ -12,28 +12,24 @@ import {
 import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface CmaStats {
-  totals: {
-    active: number;
-    underContract: number;
-    pending: number;
-    closedSampled: number;
-    closedAllTime: number;
+  active: {
+    count: number;
+    [key: string]: unknown;
   };
   closed: {
     count: number;
-    sampleStartDate: string;
-    sampleEndDate: string;
-    minSalePrice: number;
-    maxSalePrice: number;
-    avgSalePrice: number;
-    medianSalePrice: number;
-    avgSalePpsf: number;
-    medianSalePpsf: number;
-    avgSqft: number;
-    medianSqft: number;
-    avgDaysOnMarket: number;
-    avgSaleToListRatio: number;
+    sampleStartDate?: string;
+    sampleEndDate?: string;
+    minClosePrice: number;
+    maxClosePrice: number;
+    avgClosePrice: number;
+    medianClosePrice: number;
+    avgPricePerSqft: number;
+    medianPricePerSqft: number;
+    avgDom: number;
+    saleToListRatio: number;
     avgPriceReductionPct: number;
+    [key: string]: unknown;
   };
   [key: string]: unknown;
 }
@@ -97,38 +93,38 @@ export default function CmaMarketSnapshot({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  const { closed, totals } = cmaStats;
+  const { closed, active } = cmaStats;
 
   const cards = [
     {
       icon: DollarSign,
       label: "Avg Sale Price",
-      value: formatPrice(closed.avgSalePrice),
+      value: formatPrice(closed.avgClosePrice),
     },
     {
       icon: TrendingUp,
       label: "Avg $/SqFt",
-      value: `$${Math.round(closed.avgSalePpsf).toLocaleString()}`,
+      value: `$${Math.round(closed.avgPricePerSqft).toLocaleString()}`,
     },
     {
       icon: Clock,
       label: "Avg Days on Market",
-      value: `${Math.round(closed.avgDaysOnMarket)}`,
+      value: `${Math.round(closed.avgDom)}`,
     },
     {
       icon: Home,
       label: "Active Inventory",
-      value: `${totals.active}`,
+      value: `${active.count}`,
     },
     {
       icon: BarChart3,
       label: "Sale-to-List Ratio",
-      value: `${Math.round(closed.avgSaleToListRatio * 100)}%`,
+      value: `${Math.round(closed.saleToListRatio * 100)}%`,
     },
     {
       icon: ArrowUpDown,
       label: "Price Range",
-      value: `${formatPrice(closed.minSalePrice)} – ${formatPrice(closed.maxSalePrice)}`,
+      value: `${formatPrice(closed.minClosePrice)} – ${formatPrice(closed.maxClosePrice)}`,
     },
   ];
 

@@ -53,6 +53,9 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
   // Lazy-load: only fetch CMA when section scrolls into view
   // This prevents the slow CMA generation from affecting Core Web Vitals (LCP/CLS)
   useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) { setIsVisible(true); return; } // Fallback: load immediately if ref fails
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -62,8 +65,15 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
       },
       { rootMargin: '200px' } // Start loading 200px before it's visible
     );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
+    observer.observe(el);
+
+    // Safety fallback: if IO doesn't fire within 3s (e.g. content-visibility conflict), force load
+    const timer = setTimeout(() => setIsVisible(true), 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -98,7 +108,7 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
   // Placeholder before visible (reserves space, prevents CLS)
   if (!isVisible || loading) {
     return (
-      <div ref={sectionRef} className="space-y-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' }}>
+      <div ref={sectionRef} className="space-y-4">
         <SkeletonBlock className="h-8 w-60" />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
