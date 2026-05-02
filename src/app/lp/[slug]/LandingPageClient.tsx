@@ -419,11 +419,6 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
                 {" "}and{" "}
                 <a href="https://chatrealty.io/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">privacy policy</a>.
               </p>
-              {post.formDisclaimer && (
-                <p className={`text-[10px] leading-tight text-center mt-3 ${isLight ? "text-gray-400" : "text-gray-600"}`}>
-                  {post.formDisclaimer}
-                </p>
-              )}
             </form>
           </motion.div>
         )}
@@ -454,6 +449,13 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
               Your information has been submitted. Check your email to verify your account.
             </p>
           </motion.div>
+        )}
+
+        {/* Disclaimer — shown between form and footer */}
+        {post.formDisclaimer && (
+          <div className={`text-[9px] leading-snug text-center px-4 mb-8 ${isLight ? "text-gray-400" : "text-gray-600"}`}>
+            {post.formDisclaimer}
+          </div>
         )}
       </div>
 
