@@ -3,9 +3,11 @@ import VariableHero from "@/components/VariableHero";
 import EventsSection from "@/components/EventsSection";
 import { coachellaValleyCities } from "@/constants/cities";
 import { Metadata } from "next";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
   const { cityId } = params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   // Find city data
   const city = coachellaValleyCities.find((c) => c.id === cityId);
@@ -19,11 +21,11 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
   return {
     title: `Events in ${city.name} | JPS Realtor`,
     description: `Discover the most exciting events happening in and around ${city.name}, including major festivals, community gatherings, and more.`,
-    metadataBase: new URL("https://jpsrealtor.com"),
+    metadataBase: new URL(baseUrl),
     openGraph: {
       title: `Events in ${city.name} | JPS Realtor`,
       description: `Explore top events in ${city.name} and the Coachella Valley, from iconic festivals to unique community experiences.`,
-      url: `https://jpsrealtor.com/neighborhoods/${cityId}/events`,
+      url: `${baseUrl}/neighborhoods/${cityId}/events`,
       images: [
         {
           url: `/city-images/${cityId}.jpg`,

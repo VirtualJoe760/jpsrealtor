@@ -1,6 +1,7 @@
 import React from "react";
 import VariableHero from "@/components/VariableHero";
 import { coachellaValleyCities } from "@/constants/cities";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 const districts = [
   {
@@ -22,6 +23,7 @@ const districts = [
 
 export async function generateMetadata({ params }: { params: { cityId: string } }) {
   const { cityId } = params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   // Find city data
   const city = coachellaValleyCities.find((c) => c.id === cityId);
@@ -41,11 +43,11 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
     title: `School Districts in ${city.name} | JPS Realtor`,
     description: `Explore the school districts serving ${city.name}, including Palm Springs Unified, Desert Sands Unified, and Coachella Valley Unified School Districts.`,
     keywords,
-    metadataBase: new URL("https://jpsrealtor.com"),
+    metadataBase: new URL(baseUrl),
     openGraph: {
       title: `School Districts in ${city.name} | JPS Realtor`,
       description: `Learn more about the school districts serving ${city.name} and surrounding areas, including available schools and district details.`,
-      url: `https://jpsrealtor.com/neighborhoods/${cityId}/school-districts`,
+      url: `${baseUrl}/neighborhoods/${cityId}/school-districts`,
       images: [
         {
           url: `/city-images/${city.id}.jpg`,

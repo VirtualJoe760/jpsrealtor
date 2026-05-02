@@ -7,6 +7,7 @@ import ArticlePageClient from "./ArticlePageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { headers } from "next/headers";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { getArticleBySlug } from "@/lib/services/article.service";
 import DomainRegistry from "@/models/DomainRegistry";
 import dbConnect from "@/lib/mongoose";
@@ -14,7 +15,7 @@ import dbConnect from "@/lib/mongoose";
 /**
  * Check if an article can be viewed on the current domain.
  * Public articles: visible everywhere.
- * Private articles: only on jpsrealtor.com, author's subdomain, or author's custom domain.
+ * Private articles: only on the platform domain, author's subdomain, or author's custom domain.
  */
 async function canViewArticle(post: Post): Promise<boolean> {
   // If no visibility field or public, always visible
@@ -26,8 +27,8 @@ async function canViewArticle(post: Post): Promise<boolean> {
   const host = headersList.get('host') || '';
   const hostname = host.split(':')[0]; // strip port
 
-  // Always visible on the primary domain
-  if (hostname === 'jpsrealtor.com' || hostname === 'www.jpsrealtor.com' || hostname === 'localhost') {
+  // Always visible on the platform domain and localhost
+  if (hostname === 'chatrealty.io' || hostname === 'www.chatrealty.io' || hostname === 'localhost') {
     return true;
   }
 
@@ -160,10 +161,11 @@ export default async function PostPage({
     // Render MDX content on server
     const mdxContent = <MDXRemote source={post.content} components={{ YouTube, MDXLink }} />;
 
-    const articleUrl = `https://jpsrealtor.com/insights/${category}/${slugId}`;
+    const baseUrl = await getBaseUrlFromHeaders();
+    const articleUrl = `${baseUrl}/insights/${category}/${slugId}`;
     const breadcrumbItems = [
-      { name: "Home", url: "https://jpsrealtor.com" },
-      { name: "Insights", url: "https://jpsrealtor.com/insights" },
+      { name: "Home", url: baseUrl },
+      { name: "Insights", url: `${baseUrl}/insights` },
       { name: post.title, url: articleUrl },
     ];
 

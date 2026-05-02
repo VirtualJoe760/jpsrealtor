@@ -1,34 +1,39 @@
 // src/app/mls-listings/page.tsx
 import type { Metadata } from "next";
 import MapClientWrapper from "./MapClientWrapper";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 // 🧠 SEO Metadata
-export const metadata: Metadata = {
-  title: "Search MLS Listings | Coachella Valley Real Estate",
-  description:
-    "Browse active listings across the Coachella Valley. Use our interactive map to explore homes by location, price, and features.",
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const baseUrl = await getBaseUrlFromHeaders();
+
+  return {
     title: "Search MLS Listings | Coachella Valley Real Estate",
     description:
-      "Find your next home in Cathedral City, Palm Springs, La Quinta, and more. Real-time map search powered by MLS data.",
-    type: "website",
-    url: "https://www.jpsrealtor.com/mls-listings",
-    images: [
-      {
-        url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Coachella Valley Real Estate Listings",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Search MLS Listings | Coachella Valley Real Estate",
-    description: "Find homes for sale in real-time using our map search.",
-    images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg"],
-  },
-};
+      "Browse active listings across the Coachella Valley. Use our interactive map to explore homes by location, price, and features.",
+    openGraph: {
+      title: "Search MLS Listings | Coachella Valley Real Estate",
+      description:
+        "Find your next home in Cathedral City, Palm Springs, La Quinta, and more. Real-time map search powered by MLS data.",
+      type: "website",
+      url: `${baseUrl}/mls-listings`,
+      images: [
+        {
+          url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg",
+          width: 1200,
+          height: 630,
+          alt: "Coachella Valley Real Estate Listings",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Search MLS Listings | Coachella Valley Real Estate",
+      description: "Find homes for sale in real-time using our map search.",
+      images: ["https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/cathedral-city.jpg"],
+    },
+  };
+}
 
 export default function SearchMapPage() {
   return (

@@ -442,7 +442,7 @@ export default function DirectMailPipelineWizard({
                   type="url"
                   value={design.qrUrl}
                   onChange={(e) => setDesign({ ...design, qrUrl: e.target.value })}
-                  placeholder="https://jpsrealtor.com/lp/your-landing-page"
+                  placeholder="https://chatrealty.io/lp/your-landing-page"
                   className={`w-full px-3 py-2 rounded-lg border ${
                     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
                   }`}

@@ -5,17 +5,14 @@ import { headers } from 'next/headers'
 // Each domain in the ChatRealty network gets its own robots.txt that points
 // to the correct sitemap URL for that domain.
 
-const JPS_DOMAINS = ['jpsrealtor.com', 'www.jpsrealtor.com', 'josephsardella.com', 'www.josephsardella.com']
 const PLATFORM_DOMAINS = ['chatrealty.io', 'www.chatrealty.io']
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const headersList = await headers()
-  const host = headersList.get('host') || 'jpsrealtor.com'
+  const host = headersList.get('host') || 'chatrealty.io'
   const hostname = host.replace(/:\d+$/, '').toLowerCase()
   const baseUrl = `https://${hostname}`
 
-  // Determine domain type for tailored rules
-  const isJps = JPS_DOMAINS.includes(hostname)
   const isPlatform = PLATFORM_DOMAINS.includes(hostname)
 
   if (isPlatform) {
@@ -32,42 +29,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     }
   }
 
-  if (!isJps) {
-    // Agent custom domain or subdomain — allow their public pages
-    return {
-      rules: [
-        {
-          userAgent: '*',
-          allow: [
-            '/',
-            '/mls-listings/',
-            '/neighborhoods/',
-            '/insights/',
-            '/lp/',
-            '/selling',
-            '/book-appointment',
-            '/contact',
-            '/about',
-          ],
-          disallow: [
-            '/api/',
-            '/admin/',
-            '/dashboard/',
-            '/agent/',
-            '/auth/',
-            '/private/',
-            '/_next/',
-            '/chap',
-            '/map',
-          ],
-        },
-      ],
-      sitemap: `${baseUrl}/sitemap.xml`,
-      host: baseUrl,
-    }
-  }
-
-  // JPS Realtor domains — full rules (original behavior)
+  // Agent domain (custom domain or subdomain) — allow their public pages
   return {
     rules: [
       {
@@ -80,6 +42,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           '/lp/',
           '/selling',
           '/book-appointment',
+          '/contact',
+          '/about',
         ],
         disallow: [
           '/api/',

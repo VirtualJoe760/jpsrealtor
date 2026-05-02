@@ -11,7 +11,7 @@ export async function generateMetadata() {
       title: "Open House Signup | Joseph Sardella | JPSREALTOR",
       description:
         "Join us for an open house and receive your ultimate buyer's guide to the Coachella Valley. Learn how to navigate the market with expert tips and insights.",
-      url: "https://jpsrealtor.com/open-house-signup",
+      url: "https://chatrealty.io/open-house-signup",
       images: [
         {
           url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00001_.png", // Replace with the full URL if hosted externally
@@ -35,7 +35,7 @@ export async function generateMetadata() {
 
 export default function OpenHouseSignupPage() {
   const navigateToHome = () => {
-    window.location.href = "https://jpsrealtor.com/";
+    window.location.href = "https://chatrealty.io/";
   };
 
   return (

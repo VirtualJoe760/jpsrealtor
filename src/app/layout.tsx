@@ -53,29 +53,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: cfg.siteDescription,
     metadataBase: new URL(cfg.baseUrl),
     keywords:
-      cfg.type === "jpsrealtor"
-        ? [
-            "Palm Desert Realtor",
-            "Coachella Valley Real Estate",
-            "Palm Springs homes for sale",
-            "Indian Wells real estate",
-            "La Quinta homes",
-            "Rancho Mirage properties",
-            "Desert Hot Springs real estate",
-            "Palm Desert homes for sale",
-            "luxury homes Coachella Valley",
-            "Joseph Sardella realtor",
-            "JPS Realtor",
-            "eXp Realty Palm Desert",
-          ]
-        : cfg.type === "platform"
-          ? ["real estate platform", "AI real estate", "find a realtor", "ChatRealty"]
-          : ["real estate", "homes for sale", "local realtor"],
-    authors:
-      cfg.type === "jpsrealtor"
-        ? [{ name: "Joseph Sardella", url: cfg.baseUrl }]
-        : [{ name: cfg.siteName, url: cfg.baseUrl }],
-    creator: cfg.type === "jpsrealtor" ? "Joseph Sardella" : cfg.siteName,
+      cfg.type === "platform"
+        ? ["real estate platform", "AI real estate", "find a realtor", "ChatRealty"]
+        : ["real estate", "homes for sale", "local realtor"],
+    authors: [{ name: cfg.siteName, url: cfg.baseUrl }],
+    creator: cfg.siteName,
     publisher: cfg.siteName,
     manifest: "/manifest-v2.json",
     appleWebApp: {
@@ -122,11 +104,6 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [cfg.ogImage.startsWith("http") ? cfg.ogImage : `${cfg.baseUrl}${cfg.ogImage}`],
       creator: cfg.twitterHandle || undefined,
     },
-    ...(cfg.type === "jpsrealtor" && {
-      verification: {
-        google: "your-google-verification-code",
-      },
-    }),
     alternates: {
       canonical: cfg.baseUrl,
     },

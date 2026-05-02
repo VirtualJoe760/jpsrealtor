@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const tierConfig = POINTS_TIERS[effectiveTier];
 
     const stripe = getStripe();
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.jpsrealtor.com";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
 
     // Create or get Stripe customer
     let customerId = user.stripeCustomerId as string | undefined;

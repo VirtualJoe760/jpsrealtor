@@ -5,7 +5,7 @@ import BookAppointmentButton from "../components/BookAppointmentButton";
 
 export default function SubscribedPage() {
   const navigateToHome = () => {
-    window.location.href = "https://jpsrealtor.com/";
+    window.location.href = "https://chatrealty.io/";
   };
 
   return (

@@ -42,7 +42,7 @@ export default function TermsOfServicePage() {
                 <h2 className={h2}>1. Agreement to Terms</h2>
                 <p className={text}>
                   These Terms of Service (&quot;Terms&quot;) constitute a legally binding agreement between you (&quot;you&quot; or &quot;User&quot;) and Joseph Sardella, licensed real estate agent (DRE# 02106916), operating as JPS &amp; Company LLC through eXp Realty of Southern California (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), governing your access to and use of the websites at{' '}
-                  <a href="https://jpsrealtor.com" className={link}>jpsrealtor.com</a> and{' '}
+                  <a href="https://chatrealty.io" className={link}>chatrealty.io</a> and{' '}
                   <a href="https://josephsardella.com" className={link}>josephsardella.com</a>{' '}
                   (collectively, the &quot;Platform&quot;), including all features, content, tools, progressive web application (PWA), and related services.
                 </p>
@@ -425,7 +425,7 @@ export default function TermsOfServicePage() {
                   </p>
                   <p>
                     <strong>Website:</strong>{' '}
-                    <a href="https://jpsrealtor.com" className={link}>jpsrealtor.com</a>
+                    <a href="https://chatrealty.io" className={link}>chatrealty.io</a>
                   </p>
                   <p>
                     <strong>Mailing Address:</strong><br />

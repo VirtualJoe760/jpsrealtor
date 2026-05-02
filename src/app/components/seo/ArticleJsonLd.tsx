@@ -26,12 +26,12 @@ export async function ArticleJsonLd({
   section,
 }: ArticleJsonLdProps) {
   const headersList = await headers()
-  const host = headersList.get("host") || "jpsrealtor.com"
+  const host = headersList.get("host") || "chatrealty.io"
   const cfg = getDomainConfig(host)
 
   // Fall back to the domain config's default author for owner/platform domains
   const resolvedAuthor =
-    authorName || (cfg.type === "jpsrealtor" ? "Joseph Sardella" : cfg.siteName)
+    authorName || cfg.siteName
 
   const structuredData = {
     "@context": "https://schema.org",

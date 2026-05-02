@@ -8,7 +8,7 @@ const postsDirectory = path.join(process.cwd(), "src", "posts");
 
 const baseUrl =
   process.env.NODE_ENV === "production"
-    ? "https://www.jpsrealtor.com"
+    ? "https://chatrealty.io"
     : "http://localhost:3000";
 
 function ensureAbsoluteUrl(url: string): string {

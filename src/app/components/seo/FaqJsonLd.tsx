@@ -1,7 +1,7 @@
 // FAQ JSON-LD Schema for city landing pages
 // Generates FAQPage structured data for rich snippets in SERPs.
 // getCityFaqs is now domain-aware — callers pass agentName/phone for
-// agent custom domains, or omit them to get defaults for jpsrealtor.com.
+// agent custom domains, or omit them to get defaults.
 
 interface FaqItem {
   question: string;

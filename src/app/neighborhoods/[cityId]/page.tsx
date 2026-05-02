@@ -9,6 +9,7 @@ import { City } from "@/models/cities";
 import { FaqJsonLd, getCityFaqs } from "@/app/components/seo/FaqJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { getNeighborhoodsDirectory, findCityBySlug } from "@/lib/neighborhoods-data";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 interface CityData {
   name: string;
@@ -81,6 +82,7 @@ async function getPageData(slug: string): Promise<PageData | null> {
 // Generate metadata for the page (city, county, or region)
 export async function generateMetadata({ params }: { params: Promise<{ cityId: string }> }): Promise<Metadata> {
   const { cityId } = await params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   // Fetch page data from API
   const pageData = await getPageData(cityId);
@@ -98,7 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ cityId: s
       title: `${pageData.city.name} Homes for Sale | ${listingCount} Active Listings`,
       description: `Browse ${listingCount} homes for sale in ${pageData.city.name}, CA. View listings with photos, prices, and details. Joseph Sardella, your local Coachella Valley real estate expert.`,
       alternates: {
-        canonical: `https://jpsrealtor.com/neighborhoods/${cityId}`,
+        canonical: `${baseUrl}/neighborhoods/${cityId}`,
       },
     };
   }
@@ -185,11 +187,12 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
           priceRange: { min: 0, max: 0 },
         };
 
+    const baseUrl = await getBaseUrlFromHeaders();
     const faqs = getCityFaqs(cityData.name, initialStats.listingCount);
     const breadcrumbItems = [
-      { name: "Home", url: "https://jpsrealtor.com" },
-      { name: "Neighborhoods", url: "https://jpsrealtor.com/neighborhoods" },
-      { name: cityData.name, url: `https://jpsrealtor.com/neighborhoods/${cityId}` },
+      { name: "Home", url: baseUrl },
+      { name: "Neighborhoods", url: `${baseUrl}/neighborhoods` },
+      { name: cityData.name, url: `${baseUrl}/neighborhoods/${cityId}` },
     ];
 
     return (

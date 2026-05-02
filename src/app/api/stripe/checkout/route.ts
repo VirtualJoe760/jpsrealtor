@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       sendSubscriptionEmail(user.email, user.name || "", "subscribed")
         .catch((err) => console.error("[checkout] Admin email failed:", err));
 
-      const redirectUrl = successUrl || `${process.env.NEXTAUTH_URL || "https://jpsrealtor.com"}/subscription/success?plan=agent`;
+      const redirectUrl = successUrl || `${process.env.NEXTAUTH_URL || "https://chatrealty.io"}/subscription/success?plan=agent`;
       return NextResponse.json({ url: redirectUrl, admin: true });
     }
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       await existingSub.save();
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL || "https://jpsrealtor.com";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://chatrealty.io";
 
     const checkoutSession = await createCheckoutSession({
       userId: user._id.toString(),

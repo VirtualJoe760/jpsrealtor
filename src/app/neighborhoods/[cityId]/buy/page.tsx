@@ -6,6 +6,7 @@ import { findCityById } from "@/app/constants/counties";
 import { coachellaValleyCities } from "@/app/constants/cities";
 import BuyPageClient from "./BuyPageClient";
 import generatedCityContent from "@/data/city-content-generated.json";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 interface BuyPageProps {
   params: Promise<{ cityId: string }>;
@@ -13,6 +14,7 @@ interface BuyPageProps {
 
 export async function generateMetadata({ params }: BuyPageProps): Promise<Metadata> {
   const resolvedParams = await params;
+  const baseUrl = await getBaseUrlFromHeaders();
   const cityData = findCityById(resolvedParams.cityId);
 
   if (!cityData) {
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: BuyPageProps): Promise<Metada
     title: `Buy a Home in ${city.name}, CA | ${city.name} Real Estate Agent`,
     description: `Looking to buy a home in ${city.name}? Joseph Sardella is your local Coachella Valley real estate expert. Browse homes for sale, get market insights, and find your dream home.`,
     alternates: {
-      canonical: `https://jpsrealtor.com/neighborhoods/${resolvedParams.cityId}/buy`,
+      canonical: `${baseUrl}/neighborhoods/${resolvedParams.cityId}/buy`,
     },
   };
 }

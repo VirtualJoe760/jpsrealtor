@@ -380,7 +380,7 @@ export default function DigitalAdsPipelineWizard({
                 <input
                   type="url" value={landingPageUrl}
                   onChange={(e) => setLandingPageUrl(e.target.value)}
-                  placeholder="https://jpsrealtor.com/lp/your-landing-page"
+                  placeholder="https://chatrealty.io/lp/your-landing-page"
                   className={inputClasses}
                 />
               </div>

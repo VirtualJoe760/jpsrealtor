@@ -37,8 +37,35 @@ export async function GET(request: NextRequest) {
         .lean();
     }
 
+    // Try custom domain lookup (jpsrealtor.com → josephsardella, etc.)
+    if (!agent && host && host !== 'localhost') {
+      // Check agentProfile.customDomain first
+      agent = await User.findOne({ "agentProfile.customDomain": host })
+        .select("name email phone licenseNumber brokerageName agentProfile")
+        .lean();
+
+      // Also check DomainRegistry for mapped domains
+      if (!agent) {
+        try {
+          const mongoose = await import('mongoose');
+          const db = mongoose.default.connection.db;
+          if (db) {
+            const domainEntry = await db.collection('domainregistries').findOne(
+              { domain: host, status: 'active' },
+              { projection: { ownerId: 1 } }
+            );
+            if (domainEntry?.ownerId) {
+              agent = await User.findById(domainEntry.ownerId)
+                .select("name email phone licenseNumber brokerageName agentProfile")
+                .lean();
+            }
+          }
+        } catch { /* non-blocking */ }
+      }
+    }
+
     if (!agent) {
-      // Fallback to primary agent (owner domains)
+      // Final fallback to primary agent
       const primaryAgentEmail = process.env.PRIMARY_AGENT_EMAIL || "josephsardella@gmail.com";
       agent = await User.findOne({ email: primaryAgentEmail })
         .select("name email phone licenseNumber brokerageName agentProfile")
@@ -106,10 +133,9 @@ export async function GET(request: NextRequest) {
       status: { $in: ["active", "trialing"] },
     }).select("tier status").lean();
 
-    // Site is active if: owner domain, active subscription, or admin force-activated
-    const isOwnerDomain = !subdomain;
+    // Site is active if: active subscription or admin force-activated
     const isForceActive = !!(agent.agentProfile as any)?.siteForceActive;
-    const hasActiveSubscription = isOwnerDomain || !!subscription || isForceActive;
+    const hasActiveSubscription = !!subscription || isForceActive;
 
     return NextResponse.json({
       profile: publicProfile,

@@ -8,6 +8,7 @@ import Subdivision from "@/models/subdivisions";
 import { notFound } from "next/navigation";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { createSlug } from "@/lib/utils/slug";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 interface SubdivisionPageProps {
   params: Promise<{
@@ -33,13 +34,15 @@ export async function generateMetadata({
     };
   }
 
+  const baseUrl = await getBaseUrlFromHeaders();
+
   return {
     title: `${subdivision.name} Homes for Sale | ${subdivision.city}, CA`,
     description:
       subdivision.description ||
       `Browse ${subdivision.listingCount} homes for sale in ${subdivision.name}, ${subdivision.city}. Average price: $${subdivision.avgPrice.toLocaleString()}. Joseph Sardella, local Coachella Valley expert.`,
     alternates: {
-      canonical: `https://jpsrealtor.com/neighborhoods/${cityId}/${slug}`,
+      canonical: `${baseUrl}/neighborhoods/${cityId}/${slug}`,
     },
   };
 }
@@ -59,11 +62,12 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
   // Serialize subdivision to plain object for Client Component
   const serializedSubdivision = JSON.parse(JSON.stringify(subdivision));
 
+  const baseUrl = await getBaseUrlFromHeaders();
   const breadcrumbItems = [
-    { name: "Home", url: "https://jpsrealtor.com" },
-    { name: "Neighborhoods", url: "https://jpsrealtor.com/neighborhoods" },
-    { name: subdivision.city, url: `https://jpsrealtor.com/neighborhoods/${cityId}` },
-    { name: subdivision.name, url: `https://jpsrealtor.com/neighborhoods/${cityId}/${slug}` },
+    { name: "Home", url: baseUrl },
+    { name: "Neighborhoods", url: `${baseUrl}/neighborhoods` },
+    { name: subdivision.city, url: `${baseUrl}/neighborhoods/${cityId}` },
+    { name: subdivision.name, url: `${baseUrl}/neighborhoods/${cityId}/${slug}` },
   ];
 
   return (

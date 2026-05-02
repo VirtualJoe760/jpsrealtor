@@ -13,7 +13,7 @@ import {
 
 async function resolveConfig(): Promise<DomainSeoConfig> {
   const headersList = await headers()
-  const host = headersList.get("host") || "jpsrealtor.com"
+  const host = headersList.get("host") || "chatrealty.io"
   return getDomainConfig(host)
 }
 
@@ -24,11 +24,6 @@ async function resolveConfig(): Promise<DomainSeoConfig> {
 export async function OrganizationJsonLd() {
   const cfg = await resolveConfig()
 
-  // JPS owner domain — full Joseph Sardella business data
-  if (cfg.type === "jpsrealtor") {
-    return <JpsOrganizationJsonLd baseUrl={cfg.baseUrl} />
-  }
-
   // Platform domain — ChatRealty org
   if (cfg.type === "platform") {
     return <PlatformOrganizationJsonLd baseUrl={cfg.baseUrl} cfg={cfg} />
@@ -37,80 +32,6 @@ export async function OrganizationJsonLd() {
   // Agent custom domain — generic RealEstateAgent shell.
   // A richer version can be rendered once agent profile is loaded client-side.
   return <AgentOrganizationJsonLd baseUrl={cfg.baseUrl} cfg={cfg} />
-}
-
-function JpsOrganizationJsonLd({ baseUrl }: { baseUrl: string }) {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
-    "@id": `${baseUrl}/#organization`,
-    name: "Joseph Sardella - JPS Realtor",
-    alternateName: "JPS Realtor",
-    description:
-      "Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley.",
-    url: baseUrl,
-    logo: {
-      "@type": "ImageObject",
-      url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
-      width: 1200,
-      height: 630,
-    },
-    image:
-      "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
-    telephone: "+1-760-333-3676",
-    email: "joseph@jpsrealtor.com",
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Indian Wells",
-      addressRegion: "CA",
-      postalCode: "92253",
-      addressCountry: "US",
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: 33.7222,
-      longitude: -116.3745,
-    },
-    areaServed: [
-      { "@type": "City", name: "Palm Desert", sameAs: "https://en.wikipedia.org/wiki/Palm_Desert,_California" },
-      { "@type": "City", name: "Indian Wells", sameAs: "https://en.wikipedia.org/wiki/Indian_Wells,_California" },
-      { "@type": "City", name: "La Quinta", sameAs: "https://en.wikipedia.org/wiki/La_Quinta,_California" },
-      { "@type": "City", name: "Rancho Mirage", sameAs: "https://en.wikipedia.org/wiki/Rancho_Mirage,_California" },
-      { "@type": "City", name: "Palm Springs", sameAs: "https://en.wikipedia.org/wiki/Palm_Springs,_California" },
-      { "@type": "City", name: "Cathedral City", sameAs: "https://en.wikipedia.org/wiki/Cathedral_City,_California" },
-      { "@type": "City", name: "Indio", sameAs: "https://en.wikipedia.org/wiki/Indio,_California" },
-      { "@type": "City", name: "Coachella", sameAs: "https://en.wikipedia.org/wiki/Coachella,_California" },
-      { "@type": "City", name: "Desert Hot Springs", sameAs: "https://en.wikipedia.org/wiki/Desert_Hot_Springs,_California" },
-    ],
-    priceRange: "$$$",
-    openingHoursSpecification: [
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "18:00" },
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday", "Sunday"], opens: "10:00", closes: "16:00" },
-    ],
-    sameAs: [
-      "https://www.instagram.com/instadella",
-      "https://www.yelp.com/biz/joseph-sardella-exp-realty-indian-wells",
-      "https://www.obsidianregroup.com/team/joseph-sardella",
-    ],
-    memberOf: { "@type": "Organization", name: "eXp Realty", url: "https://exprealty.com" },
-    hasCredential: {
-      "@type": "EducationalOccupationalCredential",
-      credentialCategory: "Real Estate License",
-      recognizedBy: { "@type": "Organization", name: "California Department of Real Estate" },
-      identifier: "DRE# 02106916",
-    },
-    knowsAbout: [
-      "Real Estate", "Home Buying", "Home Selling", "Property Investment",
-      "Coachella Valley Real Estate", "Palm Desert Real Estate", "Luxury Homes",
-    ],
-  }
-
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-    />
-  )
 }
 
 function PlatformOrganizationJsonLd({ baseUrl, cfg }: { baseUrl: string; cfg: DomainSeoConfig }) {
@@ -157,50 +78,13 @@ function AgentOrganizationJsonLd({ baseUrl, cfg }: { baseUrl: string; cfg: Domai
 // PersonJsonLd
 // ---------------------------------------------------------------------------
 
+/**
+ * PersonJsonLd is no longer emitted from this file.
+ * Agent-specific structured data is enriched from the DB via getDomainConfigFromHeaders().
+ * Kept as a no-op export to avoid breaking existing callers.
+ */
 export async function PersonJsonLd() {
-  const cfg = await resolveConfig()
-
-  // Only emit PersonJsonLd on JPS owner domains
-  if (cfg.type !== "jpsrealtor") return null
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    "@id": `${cfg.baseUrl}/#person`,
-    name: "Joseph Sardella",
-    givenName: "Joseph",
-    familyName: "Sardella",
-    jobTitle: "Real Estate Agent",
-    description:
-      "Born and raised in Indian Wells Country Club, Joseph Sardella is a local real estate expert serving the Coachella Valley.",
-    image:
-      "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png",
-    url: `${cfg.baseUrl}/about`,
-    sameAs: ["https://www.instagram.com/instadella"],
-    worksFor: {
-      "@type": "Organization",
-      name: "eXp Realty - Obsidian Real Estate Group",
-      url: "https://www.obsidianregroup.com",
-    },
-    hasCredential: {
-      "@type": "EducationalOccupationalCredential",
-      credentialCategory: "Real Estate License",
-      recognizedBy: { "@type": "Organization", name: "California Department of Real Estate" },
-      identifier: "DRE# 02106916",
-    },
-    knowsAbout: [
-      "Real Estate", "Coachella Valley", "Palm Desert", "Indian Wells",
-      "La Quinta", "Home Buying", "Home Selling", "Luxury Real Estate", "Investment Properties",
-    ],
-    alumniOf: { "@type": "Organization", name: "Apple Retail" },
-  }
-
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-    />
-  )
+  return null
 }
 
 // ---------------------------------------------------------------------------

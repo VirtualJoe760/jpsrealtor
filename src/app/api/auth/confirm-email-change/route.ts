@@ -22,14 +22,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.jpsrealtor.com";
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
       return NextResponse.redirect(`${baseUrl}/dashboard/settings?email_change=expired`);
     }
 
     // Check the new email isn't taken (race condition guard)
     const existing = await User.findOne({ email: user.pendingEmail });
     if (existing) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.jpsrealtor.com";
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
       return NextResponse.redirect(`${baseUrl}/dashboard/settings?email_change=taken`);
     }
 
@@ -45,11 +45,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`[confirm-email-change] Email changed: ${oldEmail} → ${newEmail}`);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.jpsrealtor.com";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
     return NextResponse.redirect(`${baseUrl}/dashboard/settings?email_change=success`);
   } catch (error: any) {
     console.error("[confirm-email-change] Error:", error);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.jpsrealtor.com";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
     return NextResponse.redirect(`${baseUrl}/dashboard/settings?email_change=error`);
   }
 }

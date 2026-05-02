@@ -11,7 +11,7 @@ import LandingPageClient from "./LandingPageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { headers } from "next/headers";
-import { isOwnerDomain } from "@/lib/domain-utils";
+import { isPlatformDomain, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { Post } from "@/types/post";
 
 /**
@@ -25,8 +25,8 @@ async function canViewLandingPage(post: Post): Promise<boolean> {
   const host = headersList.get("host") || "";
   const hostname = host.split(":")[0].toLowerCase();
 
-  // Owner domains (jpsrealtor.com) always have access
-  if (isOwnerDomain(hostname)) return true;
+  // Platform domain (chatrealty.io) always has access
+  if (isPlatformDomain(hostname)) return true;
 
   // Extract subdomain
   let subdomain: string | undefined;
@@ -80,6 +80,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   if (!slug) {
     return { title: "Page Not Found", description: "Content not found." };
@@ -110,7 +111,7 @@ export async function generateMetadata({
       ],
     },
     alternates: {
-      canonical: `https://jpsrealtor.com/lp/${slug}`,
+      canonical: `${baseUrl}/lp/${slug}`,
     },
   };
 }
@@ -164,9 +165,10 @@ export default async function LandingPage({
       <MDXRemote source={post.content} components={{ YouTube, MDXLink }} />
     );
 
-    const pageUrl = `https://jpsrealtor.com/lp/${slug}`;
+    const baseUrl = await getBaseUrlFromHeaders();
+    const pageUrl = `${baseUrl}/lp/${slug}`;
     const breadcrumbItems = [
-      { name: "Home", url: "https://jpsrealtor.com" },
+      { name: "Home", url: baseUrl },
       { name: post.title, url: pageUrl },
     ];
 

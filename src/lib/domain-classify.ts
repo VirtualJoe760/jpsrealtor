@@ -2,13 +2,6 @@
 // Client-safe domain classification — no next/headers import.
 // Use this in client components. For server components, use domain-utils.ts instead.
 
-const JPS_DOMAINS = new Set([
-  "jpsrealtor.com",
-  "www.jpsrealtor.com",
-  "josephsardella.com",
-  "www.josephsardella.com",
-]);
-
 const PLATFORM_DOMAINS = new Set([
   "chatrealty.io",
   "www.chatrealty.io",
@@ -18,19 +11,20 @@ function normalize(host: string): string {
   return host.split(":")[0].toLowerCase();
 }
 
-export function isOwnerDomain(hostname: string): boolean {
-  return JPS_DOMAINS.has(normalize(hostname));
-}
-
 export function isPlatformDomain(hostname: string): boolean {
   return PLATFORM_DOMAINS.has(normalize(hostname));
 }
 
+export function isAgentDomain(hostname: string): boolean {
+  const h = normalize(hostname);
+  return !PLATFORM_DOMAINS.has(h) && h !== "localhost";
+}
+
 /**
  * Get the default site name for display on the chat page based on hostname.
- * - jpsrealtor.com / josephsardella.com → "JPSREALTOR"
- * - chatrealty.io / agent subdomains / everything else → "chatRealty"
+ * All domains use "chatRealty" as the default site name now.
+ * Agent-specific branding is loaded from the DB via getDomainConfigFromHeaders().
  */
-export function getDefaultSiteName(hostname: string): string {
-  return isOwnerDomain(hostname) ? "JPSREALTOR" : "chatRealty";
+export function getDefaultSiteName(_hostname: string): string {
+  return "chatRealty";
 }

@@ -2,8 +2,8 @@
  * Multi-domain SEO utilities for the ChatRealty multi-tenant network.
  *
  * Provides domain-aware helpers for generating canonical URLs, structured data,
- * and OpenGraph metadata across jpsrealtor.com, chatrealty.io, and agent custom
- * domains.
+ * and OpenGraph metadata across chatrealty.io (platform) and agent custom
+ * domains (including jpsrealtor.com, josephsardella.com, etc.).
  */
 
 import { headers } from 'next/headers'
@@ -12,7 +12,7 @@ import { headers } from 'next/headers'
 // Domain classification
 // ─────────────────────────────────────────────────────
 
-export type DomainType = 'jpsrealtor' | 'platform' | 'agent'
+export type DomainType = 'platform' | 'agent'
 
 export interface DomainSeoConfig {
   type: DomainType
@@ -29,14 +29,6 @@ export interface DomainSeoConfig {
   agentId?: string
 }
 
-/** Joseph Sardella's canonical domains */
-const JPS_DOMAINS = new Set([
-  'jpsrealtor.com',
-  'www.jpsrealtor.com',
-  'josephsardella.com',
-  'www.josephsardella.com',
-])
-
 /** ChatRealty platform domains */
 const PLATFORM_DOMAINS = new Set([
   'chatrealty.io',
@@ -48,13 +40,6 @@ const PLATFORM_DOMAINS = new Set([
 // ─────────────────────────────────────────────────────
 
 /**
- * Returns true if the hostname belongs to Joseph Sardella's personal sites.
- */
-export function isOwnerDomain(hostname: string): boolean {
-  return JPS_DOMAINS.has(normalizeHostname(hostname))
-}
-
-/**
  * Returns true if the hostname belongs to the ChatRealty SaaS platform.
  */
 export function isPlatformDomain(hostname: string): boolean {
@@ -62,11 +47,11 @@ export function isPlatformDomain(hostname: string): boolean {
 }
 
 /**
- * Returns true if the hostname is an agent custom domain (not JPS, not platform).
+ * Returns true if the hostname is an agent domain (custom domain or subdomain, not platform).
  */
 export function isAgentDomain(hostname: string): boolean {
   const h = normalizeHostname(hostname)
-  return !JPS_DOMAINS.has(h) && !PLATFORM_DOMAINS.has(h) && h !== 'localhost'
+  return !PLATFORM_DOMAINS.has(h) && h !== 'localhost'
 }
 
 /**
@@ -74,7 +59,7 @@ export function isAgentDomain(hostname: string): boolean {
  * Falls back to reading the Host header when no hostname is provided.
  */
 export function getBaseUrl(hostname?: string): string {
-  const h = hostname || 'jpsrealtor.com'
+  const h = hostname || 'chatrealty.io'
   const bare = normalizeHostname(h)
   return `https://${bare}`
 }
@@ -85,7 +70,7 @@ export function getBaseUrl(hostname?: string): string {
  */
 export async function getBaseUrlFromHeaders(): Promise<string> {
   const headersList = await headers()
-  const host = headersList.get('host') || 'jpsrealtor.com'
+  const host = headersList.get('host') || 'chatrealty.io'
   return getBaseUrl(host)
 }
 
@@ -94,7 +79,7 @@ export async function getBaseUrlFromHeaders(): Promise<string> {
  */
 export async function getHostnameFromHeaders(): Promise<string> {
   const headersList = await headers()
-  const host = headersList.get('host') || 'jpsrealtor.com'
+  const host = headersList.get('host') || 'chatrealty.io'
   return normalizeHostname(host)
 }
 
@@ -103,28 +88,11 @@ export async function getHostnameFromHeaders(): Promise<string> {
  *
  * For agent domains this returns generic defaults — the caller should enrich
  * with data from the agent's DB profile (name, logo, description, etc.).
+ * getDomainConfigFromHeaders() handles this enrichment automatically.
  */
 export function getDomainConfig(hostname: string): DomainSeoConfig {
   const bare = normalizeHostname(hostname)
   const baseUrl = `https://${bare}`
-
-  if (JPS_DOMAINS.has(bare)) {
-    return {
-      type: 'jpsrealtor',
-      baseUrl,
-      hostname: bare,
-      siteName: 'JPS Realtor - Joseph Sardella Real Estate',
-      siteDescription:
-        'Buy, sell, or invest in the Palm Desert real estate market with Joseph Sardella, a local expert and trusted Realtor in the Coachella Valley.',
-      defaultTitle: 'Joseph Sardella | Palm Desert Real Estate Agent | JPS Realtor',
-      titleTemplate: '%s | Joseph Sardella Real Estate',
-      logoUrl:
-        'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png',
-      ogImage:
-        'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png',
-      twitterHandle: '@jpsrealtor',
-    }
-  }
 
   if (PLATFORM_DOMAINS.has(bare)) {
     return {
@@ -142,7 +110,7 @@ export function getDomainConfig(hostname: string): DomainSeoConfig {
     }
   }
 
-  // Agent custom domain — return generic defaults
+  // Agent custom domain (includes jpsrealtor.com, josephsardella.com, etc.) — return generic defaults
   return {
     type: 'agent',
     baseUrl,
@@ -159,15 +127,16 @@ export function getDomainConfig(hostname: string): DomainSeoConfig {
 
 /**
  * Async version that reads hostname from headers.
- * For agent subdomains, enriches the config with the agent's name and dynamic OG image.
+ * For agent subdomains and custom domains, enriches the config with the agent's
+ * name and dynamic OG image from the DB.
  */
 export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
   const hostname = await getHostnameFromHeaders()
   const config = getDomainConfig(hostname)
 
   // Enrich with dynamic OG image from the agent's profile
-  // Works for: agent subdomains, owner domains (jpsrealtor.com), and custom domains
-  if (config.type === 'agent' || config.type === 'jpsrealtor') {
+  // Works for: agent subdomains and custom domains (jpsrealtor.com, etc.)
+  if (config.type === 'agent') {
     const bare = normalizeHostname(hostname)
 
     // Extract subdomain from chatrealty or localhost
@@ -213,12 +182,10 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
             { projection: { name: 1, brokerageName: 1, 'agentProfile.headline': 1, 'agentProfile.metaTitle': 1, 'agentProfile.metaDescription': 1 } }
           )
           if (agent) {
-            if (config.type === 'agent') {
-              config.siteName = agent.name || config.siteName
-              config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
-              config.titleTemplate = `%s | ${agent.name}`
-              config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
-            }
+            config.siteName = agent.name || config.siteName
+            config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
+            config.titleTemplate = `%s | ${agent.name}`
+            config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
             // Use the dynamic OG image for all agent-owned domains
             const ogBase = process.env.NODE_ENV === 'production'
               ? 'https://chatrealty.io'

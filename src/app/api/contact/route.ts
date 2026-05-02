@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.next();
     await handleCors(req, res);
 
+    // Build base URL from request host
+    const host = req.headers.get("host") || "chatrealty.io";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+
     // Parse the request body
     const { firstName, lastName, email, phone, address, message, photos, optIn } = await req.json();
 
@@ -76,10 +81,10 @@ export async function POST(req: NextRequest) {
           </p>
           <h2>Explore More on Our Website</h2>
           <ul>
-            <li><a href="https://www.jpsrealtor.com/insights">Read Real Estate Insights</a></li>
-            <li><a href="https://www.jpsrealtor.com/neighborhoods">Explore Neighborhoods</a></li>
-            <li><a href="https://www.jpsrealtor.com/listings">View Available Listings</a></li>
-            <li><a href="https://www.jpsrealtor.com/contact">Contact Us</a></li>
+            <li><a href="${baseUrl}/insights">Read Real Estate Insights</a></li>
+            <li><a href="${baseUrl}/neighborhoods">Explore Neighborhoods</a></li>
+            <li><a href="${baseUrl}/listings">View Available Listings</a></li>
+            <li><a href="${baseUrl}/contact">Contact Us</a></li>
           </ul>
           <p>
             If you have any questions or need immediate assistance, feel free to reach out to me directly at:

@@ -6,6 +6,7 @@ import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
   try {
@@ -152,6 +153,8 @@ export default async function ListingPage({
 
   const media = formatPhotos(rawPhotos, listing.primaryPhotoUrl || "/images/no-photo.png");
 
+  const baseUrl = await getBaseUrlFromHeaders();
+
   const city = (listing as any).city || "";
   const subdivisionName = (listing as any).subdivisionName || "";
   const citySlug = city ? city.toLowerCase().replace(/\s+/g, "-") : "";
@@ -161,19 +164,19 @@ export default async function ListingPage({
 
   // Build breadcrumb items for JSON-LD
   const breadcrumbItems = [
-    { name: "Home", url: "https://jpsrealtor.com" },
-    { name: "Listings", url: "https://jpsrealtor.com/mls-listings" },
+    { name: "Home", url: baseUrl },
+    { name: "Listings", url: `${baseUrl}/mls-listings` },
   ];
   if (city && citySlug) {
-    breadcrumbItems.push({ name: city, url: `https://jpsrealtor.com/neighborhoods/${citySlug}` });
+    breadcrumbItems.push({ name: city, url: `${baseUrl}/neighborhoods/${citySlug}` });
   }
   if (subdivisionName && subdivisionSlug && citySlug) {
     breadcrumbItems.push({
       name: subdivisionName,
-      url: `https://jpsrealtor.com/neighborhoods/${citySlug}/${subdivisionSlug}`,
+      url: `${baseUrl}/neighborhoods/${citySlug}/${subdivisionSlug}`,
     });
   }
-  breadcrumbItems.push({ name: address, url: `https://jpsrealtor.com/mls-listings/${slugAddress}` });
+  breadcrumbItems.push({ name: address, url: `${baseUrl}/mls-listings/${slugAddress}` });
 
   return (
     <main className="w-full bg-black text-white">

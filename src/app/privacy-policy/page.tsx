@@ -42,7 +42,7 @@ export default function PrivacyPolicyPage() {
                 <h2 className={h2}>1. Introduction</h2>
                 <p className={text}>
                   This Privacy Policy describes how Joseph Sardella, licensed real estate agent (DRE# 02106916), operating as JPS &amp; Company LLC through eXp Realty of Southern California (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), collects, uses, shares, and protects your personal information when you access or use our websites at{' '}
-                  <a href="https://jpsrealtor.com" className={link}>jpsrealtor.com</a> and{' '}
+                  <a href="https://chatrealty.io" className={link}>chatrealty.io</a> and{' '}
                   <a href="https://josephsardella.com" className={link}>josephsardella.com</a>{' '}
                   (collectively, the &quot;Platform&quot;), including our progressive web application (PWA), AI-powered chat features, real estate search tools, customer relationship management (CRM) tools, marketing campaign services, and all related services.
                 </p>
@@ -408,7 +408,7 @@ export default function PrivacyPolicyPage() {
                   </p>
                   <p>
                     <strong>Website:</strong>{' '}
-                    <a href="https://jpsrealtor.com" className={link}>jpsrealtor.com</a>
+                    <a href="https://chatrealty.io" className={link}>chatrealty.io</a>
                   </p>
                   <p>
                     <strong>Mailing Address:</strong><br />

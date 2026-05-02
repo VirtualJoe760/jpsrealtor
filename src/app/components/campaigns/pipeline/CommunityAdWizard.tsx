@@ -274,7 +274,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
       : [...metaPlacements, p]);
   };
 
-  const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://jpsrealtor.com${selectedPage.url}` : '');
+  const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://chatrealty.io${selectedPage.url}` : '');
   const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
 
   const buildPayload = () => ({
@@ -585,7 +585,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               {/* ---- CUSTOM URL ---- */}
               {pageType === 'custom' && (
                 <input type="url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://jpsrealtor.com/..." className={inputClasses}
+                  placeholder="https://chatrealty.io/..." className={inputClasses}
                 />
               )}
 

@@ -5,10 +5,12 @@ import masterHoaData from "@/constants/hoa/master_hoa_data_verified.json";
 import { transformHoaData } from "@/utils/transformHoaData";
 import { coachellaValleyCities } from "@/constants/cities";
 import { Metadata } from "next";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 // Generate Metadata
 export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
   const { cityId } = params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   // Find city data
   const city = coachellaValleyCities.find((c) => c.id === cityId);
@@ -30,11 +32,11 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
     title: `${city.name} HOA Contact Information | JPS Realtor`,
     description: `Find HOA contact information for subdivisions in and around ${city.name}. Get details for management companies, addresses, and more.`,
     keywords: `${cityHoaKeywords}, HOA in ${city.name}, ${city.name} real estate, HOA contacts`,
-    metadataBase: new URL("https://jpsrealtor.com"),
+    metadataBase: new URL(baseUrl),
     openGraph: {
       title: `${city.name} HOA Contact Information | JPS Realtor`,
       description: `Search for HOA contact information for subdivisions in and around ${city.name}. Discover management company details, addresses, and more.`,
-      url: `https://jpsrealtor.com/neighborhoods/${cityId}/hoa-contact-info`,
+      url: `${baseUrl}/neighborhoods/${cityId}/hoa-contact-info`,
       images: [
         {
           url: `/city-images/${city.id}.jpg`,

@@ -2,7 +2,7 @@
 // Resolves which website a user signed up on and which agent owns it.
 
 import type { NextRequest } from "next/server";
-import { isPlatformDomain, isOwnerDomain } from "@/lib/domain-utils";
+import { isPlatformDomain, isAgentDomain } from "@/lib/domain-utils";
 
 export interface SignupOrigin {
   domain: string;
@@ -68,8 +68,8 @@ export async function resolveSignupOrigin(
     }
   }
 
-  // If it's a custom domain (not platform or owner), look up which agent owns it
-  if (!subdomain && !isPlatformDomain(host) && !isOwnerDomain(host) && host !== "localhost" && !host.includes("localhost")) {
+  // If it's an agent custom domain (not platform, not subdomain), look up which agent owns it
+  if (!subdomain && isAgentDomain(host) && !host.includes("localhost")) {
     try {
       const mongoose = await import("mongoose");
       const db = mongoose.default.connection.db;

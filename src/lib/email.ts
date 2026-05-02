@@ -33,7 +33,7 @@ export async function sendVerificationEmail(
   name: string
 ) {
   // Use NEXT_PUBLIC_BASE_URL for production, fallback to NEXTAUTH_URL
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.jpsrealtor.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
   const verificationUrl = `${baseUrl}/auth/verify-email?token=${token}`;
 
   console.log('📧 Sending verification email to:', email);

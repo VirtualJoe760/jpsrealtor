@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     title: "Book Your Free Real Estate Consultation | Joseph Sardella",
     description:
       "Take the first step toward achieving your real estate goals. Book your free consultation with Joseph Sardella, your trusted Coachella Valley realtor.",
-    url: "https://www.jpsrealtor.com/book-appointment",
+    url: "https://chatrealty.io/book-appointment",
     images: [
       {
         url: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png",

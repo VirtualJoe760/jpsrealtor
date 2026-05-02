@@ -6,6 +6,7 @@ import { findCityById } from "@/app/constants/counties";
 import { coachellaValleyCities } from "@/app/constants/cities";
 import SellPageClient from "./SellPageClient";
 import generatedCityContent from "@/data/city-content-generated.json";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 interface SellPageProps {
   params: Promise<{ cityId: string }>;
@@ -13,6 +14,7 @@ interface SellPageProps {
 
 export async function generateMetadata({ params }: SellPageProps): Promise<Metadata> {
   const resolvedParams = await params;
+  const baseUrl = await getBaseUrlFromHeaders();
   const cityData = findCityById(resolvedParams.cityId);
 
   if (!cityData) {
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: SellPageProps): Promise<Metad
     title: `Sell Your Home in ${city.name}, CA | ${city.name} Listing Agent`,
     description: `Selling your home in ${city.name}? Joseph Sardella delivers data-driven pricing, professional marketing, and expert negotiation to maximize your sale in ${countyName}.`,
     alternates: {
-      canonical: `https://jpsrealtor.com/neighborhoods/${resolvedParams.cityId}/sell`,
+      canonical: `${baseUrl}/neighborhoods/${resolvedParams.cityId}/sell`,
     },
   };
 }

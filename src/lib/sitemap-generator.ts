@@ -2,9 +2,8 @@
  * Dynamic per-domain sitemap generator for the ChatRealty multi-tenant network.
  *
  * Each domain gets a sitemap reflecting only its relevant content:
- *   - jpsrealtor.com / josephsardella.com  => full agent site
  *   - chatrealty.io                         => platform pages only
- *   - agent custom domains / subdomains     => agent-specific pages
+ *   - agent custom domains / subdomains     => agent-specific pages (includes jpsrealtor.com, etc.)
  */
 
 import { MetadataRoute } from 'next'
@@ -22,7 +21,7 @@ import User from '@/models/User'
 // Domain classification
 // ─────────────────────────────────────────────────────
 
-type DomainType = 'jpsrealtor' | 'platform' | 'agent'
+type DomainType = 'platform' | 'agent'
 
 interface DomainInfo {
   type: DomainType
@@ -35,9 +34,6 @@ interface DomainInfo {
   agentName?: string
 }
 
-/** Canonical domain aliases — these all resolve to Joseph Sardella's full site */
-const JPS_DOMAINS = ['jpsrealtor.com', 'www.jpsrealtor.com', 'josephsardella.com', 'www.josephsardella.com']
-
 /** Platform domain */
 const PLATFORM_DOMAINS = ['chatrealty.io', 'www.chatrealty.io']
 
@@ -47,12 +43,7 @@ const PLATFORM_DOMAINS = ['chatrealty.io', 'www.chatrealty.io']
 export async function resolveDomain(hostname: string): Promise<DomainInfo> {
   const host = hostname.replace(/:\d+$/, '').toLowerCase() // strip port
 
-  // 1. JPS Realtor domains
-  if (JPS_DOMAINS.includes(host)) {
-    return { type: 'jpsrealtor', baseUrl: `https://${host}` }
-  }
-
-  // 2. Platform domain
+  // 1. Platform domain
   if (PLATFORM_DOMAINS.includes(host)) {
     return { type: 'platform', baseUrl: `https://${host}` }
   }
@@ -134,8 +125,6 @@ export async function generateSitemapForDomain(hostname: string): Promise<Metada
   const domain = await resolveDomain(hostname)
 
   switch (domain.type) {
-    case 'jpsrealtor':
-      return generateJpsRealtorSitemap(domain)
     case 'platform':
       return generatePlatformSitemap(domain)
     case 'agent':
@@ -143,42 +132,6 @@ export async function generateSitemapForDomain(hostname: string): Promise<Metada
     default:
       return generatePlatformSitemap(domain)
   }
-}
-
-// ─────────────────────────────────────────────────────
-// 1. JPS Realtor — full site (mirrors existing sitemap)
-// ─────────────────────────────────────────────────────
-
-async function generateJpsRealtorSitemap(domain: DomainInfo): Promise<MetadataRoute.Sitemap> {
-  const { baseUrl } = domain
-  const now = new Date()
-
-  const staticPages = getJpsStaticPages(baseUrl, now)
-  const cityPages = getCityPages(baseUrl, now)
-  const subdivisionPages = getSubdivisionPages(baseUrl, now)
-  const blogPages = getBlogPages(baseUrl, now)
-  const listingPages = await getListingPages(baseUrl, now)
-
-  const allPages = [...staticPages, ...cityPages, ...subdivisionPages, ...blogPages, ...listingPages]
-
-  console.log(
-    `[Sitemap] ${domain.baseUrl}: ${staticPages.length} static, ${cityPages.length} city, ` +
-    `${subdivisionPages.length} subdivision, ${blogPages.length} blog, ` +
-    `${listingPages.length} listings = ${allPages.length} total URLs`
-  )
-
-  return allPages
-}
-
-function getJpsStaticPages(baseUrl: string, now: Date): MetadataRoute.Sitemap {
-  return [
-    { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
-    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${baseUrl}/selling`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${baseUrl}/book-appointment`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${baseUrl}/mls-listings`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${baseUrl}/neighborhoods`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-  ]
 }
 
 function getCityPages(baseUrl: string, now: Date, filterCities?: string[]): MetadataRoute.Sitemap {

@@ -10,7 +10,7 @@ export const contentType = 'image/png'
 
 async function getListingData(slugAddress: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://jpsrealtor.com'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatrealty.io'
     const res = await fetch(`${baseUrl}/api/mls-listings/${slugAddress}`, {
       next: { revalidate: 3600 }, // Cache for 1 hour
     })

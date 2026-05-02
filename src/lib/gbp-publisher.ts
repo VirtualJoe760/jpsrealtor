@@ -21,7 +21,7 @@ import {
 // Platform owner fallback account/location (used when no userId or env var flow)
 const FALLBACK_ACCOUNT_ID = 'accounts/101108799337549000917';
 const FALLBACK_LOCATION_ID = 'locations/7725888369257069197';
-const SITE_URL = 'https://jpsrealtor.com';
+const SITE_URL = 'https://chatrealty.io';
 
 // GBP summary has a 1500 character limit
 const MAX_SUMMARY_LENGTH = 1500;

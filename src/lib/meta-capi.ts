@@ -62,7 +62,7 @@ export async function sendCAPIEvent(event: CAPIEvent): Promise<{ success: boolea
         event_name: event.eventName,
         event_time: Math.floor(Date.now() / 1000),
         action_source: "website",
-        event_source_url: event.eventSourceUrl || "https://jpsrealtor.com",
+        event_source_url: event.eventSourceUrl || "https://chatrealty.io",
         event_id: event.eventId || `${event.eventName}_${Date.now()}`,
         user_data: hashedUserData,
         ...(event.customData && { custom_data: event.customData }),

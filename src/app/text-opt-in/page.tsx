@@ -157,7 +157,7 @@ export default function TextOptInPage() {
                 <ul className="list-disc pl-6 space-y-1">
                   <li>Phone: <a href="tel:+17603332674" className="text-blue-600 dark:text-blue-400 hover:underline">(760) 333-2674</a></li>
                   <li>Email: <a href="mailto:josephsardella@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">josephsardella@gmail.com</a></li>
-                  <li>Website: <a href="https://www.jpsrealtor.com" className="text-blue-600 dark:text-blue-400 hover:underline">www.jpsrealtor.com</a></li>
+                  <li>Website: <a href="https://chatrealty.io" className="text-blue-600 dark:text-blue-400 hover:underline">chatrealty.io</a></li>
                 </ul>
               </div>
 

@@ -8,6 +8,7 @@ import {
   School,
 } from "@/constants/schoolDataset";
 import { Metadata } from "next";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 const districts: { [key: string]: SchoolDistrict } = {
   psusd: palmSpringsUnifiedSchoolDistrict,
@@ -18,6 +19,7 @@ const districts: { [key: string]: SchoolDistrict } = {
 // Metadata function
 export async function generateMetadata({ params }: { params: { cityId: string; district: string } }): Promise<Metadata> {
   const { cityId, district } = params;
+  const baseUrl = await getBaseUrlFromHeaders();
 
   const selectedDistrict = districts[district];
   if (!selectedDistrict) {
@@ -39,11 +41,11 @@ export async function generateMetadata({ params }: { params: { cityId: string; d
     title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
     description: `Discover schools in the ${selectedDistrict.name}, including elementary, middle, and high schools. Learn more about education options in the area.`,
     keywords,
-    metadataBase: new URL("https://jpsrealtor.com"),
+    metadataBase: new URL(baseUrl),
     openGraph: {
       title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
       description: `Explore ${selectedDistrict.name} schools and find the best educational opportunities in the area, including elementary, middle, and high schools.`,
-      url: `https://jpsrealtor.com/neighborhoods/${cityId}/school-district/${district}`,
+      url: `${baseUrl}/neighborhoods/${cityId}/school-district/${district}`,
       images: [
         {
           url: `/city-images/${cityId}.jpg`,

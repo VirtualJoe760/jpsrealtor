@@ -349,7 +349,7 @@ export default function MetaAdsPipelineWizard({
                   type="url"
                   value={config.landingPageUrl}
                   onChange={(e) => setConfig({ ...config, landingPageUrl: e.target.value })}
-                  placeholder="https://jpsrealtor.com/lp/your-landing-page"
+                  placeholder="https://chatrealty.io/lp/your-landing-page"
                   className={inputClasses}
                 />
               </div>

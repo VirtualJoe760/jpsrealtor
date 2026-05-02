@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const returnUrl =
       (body as { returnUrl?: string }).returnUrl ||
-      `${process.env.NEXTAUTH_URL || "https://jpsrealtor.com"}/dashboard/billing`;
+      `${process.env.NEXTAUTH_URL || "https://chatrealty.io"}/dashboard/billing`;
 
     const portalSession = await createCustomerPortalSession(
       sub.stripeCustomerId,
