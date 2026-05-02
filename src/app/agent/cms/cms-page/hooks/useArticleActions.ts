@@ -147,14 +147,15 @@ export function useArticleActions(refetch?: () => Promise<void>): UseArticleActi
 
   const handleView = useCallback(
     (category: string, slug: string) => {
-      // Landing pages live at /lp/{slug}, blog posts at /insights/{category}/{slug}
-      if (category === 'landing-page') {
-        router.push(`/lp/${slug}`);
-      } else {
-        router.push(`/insights/${category}/${slug}`);
-      }
+      // Build the view URL — use the current origin (works for subdomains)
+      const path = category === 'landing-page'
+        ? `/lp/${slug}`
+        : `/insights/${category}/${slug}`;
+
+      // Open in a new tab so the agent stays on the CMS
+      window.open(path, '_blank');
     },
-    [router]
+    []
   );
 
   const handleEdit = useCallback(
