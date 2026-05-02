@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Save, Loader2, X, Plus, MapPin, Sparkles } from "lucide-react";
 
 interface StepProps {
@@ -11,15 +11,15 @@ interface StepProps {
   isSaving: boolean;
 }
 
-interface Certification {
-  name: string;
-  issuedBy: string;
-  year: string;
-}
-
 interface ServiceArea {
   name: string;
   type: "city" | "county" | "zip" | "custom";
+}
+
+interface CitySuggestion {
+  name: string;
+  county?: string;
+  region?: string;
 }
 
 const COMMON_SPECIALIZATIONS = [
@@ -43,21 +43,6 @@ const COMMON_SPECIALIZATIONS = [
   "Multi-Family",
   "Estate Sales",
   "Golf Communities",
-];
-
-const COMMON_CERTIFICATIONS = [
-  { name: "ABR - Accredited Buyer's Representative", issuedBy: "NAR" },
-  { name: "CRS - Certified Residential Specialist", issuedBy: "RRC" },
-  { name: "GRI - Graduate, REALTOR Institute", issuedBy: "NAR" },
-  { name: "SRES - Seniors Real Estate Specialist", issuedBy: "NAR" },
-  { name: "SRS - Seller Representative Specialist", issuedBy: "RRC" },
-  { name: "CLHMS - Certified Luxury Home Marketing Specialist", issuedBy: "ILHM" },
-  { name: "CNE - Certified Negotiation Expert", issuedBy: "AREN" },
-  { name: "e-PRO", issuedBy: "NAR" },
-  { name: "MRP - Military Relocation Professional", issuedBy: "NAR" },
-  { name: "PSA - Pricing Strategy Advisor", issuedBy: "NAR" },
-  { name: "RENE - Real Estate Negotiation Expert", issuedBy: "ABR" },
-  { name: "C2EX - Commitment to Excellence", issuedBy: "NAR" },
 ];
 
 const AREA_TYPES: { value: ServiceArea["type"]; label: string }[] = [
@@ -98,38 +83,111 @@ export default function ServiceAreasStep({
   const ap = formData.agentProfile || {};
   const serviceAreas: ServiceArea[] = ap.serviceAreas || [];
   const specializations: string[] = ap.specializations || [];
-  const certifications: Certification[] = ap.certifications || [];
   const bio: string = ap.bio || "";
 
   // Service area state
-  const [areaName, setAreaName] = useState("");
+  const [areaInput, setAreaInput] = useState("");
   const [areaType, setAreaType] = useState<ServiceArea["type"]>("city");
+  const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Specialization state
   const [specInput, setSpecInput] = useState("");
 
-  // Certification state
-  const [certName, setCertName] = useState("");
-  const [certIssuedBy, setCertIssuedBy] = useState("");
-  const [certYear, setCertYear] = useState("");
+  // ---------- City Autocomplete ----------
+  const fetchSuggestions = useCallback((query: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/cities/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data.cities || []);
+          setShowSuggestions(true);
+          setActiveSuggestion(-1);
+        }
+      } catch {}
+    }, 200);
+  }, []);
 
-  // ---------- Service Areas ----------
-  const addServiceArea = () => {
-    const name = areaName.trim();
-    if (!name || serviceAreas.some((a) => a.name.toLowerCase() === name.toLowerCase())) return;
-    updateField("agentProfile.serviceAreas", [...serviceAreas, { name, type: areaType }]);
-    setAreaName("");
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const addArea = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || serviceAreas.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())) return;
+    updateField("agentProfile.serviceAreas", [...serviceAreas, { name: trimmed, type: areaType }]);
   };
 
-  const removeServiceArea = (index: number) => {
-    updateField("agentProfile.serviceAreas", serviceAreas.filter((_, i) => i !== index));
+  const handleAreaInputChange = (value: string) => {
+    // Check for comma — add everything before the comma as an area
+    if (value.includes(",")) {
+      const parts = value.split(",");
+      // Add all complete parts (before last comma)
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i].trim();
+        if (part) addArea(part);
+      }
+      // Keep the part after the last comma as the current input
+      const remaining = parts[parts.length - 1];
+      setAreaInput(remaining);
+      fetchSuggestions(remaining.trim());
+    } else {
+      setAreaInput(value);
+      fetchSuggestions(value.trim());
+    }
+  };
+
+  const selectSuggestion = (city: CitySuggestion) => {
+    addArea(city.name);
+    setAreaInput("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
   };
 
   const handleAreaKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      addServiceArea();
+      if (showSuggestions && activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+        selectSuggestion(suggestions[activeSuggestion]);
+      } else if (areaInput.trim()) {
+        addArea(areaInput.trim());
+        setAreaInput("");
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } else if (e.key === "ArrowDown" && showSuggestions) {
+      e.preventDefault();
+      setActiveSuggestion((prev) => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp" && showSuggestions) {
+      e.preventDefault();
+      setActiveSuggestion((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
+  };
+
+  const removeServiceArea = (index: number) => {
+    updateField("agentProfile.serviceAreas", serviceAreas.filter((_, i) => i !== index));
   };
 
   // ---------- Specializations ----------
@@ -155,39 +213,17 @@ export default function ServiceAreasStep({
     }
   };
 
-  // ---------- Certifications ----------
-  const addCertification = () => {
-    if (!certName.trim()) return;
-    const newCert: Certification = {
-      name: certName.trim(),
-      issuedBy: certIssuedBy.trim(),
-      year: certYear.trim(),
-    };
-    updateField("agentProfile.certifications", [...certifications, newCert]);
-    setCertName("");
-    setCertIssuedBy("");
-    setCertYear("");
-  };
-
-  const addCommonCertification = (cert: { name: string; issuedBy: string }) => {
-    if (certifications.some((c) => c.name === cert.name)) return;
-    updateField("agentProfile.certifications", [
-      ...certifications,
-      { name: cert.name, issuedBy: cert.issuedBy, year: "" },
-    ]);
-  };
-
-  const removeCertification = (index: number) => {
-    updateField("agentProfile.certifications", certifications.filter((_, i) => i !== index));
-  };
-
   // ---------- Save ----------
   const handleSave = () => {
+    // Flush any remaining text in the area input
+    if (areaInput.trim()) {
+      addArea(areaInput.trim());
+      setAreaInput("");
+    }
     onSave({
       agentProfile: {
         serviceAreas,
         specializations,
-        certifications,
         bio,
       },
     });
@@ -214,45 +250,70 @@ export default function ServiceAreasStep({
             Service Areas
           </label>
           <p className={`text-xs mb-3 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
-            Add the cities, counties, or ZIP codes you serve. AI articles will reference these areas.
+            Start typing a city name to search. Press comma or Enter to add. AI articles will reference these areas.
           </p>
 
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={areaName}
-              onChange={(e) => setAreaName(e.target.value)}
-              onKeyDown={handleAreaKeyDown}
-              placeholder="e.g. Portland, Bend, Clackamas County"
-              className={inputClass}
-            />
+            <div className="relative flex-1">
+              <input
+                ref={inputRef}
+                type="text"
+                value={areaInput}
+                onChange={(e) => handleAreaInputChange(e.target.value)}
+                onKeyDown={handleAreaKeyDown}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                placeholder="Type a city name..."
+                className={inputClass}
+              />
+              {/* Autocomplete dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div
+                  ref={suggestionsRef}
+                  className={`absolute z-50 left-0 right-0 mt-1 rounded-lg border shadow-lg max-h-60 overflow-y-auto ${
+                    isLight
+                      ? "bg-white border-gray-200"
+                      : "bg-gray-800 border-gray-700"
+                  }`}
+                >
+                  {suggestions.map((city, i) => (
+                    <button
+                      key={`${city.name}-${i}`}
+                      type="button"
+                      onClick={() => selectSuggestion(city)}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                        i === activeSuggestion
+                          ? isLight
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-emerald-900/30 text-emerald-300"
+                          : isLight
+                          ? "text-gray-900 hover:bg-gray-50"
+                          : "text-white hover:bg-gray-700"
+                      }`}
+                    >
+                      <span className="font-medium">{city.name}</span>
+                      {city.county && (
+                        <span className={`ml-2 text-xs ${isLight ? "text-gray-400" : "text-gray-500"}`}>
+                          {city.county}{city.region ? ` · ${city.region}` : ""}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <select
               value={areaType}
               onChange={(e) => setAreaType(e.target.value as ServiceArea["type"])}
-              className={`w-32 px-3 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+              className={`w-28 px-3 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
                 isLight
                   ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
                   : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
               }`}
             >
               {AREA_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={addServiceArea}
-              disabled={!areaName.trim()}
-              className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 ${
-                isLight
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
           </div>
 
           {serviceAreas.length > 0 && (
@@ -291,7 +352,6 @@ export default function ServiceAreasStep({
             Select from common specializations or add your own.
           </p>
 
-          {/* Common suggestions */}
           <div className="flex flex-wrap gap-2 mb-3">
             {COMMON_SPECIALIZATIONS.map((spec) => (
               <button
@@ -310,7 +370,6 @@ export default function ServiceAreasStep({
             ))}
           </div>
 
-          {/* Custom specialization input */}
           <div className="flex gap-2">
             <input
               type="text"
@@ -334,7 +393,6 @@ export default function ServiceAreasStep({
             </button>
           </div>
 
-          {/* Custom specs that aren't in the common list */}
           {specializations.filter((s) => !COMMON_SPECIALIZATIONS.includes(s)).length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {specializations
@@ -358,116 +416,6 @@ export default function ServiceAreasStep({
                     </button>
                   </span>
                 ))}
-            </div>
-          )}
-        </div>
-
-        {/* ============ Certifications ============ */}
-        <div>
-          <label className={labelClass}>Certifications</label>
-          <p className={`text-xs mb-3 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
-            Quick-add common certifications or enter your own.
-          </p>
-
-          {/* Quick-add common certs */}
-          <div className="flex flex-wrap gap-2 mb-3">
-            {COMMON_CERTIFICATIONS.filter(
-              (cc) => !certifications.some((c) => c.name === cc.name)
-            ).map((cc) => (
-              <button
-                key={cc.name}
-                type="button"
-                onClick={() => addCommonCertification(cc)}
-                className={chipClass(false)}
-              >
-                <Plus className="w-3 h-3" />
-                {cc.name.split(" - ")[0]}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom certification input */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              value={certName}
-              onChange={(e) => setCertName(e.target.value)}
-              placeholder="Certification name"
-              className={inputClass}
-            />
-            <input
-              type="text"
-              value={certIssuedBy}
-              onChange={(e) => setCertIssuedBy(e.target.value)}
-              placeholder="Issued by"
-              className={inputClass}
-            />
-            <input
-              type="text"
-              value={certYear}
-              onChange={(e) => setCertYear(e.target.value)}
-              placeholder="Year"
-              className={`w-full sm:w-28 px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                isLight
-                  ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
-                  : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
-              }`}
-            />
-            <button
-              type="button"
-              onClick={addCertification}
-              disabled={!certName.trim()}
-              className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-40 ${
-                isLight
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
-              }`}
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Certification list */}
-          {certifications.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {certifications.map((cert, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
-                    isLight
-                      ? "bg-gray-50 border-gray-200"
-                      : "bg-gray-800/50 border-gray-700"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <span
-                      className={`text-sm font-medium ${
-                        isLight ? "text-gray-900" : "text-white"
-                      }`}
-                    >
-                      {cert.name}
-                    </span>
-                    {(cert.issuedBy || cert.year) && (
-                      <span
-                        className={`text-xs ml-2 ${
-                          isLight ? "text-gray-500" : "text-gray-400"
-                        }`}
-                      >
-                        {[cert.issuedBy, cert.year].filter(Boolean).join(" - ")}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeCertification(index)}
-                    className={`ml-3 p-1 rounded hover:opacity-70 transition-opacity ${
-                      isLight ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
             </div>
           )}
         </div>
@@ -504,11 +452,7 @@ export default function ServiceAreasStep({
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50 ${
-            isLight
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-green-600 hover:bg-green-700"
-          }`}
+          className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50 bg-green-600 hover:bg-green-700"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
