@@ -82,6 +82,19 @@ export async function GET(req: Request) {
         draft: doc.status === 'draft',
         authorId: doc.author.id.toString(),
         authorName: doc.author.name,
+        visibility: doc.visibility || 'private',
+        // Landing page fields from MongoDB
+        ...((doc as any).standalone !== undefined && { standalone: (doc as any).standalone }),
+        ...((doc as any).heroType && { heroType: (doc as any).heroType }),
+        ...((doc as any).youtubeUrl && { youtubeUrl: (doc as any).youtubeUrl }),
+        ...((doc as any).videoAutoplay !== undefined && { videoAutoplay: (doc as any).videoAutoplay }),
+        ...((doc as any).themeOverride !== undefined && { themeOverride: (doc as any).themeOverride }),
+        ...((doc as any).formEnabled !== undefined && { formEnabled: (doc as any).formEnabled }),
+        ...((doc as any).formHeading && { formHeading: (doc as any).formHeading }),
+        ...((doc as any).formButtonText && { formButtonText: (doc as any).formButtonText }),
+        ...((doc as any).formRecipients && { formRecipients: (doc as any).formRecipients }),
+        ...((doc as any).formDisclaimer && { formDisclaimer: (doc as any).formDisclaimer }),
+        ...((doc as any).formFields && { formFields: (doc as any).formFields }),
       };
 
       return NextResponse.json({

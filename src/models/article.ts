@@ -65,6 +65,25 @@ export interface IArticle extends Document {
     lastViewed?: Date;
   };
 
+  // Landing Page fields (only used when category === "landing-page")
+  standalone?: boolean;
+  heroType?: "photo" | "video";
+  youtubeUrl?: string;
+  videoAutoplay?: boolean;
+  themeOverride?: "" | "lightgradient" | "blackspace";
+  formEnabled?: boolean;
+  formHeading?: string;
+  formButtonText?: string;
+  formRecipients?: string;
+  formDisclaimer?: string;
+  formFields?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+  }>;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -217,6 +236,25 @@ const ArticleSchema = new Schema<IArticle>(
 
     // Scheduling
     scheduledFor: Date,
+
+    // Landing Page fields (only used when category === "landing-page")
+    standalone: { type: Boolean, default: false },
+    heroType: { type: String, enum: ["photo", "video"], default: "photo" },
+    youtubeUrl: String,
+    videoAutoplay: { type: Boolean, default: true },
+    themeOverride: { type: String, enum: ["", "lightgradient", "blackspace"], default: "" },
+    formEnabled: { type: Boolean, default: false },
+    formHeading: { type: String, default: "Get Started" },
+    formButtonText: { type: String, default: "Submit" },
+    formRecipients: String,
+    formDisclaimer: String,
+    formFields: [{
+      id: String,
+      label: String,
+      type: String,
+      required: { type: Boolean, default: false },
+      options: [String],
+    }],
   },
   {
     timestamps: true,

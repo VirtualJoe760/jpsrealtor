@@ -81,6 +81,18 @@ export function convertFormDataToMongoDoc(
       views: 0,
       readTime: calculateReadTime(data.content),
     },
+    // Landing page fields (passed through from CMS form)
+    ...((data as any).standalone !== undefined && { standalone: (data as any).standalone }),
+    ...((data as any).heroType && { heroType: (data as any).heroType }),
+    ...((data as any).youtubeUrl && { youtubeUrl: (data as any).youtubeUrl }),
+    ...((data as any).videoAutoplay !== undefined && { videoAutoplay: (data as any).videoAutoplay }),
+    ...((data as any).themeOverride !== undefined && { themeOverride: (data as any).themeOverride }),
+    ...((data as any).formEnabled !== undefined && { formEnabled: (data as any).formEnabled }),
+    ...((data as any).formHeading && { formHeading: (data as any).formHeading }),
+    ...((data as any).formButtonText && { formButtonText: (data as any).formButtonText }),
+    ...((data as any).formRecipients && { formRecipients: (data as any).formRecipients }),
+    ...((data as any).formDisclaimer && { formDisclaimer: (data as any).formDisclaimer }),
+    ...((data as any).formFields && { formFields: (data as any).formFields }),
   };
 }
 
