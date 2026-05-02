@@ -6,71 +6,18 @@ import MDXLink from "@/app/components/mdx/Link";
 import ArticlePageClient from "./ArticlePageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
-import { headers } from "next/headers";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
-import { getArticleBySlug } from "@/lib/services/article.service";
-import DomainRegistry from "@/models/DomainRegistry";
-import dbConnect from "@/lib/mongoose";
+import { getBaseUrlFromHeaders, doesDomainBelongToAgent } from "@/lib/domain-utils";
 
 /**
  * Check if an article can be viewed on the current domain.
  * Public articles: visible everywhere.
- * Private articles: only on the platform domain, author's subdomain, or author's custom domain.
+ * Private articles: only on the author's domains (subdomain, custom domain, or platform).
  */
 async function canViewArticle(post: Post): Promise<boolean> {
-  // If no visibility field or public, always visible
   const visibility = (post as any).visibility;
   if (!visibility || visibility === 'public') return true;
-
-  // Private article — check domain
-  const headersList = await headers();
-  const host = headersList.get('host') || '';
-  const hostname = host.split(':')[0]; // strip port
-
-  // Always visible on the platform domain and localhost
-  if (hostname === 'chatrealty.io' || hostname === 'www.chatrealty.io' || hostname === 'localhost') {
-    return true;
-  }
-
-  // Check if it's the author's subdomain (e.g., authorname.chatrealty.com)
-  const authorId = post.authorId;
-  if (!authorId) return false;
-
-  try {
-    await dbConnect();
-
-    // Check subdomain match (e.g., agent.chatrealty.com)
-    if (hostname.endsWith('.chatrealty.com')) {
-      const subdomain = hostname.replace('.chatrealty.com', '');
-      const domainEntry = await DomainRegistry.findOne({
-        domain: hostname,
-        ownerId: authorId,
-        status: 'active',
-      }).lean();
-      if (domainEntry) return true;
-
-      // Also check by subdomain in target
-      const subdomainEntry = await DomainRegistry.findOne({
-        'target.agentSubdomain': subdomain,
-        ownerId: authorId,
-        status: 'active',
-      }).lean();
-      if (subdomainEntry) return true;
-    }
-
-    // Check custom domain match
-    const customDomain = await DomainRegistry.findOne({
-      domain: hostname,
-      ownerId: authorId,
-      type: 'agent_custom',
-      status: 'active',
-    }).lean();
-    if (customDomain) return true;
-  } catch (error) {
-    console.error('[canViewArticle] Error checking domain:', error);
-  }
-
-  return false;
+  if (!post.authorId) return false;
+  return doesDomainBelongToAgent(post.authorId);
 }
 
 // Dynamic metadata generation

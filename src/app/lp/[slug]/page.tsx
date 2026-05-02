@@ -11,68 +11,8 @@ import LandingPageClient from "./LandingPageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { headers } from "next/headers";
-import { isPlatformDomain, getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { Post } from "@/types/post";
-
-/**
- * Check if the current domain is allowed to view this landing page.
- * Landing pages are always private to the author's domains.
- */
-async function canViewLandingPage(post: Post): Promise<boolean> {
-  if (!post.authorId) return true; // Legacy posts without authorId
-
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const hostname = host.split(":")[0].toLowerCase();
-
-  // Platform domain (chatrealty.io) always has access
-  if (isPlatformDomain(hostname)) return true;
-
-  // Extract subdomain
-  let subdomain: string | undefined;
-  if (hostname.includes("chatrealty")) {
-    const parts = hostname.split("chatrealty")[0]?.replace(/\.$/, "");
-    subdomain = parts?.split(".").filter(s => s && s !== "www").pop();
-  } else if (hostname.endsWith(".localhost")) {
-    const sub = hostname.split(".localhost")[0];
-    if (sub && sub !== "www") subdomain = sub;
-  }
-
-  // Check if subdomain's agent matches the post author
-  if (subdomain) {
-    try {
-      const dbConnect = (await import("@/lib/mongoose")).default;
-      await dbConnect();
-      const mongoose = await import("mongoose");
-      const db = mongoose.default.connection.db;
-      if (db) {
-        const agent = await db.collection("users").findOne(
-          { "agentProfile.subdomain": subdomain },
-          { projection: { _id: 1 } }
-        );
-        if (agent && agent._id.toString() === post.authorId) return true;
-      }
-    } catch { /* non-blocking */ }
-    return false;
-  }
-
-  // Custom domains — check DomainRegistry
-  try {
-    const dbConnect = (await import("@/lib/mongoose")).default;
-    await dbConnect();
-    const mongoose = await import("mongoose");
-    const db = mongoose.default.connection.db;
-    if (db) {
-      const domainEntry = await db.collection("domainregistries").findOne(
-        { domain: hostname, status: "active" },
-        { projection: { ownerId: 1 } }
-      );
-      if (domainEntry && domainEntry.ownerId?.toString() === post.authorId) return true;
-    }
-  } catch { /* non-blocking */ }
-
-  return false;
-}
 
 export async function generateMetadata({
   params,
@@ -149,7 +89,7 @@ export default async function LandingPage({
     }
 
     // Landing pages are private to the author's domains
-    const allowed = await canViewLandingPage(post);
+    const allowed = !post.authorId || await doesDomainBelongToAgent(post.authorId);
     if (!allowed) {
       return (
         <div className="min-h-screen flex flex-col justify-center items-center bg-black text-white">

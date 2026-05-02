@@ -203,6 +203,75 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
 }
 
 // ─────────────────────────────────────────────────────
+// Domain ownership check
+// ─────────────────────────────────────────────────────
+
+/**
+ * Check if the requesting domain belongs to a specific agent (by userId).
+ * Resolves ownership via:
+ *   1. Platform domain (chatrealty.io) → always allowed
+ *   2. localhost → always allowed (dev)
+ *   3. Agent subdomain (*.chatrealty.io, *.localhost) → match by subdomain lookup
+ *   4. Custom domain → match via agentProfile.customDomain
+ *   5. DomainRegistry → match via ownerId
+ *
+ * Use this for visibility checks on articles, landing pages, etc.
+ */
+export async function doesDomainBelongToAgent(authorId: string): Promise<boolean> {
+  const headersList = await headers()
+  const host = headersList.get('host') || ''
+  const hostname = normalizeHostname(host)
+
+  // Platform domain and bare localhost always have access
+  if (PLATFORM_DOMAINS.has(hostname) || hostname === 'localhost') return true
+
+  // Extract subdomain from chatrealty or localhost
+  let subdomain: string | undefined
+  if (hostname.includes('chatrealty')) {
+    const parts = hostname.split('chatrealty')[0]?.replace(/\.$/, '')
+    subdomain = parts?.split('.').filter(s => s && s !== 'www').pop()
+  } else if (hostname.endsWith('.localhost')) {
+    const sub = hostname.split('.localhost')[0]
+    if (sub && sub !== 'www') subdomain = sub
+  }
+
+  try {
+    const dbConnect = (await import('@/lib/mongoose')).default
+    await dbConnect()
+    const mongoose = await import('mongoose')
+    const db = mongoose.default.connection.db
+    if (!db) return false
+
+    // Subdomain check
+    if (subdomain) {
+      const agent = await db.collection('users').findOne(
+        { 'agentProfile.subdomain': subdomain },
+        { projection: { _id: 1 } }
+      )
+      return !!agent && agent._id.toString() === authorId
+    }
+
+    // Custom domain check (agentProfile.customDomain)
+    const agentByDomain = await db.collection('users').findOne(
+      { 'agentProfile.customDomain': hostname },
+      { projection: { _id: 1 } }
+    )
+    if (agentByDomain && agentByDomain._id.toString() === authorId) return true
+
+    // DomainRegistry check
+    const domainEntry = await db.collection('domainregistries').findOne(
+      { domain: hostname, status: 'active' },
+      { projection: { ownerId: 1 } }
+    )
+    if (domainEntry && domainEntry.ownerId?.toString() === authorId) return true
+  } catch {
+    // Non-blocking
+  }
+
+  return false
+}
+
+// ─────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────
 
