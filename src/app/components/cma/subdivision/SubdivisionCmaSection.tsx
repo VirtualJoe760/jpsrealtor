@@ -10,6 +10,7 @@ import CmaSubTypeBreakdown from "./CmaSubTypeBreakdown";
 import CmaPriceMetrics from "./CmaPriceMetrics";
 import CmaSalesTimeline from "./CmaSalesTimeline";
 import CmaCompsTable from "./CmaCompsTable";
+import ChartErrorBoundary from "../ChartErrorBoundary";
 
 interface SubdivisionCmaSectionProps {
   slug: string;
@@ -193,7 +194,9 @@ export default function SubdivisionCmaSection({ slug }: SubdivisionCmaSectionPro
       {salesHistory.length >= 2 && (
         <section>
           <SectionLabel label="Sales Timeline" isLight={isLight} />
-          <CmaSalesTimeline topComps={salesHistory} />
+          <ChartErrorBoundary>
+            <CmaSalesTimeline topComps={salesHistory} />
+          </ChartErrorBoundary>
         </section>
       )}
 

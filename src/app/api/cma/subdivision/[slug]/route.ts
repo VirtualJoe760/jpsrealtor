@@ -98,6 +98,13 @@ export async function GET(
         garageSpaces: 1,
         onMarketDate: 1,
         propertySubType: 1,
+        poolYN: 1,
+        pool: 1,
+        spaYN: 1,
+        spa: 1,
+        view: 1,
+        lotSizeArea: 1,
+        lotSizeSqft: 1,
       }
     )
       .sort({ closeDate: -1 })
@@ -135,6 +142,11 @@ export async function GET(
           bedsTotal: s.bedsTotal,
           bathsTotal: s.bathsTotal,
           yearBuilt: s.yearBuilt,
+          garageSpaces: s.garageSpaces,
+          pool: s.poolYN ?? s.pool ?? null,
+          spa: s.spaYN ?? s.spa ?? null,
+          view: s.view || null,
+          lotSize: s.lotSizeArea || s.lotSizeSqft || null,
           daysOnMarket: dom,
           propertySubType: s.propertySubType,
           salePpsf:

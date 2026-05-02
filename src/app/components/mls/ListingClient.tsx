@@ -108,12 +108,12 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
 }
 
 // CMA section — auto-loads when visible
-function CMASection({ listingKey, isLight }: { listingKey: string; isLight: boolean }) {
+function CMASection({ listingKey, subdivisionName, isLight }: { listingKey: string; subdivisionName?: string; isLight: boolean }) {
   if (!listingKey) return null;
 
   return (
     <section className="py-8 px-4 md:px-8">
-      <CMAReport listingKey={listingKey} />
+      <CMAReport listingKey={listingKey} subdivisionName={subdivisionName} />
     </section>
   );
 }
@@ -999,7 +999,7 @@ export default function ListingClient({
         )}
 
         {/* CMA Section */}
-        <CMASection listingKey={listing.listingKey || ""} isLight={isLight} />
+        <CMASection listingKey={listing.listingKey || ""} subdivisionName={listing.subdivisionName} isLight={isLight} />
       </div>
     </SpaticalBackground>
   );

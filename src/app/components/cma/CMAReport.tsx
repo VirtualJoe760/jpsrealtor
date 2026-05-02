@@ -12,6 +12,7 @@ import PriceTrendLine from "./charts/PriceTrendLine";
 import DaysOnMarketBar from "./charts/DaysOnMarketBar";
 import SalePriceRatioPie from "./charts/SalePriceRatioPie";
 import SqftComparisonBar from "./charts/SqftComparisonBar";
+import ChartErrorBoundary from "./ChartErrorBoundary";
 
 // ─── Scroll-reveal wrapper ───
 function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -46,7 +47,7 @@ interface CMAReportProps {
   listingKey?: string;
 }
 
-export default function CMAReport({ result: preloadedResult, listingKey }: CMAReportProps) {
+export default function CMAReport({ result: preloadedResult, listingKey, subdivisionName }: CMAReportProps & { subdivisionName?: string }) {
   const [result, setResult] = useState<CMAResult | null>(preloadedResult || null);
   const [loading, setLoading] = useState(!preloadedResult);
   const [error, setError] = useState<string | null>(null);
@@ -55,23 +56,44 @@ export default function CMAReport({ result: preloadedResult, listingKey }: CMARe
 
   useEffect(() => {
     if (preloadedResult || !listingKey) return;
+    let cancelled = false;
 
-    setLoading(true);
-    // GET so the response is HTTP-cacheable. The route serves a Cache-Control
-    // header (s-maxage=3600, swr=86400) AND keeps an in-process result cache
-    // by listingKey, so cold = full compute, warm = ~5ms.
-    fetch(`/api/cma/generate?listingKey=${encodeURIComponent(listingKey)}`)
-      .then(r => {
-        if (!r.ok) throw new Error(`CMA generation failed: ${r.status}`);
-        return r.json();
-      })
-      .then(data => {
+    async function fetchCMA() {
+      setLoading(true);
+      try {
+        // Fast path: try pre-built subdivision CMA if subdivision is known
+        if (subdivisionName) {
+          const slug = subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          try {
+            const subRes = await fetch(`/api/cma/subdivision/${slug}`);
+            if (subRes.ok && !cancelled) {
+              const subData = await subRes.json();
+              if (subData.cmaStats || subData.active || subData.closed) {
+                setResult(subData.cmaStats ?? subData);
+                return;
+              }
+            }
+          } catch {
+            // Subdivision CMA not available — fall through to full generation
+          }
+        }
+
+        // Slow path: full CMA generation
+        const res = await fetch(`/api/cma/generate?listingKey=${encodeURIComponent(listingKey)}`);
+        if (!res.ok) throw new Error(`CMA generation failed: ${res.status}`);
+        const data = await res.json();
         if (data.error) throw new Error(data.error);
-        setResult(data);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [listingKey, preloadedResult]);
+        if (!cancelled) setResult(data);
+      } catch (err: any) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchCMA();
+    return () => { cancelled = true; };
+  }, [listingKey, preloadedResult, subdivisionName]);
 
   if (loading) {
     return (
@@ -191,25 +213,25 @@ export default function CMAReport({ result: preloadedResult, listingKey }: CMARe
                 <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
                   List vs Sale $/SqFt
                 </h4>
-                <PricePerSqftBar subject={result.subject} closedComps={result.closedComps} />
+                <ChartErrorBoundary><PricePerSqftBar subject={result.subject} closedComps={result.closedComps} /></ChartErrorBoundary>
               </div>
               <div>
                 <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
                   Sale Price Trend
                 </h4>
-                <PriceTrendLine closedComps={result.closedComps} />
+                <ChartErrorBoundary><PriceTrendLine closedComps={result.closedComps} /></ChartErrorBoundary>
               </div>
               <div>
                 <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
                   Days on Market
                 </h4>
-                <DaysOnMarketBar comps={allComps} />
+                <ChartErrorBoundary><DaysOnMarketBar comps={allComps} /></ChartErrorBoundary>
               </div>
               <div>
                 <h4 className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
                   Sale vs List Price
                 </h4>
-                <SalePriceRatioPie closedComps={result.closedComps} />
+                <ChartErrorBoundary><SalePriceRatioPie closedComps={result.closedComps} /></ChartErrorBoundary>
               </div>
             </div>
           </div>
