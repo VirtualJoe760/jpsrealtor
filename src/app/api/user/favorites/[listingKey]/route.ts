@@ -128,10 +128,13 @@ export async function DELETE(
       );
     }
 
-    // Remove the favorite
+    // Remove the favorite — match by listingKey, slug, or slugAddress
     const initialCount = user.likedListings.length;
     user.likedListings = user.likedListings.filter(
-      (fav: any) => fav.listingKey !== listingKey
+      (fav: any) =>
+        fav.listingKey !== listingKey &&
+        fav.listingData?.slugAddress !== listingKey &&
+        fav.listingData?.slug !== listingKey
     );
 
     if (user.likedListings.length === initialCount) {

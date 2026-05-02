@@ -16,7 +16,6 @@ import {
 import type { MapListing } from "@/types/types";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import Link from "next/link";
-import Image from "next/image";
 import PannelCarousel from "./PannelCarousel";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
@@ -136,23 +135,13 @@ export default function ListingBottomPanel({
         return;
       }
 
-      console.log('[ListingBottomPanel] Fetching data for:', identifier);
       setIsLoading(true);
 
       try {
-        // The mls-listings route now accepts both slugAddress AND listingKey
         const response = await fetch(`/api/mls-listings/${identifier}`);
 
         if (response.ok) {
           const { listing: apiListing } = await response.json();
-          console.log('[ListingBottomPanel] API data fetched:', {
-            hasPublicRemarks: !!apiListing.publicRemarks,
-            hasPrice: !!apiListing.listPrice,
-            hasBeds: !!apiListing.bedsTotal,
-            allKeys: Object.keys(apiListing).sort().slice(0, 20)
-          });
-
-          // Merge API data with original listing (API data takes priority)
           setEnrichedListing({ ...fullListing, ...apiListing });
         } else {
           console.warn('[ListingBottomPanel] API fetch failed, using provided data');
@@ -168,16 +157,6 @@ export default function ListingBottomPanel({
 
     fetchListingData();
   }, [listing.slugAddress, listing.slug, fullListing.slugAddress, fullListing.listingKey]);
-
-  // Debug logging for chat listings
-  console.log('[ListingBottomPanel] enrichedListing data:', {
-    hasPublicRemarks: !!enrichedListing.publicRemarks,
-    publicRemarksLength: enrichedListing.publicRemarks?.length || 0,
-    publicRemarksPreview: enrichedListing.publicRemarks?.substring(0, 100),
-    price: enrichedListing.listPrice,
-    beds: enrichedListing.bedsTotal || enrichedListing.bedroomsTotal,
-    allKeys: Object.keys(enrichedListing).sort()
-  });
 
   // Theme awareness
   const { currentTheme } = useTheme();
@@ -257,14 +236,7 @@ export default function ListingBottomPanel({
       transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] },
     });
 
-    // REMOVED: Panel-specific double-tap prevention
-    // CSS already handles this via: touch-action: manipulation !important
-    // Having JavaScript listeners was blocking the first tap and causing delays
-    console.log('[ListingPanel] Mounted - Double-tap zoom handled by CSS (touch-action: manipulation)');
-
-    return () => {
-      console.log('[ListingPanel] Unmounting');
-    };
+    return () => {};
   }, [enrichedListing.listingKey]);
 
   /* ======================================================
@@ -453,204 +425,176 @@ export default function ListingBottomPanel({
         <PannelCarousel listingKey={enrichedListing.listingKey} alt={address} />
       </div>
 
-      {/* Header */}
-      <div className={`px-5 py-4 border-b flex-shrink-0 ${
-        isLight
-          ? 'bg-white/70 border-gray-200/50'
-          : 'bg-white/[0.02] border-white/[0.08]'
-      }`}>
-        <div className="flex justify-between items-start gap-4">
+      {/* Header — Address + Price */}
+      <div className={`px-5 pt-3 pb-2 flex-shrink-0`}>
+        <div className="flex justify-between items-start gap-3">
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium leading-tight mb-1.5 truncate ${
-              isLight ? 'text-gray-600' : 'text-gray-400'
+            <p className={`text-sm font-semibold leading-tight mb-1 ${
+              isLight ? 'text-gray-800' : 'text-gray-200'
             }`}>{address}</p>
-            <p className={`text-3xl font-bold tracking-tight ${
+            <p className={`text-3xl font-extrabold tracking-tight ${
               isLight ? 'text-blue-600' : 'text-emerald-400'
             }`}>
               {`$${Number(enrichedListing.listPrice ?? 0).toLocaleString()}`}
             </p>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
-            {/* Share */}
+          <div className="flex gap-1.5 flex-shrink-0 mt-1">
             <button
-              onClick={() =>
-                navigator.share?.({ title: address, url: window.location.href })
-              }
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all backdrop-blur-sm ${
+              onClick={() => navigator.share?.({ title: address, url: window.location.href })}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
                 isLight
-                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
-                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20'
+                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-200'
+                  : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'
               }`}
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-3.5 h-3.5" />
             </button>
-
-            {/* Calendar */}
             <Link
               href="/book-appointment"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all backdrop-blur-sm ${
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
                 isLight
-                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
-                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20'
+                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-200'
+                  : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'
               }`}
             >
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar min-h-0">
-        <div className="flex flex-wrap gap-2 text-sm mb-4">
+      {/* Stats chips + description + swipe */}
+      <div className="flex-shrink-0 px-5 pb-2">
+        {/* Chips row */}
+        <div className="flex flex-wrap gap-1 text-[11px] mb-2">
           {enrichedListing.subdivisionName && (
             subdivisionUrl ? (
               <Link
                 href={subdivisionUrl}
-                className={`px-3 py-1.5 rounded-lg border transition-all inline-flex items-center gap-1.5 font-medium ${
+                className={`px-2 py-0.5 rounded-md border inline-flex items-center gap-0.5 font-medium transition-all ${
                   isLight
-                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
-                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                 }`}
               >
                 {enrichedListing.subdivisionName}
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             ) : (
-              <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-                isLight
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-              }`}>
-                {enrichedListing.subdivisionName}
-              </span>
+              <span className={`px-2 py-0.5 rounded-md border font-medium ${
+                isLight ? 'bg-blue-50 text-blue-700 border-blue-200'
+                         : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>{enrichedListing.subdivisionName}</span>
             )
           )}
 
           {(enrichedListing.bedsTotal != null || enrichedListing.bedroomsTotal != null) && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {enrichedListing.bedsTotal || enrichedListing.bedroomsTotal} Bed
-            </span>
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>{enrichedListing.bedsTotal || enrichedListing.bedroomsTotal} Bed</span>
           )}
 
           {enrichedListing.bathroomsTotalInteger != null && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {enrichedListing.bathroomsTotalInteger} Bath
-            </span>
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>{enrichedListing.bathroomsTotalInteger} Bath</span>
           )}
 
           {enrichedListing.livingArea != null && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {enrichedListing.livingArea.toLocaleString()} SqFt
-            </span>
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>{enrichedListing.livingArea.toLocaleString()} SqFt</span>
           )}
 
-          {enrichedListing.lotSizeArea != null && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {Math.round(enrichedListing.lotSizeArea).toLocaleString()} Lot
-            </span>
+          {enrichedListing.lotSizeArea != null && enrichedListing.lotSizeArea > 0 && (
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>{Math.round(enrichedListing.lotSizeArea).toLocaleString()} Lot</span>
           )}
 
-          {enrichedListing.landType && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {enrichedListing.landType}
-            </span>
+          {enrichedListing.associationFee != null && enrichedListing.associationFee > 0 && (
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>${enrichedListing.associationFee}/mo HOA</span>
           )}
 
-          {enrichedListing.associationFee && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              ${enrichedListing.associationFee}/mo HOA
-            </span>
+          {enrichedListing.yearBuilt != null && enrichedListing.yearBuilt > 0 && (
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white/5 text-gray-200 border-white/10'
+            }`}>Built {enrichedListing.yearBuilt}</span>
           )}
 
-          {enrichedListing.yearBuilt && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              Built {enrichedListing.yearBuilt}
-            </span>
+          {(enrichedListing.poolYN === true || enrichedListing.pool) && (
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+            }`}>Pool</span>
           )}
 
-          {enrichedListing.daysOnMarket != null && enrichedListing.daysOnMarket > 0 && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              {enrichedListing.daysOnMarket} {enrichedListing.daysOnMarket === 1 ? 'Day' : 'Days'} on Market
-            </span>
-          )}
-
-          {enrichedListing.view && (
-            <span className={`px-3 py-1.5 rounded-lg border font-medium ${
-              isLight
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-white/5 text-gray-200 border-white/10'
-            }`}>
-              View: {enrichedListing.view}
-            </span>
+          {(enrichedListing.spaYN === true || enrichedListing.spa) && (
+            <span className={`px-2 py-0.5 rounded-md border font-medium ${
+              isLight ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+            }`}>Spa</span>
           )}
         </div>
 
-        {/* Listing Treatment - Moved up for MLS compliance (always visible) */}
-        <div className="mb-4">
+        {/* Description snippet */}
+        {enrichedListing.publicRemarks && (
+          <p className={`text-xs leading-relaxed mb-2 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+            {enrichedListing.publicRemarks.length > 100
+              ? enrichedListing.publicRemarks.substring(0, 100) + "... "
+              : enrichedListing.publicRemarks}
+            {enrichedListing.publicRemarks.length > 100 && (
+              <Link
+                href={`/mls-listings/${enrichedListing.slugAddress || enrichedListing.slug}`}
+                className={`font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-emerald-400 hover:text-emerald-300'}`}
+              >
+                view more
+              </Link>
+            )}
+          </p>
+        )}
+
+        {/* MLS Attribution */}
+        <div className="mb-2">
           <UnifiedListingAttribution listing={fullListing} />
         </div>
 
-        {enrichedListing.publicRemarks && (
-          <div className={`p-4 rounded-xl mb-4 ${
-            isLight
-              ? 'bg-gray-50 border border-gray-200'
-              : 'bg-white/[0.03] border border-white/[0.08]'
-          }`}>
-            <p className={`text-sm leading-relaxed line-clamp-4 ${
-              isLight ? 'text-gray-700' : 'text-gray-300'
-            }`}>{enrichedListing.publicRemarks}</p>
-          </div>
-        )}
-
-        {/* Swipe Buttons */}
-        <div className="flex justify-center gap-8 py-4">
-          <button onClick={() => swipeOut("left")} className="transition-transform hover:scale-110 active:scale-95" data-tour="swipe-left-button">
-            <Image src="/images/swipe-left.png" alt="Dislike" width={64} height={64} />
+        {/* Swipe Buttons — redesigned for theme */}
+        <div className="flex justify-center gap-6 py-2">
+          <button
+            onClick={() => swipeOut("left")}
+            data-tour="swipe-left-button"
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg ${
+              isLight
+                ? 'bg-red-50 border-2 border-red-200 text-red-500 hover:bg-red-100 hover:border-red-300 hover:shadow-red-200/50'
+                : 'bg-red-950/40 border-2 border-red-800/50 text-red-400 hover:bg-red-900/50 hover:border-red-600/50 hover:shadow-red-900/30'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384" />
+            </svg>
           </button>
-          <button onClick={() => swipeOut("right")} className="transition-transform hover:scale-110 active:scale-95" data-tour="swipe-right-button">
-            <Image src="/images/swipe-right.png" alt="Like" width={64} height={64} />
+          <button
+            onClick={() => swipeOut("right")}
+            data-tour="swipe-right-button"
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg ${
+              isLight
+                ? 'bg-green-50 border-2 border-green-200 text-green-500 hover:bg-green-100 hover:border-green-300 hover:shadow-green-200/50'
+                : 'bg-emerald-950/40 border-2 border-emerald-800/50 text-emerald-400 hover:bg-emerald-900/50 hover:border-emerald-600/50 hover:shadow-emerald-900/30'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904" />
+            </svg>
           </button>
         </div>
       </div>
 
       {/* CTA Footer */}
-      <div className={`px-5 py-4 border-t flex-shrink-0 ${
+      <div className={`px-5 py-3 border-t flex-shrink-0 ${
         isLight
           ? 'bg-white/70 border-gray-200/50'
           : 'bg-white/[0.02] border-white/[0.08]'

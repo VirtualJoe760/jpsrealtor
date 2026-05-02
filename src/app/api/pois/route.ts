@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
         address: 1,
         city: 1,
         businessStatus: 1,
+        website: 1,
+        phoneNumber: 1,
       })
       .limit(500)
       .lean();

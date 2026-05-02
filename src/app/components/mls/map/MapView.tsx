@@ -23,53 +23,222 @@ import { CITY_BOUNDARIES } from "@/data/city-boundaries";
 import { COUNTY_BOUNDARIES } from "@/data/county-boundaries";
 import { REGION_BOUNDARIES } from "@/data/region-boundaries";
 
-// POI marker colors by category
-const POI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  golf: { bg: "bg-green-600", text: "text-white", border: "border-green-700" },
-  park: { bg: "bg-emerald-500", text: "text-white", border: "border-emerald-600" },
-  attraction: { bg: "bg-amber-500", text: "text-white", border: "border-amber-600" },
-  school: { bg: "bg-blue-500", text: "text-white", border: "border-blue-600" },
-  shopping: { bg: "bg-purple-500", text: "text-white", border: "border-purple-600" },
-  restaurant: { bg: "bg-orange-500", text: "text-white", border: "border-orange-600" },
-  worship: { bg: "bg-indigo-500", text: "text-white", border: "border-indigo-600" },
-  healthcare: { bg: "bg-red-500", text: "text-white", border: "border-red-600" },
-  fitness: { bg: "bg-pink-500", text: "text-white", border: "border-pink-600" },
+// POI marker icon SVGs by category
+const POI_ICONS: Record<string, { icon: string; color: string; darkColor: string }> = {
+  golf:       { icon: "⛳", color: "#16a34a", darkColor: "#4ade80" },
+  park:       { icon: "🌳", color: "#059669", darkColor: "#34d399" },
+  attraction: { icon: "⭐", color: "#d97706", darkColor: "#fbbf24" },
+  school:     { icon: "🎓", color: "#2563eb", darkColor: "#60a5fa" },
+  shopping:   { icon: "🏬", color: "#9333ea", darkColor: "#c084fc" },
+  restaurant: { icon: "🍴", color: "#ea580c", darkColor: "#fb923c" },
+  worship:    { icon: "⛪", color: "#4f46e5", darkColor: "#818cf8" },
+  healthcare: { icon: "🏥", color: "#dc2626", darkColor: "#f87171" },
+  fitness:    { icon: "💪", color: "#db2777", darkColor: "#f472b6" },
 };
 
-function POIMarker({ poi, isLight }: { poi: { name: string; category: string; rating?: number }; isLight: boolean }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const colors = POI_COLORS[poi.category] || { bg: "bg-gray-500", text: "text-white", border: "border-gray-600" };
+const DEFAULT_POI_ICON = { icon: "📍", color: "#6b7280", darkColor: "#9ca3af" };
+
+interface POIData {
+  _id?: string;
+  placeId: string;
+  name: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  rating?: number;
+  userRatingsTotal?: number;
+  description?: string;
+  address?: string;
+  website?: string;
+  phoneNumber?: string;
+}
+
+// Simple distance check for clustering (in degrees, ~0.0005 ≈ 50m)
+const CLUSTER_THRESHOLD = 0.0004;
+
+function clusterPOIs(pois: POIData[]): Array<{ pois: POIData[]; lat: number; lng: number }> {
+  const used = new Set<number>();
+  const clusters: Array<{ pois: POIData[]; lat: number; lng: number }> = [];
+
+  for (let i = 0; i < pois.length; i++) {
+    if (used.has(i)) continue;
+    const group: POIData[] = [pois[i]];
+    used.add(i);
+
+    for (let j = i + 1; j < pois.length; j++) {
+      if (used.has(j)) continue;
+      const dLat = Math.abs(pois[i].latitude - pois[j].latitude);
+      const dLng = Math.abs(pois[i].longitude - pois[j].longitude);
+      if (dLat < CLUSTER_THRESHOLD && dLng < CLUSTER_THRESHOLD) {
+        group.push(pois[j]);
+        used.add(j);
+      }
+    }
+
+    // Average position for cluster
+    const lat = group.reduce((s, p) => s + p.latitude, 0) / group.length;
+    const lng = group.reduce((s, p) => s + p.longitude, 0) / group.length;
+    clusters.push({ pois: group, lat, lng });
+  }
+
+  return clusters;
+}
+
+function POIMarker({ poi, isLight }: { poi: POIData; isLight: boolean }) {
+  const [showCard, setShowCard] = useState(false);
+  const markerRef = useRef<HTMLDivElement>(null);
+  const iconInfo = POI_ICONS[poi.category] || DEFAULT_POI_ICON;
+
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${poi.latitude},${poi.longitude}&query_place_id=${poi.placeId}`;
+
+  // Elevate the maplibregl-marker parent when card is open
+  useEffect(() => {
+    const el = markerRef.current?.closest(".maplibregl-marker") as HTMLElement | null;
+    if (el) el.style.zIndex = showCard ? "9999" : "1";
+  }, [showCard]);
 
   return (
-    <div
-      className="relative cursor-pointer"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      {/* Small colored dot with subtle label */}
-      <div className="flex items-center gap-1">
-        <div className={`w-2 h-2 rounded-full ${colors.bg} border ${colors.border} shadow-sm`} />
-        <span className={`text-[9px] font-medium leading-none whitespace-nowrap max-w-[100px] truncate ${
-          isLight ? "text-gray-700" : "text-neutral-300"
-        }`} style={{ textShadow: isLight ? '0 0 3px white, 0 0 3px white' : '0 0 3px black, 0 0 3px black' }}>
-          {poi.name}
-        </span>
-      </div>
-      {/* Tooltip on hover */}
+    <div ref={markerRef} className="relative">
+      {/* Marker icon */}
+      <button
+        onClick={() => setShowCard(!showCard)}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all shadow-md hover:shadow-lg hover:scale-105 ${
+          isLight
+            ? "bg-white/90 border border-gray-200/80 text-gray-800"
+            : "bg-gray-900/90 border border-white/15 text-gray-200"
+        }`}
+        style={{ backdropFilter: "blur(8px)" }}
+      >
+        <span className="text-sm leading-none">{iconInfo.icon}</span>
+        <span className="max-w-[90px] truncate leading-tight">{poi.name}</span>
+      </button>
+
+      {/* Info card on click */}
+      {showCard && (
+        <div
+          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-xl shadow-2xl overflow-hidden z-[300] ${
+            isLight
+              ? "bg-white border border-gray-200 text-gray-900"
+              : "bg-gray-900 border border-white/15 text-white"
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">{iconInfo.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm leading-tight">{poi.name}</p>
+                <p className={`text-[10px] mt-0.5 capitalize ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                  {poi.category}
+                  {poi.address && ` · ${poi.address}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCard(false)}
+                className={`p-1 rounded-md ${isLight ? "hover:bg-gray-100" : "hover:bg-white/10"}`}
+              >
+                <span className="text-xs">✕</span>
+              </button>
+            </div>
+
+            {/* Rating */}
+            {poi.rating && (
+              <div className="flex items-center gap-1 mt-2">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span key={star} className="text-[10px]" style={{ color: star <= Math.round(poi.rating!) ? "#fbbf24" : isLight ? "#d1d5db" : "#4b5563" }}>
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <span className={`text-[10px] ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                  {poi.rating} ({poi.userRatingsTotal?.toLocaleString() || 0})
+                </span>
+              </div>
+            )}
+
+            {/* Links */}
+            <div className="flex gap-2 mt-2.5">
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex-1 text-center text-[11px] font-medium py-1.5 rounded-lg transition-colors ${
+                  isLight
+                    ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "bg-white/10 text-emerald-400 hover:bg-white/15"
+                }`}
+              >
+                Google Maps ↗
+              </a>
+              {poi.website && (
+                <a
+                  href={poi.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex-1 text-center text-[11px] font-medium py-1.5 rounded-lg transition-colors ${
+                    isLight
+                      ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-white/10 text-gray-300 hover:bg-white/15"
+                  }`}
+                >
+                  Website ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function POIClusterMarker({ pois: clusterPois, isLight }: { pois: POIData[]; isLight: boolean }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const clusterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = clusterRef.current?.closest(".maplibregl-marker") as HTMLElement | null;
+    if (el) el.style.zIndex = showTooltip ? "9999" : "1";
+  }, [showTooltip]);
+
+  return (
+    <div ref={clusterRef} className="relative">
+      <button
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => setShowTooltip(!showTooltip)}
+        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all shadow-md hover:shadow-lg hover:scale-105 ${
+          isLight
+            ? "bg-amber-50 border border-amber-200 text-amber-800"
+            : "bg-amber-900/40 border border-amber-500/30 text-amber-300"
+        }`}
+        style={{ backdropFilter: "blur(8px)" }}
+      >
+        <span className="text-sm">✦</span>
+        <span>{clusterPois.length}</span>
+      </button>
+
       {showTooltip && (
         <div
-          className={`absolute bottom-full left-0 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap z-[200] shadow-xl ${
+          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2.5 rounded-xl shadow-2xl z-[300] max-w-[220px] ${
             isLight
-              ? "bg-white text-gray-900 border border-gray-200"
-              : "bg-neutral-900 text-white border border-neutral-700"
+              ? "bg-white border border-gray-200 text-gray-900"
+              : "bg-gray-900 border border-white/15 text-white"
           }`}
         >
-          <div className="font-semibold">{poi.name}</div>
-          {poi.rating && (
-            <div className={`text-[10px] mt-0.5 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
-              ★ {poi.rating} rating
-            </div>
-          )}
+          <p className={`text-[10px] font-semibold mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+            {clusterPois.length} places nearby
+          </p>
+          {clusterPois.map((p, i) => {
+            const ic = POI_ICONS[p.category] || DEFAULT_POI_ICON;
+            return (
+              <div key={i} className="flex items-center gap-1.5 py-0.5">
+                <span className="text-xs">{ic.icon}</span>
+                <span className="text-[11px] truncate">{p.name}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -111,6 +280,8 @@ interface MapViewProps {
     photoUrl?: string;
     address?: string;
     city?: string;
+    website?: string;
+    phoneNumber?: string;
   }>;
 }
 
@@ -1845,16 +2016,24 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
         ) : null}
 
         {/* POI Markers — community landmarks, golf courses, parks, etc. */}
-        {currentZoom >= 14 && pois.length > 0 && pois.map((poi) => (
-          <Marker
-            key={`poi-${poi.placeId}`}
-            longitude={poi.longitude}
-            latitude={poi.latitude}
-            anchor="bottom"
-          >
-            <POIMarker poi={poi} isLight={isLight} />
-          </Marker>
-        ))}
+        {currentZoom >= 14 && pois.length > 0 && (() => {
+          const clusters = clusterPOIs(pois as POIData[]);
+          return clusters.map((cluster, i) => (
+            <Marker
+              key={`poi-cluster-${i}`}
+              longitude={cluster.lng}
+              latitude={cluster.lat}
+              anchor="bottom"
+              style={{ zIndex: 1 }}
+            >
+              {cluster.pois.length === 1 ? (
+                <POIMarker poi={cluster.pois[0]} isLight={isLight} />
+              ) : (
+                <POIClusterMarker pois={cluster.pois} isLight={isLight} />
+              )}
+            </Marker>
+          ));
+        })()}
 
         {/* Hover stats overlay is rendered at the top-center of the map (see HoverStatsOverlay component above) */}
       </Map>
