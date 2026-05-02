@@ -175,8 +175,8 @@ export async function proxy(request: NextRequest) {
   //    Show the ChatRealty platform landing page at /
   // -----------------------------------------------------------------------
   const isPlatform =
-    bareHost.includes("chatrealty") ||
-    bareHost === "localhost";
+    bareHost.includes("chatrealty") &&
+    !bareHost.includes(".chatrealty"); // subdomains are agent sites, not platform
 
   if (isPlatform && pathname === "/") {
     const url = request.nextUrl.clone();
