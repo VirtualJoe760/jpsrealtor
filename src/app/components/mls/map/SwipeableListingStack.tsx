@@ -63,6 +63,20 @@ export default function SwipeableListingStack({
   const [history, setHistory] = useState<SwipeHistoryItem[]>([]);
   const [mounted, setMounted] = useState(false);
 
+  // Stable portal container — must be declared before any early returns
+  const portalRef = useRef<HTMLDivElement | null>(null);
+  if (!portalRef.current && typeof document !== 'undefined') {
+    const existing = document.getElementById('swipeable-stack-portal');
+    if (existing) {
+      portalRef.current = existing as HTMLDivElement;
+    } else {
+      const el = document.createElement('div');
+      el.id = 'swipeable-stack-portal';
+      document.body.appendChild(el);
+      portalRef.current = el;
+    }
+  }
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -283,5 +297,7 @@ export default function SwipeableListingStack({
     </div>
   );
 
-  return createPortal(panel, document.body);
+  if (!portalRef.current) return null;
+
+  return createPortal(panel, portalRef.current);
 }

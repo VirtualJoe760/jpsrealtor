@@ -411,6 +411,92 @@ export async function createFullMetaCampaign(
 }
 
 // ---------------------------------------------------------------------------
+// Campaign Insights (Performance Metrics)
+// ---------------------------------------------------------------------------
+
+export interface MetaCampaignInsights {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  reach: number;
+  frequency: number;
+  dateStart: string;
+  dateStop: string;
+}
+
+/**
+ * Fetch campaign-level insights from Meta Marketing API.
+ * Returns lifetime metrics by default, or a specific date range.
+ */
+export async function getCampaignInsights(
+  campaignId: string,
+  dateRange?: { since: string; until: string }
+): Promise<MetaCampaignInsights | null> {
+  const fields = 'impressions,clicks,spend,ctr,cpc,actions,reach,frequency,date_start,date_stop';
+  const timeRange = dateRange
+    ? `&time_range=${encodeURIComponent(JSON.stringify({ since: dateRange.since, until: dateRange.until }))}`
+    : '&date_preset=maximum';
+
+  const data = await metaRequest(
+    `/${campaignId}/insights?fields=${fields}${timeRange}`
+  );
+
+  if (!data.data || data.data.length === 0) return null;
+
+  const row = data.data[0];
+  const conversions = (row.actions || [])
+    .filter((a: any) => a.action_type === 'offsite_conversion.fb_pixel_lead' || a.action_type === 'lead')
+    .reduce((sum: number, a: any) => sum + parseInt(a.value || '0'), 0);
+
+  return {
+    impressions: parseInt(row.impressions || '0'),
+    clicks: parseInt(row.clicks || '0'),
+    spend: parseFloat(row.spend || '0'),
+    ctr: parseFloat(row.ctr || '0'),
+    cpc: parseFloat(row.cpc || '0'),
+    conversions,
+    reach: parseInt(row.reach || '0'),
+    frequency: parseFloat(row.frequency || '0'),
+    dateStart: row.date_start,
+    dateStop: row.date_stop,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Campaign Status Management
+// ---------------------------------------------------------------------------
+
+export type MetaCampaignStatusUpdate = 'ACTIVE' | 'PAUSED' | 'DELETED';
+
+/**
+ * Update a campaign's effective status.
+ */
+export async function updateCampaignStatus(
+  campaignId: string,
+  status: MetaCampaignStatusUpdate
+): Promise<{ success: boolean }> {
+  await metaRequest(`/${campaignId}`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  });
+  return { success: true };
+}
+
+/**
+ * Get current campaign status and details from Meta.
+ */
+export async function getCampaignDetails(
+  campaignId: string
+): Promise<{ id: string; name: string; status: string; effectiveStatus: string; dailyBudget: string; startTime?: string; createdTime: string }> {
+  return metaRequest(
+    `/${campaignId}?fields=id,name,status,effective_status,daily_budget,start_time,created_time`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Check if Meta Ads is configured
 // ---------------------------------------------------------------------------
 

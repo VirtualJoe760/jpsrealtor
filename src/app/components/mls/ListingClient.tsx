@@ -191,6 +191,8 @@ export default function ListingClient({
   const isLight = currentTheme === "lightgradient";
 
   const [copied, setCopied] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
   const daysOnMarket = calculateDaysOnMarket(listing);
 
   // Track listing view on mount
@@ -212,6 +214,90 @@ export default function ListingClient({
       subdivision: listing.subdivisionName,
     });
   }, [listing.listingKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if listing is already favorited (localStorage for guests, API for logged-in)
+  useEffect(() => {
+    const key = listing.listingKey || listing.listingId || '';
+    if (!key) return;
+    // Check localStorage first (works for guests and as a fast check)
+    try {
+      const stored = localStorage.getItem('likedListings');
+      if (stored) {
+        const liked = JSON.parse(stored);
+        if (Array.isArray(liked) && liked.some((l: any) => l.listingKey === key || l.listingId === key)) {
+          setIsFavorited(true);
+          return;
+        }
+      }
+    } catch {}
+    // Also check API for authenticated users
+    fetch('/api/user/favorites')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.favorites?.some((f: any) => f.listingKey === key)) {
+          setIsFavorited(true);
+        }
+      })
+      .catch(() => {});
+  }, [listing.listingKey, listing.listingId]);
+
+  const toggleFavorite = async () => {
+    const key = listing.listingKey || listing.listingId || '';
+    if (!key || favoriteLoading) return;
+    setFavoriteLoading(true);
+    const wasFavorited = isFavorited;
+    setIsFavorited(!wasFavorited); // Optimistic update
+
+    try {
+      if (wasFavorited) {
+        // Remove from favorites
+        const res = await fetch(`/api/user/favorites/${key}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to remove');
+        // Also remove from localStorage
+        try {
+          const stored = localStorage.getItem('likedListings');
+          if (stored) {
+            const liked = JSON.parse(stored).filter((l: any) => l.listingKey !== key && l.listingId !== key);
+            localStorage.setItem('likedListings', JSON.stringify(liked));
+          }
+        } catch {}
+      } else {
+        // Add to favorites
+        const listingData = {
+          listingKey: key,
+          listingId: listing.listingId,
+          address: address,
+          city: listing.city,
+          subdivisionName: listing.subdivisionName,
+          listPrice: listing.listPrice,
+          bedroomsTotal: listing.bedroomsTotal,
+          bathroomsTotalDecimal: listing.bathroomsTotalDecimal,
+          livingArea: listing.livingArea,
+          slugAddress: (listing as any).slugAddress,
+          photos: media.slice(0, 1).map(m => ({ Uri800: m.src })),
+        };
+        const res = await fetch(`/api/user/favorites/${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listingData }),
+        });
+        if (!res.ok) throw new Error('Failed to save');
+        // Also save to localStorage for guests
+        try {
+          const stored = localStorage.getItem('likedListings');
+          const liked = stored ? JSON.parse(stored) : [];
+          if (!liked.some((l: any) => l.listingKey === key)) {
+            liked.push(listingData);
+            localStorage.setItem('likedListings', JSON.stringify(liked));
+          }
+        } catch {}
+      }
+    } catch {
+      setIsFavorited(wasFavorited); // Rollback
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
   // Generate subdivision URL
   const getSubdivisionUrl = () => {
@@ -272,9 +358,9 @@ export default function ListingClient({
             <ChevronLeft className="w-4 h-4" />
             {"Back to " + backLink.label}
           </Link>
-          <div className="flex items-center gap-1.5 md:hidden">
+          <div className="flex items-center gap-1.5">
             <Link
-              href="/?view=chat"
+              href="/chap?view=chat"
               className={`p-2.5 rounded-full transition-all ${
                 isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
               }`}
@@ -283,38 +369,40 @@ export default function ListingClient({
               <MessageCircle className="w-5 h-5" />
             </Link>
             <Link
-              href={`/mls-listings/${(listing as any).slugAddress || listing.listingKey}/map`}
+              href={`/chap?view=map${(listing as any).latitude && (listing as any).longitude ? `&lat=${(listing as any).latitude}&lng=${(listing as any).longitude}&zoom=14.0` : ''}&listing=${(listing as any).slugAddress || listing.listingKey}`}
               className={`p-2.5 rounded-full transition-all ${
                 isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
               }`}
-              title="Map"
+              title="View on map"
             >
               <Map className="w-5 h-5" />
             </Link>
             <button
               onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: address, url: window.location.href });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }
+                navigator.clipboard.writeText(window.location.href);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
               }}
               className={`p-2.5 rounded-full transition-all ${
-                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+                copied
+                  ? isLight ? "bg-green-100 text-green-600" : "bg-green-900/40 text-green-400"
+                  : isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
               }`}
-              title="Share"
+              title={copied ? "Link copied!" : "Copy link"}
             >
-              <Share2 className="w-5 h-5" />
+              {copied ? <span className="text-xs font-medium px-1">Copied!</span> : <Share2 className="w-5 h-5" />}
             </button>
             <button
+              onClick={toggleFavorite}
+              disabled={favoriteLoading}
               className={`p-2.5 rounded-full transition-all ${
-                isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
-              }`}
-              title="Save"
+                isFavorited
+                  ? "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  : isLight ? "hover:bg-gray-200 text-gray-600" : "hover:bg-gray-800 text-gray-400"
+              } disabled:opacity-50`}
+              title={isFavorited ? "Remove from favorites" : "Save to favorites"}
             >
-              <Heart className="w-5 h-5" />
+              <Heart className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} />
             </button>
           </div>
         </div>
@@ -986,7 +1074,8 @@ export default function ListingClient({
               excludeListingKey={listing.listingKey || ""}
               listPrice={(listing as any).listPrice}
             />
-            <NearbyListingsMap
+            {/* Temporarily hidden — Explore map + CMA stuck loading while data pipeline catches up */}
+            {/* <NearbyListingsMap
               city={(listing as any).city}
               subdivisionName={listing.subdivisionName}
               excludeListingKey={listing.listingKey || ""}
@@ -994,12 +1083,12 @@ export default function ListingClient({
                 ? { latitude: (listing as any).latitude, longitude: (listing as any).longitude }
                 : undefined
               }
-            />
+            /> */}
           </>
         )}
 
-        {/* CMA Section */}
-        <CMASection listingKey={listing.listingKey || ""} subdivisionName={listing.subdivisionName} isLight={isLight} />
+        {/* CMA Section — temporarily hidden */}
+        {/* <CMASection listingKey={listing.listingKey || ""} subdivisionName={listing.subdivisionName} isLight={isLight} /> */}
       </div>
     </SpaticalBackground>
   );

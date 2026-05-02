@@ -397,93 +397,306 @@ function HistoryTab({ campaign }: { campaign: Campaign }) {
 }
 
 function AnalyticsTab({ campaign }: { campaign: Campaign }) {
-  const { textPrimary, textSecondary } = useThemeClasses();
+  const { textPrimary, textSecondary, cardBg, cardBorder } = useThemeClasses();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
 
+  const [adMetrics, setAdMetrics] = useState<any>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [togglingPlatform, setTogglingPlatform] = useState<string | null>(null);
+
+  const hasAds = campaign.activeStrategies.metaAds || campaign.activeStrategies.googleAds;
+
+  const fetchAdMetrics = useCallback(async () => {
+    if (!hasAds) return;
+    setLoadingMetrics(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/ad-metrics`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdMetrics(data);
+      }
+    } catch (err) {
+      console.error('[AnalyticsTab] Error fetching ad metrics:', err);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  }, [campaign.id, hasAds]);
+
+  useEffect(() => { fetchAdMetrics(); }, [fetchAdMetrics]);
+
+  const handleToggleStatus = async (platform: string, currentStatus: string) => {
+    const action = ['ACTIVE', 'active'].includes(currentStatus) ? 'pause' : 'resume';
+    setTogglingPlatform(platform);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/ad-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, action }),
+      });
+      if (res.ok) {
+        toast.success(`${platform === 'meta' ? 'Meta' : 'Google'} campaign ${action === 'pause' ? 'paused' : 'resumed'}`);
+        fetchAdMetrics();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || `Failed to ${action} campaign`);
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setTogglingPlatform(null);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const s = status?.toUpperCase();
+    if (s === 'ACTIVE') return isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400';
+    if (s === 'PAUSED') return isLight ? 'bg-yellow-100 text-yellow-700' : 'bg-yellow-900/30 text-yellow-400';
+    return isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-400';
+  };
+
   return (
-    <div>
-      <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>
+    <div className="space-y-6">
+      <h3 className={`text-lg font-semibold ${textPrimary}`}>
         Performance Analytics
       </h3>
-      <div className="space-y-6">
-        {/* Engagement Rates */}
+
+      {/* Engagement Rates (voicemail/email) */}
+      {(campaign.analytics.voicemailsSent || campaign.analytics.emailsSent) ? (
         <div>
-          <h4 className={`text-sm font-medium ${textPrimary} mb-3`}>
-            Engagement Rates
-          </h4>
+          <h4 className={`text-sm font-medium ${textPrimary} mb-3`}>Engagement Rates</h4>
           <div className="space-y-3">
-            {campaign.analytics.voicemailsSent && (
+            {campaign.analytics.voicemailsSent ? (
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className={textSecondary}>Voicemail Listen Rate</span>
                   <span className={`font-medium ${textPrimary}`}>
-                    {Math.round(
-                      ((campaign.analytics.voicemailsListened || 0) /
-                        campaign.analytics.voicemailsSent) *
-                        100
-                    )}
-                    %
+                    {Math.round(((campaign.analytics.voicemailsListened || 0) / campaign.analytics.voicemailsSent) * 100)}%
                   </span>
                 </div>
                 <div className={`w-full ${isLight ? 'bg-gray-200' : 'bg-slate-700'} rounded-full h-2`}>
-                  <div
-                    className="bg-purple-600 h-2 rounded-full transition-all"
-                    style={{
-                      width: `${
-                        ((campaign.analytics.voicemailsListened || 0) /
-                          campaign.analytics.voicemailsSent) *
-                        100
-                      }%`,
-                    }}
-                  />
+                  <div className="bg-purple-600 h-2 rounded-full transition-all"
+                    style={{ width: `${((campaign.analytics.voicemailsListened || 0) / campaign.analytics.voicemailsSent) * 100}%` }} />
                 </div>
               </div>
-            )}
-            {campaign.analytics.emailsSent && (
+            ) : null}
+            {campaign.analytics.emailsSent ? (
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className={textSecondary}>Email Open Rate</span>
                   <span className={`font-medium ${textPrimary}`}>
-                    {Math.round(
-                      ((campaign.analytics.emailsOpened || 0) / campaign.analytics.emailsSent) *
-                        100
-                    )}
-                    %
+                    {Math.round(((campaign.analytics.emailsOpened || 0) / campaign.analytics.emailsSent) * 100)}%
                   </span>
                 </div>
                 <div className={`w-full ${isLight ? 'bg-gray-200' : 'bg-slate-700'} rounded-full h-2`}>
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all"
-                    style={{
-                      width: `${
-                        ((campaign.analytics.emailsOpened || 0) / campaign.analytics.emailsSent) *
-                        100
-                      }%`,
-                    }}
-                  />
+                  <div className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${((campaign.analytics.emailsOpened || 0) / campaign.analytics.emailsSent) * 100}%` }} />
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
+      ) : null}
 
-        {/* Conversion Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className={`p-4 ${isLight ? 'bg-blue-50' : 'bg-blue-900/20'} rounded-lg`}>
-            <div className={`text-2xl font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'} mb-1`}>
-              {campaign.analytics.responses}
-            </div>
-            <div className={`text-sm ${textSecondary}`}>Total Responses</div>
+      {/* Conversion Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className={`p-4 ${isLight ? 'bg-blue-50' : 'bg-blue-900/20'} rounded-lg`}>
+          <div className={`text-2xl font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'} mb-1`}>
+            {campaign.analytics.responses}
           </div>
-          <div className={`p-4 ${isLight ? 'bg-green-50' : 'bg-green-900/20'} rounded-lg`}>
-            <div className={`text-2xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'} mb-1`}>
-              {campaign.analytics.conversions}
-            </div>
-            <div className={`text-sm ${textSecondary}`}>Conversions</div>
+          <div className={`text-sm ${textSecondary}`}>Total Responses</div>
+        </div>
+        <div className={`p-4 ${isLight ? 'bg-green-50' : 'bg-green-900/20'} rounded-lg`}>
+          <div className={`text-2xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'} mb-1`}>
+            {campaign.analytics.conversions}
           </div>
+          <div className={`text-sm ${textSecondary}`}>Conversions</div>
         </div>
       </div>
+
+      {/* ===== Ad Performance Section ===== */}
+      {hasAds && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className={`text-sm font-medium ${textPrimary}`}>Ad Performance</h4>
+            <button onClick={fetchAdMetrics} disabled={loadingMetrics}
+              className={`text-xs px-2 py-1 rounded ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' : 'bg-slate-700 hover:bg-slate-600 text-gray-300'} disabled:opacity-50`}>
+              {loadingMetrics ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {loadingMetrics && !adMetrics ? (
+            <div className="flex items-center justify-center py-8">
+              <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${isLight ? 'border-blue-600' : 'border-emerald-500'}`} />
+            </div>
+          ) : adMetrics?.platforms?.length > 0 ? (
+            <div className="space-y-4">
+              {adMetrics.platforms.map((p: any) => (
+                <div key={p.platform} className={`${cardBg} ${cardBorder} rounded-lg overflow-hidden`}>
+                  {/* Platform Header */}
+                  <div className={`px-4 py-3 flex items-center justify-between ${
+                    p.platform === 'meta'
+                      ? isLight ? 'bg-pink-50' : 'bg-pink-900/10'
+                      : isLight ? 'bg-blue-50' : 'bg-blue-900/10'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{p.platform === 'meta' ? '\uD83D\uDFE3' : '\uD83D\uDD35'}</span>
+                      <div>
+                        <h5 className={`font-semibold ${textPrimary}`}>
+                          {p.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+                        </h5>
+                        {p.name && <p className={`text-xs ${textSecondary}`}>{p.name}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(p.status)}`}>
+                        {p.status?.toUpperCase() || 'UNKNOWN'}
+                      </span>
+                      {p.platform === 'meta' && p.status !== 'ERROR' && (
+                        <button
+                          onClick={() => handleToggleStatus(p.platform, p.status)}
+                          disabled={togglingPlatform === p.platform}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            ['ACTIVE', 'active'].includes(p.status)
+                              ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                              : `${isLight ? 'bg-green-500 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white`
+                          } disabled:opacity-50`}
+                          title={['ACTIVE', 'active'].includes(p.status) ? 'Pause campaign' : 'Resume campaign'}
+                        >
+                          {togglingPlatform === p.platform ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          ) : ['ACTIVE', 'active'].includes(p.status) ? (
+                            <PauseIcon className="w-4 h-4" />
+                          ) : (
+                            <PlayIcon className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Metrics Grid */}
+                  {p.metrics && p.status !== 'ERROR' && (
+                    <div className="p-4">
+                      {/* Duration & Budget Row */}
+                      <div className={`flex flex-wrap gap-4 text-sm mb-4 pb-3 border-b ${isLight ? 'border-gray-200' : 'border-slate-700'}`}>
+                        {p.startDate && (
+                          <div>
+                            <span className={textSecondary}>Started: </span>
+                            <span className={`font-medium ${textPrimary}`}>{new Date(p.startDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {p.daysRunning > 0 && (
+                          <div>
+                            <span className={textSecondary}>Running: </span>
+                            <span className={`font-medium ${textPrimary}`}>{p.daysRunning} day{p.daysRunning !== 1 ? 's' : ''}</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className={textSecondary}>Daily budget: </span>
+                          <span className={`font-medium ${textPrimary}`}>${p.dailyBudget?.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {/* Performance Metrics */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <MetricCard label="Impressions" value={p.metrics.impressions?.toLocaleString()} isLight={isLight} />
+                        <MetricCard label="Clicks" value={p.metrics.clicks?.toLocaleString()} isLight={isLight} />
+                        <MetricCard label="CTR" value={`${(p.metrics.ctr * 100).toFixed(2)}%`} isLight={isLight} />
+                        <MetricCard label="CPC" value={`$${p.metrics.cpc?.toFixed(2)}`} isLight={isLight} />
+                        <MetricCard label="Spend" value={`$${p.metrics.spend?.toFixed(2)}`} isLight={isLight} />
+                        <MetricCard label="Conversions" value={p.metrics.conversions?.toLocaleString()} isLight={isLight} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {p.status === 'ERROR' && (
+                    <div className={`p-4 text-sm ${isLight ? 'text-red-600' : 'text-red-400'}`}>
+                      {p.error || 'Failed to fetch metrics from platform'}
+                    </div>
+                  )}
+
+                  {/* Ad Creative Preview */}
+                  {p.creative && (
+                    <div className={`px-4 pb-4`}>
+                      <details className={`${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <summary className="text-xs font-medium cursor-pointer hover:opacity-80 mb-2">Ad Creative Preview</summary>
+                        <div className={`p-3 rounded-lg ${isLight ? 'bg-gray-50 border border-gray-200' : 'bg-slate-700/50 border border-slate-600'}`}>
+                          {p.creative.imageUrl && (
+                            <img src={p.creative.imageUrl} alt="Ad creative" className="w-full max-h-32 object-cover rounded mb-2" />
+                          )}
+                          {p.creative.headline && (
+                            <p className={`font-semibold text-sm ${textPrimary}`}>{p.creative.headline}</p>
+                          )}
+                          {(p.creative.headlines || []).length > 0 && (
+                            <p className={`font-semibold text-sm ${textPrimary}`}>{p.creative.headlines.filter(Boolean).join(' | ')}</p>
+                          )}
+                          {p.creative.primaryText && (
+                            <p className={`text-xs ${textSecondary} mt-1`}>{p.creative.primaryText}</p>
+                          )}
+                          {(p.creative.descriptions || []).length > 0 && (
+                            <p className={`text-xs ${textSecondary} mt-1`}>{p.creative.descriptions.filter(Boolean).join(' ')}</p>
+                          )}
+                          {p.creative.landingPageUrl && (
+                            <p className={`text-xs mt-1 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{p.creative.landingPageUrl}</p>
+                          )}
+                          {p.creative.placements?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {p.creative.placements.map((pl: string) => (
+                                <span key={pl} className={`text-xs px-2 py-0.5 rounded-full ${isLight ? 'bg-gray-200 text-gray-600' : 'bg-slate-600 text-gray-300'}`}>
+                                  {pl.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+
+                  {/* Ads Manager Link */}
+                  {p.managerUrl && (
+                    <div className={`px-4 pb-3`}>
+                      <a href={p.managerUrl} target="_blank" rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 text-xs font-medium ${
+                          p.platform === 'meta'
+                            ? isLight ? 'text-pink-600 hover:text-pink-700' : 'text-pink-400 hover:text-pink-300'
+                            : isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'
+                        }`}>
+                        <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                        View in {p.platform === 'meta' ? 'Meta' : 'Google'} Ads Manager
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Total Spend Summary */}
+              {adMetrics.totalSpend > 0 && (
+                <div className={`p-3 rounded-lg text-center ${isLight ? 'bg-gray-50 border border-gray-200' : 'bg-slate-700/50 border border-slate-600'}`}>
+                  <span className={`text-sm ${textSecondary}`}>Total ad spend: </span>
+                  <span className={`font-bold ${textPrimary}`}>${adMetrics.totalSpend.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={`${cardBg} ${cardBorder} rounded-lg p-6 text-center`}>
+              <ChartBarIcon className={`w-10 h-10 ${textSecondary} mx-auto mb-2`} />
+              <p className={`text-sm ${textSecondary}`}>No ad metrics available yet. Launch ads from the campaign wizard to see performance data here.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({ label, value, isLight }: { label: string; value: string; isLight: boolean }) {
+  return (
+    <div className={`p-2.5 rounded-lg text-center ${isLight ? 'bg-gray-50' : 'bg-slate-700/30'}`}>
+      <div className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{value}</div>
+      <div className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
     </div>
   );
 }

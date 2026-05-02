@@ -94,6 +94,8 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [enableMeta, setEnableMeta] = useState(true);
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchResult, setLaunchResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [launchData, setLaunchData] = useState<any>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const inputClasses = `w-full px-3 py-2 rounded-lg border ${
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
@@ -344,8 +346,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
         success: data.success,
         message: data.message || (data.success ? 'Campaigns launched!' : 'Launch failed'),
       });
-      if (data.success && !completedSteps.includes('launch')) {
-        setCompletedSteps([...completedSteps, 'launch']);
+      if (data.success) {
+        setLaunchData(data);
+        setShowSuccessModal(true);
+        if (!completedSteps.includes('launch')) {
+          setCompletedSteps([...completedSteps, 'launch']);
+        }
       }
       onRefresh?.();
     } catch {
@@ -980,16 +986,10 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                 <p className={`text-sm ${textSecondary}`}>~{adBudgetToCredits(totalBudget, 30)} credits/month</p>
               </div>
 
-              {/* Launch Result */}
-              {launchResult && (
-                <div className={`p-4 rounded-lg mb-4 ${
-                  launchResult.success
-                    ? isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'
-                    : isLight ? 'bg-red-50 border border-red-200' : 'bg-red-900/20 border border-red-700/50'
-                }`}>
-                  <p className={`text-sm font-medium ${
-                    launchResult.success ? isLight ? 'text-green-700' : 'text-green-400' : isLight ? 'text-red-700' : 'text-red-400'
-                  }`}>{launchResult.message}</p>
+              {/* Launch Error (inline) */}
+              {launchResult && !launchResult.success && (
+                <div className={`p-4 rounded-lg mb-4 ${isLight ? 'bg-red-50 border border-red-200' : 'bg-red-900/20 border border-red-700/50'}`}>
+                  <p className={`text-sm font-medium ${isLight ? 'text-red-700' : 'text-red-400'}`}>{launchResult.message}</p>
                 </div>
               )}
 
@@ -1022,6 +1022,23 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   </button>
                 </div>
               )}
+
+              {/* Launched — show link to return */}
+              {launchResult?.success && (
+                <div className="space-y-3">
+                  <div className={`p-4 rounded-lg text-center ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
+                    <p className={`text-sm font-medium ${isLight ? 'text-green-700' : 'text-green-400'}`}>
+                      Campaigns created successfully!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowSuccessModal(true)}
+                    className={`w-full py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  >
+                    View Launch Details
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-start">
@@ -1032,6 +1049,108 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
           </div>
         )}
       </div>
+
+      {/* ============ SUCCESS MODAL ============ */}
+      {showSuccessModal && launchData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSuccessModal(false)}>
+          <div
+            className={`w-full max-w-lg rounded-2xl shadow-2xl ${isLight ? 'bg-white' : 'bg-slate-800'} overflow-hidden`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className={`p-6 text-center ${isLight ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-green-600 to-emerald-600'} text-white`}>
+              <div className="text-4xl mb-2">&#x2705;</div>
+              <h2 className="text-xl font-bold">Campaigns Launched!</h2>
+              <p className="text-sm text-green-100 mt-1">Created PAUSED — review and enable in Ads Manager</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Campaign IDs */}
+              {launchData.results?.meta?.success && (
+                <div className={`p-4 rounded-lg ${isLight ? 'bg-pink-50 border border-pink-200' : 'bg-pink-900/20 border border-pink-700/50'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className={`font-semibold ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>Meta Ads</h4>
+                    <span className={`text-xs px-2 py-1 rounded-full ${isLight ? 'bg-yellow-100 text-yellow-700' : 'bg-yellow-900/30 text-yellow-400'}`}>PAUSED</span>
+                  </div>
+                  <p className={`text-xs font-mono ${textSecondary} mb-2`}>
+                    Campaign ID: {launchData.results.meta.campaignId}
+                  </p>
+                  <a
+                    href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${process.env.NEXT_PUBLIC_META_AD_ACCOUNT_ID?.replace('act_', '') || '160011552'}&campaign_ids=${launchData.results.meta.campaignId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1.5 text-sm font-medium ${isLight ? 'text-pink-600 hover:text-pink-700' : 'text-pink-400 hover:text-pink-300'}`}
+                  >
+                    View in Meta Ads Manager &#x2197;
+                  </a>
+                </div>
+              )}
+
+              {launchData.results?.google?.success && (
+                <div className={`p-4 rounded-lg ${isLight ? 'bg-blue-50 border border-blue-200' : 'bg-blue-900/20 border border-blue-700/50'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className={`font-semibold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>Google Ads</h4>
+                    <span className={`text-xs px-2 py-1 rounded-full ${isLight ? 'bg-yellow-100 text-yellow-700' : 'bg-yellow-900/30 text-yellow-400'}`}>PAUSED</span>
+                  </div>
+                  <p className={`text-xs font-mono ${textSecondary} mb-2`}>
+                    Resource: {launchData.results.google.campaignResourceName}
+                  </p>
+                  <a
+                    href="https://ads.google.com/aw/campaigns"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1.5 text-sm font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                  >
+                    View in Google Ads Manager &#x2197;
+                  </a>
+                </div>
+              )}
+
+              {/* Errors */}
+              {launchData.results?.meta && !launchData.results.meta.success && (
+                <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-900/20 border border-red-700/50 text-red-400'}`}>
+                  Meta: {launchData.results.meta.error}
+                </div>
+              )}
+              {launchData.results?.google && !launchData.results.google.success && (
+                <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-900/20 border border-red-700/50 text-red-400'}`}>
+                  Google: {launchData.results.google.error}
+                </div>
+              )}
+
+              {/* Credit Cost Summary */}
+              {launchData.credits && (
+                <div className={`p-4 rounded-lg ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
+                  <h4 className={`font-semibold ${isLight ? 'text-green-700' : 'text-green-400'} mb-2`}>Credit Cost</h4>
+                  <div className={`grid grid-cols-2 gap-2 text-sm ${textSecondary}`}>
+                    <span>Daily budget:</span>
+                    <span className={`font-medium ${textPrimary}`}>${launchData.credits.dailyBudget}/day</span>
+                    <span>Daily credits:</span>
+                    <span className={`font-medium ${textPrimary}`}>{launchData.credits.estimatedDaily} credits</span>
+                    <span>Monthly estimate:</span>
+                    <span className={`font-medium ${textPrimary}`}>{launchData.credits.estimatedMonthly} credits</span>
+                  </div>
+                </div>
+              )}
+
+              {/* PAUSED Warning */}
+              <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-yellow-50 border border-yellow-200 text-yellow-800' : 'bg-yellow-900/20 border border-yellow-700/50 text-yellow-300'}`}>
+                <strong>Important:</strong> All campaigns launch PAUSED. Review your ads in the platform&apos;s Ads Manager, then enable them when you&apos;re ready. Credits will be debited daily once campaigns are active.
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className={`px-6 pb-6`}>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className={`w-full py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

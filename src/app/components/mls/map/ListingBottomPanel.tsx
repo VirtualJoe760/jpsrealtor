@@ -110,6 +110,20 @@ export default function ListingBottomPanel({
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Stable portal container — must be declared before any early returns
+  const portalRef = useRef<HTMLDivElement | null>(null);
+  if (!portalRef.current && typeof document !== 'undefined') {
+    const existing = document.getElementById('listing-bottom-panel-portal');
+    if (existing) {
+      portalRef.current = existing as HTMLDivElement;
+    } else {
+      const el = document.createElement('div');
+      el.id = 'listing-bottom-panel-portal';
+      document.body.appendChild(el);
+      portalRef.current = el;
+    }
+  }
+
   // State for fetched listing data
   const [enrichedListing, setEnrichedListing] = useState<IUnifiedListing>(fullListing);
   const [isLoading, setIsLoading] = useState(false);
@@ -613,10 +627,12 @@ export default function ListingBottomPanel({
     </motion.div>
   );
 
+  if (!portalRef.current) return null;
+
   return createPortal(
     <AnimatePresence mode="wait">
       {fullListing?.listingKey && panel}
     </AnimatePresence>,
-    document.body
+    portalRef.current
   );
 }
