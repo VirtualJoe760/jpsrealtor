@@ -420,7 +420,7 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
                 <a href="https://chatrealty.io/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">privacy policy</a>.
               </p>
               {post.formDisclaimer && (
-                <p className={`text-xs text-center mt-3 ${isLight ? "text-gray-400" : "text-gray-600"}`}>
+                <p className={`text-[10px] leading-tight text-center mt-3 ${isLight ? "text-gray-400" : "text-gray-600"}`}>
                   {post.formDisclaimer}
                 </p>
               )}
