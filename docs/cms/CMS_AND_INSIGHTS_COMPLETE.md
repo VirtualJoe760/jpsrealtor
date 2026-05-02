@@ -1,6 +1,6 @@
 # CMS & Insights Page - Complete Documentation
 
-**Last Updated:** December 1, 2025
+**Last Updated:** May 1, 2026
 **Status:** ✅ Production Ready - All Features Implemented
 
 ## Overview
@@ -19,6 +19,10 @@ Complete CMS system with AI-powered article generation and redesigned Insights p
 ---
 
 ## CMS System
+
+### Multi-Tenant Scoping (May 2026)
+
+Articles are now scoped per agent via `authorId`. Each agent only sees their own articles in `/agent/cms`. The admin CMS at `/admin/cms` passes `?all=true` to bypass the filter and see all articles across the platform. Legacy articles that predate the `authorId` field are hidden from agent views — only admins can see them.
 
 ### Article List Page (`/admin/cms`)
 
@@ -106,6 +110,7 @@ All backgrounds removed for cleaner, minimal design:
 - Background removed
 - Hidden on mobile (visible only on desktop with `hidden lg:block`)
 - Users use Preview button/tab on mobile instead
+- **Agent-aware (May 2026):** The Groq prompt in `/api/articles/generate` now reads the agent's `serviceAreas`, `bio`, and `specializations` from their profile. Content is tailored to the agent's market instead of defaulting to Coachella Valley. If no service areas are set, content defaults to national/general topics.
 
 **Publishing Pipeline:**
 ```typescript
@@ -713,6 +718,28 @@ Landing pages use a dedicated layout and client component separate from blog art
 
 ---
 
+---
+
+## Recent Changes (May 1, 2026)
+
+### Multi-Tenant Article Scoping
+1. Articles filtered by `authorId` — agents only see their own articles in `/agent/cms`
+2. Admin CMS at `/admin/cms` passes `?all=true` to see all articles platform-wide
+3. Legacy articles without `authorId` are hidden from agent views
+
+### Agent-Aware AI Article Generation
+1. Groq prompt in `/api/articles/generate` reads agent's `serviceAreas`, `bio`, and `specializations`
+2. No more hardcoded Coachella Valley — agents in other markets get location-appropriate content
+3. Falls back to national/general content if no service areas are configured
+
+### Service Areas Settings Step Rebuilt
+1. `ServiceAreasStep.tsx` now includes: service area picker (city/county/ZIP/custom), 20 common real estate specializations as toggleable chips, 12 common NAR certifications as quick-add buttons, and an AI bio textarea (500 char max)
+
+### User Model Update
+1. Added `agentProfile.bio` to the User model for AI context, used by article generation and future chat personalization
+
+---
+
 **All systems operational ✅**
-**Last deployment:** April 12, 2026
+**Last deployment:** May 1, 2026
 **Status:** Production Ready

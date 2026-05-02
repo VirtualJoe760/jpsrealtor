@@ -10,6 +10,7 @@ import {
   Share2,
   Globe,
   MapPin,
+  CalendarDays,
   Building2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -22,6 +23,7 @@ export type SettingsStep =
   | "social"
   | "domain"
   | "areas"
+  | "calendar"
   | "gbp";
 
 interface SettingsStepIndicatorProps {
@@ -38,6 +40,7 @@ const STEPS: { id: SettingsStep; label: string; icon: LucideIcon }[] = [
   { id: "social", label: "Social", icon: Share2 },
   { id: "domain", label: "Domain & SEO", icon: Globe },
   { id: "areas", label: "Service Areas", icon: MapPin },
+  { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "gbp", label: "Google Business", icon: Building2 },
 ];
 

@@ -1,6 +1,6 @@
 # MAPPING SYSTEM ARCHITECTURE
 **Complete Technical Documentation**
-**Last Updated**: December 5, 2025
+**Last Updated**: May 1, 2026
 **Status**: Production-Ready System
 
 ---
@@ -1786,6 +1786,21 @@ This mapping system represents **2 days of intensive development** resulting in 
 
 ---
 
+---
+
+## Bug Fixes (May 1, 2026)
+
+### Map Popup Photos Not Loading
+`CityMap.tsx` was passing `skipPhotos=true` to the city listings API, which prevented photo data from being returned. The flag was removed so listing popups now display photos correctly.
+
+### Photo Field Mapping (SubdivisionMap)
+`SubdivisionMap.tsx` now maps `l.primaryPhotoUrl || l.photoUrl` to handle both new and legacy photo field names. Previously only one field name was checked, causing missing thumbnails on older listings.
+
+### Popup Z-Index Layering
+Listing popup z-index in `ListingsMap.tsx` was increased from `z-50` to `z-[200]` so popups render above all markers. Selected markers use `z-[100]`, ensuring popups always appear on top.
+
+---
+
 **Documentation Maintained By**: Claude Code
 **Architecture Designed By**: Development Team
-**Last Updated**: December 5, 2025 10:30 AM PST
+**Last Updated**: May 1, 2026

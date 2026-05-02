@@ -37,6 +37,7 @@ function SettingsContent() {
             licenseNumber: p.licenseNumber || "",
             profileDescription: p.profileDescription || "",
             agentProfile: p.agentProfile || {},
+            calendarSettings: p.calendarSettings || {},
             adAccounts: p.adAccounts || {},
           });
         }

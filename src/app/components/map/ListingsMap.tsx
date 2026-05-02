@@ -98,7 +98,7 @@ function ListingPopup({
 
   return (
     <div
-      className="absolute z-50"
+      className="absolute z-[200]"
       style={{ transform: "translate(-50%, -110%)" }}
     >
       <a

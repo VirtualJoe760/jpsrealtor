@@ -71,7 +71,6 @@ export default function CityMap({
         if (minBaths) params.append("minBaths", minBaths);
         if (maxBaths) params.append("maxBaths", maxBaths);
 
-        params.append("skipPhotos", "true");
         const response = await fetch(`/api/cities/${cityId}/listings?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();

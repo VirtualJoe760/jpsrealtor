@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const excludeLandingPages = searchParams.get("excludeLandingPages") !== "false";
+    const showAll = searchParams.get("all") === "true";
 
     // Check session for agent scoping
     const session = await getServerSession(authOptions);
@@ -47,8 +48,8 @@ export async function GET(request: Request) {
       // PRODUCTION: Fetch from MongoDB
       const filters: any = {};
 
-      // Agent scoping: filter by authorId (unless admin)
-      if (!isAdmin && userId) {
+      // Agent scoping: filter by authorId (admins only bypass with ?all=true)
+      if (userId && !(isAdmin && showAll)) {
         filters.authorId = userId;
       }
 
@@ -116,9 +117,12 @@ export async function GET(request: Request) {
         // Skip landing pages from insights feed
         if (excludeLandingPages && data.section === "landing-page") continue;
 
-        // Agent scoping: skip articles not authored by this agent (unless admin)
-        if (!isAdmin && userId && data.authorId && data.authorId !== userId) {
-          continue;
+        // Agent scoping: only show articles authored by this agent
+        // Articles with no authorId are legacy (pre-scoping) — only visible to admins with ?all=true
+        if (!(isAdmin && showAll)) {
+          if (!data.authorId || data.authorId !== userId) {
+            continue;
+          }
         }
 
         articles.push({

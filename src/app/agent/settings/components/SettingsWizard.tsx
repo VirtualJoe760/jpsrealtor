@@ -16,6 +16,7 @@ import ContentStoryStep from "./steps/ContentStoryStep";
 import SocialMediaStep from "./steps/SocialMediaStep";
 import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
+import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 // BillingStep removed — billing is now in /agent/subscription
 
@@ -124,6 +125,8 @@ export default function SettingsWizard({
         return <DomainSeoStep {...stepProps} />;
       case "areas":
         return <ServiceAreasStep {...stepProps} />;
+      case "calendar":
+        return <CalendarStep {...stepProps} />;
       case "gbp":
         return <GoogleBusinessStep {...stepProps} />;
     }

@@ -1,6 +1,6 @@
 # Article Generation with Groq (GPT OSS 120B)
 
-**Last Updated:** November 30, 2025
+**Last Updated:** May 1, 2026
 **Model:** openai/gpt-oss-120b via Groq
 
 ---
@@ -132,7 +132,7 @@ The AI follows these guidelines automatically:
 
 ### Required Elements
 - ✅ Contact information at end (phone + email)
-- ✅ Local keywords (Coachella Valley, Palm Desert, etc.)
+- ✅ Local keywords (derived from agent's service areas — no longer hardcoded to Coachella Valley)
 - ✅ SEO optimization (meta tags, keywords)
 - ✅ Proper MDX formatting
 
@@ -223,16 +223,23 @@ The AI follows these guidelines automatically:
 }
 ```
 
-### System Prompt
+### System Prompt (Agent-Aware — Updated May 2026)
+
+The system prompt is now dynamically built per agent. The API reads the authenticated agent's `serviceAreas`, `bio`, and `specializations` from their User profile and injects them into the prompt. This means agents in any market get location-appropriate content without hardcoded geography.
+
 ```
-You are an expert real estate content writer for jpsrealtor.com,
-specializing in the Coachella Valley market.
+You are an expert real estate content writer for {agentDomain}.
+You specialize in: {agent.specializations} (e.g., "Luxury Homes, Golf Communities, First-Time Buyers")
+Service areas: {agent.serviceAreas} (e.g., "Palm Desert, La Quinta, Indian Wells")
+Agent bio context: {agent.bio}
 
 WRITING STYLE: Professional yet conversational, action-oriented...
 STRUCTURE: Hook opening, clear sections, bullet points...
-KEYWORDS: Coachella Valley, Palm Desert, La Quinta...
+KEYWORDS: Derived from agent's service areas and specializations
 CONTACT INFO: Always include phone and email at end...
 ```
+
+If the agent has no `serviceAreas` configured, the prompt omits location-specific instructions and generates national/general real estate content instead.
 
 ---
 
@@ -320,7 +327,7 @@ CONTACT INFO: Always include phone and email at end...
 
 ---
 
-**Last Updated:** November 30, 2025
+**Last Updated:** May 1, 2026
 **Model:** GPT OSS 120B (openai/gpt-oss-120b)
 **Provider:** Groq
-**Status:** Ready for implementation
+**Status:** Production — Agent-aware prompts live

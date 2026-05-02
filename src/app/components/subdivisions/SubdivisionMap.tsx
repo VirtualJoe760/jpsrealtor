@@ -65,7 +65,7 @@ export default function SubdivisionMap({
             bedsTotal: l.bedsTotal,
             bathsTotal: l.bathroomsTotalDecimal,
             address: l.address,
-            photoUrl: l.photoUrl,
+            photoUrl: l.primaryPhotoUrl || l.photoUrl,
           }));
           setListings(mapped);
         }

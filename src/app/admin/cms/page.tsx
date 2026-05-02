@@ -90,7 +90,7 @@ export default function ArticlesAdminPage() {
       setIsLoading(true);
 
       // Fetch from MDX files (source of truth)
-      const response = await fetch('/api/articles/list');
+      const response = await fetch('/api/articles/list?all=true');
       const data = await response.json();
 
       let filteredArticles = data.articles || [];
@@ -128,7 +128,7 @@ export default function ArticlesAdminPage() {
   const fetchStats = async () => {
     try {
       // Fetch all articles from MDX files (source of truth)
-      const response = await fetch('/api/articles/list');
+      const response = await fetch('/api/articles/list?all=true');
       const data = await response.json();
       const allArticles = data.articles || [];
 

@@ -42,12 +42,22 @@ export async function POST(request: Request) {
     // Load agent's profile for personalized content
     await dbConnect();
     const agentUser = await User.findOne({ email: (session.user as any).email })
-      .select("name phone agentProfile.cellPhone agentProfile.headline agentProfile.serviceAreas")
+      .select("name phone agentProfile.cellPhone agentProfile.headline agentProfile.serviceAreas agentProfile.bio agentProfile.specializations")
       .lean();
 
     const agentName = (agentUser as any)?.name || session.user.name || "your agent";
     const agentPhone = (agentUser as any)?.agentProfile?.cellPhone || (agentUser as any)?.phone || "";
     const agentEmail = (session.user as any).email || "";
+
+    // Build agent context from profile
+    const serviceAreas: Array<{ name: string; type: string }> = (agentUser as any)?.agentProfile?.serviceAreas || [];
+    const areaNames = serviceAreas.map((a: { name: string }) => a.name).filter(Boolean);
+    const hasServiceAreas = areaNames.length > 0;
+    const locationContext = hasServiceAreas
+      ? areaNames.join(", ")
+      : null;
+    const agentBio: string = (agentUser as any)?.agentProfile?.bio || "";
+    const agentSpecializations: string[] = (agentUser as any)?.agentProfile?.specializations || [];
 
     // Define tools for article generation
     const tools: GroqTool[] = [
@@ -86,7 +96,7 @@ export async function POST(request: Request) {
               keywords: {
                 type: "array",
                 items: { type: "string" },
-                description: "5-10 SEO keywords including location (Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage) and topic-specific terms"
+                description: `5-10 SEO keywords including ${locationContext ? `location-specific terms for ${locationContext}` : "relevant geographic and"} topic-specific terms`
               }
             },
             required: ["title", "excerpt", "content", "altText", "metaTitle", "metaDescription", "keywords"]
@@ -121,7 +131,16 @@ TONE: ${tone || "confident and direct"}
 Use the generate_article_mdx tool to create the landing page.`;
 
     // Create system prompt with writing guidelines
-    const systemPrompt = category === "landing-page" ? landingPagePrompt : `You are an expert real estate content writer for ${agentName}, specializing in the Coachella Valley market (Palm Desert, La Quinta, Indian Wells, Rancho Mirage).
+    const systemPrompt = category === "landing-page" ? landingPagePrompt : `You are an expert real estate content writer for ${agentName}${locationContext ? `, specializing in the ${locationContext} market` : ''}.
+
+LOCATION GUIDELINES:
+${locationContext
+  ? `- The agent serves: ${locationContext}. Reference these areas when relevant to the topic.
+- If the user's topic does NOT mention a specific location, focus on the agent's service areas.`
+  : `- This agent has not specified service areas. Write general/national real estate content unless the user's topic mentions a specific location.
+- Do NOT default to any specific market — keep content broadly applicable.`}
+${agentBio ? `\nAGENT BIO — use this to inform the tone and perspective of the article:\n${agentBio}` : ''}
+${agentSpecializations.length > 0 ? `\nAGENT SPECIALIZATIONS: ${agentSpecializations.join(", ")}. Weave these into the article when naturally relevant.` : ''}
 
 CRITICAL FORMATTING RULES:
 - Output ONLY the article content, NO labels or meta-text
@@ -153,9 +172,9 @@ PARAGRAPH FORMATTING:
 - Contact section: Regular text for context, bold ONLY for phone/email values
 
 CORRECT BULLET FORMAT (NO BOLD):
-- ✅ Inventory levels rising in Palm Desert
-- ✅ Strong buyer demand across Coachella Valley
-- ✅ Median home prices stabilizing around $785,000
+- ✅ Inventory levels rising across the market
+- ✅ Strong buyer demand in key neighborhoods
+- ✅ Median home prices stabilizing
 
 INCORRECT BULLET FORMAT (NEVER DO THIS):
 - ✅ **Inventory levels rising** – after a historic low...
@@ -185,12 +204,12 @@ ${agentPhone ? `📞 Call or Text: **${agentPhone}**` : ''}
 ${agentEmail ? `📧 Email: **${agentEmail}**` : ''}
 
 KEYWORDS TO INCLUDE:
-Always mention: Coachella Valley, Palm Desert, La Quinta, Indian Wells, Rancho Mirage
+${locationContext ? `Location keywords: ${locationContext}` : 'Do NOT insert location-specific keywords unless the topic mentions a location. Use general real estate terms.'}
 Category-specific: ${category === 'market-insights' ? 'market trends, ROI, investment, property values' : category === 'real-estate-tips' ? 'homebuying tips, financing, negotiation, inspection' : 'real estate market, housing trends, economics'}
 
 COMPLETE FORMAT EXAMPLE:
 
-The Coachella Valley real estate market is experiencing remarkable growth this year. With rising inventory levels and strong buyer demand, both investors and homebuyers have excellent opportunities across Palm Desert, La Quinta, Indian Wells, and Rancho Mirage.
+The real estate market is experiencing remarkable growth this year. With rising inventory levels and strong buyer demand, both investors and homebuyers have excellent opportunities.
 
 ## Current Market Trends
 
@@ -199,13 +218,13 @@ The market has shifted significantly in recent months. Properties are moving fas
 Key indicators show:
 
 - ✅ Inventory levels rising by 12% year-over-year
-- ✅ Median prices stabilizing around $785,000 in La Quinta
-- ✅ Average days on market down to 21 days in Indian Wells
-- ✅ New construction permits up 15% in Rancho Mirage
+- ✅ Median prices stabilizing in key markets
+- ✅ Average days on market trending down
+- ✅ New construction permits showing growth
 
 ### Investment Opportunities
 
-Palm Desert offers exceptional ROI potential for savvy investors. The combination of tourism demand and limited luxury inventory creates a perfect storm for appreciation. Short-term rental properties can achieve 8-10% cap rates in well-located areas.
+Strategic markets offer exceptional ROI potential for savvy investors. The combination of demand and limited inventory creates opportunities for appreciation.
 
 Use the generate_article_mdx tool to create the article.`;
 

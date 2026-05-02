@@ -85,6 +85,9 @@ export interface IUser extends Document {
       darkMobile?: string; // Dark theme mobile background (Cloudinary URL)
     };
 
+    // Agent Bio (used by AI for article generation & chat context)
+    bio?: string; // Short bio for AI context (max 500 chars)
+
     // Landing Page Content
     headline?: string; // Main headline (e.g., "Your Trusted Real Estate Partner")
     tagline?: string; // Subheadline (e.g., "Serving Orange County Since 2010")
@@ -182,6 +185,19 @@ export interface IUser extends Document {
     metaTitle?: string; // Page title for SEO
     metaDescription?: string; // Meta description for SEO
     metaKeywords?: string[]; // SEO keywords
+  };
+
+  // Google Calendar Integration (per-agent)
+  calendarSettings?: {
+    refreshToken?: string;
+    calendarEmail?: string;
+    calendarId?: string;
+    connectedAt?: Date;
+    status?: 'connected' | 'disconnected';
+    bookingEnabled?: boolean;
+    defaultDuration?: number;
+    bufferTime?: number;
+    advanceBookingDays?: number;
   };
 
   // Ad Platform Accounts (per-agent credentials for Google Ads + Meta Ads)
@@ -610,6 +626,9 @@ const UserSchema = new Schema<IUser>(
         darkMobile: String,
       },
 
+      // Agent Bio (used by AI for article generation & chat context)
+      bio: String,
+
       // Landing Page Content
       headline: String,
       tagline: String,
@@ -708,6 +727,20 @@ const UserSchema = new Schema<IUser>(
       metaTitle: String,
       metaDescription: String,
       metaKeywords: [String],
+    },
+
+    // Google Calendar Integration (per-agent)
+    calendarSettings: {
+      refreshToken: String,
+      calendarEmail: String,        // The Google account email used for calendar
+      calendarId: { type: String, default: "primary" }, // Which calendar to use
+      connectedAt: Date,
+      status: { type: String, enum: ['connected', 'disconnected'], default: 'disconnected' },
+      // Booking page preferences
+      bookingEnabled: { type: Boolean, default: true },
+      defaultDuration: { type: Number, default: 30 },  // minutes
+      bufferTime: { type: Number, default: 15 },        // minutes between appointments
+      advanceBookingDays: { type: Number, default: 30 }, // how far ahead can visitors book
     },
 
     // Ad Platform Accounts

@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
     // Cast agentProfile to any to access fields that may exist in DB but not in strict TS interface
     const profile = agent.agentProfile as any;
     const publicProfile = {
+      _id: String((agent as any)._id),
+      id: String((agent as any)._id),
       name: agent.name,
       email: agent.email,
       brokerageName: profile?.brokerageName || agent.brokerageName,
