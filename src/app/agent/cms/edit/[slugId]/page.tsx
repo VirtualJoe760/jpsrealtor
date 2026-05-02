@@ -125,6 +125,21 @@ export default function EditArticlePage() {
     });
   };
 
+  // For landing pages, LP config lives in MDX frontmatter (not MongoDB).
+  // Always fetch from load-published to get the LP-specific fields.
+  const loadLpFromMdx = async (category: string) => {
+    if (category !== 'landing-page') return;
+    try {
+      const mdxRes = await fetch(`/api/articles/load-published?slugId=${slugId}`);
+      const mdxData = await mdxRes.json();
+      if (mdxData.success) {
+        loadLpConfig(mdxData.article);
+      }
+    } catch {
+      // Non-blocking — use defaults
+    }
+  };
+
   const loadArticle = async () => {
     try {
       setIsLoading(true);
@@ -152,7 +167,7 @@ export default function EditArticlePage() {
             featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
             seo: dbArticle.seo || { title: '', description: '', keywords: [] },
           });
-          loadLpConfig(dbArticle);
+          await loadLpFromMdx(dbArticle.category || 'articles');
         } else {
           // Fallback to MDX for content
           const mdxResponse = await fetch(`/api/articles/load-published?slugId=${slugId}`);
@@ -190,7 +205,7 @@ export default function EditArticlePage() {
             featuredImage: dbArticle.featuredImage || { url: '', publicId: '', alt: '' },
             seo: dbArticle.seo || { title: '', description: '', keywords: [] },
           });
-          loadLpConfig(dbArticle);
+          await loadLpFromMdx(dbArticle.category || 'articles');
         } else {
           // Not in MongoDB, try loading from published MDX file
           console.log('Article not in MongoDB, trying MDX file');

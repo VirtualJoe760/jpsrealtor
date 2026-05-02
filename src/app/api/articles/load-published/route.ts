@@ -127,6 +127,18 @@ export async function GET(req: Request) {
           draft: frontmatter.draft || false,
           authorId: frontmatter.authorId,
           authorName: frontmatter.authorName,
+          visibility: frontmatter.visibility || 'private',
+          // Landing page fields
+          ...(frontmatter.standalone !== undefined && { standalone: frontmatter.standalone }),
+          ...(frontmatter.heroType && { heroType: frontmatter.heroType }),
+          ...(frontmatter.youtubeUrl && { youtubeUrl: frontmatter.youtubeUrl }),
+          ...(frontmatter.videoAutoplay !== undefined && { videoAutoplay: frontmatter.videoAutoplay }),
+          ...(frontmatter.themeOverride && { themeOverride: frontmatter.themeOverride }),
+          ...(frontmatter.formEnabled !== undefined && { formEnabled: frontmatter.formEnabled }),
+          ...(frontmatter.formHeading && { formHeading: frontmatter.formHeading }),
+          ...(frontmatter.formButtonText && { formButtonText: frontmatter.formButtonText }),
+          ...(frontmatter.formRecipients && { formRecipients: frontmatter.formRecipients }),
+          ...(frontmatter.formFields && { formFields: frontmatter.formFields }),
         };
 
         return NextResponse.json({
