@@ -10,13 +10,18 @@ import crypto from "crypto";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
-import { Resend } from "resend";
 import { sendLeadEvent } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
+import { resolveEmailAgent, type EmailAgent } from "@/lib/email-resend";
+import { Resend } from "resend";
 
 export const dynamic = "force-dynamic";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || "jpsrealtor.com";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 interface FormField {
   id: string;
@@ -42,6 +47,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { campaignSlug, campaignTitle, fields, recipients, agentEmail } = body;
+
+    // Resolve the agent who owns this landing page (by signup origin / domain)
+    const signupOriginForAgent = await resolveSignupOrigin(req, "campaign");
+    const agent = await resolveEmailAgent(signupOriginForAgent.agentId);
+    const resolvedAgentEmail = agentEmail || agent.email;
+    const resend = getResend();
 
     if (!fields || !Array.isArray(fields) || fields.length === 0) {
       return NextResponse.json(
@@ -81,8 +92,6 @@ export async function POST(req: NextRequest) {
       const tempPassword = crypto.randomBytes(16).toString("hex");
       const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
-      const signupOrigin = await resolveSignupOrigin(req, "campaign");
-
       user = await User.create({
         email: userEmail,
         password: hashedPassword,
@@ -91,9 +100,9 @@ export async function POST(req: NextRequest) {
         roles: ["endUser"],
         emailVerified: false,
         source: `campaign:${campaignSlug}`,
-        signupOrigin,
+        signupOrigin: signupOriginForAgent,
       });
-      linkUserToAgent(user._id.toString(), user.name, user.email, userPhone, signupOrigin).catch(() => {});
+      linkUserToAgent(user._id.toString(), user.name, user.email, userPhone, signupOriginForAgent).catch(() => {});
 
       isNewUser = true;
 
@@ -113,17 +122,16 @@ export async function POST(req: NextRequest) {
       user.resetPasswordExpires = passwordTokenExpiry;
       await user.save();
 
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ||
-        process.env.NEXTAUTH_URL ||
-        "https://www.jpsrealtor.com";
+      const host = req.headers.get("host") || "localhost:3000";
+      const protocol = host.includes("localhost") ? "http" : "https";
+      const baseUrl = `${protocol}://${host}`;
       const verifyUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
       const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${passwordToken}`;
 
       // Send combined welcome + verify + set password email
       try {
         await resend.emails.send({
-          from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
+          from: `${agent.name} via ChatRealty <noreply@${NOREPLY_DOMAIN}>`,
           to: [userEmail],
           subject: `Welcome! Set up your account`,
           html: `
@@ -189,7 +197,7 @@ export async function POST(req: NextRequest) {
     // 3. Send notification emails to all recipients
     const allRecipients = [
       ...(recipients || []),
-      agentEmail,
+      resolvedAgentEmail,
     ].filter((email): email is string => !!email && email.includes("@"));
 
     // Deduplicate
@@ -198,10 +206,10 @@ export async function POST(req: NextRequest) {
     if (uniqueRecipients.length > 0) {
       try {
         await resend.emails.send({
-          from: "JPSRealtor Leads <noreply@jpsrealtor.com>",
+          from: `ChatRealty Leads <noreply@${NOREPLY_DOMAIN}>`,
           to: uniqueRecipients,
           replyTo: userEmail,
-          subject: `New Lead: ${userName || userEmail} — ${campaignTitle || campaignSlug}`,
+          subject: `[NEW LEAD] ${userName || userEmail} — ${campaignTitle || campaignSlug}`,
           html: notificationHtml,
         });
       } catch (emailErr) {

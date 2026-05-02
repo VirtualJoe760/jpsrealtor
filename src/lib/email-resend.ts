@@ -54,7 +54,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'josephsardella@gmail.com';
  * Resolve an EmailAgent from a userId string or an already-resolved object.
  * Falls back to DEFAULT_AGENT when no user is found or no agentProfile exists.
  */
-async function resolveEmailAgent(
+export async function resolveEmailAgent(
   agentOrId?: string | EmailAgent
 ): Promise<EmailAgent> {
   if (!agentOrId) return DEFAULT_AGENT;
