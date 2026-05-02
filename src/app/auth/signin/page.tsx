@@ -7,14 +7,18 @@ import { useState, useEffect, FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
-/** Returns true when the current hostname is the auth hub (chatrealty.io or localhost). */
+/** Returns true when the current hostname can handle auth directly. */
 function isAuthHub(): boolean {
   const h = window.location.hostname;
   return (
     h === "localhost" ||
     h.endsWith(".localhost") ||
     h === "chatrealty.io" ||
-    h === "www.chatrealty.io"
+    h === "www.chatrealty.io" ||
+    h === "jpsrealtor.com" ||
+    h === "www.jpsrealtor.com" ||
+    h === "josephsardella.com" ||
+    h === "www.josephsardella.com"
   );
 }
 

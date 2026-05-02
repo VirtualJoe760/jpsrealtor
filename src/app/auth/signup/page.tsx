@@ -23,7 +23,9 @@ export default function SignUpPage() {
     const h = window.location.hostname;
     const isDev = h === "localhost" || h.endsWith(".localhost");
     if (isDev) return; // Dev: allow signup on any hostname
-    const isHub = h === "chatrealty.io" || h === "www.chatrealty.io";
+    const isHub = h === "chatrealty.io" || h === "www.chatrealty.io"
+      || h === "jpsrealtor.com" || h === "www.jpsrealtor.com"
+      || h === "josephsardella.com" || h === "www.josephsardella.com";
     if (!isHub) {
       window.location.replace("https://chatrealty.io/auth/signup");
     }
