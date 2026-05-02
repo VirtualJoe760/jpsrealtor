@@ -12,23 +12,17 @@ import User from "@/models/User";
 /**
  * Determine the cookie domain for session sharing.
  *
- * All authentication is centralized on chatrealty.io. Agent subdomains
- * (e.g., bethanyklier.chatrealty.io) and the hub (chatrealty.io) share
- * cookies via ".chatrealty.io". Custom domains (jpsrealtor.com, etc.)
- * use the /api/auth/transfer → /api/auth/receive flow to receive their
- * own session cookie.
+ * Returns undefined — lets the browser scope the cookie to the current
+ * hostname. This is necessary because the app serves multiple apex domains
+ * (chatrealty.io, jpsrealtor.com, josephsardella.com) and a single
+ * hardcoded domain would be rejected by the browser on non-matching hosts.
  *
- * Dev: undefined — let the browser scope the cookie to the hostname.
- * Prod: ".chatrealty.io" — centralized auth domain for all subdomains.
+ * Cross-domain auth is handled by /api/auth/transfer → /api/auth/receive.
+ * Subdomain sharing (*.chatrealty.io) is handled by the receive endpoint
+ * which sets domain=".chatrealty.io" on its cookie.
  */
 function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== 'production') {
-    // Dev: let browser scope to hostname (localhost, *.localhost, etc.)
-    return undefined;
-  }
-
-  // Prod: centralized auth on chatrealty.io
-  return '.chatrealty.io';
+  return undefined;
 }
 
 export const authOptions: NextAuthOptions = {
