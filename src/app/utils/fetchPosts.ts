@@ -45,6 +45,7 @@ const parsePostFile = (filePath: string): Post => {
     ...(data.formHeading && { formHeading: data.formHeading }),
     ...(data.formButtonText && { formButtonText: data.formButtonText }),
     ...(data.formRecipients && { formRecipients: data.formRecipients }),
+    ...(data.formDisclaimer && { formDisclaimer: data.formDisclaimer }),
     ...(data.formFields && { formFields: data.formFields }),
   } as Post;
 };

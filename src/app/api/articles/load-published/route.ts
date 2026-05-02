@@ -138,6 +138,7 @@ export async function GET(req: Request) {
           ...(frontmatter.formHeading && { formHeading: frontmatter.formHeading }),
           ...(frontmatter.formButtonText && { formButtonText: frontmatter.formButtonText }),
           ...(frontmatter.formRecipients && { formRecipients: frontmatter.formRecipients }),
+          ...(frontmatter.formDisclaimer && { formDisclaimer: frontmatter.formDisclaimer }),
           ...(frontmatter.formFields && { formFields: frontmatter.formFields }),
         };
 

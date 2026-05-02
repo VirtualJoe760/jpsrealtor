@@ -38,5 +38,6 @@ export interface Post {
   formHeading?: string;
   formButtonText?: string;
   formRecipients?: string;
+  formDisclaimer?: string;
   formFields?: PostFormField[];
 }

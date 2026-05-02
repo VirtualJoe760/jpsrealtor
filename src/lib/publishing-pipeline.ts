@@ -348,6 +348,7 @@ function formatFrontmatter(article: ArticleFormData, slugId: string): string {
       lines.push(`formHeading: "${escapeYAML((article as any).formHeading || 'Get Started')}"`);
       lines.push(`formButtonText: "${escapeYAML((article as any).formButtonText || 'Submit')}"`);
       if ((article as any).formRecipients) lines.push(`formRecipients: "${escapeYAML((article as any).formRecipients)}"`);
+      if ((article as any).formDisclaimer) lines.push(`formDisclaimer: "${escapeYAML((article as any).formDisclaimer)}"`);
       lines.push(`formFields:`);
       ((article as any).formFields || []).forEach((field: any) => {
         lines.push(`  - id: "${field.id}"`);

@@ -414,8 +414,16 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
               </button>
 
               <p className={`text-xs text-center ${isLight ? "text-gray-400" : "text-gray-600"}`}>
-                By submitting, you agree to our terms of service and privacy policy.
+                By submitting, you agree to our{" "}
+                <a href="https://chatrealty.io/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">terms of service</a>
+                {" "}and{" "}
+                <a href="https://chatrealty.io/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">privacy policy</a>.
               </p>
+              {post.formDisclaimer && (
+                <p className={`text-xs text-center mt-3 ${isLight ? "text-gray-400" : "text-gray-600"}`}>
+                  {post.formDisclaimer}
+                </p>
+              )}
             </form>
           </motion.div>
         )}

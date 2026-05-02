@@ -21,6 +21,7 @@ export interface LandingPageConfig {
   formFields: FormField[];
   formRecipients: string;
   formButtonText: string;
+  formDisclaimer: string;
 }
 
 export const DEFAULT_LANDING_PAGE_CONFIG: LandingPageConfig = {
@@ -38,6 +39,7 @@ export const DEFAULT_LANDING_PAGE_CONFIG: LandingPageConfig = {
   ],
   formRecipients: "",
   formButtonText: "Submit",
+  formDisclaimer: "",
 };
 
 interface LandingPageOptionsProps {
@@ -454,6 +456,31 @@ export default function LandingPageOptions({
               />
               <p className={`text-xs mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
                 Comma-separated emails. Your agent email is automatically included.
+              </p>
+            </div>
+
+            {/* Disclaimer */}
+            <div>
+              <label
+                className={`block text-xs font-medium mb-1 ${
+                  isLight ? "text-gray-700" : "text-gray-300"
+                }`}
+              >
+                Form Disclaimer
+              </label>
+              <textarea
+                value={config.formDisclaimer}
+                onChange={(e) => update({ formDisclaimer: e.target.value })}
+                placeholder="Optional legal disclaimer shown below the submit button..."
+                rows={3}
+                className={`w-full px-3 py-2 rounded-lg text-sm resize-none ${
+                  isLight
+                    ? "bg-white border border-gray-300 text-gray-900"
+                    : "bg-gray-800 border border-gray-700 text-white"
+                }`}
+              />
+              <p className={`text-xs mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Displayed as grey text below the form. Use for legal disclaimers, licensing info, etc.
               </p>
             </div>
           </div>

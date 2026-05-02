@@ -119,6 +119,7 @@ export default function EditArticlePage() {
       formHeading: article.formHeading || 'Get Started',
       formButtonText: article.formButtonText || 'Submit',
       formRecipients: article.formRecipients || '',
+      formDisclaimer: article.formDisclaimer || '',
       formFields: typeof article.formFields === 'string'
         ? JSON.parse(article.formFields)
         : article.formFields || DEFAULT_LANDING_PAGE_CONFIG.formFields,
