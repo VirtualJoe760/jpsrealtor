@@ -133,7 +133,11 @@
       "Bash(find src/app/neighborhoods -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
       "Bash(grep -n \"window\\\\|document\\\\|navigator\\\\|typeof\\\\|useEffect\\\\|useState\" src/app/neighborhoods/page.tsx src/app/neighborhoods/[cityId]/CityPageClient.tsx src/app/neighborhoods/[cityId]/[slug]/SubdivisionPageClient.tsx)",
       "Bash(grep:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(sed -i 's/JPS Realtor/chatRealty/g' \"$f\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

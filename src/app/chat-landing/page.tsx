@@ -141,7 +141,7 @@ export default function ChatLandingPage() {
             isLight ? "text-slate-400" : "text-gray-600"
           }`}
         >
-          Powered by JPS Realtor &middot; Coachella Valley, California
+          Powered by chatRealty
         </p>
       </div>
     </SpaticalBackground>

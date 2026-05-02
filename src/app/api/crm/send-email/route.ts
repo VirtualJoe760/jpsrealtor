@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
                 Email: <a href="mailto:${fromEmail}">${fromEmail}</a>
               </p>
               <p style="color: #999; font-size: 11px; margin-top: 20px;">
-                This email was sent via JPS Realtor CRM. If you wish to unsubscribe from future emails,
+                This email was sent via chatRealty CRM. If you wish to unsubscribe from future emails,
                 please reply to this email with "UNSUBSCRIBE" in the subject line.
               </p>
             </div>

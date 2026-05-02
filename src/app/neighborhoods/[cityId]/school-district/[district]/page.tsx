@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: { cityId: string; d
   const selectedDistrict = districts[district];
   if (!selectedDistrict) {
     return {
-      title: "District Not Found | JPS Realtor",
+      title: "District Not Found | chatRealty",
       description: "School district data not found for this area.",
     };
   }
@@ -38,12 +38,12 @@ export async function generateMetadata({ params }: { params: { cityId: string; d
   ].join(", ");
 
   return {
-    title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
+    title: `Schools in ${selectedDistrict.name} | chatRealty`,
     description: `Discover schools in the ${selectedDistrict.name}, including elementary, middle, and high schools. Learn more about education options in the area.`,
     keywords,
     metadataBase: new URL(baseUrl),
     openGraph: {
-      title: `Schools in ${selectedDistrict.name} | JPS Realtor`,
+      title: `Schools in ${selectedDistrict.name} | chatRealty`,
       description: `Explore ${selectedDistrict.name} schools and find the best educational opportunities in the area, including elementary, middle, and high schools.`,
       url: `${baseUrl}/neighborhoods/${cityId}/school-district/${district}`,
       images: [

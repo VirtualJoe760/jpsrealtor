@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
   const city = coachellaValleyCities.find((c) => c.id === cityId);
   if (!city) {
     return {
-      title: "City Not Found | JPS Realtor",
+      title: "City Not Found | chatRealty",
       description: "City data not found for school districts in this area.",
     };
   }
@@ -40,12 +40,12 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
     .join(", ");
 
   return {
-    title: `School Districts in ${city.name} | JPS Realtor`,
+    title: `School Districts in ${city.name} | chatRealty`,
     description: `Explore the school districts serving ${city.name}, including Palm Springs Unified, Desert Sands Unified, and Coachella Valley Unified School Districts.`,
     keywords,
     metadataBase: new URL(baseUrl),
     openGraph: {
-      title: `School Districts in ${city.name} | JPS Realtor`,
+      title: `School Districts in ${city.name} | chatRealty`,
       description: `Learn more about the school districts serving ${city.name} and surrounding areas, including available schools and district details.`,
       url: `${baseUrl}/neighborhoods/${cityId}/school-districts`,
       images: [

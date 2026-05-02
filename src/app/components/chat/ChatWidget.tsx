@@ -171,7 +171,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
   const handleShare = async (text: string) => {
     const shareData = {
-      title: "JPS Realtor",
+      title: "chatRealty",
       text: text,
       url: window.location.href,
     };

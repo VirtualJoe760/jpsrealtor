@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
   const city = coachellaValleyCities.find((c) => c.id === cityId);
   if (!city) {
     return {
-      title: "City Not Found | JPS Realtor",
+      title: "City Not Found | chatRealty",
       description: "City data not found for HOA contact information.",
     };
   }
@@ -29,12 +29,12 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
     .join(", ");
 
   return {
-    title: `${city.name} HOA Contact Information | JPS Realtor`,
+    title: `${city.name} HOA Contact Information | chatRealty`,
     description: `Find HOA contact information for subdivisions in and around ${city.name}. Get details for management companies, addresses, and more.`,
     keywords: `${cityHoaKeywords}, HOA in ${city.name}, ${city.name} real estate, HOA contacts`,
     metadataBase: new URL(baseUrl),
     openGraph: {
-      title: `${city.name} HOA Contact Information | JPS Realtor`,
+      title: `${city.name} HOA Contact Information | chatRealty`,
       description: `Search for HOA contact information for subdivisions in and around ${city.name}. Discover management company details, addresses, and more.`,
       url: `${baseUrl}/neighborhoods/${cityId}/hoa-contact-info`,
       images: [

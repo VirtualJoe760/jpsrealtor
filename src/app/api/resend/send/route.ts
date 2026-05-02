@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
               Email: <a href="mailto:joseph@josephsardella.com">joseph@josephsardella.com</a>
             </p>
             <p style="color: #999; font-size: 11px; margin-top: 20px;">
-              This email was sent via JPS Realtor CRM.
+              This email was sent via chatRealty CRM.
             </p>
           </div>
         </body>

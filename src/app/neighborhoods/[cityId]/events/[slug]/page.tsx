@@ -24,7 +24,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${event.name} | Coachella Valley | JPS Realtor`,
+    title: `${event.name} | Coachella Valley | chatRealty`,
     description: `Plan your visit to ${event.name}, happening on ${event.date} at ${event.location}. Don't miss this exciting event!`,
     alternates: {
       canonical: `/events/${slug}`,

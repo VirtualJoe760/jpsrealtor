@@ -53,7 +53,7 @@ export default function DirectMailPage() {
             <hr className="my-5" />
             <YouTubeEmbed
               videoId="r-STgxW2A1E"
-              title="List your home with JPS Realtor"
+              title="List your home with chatRealty"
               autoplay={true}
             />
             <hr className="my-5" />

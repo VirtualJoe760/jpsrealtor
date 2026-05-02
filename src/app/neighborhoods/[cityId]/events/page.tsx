@@ -13,17 +13,17 @@ export async function generateMetadata({ params }: { params: { cityId: string } 
   const city = coachellaValleyCities.find((c) => c.id === cityId);
   if (!city) {
     return {
-      title: "City Not Found | JPS Realtor",
+      title: "City Not Found | chatRealty",
       description: "Explore events and happenings in your area.",
     };
   }
 
   return {
-    title: `Events in ${city.name} | JPS Realtor`,
+    title: `Events in ${city.name} | chatRealty`,
     description: `Discover the most exciting events happening in and around ${city.name}, including major festivals, community gatherings, and more.`,
     metadataBase: new URL(baseUrl),
     openGraph: {
-      title: `Events in ${city.name} | JPS Realtor`,
+      title: `Events in ${city.name} | chatRealty`,
       description: `Explore top events in ${city.name} and the Coachella Valley, from iconic festivals to unique community experiences.`,
       url: `${baseUrl}/neighborhoods/${cityId}/events`,
       images: [
