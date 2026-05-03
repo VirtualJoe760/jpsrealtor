@@ -127,6 +127,8 @@ export async function streamWithToolSupport(
                   components.listingDetail = result.data.listingDetail;
                 } else if (result.data.component === "cmaReport") {
                   components.cmaReport = result.data.cmaReport;
+                } else if (result.data.component === "clarification") {
+                  components.clarification = result.data.clarification;
                 }
 
                 // Send components event

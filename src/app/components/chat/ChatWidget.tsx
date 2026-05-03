@@ -20,6 +20,7 @@ import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
 import ListingDetailCard from "./ListingDetailCard";
 import ListingOptionsCard from "./ListingOptionsCard";
+import ClarificationCard from "./ClarificationCard";
 import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
 import { getMapCenter } from "@/lib/geo-centers";
 import { getDefaultSiteName } from "@/lib/domain-classify";
@@ -1645,6 +1646,17 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     </div>
                   )}
                 </div>
+
+                {/* Clarification buttons — below message text */}
+                {msg.components?.clarification && msg.components.clarification.options.length > 0 && (
+                  <div className="mt-2">
+                    <ClarificationCard
+                      question={msg.components.clarification.question}
+                      options={msg.components.clarification.options}
+                      context={msg.components.clarification.context}
+                    />
+                  </div>
+                )}
 
                 {/* Consolidated component rendering */}
                 {msg.components && (

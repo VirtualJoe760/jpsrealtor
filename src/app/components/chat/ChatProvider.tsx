@@ -189,6 +189,11 @@ export interface ComponentData {
     daysOnMarket?: number;
     stories?: number;
   };
+  clarification?: {
+    question: string;
+    options: string[];
+    context?: string;
+  };
   cmaReport?: {
     listingKey: string;
     address: string;

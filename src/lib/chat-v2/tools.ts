@@ -255,6 +255,36 @@ export const ALL_TOOLS: ChatCompletionTool[] = [
       }
     }
   },
+
+  // =========================================================================
+  // TOOL 6: Ask Clarification - Interactive question before acting
+  // =========================================================================
+  {
+    type: "function",
+    function: {
+      name: "askClarification",
+      description: "Ask the user a clarifying question before performing an action. Use when the user's request is ambiguous and you need more information to give the best result. This is FAST (instant) — always prefer asking over guessing wrong. Examples: 'Did you mean Palm Springs or Palm Desert?', 'Are you looking to buy or sell?', 'Which price range?'. Supports multiple choice options that render as clickable buttons.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "The clarifying question to ask the user"
+          },
+          options: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional array of answer choices to show as clickable buttons (e.g., ['Palm Springs', 'Palm Desert', 'Both']). Omit for open-ended questions."
+          },
+          context: {
+            type: "string",
+            description: "Brief context about why you're asking (e.g., 'Multiple cities match your query')"
+          }
+        },
+        required: ["question"]
+      }
+    }
+  },
 ];
 
 /**

@@ -44,6 +44,20 @@ export async function executeTool(
         result = await executeGenerateCMA(args);
         break;
 
+      case "askClarification":
+        result = {
+          success: true,
+          data: {
+            component: "clarification",
+            clarification: {
+              question: args.question,
+              options: args.options || [],
+              context: args.context,
+            },
+          }
+        };
+        break;
+
       default:
         return {
           success: false,
