@@ -18,7 +18,13 @@ export async function GET(req: NextRequest) {
 
   const slug = q.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const startsWithNumber = /^\d/.test(slug);
-  const slugRegex = startsWithNumber ? new RegExp(`^${slug}`) : new RegExp(slug);
+
+  // Build a regex that matches slug segments (word boundaries in slugs are hyphens)
+  // "desi drive" → slug "desi-drive" → must match as a contiguous segment
+  // "des" alone should match "des" as a segment start, not "palm-desert"
+  const slugRegex = startsWithNumber
+    ? new RegExp(`^${slug}`)           // "77095-desi" → prefix match (uses index)
+    : new RegExp(`(^|-)${slug}`)       // "desi-drive" → must start a segment
 
   // Run listing + subdivision + city searches in parallel
   const [listings, subdivisions, cities] = await Promise.all([
@@ -42,7 +48,7 @@ export async function GET(req: NextRequest) {
       .lean(),
 
     Subdivision.find(
-      { slug: { $regex: slug } },
+      { slug: { $regex: `(^|-)${slug}` } },
       { name: 1, slug: 1, city: 1 }
     )
       .limit(3)
