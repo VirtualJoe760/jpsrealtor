@@ -674,6 +674,7 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
     };
   }
 
+  const startTime = Date.now();
   console.log('[executeGetListingDetails] 🔍 Looking up:', address);
 
   await dbConnect();
@@ -682,13 +683,14 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const words = address.split(/[\s,]+/).filter(w => w.length > 1);
 
+  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl';
   let multipleMatches: any[] = [];
 
-  // Try slug-based multi-match first
+  // Try slug-based multi-match first (uses slugAddress index)
   multipleMatches = await UnifiedListing.find({
     slugAddress: new RegExp(slugQuery, 'i'),
     standardStatus: "Active"
-  }).select('listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl').limit(10).lean();
+  }).select(selectFields).sort({ listPrice: -1 }).limit(10).lean();
 
   // If no slug matches, try address regex multi-match
   if (multipleMatches.length === 0 && words.length > 0) {
@@ -697,8 +699,10 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
     multipleMatches = await UnifiedListing.find({
       unparsedAddress: regex,
       standardStatus: "Active"
-    }).select('listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl').limit(10).lean();
+    }).select(selectFields).sort({ listPrice: -1 }).limit(10).lean();
   }
+
+  console.log(`[executeGetListingDetails] ⚡ Lookup took ${Date.now() - startTime}ms, found ${multipleMatches.length} matches`);
 
   // If multiple matches found, return them as options for the user to pick
   if (multipleMatches.length > 1) {
@@ -849,6 +853,7 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
 // =========================================================================
 
 async function findListingByAddress(address: string): Promise<any | null> {
+  const startTime = Date.now();
   await dbConnect();
 
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -889,6 +894,7 @@ async function findListingByAddress(address: string): Promise<any | null> {
     listing = await UnifiedListing.findOne({ listingKey: address }).lean();
   }
 
+  console.log(`[findListingByAddress] ⚡ Lookup took ${Date.now() - startTime}ms, found: ${listing ? 'yes' : 'no'}`);
   return listing;
 }
 
