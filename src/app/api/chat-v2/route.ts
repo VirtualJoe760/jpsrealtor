@@ -113,32 +113,19 @@ Now respond to the user's query about "${locationSnapshot.name}" following these
       }))
     ];
 
-    // Pre-routing: Detect street name patterns and force getListingDetails
-    // This prevents the AI from picking searchHomes for street-specific queries
-    const lastUserMsg = messages[messages.length - 1]?.content || '';
-    const streetPattern = /\b\d+\s+\w+\s+(drive|dr|lane|ln|street|st|road|rd|avenue|ave|boulevard|blvd|way|court|ct|circle|cir|place|pl|terrace|ter)\b/i;
-    const streetNameOnly = /\b(what'?s on|tell me about|show me|listings on|homes on|properties on)\s+[\w\s]+(drive|dr|lane|ln|street|st|road|rd|avenue|ave|boulevard|blvd|way|court|ct|circle|cir|place|pl)\b/i;
-    const hasStreetAddress = streetPattern.test(lastUserMsg) || streetNameOnly.test(lastUserMsg);
-
-    let toolChoice: any = "auto";
-    if (hasStreetAddress) {
-      toolChoice = { type: "function", function: { name: "getListingDetails" } };
-      console.log("[Chat V2] 🎯 Street address detected — forcing getListingDetails");
-    }
-
     // ONE AI call with ALL tools available
     // This is the industry standard pattern used by OpenAI, Anthropic, Google
     const groqResponse = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b", // GPT-OSS 120B has function calling support
       messages: fullMessages,
       tools: ALL_TOOLS, // Give AI access to all tools at once
-      tool_choice: toolChoice, // Force tool for street addresses, auto otherwise
+      tool_choice: "auto",
       stream: true, // Enable streaming for better UX
       temperature: 0.7,
       max_tokens: 2048
     });
 
-    console.log("[Chat V2] Groq request sent with", ALL_TOOLS.length, "tools available", hasStreetAddress ? "(forced: getListingDetails)" : "");
+    console.log("[Chat V2] Groq request sent with", ALL_TOOLS.length, "tools available");
 
     // Stream response with tool execution support
     // Pass groq client and messages for multi-turn tool calling
