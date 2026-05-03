@@ -22,6 +22,7 @@ import type { ChatCompletionChunk } from "groq-sdk/resources/chat/completions";
 import type Groq from "groq-sdk";
 import { executeTool } from "./tool-executors";
 import { ALL_TOOLS } from "./tools";
+import { ThinkStripper } from "./reasoning-routing";
 
 const MAX_ITERATIONS = 6;
 
@@ -32,6 +33,13 @@ interface StreamOptions {
   model: string;
   temperature: number;
   maxTokens: number;
+  /**
+   * Strip <think>...</think> chain-of-thought blocks from streamed content
+   * before SSE-emitting tokens. Required when routing to a reasoning model
+   * (DeepSeek R1 distill, Qwen QwQ); harmless but pointless on the primary
+   * model. Set by route.ts based on resolveRouting().
+   */
+  stripThinkBlocks?: boolean;
 }
 
 interface AccumulatedToolCall {
@@ -90,7 +98,7 @@ export async function streamWithToolSupport(
   options: StreamOptions
 ): Promise<ReadableStream> {
   const encoder = new TextEncoder();
-  const { groq, userId, model, temperature, maxTokens } = options;
+  const { groq, userId, model, temperature, maxTokens, stripThinkBlocks } = options;
 
   return new ReadableStream({
     async start(controller) {
@@ -123,16 +131,25 @@ export async function streamWithToolSupport(
           })) as AsyncIterable<ChatCompletionChunk>;
 
           // Consume this iteration's stream — accumulate text and tool-call deltas.
+          // Per-iteration stripper because each iteration's stream emits a
+          // complete (open + close) think block or none at all; carrying state
+          // across iterations would leak inside=true into a fresh stream.
           let assistantText = "";
           const toolCalls: AccumulatedToolCall[] = [];
+          const stripper = stripThinkBlocks ? new ThinkStripper() : null;
 
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta as any;
             if (!delta) continue;
 
             if (delta.content) {
+              // assistantText is what gets appended to the conversation as
+              // the assistant message — keep the full raw content (including
+              // think blocks if present) so the model has its own context on
+              // future iterations. Only the SSE-emitted portion is stripped.
               assistantText += delta.content;
-              send({ token: delta.content });
+              const safeOut = stripper ? stripper.process(delta.content) : delta.content;
+              if (safeOut) send({ token: safeOut });
             }
 
             if (delta.tool_calls) {
@@ -146,6 +163,14 @@ export async function streamWithToolSupport(
                 if (tc.function?.arguments) toolCalls[i].arguments += tc.function.arguments;
               }
             }
+          }
+
+          // Flush any safe content the stripper was holding back for partial-tag
+          // detection. Must happen after the iteration's stream ends but BEFORE
+          // we test for tool calls / break, so trailing prose isn't lost.
+          if (stripper) {
+            const tail = stripper.flush();
+            if (tail) send({ token: tail });
           }
 
           // No tool calls → model produced its final answer. We're done.

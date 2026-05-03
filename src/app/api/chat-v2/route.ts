@@ -9,6 +9,7 @@ import { ALL_TOOLS } from "@/lib/chat-v2/tools";
 import { SYSTEM_PROMPT } from "@/lib/chat-v2/system-prompt";
 import { streamWithToolSupport, getSSEHeaders } from "@/lib/chat-v2/streaming";
 import { detectCommand, getCommandResponse } from "@/lib/chat-v2/commands";
+import { resolveRouting } from "@/lib/chat-v2/reasoning-routing";
 import type { ChatRequest, ChatMessage } from "@/lib/chat-v2/types";
 
 // Initialize Groq client
@@ -113,7 +114,15 @@ Now respond to the user's query about "${locationSnapshot.name}" following these
       }))
     ];
 
-    console.log("[Chat V2] Starting agent loop with", ALL_TOOLS.length, "tools available");
+    // Routing: the heuristic checks the last user message for multi-call
+    // signals ("compare", "vs", "and then", etc.). When the env var
+    // CHAT_REASONING_MODEL is set AND the heuristic fires, route to the
+    // reasoning model and turn on <think>-block stripping. Otherwise stay
+    // on the primary model.
+    const routing = resolveRouting(lastMessage?.content || "");
+    console.log(
+      `[Chat V2] Starting agent loop with ${ALL_TOOLS.length} tools — model=${routing.model} (${routing.reason})`
+    );
 
     // The agent loop owns the Groq calls. Tools are passed on every iteration;
     // the loop terminates when the model emits a turn with no tool_calls or
@@ -122,9 +131,10 @@ Now respond to the user's query about "${locationSnapshot.name}" following these
       groq,
       messages: fullMessages,
       userId,
-      model: "openai/gpt-oss-120b",
+      model: routing.model,
       temperature: 0.7,
       maxTokens: 2048,
+      stripThinkBlocks: routing.stripThinkBlocks,
     });
 
     // Return SSE stream
