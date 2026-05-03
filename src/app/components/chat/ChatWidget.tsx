@@ -1316,12 +1316,6 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   )}
 
                   <div className="max-w-[85%] sm:max-w-3xl flex flex-col">
-                    {/* Listing Options — multiple matches, user picks one */}
-                    {msg.components?.listingOptions && msg.components.listingOptions.length > 0 && (
-                      <div className="mb-3">
-                        <ListingOptionsCard options={msg.components.listingOptions} />
-                      </div>
-                    )}
                     {/* Listing Detail Card — rendered ABOVE the message bubble */}
                     {msg.components?.listingDetail && (
                       <div className="mb-3">
@@ -1646,6 +1640,13 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     </div>
                   )}
                 </div>
+
+                {/* Listing Options — multiple matches, user picks one (below message text) */}
+                {msg.components?.listingOptions && msg.components.listingOptions.length > 0 && (
+                  <div className="mt-2">
+                    <ListingOptionsCard options={msg.components.listingOptions} />
+                  </div>
+                )}
 
                 {/* Clarification buttons — below message text */}
                 {msg.components?.clarification && msg.components.clarification.options.length > 0 && (
