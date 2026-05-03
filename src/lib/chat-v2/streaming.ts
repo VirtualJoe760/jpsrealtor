@@ -112,9 +112,30 @@ export async function streamWithToolSupport(
       let lastBatchSig: string | null = null;
       let iterationsHit = false;
 
+      // Per-request timing for latency diagnosis. Logged at the end so we
+      // can see which iteration was slow and whether the cost was Groq or
+      // tool execution.
+      const reqStart = Date.now();
+      const timing: Array<{
+        iteration: number;
+        groqMs: number;
+        firstTokenMs: number | null;
+        toolCount: number;
+        toolMs: Array<{ name: string; ms: number }>;
+        promptTokensApprox: number;
+      }> = [];
+
       try {
         for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-          console.log(`[Streaming] Iteration ${iteration}/${MAX_ITERATIONS}`);
+          // Approximate prompt size — chars / 4 is a rough token-count proxy.
+          const promptTokensApprox = Math.round(
+            conversation.reduce((n, m) => n + JSON.stringify(m).length, 0) / 4
+          );
+          console.log(
+            `[Streaming] Iteration ${iteration}/${MAX_ITERATIONS} — prompt ~${promptTokensApprox} tokens`
+          );
+
+          const iterStart = Date.now();
 
           // Tools are present on EVERY iteration so the model can chain.
           // parallel_tool_calls lets the model fan out independent calls
@@ -137,12 +158,14 @@ export async function streamWithToolSupport(
           let assistantText = "";
           const toolCalls: AccumulatedToolCall[] = [];
           const stripper = stripThinkBlocks ? new ThinkStripper() : null;
+          let firstTokenAt: number | null = null;
 
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta as any;
             if (!delta) continue;
 
             if (delta.content) {
+              if (firstTokenAt === null) firstTokenAt = Date.now();
               // assistantText is what gets appended to the conversation as
               // the assistant message — keep the full raw content (including
               // think blocks if present) so the model has its own context on
@@ -153,6 +176,7 @@ export async function streamWithToolSupport(
             }
 
             if (delta.tool_calls) {
+              if (firstTokenAt === null) firstTokenAt = Date.now();
               for (const tc of delta.tool_calls) {
                 const i = tc.index;
                 if (!toolCalls[i]) {
@@ -165,6 +189,10 @@ export async function streamWithToolSupport(
             }
           }
 
+          const groqMs = Date.now() - iterStart;
+          const firstTokenMs = firstTokenAt ? firstTokenAt - iterStart : null;
+          const toolMs: Array<{ name: string; ms: number }> = [];
+
           // Flush any safe content the stripper was holding back for partial-tag
           // detection. Must happen after the iteration's stream ends but BEFORE
           // we test for tool calls / break, so trailing prose isn't lost.
@@ -175,7 +203,10 @@ export async function streamWithToolSupport(
 
           // No tool calls → model produced its final answer. We're done.
           if (toolCalls.length === 0) {
-            console.log(`[Streaming] ✅ Loop complete at iteration ${iteration} (no tool calls)`);
+            timing.push({ iteration, groqMs, firstTokenMs, toolCount: 0, toolMs: [], promptTokensApprox });
+            console.log(
+              `[Streaming] ✅ Loop complete at iter ${iteration} — groq ${groqMs}ms (first-token ${firstTokenMs}ms), no tools`
+            );
             break;
           }
 
@@ -216,6 +247,7 @@ export async function streamWithToolSupport(
             if (!tc.name) continue;
 
             let result: { success: boolean; data?: any; error?: string };
+            const toolStart = Date.now();
             try {
               const args = JSON.parse(tc.arguments || "{}");
               console.log(`[Streaming] Executing ${tc.name}`, args);
@@ -241,7 +273,16 @@ export async function streamWithToolSupport(
               tool_call_id: tc.id,
               content: JSON.stringify(result),
             });
+
+            const ms = Date.now() - toolStart;
+            toolMs.push({ name: tc.name, ms });
           }
+
+          timing.push({ iteration, groqMs, firstTokenMs, toolCount: toolCalls.length, toolMs, promptTokensApprox });
+          const toolSummary = toolMs.map((t) => `${t.name}=${t.ms}ms`).join(", ") || "none";
+          console.log(
+            `[Streaming] iter ${iteration} done — groq ${groqMs}ms (first-token ${firstTokenMs ?? "—"}ms), tools [${toolSummary}]`
+          );
 
           if (iteration === MAX_ITERATIONS) {
             console.warn(`[Streaming] ⚠️ Hit max iterations (${MAX_ITERATIONS})`);
@@ -253,6 +294,18 @@ export async function streamWithToolSupport(
             break;
           }
         }
+
+        const totalMs = Date.now() - reqStart;
+        const groqTotal = timing.reduce((n, t) => n + t.groqMs, 0);
+        const toolTotal = timing.reduce(
+          (n, t) => n + t.toolMs.reduce((m, x) => m + x.ms, 0),
+          0
+        );
+        console.log(
+          `[Streaming] 🏁 Total ${totalMs}ms (${timing.length} iters, groq ${groqTotal}ms, tools ${toolTotal}ms, overhead ${
+            totalMs - groqTotal - toolTotal
+          }ms)`
+        );
 
         send({ done: true, ...(iterationsHit ? { iterationsHit: true } : {}) });
         controller.close();
