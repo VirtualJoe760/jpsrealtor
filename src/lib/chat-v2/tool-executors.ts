@@ -697,12 +697,19 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const words = address.split(/[\s,]+/).filter(w => w.length > 1);
 
+  // Check if query starts with a house number — allows prefix-anchored regex (uses index)
+  const startsWithNumber = /^\d+/.test(slugQuery);
+  // slugAddress is always lowercase, so no need for /i flag (allows index usage)
+  const slugRegex = startsWithNumber
+    ? new RegExp(`^${slugQuery}`) // Prefix match — uses slugAddress index
+    : new RegExp(slugQuery);      // Contains match — still fast for short patterns
+
   const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl';
   let multipleMatches: any[] = [];
 
-  // Try slug-based multi-match first (uses slugAddress index)
+  // Try slug-based multi-match first (uses slugAddress index for prefix queries)
   multipleMatches = await UnifiedListing.find({
-    slugAddress: new RegExp(slugQuery, 'i'),
+    slugAddress: slugRegex,
     standardStatus: "Active"
   }).select(selectFields).sort({ listPrice: -1 }).limit(10).lean();
 
@@ -765,7 +772,7 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
 
   // Fallback strategies for no matches
   if (!listing) {
-    listing = await UnifiedListing.findOne({ slugAddress: new RegExp(slugQuery, 'i') }).sort({ modificationTimestamp: -1 }).lean();
+    listing = await UnifiedListing.findOne({ slugAddress: slugRegex }).sort({ modificationTimestamp: -1 }).lean();
   }
   if (!listing && words.length > 0) {
     const regexParts = words.map(w => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`);
@@ -884,10 +891,12 @@ async function findListingByAddress(address: string): Promise<any | null> {
   await dbConnect();
 
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const startsWithNumber = /^\d+/.test(slugQuery);
+  const slugRegex = startsWithNumber ? new RegExp(`^${slugQuery}`) : new RegExp(slugQuery);
 
   // Active by slug
   let listing = await UnifiedListing.findOne({
-    slugAddress: new RegExp(slugQuery, 'i'),
+    slugAddress: slugRegex,
     standardStatus: "Active"
   }).lean();
 
@@ -903,7 +912,7 @@ async function findListingByAddress(address: string): Promise<any | null> {
 
   // Any status by slug
   if (!listing) {
-    listing = await UnifiedListing.findOne({ slugAddress: new RegExp(slugQuery, 'i') }).sort({ modificationTimestamp: -1 }).lean();
+    listing = await UnifiedListing.findOne({ slugAddress: slugRegex }).sort({ modificationTimestamp: -1 }).lean();
   }
 
   // Any status by address regex
