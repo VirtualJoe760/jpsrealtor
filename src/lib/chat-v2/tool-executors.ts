@@ -10,7 +10,6 @@ import Article from "@/models/article";
 import {
   buildListingQuery,
   computeAreaStats,
-  deriveTextInsights,
   type ListingScope,
   type ListingFilters,
 } from "./listing-query";
@@ -244,32 +243,17 @@ async function executeSearchHomes(args: SearchHomesArgs): Promise<{ success: boo
 
   const sharedFilters = toListingFilters(args);
 
-  // Compute stats over the FULL filtered set (was a 50-row JS sample).
-  // Run text-insights and stats in parallel.
+  // Compute stats over the FULL filtered set via $facet aggregation.
   let stats: any = EMPTY_STATS;
-  let textInsights = { isGated: false, hasGolf: false };
   try {
-    const [areaStats, derived] = await Promise.all([
-      computeAreaStats(scope, sharedFilters),
-      deriveTextInsights(scope, sharedFilters),
-    ]);
-    textInsights = derived;
+    const areaStats = await computeAreaStats(scope, sharedFilters);
 
-    // Map the new AreaStats shape back into the legacy shape the system
-    // prompt currently references. The system prompt will be updated in
-    // phase 4; until then preserve field names: propertyTypes[*].propertySubType,
-    // insights.{isGated,hasGolf,hoa,amenities,keywords}.
     const propertyTypes = areaStats.propertyTypes.map((p) => ({
       propertySubType: p.subType,
       count: p.count,
       avgPrice: p.avgPrice,
       avgPricePerSqft: p.avgPricePerSqft,
     }));
-
-    const keywords: string[] = [];
-    if (textInsights.hasGolf) keywords.push("golf course nearby");
-    if (areaStats.amenities.poolPct > 30) keywords.push("many properties have pools");
-    if (areaStats.amenities.viewPct > 30) keywords.push("many properties have views");
 
     // Resolve actual city name. Subdivisions/groups can span multiple cities;
     // pull the most common city from the result set.
@@ -299,25 +283,9 @@ async function executeSearchHomes(args: SearchHomesArgs): Promise<{ success: boo
       avgPricePerSqft: areaStats.avgPricePerSqft,
       medianPricePerSqft: areaStats.medianPricePerSqft,
       propertyTypes,
+      hoa: areaStats.hoa,
+      amenities: areaStats.amenities,
       city: actualCity,
-      insights: {
-        isGated: textInsights.isGated,
-        hasGolf: textInsights.hasGolf,
-        hoa: areaStats.hoa
-          ? {
-              min: areaStats.hoa.min,
-              max: areaStats.hoa.max,
-              avg: areaStats.hoa.avg,
-              count: areaStats.hoa.count,
-            }
-          : null,
-        amenities: {
-          poolPercentage: areaStats.amenities.poolPct,
-          spaPercentage: areaStats.amenities.spaPct,
-          viewPercentage: areaStats.amenities.viewPct,
-        },
-        keywords,
-      },
     };
 
     console.log(
@@ -718,19 +686,24 @@ async function executeSearchArticles(args: {
       console.log(`[executeSearchArticles] Article ${idx + 1}: ${article.title}`);
     });
 
-    // Return articles content for AI to read and synthesize (RAG)
-    // NOTE: No URLs included - frontend fetches/displays articles separately via /api/articles/search
+    // Return short summaries for AI synthesis. Capped at 300 chars per article.
+    // The frontend re-fetches full content via /api/articles/ai-search for the
+    // ArticleResults render, so inlining full bodies into the model context is
+    // pure bloat — costs tokens and slows the next agent-loop iteration.
+    const SUMMARY_CAP = 300;
     return {
       success: true,
       data: {
         component: "articles",
         query,
-        // Include FULL article content for RAG (AI will read these and extract accurate data)
-        articleSummaries: articles.map((article: any) => ({
-          title: article.title,
-          content: article.content || article.excerpt || article.seo?.description || ''
-          // URL intentionally omitted - not needed for AI synthesis
-        }))
+        articleSummaries: articles.map((article: any) => {
+          const raw = article.excerpt || article.seo?.description || article.content || '';
+          const stripped = String(raw).replace(/\s+/g, ' ').trim();
+          const summary = stripped.length > SUMMARY_CAP
+            ? stripped.slice(0, SUMMARY_CAP).replace(/\s+\S*$/, '') + '…'
+            : stripped;
+          return { title: article.title, summary };
+        })
       }
     };
   } catch (error) {

@@ -344,7 +344,11 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     // Append token to displayed text in real-time
                     fullText += data.token;
 
-                    // Remove component markers from displayed text
+                    // The Phase 4 system prompt does not emit these markers —
+                    // components render directly from tool results. We keep
+                    // the regex strips defensively in case the model
+                    // hallucinates a marker, and to handle in-flight messages
+                    // produced under the older prompt.
                     const displayText = fullText
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')

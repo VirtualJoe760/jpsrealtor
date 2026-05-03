@@ -38,7 +38,15 @@ export interface ToolCallResult {
  */
 export interface UserBehaviorEvent {
   userId: string;
-  tool: "searchHomes" | "getAppreciation" | "searchArticles";
+  tool:
+    | "searchHomes"
+    | "searchListings"
+    | "getAreaStats"
+    | "getAppreciation"
+    | "searchArticles"
+    | "getListingDetails"
+    | "generateCMA"
+    | "askClarification";
   location?: {
     name: string;
     type: "city" | "subdivision" | "county" | "zip";

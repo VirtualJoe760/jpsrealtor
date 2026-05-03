@@ -107,12 +107,6 @@ export interface AreaStats {
     gatedPct: number;
     seniorPct: number;
   };
-  // Insights derived from publicRemarks text scan (kept for legacy
-  // system-prompt compatibility; will move to a dedicated tool in Phase 4).
-  insights?: {
-    isGated: boolean;
-    hasGolf: boolean;
-  };
 }
 
 // =============================================================================
@@ -736,36 +730,3 @@ export async function computeAreaStats(
   };
 }
 
-/**
- * Lightweight publicRemarks text scan — used to populate the legacy
- * `insights.isGated` / `insights.hasGolf` flags the system prompt still
- * references. Reads up to 100 docs (capped) and runs JS string ops.
- *
- * To be removed in Phase 4 once the system prompt stops asking the model
- * to render these as text.
- */
-export async function deriveTextInsights(
-  scope: ListingScope,
-  filters: ListingFilters,
-  opts?: BuildOptions
-): Promise<{ isGated: boolean; hasGolf: boolean }> {
-  const { query, Model } = await buildListingQuery(scope, filters, opts);
-  const sample = await Model.find(query)
-    .select("publicRemarks")
-    .limit(100)
-    .lean();
-
-  const blob = sample
-    .map((d: any) => d.publicRemarks)
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  const gatedPositive = (blob.match(/\b(gated community|gated subdivision|guard gated|24.?hour guard)/gi) || []).length;
-  const gatedNegative = (blob.match(/\b(not gated|non.?gated|no gate)/gi) || []).length;
-
-  return {
-    isGated: gatedPositive > gatedNegative,
-    hasGolf: blob.includes("golf"),
-  };
-}
