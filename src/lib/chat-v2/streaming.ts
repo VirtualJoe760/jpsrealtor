@@ -91,6 +91,9 @@ export async function streamWithToolSupport(
             }))
           });
 
+          // Track all components across tool calls for skip-second-call logic
+          const allComponents: any = {};
+
           // Execute each tool and collect results
           for (const toolCall of toolCalls) {
             if (!toolCall.name) continue;
@@ -131,6 +134,9 @@ export async function streamWithToolSupport(
                   components.clarification = result.data.clarification;
                 }
 
+                // Track for skip-second-call logic
+                Object.assign(allComponents, components);
+
                 // Send components event
                 console.log("[Streaming] Sending components event:", JSON.stringify(components));
                 controller.enqueue(
@@ -161,25 +167,42 @@ export async function streamWithToolSupport(
             }
           }
 
-          // Make SECOND AI call with tool results to get final response
-          console.log("[Streaming] Making second AI call with tool results...");
-          const secondResponse = await groq.chat.completions.create({
-            model: "openai/gpt-oss-120b",
-            messages: [...messages, ...toolMessages],
-            stream: true,
-            temperature: 0.7,
-            max_tokens: 2048
-            // Don't include tools - prevents tool calling in second response
-          });
+          // Check if we can skip the second AI call for self-explanatory components
+          const hasListingOptions = !!allComponents.listingOptions;
+          const hasClarification = !!allComponents.clarification;
 
-          // Stream the second response (final AI text)
-          for await (const chunk of secondResponse) {
-            const delta = chunk.choices[0]?.delta;
+          if (hasListingOptions) {
+            // Multi-match: send canned response instead of waiting for AI
+            const count = allComponents.listingOptions.length;
+            const canned = `I found **${count} listings** matching your search. Which one would you like to know more about?`;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token: canned })}\n\n`));
+            console.log("[Streaming] ⚡ Skipped second AI call — listingOptions (canned response)");
+          } else if (hasClarification) {
+            // Clarification: send the question text directly
+            const q = allComponents.clarification.question;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token: q })}\n\n`));
+            console.log("[Streaming] ⚡ Skipped second AI call — clarification (canned response)");
+          } else {
+            // Make SECOND AI call with tool results to get final response
+            console.log("[Streaming] Making second AI call with tool results...");
+            const secondResponse = await groq.chat.completions.create({
+              model: "openai/gpt-oss-120b",
+              messages: [...messages, ...toolMessages],
+              stream: true,
+              temperature: 0.7,
+              max_tokens: 2048
+              // Don't include tools - prevents tool calling in second response
+            });
 
-            if (delta?.content) {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ token: delta.content })}\n\n`)
-              );
+            // Stream the second response (final AI text)
+            for await (const chunk of secondResponse) {
+              const delta = chunk.choices[0]?.delta;
+
+              if (delta?.content) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ token: delta.content })}\n\n`)
+                );
+              }
             }
           }
         }

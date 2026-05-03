@@ -697,7 +697,7 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const words = address.split(/[\s,]+/).filter(w => w.length > 1);
 
-  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl media';
+  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl';
   let multipleMatches: any[] = [];
 
   // Try slug-based multi-match first (uses slugAddress index)
@@ -721,25 +721,31 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   // If multiple matches found, return them as options for the user to pick
   if (multipleMatches.length > 1) {
     console.log(`[executeGetListingDetails] 🔀 Found ${multipleMatches.length} matches — returning options`);
-    const options = multipleMatches.map((l: any) => {
-      // Extract primary photo from media array or use primaryPhotoUrl field
-      const media = l.media || [];
-      const primaryMedia = media.find((m: any) => m.MediaCategory === 'Primary Photo' || m.Order === 0) || media[0];
-      const photoUrl = l.primaryPhotoUrl || primaryMedia?.Uri800 || primaryMedia?.Uri640 || primaryMedia?.Uri1024 || null;
+    // For listings missing primaryPhotoUrl, do a targeted lookup for just the first media item
+    const missingPhotos = multipleMatches.filter((l: any) => !l.primaryPhotoUrl);
+    let photoMap: Record<string, string> = {};
+    if (missingPhotos.length > 0) {
+      const photoLookups = await UnifiedListing.find(
+        { listingKey: { $in: missingPhotos.map((l: any) => l.listingKey) } },
+      ).select('listingKey media').lean();
+      for (const pl of photoLookups) {
+        const m = (pl as any).media?.[0];
+        if (m) photoMap[(pl as any).listingKey] = m.Uri800 || m.Uri640 || m.Uri1024 || '';
+      }
+    }
 
-      return {
-        listingKey: l.listingKey,
-        slugAddress: l.slugAddress,
-        address: l.unparsedAddress || l.unparsedFirstLineAddress,
-        city: l.city,
-        subdivision: l.subdivisionName,
-        price: l.listPrice,
-        beds: l.bedroomsTotal,
-        baths: l.bathroomsTotalDecimal,
-        sqft: l.livingArea,
-        primaryPhotoUrl: photoUrl,
-      };
-    });
+    const options = multipleMatches.map((l: any) => ({
+      listingKey: l.listingKey,
+      slugAddress: l.slugAddress,
+      address: l.unparsedAddress || l.unparsedFirstLineAddress,
+      city: l.city,
+      subdivision: l.subdivisionName,
+      price: l.listPrice,
+      beds: l.bedroomsTotal,
+      baths: l.bathroomsTotalDecimal,
+      sqft: l.livingArea,
+      primaryPhotoUrl: l.primaryPhotoUrl || photoMap[l.listingKey] || null,
+    }));
 
     return {
       success: true,
