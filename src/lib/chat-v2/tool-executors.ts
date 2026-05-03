@@ -697,7 +697,7 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const words = address.split(/[\s,]+/).filter(w => w.length > 1);
 
-  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl';
+  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl media';
   let multipleMatches: any[] = [];
 
   // Try slug-based multi-match first (uses slugAddress index)
@@ -721,18 +721,25 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
   // If multiple matches found, return them as options for the user to pick
   if (multipleMatches.length > 1) {
     console.log(`[executeGetListingDetails] 🔀 Found ${multipleMatches.length} matches — returning options`);
-    const options = multipleMatches.map((l: any) => ({
-      listingKey: l.listingKey,
-      slugAddress: l.slugAddress,
-      address: l.unparsedAddress || l.unparsedFirstLineAddress,
-      city: l.city,
-      subdivision: l.subdivisionName,
-      price: l.listPrice,
-      beds: l.bedroomsTotal,
-      baths: l.bathroomsTotalDecimal,
-      sqft: l.livingArea,
-      primaryPhotoUrl: l.primaryPhotoUrl,
-    }));
+    const options = multipleMatches.map((l: any) => {
+      // Extract primary photo from media array or use primaryPhotoUrl field
+      const media = l.media || [];
+      const primaryMedia = media.find((m: any) => m.MediaCategory === 'Primary Photo' || m.Order === 0) || media[0];
+      const photoUrl = l.primaryPhotoUrl || primaryMedia?.Uri800 || primaryMedia?.Uri640 || primaryMedia?.Uri1024 || null;
+
+      return {
+        listingKey: l.listingKey,
+        slugAddress: l.slugAddress,
+        address: l.unparsedAddress || l.unparsedFirstLineAddress,
+        city: l.city,
+        subdivision: l.subdivisionName,
+        price: l.listPrice,
+        beds: l.bedroomsTotal,
+        baths: l.bathroomsTotalDecimal,
+        sqft: l.livingArea,
+        primaryPhotoUrl: photoUrl,
+      };
+    });
 
     return {
       success: true,

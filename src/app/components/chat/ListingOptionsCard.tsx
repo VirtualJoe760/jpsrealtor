@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { Bed, Bath, Square, MapPin } from "lucide-react";
+import { Bed, Bath, Square, MapPin, Home } from "lucide-react";
 
 interface ListingOption {
   listingKey: string;
@@ -46,7 +46,7 @@ export default function ListingOptionsCard({ options }: ListingOptionsCardProps)
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 px-2 xl:px-8 2xl:px-16">
       {options.map((option) => (
         <button
           key={option.listingKey}
@@ -58,16 +58,22 @@ export default function ListingOptionsCard({ options }: ListingOptionsCardProps)
           }`}
         >
           {/* Photo thumbnail */}
-          {option.primaryPhotoUrl && option.primaryPhotoUrl !== '/images/no-photo.png' && (
-            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+          <div className={`w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 ${
+            isLight ? "bg-gray-100" : "bg-neutral-700"
+          }`}>
+            {option.primaryPhotoUrl ? (
               <img
                 src={option.primaryPhotoUrl}
                 alt={option.address}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-            </div>
-          )}
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Home className={`w-6 h-6 ${isLight ? "text-gray-300" : "text-neutral-500"}`} />
+              </div>
+            )}
+          </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
