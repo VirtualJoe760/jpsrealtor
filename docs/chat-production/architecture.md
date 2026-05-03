@@ -54,13 +54,20 @@ Real users in this product ask roughly nine kinds of question. Cataloging all of
 **Sources:** Neighborhoods (the precomputed county/city/subdivision record with description, photo, listingCount, priceRange) + Listings (sample/stats) + Insights (any relevant articles).
 
 ### E. Aggregate market questions ("the numbers")
-- "Average price in Beverly Hills"
+**Active inventory (asking prices):**
+- "Average list price in Beverly Hills"
 - "Median rent in Indio"
 - "How many gated homes in Indian Wells"
-- "Average days on market in La Quinta"
-- "Average sold price last 6 months in Palm Desert"
+- "Median days on market for active listings in La Quinta"
 
-**Sources:** Listings (active, `$facet` over filtered set) OR Closed Listings (sold, time-windowed).
+**Closed market (what actually transacted):**
+- "Average sold price last 6 months in Palm Desert"
+- "Sale-to-list ratio in Indio"
+- "How many homes sold in PGA West last year"
+- "Median DOM for sold homes in Indian Wells"
+- "Price-per-sqft of recent sales in La Quinta"
+
+**Sources:** Listings (active) for asking-price questions, Closed Listings (sold, time-windowed via `closeDate`) for transactional questions. The two are NOT interchangeable — list price vs sold price are different numbers and the AI must not conflate them.
 
 ### F. Comparisons ("A vs B")
 - "Compare PGA West vs Indian Wells Country Club"
@@ -69,19 +76,23 @@ Real users in this product ask roughly nine kinds of question. Cataloging all of
 
 **Sources:** Listings + CMA (paired aggregate calls or trend math across multiple scopes).
 
-### G. Trend / appreciation
+### G. Trend / appreciation / market velocity
 - "5-year appreciation in PGA West"
 - "How fast are prices rising in Palm Desert"
-- "Sale-to-list ratio in Indio"
+- "Is the market hot or cooling in Indio"
+- "How many homes sold per month in La Quinta this year"
+- "Has DOM gone up or down in PGA West"
+- "What's the YoY change in median sold price in Coachella Valley"
 
-**Sources:** CMA + Closed Listings (time-windowed analytics).
+**Sources:** Closed Listings is the primary engine here — `closeDate` is indexed and required, enabling clean time-window aggregations (1y / 3y / 5y rolling windows, monthly buckets, YoY deltas). Subdivision `cmaStats` (precomputed nightly) is the fast path for known subdivisions; falls back to live aggregation over `unified_closed_listings` for arbitrary scopes.
 
 ### H. CMA / valuation
 - "What's 12345 Desi Drive worth"
 - "Generate a CMA"
 - "Comparable sales near my property"
+- "What did 77013 Desi Drive sell for last time"
 
-**Sources:** CMA endpoints (full report with comps).
+**Sources:** Closed Listings (the comparables themselves) + CMA endpoints (full report with charts, statistical analysis, market positioning). Subdivision `cmaStats` for the dominant-comp neighborhood lookup.
 
 ### I. Lifestyle / educational ("insights")
 - "Where is cheaper electric in Coachella Valley"
@@ -175,24 +186,31 @@ type Intent =
   | 'street-listings'     // street entity, no house number
   | 'aggregate'           // "average", "median", "typical", "how many"
   | 'compare'             // "compare", "vs", "versus", "than"
-  | 'appreciation'        // "appreciation", "ROI", "trend", "value over"
+  | 'trend'               // "appreciation", "ROI", "YoY", "trend", "hot or cooling"
   | 'cma'                 // "CMA", "what's it worth", "comparable sales"
   | 'insights'            // educational / lifestyle keywords + no entity OR generic entity
   | 'conversational'      // no entity, no aggregate keyword, open-ended
   | 'unknown';
+
+// Dataset selector — orthogonal to intent. Set by L0 from message keywords.
+// 'closed' wins on phrases like "sold", "sale-to-list", "DOM", "last 6 months",
+// "last year", "year over year", or any explicit time window. Defaults to
+// 'active' for asking-price questions and bare aggregates.
+type Dataset = 'active' | 'closed';
 ```
 
 Resolution order:
 1. **Address regex** first — `\b\d{1,6}\s+[A-Za-z][\w\s]*?\s+(drive|dr|street|st|...|terrace|ter)\b`. If matched, intent is `listing-detail`.
 2. **LocationIndex pass** — match the message against indexed city/subdivision/county/region names + aliases. Find longest match. If matched, intent is whatever the keyword analysis says (default `listing-search`).
 3. **Street-name index pass** — if a street suffix is present without a leading number, check the street index. `street-listings` intent.
-4. **Aggregate-keyword pass** — `\b(average|avg|median|typical|how many|count of|total)\b` → `aggregate`.
-5. **Compare-keyword pass** — `\b(compare|comparing|vs\.?|versus|better|cheaper|pricier than)\b` → `compare`.
-6. **Appreciation-keyword pass** — `\b(appreciation|appreciat|ROI|return on|trend|over (the )?(\d+ )?years?)\b` → `appreciation`.
-7. **CMA-keyword pass** — `\b(CMA|comparable sales|comp(s)?|what'?s it worth|valuation)\b` → `cma`.
-8. **Insights-keyword pass** — `\b(electric|utility|HOA|school|climate|weather|short sale|first[- ]time|tax|mortgage|loan|how do)\b` AND no listing entity → `insights`.
-9. **Filter extraction** — runs orthogonally to all of the above. Pulls price ranges (`under $1M`, `$500k-$1M`), beds (`3-bed`, `3 bed`, `3br`), baths, sqft (`under 2000 sqft`), amenities (`pool`, `gated`, `view`, `fireplace`), HOA (`no HOA`, `under $300/month`), property type (`condo`, `house`, `townhouse`).
-10. **Confidence score** — high (0.9+) when entity + clear keyword match. Low (<0.6) when message is ambiguous.
+4. **Dataset keyword pass** — `\b(sold|sale[- ]to[- ]list|listing[- ]to[- ]sale|closed|recently sold|last (\d+ )?months?|last year|year over year|YoY|days on market|DOM)\b` → `dataset = "closed"`. Otherwise `dataset = "active"`.
+5. **Aggregate-keyword pass** — `\b(average|avg|median|typical|how many|count of|total)\b` → `aggregate`.
+6. **Compare-keyword pass** — `\b(compare|comparing|vs\.?|versus|better|cheaper|pricier than)\b` → `compare`.
+7. **Trend-keyword pass** — `\b(appreciation|appreciat|ROI|return on|trend|over (the )?(\d+ )?years?|hot or cool|cooling|heating up|YoY)\b` → `trend`. Note: `trend` implies `dataset = "closed"` regardless of step 4.
+8. **CMA-keyword pass** — `\b(CMA|comparable sales|comp(s)?|what'?s it worth|valuation)\b` → `cma`.
+9. **Insights-keyword pass** — `\b(electric|utility|HOA|school|climate|weather|short sale|first[- ]time|tax|mortgage|loan|how do)\b` AND no listing entity → `insights`.
+10. **Filter extraction** — runs orthogonally to all of the above. Pulls price ranges (`under $1M`, `$500k-$1M`), beds (`3-bed`, `3 bed`, `3br`), baths, sqft (`under 2000 sqft`), amenities (`pool`, `gated`, `view`, `fireplace`), HOA (`no HOA`, `under $300/month`), property type (`condo`, `house`, `townhouse`), time windows (`last 6 months` → `closedSinceDays: 180`).
+11. **Confidence score** — high (0.9+) when entity + clear keyword match. Low (<0.6) when message is ambiguous.
 
 If nothing fires → intent `conversational`, low confidence, pass to L3.
 
@@ -200,17 +218,20 @@ If nothing fires → intent `conversational`, low confidence, pass to L3.
 
 Single module: `src/lib/chat-v2/search-service.ts`. Routes on intent, calls existing primitives, returns the component shape the SSE protocol already speaks (`{ component, data }`).
 
-Routing table:
+Routing table — every row honors the `dataset` flag from L0:
 
-| Intent | Action | Existing primitive reused | Component emitted |
-|---|---|---|---|
-| `listing-detail` | Lookup address (number + street + optional city) | Address-anchored slug index OR new fast street index | `listingDetail` (single) or `listingOptions` (multi-match) |
-| `listing-search` | Build `ListingScope` from entity, filters from parser, call `buildListingQuery` + paged find | `searchHomes` executor logic, but pre-resolved | `neighborhood` (city/sub) or `listingResults` (street/county/zip) |
-| `street-listings` | Treat street as scope, call `searchListings` primitive | `searchListings` executor | `listingResults` |
-| `aggregate` | Build scope + filters, call `computeAreaStats` | `getAreaStats` executor | `areaStats` |
-| `compare` | Two paired `computeAreaStats` calls | `getAreaStats` × 2 | `areaStats` × 2 (frontend renders side-by-side) |
-| `appreciation` | Call appreciation analytics endpoint | `getAppreciation` executor | `appreciation` |
-| `cma` | Lookup property, call CMA endpoint | `generateCMA` executor | `cmaReport` |
+| Intent | dataset | Action | Existing primitive reused | Component emitted |
+|---|---|---|---|---|
+| `listing-detail` | `active` | Lookup address (number + street + optional city) | Address-anchored slug index OR new fast street index | `listingDetail` (single) or `listingOptions` (multi-match) |
+| `listing-detail` | `closed` | Same lookup against `unified_closed_listings` | New: closed-side equivalent | `closedListingDetail` (new component) |
+| `listing-search` | `active` | Build `ListingScope` from entity, filters from parser, call `buildListingQuery` + paged find | `searchHomes` executor logic, pre-resolved | `neighborhood` (city/sub) or `listingResults` (street/county/zip) |
+| `listing-search` | `closed` | Same scope/filters, query closed collection | `buildListingQuery({dataset:'closed'})` already supports it | `closedResults` (new component) |
+| `street-listings` | `active` | Treat street as scope, call `searchListings` primitive | `searchListings` executor | `listingResults` |
+| `aggregate` | `active` | Build scope + filters, call `computeAreaStats` | `getAreaStats` executor | `areaStats` |
+| `aggregate` | `closed` | Same, with `dataset: 'closed'` and optional `closedSinceDays` window | `computeAreaStats` already supports it | `areaStats` (with closed-mode rendering) |
+| `compare` | either | Two paired `computeAreaStats` calls (active or closed) | `getAreaStats` × 2 | `areaStats` × 2 (frontend renders side-by-side) |
+| `trend` | `closed` | Time-windowed analytics (DOM trend, sale-to-list, YoY appreciation) | `getAppreciation` for known cases; new `getMarketTrends` for everything else | `appreciation` or `marketTrends` (new) |
+| `cma` | `closed` | Lookup property + comp analysis from closed sales | `generateCMA` executor (already closed-driven) | `cmaReport` |
 | `insights` | Article `$text` search | `searchArticles` executor | `articles` |
 | `conversational` / `unknown` / low-confidence | Fall through to L3 | — | — |
 
@@ -281,10 +302,17 @@ Existing tools (post-Phase-4) are **kept**. They're still useful as Layer 3 prim
 | `searchArticles` → rename **`searchInsights`** | Yes (`insights`) | Yes | Lifestyle / educational |
 | `askClarification` | No (L0 already handles ambiguity at parse time) | Yes | Free-text clarification |
 
-### Tool surface additions to consider
+### Tool surface additions
 
-- **`getMarketTrends(scope, dataset, period, metric)`** — closed-listings analytics: DOM, sale-to-list ratio, YoY appreciation, list-price drops. Currently the helper supports `dataset: 'closed'` architecturally but no tool exposes it. Worth introducing as part of the closed-listings rollout.
-- **`compareScopes(scopes[], filters, metrics[])`** — convenience over multiple `getAreaStats` calls. Reduces L1 logic for `compare` intent. Optional.
+**Required for the search-first architecture (ship in this rollout):**
+
+- **`dataset` arg on existing tools** — `searchListings`, `getAreaStats` already support `dataset: 'active' | 'closed'` in the helper but the tool schemas don't expose it. Add `dataset` (default `"active"`) so the AI agent loop (L3) can also reach for closed data when the parser confidently tagged the user's intent.
+- **`getMarketTrends(scope, period, metric, propertyType?)`** — closed-listings analytics. Computes one or more time-series metrics (`dom_median`, `sale_to_list_ratio`, `monthly_volume`, `median_close_price_yoy`, `price_per_sqft_yoy`) over the requested period (`6m` / `1y` / `3y` / `5y`). Returns a `marketTrends` component with line charts for each metric.
+
+**Nice-to-have (future):**
+
+- **`compareScopes(scopes[], filters, metrics[])`** — convenience over multiple `getAreaStats` calls. Reduces L1 logic for `compare` intent. Optional; the parallel-call path through `getAreaStats` works fine.
+- **`getRecentSales(scope, since, limit)`** — quick-glance "what just sold here" without the full trend math. Useful for the "recently sold in PGA West" intent.
 
 ## Routing decision tree (worked examples)
 
@@ -307,9 +335,27 @@ Existing tools (post-Phase-4) are **kept**. They're still useful as Layer 3 prim
 - Total: ~2s
 
 **`compare PGA West vs Indian Wells Country Club`**
-- L0 → two subdivision entities, compare keyword, intent `compare`, confidence: 0.9
+- L0 → two subdivision entities, compare keyword, intent `compare`, dataset `active`, confidence: 0.9
 - L1 → two parallel `computeAreaStats` calls → emits `areaStats` × 2
 - L2 → "PGA West runs larger and pricier than Indian Wells Country Club, with both skewing single-family. Want appreciation data on either?"
+- Total: ~2s
+
+**`average sold price last 6 months in Palm Desert`**
+- L0 → entity `city: Palm Desert`, aggregate keyword, dataset `closed` (from "sold"), `closedSinceDays: 180` (from "last 6 months"), intent `aggregate`, confidence: 0.95
+- L1 → `computeAreaStats({ scope: city, dataset: 'closed', closedSinceDays: 180 })` → emits `areaStats` with closed-mode rendering
+- L2 → "Palm Desert's last 6 months of sold-price activity averages $X across N closings, with single-family dominating the volume."
+- Total: ~2s
+
+**`how's the market in PGA West, hot or cooling`**
+- L0 → entity `subdivision: PGA West`, intent `trend`, dataset `closed` (implicit), confidence: 0.85
+- L1 → `getMarketTrends({ scope: subdivision, period: '1y', metric: ['dom_median', 'monthly_volume'] })` → emits `marketTrends`
+- L2 → "PGA West has cooled slightly — median DOM is up X% YoY and monthly closing volume is down N%. Inventory is sitting longer."
+- Total: ~2.5s
+
+**`sale-to-list ratio in Indio`**
+- L0 → entity `city: Indio`, intent `trend`, dataset `closed`, metric `sale_to_list_ratio`, confidence: 0.9
+- L1 → `getMarketTrends({ scope: city, period: '6m', metric: ['sale_to_list_ratio'] })` → emits `marketTrends`
+- L2 → "Indio's averaging X% of list price on closed sales over the last 6 months, suggesting a relatively balanced market."
 - Total: ~2s
 
 **`where is cheaper electric in coachella valley`**
@@ -353,7 +399,7 @@ Existing tools (post-Phase-4) are **kept**. They're still useful as Layer 3 prim
 - Agent matching / lead capture (separate flow)
 - Tour scheduling
 - Multi-tenant per-agent prompt customization
-- Closed-listings tool surface (the architecture supports it; just not wired)
+- Off-MLS data (Zillow Zestimates, public records, MLS-only commission disclosures)
 
 ## Reused infrastructure (we don't reinvent these)
 
@@ -362,10 +408,11 @@ Existing tools (post-Phase-4) are **kept**. They're still useful as Layer 3 prim
 | `LocationIndex` model + helpers | L0 entity resolution (already <50ms by design) |
 | `/api/cities/[id]/listings` | L1 listing-search for cities — same logic, called server-side |
 | `/api/subdivisions/[slug]/listings` | L1 listing-search for subdivisions |
-| `computeAreaStats` (`listing-query.ts`) | L1 aggregate stats |
+| `computeAreaStats` (`listing-query.ts`) | L1 aggregate stats — supports `dataset: 'active' \| 'closed'` already |
+| `unified_closed_listings` model + indexes | L1 closed-data path: `closeDate` is required + indexed (5-yr TTL), `closePrice` indexed for range queries, indexes on `(city, closeDate)` and `(subdivisionName, closeDate)` already exist |
+| Subdivision precomputed `cmaStats` | L1 fast aggregate path for known subdivisions (skip live $facet entirely) |
 | Existing autocomplete endpoint (`d79cc79f`) | Possibly L0's address/street fast-path |
 | Article `$text` search | L1 insights |
-| Subdivision `cmaStats` precomputed records | L1 fast aggregate path for known subdivisions (skip $facet) |
 
 ## Open design choices (need your call before implementation)
 
@@ -391,10 +438,12 @@ Existing tools (post-Phase-4) are **kept**. They're still useful as Layer 3 prim
 5. **`searchHomes` deprecation** — it overlaps heavily with `searchListings` + `getAreaStats` post-Phase-2. With L1 doing the routing, do we keep `searchHomes` (for L3 backward compat) or merge it?
    - I lean **keep for now**, mark deprecated, remove once L1 covers all its cases in production.
 
-6. **Closed-listings exposure** — wire `getMarketTrends` now or later?
-   - Now: lets `appreciation`/`cma`/`compare` intents reach for it. More surface to test in this rollout.
-   - Later: ship search-first first, add closed-listings tool when stable.
-   - I lean **later** — fewer moving parts in the architecture rollout.
+6. **Closed-listings rollout — revised based on user feedback** — closed listings are a co-equal source of truth. The rollout now includes:
+   - **L0 dataset detection** ships in Phase A (the parser tags `dataset: "closed"` from explicit keywords).
+   - **L1 honors dataset** in Phase B for `aggregate` and `listing-detail` (the helper already supports it).
+   - **`getMarketTrends` tool** ships in Phase C alongside the L1 wiring. This is the dedicated closed-data analytics tool — DOM, sale-to-list, YoY, monthly volume.
+   - **`dataset` arg on `searchListings` / `getAreaStats` schemas** ships in Phase B (5-line schema change each).
+   - The frontend gets a new `closedResults` component variant (or extends `listingResults` with a `closed: true` flag — design call).
 
 ## Implementation phasing (proposed)
 
