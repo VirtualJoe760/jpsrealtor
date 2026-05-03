@@ -363,9 +363,12 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   }
 
                   if (data.components) {
-                    // Received component data
+                    // The agent loop emits one SSE event per tool result, so a
+                    // single response can produce multiple component events
+                    // (e.g., neighborhood + areaStats from chained calls).
+                    // Merge keys instead of overwriting.
                     console.log('[ChatWidget] 📦 Received components:', data.components);
-                    components = data.components;
+                    components = { ...(components || {}), ...data.components };
                   }
 
                   if (data.tool_calls) {
@@ -582,7 +585,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   }
 
                   if (data.components) {
-                    components = data.components;
+                    // Merge across multi-iteration loop events.
+                    components = { ...(components || {}), ...data.components };
                   }
 
                   if (data.done) {
@@ -811,7 +815,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     }
 
                     if (data.components) {
-                      components = data.components;
+                      // Merge across multi-iteration loop events.
+                      components = { ...(components || {}), ...data.components };
                     }
 
                     if (data.done) {

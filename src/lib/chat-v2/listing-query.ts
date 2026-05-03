@@ -263,8 +263,17 @@ export async function buildListingQuery(
     query.yearBuilt = f;
   }
 
-  // Amenity booleans — the data has both lowercase Yn (schema) and legacy
-  // uppercase YN / bare-name fields, so OR across all of them.
+  // Amenity booleans — across ~76k listings synced from 8 MLSs, three
+  // different field-name conventions coexist for the same boolean:
+  //
+  //   • poolYn  — current Mongoose schema in src/models/unified-listing.ts
+  //   • poolYN  — legacy uppercase from older MLS sync
+  //   • pool    — bare-name from yet another MLS feed
+  //
+  // We OR across all three so every listing matches regardless of source.
+  // Same pattern applies to spa, view, and senior-community fields below.
+  // DO NOT collapse to just `poolYn` — verify-chat-stats.ts proved this:
+  // Beverly Hills pool % was reported as 0% pre-Phase-2 and is actually 73%.
   if (filters.pool) {
     andConditions.push({ $or: [{ poolYn: true }, { poolYN: true }, { pool: true }] });
   }

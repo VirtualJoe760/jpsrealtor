@@ -113,26 +113,18 @@ Now respond to the user's query about "${locationSnapshot.name}" following these
       }))
     ];
 
-    // ONE AI call with ALL tools available
-    // This is the industry standard pattern used by OpenAI, Anthropic, Google
-    const groqResponse = await groq.chat.completions.create({
-      model: "openai/gpt-oss-120b", // GPT-OSS 120B has function calling support
-      messages: fullMessages,
-      tools: ALL_TOOLS, // Give AI access to all tools at once
-      tool_choice: "auto",
-      stream: true, // Enable streaming for better UX
-      temperature: 0.7,
-      max_tokens: 2048
-    });
+    console.log("[Chat V2] Starting agent loop with", ALL_TOOLS.length, "tools available");
 
-    console.log("[Chat V2] Groq request sent with", ALL_TOOLS.length, "tools available");
-
-    // Stream response with tool execution support
-    // Pass groq client and messages for multi-turn tool calling
-    const stream = await streamWithToolSupport(groqResponse, {
+    // The agent loop owns the Groq calls. Tools are passed on every iteration;
+    // the loop terminates when the model emits a turn with no tool_calls or
+    // hits the iteration cap (see streaming.ts).
+    const stream = await streamWithToolSupport({
       groq,
       messages: fullMessages,
-      userId
+      userId,
+      model: "openai/gpt-oss-120b",
+      temperature: 0.7,
+      maxTokens: 2048,
     });
 
     // Return SSE stream
