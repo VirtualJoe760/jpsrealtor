@@ -18,7 +18,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 interface SearchResult {
-  type: "listing" | "city" | "subdivision" | "county" | "region";
+  type: "listing" | "city" | "subdivision" | "county" | "region" | "article";
   entityId?: string;
   label: string;
   sublabel?: string;
@@ -32,6 +32,8 @@ interface SearchResult {
   subdivision?: string;
   totalListings?: number;
   parentCity?: string;
+  excerpt?: string;
+  category?: string;
   score?: number;
   source?: "text" | "regex";
 }
@@ -72,6 +74,8 @@ const typeColor = (t: string) => {
       return "bg-rose-100 text-rose-900";
     case "region":
       return "bg-teal-100 text-teal-900";
+    case "article":
+      return "bg-emerald-100 text-emerald-900";
     default:
       return "bg-gray-100 text-gray-700";
   }
@@ -252,6 +256,11 @@ export default function TestChatPage() {
                       {r.beds != null && <span> · {r.beds}bd</span>}
                       {r.baths != null && <span> · {r.baths}ba</span>}
                       {r.sqft && <span> · {r.sqft.toLocaleString()} sqft</span>}
+                    </div>
+                  )}
+                  {r.type === "article" && r.excerpt && (
+                    <div className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                      {r.excerpt}
                     </div>
                   )}
                 </div>

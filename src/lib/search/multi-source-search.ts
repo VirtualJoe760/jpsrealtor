@@ -22,12 +22,19 @@ import { City } from "@/models/cities";
 import Subdivision from "@/models/subdivisions";
 import { County } from "@/models/counties";
 import { Region } from "@/models/regions";
+import Article from "@/models/article";
 
 // =============================================================================
 // Public types
 // =============================================================================
 
-export type SearchResultType = "listing" | "city" | "subdivision" | "county" | "region";
+export type SearchResultType =
+  | "listing"
+  | "city"
+  | "subdivision"
+  | "county"
+  | "region"
+  | "article";
 
 export interface SearchResult {
   type: SearchResultType;
@@ -59,6 +66,10 @@ export interface SearchResult {
 
   // Subdivision-specific
   parentCity?: string;
+
+  // Article-specific
+  excerpt?: string;
+  category?: string;
 
   // Internal — for ranking/debugging
   score?: number;
@@ -161,6 +172,50 @@ async function countyAndRegionHits(q: string): Promise<SearchResult[]> {
 }
 
 // =============================================================================
+// Helper: $text on Articles (insights / educational content)
+// =============================================================================
+//
+// Surfaces blog-style answers ("tell me about electric costs in the desert")
+// in autocomplete. The Article collection has a Mongo $text index over
+// title/excerpt/content; same pattern as executeSearchArticles in
+// tool-executors.ts. Capped at 3 results to keep entity matches dominant
+// for entity-shaped queries.
+
+async function articleHits(q: string): Promise<SearchResult[]> {
+  try {
+    // Articles need at least a couple of meaningful tokens to be useful.
+    // Single short tokens overwhelmingly produce noise (e.g. "in" matches
+    // every article).
+    if (q.length < 3) return [];
+
+    const docs = await Article.find(
+      { status: "published", $text: { $search: q } },
+      { score: { $meta: "textScore" } }
+    )
+      .sort({ score: { $meta: "textScore" } })
+      .limit(3)
+      .select("title slug excerpt category")
+      .lean();
+
+    return (docs as any[]).map((d): SearchResult => ({
+      type: "article",
+      entityId: d.slug,
+      label: d.title,
+      sublabel: d.category,
+      slug: d.slug,
+      excerpt: d.excerpt,
+      category: d.category,
+      score: (d as any).score,
+      source: "text",
+    }));
+  } catch (err) {
+    // Article $text index may not exist on dev; fail silently.
+    console.warn("[multi-source-search] article $text failed:", err);
+    return [];
+  }
+}
+
+// =============================================================================
 // Helper: prefix regex on cities + subdivisions (gap fill — $text can't prefix-match)
 // =============================================================================
 
@@ -209,6 +264,7 @@ function dedupeAndRank(
   textHits: SearchResult[],
   countyRegionHits: SearchResult[],
   prefixHits: SearchResult[],
+  articleHits: SearchResult[],
   limit: number
 ): SearchResult[] {
   const norm = q.toLowerCase().trim();
@@ -232,6 +288,7 @@ function dedupeAndRank(
   for (const r of textHits) tryAdd(r);
   for (const r of countyRegionHits) tryAdd(r);
   for (const r of prefixHits) tryAdd(r);
+  for (const r of articleHits) tryAdd(r);
 
   const all = Array.from(seen.values());
 
@@ -241,12 +298,16 @@ function dedupeAndRank(
   //   3. textScore descending within text source
   //   4. Type ordering for ties: city > subdivision > county > region > listing
   //      (broader entities first, listings as the granular fallback)
+  // Type ordering tiebreaker. Entities first ("where") then articles
+  // ("what to read about it"). Listings sit between because for an entity
+  // query they're more specific than an article reference.
   const typeOrder: Record<SearchResultType, number> = {
     city: 0,
     subdivision: 1,
     county: 2,
     region: 3,
     listing: 4,
+    article: 5,
   };
 
   all.sort((a, b) => {
@@ -289,13 +350,14 @@ export async function multiSourceSearch(
   // unconditionally — it's cheap (indexed prefix scan on small collections).
   const runPrefix = trimmed.length <= prefixThreshold * 2; // be permissive
 
-  const [textHits, crHits, pHits] = await Promise.all([
+  const [textHits, crHits, pHits, aHits] = await Promise.all([
     searchIndexHits(trimmed, Math.ceil(limit * 1.5)),
     countyAndRegionHits(trimmed),
     runPrefix ? prefixHits(trimmed) : Promise.resolve([] as SearchResult[]),
+    articleHits(trimmed),
   ]);
 
-  return dedupeAndRank(trimmed, textHits, crHits, pHits, limit);
+  return dedupeAndRank(trimmed, textHits, crHits, pHits, aHits, limit);
 }
 
 // =============================================================================
