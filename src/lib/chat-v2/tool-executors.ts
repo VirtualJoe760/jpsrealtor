@@ -758,7 +758,13 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
     ? new RegExp(`^${slugQuery}`) // Prefix match — uses slugAddress index
     : new RegExp(slugQuery);      // Contains match — still fast for short patterns
 
-  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl';
+  // Schema has BOTH `bedsTotal` and `bedroomsTotal`, populated by different MLS
+  // feeds — same for `bathsTotal` / `bathroomsTotalDecimal` / `bathroomsTotalInteger`.
+  // Selecting only one variant returns undefined for any record sourced from the
+  // other feed, which produces "0 bd / 0 ba" in the listing-options cards AND
+  // (worse) prompts the model to hallucinate plausible-sounding numbers in its
+  // narration. Project all variants and fall back across them when reading.
+  const selectFields = 'listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedsTotal bedroomsTotal bathsTotal bathroomsTotalDecimal bathroomsTotalInteger livingArea primaryPhotoUrl';
   let multipleMatches: any[] = [];
 
   // Try slug-based multi-match first (uses slugAddress index for prefix queries)
@@ -802,9 +808,9 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
       city: l.city,
       subdivision: l.subdivisionName,
       price: l.listPrice,
-      beds: l.bedroomsTotal,
-      baths: l.bathroomsTotalDecimal,
-      sqft: l.livingArea,
+      beds: l.bedsTotal ?? l.bedroomsTotal ?? 0,
+      baths: l.bathsTotal ?? l.bathroomsTotalDecimal ?? l.bathroomsTotalInteger ?? 0,
+      sqft: l.livingArea ?? 0,
       primaryPhotoUrl: l.primaryPhotoUrl || photoMap[l.listingKey] || null,
     }));
 
@@ -883,8 +889,8 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
         subdivision: listing.subdivisionName,
         price: listing.listPrice,
         status: listing.standardStatus,
-        beds: listing.bedroomsTotal,
-        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        beds: listing.bedsTotal ?? listing.bedroomsTotal ?? 0,
+        baths: listing.bathsTotal ?? listing.bathroomsTotalDecimal ?? listing.bathroomsTotalInteger ?? 0,
         sqft: listing.livingArea,
         lotSizeSqft: listing.lotSizeArea || listing.lotSizeSqft,
         yearBuilt: listing.yearBuilt,
@@ -907,8 +913,8 @@ async function executeGetListingDetails(args: { address: string }): Promise<{
         subdivision: listing.subdivisionName,
         price: listing.listPrice,
         status: listing.standardStatus,
-        beds: listing.bedroomsTotal,
-        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        beds: listing.bedsTotal ?? listing.bedroomsTotal ?? 0,
+        baths: listing.bathsTotal ?? listing.bathroomsTotalDecimal ?? listing.bathroomsTotalInteger ?? 0,
         sqft: listing.livingArea,
         lotSizeSqft: listing.lotSizeArea || listing.lotSizeSqft,
         lotSizeAcres: listing.lotSizeAcres,
@@ -1045,8 +1051,8 @@ async function executeGenerateCMA(args: { address: string }): Promise<{
         subdivision: listing.subdivisionName,
         price: listing.listPrice,
         sqft: listing.livingArea,
-        beds: listing.bedroomsTotal,
-        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        beds: listing.bedsTotal ?? listing.bedroomsTotal ?? 0,
+        baths: listing.bathsTotal ?? listing.bathroomsTotalDecimal ?? listing.bathroomsTotalInteger ?? 0,
       },
       location: listing.unparsedAddress || address,
     }
