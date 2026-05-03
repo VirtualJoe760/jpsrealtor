@@ -79,7 +79,7 @@ export default function ChatInput({
     }
 
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/listings/quick-search?q=${encodeURIComponent(query)}`);
       if (res.ok) {
         const data = await res.json();
         const results: SearchResult[] = (data.results || []).slice(0, 6);
