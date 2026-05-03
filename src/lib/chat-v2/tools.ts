@@ -257,7 +257,135 @@ export const ALL_TOOLS: ChatCompletionTool[] = [
   },
 
   // =========================================================================
-  // TOOL 6: Ask Clarification - Interactive question before acting
+  // TOOL 6: Search Listings - Multi-listing scoped search (street / area / etc.)
+  // =========================================================================
+  {
+    type: "function",
+    function: {
+      name: "searchListings",
+      description: "Return a list of active listings matching a scope and filters. Use this when the user wants to see MULTIPLE listings in a specific area — especially queries scoped to a street ('homes on Hovley Lane'), county, or zip code that searchHomes can't handle. Also valid for subdivision/city queries when you specifically want the listing rows rather than just neighborhood stats. Returns the listing rows directly, not just an identifier.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["street", "subdivision", "city", "county", "zip"],
+            description: "Geographic scope. 'street' for street-name queries (requires cityName), 'subdivision'/'city'/'county' for those layers, 'zip' for postal-code targeting."
+          },
+          scopeValue: {
+            type: "string",
+            description: "The value for the scope. For street: the street name (e.g., 'Hovley Lane'). For subdivision: the subdivision name (e.g., 'PGA West'). For city: the city name. For county: the county name. For zip: the 5-digit zip code."
+          },
+          cityName: {
+            type: "string",
+            description: "Required when scope='street'. The city the street is in (e.g., 'Palm Desert'). Optional for scope='subdivision' to disambiguate streets that share names across cities."
+          },
+          // Filters (mirror searchHomes)
+          minPrice: { type: "number", description: "Minimum price in dollars" },
+          maxPrice: { type: "number", description: "Maximum price in dollars" },
+          beds: { type: "number", description: "Exact number of bedrooms" },
+          baths: { type: "number", description: "Exact number of bathrooms" },
+          minSqft: { type: "number", description: "Minimum living area in sqft" },
+          maxSqft: { type: "number", description: "Maximum living area in sqft" },
+          minLotSize: { type: "number", description: "Minimum lot size in sqft" },
+          maxLotSize: { type: "number", description: "Maximum lot size in sqft" },
+          minYear: { type: "number", description: "Minimum year built" },
+          maxYear: { type: "number", description: "Maximum year built" },
+          pool: { type: "boolean", description: "Must have a pool" },
+          spa: { type: "boolean", description: "Must have a spa/hot tub" },
+          view: { type: "boolean", description: "Must have a view" },
+          fireplace: { type: "boolean", description: "Must have a fireplace" },
+          gatedCommunity: { type: "boolean", description: "Must be in a gated community" },
+          seniorCommunity: { type: "boolean", description: "Must be a senior/55+ community" },
+          garageSpaces: { type: "number", description: "Minimum garage spaces" },
+          stories: { type: "number", description: "Number of stories" },
+          propertyType: {
+            type: "string",
+            enum: ["A", "B", "C", "D"],
+            description: "MLS property type code. A=residential sale (default), B=rental, C=multifamily, D=land. Use 'B' for rental queries."
+          },
+          hasHOA: { type: "boolean", description: "Filter by HOA presence" },
+          minHOA: { type: "number", description: "Minimum monthly HOA fee" },
+          maxHOA: { type: "number", description: "Maximum monthly HOA fee" },
+          // Pagination + sort
+          limit: {
+            type: "number",
+            description: "Maximum rows to return. Default 50, max 200."
+          },
+          offset: {
+            type: "number",
+            description: "Number of rows to skip (for pagination). Default 0."
+          },
+          sort: {
+            type: "string",
+            enum: ["price-low", "price-high", "newest", "oldest", "sqft-low", "sqft-high"],
+            description: "Sort order. Defaults to 'newest'."
+          }
+        },
+        required: ["scope", "scopeValue"]
+      }
+    }
+  },
+
+  // =========================================================================
+  // TOOL 7: Get Area Stats - Aggregate stats only (no listing rows)
+  // =========================================================================
+  {
+    type: "function",
+    function: {
+      name: "getAreaStats",
+      description: "Return aggregate market statistics for a scope (count, avg/median price, $/sqft, sqft, HOA, propertySubType breakdown, amenity rates). Use this for AGGREGATE questions like 'average price on Hovley Lane', 'average rental income in Indio' (set propertyType='B'), 'median $/sqft in Palm Desert', 'how many gated homes in PGA West'. Does NOT return individual listings — pair with searchListings if the user also wants to see the rows.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["street", "subdivision", "city", "county", "zip"],
+            description: "Geographic scope. Same semantics as searchListings."
+          },
+          scopeValue: {
+            type: "string",
+            description: "The value for the scope (street name, subdivision name, city name, county name, or zip)."
+          },
+          cityName: {
+            type: "string",
+            description: "Required when scope='street'. The city the street is in."
+          },
+          // Filters (same set as searchListings)
+          minPrice: { type: "number" },
+          maxPrice: { type: "number" },
+          beds: { type: "number" },
+          baths: { type: "number" },
+          minSqft: { type: "number" },
+          maxSqft: { type: "number" },
+          minLotSize: { type: "number" },
+          maxLotSize: { type: "number" },
+          minYear: { type: "number" },
+          maxYear: { type: "number" },
+          pool: { type: "boolean" },
+          spa: { type: "boolean" },
+          view: { type: "boolean" },
+          fireplace: { type: "boolean" },
+          gatedCommunity: { type: "boolean" },
+          seniorCommunity: { type: "boolean" },
+          garageSpaces: { type: "number" },
+          stories: { type: "number" },
+          propertyType: {
+            type: "string",
+            enum: ["A", "B", "C", "D"],
+            description: "MLS property type code. A=residential sale (default), B=rental — use B for rental income questions. C=multifamily, D=land."
+          },
+          hasHOA: { type: "boolean" },
+          minHOA: { type: "number" },
+          maxHOA: { type: "number" }
+        },
+        required: ["scope", "scopeValue"]
+      }
+    }
+  },
+
+  // =========================================================================
+  // TOOL 8: Ask Clarification - Interactive question before acting
   // =========================================================================
   {
     type: "function",

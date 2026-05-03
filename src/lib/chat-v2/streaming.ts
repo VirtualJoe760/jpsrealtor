@@ -132,6 +132,12 @@ export async function streamWithToolSupport(
                   components.cmaReport = result.data.cmaReport;
                 } else if (result.data.component === "clarification") {
                   components.clarification = result.data.clarification;
+                } else if (result.data.component === "listingResults") {
+                  // searchListings: tool returns rows directly, frontend renders them
+                  components.listingResults = result.data.listingResults;
+                } else if (result.data.component === "areaStats") {
+                  // getAreaStats: aggregate stats card
+                  components.areaStats = result.data.areaStats;
                 }
 
                 // Track for skip-second-call logic

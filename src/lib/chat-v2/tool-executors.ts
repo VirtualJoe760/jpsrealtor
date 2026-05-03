@@ -51,6 +51,14 @@ export async function executeTool(
         result = await executeGenerateCMA(args);
         break;
 
+      case "searchListings":
+        result = await executeSearchListings(args);
+        break;
+
+      case "getAreaStats":
+        result = await executeGetAreaStats(args);
+        break;
+
       case "askClarification":
         result = {
           success: true,
@@ -366,6 +374,262 @@ async function executeSearchHomes(args: SearchHomesArgs): Promise<{ success: boo
       metadata: { isGeneralCityQuery },
     },
   };
+}
+
+// =========================================================================
+// Shared: scope-arg → ListingScope
+// =========================================================================
+
+interface ScopedToolArgs {
+  scope: "street" | "subdivision" | "city" | "county" | "zip";
+  scopeValue: string;
+  cityName?: string;
+  // filters (only the ones present in tool schemas)
+  minPrice?: number; maxPrice?: number;
+  beds?: number; baths?: number;
+  minSqft?: number; maxSqft?: number;
+  minLotSize?: number; maxLotSize?: number;
+  minYear?: number; maxYear?: number;
+  pool?: boolean; spa?: boolean; view?: boolean; fireplace?: boolean;
+  gatedCommunity?: boolean; seniorCommunity?: boolean;
+  garageSpaces?: number; stories?: number;
+  propertyType?: "A" | "B" | "C" | "D";
+  hasHOA?: boolean; minHOA?: number; maxHOA?: number;
+}
+
+function buildScopeFromArgs(args: ScopedToolArgs): ListingScope | null {
+  const cityIdForGeo = args.cityName
+    ? args.cityName.toLowerCase().replace(/\s+/g, "-")
+    : undefined;
+  switch (args.scope) {
+    case "street":
+      if (!args.cityName) return null; // street scope requires city
+      return {
+        type: "street",
+        streetName: args.scopeValue,
+        cityName: args.cityName,
+        cityId: cityIdForGeo,
+      };
+    case "subdivision":
+      return {
+        type: "subdivision",
+        subdivisionName: args.scopeValue,
+        cityName: args.cityName,
+      };
+    case "city":
+      return {
+        type: "city",
+        cityName: args.scopeValue,
+        cityId: args.scopeValue.toLowerCase().replace(/\s+/g, "-"),
+      };
+    case "county":
+      return { type: "county", countyName: args.scopeValue };
+    case "zip":
+      return { type: "zip", zip: args.scopeValue };
+    default:
+      return null;
+  }
+}
+
+function scopedArgsToFilters(args: ScopedToolArgs): ListingFilters {
+  const f: ListingFilters = {};
+  if (args.minPrice) f.minPrice = args.minPrice;
+  if (args.maxPrice) f.maxPrice = args.maxPrice;
+  if (args.beds) f.beds = args.beds;
+  if (args.baths) f.baths = args.baths;
+  if (args.minSqft) f.minSqft = args.minSqft;
+  if (args.maxSqft) f.maxSqft = args.maxSqft;
+  if (args.minLotSize) f.minLotSize = args.minLotSize;
+  if (args.maxLotSize) f.maxLotSize = args.maxLotSize;
+  if (args.minYear) f.minYear = args.minYear;
+  if (args.maxYear) f.maxYear = args.maxYear;
+  if (args.pool) f.pool = true;
+  if (args.spa) f.spa = true;
+  if (args.view) f.view = true;
+  if (args.fireplace) f.fireplace = true;
+  if (args.gatedCommunity) f.gatedCommunity = true;
+  if (args.seniorCommunity) f.seniorCommunity = true;
+  if (args.garageSpaces) f.garageSpaces = args.garageSpaces;
+  if (args.stories) f.stories = args.stories;
+  if (args.propertyType) f.propertyType = args.propertyType;
+  if (args.hasHOA !== undefined) f.hasHOA = args.hasHOA;
+  if (args.minHOA) f.minHOA = args.minHOA;
+  if (args.maxHOA) f.maxHOA = args.maxHOA;
+  return f;
+}
+
+// =========================================================================
+// TOOL: Search Listings (rows + total)
+// =========================================================================
+
+interface SearchListingsArgs extends ScopedToolArgs {
+  limit?: number;
+  offset?: number;
+  sort?: "price-low" | "price-high" | "newest" | "oldest" | "sqft-low" | "sqft-high";
+}
+
+async function executeSearchListings(args: SearchListingsArgs): Promise<{ success: boolean; data?: any; error?: string }> {
+  const scope = buildScopeFromArgs(args);
+  if (!scope) {
+    return {
+      success: false,
+      error: args.scope === "street"
+        ? "scope='street' requires cityName."
+        : `Unable to build scope from args (scope=${args.scope}).`,
+    };
+  }
+
+  const filters = scopedArgsToFilters(args);
+  const { query, Model, priceField } = await buildListingQuery(scope, filters);
+
+  // Sort
+  const sort: Record<string, 1 | -1> = (() => {
+    switch (args.sort) {
+      case "price-low": return { [priceField]: 1 };
+      case "price-high": return { [priceField]: -1 };
+      case "oldest": return { onMarketDate: 1 };
+      case "newest":
+      default: return { onMarketDate: -1 };
+      // sqft-low / sqft-high handled below via aggregation
+    }
+  })();
+
+  const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+  const offset = Math.max(args.offset ?? 0, 0);
+
+  const PROJECTION = {
+    listingKey: 1, listingId: 1, slugAddress: 1,
+    unparsedAddress: 1, unparsedFirstLineAddress: 1,
+    city: 1, postalCode: 1,
+    latitude: 1, longitude: 1,
+    listPrice: 1, currentPrice: 1, associationFee: 1,
+    bedsTotal: 1, bathsTotal: 1, bathroomsTotalDecimal: 1, bathroomsTotalInteger: 1,
+    livingArea: 1, lotSizeSqft: 1, lotSizeArea: 1, yearBuilt: 1,
+    propertyType: 1, propertySubType: 1, subdivisionName: 1,
+    primaryPhotoUrl: 1, onMarketDate: 1, daysOnMarket: 1,
+    standardStatus: 1, mlsSource: 1,
+  };
+
+  let rows: any[];
+  if (args.sort === "sqft-low" || args.sort === "sqft-high") {
+    // Sort by $/sqft via aggregation (matches existing /api/cities/.../listings logic).
+    rows = await Model.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          pricePerSqft: {
+            $cond: [
+              { $and: [{ $gt: ["$livingArea", 0] }, { $ne: ["$livingArea", null] }] },
+              { $divide: [`$${priceField}`, "$livingArea"] },
+              999999,
+            ],
+          },
+        },
+      },
+      { $sort: { pricePerSqft: args.sort === "sqft-low" ? 1 : -1 } },
+      { $skip: offset },
+      { $limit: limit },
+      { $project: PROJECTION },
+    ]);
+  } else {
+    rows = await Model.find(query).select(PROJECTION).sort(sort).skip(offset).limit(limit).lean();
+  }
+
+  const totalCount = await Model.countDocuments(query);
+
+  // Map to the listing shape the frontend renderer (ListingListView) expects.
+  const listings = rows.map((l: any) => ({
+    id: l.listingKey || l.listingId,
+    listingKey: l.listingKey,
+    listingId: l.listingId,
+    address: l.unparsedAddress || l.unparsedFirstLineAddress || "",
+    city: l.city || "",
+    subdivision: l.subdivisionName || "",
+    price: l.listPrice || l.currentPrice || 0,
+    beds: l.bedsTotal || 0,
+    baths: l.bathsTotal || l.bathroomsTotalDecimal || l.bathroomsTotalInteger || 0,
+    sqft: l.livingArea || 0,
+    lotSize: l.lotSizeSqft || l.lotSizeArea || 0,
+    yearBuilt: l.yearBuilt,
+    image: l.primaryPhotoUrl || "/placeholder-home.jpg",
+    type: l.propertyType,
+    propertySubType: l.propertySubType,
+    slug: l.slugAddress,
+    slugAddress: l.slugAddress,
+    url: `/listings/${l.slugAddress || l.listingKey}`,
+    latitude: l.latitude,
+    longitude: l.longitude,
+    associationFee: l.associationFee,
+    daysOnMarket: l.daysOnMarket,
+    standardStatus: l.standardStatus,
+    mlsSource: l.mlsSource,
+  }));
+
+  return {
+    success: true,
+    data: {
+      component: "listingResults",
+      listingResults: {
+        listings,
+        totalCount,
+        scope: { type: args.scope, value: args.scopeValue, cityName: args.cityName },
+        filters,
+        pagination: { limit, offset, returned: listings.length },
+        sort: args.sort || "newest",
+      },
+      // location for analytics tracking
+      location: {
+        name: args.scopeValue,
+        type: args.scope,
+        normalized: args.scopeValue,
+      },
+    },
+  };
+}
+
+// =========================================================================
+// TOOL: Get Area Stats (aggregate stats only)
+// =========================================================================
+
+async function executeGetAreaStats(args: ScopedToolArgs): Promise<{ success: boolean; data?: any; error?: string }> {
+  const scope = buildScopeFromArgs(args);
+  if (!scope) {
+    return {
+      success: false,
+      error: args.scope === "street"
+        ? "scope='street' requires cityName."
+        : `Unable to build scope from args (scope=${args.scope}).`,
+    };
+  }
+
+  const filters = scopedArgsToFilters(args);
+
+  try {
+    const stats = await computeAreaStats(scope, filters);
+    return {
+      success: true,
+      data: {
+        component: "areaStats",
+        areaStats: {
+          scope: { type: args.scope, value: args.scopeValue, cityName: args.cityName },
+          filters,
+          propertyType: filters.propertyType || "A",
+          stats,
+        },
+        location: {
+          name: args.scopeValue,
+          type: args.scope,
+          normalized: args.scopeValue,
+        },
+      },
+    };
+  } catch (error: any) {
+    console.error(`[getAreaStats] Aggregation error:`, error);
+    return {
+      success: false,
+      error: error.message || "Failed to compute area stats",
+    };
+  }
 }
 
 // =========================================================================

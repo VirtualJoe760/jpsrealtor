@@ -7,6 +7,7 @@ import ChatMapView from "./ChatMapView";
 import { AppreciationContainer } from "./AppreciationContainer";
 import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import MarketStatsCard from "./MarketStatsCard";
+import AreaStatsCard from "./AreaStatsCard";
 import { ArticleResults } from "./ArticleCard";
 import dynamic from "next/dynamic";
 
@@ -394,6 +395,11 @@ export default function ChatResultsContainer({
   const hasArticles = articleResults.length > 0; // Use fetched article results
   const hasListingDetail = !!components.listingDetail;
   const hasCmaReport = !!components.cmaReport;
+  const hasListingResults =
+    !!components.listingResults &&
+    components.listingResults.listings.length > 0;
+  const hasAreaStats =
+    !!components.areaStats && components.areaStats.stats.totalListings >= 0;
 
   // Sorting function
   const sortListings = (listings: Listing[], sortBy: string): Listing[] => {
@@ -458,7 +464,19 @@ export default function ChatResultsContainer({
   const endIndex = Math.min(currentPage * pageSize, totalCount);
 
   // If no components, don't render anything
-  if (!hasCarousel && !hasMapView && !hasAppreciation && !hasComparison && !hasMarketStats && !hasArticles && !hasNeighborhood && !hasListingDetail && !hasCmaReport) {
+  if (
+    !hasCarousel &&
+    !hasMapView &&
+    !hasAppreciation &&
+    !hasComparison &&
+    !hasMarketStats &&
+    !hasArticles &&
+    !hasNeighborhood &&
+    !hasListingDetail &&
+    !hasCmaReport &&
+    !hasListingResults &&
+    !hasAreaStats
+  ) {
     return null;
   }
 
@@ -718,6 +736,43 @@ export default function ChatResultsContainer({
             subdivisionName={components.cmaReport.subdivisionName}
           />
         </div>
+      )}
+
+      {/* searchListings — rows returned directly by the tool */}
+      {hasListingResults && components.listingResults && (
+        <div>
+          <div className="mb-3">
+            <p className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>
+              {components.listingResults.totalCount}{" "}
+              {components.listingResults.totalCount === 1 ? "listing" : "listings"}
+              {" "}in <span className="font-bold">{components.listingResults.scope.value}</span>
+              {components.listingResults.scope.cityName && components.listingResults.scope.type === "street" && (
+                <>, {components.listingResults.scope.cityName}</>
+              )}
+            </p>
+            <p className={`text-xs mt-1 ${isLight ? "text-gray-600" : "text-neutral-400"}`}>
+              Showing {components.listingResults.pagination.returned} sorted by{" "}
+              {components.listingResults.sort}
+            </p>
+          </div>
+          <ListingListView
+            listings={components.listingResults.listings}
+            title=""
+            totalCount={components.listingResults.totalCount}
+            hasMore={
+              components.listingResults.pagination.offset +
+                components.listingResults.pagination.returned <
+              components.listingResults.totalCount
+            }
+            onOpenPanel={onOpenListingPanel}
+            onViewClick={onViewClick}
+          />
+        </div>
+      )}
+
+      {/* getAreaStats — aggregate stats card */}
+      {hasAreaStats && components.areaStats && (
+        <AreaStatsCard data={components.areaStats} />
       )}
     </div>
   );

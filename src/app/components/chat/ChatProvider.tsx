@@ -201,6 +201,48 @@ export interface ComponentData {
     price?: number;
     city?: string;
   };
+  // Phase 2c: searchListings — rows + total over a scope (street/subdivision/city/county/zip)
+  listingResults?: {
+    listings: Listing[];
+    totalCount: number;
+    scope: { type: string; value: string; cityName?: string };
+    filters?: Record<string, any>;
+    pagination: { limit: number; offset: number; returned: number };
+    sort: string;
+  };
+  // Phase 2d: getAreaStats — aggregate stats card
+  areaStats?: {
+    scope: { type: string; value: string; cityName?: string };
+    filters?: Record<string, any>;
+    propertyType: "A" | "B" | "C" | "D";
+    stats: {
+      totalListings: number;
+      newListingsCount: number;
+      newListingsPct: number;
+      avgPrice: number;
+      medianPrice: number;
+      priceRange: { min: number; max: number };
+      avgSqft: number;
+      medianSqft: number;
+      avgPricePerSqft: number;
+      medianPricePerSqft: number;
+      propertyTypes: Array<{
+        subType: string;
+        count: number;
+        avgPrice: number;
+        avgPricePerSqft: number;
+      }>;
+      hoa: { count: number; min: number; max: number; avg: number } | null;
+      amenities: {
+        poolPct: number;
+        spaPct: number;
+        viewPct: number;
+        fireplacePct: number;
+        gatedPct: number;
+        seniorPct: number;
+      };
+    };
+  };
 }
 
 export interface ChatMessage {
