@@ -7,6 +7,13 @@ import type { UserBehaviorEvent } from "./types";
 import dbConnect from "@/lib/mongodb";
 import UnifiedListing from "@/models/unified-listing";
 import Article from "@/models/article";
+import {
+  buildListingQuery,
+  computeAreaStats,
+  deriveTextInsights,
+  type ListingScope,
+  type ListingFilters,
+} from "./listing-query";
 
 /**
  * Execute a tool call and return the result
@@ -90,7 +97,7 @@ export async function executeTool(
 // TOOL 1: Search Homes
 // =========================================================================
 
-async function executeSearchHomes(args: {
+interface SearchHomesArgs {
   location: string;
   // Price
   minPrice?: number;
@@ -129,426 +136,236 @@ async function executeSearchHomes(args: {
   minHOA?: number;
   // Sorting
   sort?: string;
-}): Promise<{ success: boolean; data: any }> {
+}
+
+/** Empty stats object — same shape the AI prompt expects when there's no data. */
+const EMPTY_STATS = {
+  totalListings: 0,
+  newListingsCount: 0,
+  newListingsPct: 0,
+  avgPrice: 0,
+  medianPrice: 0,
+  priceRange: { min: 0, max: 0 },
+  propertyTypes: [] as any[],
+};
+
+/** Translate the SearchHomesArgs filter fields into the shared ListingFilters shape. */
+function toListingFilters(args: SearchHomesArgs): ListingFilters {
+  const f: ListingFilters = {};
+  if (args.minPrice) f.minPrice = args.minPrice;
+  if (args.maxPrice) f.maxPrice = args.maxPrice;
+  if (args.beds) f.beds = args.beds;
+  if (args.baths) f.baths = args.baths;
+  if (args.minSqft) f.minSqft = args.minSqft;
+  if (args.maxSqft) f.maxSqft = args.maxSqft;
+  if (args.minLotSize) f.minLotSize = args.minLotSize;
+  if (args.maxLotSize) f.maxLotSize = args.maxLotSize;
+  if (args.minYear) f.minYear = args.minYear;
+  if (args.maxYear) f.maxYear = args.maxYear;
+  if (args.pool) f.pool = true;
+  if (args.spa) f.spa = true;
+  if (args.view) f.view = true;
+  if (args.fireplace) f.fireplace = true;
+  if (args.gatedCommunity) f.gatedCommunity = true;
+  if (args.seniorCommunity) f.seniorCommunity = true;
+  if (args.garageSpaces) f.garageSpaces = args.garageSpaces;
+  if (args.stories) f.stories = args.stories;
+  if (args.eastOf) f.eastOf = args.eastOf;
+  if (args.westOf) f.westOf = args.westOf;
+  if (args.northOf) f.northOf = args.northOf;
+  if (args.southOf) f.southOf = args.southOf;
+  if (args.hasHOA !== undefined) f.hasHOA = args.hasHOA;
+  if (args.minHOA) f.minHOA = args.minHOA;
+  if (args.maxHOA) f.maxHOA = args.maxHOA;
+  if (args.propertyType) {
+    // searchHomes schema uses lowercase strings ("house"/"condo"/"townhouse").
+    // Those map to propertySubType filtering, not the A/B/C/D propertyType code.
+    f.propertySubType = args.propertyType;
+  }
+  return f;
+}
+
+async function executeSearchHomes(args: SearchHomesArgs): Promise<{ success: boolean; data: any }> {
   const { location, ...filterArgs } = args;
 
-  // Identify location type (city, subdivision, county, region)
-  // NOW DATABASE-DRIVEN: Queries actual subdivisions/cities from database
+  // Identify entity type (city / subdivision / subdivision-group / county / region / general)
   const entityResult = await identifyEntityType(location);
-
   console.log(`[searchHomes] Location: ${location}, Type: ${entityResult.type}, Normalized: ${entityResult.value}`);
-  if (entityResult.type === 'subdivision-group') {
-    console.log(`[searchHomes] 🎯 Subdivision Group Detected! Includes: ${entityResult.subdivisions?.join(', ')}`);
+  if (entityResult.type === "subdivision-group") {
+    console.log(`[searchHomes] 🎯 Subdivision Group: ${entityResult.subdivisions?.join(", ")}`);
   }
 
-  // City, subdivision, and subdivision-group types have listing APIs
-  // For other types (county, region, general, listing), we can't fetch neighborhood listings
-  const hasListingsAPI = entityResult.type === 'city' || entityResult.type === 'subdivision' || entityResult.type === 'subdivision-group';
+  // Map entity type → ListingScope for the shared helper.
+  // city/subdivision/subdivision-group/county all have stats; region/general/listing don't.
+  let scope: ListingScope | null = null;
+  const cityIdForGeo = entityResult.type === "city"
+    ? entityResult.value.toLowerCase().replace(/\s+/g, "-")
+    : undefined;
 
-  if (!hasListingsAPI) {
-    console.warn(`[searchHomes] ⚠️ No listings API for type "${entityResult.type}". Skipping stats fetch.`);
+  switch (entityResult.type) {
+    case "city":
+      scope = { type: "city", cityName: entityResult.value, cityId: cityIdForGeo };
+      break;
+    case "subdivision":
+      scope = { type: "subdivision", subdivisionName: entityResult.value };
+      break;
+    case "subdivision-group":
+      if (entityResult.subdivisions && entityResult.subdivisions.length > 0) {
+        scope = { type: "subdivisionGroup", subdivisionNames: entityResult.subdivisions };
+      }
+      break;
+    case "county":
+      scope = { type: "county", countyName: entityResult.value };
+      break;
   }
 
-  // Fetch stats for AI response using DIRECT DATABASE QUERY
-  // This avoids server-to-server HTTP calls which can fail/timeout on production
-  let stats = null;
-
-  // Only fetch stats if we have a listings API for this type
-  if (hasListingsAPI) {
-    try {
-      console.log(`[searchHomes] Fetching stats directly from database...`);
-
-      // Connect to MongoDB
-      await dbConnect();
-
-      // Build MongoDB query based on entity type
-      const dbQuery: any = {
-        // CRITICAL FILTERS: Only active residential sales (no rentals, no sold/pending)
-        standardStatus: "Active",
-        // Type A = Residential Sale (houses, condos, townhomes)
-        // Type B = Rentals (this was causing $1,750 rental to appear!)
-        // Type C = Multifamily, Type D = Land
-        propertyType: "A",
-        // Exclude Co-Ownership/Timeshares (these have weird pricing)
-        propertySubType: { $nin: ["Co-Ownership", "Timeshare"] }
-      };
-
-      if (entityResult.type === 'subdivision') {
-        // Case-insensitive subdivision match
-        dbQuery.subdivisionName = new RegExp(`^${entityResult.value}$`, 'i');
-        console.log(`[searchHomes] Querying subdivision: ${entityResult.value}`);
-      } else if (entityResult.type === 'subdivision-group') {
-        // Query ALL subdivisions in the group (e.g., all "BDCC *" subdivisions)
-        // Use $in operator with exact matches for each subdivision
-        if (entityResult.subdivisions && entityResult.subdivisions.length > 0) {
-          dbQuery.subdivisionName = { $in: entityResult.subdivisions };
-          console.log(`[searchHomes] Querying subdivision group with ${entityResult.subdivisions.length} subdivisions:`, entityResult.subdivisions);
-        }
-      } else if (entityResult.type === 'city') {
-        // Case-insensitive city match
-        dbQuery.city = new RegExp(`^${entityResult.value}$`, 'i');
-        console.log(`[searchHomes] Querying city: ${entityResult.value}`);
-      }
-
-      // Apply any additional filters from user query
-      if (filterArgs.minPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $gte: filterArgs.minPrice };
-      if (filterArgs.maxPrice) dbQuery.listPrice = { ...dbQuery.listPrice, $lte: filterArgs.maxPrice };
-
-      // Bed filter - use actual database field (bedsTotal is always present)
-      if (filterArgs.beds) {
-        dbQuery.bedsTotal = filterArgs.beds;
-      }
-
-      // Bath filter - use actual database fields (bathsTotal and bathroomsTotalInteger are always present)
-      if (filterArgs.baths) {
-        dbQuery.$and = dbQuery.$and || [];
-        dbQuery.$and.push({
-          $or: [
-            { bathsTotal: filterArgs.baths },
-            { bathroomsTotalInteger: filterArgs.baths }
-          ]
-        });
-      }
-
-      if (filterArgs.pool) dbQuery.poolYn = true;
-      // Don't override propertyType if user doesn't specify (we already set it to "A")
-      if (filterArgs.propertyType) dbQuery.propertyType = filterArgs.propertyType;
-
-      // Log the full query for debugging
-      console.log(`[searchHomes] Database query:`, JSON.stringify(dbQuery, null, 2));
-
-      // Get total count
-      const totalListings = await UnifiedListing.countDocuments(dbQuery);
-      console.log(`[searchHomes] Found ${totalListings} listings`);
-
-      if (totalListings > 0) {
-        // Get count of new listings (past 7 days) using aggregation - matches API logic
-        const newListingsAggregation = await UnifiedListing.aggregate([
-          { $match: dbQuery },
-          {
-            $addFields: {
-              daysOnMarket: {
-                $cond: [
-                  { $ne: ["$onMarketDate", null] },
-                  {
-                    $floor: {
-                      $divide: [
-                        { $subtract: [new Date(), { $toDate: "$onMarketDate" }] },
-                        1000 * 60 * 60 * 24
-                      ]
-                    }
-                  },
-                  null
-                ]
-              }
-            }
-          },
-          {
-            $match: {
-              daysOnMarket: { $lte: 7, $ne: null }
-            }
-          },
-          {
-            $count: "newListingsCount"
-          }
-        ]);
-
-        const newListingsCount = newListingsAggregation[0]?.newListingsCount || 0;
-        console.log(`[searchHomes] Found ${newListingsCount} new listings (past 7 days)`);
-
-        // Get listings for calculating stats, city info, AND learning about the area
-        // Include publicRemarks, amenities, HOA info so AI can understand the subdivision
-        const listings = await UnifiedListing.find(dbQuery)
-          .select('listPrice livingArea propertyType propertySubType bedroomsTotal bathroomsTotalInteger city publicRemarks associationFee associationFeeFrequency poolYn spaYn viewYn')
-          .limit(50)  // Limit for performance (sample of listings is enough for context)
-          .lean()
-          .exec();
-
-        // Calculate price statistics
-        const prices = listings.map(l => l.listPrice).filter(Boolean);
-        const sortedPrices = [...prices].sort((a, b) => a - b);
-
-        // Calculate property type breakdown (by propertySubType: Single-Family, Condo, Townhouse, etc.)
-        const propertyTypeCounts: Record<string, number> = {};
-        listings.forEach(listing => {
-          if (listing.propertySubType) {
-            propertyTypeCounts[listing.propertySubType] = (propertyTypeCounts[listing.propertySubType] || 0) + 1;
-          }
-        });
-
-        const propertyTypes = Object.entries(propertyTypeCounts).map(([subType, count]) => {
-          const typeListings = listings.filter(l => l.propertySubType === subType);
-          const avgPrice = typeListings
-            .filter(l => l.listPrice)
-            .reduce((sum, l) => sum + (l.listPrice || 0), 0) / count;
-          const sqftListings = typeListings.filter(l => l.livingArea && l.livingArea > 0);
-          const avgSqft = sqftListings.length > 0
-            ? sqftListings.reduce((sum, l) => sum + (l.livingArea || 0), 0) / sqftListings.length
-            : 0;
-          const priceSqft = avgSqft > 0 ? Math.round(avgPrice / avgSqft) : 0;
-          return { type: subType, count, avgPrice, avgSqft, priceSqft };
-        });
-
-        // Extract city from listings (use most common city if multiple)
-        const cityCounts: Record<string, number> = {};
-        listings.forEach(listing => {
-          if (listing.city) {
-            cityCounts[listing.city] = (cityCounts[listing.city] || 0) + 1;
-          }
-        });
-        const actualCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-
-        // Extract insights from publicRemarks and listing data
-        // This gives AI REAL knowledge about the subdivision from actual listings
-        const publicRemarksText = listings
-          .map(l => l.publicRemarks)
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-
-        // Extract HOA info
-        const hoaFees = listings
-          .map(l => l.associationFee)
-          .filter(fee => fee && fee > 0);
-        const minHOA = hoaFees.length > 0 ? Math.min(...hoaFees) : null;
-        const maxHOA = hoaFees.length > 0 ? Math.max(...hoaFees) : null;
-
-        // Count amenities from database fields AND publicRemarks (more comprehensive)
-        let poolCount = listings.filter(l => l.poolYn === true).length;
-        let spaCount = listings.filter(l => l.spaYn === true).length;
-        let viewCount = listings.filter(l => l.viewYn === true).length;
-
-        // If fields aren't populated, check publicRemarks
-        if (poolCount === 0) {
-          poolCount = listings.filter(l => l.publicRemarks?.toLowerCase().includes('pool')).length;
-        }
-        if (spaCount === 0) {
-          spaCount = listings.filter(l => l.publicRemarks?.toLowerCase().includes('spa')).length;
-        }
-        if (viewCount === 0) {
-          viewCount = listings.filter(l =>
-            l.publicRemarks?.toLowerCase().includes('view') ||
-            l.publicRemarks?.toLowerCase().includes('mountain')
-          ).length;
-        }
-
-        // Smarter gated detection - check for positive mentions, not just word presence
-        const gatedPositive = publicRemarksText.match(/\b(gated community|gated subdivision|guard gated|24.?hour guard)/gi);
-        const gatedNegative = publicRemarksText.match(/\b(not gated|non.?gated|no gate)/gi);
-        const isGated = gatedPositive && gatedPositive.length > (gatedNegative?.length || 0);
-
-        // Detect golf course (look for "golf" in remarks)
-        const hasGolf = publicRemarksText.includes('golf');
-
-        // Extract common phrases (insights about the area)
-        const areaInsights: string[] = [];
-        if (hasGolf) areaInsights.push('golf course nearby');
-        if (poolCount / listings.length > 0.3) areaInsights.push('many properties have pools');
-        if (viewCount / listings.length > 0.3) areaInsights.push('many properties have views');
-
-        stats = {
-          totalListings,
-          newListingsCount: newListingsCount,  // Accurate count from past 7 days (from aggregation)
-          newListingsPct: totalListings > 0
-            ? Math.round((newListingsCount / totalListings) * 100)
-            : 0,
-          avgPrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
-          medianPrice: sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0,
-          priceRange: {
-            min: prices.length > 0 ? Math.min(...prices) : 0,
-            max: prices.length > 0 ? Math.max(...prices) : 0
-          },
-          propertyTypes,
-          city: actualCity,  // ACTUAL city from database listings
-          // Area insights from actual listing data (RAG - grounding AI knowledge)
-          insights: {
-            isGated,
-            hasGolf,
-            hoa: minHOA && maxHOA ? {
-              min: minHOA,
-              max: maxHOA,
-              count: hoaFees.length  // How many listings have HOA
-            } : null,
-            amenities: {
-              poolPercentage: Math.round((poolCount / listings.length) * 100),
-              spaPercentage: Math.round((spaCount / listings.length) * 100),
-              viewPercentage: Math.round((viewCount / listings.length) * 100)
-            },
-            keywords: areaInsights
-          }
-        };
-
-        console.log(`[searchHomes] Stats calculated:`, JSON.stringify(stats, null, 2));
-      } else {
-        // No listings found - return empty stats
-        stats = {
-          totalListings: 0,
-          newListingsCount: 0,
-          newListingsPct: 0,
-          avgPrice: 0,
-          medianPrice: 0,
-          priceRange: { min: 0, max: 0 },
-          propertyTypes: []
-        };
-        console.log(`[searchHomes] No listings found, returning empty stats`);
-      }
-    } catch (error) {
-      console.error(`[searchHomes] Error querying database:`, error);
-      // Continue without stats - not critical, but log the error
-      stats = {
-        totalListings: 0,
-        newListingsCount: 0,
-        newListingsPct: 0,
-        avgPrice: 0,
-        medianPrice: 0,
-        priceRange: { min: 0, max: 0 },
-        propertyTypes: []
-      };
-    }
-  }
-
-  // Build filters object from all provided arguments
-  const filters: any = {};
-
-  // Price filters
-  if (filterArgs.minPrice) filters.minPrice = filterArgs.minPrice;
-  if (filterArgs.maxPrice) filters.maxPrice = filterArgs.maxPrice;
-
-  // Bed/Bath filters (exact match)
-  if (filterArgs.beds) filters.beds = filterArgs.beds;
-  if (filterArgs.baths) filters.baths = filterArgs.baths;
-
-  // Size filters
-  if (filterArgs.minSqft) filters.minSqft = filterArgs.minSqft;
-  if (filterArgs.maxSqft) filters.maxSqft = filterArgs.maxSqft;
-  if (filterArgs.minLotSize) filters.minLotSize = filterArgs.minLotSize;
-  if (filterArgs.maxLotSize) filters.maxLotSize = filterArgs.maxLotSize;
-
-  // Year filters
-  if (filterArgs.minYear) filters.minYear = filterArgs.minYear;
-  if (filterArgs.maxYear) filters.maxYear = filterArgs.maxYear;
-
-  // Amenity filters
-  if (filterArgs.pool) filters.pool = filterArgs.pool;
-  if (filterArgs.spa) filters.spa = filterArgs.spa;
-  if (filterArgs.view) filters.view = filterArgs.view;
-  if (filterArgs.fireplace) filters.fireplace = filterArgs.fireplace;
-  if (filterArgs.gatedCommunity) filters.gatedCommunity = filterArgs.gatedCommunity;
-  if (filterArgs.seniorCommunity) filters.seniorCommunity = filterArgs.seniorCommunity;
-
-  // Garage/Parking/Stories
-  if (filterArgs.garageSpaces) filters.garageSpaces = filterArgs.garageSpaces;
-  if (filterArgs.stories) filters.stories = filterArgs.stories;
-
-  // Property type
-  if (filterArgs.propertyType) filters.propertyType = filterArgs.propertyType;
-
-  // Geographic filters
-  if (filterArgs.eastOf) filters.eastOf = filterArgs.eastOf;
-  if (filterArgs.westOf) filters.westOf = filterArgs.westOf;
-  if (filterArgs.northOf) filters.northOf = filterArgs.northOf;
-  if (filterArgs.southOf) filters.southOf = filterArgs.southOf;
-
-  // HOA filters
-  if (filterArgs.hasHOA !== undefined) filters.hasHOA = filterArgs.hasHOA;
-  if (filterArgs.maxHOA) filters.maxHOA = filterArgs.maxHOA;
-  if (filterArgs.minHOA) filters.minHOA = filterArgs.minHOA;
-
-  // Sorting
-  if (filterArgs.sort) filters.sort = filterArgs.sort;
-
-  // Detect if this is a general city query (no filters)
-  const hasAnyFilters = Object.keys(filters).length > 0;
-  const isGeneralCityQuery = entityResult.type === 'city' && !hasAnyFilters;
-
-  // Log for debugging
-  if (isGeneralCityQuery) {
-    console.log(`[searchHomes] ℹ️ General city query detected (${stats?.totalListings || 0} total listings)`);
-  }
-
-  console.log(`[searchHomes] Filters:`, filters);
-
-  // Return neighborhood identifier for component-first architecture
-  // Frontend SubdivisionListings / CityListings component will fetch its own data
-  // Only return neighborhood component for supported types (city, subdivision, subdivision-group)
-  if (hasListingsAPI) {
+  if (!scope) {
+    console.warn(`[searchHomes] ⚠️ No scope mapping for type "${entityResult.type}". Returning empty stats.`);
     return {
       success: true,
       data: {
-        component: "neighborhood",
-        neighborhood: {
-          type: entityResult.type,
-          name: location,
-          normalizedName: entityResult.value,
-          // For subdivision queries
-          ...(entityResult.type === "subdivision" && {
-            subdivisionSlug: entityResult.value.toLowerCase().replace(/\s+/g, "-")
-          }),
-          // For subdivision-group queries (e.g., "BDCC" → multiple BDCC subdivisions)
-          ...(entityResult.type === "subdivision-group" && {
-            isGroup: true,
-            groupPattern: entityResult.value,  // "BDCC"
-            subdivisions: entityResult.subdivisions,  // ["BDCC Bellissimo", "BDCC Castle", ...]
-            // Use the first subdivision's slug as a fallback for component rendering
-            subdivisionSlug: entityResult.subdivisions?.[0]?.toLowerCase().replace(/\s+/g, "-")
-          }),
-          // For city queries
-          ...(entityResult.type === "city" && {
-            cityId: entityResult.value.toLowerCase().replace(/\s+/g, "-")
-          }),
-          filters
-        },
         location: {
           name: location,
           type: entityResult.type,
           normalized: entityResult.value,
-          // ACTUAL city from database (prevents AI hallucination)
-          city: stats?.city || null,
-          // Include subdivision list for AI to explain in response
-          ...(entityResult.type === "subdivision-group" && {
-            subdivisions: entityResult.subdivisions
-          })
         },
-        // Include stats for AI to generate better responses
-        stats: stats || {
-          totalListings: 0,
-          newListingsCount: 0,
-          newListingsPct: 0,
-          avgPrice: 0,
-          medianPrice: 0,
-          priceRange: { min: 0, max: 0 },
-          propertyTypes: []
-        },
-        // Metadata for AI to explain query type
-        metadata: {
-          isGeneralCityQuery  // True if city query with no filters - AI can suggest adding filters
-        }
-      }
-    };
-  } else {
-    // For unsupported types (county, region, general, listing), just return location info
-    // AI will respond without trying to show a listings component
-    return {
-      success: true,
-      data: {
-        location: {
-          name: location,
-          type: entityResult.type,
-          normalized: entityResult.value
-        },
-        // Return empty stats so AI knows there are no listings available
-        stats: {
-          totalListings: 0,
-          newListingsCount: 0,
-          newListingsPct: 0,
-          avgPrice: 0,
-          medianPrice: 0,
-          priceRange: { min: 0, max: 0 },
-          propertyTypes: []
-        }
-      }
+        stats: EMPTY_STATS,
+      },
     };
   }
+
+  const sharedFilters = toListingFilters(args);
+
+  // Compute stats over the FULL filtered set (was a 50-row JS sample).
+  // Run text-insights and stats in parallel.
+  let stats: any = EMPTY_STATS;
+  let textInsights = { isGated: false, hasGolf: false };
+  try {
+    const [areaStats, derived] = await Promise.all([
+      computeAreaStats(scope, sharedFilters),
+      deriveTextInsights(scope, sharedFilters),
+    ]);
+    textInsights = derived;
+
+    // Map the new AreaStats shape back into the legacy shape the system
+    // prompt currently references. The system prompt will be updated in
+    // phase 4; until then preserve field names: propertyTypes[*].propertySubType,
+    // insights.{isGated,hasGolf,hoa,amenities,keywords}.
+    const propertyTypes = areaStats.propertyTypes.map((p) => ({
+      propertySubType: p.subType,
+      count: p.count,
+      avgPrice: p.avgPrice,
+      avgPricePerSqft: p.avgPricePerSqft,
+    }));
+
+    const keywords: string[] = [];
+    if (textInsights.hasGolf) keywords.push("golf course nearby");
+    if (areaStats.amenities.poolPct > 30) keywords.push("many properties have pools");
+    if (areaStats.amenities.viewPct > 30) keywords.push("many properties have views");
+
+    // Resolve actual city name. Subdivisions/groups can span multiple cities;
+    // pull the most common city from the result set.
+    let actualCity: string | null = null;
+    if (entityResult.type === "city") {
+      actualCity = entityResult.value;
+    } else {
+      const { query, Model } = await buildListingQuery(scope, sharedFilters);
+      const cityAgg = await Model.aggregate([
+        { $match: query },
+        { $group: { _id: "$city", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]);
+      actualCity = cityAgg[0]?._id || null;
+    }
+
+    stats = {
+      totalListings: areaStats.totalListings,
+      newListingsCount: areaStats.newListingsCount,
+      newListingsPct: areaStats.newListingsPct,
+      avgPrice: areaStats.avgPrice,
+      medianPrice: areaStats.medianPrice,
+      priceRange: areaStats.priceRange,
+      avgSqft: areaStats.avgSqft,
+      medianSqft: areaStats.medianSqft,
+      avgPricePerSqft: areaStats.avgPricePerSqft,
+      medianPricePerSqft: areaStats.medianPricePerSqft,
+      propertyTypes,
+      city: actualCity,
+      insights: {
+        isGated: textInsights.isGated,
+        hasGolf: textInsights.hasGolf,
+        hoa: areaStats.hoa
+          ? {
+              min: areaStats.hoa.min,
+              max: areaStats.hoa.max,
+              avg: areaStats.hoa.avg,
+              count: areaStats.hoa.count,
+            }
+          : null,
+        amenities: {
+          poolPercentage: areaStats.amenities.poolPct,
+          spaPercentage: areaStats.amenities.spaPct,
+          viewPercentage: areaStats.amenities.viewPct,
+        },
+        keywords,
+      },
+    };
+
+    console.log(
+      `[searchHomes] Stats: ${stats.totalListings} listings, avg $${stats.avgPrice.toLocaleString()}, median $${stats.medianPrice.toLocaleString()}`
+    );
+  } catch (error) {
+    console.error(`[searchHomes] Aggregation error:`, error);
+    stats = EMPTY_STATS;
+  }
+
+  // Filters object passed through to the frontend so the carousel API
+  // re-applies the same filters (carousel + stats stay in sync).
+  const filtersOut: any = { ...filterArgs };
+  if (filterArgs.sort) filtersOut.sort = filterArgs.sort;
+
+  const hasAnyFilters = Object.keys(filtersOut).filter((k) => k !== "sort").length > 0;
+  const isGeneralCityQuery = entityResult.type === "city" && !hasAnyFilters;
+
+  return {
+    success: true,
+    data: {
+      component: "neighborhood",
+      neighborhood: {
+        type: entityResult.type,
+        name: location,
+        normalizedName: entityResult.value,
+        ...(entityResult.type === "subdivision" && {
+          subdivisionSlug: entityResult.value.toLowerCase().replace(/\s+/g, "-"),
+        }),
+        ...(entityResult.type === "subdivision-group" && {
+          isGroup: true,
+          groupPattern: entityResult.value,
+          subdivisions: entityResult.subdivisions,
+          subdivisionSlug: entityResult.subdivisions?.[0]
+            ?.toLowerCase()
+            .replace(/\s+/g, "-"),
+        }),
+        ...(entityResult.type === "city" && { cityId: cityIdForGeo }),
+        ...(entityResult.type === "county" && {
+          countyName: entityResult.value,
+        }),
+        filters: filtersOut,
+      },
+      location: {
+        name: location,
+        type: entityResult.type,
+        normalized: entityResult.value,
+        city: stats?.city || null,
+        ...(entityResult.type === "subdivision-group" && {
+          subdivisions: entityResult.subdivisions,
+        }),
+      },
+      stats,
+      metadata: { isGeneralCityQuery },
+    },
+  };
 }
 
 // =========================================================================
