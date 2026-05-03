@@ -71,6 +71,7 @@ export default function ChatInput({
         >
           <input
             type="text"
+            data-chat-input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={onKeyPress}

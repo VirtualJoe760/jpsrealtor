@@ -212,30 +212,49 @@ export const ALL_TOOLS: ChatCompletionTool[] = [
         required: ["query"]
       }
     }
-  }
+  },
 
   // =========================================================================
-  // FUTURE TOOLS - Easy to add!
+  // TOOL 4: Get Listing Details - Single property lookup
   // =========================================================================
-  // Just add new tool objects here:
-  //
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "generateCMA",
-  //     description: "Generate Comparative Market Analysis report for a property",
-  //     parameters: { ... }
-  //   }
-  // },
-  //
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "analyzeInvestment",
-  //     description: "Analyze investment potential with cash flow projections",
-  //     parameters: { ... }
-  //   }
-  // }
+  {
+    type: "function",
+    function: {
+      name: "getListingDetails",
+      description: "Get detailed information about a specific property listing by address, slug, or listing key. Use when a user asks about a particular property (e.g., 'tell me about 77095 Desi Drive' or 'what can you tell me about 123 Main St'). Do NOT use searchHomes for this — searchHomes is for area/neighborhood searches, this is for a single specific property.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The property address, partial address, slug address, or listing key to look up (e.g., '77095 Desi Drive', '77095-desi-dr-indian-wells', or a listing key)"
+          }
+        },
+        required: ["address"]
+      }
+    }
+  },
+
+  // =========================================================================
+  // TOOL 5: Generate CMA - Comparative Market Analysis
+  // =========================================================================
+  {
+    type: "function",
+    function: {
+      name: "generateCMA",
+      description: "Generate a Comparative Market Analysis (CMA) for a specific property. Shows comparable active and sold listings, price analysis, and market statistics. Use when a user asks for a CMA, market analysis, or property valuation (e.g., 'generate a CMA for 77095 Desi Drive' or 'what is this home worth?').",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The property address, partial address, or listing key to generate a CMA for"
+          }
+        },
+        required: ["address"]
+      }
+    }
+  },
 ];
 
 /**

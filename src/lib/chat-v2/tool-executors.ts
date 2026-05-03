@@ -36,10 +36,13 @@ export async function executeTool(
         result = await executeSearchArticles(args);
         break;
 
-      // Future tools go here:
-      // case "generateCMA":
-      //   result = await executeGenerateCMA(args);
-      //   break;
+      case "getListingDetails":
+        result = await executeGetListingDetails(args);
+        break;
+
+      case "generateCMA":
+        result = await executeGenerateCMA(args);
+        break;
 
       default:
         return {
@@ -646,4 +649,310 @@ async function executeSearchArticles(args: {
       }
     };
   }
+}
+
+// =========================================================================
+// TOOL 4: Get Listing Details - Single property lookup
+// =========================================================================
+
+async function executeGetListingDetails(args: { address: string }): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  const { address } = args;
+
+  if (!address || address.trim().length < 3) {
+    return {
+      success: true,
+      data: {
+        component: "listingDetail",
+        listingDetail: null,
+        listing: null,
+        message: "Please provide a more specific address to look up."
+      }
+    };
+  }
+
+  console.log('[executeGetListingDetails] 🔍 Looking up:', address);
+
+  await dbConnect();
+
+  // First, check if multiple listings match (ambiguous query like "desi drive")
+  const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const words = address.split(/[\s,]+/).filter(w => w.length > 1);
+
+  let multipleMatches: any[] = [];
+
+  // Try slug-based multi-match first
+  multipleMatches = await UnifiedListing.find({
+    slugAddress: new RegExp(slugQuery, 'i'),
+    standardStatus: "Active"
+  }).select('listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl').limit(10).lean();
+
+  // If no slug matches, try address regex multi-match
+  if (multipleMatches.length === 0 && words.length > 0) {
+    const regexParts = words.map(w => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`);
+    const regex = new RegExp(regexParts.join(''), 'i');
+    multipleMatches = await UnifiedListing.find({
+      unparsedAddress: regex,
+      standardStatus: "Active"
+    }).select('listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName listPrice bedroomsTotal bathroomsTotalDecimal livingArea primaryPhotoUrl').limit(10).lean();
+  }
+
+  // If multiple matches found, return them as options for the user to pick
+  if (multipleMatches.length > 1) {
+    console.log(`[executeGetListingDetails] 🔀 Found ${multipleMatches.length} matches — returning options`);
+    const options = multipleMatches.map((l: any) => ({
+      listingKey: l.listingKey,
+      slugAddress: l.slugAddress,
+      address: l.unparsedAddress || l.unparsedFirstLineAddress,
+      city: l.city,
+      subdivision: l.subdivisionName,
+      price: l.listPrice,
+      beds: l.bedroomsTotal,
+      baths: l.bathroomsTotalDecimal,
+      sqft: l.livingArea,
+      primaryPhotoUrl: l.primaryPhotoUrl,
+    }));
+
+    return {
+      success: true,
+      data: {
+        component: "listingOptions",
+        listingOptions: options,
+        message: `Found ${options.length} listings matching "${address}". Ask the user which one they'd like to see details for.`,
+        location: address,
+      }
+    };
+  }
+
+  // Single match or fallback lookup
+  let listing: any = multipleMatches.length === 1
+    ? await UnifiedListing.findOne({ listingKey: multipleMatches[0].listingKey }).lean()
+    : null;
+
+  // Fallback strategies for no matches
+  if (!listing) {
+    listing = await UnifiedListing.findOne({ slugAddress: new RegExp(slugQuery, 'i') }).sort({ modificationTimestamp: -1 }).lean();
+  }
+  if (!listing && words.length > 0) {
+    const regexParts = words.map(w => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`);
+    const regex = new RegExp(regexParts.join(''), 'i');
+    listing = await UnifiedListing.findOne({ unparsedAddress: regex }).sort({ modificationTimestamp: -1 }).lean();
+  }
+  if (!listing) {
+    listing = await UnifiedListing.findOne({ listingKey: address }).lean();
+  }
+
+  if (!listing) {
+    console.log('[executeGetListingDetails] ❌ No listing found for:', address);
+    return {
+      success: true,
+      data: {
+        component: "listingDetail",
+        listingDetail: null,
+        listing: null,
+        message: `No listing found matching "${address}". Try using searchHomes to browse the area instead.`
+      }
+    };
+  }
+
+  console.log('[executeGetListingDetails] ✅ Found listing:', listing.unparsedAddress, listing.listingKey);
+
+  // Extract photos from media array
+  const media = listing.media || [];
+  const photos = media
+    .filter((m: any) => m.MediaCategory === 'Photo' || m.MediaCategory === 'Primary Photo')
+    .slice(0, 20)
+    .map((m: any) => m.Uri800 || m.Uri640 || m.Uri1024 || m.UriLarge || m.MediaURL)
+    .filter(Boolean);
+
+  // Fallback to primaryPhotoUrl
+  const primaryPhotoUrl = listing.primaryPhotoUrl ||
+    (media[0] && (media[0].Uri800 || media[0].Uri640)) ||
+    '/images/no-photo.png';
+
+  if (photos.length === 0 && primaryPhotoUrl !== '/images/no-photo.png') {
+    photos.push(primaryPhotoUrl);
+  }
+
+  return {
+    success: true,
+    data: {
+      component: "listingDetail",
+      // Component data for frontend (photo carousel + stats card)
+      listingDetail: {
+        listingKey: listing.listingKey,
+        slugAddress: listing.slugAddress || listing.slug,
+        address: listing.unparsedAddress || listing.unparsedFirstLineAddress || address,
+        primaryPhotoUrl,
+        city: listing.city,
+        subdivision: listing.subdivisionName,
+        price: listing.listPrice,
+        status: listing.standardStatus,
+        beds: listing.bedroomsTotal,
+        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        sqft: listing.livingArea,
+        lotSizeSqft: listing.lotSizeArea || listing.lotSizeSqft,
+        yearBuilt: listing.yearBuilt,
+        propertySubType: listing.propertySubType,
+        garageSpaces: listing.garageSpaces,
+        pool: listing.poolYn || listing.poolYN,
+        spa: listing.spaYn || listing.spaYN,
+        view: listing.viewYn || listing.viewYN,
+        hoaFee: listing.associationFee,
+        hoaFrequency: listing.associationFeeFrequency,
+        daysOnMarket: listing.daysOnMarket,
+        stories: listing.stories,
+      },
+      // Full listing data for AI to format as markdown
+      listing: {
+        address: listing.unparsedAddress || listing.unparsedFirstLineAddress,
+        city: listing.city,
+        state: listing.stateOrProvince,
+        zip: listing.postalCode,
+        subdivision: listing.subdivisionName,
+        price: listing.listPrice,
+        status: listing.standardStatus,
+        beds: listing.bedroomsTotal,
+        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+        sqft: listing.livingArea,
+        lotSizeSqft: listing.lotSizeArea || listing.lotSizeSqft,
+        lotSizeAcres: listing.lotSizeAcres,
+        yearBuilt: listing.yearBuilt,
+        propertySubType: listing.propertySubType,
+        stories: listing.stories,
+        garageSpaces: listing.garageSpaces,
+        pool: listing.poolYn || listing.poolYN,
+        spa: listing.spaYn || listing.spaYN,
+        view: listing.viewYn || listing.viewYN,
+        fireplacesTotal: listing.fireplacesTotal,
+        hoaFee: listing.associationFee,
+        hoaFrequency: listing.associationFeeFrequency,
+        daysOnMarket: listing.daysOnMarket,
+        publicRemarks: listing.publicRemarks,
+        cooling: listing.cooling,
+        heating: listing.heating,
+        flooring: listing.flooring,
+        parkingTotal: listing.parkingTotal,
+        photoCount: photos.length,
+        listingUrl: `/mls-listings/${listing.slugAddress || listing.slug || listing.listingKey}`,
+      },
+      location: listing.unparsedAddress || address,
+    }
+  };
+}
+
+// =========================================================================
+// Shared: Fuzzy listing lookup
+// =========================================================================
+
+async function findListingByAddress(address: string): Promise<any | null> {
+  await dbConnect();
+
+  const slugQuery = address.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // Active by slug
+  let listing = await UnifiedListing.findOne({
+    slugAddress: new RegExp(slugQuery, 'i'),
+    standardStatus: "Active"
+  }).lean();
+
+  // Active by address regex
+  if (!listing) {
+    const words = address.split(/[\s,]+/).filter(w => w.length > 1);
+    if (words.length > 0) {
+      const regexParts = words.map(w => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`);
+      const regex = new RegExp(regexParts.join(''), 'i');
+      listing = await UnifiedListing.findOne({ unparsedAddress: regex, standardStatus: "Active" }).lean();
+    }
+  }
+
+  // Any status by slug
+  if (!listing) {
+    listing = await UnifiedListing.findOne({ slugAddress: new RegExp(slugQuery, 'i') }).sort({ modificationTimestamp: -1 }).lean();
+  }
+
+  // Any status by address regex
+  if (!listing) {
+    const words = address.split(/[\s,]+/).filter(w => w.length > 1);
+    if (words.length > 0) {
+      const regexParts = words.map(w => `(?=.*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`);
+      const regex = new RegExp(regexParts.join(''), 'i');
+      listing = await UnifiedListing.findOne({ unparsedAddress: regex }).sort({ modificationTimestamp: -1 }).lean();
+    }
+  }
+
+  // Listing key exact match
+  if (!listing) {
+    listing = await UnifiedListing.findOne({ listingKey: address }).lean();
+  }
+
+  return listing;
+}
+
+// =========================================================================
+// TOOL 5: Generate CMA
+// =========================================================================
+
+async function executeGenerateCMA(args: { address: string }): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  const { address } = args;
+
+  if (!address || address.trim().length < 3) {
+    return {
+      success: true,
+      data: {
+        component: "cmaReport",
+        cmaReport: null,
+        message: "Please provide a property address to generate a CMA for."
+      }
+    };
+  }
+
+  console.log('[executeGenerateCMA] 🔍 Looking up listing for CMA:', address);
+
+  const listing = await findListingByAddress(address);
+
+  if (!listing) {
+    return {
+      success: true,
+      data: {
+        component: "cmaReport",
+        cmaReport: null,
+        message: `No listing found matching "${address}". Try providing the full address or use searchHomes to find the property first.`
+      }
+    };
+  }
+
+  console.log('[executeGenerateCMA] ✅ Found listing:', listing.unparsedAddress, listing.listingKey);
+
+  return {
+    success: true,
+    data: {
+      component: "cmaReport",
+      cmaReport: {
+        listingKey: listing.listingKey,
+        address: listing.unparsedAddress || listing.unparsedFirstLineAddress || address,
+        subdivisionName: listing.subdivisionName,
+        price: listing.listPrice,
+        city: listing.city,
+      },
+      // Summary for the AI to acknowledge
+      listing: {
+        address: listing.unparsedAddress,
+        city: listing.city,
+        subdivision: listing.subdivisionName,
+        price: listing.listPrice,
+        sqft: listing.livingArea,
+        beds: listing.bedroomsTotal,
+        baths: listing.bathroomsTotalDecimal || listing.bathroomsTotalInteger,
+      },
+      location: listing.unparsedAddress || address,
+    }
+  };
 }

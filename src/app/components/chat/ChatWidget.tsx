@@ -18,6 +18,8 @@ import { SourceBubbles } from "./SourceBubble";
 import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
+import ListingDetailCard from "./ListingDetailCard";
+import ListingOptionsCard from "./ListingOptionsCard";
 import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
 import { getMapCenter } from "@/lib/geo-centers";
 import { getDefaultSiteName } from "@/lib/domain-classify";
@@ -346,6 +348,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')
                       .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .replace(/\[LISTING_DETAIL\]/g, '')
+                      .replace(/\[CMA_REPORT\]/g, '')
                       .replace(/\[CONTACT_IMPORT_PREVIEW\]/g, '')
                       .trim();
 
@@ -380,6 +384,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')
                       .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .replace(/\[LISTING_DETAIL\]/g, '')
+                      .replace(/\[CMA_REPORT\]/g, '')
                       .replace(/\[CONTACT_IMPORT_PREVIEW\]/g, '')
                       .replace(/\[CONTACT_IMPORT_SUCCESS\]/g, '')
                       .trim();
@@ -584,6 +590,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       .replace(/\[LISTING_CAROUSEL\]/g, '')
                       .replace(/\[APPRECIATION\]/g, '')
                       .replace(/\[ARTICLE_RESULTS\]/g, '')
+                      .replace(/\[LISTING_DETAIL\]/g, '')
+                      .replace(/\[CMA_REPORT\]/g, '')
                       .trim();
 
                     // Silently add message to history
@@ -811,6 +819,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                         .replace(/\[LISTING_CAROUSEL\]/g, '')
                         .replace(/\[APPRECIATION\]/g, '')
                         .replace(/\[ARTICLE_RESULTS\]/g, '')
+                        .replace(/\[LISTING_DETAIL\]/g, '')
+                      .replace(/\[CMA_REPORT\]/g, '')
                         .trim();
 
                       // Add location snapshot as background digest
@@ -1305,6 +1315,41 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   )}
 
                   <div className="max-w-[85%] sm:max-w-3xl flex flex-col">
+                    {/* Listing Options — multiple matches, user picks one */}
+                    {msg.components?.listingOptions && msg.components.listingOptions.length > 0 && (
+                      <div className="mb-3">
+                        <ListingOptionsCard options={msg.components.listingOptions} />
+                      </div>
+                    )}
+                    {/* Listing Detail Card — rendered ABOVE the message bubble */}
+                    {msg.components?.listingDetail && (
+                      <div className="mb-3">
+                        <ListingDetailCard
+                          listingKey={msg.components.listingDetail.listingKey}
+                          slugAddress={msg.components.listingDetail.slugAddress}
+                          address={msg.components.listingDetail.address}
+                          primaryPhotoUrl={msg.components.listingDetail.primaryPhotoUrl}
+                          city={msg.components.listingDetail.city}
+                          subdivision={msg.components.listingDetail.subdivision}
+                          price={msg.components.listingDetail.price}
+                          status={msg.components.listingDetail.status}
+                          beds={msg.components.listingDetail.beds}
+                          baths={msg.components.listingDetail.baths}
+                          sqft={msg.components.listingDetail.sqft}
+                          lotSizeSqft={msg.components.listingDetail.lotSizeSqft}
+                          yearBuilt={msg.components.listingDetail.yearBuilt}
+                          propertySubType={msg.components.listingDetail.propertySubType}
+                          garageSpaces={msg.components.listingDetail.garageSpaces}
+                          pool={msg.components.listingDetail.pool}
+                          spa={msg.components.listingDetail.spa}
+                          view={msg.components.listingDetail.view}
+                          hoaFee={msg.components.listingDetail.hoaFee}
+                          hoaFrequency={msg.components.listingDetail.hoaFrequency}
+                          daysOnMarket={msg.components.listingDetail.daysOnMarket}
+                          stories={msg.components.listingDetail.stories}
+                        />
+                      </div>
+                    )}
                     <div
                       className={`rounded-2xl px-3 sm:px-5 py-3 sm:py-4 select-text ${
                         msg.role === "user"

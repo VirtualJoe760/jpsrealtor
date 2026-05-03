@@ -8,6 +8,9 @@ import { AppreciationContainer } from "./AppreciationContainer";
 import SubdivisionComparisonChart from "./SubdivisionComparisonChart";
 import MarketStatsCard from "./MarketStatsCard";
 import { ArticleResults } from "./ArticleCard";
+import dynamic from "next/dynamic";
+
+const CMAReport = dynamic(() => import("@/app/components/cma/CMAReport"), { ssr: false });
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
 import type { ComponentData } from "./ChatProvider";
@@ -389,6 +392,8 @@ export default function ChatResultsContainer({
   const hasComparison = !!components.comparison;
   const hasMarketStats = !!components.marketStats;
   const hasArticles = articleResults.length > 0; // Use fetched article results
+  const hasListingDetail = !!components.listingDetail;
+  const hasCmaReport = !!components.cmaReport;
 
   // Sorting function
   const sortListings = (listings: Listing[], sortBy: string): Listing[] => {
@@ -453,12 +458,14 @@ export default function ChatResultsContainer({
   const endIndex = Math.min(currentPage * pageSize, totalCount);
 
   // If no components, don't render anything
-  if (!hasCarousel && !hasMapView && !hasAppreciation && !hasComparison && !hasMarketStats && !hasArticles && !hasNeighborhood) {
+  if (!hasCarousel && !hasMapView && !hasAppreciation && !hasComparison && !hasMarketStats && !hasArticles && !hasNeighborhood && !hasListingDetail && !hasCmaReport) {
     return null;
   }
 
   return (
     <div className="w-full overflow-hidden px-2 xl:px-16 2xl:px-12 space-y-4">
+      {/* Listing Detail Card is rendered in ChatWidget above the message bubble */}
+
       {/* Neighborhood or Carousel Listings with Toggle */}
       {(hasNeighborhood || hasCarousel) && (hasListings || loadingNeighborhood) && (
         <div>
@@ -701,6 +708,16 @@ export default function ChatResultsContainer({
           results={articleResults}
           query={components.articles?.query || ""}
         />
+      )}
+
+      {/* CMA Report */}
+      {hasCmaReport && components.cmaReport && (
+        <div className="w-full">
+          <CMAReport
+            listingKey={components.cmaReport.listingKey}
+            subdivisionName={components.cmaReport.subdivisionName}
+          />
+        </div>
       )}
     </div>
   );

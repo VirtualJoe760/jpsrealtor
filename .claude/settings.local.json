@@ -137,7 +137,14 @@
       "Bash(for f:*)",
       "Bash(do)",
       "Bash(sed -i 's/JPS Realtor/chatRealty/g' \"$f\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(xargs head:*)",
+      "Bash(npx vercel:*)",
+      "Bash(wc:*)",
+      "Bash(find /f/web-clients/joseph-sardella/jpsrealtor/src -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \n\\))",
+      "Bash(mkdir -p \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/api/campaigns/[id]/ad-metrics\")",
+      "Bash(mkdir -p \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/api/campaigns/[id]/ad-status\")",
+      "Bash(find F:/web-clients/joseph-sardella/jpsrealtor -type f \\\\\\(-name *chat*log* -o -name *conversation* -o -name *messages*log* \\\\\\))"
     ],
     "deny": [],
     "ask": []

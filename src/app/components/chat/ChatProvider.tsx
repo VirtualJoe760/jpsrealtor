@@ -153,6 +153,49 @@ export interface ComponentData {
       sort?: string;
     };
   };
+  listingOptions?: Array<{
+    listingKey: string;
+    slugAddress: string;
+    address: string;
+    city?: string;
+    subdivision?: string;
+    price?: number;
+    beds?: number;
+    baths?: number;
+    sqft?: number;
+    primaryPhotoUrl?: string;
+  }>;
+  listingDetail?: {
+    listingKey: string;
+    slugAddress: string;
+    address: string;
+    primaryPhotoUrl?: string;
+    city?: string;
+    subdivision?: string;
+    price?: number;
+    status?: string;
+    beds?: number;
+    baths?: number;
+    sqft?: number;
+    lotSizeSqft?: number;
+    yearBuilt?: number;
+    propertySubType?: string;
+    garageSpaces?: number;
+    pool?: boolean;
+    spa?: boolean;
+    view?: boolean;
+    hoaFee?: number;
+    hoaFrequency?: string;
+    daysOnMarket?: number;
+    stories?: number;
+  };
+  cmaReport?: {
+    listingKey: string;
+    address: string;
+    subdivisionName?: string;
+    price?: number;
+    city?: string;
+  };
 }
 
 export interface ChatMessage {

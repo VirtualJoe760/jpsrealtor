@@ -121,6 +121,12 @@ export async function streamWithToolSupport(
                   components.articles = {
                     query: result.data.query
                   };
+                } else if (result.data.component === "listingOptions") {
+                  components.listingOptions = result.data.listingOptions;
+                } else if (result.data.component === "listingDetail") {
+                  components.listingDetail = result.data.listingDetail;
+                } else if (result.data.component === "cmaReport") {
+                  components.cmaReport = result.data.cmaReport;
                 }
 
                 // Send components event
