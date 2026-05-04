@@ -16,6 +16,7 @@
 // Use this to validate the search and parser before wiring them into /chat.
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { AppreciationContainer } from "@/app/components/chat/AppreciationContainer";
 
 interface SearchResult {
   type: "listing" | "city" | "subdivision" | "county" | "region" | "article";
@@ -125,6 +126,9 @@ interface Preview {
   marketData?: PreviewMarketData;
   metadata?: { totalSales?: number; mlsSources?: string[] };
   period?: string;
+  // For trend → AppreciationContainer
+  locationType?: string;
+  locationName?: string;
   query?: string;
   reason?: string;
   ms?: number;
@@ -808,104 +812,34 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
   }
 
   if (preview.component === "trend") {
-    if (!preview.appreciation && !preview.marketData) {
+    // Use the production AppreciationContainer — it owns the full chart
+    // UX (period tabs, market-type toggle, property-subtype tabs, yearly
+    // breakdown, etc.) and re-fetches with the right param shape. My
+    // earlier placeholder StatsCard was duplicating UI work.
+    //
+    // If the preview endpoint itself reported an error (e.g., the API
+    // returned 404 for "no closed sales"), fall back to a yellow note
+    // rather than mounting a component that'll just show the same error.
+    if (preview.reason && !preview.locationName) {
       return (
         <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-          {preview.reason || "No trend data available."}
+          {preview.reason}
         </div>
       );
     }
-    const a = preview.appreciation || {};
-    const m = preview.marketData || {};
-    const meta = preview.metadata || {};
-    const arrow = a.trend === "increasing" ? "↑" : a.trend === "decreasing" ? "↓" : "→";
-    const arrowColor =
-      a.trend === "increasing"
-        ? "text-emerald-700"
-        : a.trend === "decreasing"
-          ? "text-red-700"
-          : "text-gray-600";
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-        {preview.scope && (
-          <div className="text-xs text-gray-500 uppercase tracking-wide">
-            {preview.scope.type} · {preview.scope.value} · {preview.period || "5y"}
-          </div>
-        )}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {a.annual != null && (
-            <div>
-              <div className="text-xs text-gray-500">Annual appreciation</div>
-              <div className={`text-lg font-semibold ${arrowColor}`}>
-                {arrow} {a.annual.toFixed(1)}%
-              </div>
-            </div>
-          )}
-          {a.cumulative != null && (
-            <div>
-              <div className="text-xs text-gray-500">Cumulative ({preview.period})</div>
-              <div className={`text-lg font-semibold ${arrowColor}`}>
-                {a.cumulative.toFixed(1)}%
-              </div>
-            </div>
-          )}
-          {m.totalSales != null && (
-            <div>
-              <div className="text-xs text-gray-500">Closed sales</div>
-              <div className="text-lg font-semibold text-gray-900">
-                {m.totalSales.toLocaleString()}
-              </div>
-            </div>
-          )}
-          {m.startMedianPrice != null && (
-            <div>
-              <div className="text-xs text-gray-500">Start median</div>
-              <div className="text-base font-semibold text-gray-900">
-                ${m.startMedianPrice.toLocaleString()}
-              </div>
-            </div>
-          )}
-          {m.endMedianPrice != null && (
-            <div>
-              <div className="text-xs text-gray-500">Current median</div>
-              <div className="text-base font-semibold text-gray-900">
-                ${m.endMedianPrice.toLocaleString()}
-              </div>
-            </div>
-          )}
-          {m.confidence && (
-            <div>
-              <div className="text-xs text-gray-500">Confidence</div>
-              <div className="text-sm font-medium text-gray-900">{m.confidence}</div>
-            </div>
-          )}
+    if (!preview.locationName || !preview.locationType) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+          {preview.reason || "No trend data available — entity scope missing."}
         </div>
-        {Array.isArray(a.yearlyData) && a.yearlyData.length > 0 && (
-          <div className="mt-2">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-              Median price by year
-            </div>
-            <table className="w-full text-xs">
-              <tbody>
-                {a.yearlyData.map((y) => (
-                  <tr key={y.year} className="border-t border-gray-100">
-                    <td className="py-1 text-gray-700">{y.year}</td>
-                    <td className="py-1 text-right text-gray-600">
-                      ${y.medianPrice.toLocaleString()}
-                    </td>
-                    <td className="py-1 text-right text-gray-500">{y.sales} sales</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {meta.mlsSources && meta.mlsSources.length > 0 && (
-          <div className="text-xs text-gray-500">
-            Sources: {meta.mlsSources.join(", ")}
-          </div>
-        )}
-      </div>
+      );
+    }
+    return (
+      <AppreciationContainer
+        location={preview.locationName}
+        locationType={preview.locationType as any}
+        period={(preview.period as any) || "5y"}
+      />
     );
   }
 

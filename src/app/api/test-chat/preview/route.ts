@@ -304,17 +304,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Build query params for the existing /api/analytics/appreciation endpoint.
-      // Matches its location-filter contract: subdivision | city | zip | county.
+      // Matches AppreciationContainer's contract — that component is the
+      // canonical caller of this API and uses the FULL NAME for subdivision
+      // (despite the API doc example showing a slug). Mirroring its
+      // behavior exactly so the same call shape works.
       const qs = new URLSearchParams();
-      // Default to 5y; widen later if the parser captures explicit periods.
       qs.set("period", "5y");
       switch (e.type) {
         case "subdivision":
-          // Endpoint expects slug for subdivision (per the example in route docs)
-          qs.set(
-            "subdivision",
-            (e.name || "").toLowerCase().replace(/\s+/g, "-")
-          );
+          qs.set("subdivision", e.name || "");
           break;
         case "city":
           qs.set("city", e.name || "");
@@ -350,6 +348,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           component: "trend",
           scope: { type: e.type, value: e.name || (e as any).value },
+          // Pass through scope info so the test page can construct an
+          // AppreciationContainer (which re-fetches with full chart UI).
+          locationType: e.type,
+          locationName: e.name || (e as any).value,
           period: trend.period,
           appreciation: trend.appreciation,
           marketData: trend.marketData,
