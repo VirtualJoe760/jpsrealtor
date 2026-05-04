@@ -101,6 +101,15 @@ const STREET_REGEX = new RegExp(
   "i"
 );
 
+// Partial address — house number followed by 1–4 street-name words but
+// WITHOUT a recognized suffix ("45355 Taos", "45355 Taos Cove"). Catches
+// what users type when they mean a specific listing but skip "Drive"/"Cove".
+// House number must be ≥4 digits to disambiguate from "5 bed", "3 bath", etc.
+const PARTIAL_ADDRESS_REGEX = new RegExp(
+  String.raw`^\s*(\d{4,6})\s+([A-Za-z][\w'\-]*(?:\s+[A-Za-z][\w'\-]*){0,3})\s*$`,
+  "i"
+);
+
 const ZIP_REGEX = /\b(\d{5})\b/;
 
 // =============================================================================
@@ -616,7 +625,30 @@ export async function parseQuery(message: string): Promise<ParsedQuery> {
     };
   }
 
-  // ZIP code
+  // Partial address — "45355 Taos", "12345 Main" — number + street name
+  // without a suffix word. Checked BEFORE the ZIP regex so the leading
+  // number isn't mis-resolved as a zip code.
+  const partialM = raw.match(PARTIAL_ADDRESS_REGEX);
+  if (partialM) {
+    const houseNumber = partialM[1];
+    const streetName = partialM[2].trim();
+    return {
+      raw,
+      entities: [{
+        type: "address",
+        raw: partialM[0].trim(),
+        houseNumber,
+        street: streetName,
+      }],
+      filters,
+      intent: "listing-detail",
+      dataset,
+      confidence: 0.85, // slightly below full-suffix address (0.95)
+    };
+  }
+
+  // ZIP code (must be a bare 5-digit token, not the start of a partial
+  // address — that's caught above).
   const zipMatch = raw.match(ZIP_REGEX);
   if (zipMatch) {
     return {

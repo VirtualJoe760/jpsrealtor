@@ -77,6 +77,21 @@ const CASES: Case[] = [
     message: "77013 Desi Drive Indian Wells",
     expect: { intent: "listing-detail", dataset: "active", entityType: "address", minConfidence: 0.9 },
   },
+  {
+    name: "partial address — house# + street name, no suffix word",
+    message: "45355 taos",
+    expect: { intent: "listing-detail", dataset: "active", entityType: "address", minConfidence: 0.8 },
+  },
+  {
+    name: "partial address — multi-word street name, no suffix",
+    message: "45380 Taos Cove",
+    expect: { intent: "listing-detail", dataset: "active", entityType: "address", minConfidence: 0.8 },
+  },
+  {
+    name: "bare 5-digit zip stays a zip",
+    message: "92210",
+    expect: { intent: "listing-search", dataset: "active", entityType: "zip" },
+  },
 
   // ============================================================
   // Intent C: street-only multi-listing
