@@ -174,32 +174,55 @@ export async function buildListingQuery(
   }
 
   // ---- Scope ----
+  // IMPORTANT: avoid case-insensitive regex (/i flag) on indexed fields.
+  // Mongo can use a b-tree index for anchored regex (^foo) ONLY when the
+  // pattern is case-sensitive — the /i flag forces a collection scan.
+  // For 76k+ listings, that's 10–20s per query (verified via /test-chat
+  // preview taking 20s on "show homes in indian wells country club").
+  //
+  // Strategy: LocationIndex returns canonical names matching the
+  // production Title Case convention used in unified_listings, so direct
+  // equality works for >95% of cases. We $in over a small variant set
+  // (space ↔ hyphen drift) to cover the rest, all using the index.
+  const nameVariants = (s: string): string[] => {
+    const v = new Set<string>([s]);
+    v.add(s.replace(/\s+/g, "-"));
+    v.add(s.replace(/-/g, " "));
+    return Array.from(v);
+  };
+
   switch (scope.type) {
-    case "county":
-      query.countyOrParish = new RegExp(`^${escapeRegex(scope.countyName)}$`, "i");
+    case "county": {
+      const variants = nameVariants(scope.countyName);
+      query.countyOrParish = variants.length === 1 ? variants[0] : { $in: variants };
       break;
-    case "city":
-      query.city = new RegExp(`^${escapeRegex(scope.cityName)}$`, "i");
+    }
+    case "city": {
+      const variants = nameVariants(scope.cityName);
+      query.city = variants.length === 1 ? variants[0] : { $in: variants };
       break;
-    case "subdivision":
-      query.subdivisionName = new RegExp(
-        `^${escapeRegex(scope.subdivisionName).replace(/[-\s]/g, "[-\\s]")}$`,
-        "i"
-      );
+    }
+    case "subdivision": {
+      const variants = nameVariants(scope.subdivisionName);
+      query.subdivisionName = variants.length === 1 ? variants[0] : { $in: variants };
       if (scope.cityName) {
-        query.city = new RegExp(`^${escapeRegex(scope.cityName)}$`, "i");
+        const cityVariants = nameVariants(scope.cityName);
+        query.city = cityVariants.length === 1 ? cityVariants[0] : { $in: cityVariants };
       }
       break;
+    }
     case "subdivisionGroup":
       query.subdivisionName = { $in: scope.subdivisionNames };
       break;
     case "street": {
-      // Match street name as a word in unparsedAddress. Includes the city
-      // when supplied to disambiguate streets that share names across cities.
+      // Street stays a regex — substring match on unparsedAddress is what
+      // we want here, and there's no canonical Mongo index that helps
+      // either way. Anchored prefix wouldn't capture mid-string matches.
       const streetRegex = new RegExp(`\\b${escapeRegex(scope.streetName)}\\b`, "i");
       query.unparsedAddress = streetRegex;
       if (scope.cityName) {
-        query.city = new RegExp(`^${escapeRegex(scope.cityName)}$`, "i");
+        const cityVariants = nameVariants(scope.cityName);
+        query.city = cityVariants.length === 1 ? cityVariants[0] : { $in: cityVariants };
       }
       break;
     }

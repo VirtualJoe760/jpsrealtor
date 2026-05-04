@@ -57,11 +57,53 @@ function entityToScope(e: any): ListingScope | null {
   }
 }
 
-const LISTING_PROJECTION =
-  "listingKey slugAddress unparsedAddress unparsedFirstLineAddress city subdivisionName " +
-  "listPrice bedsTotal bedroomsTotal bathsTotal bathroomsTotalDecimal bathroomsTotalInteger " +
-  "livingArea lotSizeSqft lotSizeArea yearBuilt propertyType propertySubType " +
-  "associationFee associationFeeFrequency primaryPhotoUrl onMarketDate daysOnMarket standardStatus";
+// primaryPhotoUrl isn't reliably populated on unified_listings docs — the
+// real image URLs live in the media[] array. Project just media.0 so we
+// can derive a thumbnail without dragging in 20-50 photos per listing.
+const LISTING_PROJECTION = {
+  listingKey: 1,
+  slugAddress: 1,
+  unparsedAddress: 1,
+  unparsedFirstLineAddress: 1,
+  city: 1,
+  subdivisionName: 1,
+  listPrice: 1,
+  bedsTotal: 1,
+  bedroomsTotal: 1,
+  bathsTotal: 1,
+  bathroomsTotalDecimal: 1,
+  bathroomsTotalInteger: 1,
+  livingArea: 1,
+  lotSizeSqft: 1,
+  lotSizeArea: 1,
+  yearBuilt: 1,
+  propertyType: 1,
+  propertySubType: 1,
+  associationFee: 1,
+  associationFeeFrequency: 1,
+  primaryPhotoUrl: 1,
+  "media.Uri800": 1,
+  "media.Uri640": 1,
+  "media.Uri1024": 1,
+  "media.MediaURL": 1,
+  "media.Order": 1,
+  "media.MediaCategory": 1,
+  onMarketDate: 1,
+  daysOnMarket: 1,
+  standardStatus: 1,
+};
+
+function pickPhoto(l: any): string | undefined {
+  if (l.primaryPhotoUrl) return l.primaryPhotoUrl;
+  const media: any[] = l.media || [];
+  if (media.length === 0) return undefined;
+  // Prefer the primary photo (Order 0 or category Primary Photo); fall
+  // back to first item.
+  const primary = media.find(
+    (m) => m.Order === 0 || m.MediaCategory === "Primary Photo"
+  ) || media[0];
+  return primary?.Uri800 || primary?.Uri640 || primary?.Uri1024 || primary?.MediaURL;
+}
 
 function mapListing(l: any) {
   return {
@@ -78,7 +120,7 @@ function mapListing(l: any) {
     yearBuilt: l.yearBuilt,
     propertySubType: l.propertySubType,
     associationFee: l.associationFee,
-    primaryPhotoUrl: l.primaryPhotoUrl,
+    primaryPhotoUrl: pickPhoto(l),
     onMarketDate: l.onMarketDate,
     daysOnMarket: l.daysOnMarket,
     standardStatus: l.standardStatus,
