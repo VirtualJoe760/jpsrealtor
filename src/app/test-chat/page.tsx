@@ -53,6 +53,7 @@ interface Narration {
   tokens?: number;
   ms?: number;
   model?: string;
+  finishReason?: string;
   error?: string;
 }
 
@@ -445,7 +446,7 @@ export default function TestChatPage() {
                   {s.narrating
                     ? "generating…"
                     : s.narrateMs
-                      ? `${s.narrateMs}ms${s.narration?.tokens ? ` · ${s.narration.tokens} tok` : ""}`
+                      ? `${s.narrateMs}ms${s.narration?.tokens ? ` · ${s.narration.tokens} tok` : ""}${s.narration?.model ? ` · ${s.narration.model.replace("llama-", "")}` : ""}${s.narration?.finishReason && s.narration.finishReason !== "stop" ? ` · ⚠ ${s.narration.finishReason}` : ""}`
                       : ""}
                 </div>
               </div>
