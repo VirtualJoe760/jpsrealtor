@@ -25,6 +25,7 @@ import {
   type ListingScope,
   type ListingFilters,
 } from "@/lib/chat-v2/listing-query";
+import { fetchPrimaryPhotos } from "@/lib/listings/fetch-primary-photos";
 
 // =============================================================================
 // Helpers
@@ -57,9 +58,12 @@ function entityToScope(e: any): ListingScope | null {
   }
 }
 
-// primaryPhotoUrl isn't reliably populated on unified_listings docs — the
-// real image URLs live in the media[] array. Project just media.0 so we
-// can derive a thumbnail without dragging in 20-50 photos per listing.
+// Photos in unified_listings.media[] are populated by an asynchronous cron
+// and lag behind incoming MLS sync. primaryPhotoUrl is also unreliable
+// across MLS sources. So we project both AND keep mlsId/mlsSource for the
+// Spark API fallback. pickPhoto() tries the local fields first; if both
+// miss for any listing in the result set, we batch-fetch the missing
+// photos from Spark in one round-trip via fetchPrimaryPhotos.
 const LISTING_PROJECTION = {
   listingKey: 1,
   slugAddress: 1,
@@ -91,18 +95,42 @@ const LISTING_PROJECTION = {
   onMarketDate: 1,
   daysOnMarket: 1,
   standardStatus: 1,
+  mlsId: 1,
+  mlsSource: 1,
 };
 
-function pickPhoto(l: any): string | undefined {
+function pickLocalPhoto(l: any): string | undefined {
   if (l.primaryPhotoUrl) return l.primaryPhotoUrl;
   const media: any[] = l.media || [];
   if (media.length === 0) return undefined;
-  // Prefer the primary photo (Order 0 or category Primary Photo); fall
-  // back to first item.
-  const primary = media.find(
-    (m) => m.Order === 0 || m.MediaCategory === "Primary Photo"
-  ) || media[0];
+  const primary =
+    media.find((m) => m.Order === 0 || m.MediaCategory === "Primary Photo") ||
+    media[0];
   return primary?.Uri800 || primary?.Uri640 || primary?.Uri1024 || primary?.MediaURL;
+}
+
+/**
+ * Resolve a photoUrl for each listing. Local fields win; missing ones get
+ * a single batched Spark API call. Mutates the input array in place
+ * (sets `_photo`) and returns a fresh array of mapped listings.
+ */
+async function attachPhotos(rawListings: any[]): Promise<any[]> {
+  // First pass: local pick
+  for (const l of rawListings) {
+    l._photo = pickLocalPhoto(l);
+  }
+
+  // Batch-fetch any that are still missing
+  const missing = rawListings.filter((l) => !l._photo && l.mlsId && l.listingKey);
+  if (missing.length > 0) {
+    const photoMap = await fetchPrimaryPhotos(missing);
+    for (const l of missing) {
+      const photoUrl = photoMap.get(l.listingKey);
+      if (photoUrl) l._photo = photoUrl;
+    }
+  }
+
+  return rawListings;
 }
 
 function mapListing(l: any) {
@@ -120,7 +148,7 @@ function mapListing(l: any) {
     yearBuilt: l.yearBuilt,
     propertySubType: l.propertySubType,
     associationFee: l.associationFee,
-    primaryPhotoUrl: pickPhoto(l),
+    primaryPhotoUrl: l._photo, // populated by attachPhotos()
     onMarketDate: l.onMarketDate,
     daysOnMarket: l.daysOnMarket,
     standardStatus: l.standardStatus,
@@ -183,9 +211,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const [withPhoto] = await attachPhotos([listing]);
       return NextResponse.json({
         component: "listingDetail",
-        listing: mapListing(listing),
+        listing: mapListing(withPhoto),
         ms: Date.now() - t0,
       });
     }
@@ -208,7 +237,8 @@ export async function POST(req: NextRequest) {
           .sort({ listPrice: -1 })
           .limit(6)
           .lean();
-        listings = (docs as any[]).map(mapListing);
+        const withPhotos = await attachPhotos(docs as any[]);
+        listings = withPhotos.map(mapListing);
       }
 
       return NextResponse.json({
@@ -237,9 +267,10 @@ export async function POST(req: NextRequest) {
       const { query, Model } = await buildListingQuery(scope, filters);
       const docs = await Model.find(query).select(LISTING_PROJECTION).limit(20).lean();
       const total = await Model.countDocuments(query);
+      const withPhotos = await attachPhotos(docs as any[]);
       return NextResponse.json({
         component: "listingResults",
-        listings: (docs as any[]).map(mapListing),
+        listings: withPhotos.map(mapListing),
         totalCount: total,
         ms: Date.now() - t0,
       });

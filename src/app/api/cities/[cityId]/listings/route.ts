@@ -2,65 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
 import { getStreetCoordinate } from "@/lib/geo/street-lookup";
-
-// Batch-fetch primary photo URLs from Spark Replication API
-async function fetchPrimaryPhotos(listings: any[]): Promise<Map<string, string>> {
-  const photoMap = new Map<string, string>();
-  const token = process.env.SPARK_ACCESS_TOKEN;
-  if (!token || listings.length === 0) return photoMap;
-
-  // Group listings by mlsId for efficient batch queries
-  const byMls = new Map<string, string[]>();
-  for (const l of listings) {
-    const mlsId = l.mlsId;
-    const key = l.listingKey;
-    if (!mlsId || !key) continue;
-    if (!byMls.has(mlsId)) byMls.set(mlsId, []);
-    byMls.get(mlsId)!.push(key);
-  }
-
-  // Fetch each MLS batch (Spark supports OR filters, batch up to 50 at a time)
-  const BATCH_SIZE = 50;
-  const fetches: Promise<void>[] = [];
-
-  for (const [mlsId, keys] of byMls) {
-    for (let i = 0; i < keys.length; i += BATCH_SIZE) {
-      const batch = keys.slice(i, i + BATCH_SIZE);
-      const keyFilter = batch.map(k => `ListingKey Eq '${k}'`).join(' Or ');
-      const url = `https://replication.sparkapi.com/v1/listings?_filter=MlsId Eq '${mlsId}' And (${keyFilter})&_expand=Photos&_select=ListingKey&_limit=${batch.length}`;
-
-      fetches.push(
-        fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-SparkApi-User-Agent": "jpsrealtor.com",
-            Accept: "application/json",
-          },
-          next: { revalidate: 3600 },
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(data => {
-            const results = data?.D?.Results || [];
-            for (const result of results) {
-              const lk = result?.StandardFields?.ListingKey;
-              const photos = result?.StandardFields?.Photos || [];
-              const primary = photos.find((p: any) => p.Primary === true || p.Order === 0) || photos[0];
-              if (lk && primary) {
-                const url = primary.Uri2048 || primary.Uri1600 || primary.Uri1280 || primary.Uri1024 || primary.UriLarge || primary.Uri800;
-                if (url) photoMap.set(lk, url);
-              }
-            }
-          })
-          .catch(err => {
-            console.error(`[City API] Spark photo batch error for ${mlsId}:`, err.message);
-          })
-      );
-    }
-  }
-
-  await Promise.all(fetches);
-  return photoMap;
-}
+import { fetchPrimaryPhotos } from "@/lib/listings/fetch-primary-photos";
 
 export async function GET(
   request: NextRequest,
