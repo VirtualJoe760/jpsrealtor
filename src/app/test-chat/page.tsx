@@ -278,72 +278,75 @@ export default function TestChatPage() {
       const matchKey = (s: Submission) =>
         s.query === query && s.parseMs === parseMs && s.searchMs === searchMs;
 
-      // Fire narration + preview in parallel; update in place when each lands.
-      const narrateStart = Date.now();
+      // Sequence: preview FIRST, then narration with preview articles in
+      // context. Insights queries especially benefit — the narrator needs
+      // the article excerpts to actually answer the question, not just
+      // describe what was found.
       const previewStart = Date.now();
+      let previewArticles: PreviewArticle[] | undefined;
 
-      // Narration
-      fetch("/api/test-chat/narrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: query, parsed, searchResults }),
-      })
-        .then(async (r) => {
-          const data = (await r.json()) as Narration;
-          const narrateMs = Date.now() - narrateStart;
+      if (parsed && parsed.intent !== "conversational") {
+        try {
+          const r = await fetch("/api/test-chat/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ parsed }),
+          });
+          const data = (await r.json()) as Preview;
+          const previewMs = Date.now() - previewStart;
+          previewArticles = data.articles;
           setSubmissions((prev) =>
-            prev.map((s) => (matchKey(s) ? { ...s, narration: data, narrateMs, narrating: false } : s))
+            prev.map((s) => (matchKey(s) ? { ...s, preview: data, previewMs, previewing: false } : s))
           );
-        })
-        .catch((err: any) => {
-          const narrateMs = Date.now() - narrateStart;
+        } catch (err: any) {
+          const previewMs = Date.now() - previewStart;
           setSubmissions((prev) =>
             prev.map((s) =>
               matchKey(s)
                 ? {
                     ...s,
-                    narration: { narration: "", error: err?.message || "narrate failed" },
-                    narrateMs,
-                    narrating: false,
+                    preview: { error: err?.message || "preview failed" },
+                    previewMs,
+                    previewing: false,
                   }
                 : s
             )
           );
-        });
-
-      // Preview (Layer 1 component data)
-      if (parsed && parsed.intent !== "conversational") {
-        fetch("/api/test-chat/preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parsed }),
-        })
-          .then(async (r) => {
-            const data = (await r.json()) as Preview;
-            const previewMs = Date.now() - previewStart;
-            setSubmissions((prev) =>
-              prev.map((s) => (matchKey(s) ? { ...s, preview: data, previewMs, previewing: false } : s))
-            );
-          })
-          .catch((err: any) => {
-            const previewMs = Date.now() - previewStart;
-            setSubmissions((prev) =>
-              prev.map((s) =>
-                matchKey(s)
-                  ? {
-                      ...s,
-                      preview: { error: err?.message || "preview failed" },
-                      previewMs,
-                      previewing: false,
-                    }
-                  : s
-              )
-            );
-          });
+        }
       } else {
         setSubmissions((prev) =>
           prev.map((s) =>
             matchKey(s) ? { ...s, preview: { reason: "conversational — would route to L3" }, previewMs: 0, previewing: false } : s
+          )
+        );
+      }
+
+      // Narration — now has previewArticles in context so insights queries
+      // can actually answer instead of describing.
+      const narrateStart = Date.now();
+      try {
+        const r = await fetch("/api/test-chat/narrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: query, parsed, searchResults, previewArticles }),
+        });
+        const data = (await r.json()) as Narration;
+        const narrateMs = Date.now() - narrateStart;
+        setSubmissions((prev) =>
+          prev.map((s) => (matchKey(s) ? { ...s, narration: data, narrateMs, narrating: false } : s))
+        );
+      } catch (err: any) {
+        const narrateMs = Date.now() - narrateStart;
+        setSubmissions((prev) =>
+          prev.map((s) =>
+            matchKey(s)
+              ? {
+                  ...s,
+                  narration: { narration: "", error: err?.message || "narrate failed" },
+                  narrateMs,
+                  narrating: false,
+                }
+              : s
           )
         );
       }

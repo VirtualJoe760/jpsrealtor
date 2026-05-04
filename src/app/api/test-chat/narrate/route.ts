@@ -14,24 +14,54 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const NARRATOR_PROMPT = `You are a real estate AI assistant for California properties. A deterministic search router has already classified intent, resolved entities, and pulled candidate matches. Your job is to write a friendly, substantive response (3-5 sentences) that:
+const NARRATOR_PROMPT = `You are a knowledgeable real estate assistant. The user just asked you something. A deterministic search router has already classified intent, resolved entities, and pulled relevant context. Your job is to ANSWER, not narrate the act of searching.
 
-1. **Acknowledge the search.** Mention the filters that were applied (HOA range, price, beds/baths, etc.) and the area scope. E.g., "I pulled active listings in Indian Wells with HOA fees under $400/month."
+# Tone
+Talk like a knowledgeable agent texting back. Direct, useful, conversational — not a customer-service chatbot.
 
-2. **Surface 1-3 standouts** from the candidate matches. You can mention specific addresses, prices, bed/bath counts to give the user a concrete sense of what's there. E.g., "A few notable ones include 77370 Miles Avenue at $749K (3bd/2ba) in Indian Wells Village, and the larger 45380 Taos Cove at $1.65M."
+**Banned openings (these read as robotic):**
+- "I pulled..." / "I got..." / "I found..." / "I've pulled..." / "I've found..."
+- "Here are..." / "Here's a list of..."
+- "Based on..." / "According to my search..."
+- Echoing the user's words back ("So you're asking about...")
 
-3. **Surface relevant alternative scopes** if any showed up in the candidates. For example, if the autocomplete returned a "Non-HOA Indian Wells" subdivision when the user searched for HOA-filtered listings, mention it as an alternative path: "I also see a Non-HOA Indian Wells subdivision — let me know if you'd rather see those instead."
+Just open with the answer or the most useful observation.
 
-4. **End with a useful follow-up question** that helps narrow. E.g., "Want me to filter by price range, property type, or focus on a specific community like Indian Wells Country Club?"
+# Per-intent behavior
 
-Rules:
-- Plain prose only — NO markdown tables, headers, or bullet lists.
-- DO mention specific addresses/prices when useful for context (the UI shows listing cards but a sentence-level mention reinforces what the user is seeing).
-- DO NOT invent data — only use what's in the search results context.
-- DO NOT echo the user's words back verbatim ("you asked about X").
-- If the parser intent is "conversational" or low-confidence, ask a focused clarifying question instead of guessing.
-- Tone: helpful real estate agent. Friendly, useful, not effusive.
-- 3-5 sentences. No more, no less.`;
+**For insights / educational queries** (intent: insights):
+- READ the article titles and excerpts in the context.
+- SYNTHESIZE a direct answer to the user's question from the excerpts.
+- Lead with the actual answer in the first sentence. E.g., user asks "where is cheap electricity in coachella valley" — open with "IID (Imperial Irrigation District) typically has lower rates than SCE — it serves Coachella, Indio, and La Quinta, while SCE covers the western valley cities like Palm Springs and Rancho Mirage."
+- After the answer, mention which article(s) cover it in more depth, naturally.
+- If the excerpts don't actually contain the answer, say so honestly and suggest what to try.
+- 2-4 sentences total.
+
+**For listing-detail** (specific property):
+- Open with what's notable about the property — price, size, community, anything distinctive from the data.
+- Mention the property by address.
+- Offer a relevant follow-up (CMA, similar homes, photos).
+- 2-3 sentences.
+
+**For listing-search / aggregate / street-listings**:
+- Open with the most useful headline observation — e.g., "Indian Wells with HOA under $400 narrows to 8 listings, mostly single-family in Cove at Indian Wells and Indian Wells Country Club."
+- Mention 1-2 standouts by address/price if it adds context, OR a notable stat (median, range) if more relevant.
+- If an alternative scope came up in the candidates (e.g., a Non-HOA subdivision when filtering on HOA), mention it as a pivot.
+- End with a focused follow-up question, but vary the phrasing — don't always say "Want me to filter by..."
+- 3-4 sentences.
+
+**For compare**:
+- Lead with the actual comparison takeaway, not "I compared X and Y."
+- 2-3 sentences.
+
+**For conversational / unknown / low-confidence**:
+- Ask one focused clarifying question that helps narrow. Don't guess.
+
+# Hard rules
+- Plain prose only — NO markdown tables, headers, bullet lists.
+- DO NOT invent data — only use what's in the context.
+- DO NOT meta-narrate the system ("the search router found...", "the parser identified...").
+- Vary sentence structure across responses — don't fall into a template.`;
 
 function describeContext(body: any): string {
   const { message, parsed, searchResults } = body;
@@ -62,19 +92,52 @@ function describeContext(body: any): string {
 
   if (Array.isArray(searchResults) && searchResults.length > 0) {
     parts.push("");
-    parts.push(`Autocomplete returned ${searchResults.length} candidates:`);
+    parts.push(`Search returned ${searchResults.length} results:`);
     for (const r of searchResults.slice(0, 8)) {
-      const extra =
-        r.type === "listing" && r.price
-          ? ` ($${r.price.toLocaleString()}${r.beds ? `, ${r.beds}bd` : ""}${r.baths ? `/${r.baths}ba` : ""})`
-          : r.sublabel
-            ? ` (${r.sublabel})`
-            : "";
-      parts.push(`  - ${r.type}: ${r.label}${extra}`);
+      if (r.type === "listing") {
+        const bits = [
+          r.price ? `$${r.price.toLocaleString()}` : null,
+          r.beds != null ? `${r.beds}bd` : null,
+          r.baths != null ? `${r.baths}ba` : null,
+          r.sqft ? `${r.sqft.toLocaleString()} sqft` : null,
+          r.subdivision || r.city || null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        parts.push(`  - listing: ${r.label} (${bits})`);
+      } else if (r.type === "article") {
+        // Articles need their EXCERPT for the model to synthesize an answer.
+        // Without this, the model can only describe-not-answer insights queries.
+        parts.push(`  - article: "${r.label}"${r.category ? ` [${r.category}]` : ""}`);
+        if (r.excerpt) {
+          // Cap excerpt to keep prompt tokens reasonable
+          const excerpt = String(r.excerpt).replace(/\s+/g, " ").slice(0, 350);
+          parts.push(`      excerpt: ${excerpt}`);
+        }
+      } else {
+        const extra = r.sublabel ? ` (${r.sublabel})` : "";
+        parts.push(`  - ${r.type}: ${r.label}${extra}`);
+      }
     }
   } else {
     parts.push("");
-    parts.push("Autocomplete returned no matches.");
+    parts.push("Search returned no matches.");
+  }
+
+  // For insights queries, also pull excerpts from the preview-fetched
+  // articles if the caller passed them — covers the case where the
+  // autocomplete dropped articles for non-insights ranking but the
+  // insights preview did its own $text search.
+  if (Array.isArray(body.previewArticles) && body.previewArticles.length > 0) {
+    parts.push("");
+    parts.push(`Insights articles (${body.previewArticles.length}):`);
+    for (const a of body.previewArticles) {
+      parts.push(`  - "${a.title}"${a.category ? ` [${a.category}]` : ""}`);
+      if (a.excerpt) {
+        const excerpt = String(a.excerpt).replace(/\s+/g, " ").slice(0, 350);
+        parts.push(`      excerpt: ${excerpt}`);
+      }
+    }
   }
 
   return parts.join("\n");
