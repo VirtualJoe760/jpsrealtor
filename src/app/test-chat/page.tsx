@@ -412,37 +412,64 @@ function DecisionPreview({
   parsed: ParsedQuery;
   searchResults: SearchResult[];
 }) {
-  const exactMatch = searchResults.find(
-    (r) => r.label.toLowerCase() === parsed.raw.toLowerCase()
-  );
-  const ambiguous =
-    searchResults.length > 1 &&
-    !exactMatch &&
-    new Set(searchResults.map((r) => r.type)).size >= 2;
+  // The decision follows the PARSER, not autocomplete diversity. The
+  // autocomplete is an entity-finder (decoration); the parser is the
+  // intent classifier. When the parser has high confidence and a clearly
+  // resolved entity, route by intent — even if autocomplete returns
+  // multiple types (which often happens because articles match query
+  // tokens too).
 
   let decision = "—";
   let detail = "";
 
+  // Conversational / low-confidence → agent-loop fallback
   if (parsed.intent === "conversational" || parsed.confidence < 0.5) {
     decision = "Layer 3 (agent loop fallback)";
     detail = "Conversational or low-confidence — invoke the full chat-v2 agent loop.";
-  } else if (ambiguous) {
-    decision = "entityOptions component";
-    detail = `Ambiguous query — render ${searchResults.length} candidate entities as clickable options.`;
-  } else if (exactMatch) {
-    decision = `Layer 1 → ${parsed.intent}`;
-    detail = `Exact match on "${exactMatch.label}" (${exactMatch.type}) — proceed with intent.`;
-  } else if (searchResults.length === 1) {
-    decision = `Layer 1 → ${parsed.intent}`;
-    detail = `Single confident match — proceed with intent on "${searchResults[0].label}".`;
-  } else if (searchResults.length === 0) {
-    decision = "fallback to Layer 3";
-    detail = "No search hits — let the agent loop attempt with all 8 tools.";
-  } else {
-    decision = `Layer 1 → ${parsed.intent}`;
-    detail = `Top result is "${searchResults[0].label}" — proceed (no clear ambiguity flag).`;
+    return preview(decision, detail);
   }
 
+  // Compare needs two entities
+  if (parsed.intent === "compare") {
+    if (parsed.entities.length >= 2) {
+      decision = "Layer 1 → compare (paired getAreaStats)";
+      detail = `Two scopes: ${parsed.entities
+        .map((e: any) => e.name || e.value || e.label)
+        .join(" vs ")}. Run paired aggregation in parallel.`;
+    } else {
+      decision = "Layer 3 → askClarification";
+      detail = "Compare keyword without two clear entities — ask user which two scopes.";
+    }
+    return preview(decision, detail);
+  }
+
+  // Single resolved entity — route by intent
+  if (parsed.entities.length >= 1) {
+    decision = `Layer 1 → ${parsed.intent}`;
+    const e = parsed.entities[0] as any;
+    const entityLabel = e.name || e.street || e.value || e.raw || "(unknown)";
+    const filterCount = Object.keys(parsed.filters).length;
+    detail = `Resolved scope: ${e.type} ${entityLabel}${
+      filterCount > 0 ? `, ${filterCount} filter(s) applied at the Mongo layer` : ""
+    }.`;
+    return preview(decision, detail);
+  }
+
+  // No parser entity, but autocomplete has multiple type matches — let the user pick
+  const types = new Set(searchResults.map((r) => r.type));
+  if (searchResults.length > 0 && types.size >= 2) {
+    decision = "entityOptions component";
+    detail = `Parser found no entity but autocomplete returned ${searchResults.length} candidates across ${types.size} types — render as clickable options.`;
+    return preview(decision, detail);
+  }
+
+  // No parser entity, autocomplete has nothing useful → fall through to L3
+  decision = "Layer 3 (agent loop fallback)";
+  detail = "No entity resolved and no autocomplete hits — let the agent loop try.";
+  return preview(decision, detail);
+}
+
+function preview(decision: string, detail: string) {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded p-3">
       <div className="text-sm font-semibold text-blue-900">{decision}</div>

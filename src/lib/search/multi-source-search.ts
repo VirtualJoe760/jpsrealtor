@@ -311,21 +311,38 @@ function dedupeAndRank(
   };
 
   all.sort((a, b) => {
+    // 1. Exact label match wins regardless of anything else
     const aExact = a.label.toLowerCase() === norm ? 1 : 0;
     const bExact = b.label.toLowerCase() === norm ? 1 : 0;
     if (aExact !== bExact) return bExact - aExact;
 
+    // 2. Type tier first — entities before articles within autocomplete.
+    //    For real-estate queries, "where" beats "what to read about it."
+    //    This stops long-content articles from outscoring short city/sub
+    //    entity entries in $text ranking.
+    const tierDiff = typeOrder[a.type] - typeOrder[b.type];
+    if (tierDiff !== 0) return tierDiff;
+
+    // 3. Within tier, source preference: text > regex
     if (a.source === "text" && b.source === "regex") return -1;
     if (a.source === "regex" && b.source === "text") return 1;
 
-    if (a.source === "text" && b.source === "text") {
-      return (b.score || 0) - (a.score || 0);
-    }
-
-    return typeOrder[a.type] - typeOrder[b.type];
+    // 4. Within tier+source, score descending (where applicable)
+    return (b.score || 0) - (a.score || 0);
   });
 
-  return all.slice(0, limit);
+  // 5. Cap article hits at 2 in the final list. Articles are a useful
+  //    secondary signal but shouldn't dominate the autocomplete budget for
+  //    entity-shaped queries.
+  let articleCount = 0;
+  const capped = all.filter((r) => {
+    if (r.type !== "article") return true;
+    if (articleCount >= 2) return false;
+    articleCount++;
+    return true;
+  });
+
+  return capped.slice(0, limit);
 }
 
 // =============================================================================
