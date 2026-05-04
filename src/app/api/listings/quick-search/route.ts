@@ -22,8 +22,14 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() || "";
   if (q.length < 2) return NextResponse.json({ results: [] });
 
+  // Optional intent hint — when the caller already ran Layer 0 (e.g., the
+  // /test-chat sandbox after a submit), pass intent=insights / listing-detail
+  // / etc. so the search layer can skip noise. Autocomplete-while-typing
+  // omits this and gets the default multi-layer behavior.
+  const intent = req.nextUrl.searchParams.get("intent") || undefined;
+
   await dbConnect();
-  const results = await multiSourceSearch(q, { limit: 8 });
+  const results = await multiSourceSearch(q, { limit: 8, intent });
 
   return NextResponse.json(
     { results },

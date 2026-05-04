@@ -89,6 +89,13 @@ interface PreviewStats {
   propertyTypes?: Array<{ subType: string; count: number; avgPrice: number; avgPricePerSqft: number }>;
 }
 
+interface PreviewArticle {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  category?: string;
+}
+
 interface Preview {
   component?: string | null;
   listing?: PreviewListing | null;
@@ -99,6 +106,8 @@ interface Preview {
   totalCount?: number;
   a?: { stats: PreviewStats };
   b?: { stats: PreviewStats };
+  articles?: PreviewArticle[];
+  query?: string;
   reason?: string;
   ms?: number;
   error?: string;
@@ -232,8 +241,15 @@ export default function TestChatPage() {
       const searchStart = Date.now();
       let searchResults: SearchResult[] = [];
       try {
+        // Pass parser intent so the search layer can suppress noise — e.g.,
+        // for "wheres cheap electricity in coachella valley" (insights), we
+        // skip the listing/entity layers that match "valley" tokens and let
+        // articles fill the budget.
+        const intentParam = parsed?.intent
+          ? `&intent=${encodeURIComponent(parsed.intent)}`
+          : "";
         const r = await fetch(
-          `/api/listings/quick-search?q=${encodeURIComponent(query)}`
+          `/api/listings/quick-search?q=${encodeURIComponent(query)}${intentParam}`
         );
         const data = await r.json();
         searchResults = data.results || [];
@@ -757,6 +773,39 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
       <div className="grid gap-3 md:grid-cols-2">
         {preview.a && <StatsCard stats={preview.a.stats} scope={(preview as any).a.scope} />}
         {preview.b && <StatsCard stats={preview.b.stats} scope={(preview as any).b.scope} />}
+      </div>
+    );
+  }
+
+  if (preview.component === "articles") {
+    if (!preview.articles || preview.articles.length === 0) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+          No matching articles found{preview.query ? ` for "${preview.query}"` : ""}.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        {preview.articles.map((a, i) => (
+          <article
+            key={a.slug || i}
+            className="bg-white border border-emerald-200 rounded-lg p-3"
+          >
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900">
+                article
+              </span>
+              {a.category && (
+                <span className="text-xs text-gray-500">{a.category}</span>
+              )}
+            </div>
+            <div className="text-sm font-semibold text-gray-900">{a.title}</div>
+            {a.excerpt && (
+              <p className="text-xs text-gray-600 mt-1 line-clamp-3">{a.excerpt}</p>
+            )}
+          </article>
+        ))}
       </div>
     );
   }

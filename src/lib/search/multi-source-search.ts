@@ -85,6 +85,16 @@ interface Options {
    * Default 6.
    */
   prefixThreshold?: number;
+  /**
+   * Optional intent hint from Layer 0. When provided, the search service
+   * tunes which layers fire and how results are ranked:
+   *   - "insights"        → only articles (skip entity + listing layers).
+   *   - "listing-detail"  → only listing-shaped hits (skip articles).
+   *   - "aggregate" / "listing-search" / "street-listings" / "trend" /
+   *     "compare" / "cma" → entity + listing layers prioritized over articles.
+   *   - "conversational" / undefined → all layers, current default ranking.
+   */
+  intent?: string;
 }
 
 // =============================================================================
@@ -362,10 +372,37 @@ export async function multiSourceSearch(
   const trimmed = q.trim();
   if (trimmed.length < 2) return [];
 
-  // Always run text + county/region.
-  // Run prefix layer when query is short (where $text can't help) OR
-  // unconditionally — it's cheap (indexed prefix scan on small collections).
-  const runPrefix = trimmed.length <= prefixThreshold * 2; // be permissive
+  // Intent-aware fast paths. When Layer 0 has already classified the query,
+  // we skip layers that can't contribute and let the relevant ones spend
+  // the full result budget.
+  const intent = options.intent;
+
+  // Insights: educational/lifestyle questions like "where is cheap electric
+  // in the coachella valley". Entity layers only return noise here (token
+  // bleed: "valley" matches Apple Valley, Valley Center, etc.). Run articles
+  // exclusively and let them fill the budget.
+  if (intent === "insights") {
+    const aHits = await articleHits(trimmed);
+    return dedupeAndRank(trimmed, [], [], [], aHits, limit);
+  }
+
+  // Listing-detail: a specific property lookup. Articles are decorative
+  // here and would push real listings out of the budget.
+  if (intent === "listing-detail") {
+    const [textHits, pHits] = await Promise.all([
+      searchIndexHits(trimmed, Math.ceil(limit * 1.5)),
+      // Skip prefix and county/region — they're not listings
+      Promise.resolve([] as SearchResult[]),
+    ]);
+    // Only keep listing-typed hits
+    const listingsOnly = textHits.filter((r) => r.type === "listing");
+    return dedupeAndRank(trimmed, listingsOnly, [], pHits, [], limit);
+  }
+
+  // Default + entity-shaped intents (aggregate / listing-search /
+  // street-listings / trend / compare / cma): all four layers in parallel,
+  // standard ranking.
+  const runPrefix = trimmed.length <= prefixThreshold * 2;
 
   const [textHits, crHits, pHits, aHits] = await Promise.all([
     searchIndexHits(trimmed, Math.ceil(limit * 1.5)),

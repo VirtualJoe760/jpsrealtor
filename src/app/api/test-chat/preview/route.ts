@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import UnifiedListing from "@/models/unified-listing";
+import Article from "@/models/article";
 import {
   buildListingQuery,
   computeAreaStats,
@@ -220,6 +221,41 @@ export async function POST(req: NextRequest) {
         b: { scope: scopeB, stats: statsB },
         ms: Date.now() - t0,
       });
+    }
+
+    // ----- insights: $text on Article collection -----
+    if (parsed.intent === "insights") {
+      const q = parsed.raw;
+      try {
+        const docs = await Article.find(
+          { status: "published", $text: { $search: q } },
+          { score: { $meta: "textScore" } }
+        )
+          .sort({ score: { $meta: "textScore" } })
+          .limit(5)
+          .select("title slug excerpt category")
+          .lean();
+        const articles = (docs as any[]).map((d) => ({
+          title: d.title,
+          slug: d.slug,
+          excerpt: d.excerpt,
+          category: d.category,
+        }));
+        return NextResponse.json({
+          component: "articles",
+          articles,
+          query: q,
+          ms: Date.now() - t0,
+        });
+      } catch (err: any) {
+        return NextResponse.json({
+          component: "articles",
+          articles: [],
+          query: q,
+          reason: err?.message || "article search failed",
+          ms: Date.now() - t0,
+        });
+      }
     }
 
     // ----- not yet implemented -----
