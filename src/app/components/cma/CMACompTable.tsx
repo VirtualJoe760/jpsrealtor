@@ -84,7 +84,8 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
                 across the board makes the report look broken even though
                 the missing data is a server-side normalization gap. */}
             {/* <TableHead className={headClass}>P/S/G</TableHead> */}
-            <TableHead className={headClass}>Date</TableHead>
+            {/* Date is the close date; only meaningful for closed comps. */}
+            {isClosed && <TableHead className={headClass}>Date</TableHead>}
             <TableHead className={`${headClass} text-right`}>BD</TableHead>
             <TableHead className={`${headClass} text-right`}>BTH</TableHead>
             <TableHead className={`${headClass} text-right`}>SqFt</TableHead>
@@ -114,7 +115,7 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
               {/* <TableCell className={cellClass}>
                 <span title="Pool / Spa / Garage">{poolSpaGarage(comp)}</span>
               </TableCell> */}
-              <TableCell className={cellClass}>{formatDate(comp.date)}</TableCell>
+              {isClosed && <TableCell className={cellClass}>{formatDate(comp.date)}</TableCell>}
               <TableCell className={`${cellClass} text-right`}>{comp.bedsTotal}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{comp.bathsTotal}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{fmt(comp.livingArea)}</TableCell>
@@ -146,8 +147,9 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             </TableCell>
             <TableCell className={footClass} />
             <TableCell className={footClass} />
-            {/* one fewer empty cell — P/S/G column was removed */}
-            <TableCell className={footClass} />
+            {/* Date column only renders for closed; keep the empty
+                placeholder cell aligned. */}
+            {isClosed && <TableCell className={footClass} />}
             <TableCell className={`${footClass} text-right`}>{stats.avgBedsTotal.toFixed(1)}</TableCell>
             <TableCell className={`${footClass} text-right`}>{stats.avgBathsTotal.toFixed(1)}</TableCell>
             <TableCell className={`${footClass} text-right`}>{fmt(stats.avgSqft)}</TableCell>
@@ -163,8 +165,8 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
           {/* Median row */}
           <TableRow>
             <TableCell className={footClass}>Median</TableCell>
-            {/* colSpan was 6 (City + Year + P/S/G + Date + BD + BTH); now 5 since P/S/G is hidden */}
-            <TableCell className={footClass} colSpan={5} />
+            {/* spans City + Year + (Date if closed) + BD + BTH */}
+            <TableCell className={footClass} colSpan={isClosed ? 5 : 4} />
             <TableCell className={`${footClass} text-right`}>{fmt(stats.medianSqft)}</TableCell>
             <TableCell className={footClass} />
             <TableCell className={footClass} />
