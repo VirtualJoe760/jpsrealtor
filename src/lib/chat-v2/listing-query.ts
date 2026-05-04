@@ -16,6 +16,7 @@
 // Datasets: 'active' (UnifiedListing) | 'closed' (UnifiedClosedListing —
 // uses closePrice instead of listPrice; closeDate available for time windows).
 
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import UnifiedListing from "@/models/unified-listing";
 import UnifiedClosedListing from "@/models/unified-closed-listing";
@@ -215,11 +216,59 @@ export async function buildListingQuery(
       query.subdivisionName = { $in: scope.subdivisionNames };
       break;
     case "street": {
-      // Street stays a regex — substring match on unparsedAddress is what
-      // we want here, and there's no canonical Mongo index that helps
-      // either way. Anchored prefix wouldn't capture mid-string matches.
-      const streetRegex = new RegExp(`\\b${escapeRegex(scope.streetName)}\\b`, "i");
-      query.unparsedAddress = streetRegex;
+      // Street fast path. The previous /i regex on unparsedAddress was
+      // forcing a COLLSCAN on unified_listings (~68s for "desi drive"
+      // with no city narrow). search_index has a $text index over
+      // listing addresses, so we use it to pre-resolve the street to
+      // a list of listingKeys, then query unified_listings via the
+      // indexed listingKey field — sub-100ms instead of a minute.
+      //
+      // Post-filter step matters: $text tokenizes "desi drive" into
+      // "desi" + "drive", which can match listings on streets that
+      // only contain "drive" (Hardesty Drive, Acapulco Drive, etc.).
+      // We only keep listings whose label contains the full street
+      // phrase as a substring.
+      let resolvedKeys: string[] = [];
+      try {
+        const db = (mongoose as any).connection?.db;
+        if (db) {
+          const cols = await db
+            .listCollections({ name: "search_index" })
+            .toArray();
+          if (cols.length > 0) {
+            const coll = db.collection("search_index");
+            const docs = await coll
+              .find(
+                { type: "listing", $text: { $search: scope.streetName } },
+                { projection: { entityId: 1, label: 1, _id: 0 } }
+              )
+              .sort({ score: { $meta: "textScore" } })
+              .limit(200)
+              .toArray();
+            const streetLower = scope.streetName.toLowerCase();
+            resolvedKeys = (docs as any[])
+              .filter((d) => typeof d.label === "string" && d.label.toLowerCase().includes(streetLower))
+              .map((d) => d.entityId)
+              .filter(Boolean);
+          }
+        }
+      } catch (err) {
+        console.warn("[buildListingQuery] street search_index lookup failed:", err);
+      }
+
+      if (resolvedKeys.length > 0) {
+        query.listingKey = { $in: resolvedKeys };
+      } else {
+        // Fallback: case-SENSITIVE regex (no /i flag) so a city narrow
+        // index can still help. unified_listings stores addresses in
+        // Title Case; we Title-case the user input to match.
+        const titleCased = scope.streetName
+          .split(/\s+/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+        query.unparsedAddress = new RegExp(`\\b${escapeRegex(titleCased)}\\b`);
+      }
+
       if (scope.cityName) {
         const cityVariants = nameVariants(scope.cityName);
         query.city = cityVariants.length === 1 ? cityVariants[0] : { $in: cityVariants };
