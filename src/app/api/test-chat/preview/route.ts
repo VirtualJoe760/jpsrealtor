@@ -296,6 +296,76 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // ----- trend: appreciation analytics over closed sales -----
+    if (parsed.intent === "trend") {
+      const e = parsed.entities?.[0];
+      if (!e) {
+        return NextResponse.json({ component: null, reason: "no entity for trend", ms: Date.now() - t0 });
+      }
+
+      // Build query params for the existing /api/analytics/appreciation endpoint.
+      // Matches its location-filter contract: subdivision | city | zip | county.
+      const qs = new URLSearchParams();
+      // Default to 5y; widen later if the parser captures explicit periods.
+      qs.set("period", "5y");
+      switch (e.type) {
+        case "subdivision":
+          // Endpoint expects slug for subdivision (per the example in route docs)
+          qs.set(
+            "subdivision",
+            (e.name || "").toLowerCase().replace(/\s+/g, "-")
+          );
+          break;
+        case "city":
+          qs.set("city", e.name || "");
+          break;
+        case "county":
+          qs.set("county", e.name || "");
+          break;
+        case "zip":
+          qs.set("zip", e.value || "");
+          break;
+        default:
+          return NextResponse.json({
+            component: null,
+            reason: `trend not supported for entity type ${e.type}`,
+            ms: Date.now() - t0,
+          });
+      }
+
+      const origin = req.nextUrl.origin;
+      try {
+        const r = await fetch(`${origin}/api/analytics/appreciation?${qs.toString()}`);
+        if (!r.ok) {
+          const errBody = await r.json().catch(() => ({}));
+          return NextResponse.json({
+            component: "trend",
+            trend: null,
+            scope: { type: e.type, value: e.name || (e as any).value },
+            reason: errBody?.error || `appreciation API ${r.status}`,
+            ms: Date.now() - t0,
+          });
+        }
+        const trend = await r.json();
+        return NextResponse.json({
+          component: "trend",
+          scope: { type: e.type, value: e.name || (e as any).value },
+          period: trend.period,
+          appreciation: trend.appreciation,
+          marketData: trend.marketData,
+          metadata: trend.metadata,
+          ms: Date.now() - t0,
+        });
+      } catch (err: any) {
+        return NextResponse.json({
+          component: "trend",
+          trend: null,
+          reason: err?.message || "appreciation fetch failed",
+          ms: Date.now() - t0,
+        });
+      }
+    }
+
     // ----- insights: $text on Article collection -----
     if (parsed.intent === "insights") {
       const q = parsed.raw;

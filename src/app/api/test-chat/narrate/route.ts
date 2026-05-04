@@ -56,6 +56,13 @@ Just open with the answer or the most useful observation.
 - Lead with the actual comparison takeaway, not "I compared X and Y."
 - 2-3 sentences.
 
+**For trend** (appreciation / market velocity):
+- Quote the AUTHORITATIVE annual and cumulative percentages from "Layer 1 trend stats." Round to one decimal.
+- Lead with the headline trend ("PGA West has appreciated 7.3% annually over the past 5 years, with the median rising from $X to $Y"). Use the trend direction word naturally (rising / cooling / steady).
+- Mention sample size if confidence is anything other than "high" so the user knows how solid the number is.
+- DO NOT invent yearly numbers that aren't in the yearlyData list.
+- 2-3 sentences.
+
 **For conversational / unknown / low-confidence**:
 - Ask one focused clarifying question that helps narrow. Don't guess.
 
@@ -184,6 +191,39 @@ function describeContext(body: any): string {
       parts.push(
         `  B (${preview.b.scope?.value || "?"}): ${s.totalListings} listings, avg $${s.avgPrice?.toLocaleString()}, median $${s.medianPrice?.toLocaleString()}`
       );
+    }
+  } else if (preview?.component === "trend") {
+    parts.push("");
+    parts.push(
+      "Layer 1 trend stats (AUTHORITATIVE — these are the appreciation numbers, quote them precisely):"
+    );
+    parts.push(
+      `  scope: ${preview.scope?.type || "?"} ${preview.scope?.value || ""} · period: ${preview.period || "?"}`
+    );
+    if (preview.appreciation) {
+      const a = preview.appreciation;
+      if (a.annual != null) parts.push(`  annual appreciation: ${a.annual.toFixed(1)}%`);
+      if (a.cumulative != null)
+        parts.push(`  cumulative appreciation (${preview.period}): ${a.cumulative.toFixed(1)}%`);
+      if (a.trend) parts.push(`  trend direction: ${a.trend}`);
+    }
+    if (preview.marketData) {
+      const m = preview.marketData;
+      if (m.startMedianPrice != null)
+        parts.push(`  start median price: $${m.startMedianPrice.toLocaleString()}`);
+      if (m.endMedianPrice != null)
+        parts.push(`  current median price: $${m.endMedianPrice.toLocaleString()}`);
+      if (m.totalSales != null) parts.push(`  total closed sales analyzed: ${m.totalSales}`);
+      if (m.confidence) parts.push(`  data confidence: ${m.confidence}`);
+    }
+    if (Array.isArray(preview.appreciation?.yearlyData)) {
+      const yd = preview.appreciation.yearlyData;
+      if (yd.length > 0) {
+        const summary = yd
+          .map((y: any) => `${y.year}: $${y.medianPrice.toLocaleString()} (${y.sales} sales)`)
+          .join("; ");
+        parts.push(`  yearly medians: ${summary}`);
+      }
     }
   } else if (preview?.component === "listingResults") {
     parts.push("");

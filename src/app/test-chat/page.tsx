@@ -96,6 +96,20 @@ interface PreviewArticle {
   category?: string;
 }
 
+interface PreviewAppreciation {
+  annual?: number;
+  cumulative?: number;
+  trend?: "increasing" | "decreasing" | "stable";
+  yearlyData?: Array<{ year: number; medianPrice: number; sales: number }>;
+}
+
+interface PreviewMarketData {
+  startMedianPrice?: number;
+  endMedianPrice?: number;
+  totalSales?: number;
+  confidence?: "high" | "medium" | "low";
+}
+
 interface Preview {
   component?: string | null;
   listing?: PreviewListing | null;
@@ -107,6 +121,10 @@ interface Preview {
   a?: { stats: PreviewStats };
   b?: { stats: PreviewStats };
   articles?: PreviewArticle[];
+  appreciation?: PreviewAppreciation;
+  marketData?: PreviewMarketData;
+  metadata?: { totalSales?: number; mlsSources?: string[] };
+  period?: string;
   query?: string;
   reason?: string;
   ms?: number;
@@ -785,6 +803,108 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
       <div className="grid gap-3 md:grid-cols-2">
         {preview.a && <StatsCard stats={preview.a.stats} scope={(preview as any).a.scope} />}
         {preview.b && <StatsCard stats={preview.b.stats} scope={(preview as any).b.scope} />}
+      </div>
+    );
+  }
+
+  if (preview.component === "trend") {
+    if (!preview.appreciation && !preview.marketData) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+          {preview.reason || "No trend data available."}
+        </div>
+      );
+    }
+    const a = preview.appreciation || {};
+    const m = preview.marketData || {};
+    const meta = preview.metadata || {};
+    const arrow = a.trend === "increasing" ? "↑" : a.trend === "decreasing" ? "↓" : "→";
+    const arrowColor =
+      a.trend === "increasing"
+        ? "text-emerald-700"
+        : a.trend === "decreasing"
+          ? "text-red-700"
+          : "text-gray-600";
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+        {preview.scope && (
+          <div className="text-xs text-gray-500 uppercase tracking-wide">
+            {preview.scope.type} · {preview.scope.value} · {preview.period || "5y"}
+          </div>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {a.annual != null && (
+            <div>
+              <div className="text-xs text-gray-500">Annual appreciation</div>
+              <div className={`text-lg font-semibold ${arrowColor}`}>
+                {arrow} {a.annual.toFixed(1)}%
+              </div>
+            </div>
+          )}
+          {a.cumulative != null && (
+            <div>
+              <div className="text-xs text-gray-500">Cumulative ({preview.period})</div>
+              <div className={`text-lg font-semibold ${arrowColor}`}>
+                {a.cumulative.toFixed(1)}%
+              </div>
+            </div>
+          )}
+          {m.totalSales != null && (
+            <div>
+              <div className="text-xs text-gray-500">Closed sales</div>
+              <div className="text-lg font-semibold text-gray-900">
+                {m.totalSales.toLocaleString()}
+              </div>
+            </div>
+          )}
+          {m.startMedianPrice != null && (
+            <div>
+              <div className="text-xs text-gray-500">Start median</div>
+              <div className="text-base font-semibold text-gray-900">
+                ${m.startMedianPrice.toLocaleString()}
+              </div>
+            </div>
+          )}
+          {m.endMedianPrice != null && (
+            <div>
+              <div className="text-xs text-gray-500">Current median</div>
+              <div className="text-base font-semibold text-gray-900">
+                ${m.endMedianPrice.toLocaleString()}
+              </div>
+            </div>
+          )}
+          {m.confidence && (
+            <div>
+              <div className="text-xs text-gray-500">Confidence</div>
+              <div className="text-sm font-medium text-gray-900">{m.confidence}</div>
+            </div>
+          )}
+        </div>
+        {Array.isArray(a.yearlyData) && a.yearlyData.length > 0 && (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+              Median price by year
+            </div>
+            <table className="w-full text-xs">
+              <tbody>
+                {a.yearlyData.map((y) => (
+                  <tr key={y.year} className="border-t border-gray-100">
+                    <td className="py-1 text-gray-700">{y.year}</td>
+                    <td className="py-1 text-right text-gray-600">
+                      ${y.medianPrice.toLocaleString()}
+                    </td>
+                    <td className="py-1 text-right text-gray-500">{y.sales} sales</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {meta.mlsSources && meta.mlsSources.length > 0 && (
+          <div className="text-xs text-gray-500">
+            Sources: {meta.mlsSources.join(", ")}
+          </div>
+        )}
       </div>
     );
   }
