@@ -278,12 +278,13 @@ export default function TestChatPage() {
       const matchKey = (s: Submission) =>
         s.query === query && s.parseMs === parseMs && s.searchMs === searchMs;
 
-      // Sequence: preview FIRST, then narration with preview articles in
-      // context. Insights queries especially benefit — the narrator needs
-      // the article excerpts to actually answer the question, not just
-      // describe what was found.
+      // Sequence: preview FIRST, then narration with preview articles AND
+      // preview stats in context. Without the stats the narrator can only
+      // count autocomplete hits — which led to "Palm Desert Country Club
+      // has 8 active listings" when it actually had 28.
       const previewStart = Date.now();
       let previewArticles: PreviewArticle[] | undefined;
+      let previewForNarrator: Preview | null = null;
 
       if (parsed && parsed.intent !== "conversational") {
         try {
@@ -295,6 +296,7 @@ export default function TestChatPage() {
           const data = (await r.json()) as Preview;
           const previewMs = Date.now() - previewStart;
           previewArticles = data.articles;
+          previewForNarrator = data;
           setSubmissions((prev) =>
             prev.map((s) => (matchKey(s) ? { ...s, preview: data, previewMs, previewing: false } : s))
           );
@@ -321,14 +323,21 @@ export default function TestChatPage() {
         );
       }
 
-      // Narration — now has previewArticles in context so insights queries
-      // can actually answer instead of describing.
+      // Narration — gets parser + searchResults + previewArticles (for
+      // insights synthesis) AND the full preview object (for authoritative
+      // counts/stats so it can't mistake autocomplete hits for matches).
       const narrateStart = Date.now();
       try {
         const r = await fetch("/api/test-chat/narrate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: query, parsed, searchResults, previewArticles }),
+          body: JSON.stringify({
+            message: query,
+            parsed,
+            searchResults,
+            previewArticles,
+            preview: previewForNarrator,
+          }),
         });
         const data = (await r.json()) as Narration;
         const narrateMs = Date.now() - narrateStart;

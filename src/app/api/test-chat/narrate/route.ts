@@ -38,15 +38,17 @@ Just open with the answer or the most useful observation.
 - 2-4 sentences total.
 
 **For listing-detail** (specific property):
-- Open with what's notable about the property — price, size, community, anything distinctive from the data.
+- Use the AUTHORITATIVE listing-detail data from Layer 1 (price, beds, baths, sqft, subdivision, year built, HOA, DOM). Don't pull data from the autocomplete row — Layer 1's full record is the source of truth.
+- Open with what's notable — striking price, distinctive feature, community context.
 - Mention the property by address.
 - Offer a relevant follow-up (CMA, similar homes, photos).
 - 2-3 sentences.
 
 **For listing-search / aggregate / street-listings**:
-- Open with the most useful headline observation — e.g., "Indian Wells with HOA under $400 narrows to 8 listings, mostly single-family in Cove at Indian Wells and Indian Wells Country Club."
-- Mention 1-2 standouts by address/price if it adds context, OR a notable stat (median, range) if more relevant.
-- If an alternative scope came up in the candidates (e.g., a Non-HOA subdivision when filtering on HOA), mention it as a pivot.
+- ALWAYS quote the totalListings number from "Layer 1 stats" (the AUTHORITATIVE block in the context). NEVER count the autocomplete candidates — they're disambiguation hits, not the matching set. If Layer 1 says 28 listings, say 28 even if autocomplete returned only 6 sample rows.
+- Open with the headline observation drawn from Layer 1 stats: count, median or avg price, dominant property type. E.g., "Palm Desert Country Club has 28 active listings averaging $490K, mostly single-family ($530K avg)."
+- Mention 1-2 standouts by address/price from the Layer 1 sample listings, OR cite a notable stat (HOA range, $/sqft median).
+- If an alternative scope came up in the autocomplete candidates (e.g., a Non-HOA subdivision when filtering on HOA), mention it as a pivot.
 - End with a focused follow-up question, but vary the phrasing — don't always say "Want me to filter by..."
 - 3-4 sentences.
 
@@ -61,10 +63,11 @@ Just open with the answer or the most useful observation.
 - Plain prose only — NO markdown tables, headers, bullet lists.
 - DO NOT invent data — only use what's in the context.
 - DO NOT meta-narrate the system ("the search router found...", "the parser identified...").
+- DO NOT count the autocomplete candidates — they're disambiguation hits, not a count of matches. Always use the totalListings / totalCount from "Layer 1 stats" when present.
 - Vary sentence structure across responses — don't fall into a template.`;
 
 function describeContext(body: any): string {
-  const { message, parsed, searchResults } = body;
+  const { message, parsed, searchResults, preview } = body;
   const parts: string[] = [];
 
   parts.push(`User typed: "${message}"`);
@@ -90,9 +93,122 @@ function describeContext(body: any): string {
     parts.push(`  trend metrics: ${parsed.metric.join(", ")}`);
   }
 
+  // ---- Layer 1 preview (AUTHORITATIVE — these are the real numbers) ----
+  // The preview ran the actual Mongo aggregation against the filtered set;
+  // these counts and stats are what the user is seeing in their card UI.
+  // The autocomplete results below are NOT counts — they're a few sample
+  // hits used for entity disambiguation.
+  if (preview?.component === "neighborhood" || preview?.component === "areaStats") {
+    const s = preview.stats;
+    if (s) {
+      parts.push("");
+      parts.push("Layer 1 stats (AUTHORITATIVE — quote these numbers, not the search-result count):");
+      parts.push(`  scope: ${preview.scope?.type || "?"} ${preview.scope?.value || ""}`);
+      parts.push(`  totalListings: ${s.totalListings}`);
+      parts.push(`  newListings (7d): ${s.newListingsCount}`);
+      parts.push(`  avgPrice: $${s.avgPrice?.toLocaleString?.() ?? s.avgPrice}`);
+      parts.push(`  medianPrice: $${s.medianPrice?.toLocaleString?.() ?? s.medianPrice}`);
+      if (s.priceRange) {
+        parts.push(
+          `  priceRange: $${s.priceRange.min?.toLocaleString?.()} – $${s.priceRange.max?.toLocaleString?.()}`
+        );
+      }
+      if (s.medianPricePerSqft) parts.push(`  median $/sqft: $${s.medianPricePerSqft}`);
+      if (s.hoa) {
+        parts.push(
+          `  HOA (${s.hoa.count} listings): $${s.hoa.min}–$${s.hoa.max}/mo, avg $${s.hoa.avg}`
+        );
+      }
+      if (s.amenities) {
+        const a = s.amenities;
+        const amen = [
+          a.poolPct && `${a.poolPct}% pool`,
+          a.spaPct && `${a.spaPct}% spa`,
+          a.viewPct && `${a.viewPct}% view`,
+          a.gatedPct && `${a.gatedPct}% gated`,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        if (amen) parts.push(`  amenities: ${amen}`);
+      }
+      if (Array.isArray(s.propertyTypes) && s.propertyTypes.length > 0) {
+        parts.push(
+          `  property types: ${s.propertyTypes
+            .slice(0, 4)
+            .map((p: any) => `${p.count} ${p.subType} (avg $${p.avgPrice?.toLocaleString?.()})`)
+            .join(", ")}`
+        );
+      }
+    }
+    // Also list the actual listings the preview pulled (not the 8 autocomplete hits)
+    if (Array.isArray(preview.listings) && preview.listings.length > 0) {
+      parts.push("");
+      parts.push(`Sample of ${preview.listings.length} matching listings (from Layer 1):`);
+      for (const l of preview.listings.slice(0, 6)) {
+        const bits = [
+          l.price ? `$${l.price.toLocaleString()}` : null,
+          l.beds != null ? `${l.beds}bd` : null,
+          l.baths != null ? `${l.baths}ba` : null,
+          l.subdivision || l.city || null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        parts.push(`  - ${l.address} (${bits})`);
+      }
+    }
+  } else if (preview?.component === "listingDetail" && preview.listing) {
+    const l = preview.listing;
+    parts.push("");
+    parts.push("Layer 1 listing detail (AUTHORITATIVE — this is the property the user wants):");
+    parts.push(`  ${l.address}`);
+    if (l.price) parts.push(`  price: $${l.price.toLocaleString()}`);
+    if (l.beds != null) parts.push(`  beds: ${l.beds}`);
+    if (l.baths != null) parts.push(`  baths: ${l.baths}`);
+    if (l.sqft) parts.push(`  sqft: ${l.sqft.toLocaleString()}`);
+    if (l.subdivision) parts.push(`  subdivision: ${l.subdivision}`);
+    if (l.city) parts.push(`  city: ${l.city}`);
+    if (l.yearBuilt) parts.push(`  year built: ${l.yearBuilt}`);
+    if (l.associationFee) parts.push(`  HOA: $${l.associationFee}/mo`);
+    if (l.daysOnMarket != null) parts.push(`  days on market: ${l.daysOnMarket}`);
+  } else if (preview?.component === "compare") {
+    parts.push("");
+    parts.push("Layer 1 compare stats (AUTHORITATIVE):");
+    if (preview.a?.stats) {
+      const s = preview.a.stats;
+      parts.push(
+        `  A (${preview.a.scope?.value || "?"}): ${s.totalListings} listings, avg $${s.avgPrice?.toLocaleString()}, median $${s.medianPrice?.toLocaleString()}`
+      );
+    }
+    if (preview.b?.stats) {
+      const s = preview.b.stats;
+      parts.push(
+        `  B (${preview.b.scope?.value || "?"}): ${s.totalListings} listings, avg $${s.avgPrice?.toLocaleString()}, median $${s.medianPrice?.toLocaleString()}`
+      );
+    }
+  } else if (preview?.component === "listingResults") {
+    parts.push("");
+    parts.push(
+      `Layer 1 returned ${preview.totalCount} total matches (showing top ${preview.listings?.length ?? 0}). Quote the totalCount, not the autocomplete hit count.`
+    );
+    if (Array.isArray(preview.listings) && preview.listings.length > 0) {
+      for (const l of preview.listings.slice(0, 6)) {
+        const bits = [
+          l.price ? `$${l.price.toLocaleString()}` : null,
+          l.beds != null ? `${l.beds}bd` : null,
+          l.baths != null ? `${l.baths}ba` : null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        parts.push(`  - ${l.address} (${bits})`);
+      }
+    }
+  }
+
   if (Array.isArray(searchResults) && searchResults.length > 0) {
     parts.push("");
-    parts.push(`Search returned ${searchResults.length} results:`);
+    parts.push(
+      `Autocomplete returned ${searchResults.length} disambiguation candidates (NOT a count of matching listings — Layer 1 stats above are the real count):`
+    );
     for (const r of searchResults.slice(0, 8)) {
       if (r.type === "listing") {
         const bits = [
