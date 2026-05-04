@@ -48,12 +48,23 @@ interface ParsedQuery {
   confidence: number;
 }
 
+interface Narration {
+  narration: string;
+  tokens?: number;
+  ms?: number;
+  model?: string;
+  error?: string;
+}
+
 interface Submission {
   query: string;
   parsed: ParsedQuery | null;
   searchResults: SearchResult[];
   parseMs: number;
   searchMs: number;
+  narration: Narration | null;
+  narrateMs: number | null;
+  narrating: boolean;
 }
 
 const formatPrice = (n?: number) =>
@@ -180,12 +191,52 @@ export default function TestChatPage() {
       }
       const searchMs = Date.now() - searchStart;
 
-      setSubmissions((prev) => [
-        { query, parsed, searchResults, parseMs, searchMs },
-        ...prev,
-      ]);
+      const submission: Submission = {
+        query,
+        parsed,
+        searchResults,
+        parseMs,
+        searchMs,
+        narration: null,
+        narrateMs: null,
+        narrating: true,
+      };
+      setSubmissions((prev) => [submission, ...prev]);
       setInput("");
       setSubmitting(false);
+
+      // Fire narration in the background; update the submission when it lands.
+      const narrateStart = Date.now();
+      try {
+        const r = await fetch("/api/test-chat/narrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: query, parsed, searchResults }),
+        });
+        const data = (await r.json()) as Narration;
+        const narrateMs = Date.now() - narrateStart;
+        setSubmissions((prev) =>
+          prev.map((s) =>
+            s.query === query && s.parseMs === parseMs && s.searchMs === searchMs
+              ? { ...s, narration: data, narrateMs, narrating: false }
+              : s
+          )
+        );
+      } catch (err: any) {
+        const narrateMs = Date.now() - narrateStart;
+        setSubmissions((prev) =>
+          prev.map((s) =>
+            s.query === query && s.parseMs === parseMs && s.searchMs === searchMs
+              ? {
+                  ...s,
+                  narration: { narration: "", error: err?.message || "narrate failed" },
+                  narrateMs,
+                  narrating: false,
+                }
+              : s
+          )
+        );
+      }
     },
     [submitting]
   );
@@ -381,6 +432,37 @@ export default function TestChatPage() {
                     </li>
                   ))}
                 </ul>
+              )}
+            </section>
+
+            {/* Sample AI response — what Layer 2 narrator would say */}
+            <section>
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h3 className="text-xs uppercase tracking-wide text-gray-500 font-medium">
+                  Sample AI response (Layer 2 narrator)
+                </h3>
+                <div className="text-xs text-gray-500 font-mono">
+                  {s.narrating
+                    ? "generating…"
+                    : s.narrateMs
+                      ? `${s.narrateMs}ms${s.narration?.tokens ? ` · ${s.narration.tokens} tok` : ""}`
+                      : ""}
+                </div>
+              </div>
+              {s.narrating ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700 italic animate-pulse">
+                  Calling narrator…
+                </div>
+              ) : s.narration?.error ? (
+                <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                  {s.narration.error}
+                </div>
+              ) : s.narration?.narration ? (
+                <blockquote className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-gray-900 leading-relaxed">
+                  {s.narration.narration}
+                </blockquote>
+              ) : (
+                <div className="text-sm text-gray-400 italic">No narration produced.</div>
               )}
             </section>
 
