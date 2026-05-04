@@ -102,6 +102,16 @@ const CASES: Case[] = [
     expect: { intent: "street-listings", dataset: "active", entityType: "street", minConfidence: 0.7 },
   },
   {
+    name: "bare street name — must not fuzzy-match a subdivision (Palm Springs Villas I bug)",
+    message: "desi drive",
+    expect: { intent: "street-listings", dataset: "active", entityType: "street", minConfidence: 0.8 },
+  },
+  {
+    name: "bare street name with abbreviation",
+    message: "el paseo dr",
+    expect: { intent: "street-listings", dataset: "active", entityType: "street" },
+  },
+  {
     name: "street name with suffix abbreviation",
     message: "listings on El Paseo Dr",
     expect: { intent: "street-listings", dataset: "active", entityType: "street" },

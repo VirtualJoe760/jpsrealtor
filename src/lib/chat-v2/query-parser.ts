@@ -101,6 +101,17 @@ const STREET_REGEX = new RegExp(
   "i"
 );
 
+// Anchored variant — matches when the WHOLE query is just a street name
+// like "desi drive" or "hovley lane". When this fires, route directly to
+// street-listings BEFORE the fuzzy entity resolver — that resolver has a
+// known false-positive on subdivision names with 1-2 char words ("Palm
+// Springs Villas I" matches "desi drive" because both contain the letter
+// "i" via the word-by-word matcher in entity-recognition.ts).
+const ENTIRE_STREET_REGEX = new RegExp(
+  String.raw`^\s*([NSEW]\s+)?([A-Za-z][\w'\-]*(?:\s+[A-Za-z][\w'\-]*){0,3}?)\s+(${SUFFIX_GROUP})\s*$`,
+  "i"
+);
+
 // Partial address — house number followed by 1–4 street-name words but
 // WITHOUT a recognized suffix ("45355 Taos", "45355 Taos Cove"). Catches
 // what users type when they mean a specific listing but skip "Drive"/"Cove".
@@ -658,6 +669,27 @@ export async function parseQuery(message: string): Promise<ParsedQuery> {
       intent: "listing-search",
       dataset,
       confidence: 0.88,
+    };
+  }
+
+  // Bare street name — "desi drive", "hovley lane", "el paseo dr". Checked
+  // BEFORE the fuzzy entity resolver because that resolver has a known
+  // false-positive on subdivisions with 1-2 char words (see ENTIRE_STREET_REGEX
+  // comment). Pure street-shape queries should route to street-listings,
+  // not to a fuzzy subdivision match.
+  const entireStreetMatch = raw.match(ENTIRE_STREET_REGEX);
+  if (entireStreetMatch) {
+    const dir = (entireStreetMatch[1] || "").trim();
+    const namePart = entireStreetMatch[2].trim();
+    const suffix = entireStreetMatch[3];
+    const street = `${dir ? dir + " " : ""}${namePart} ${suffix}`.trim();
+    return {
+      raw,
+      entities: [{ type: "street", raw: entireStreetMatch[0].trim(), street }],
+      filters,
+      intent: "street-listings",
+      dataset,
+      confidence: 0.85,
     };
   }
 

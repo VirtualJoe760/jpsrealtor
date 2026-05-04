@@ -236,9 +236,16 @@ function findSubdivisionMatch(query: string, subdivisions: string[]): {
   }
 
   // Try word-by-word match (medium confidence)
+  // Both queryWords AND subWords are filtered to length > 2. Without the
+  // subWords filter, a subdivision like "Palm Springs Villas I" — whose
+  // words include "i" — false-matches almost any query because both
+  // sides of the substring check (sw.includes(qw) || qw.includes(sw))
+  // pass when sw is a single letter. This bug surfaced when the query
+  // "desi drive" returned "Palm Springs Villas I" because both "desi"
+  // and "drive" contain the letter "i".
   const queryWords = lowerQuery.split(/\s+/).filter(w => w.length > 2);
   for (const sub of subdivisions) {
-    const subWords = sub.toLowerCase().split(/\s+/);
+    const subWords = sub.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const matchedWords = queryWords.filter(qw => subWords.some(sw => sw.includes(qw) || qw.includes(sw)));
 
     if (matchedWords.length >= 2) {
