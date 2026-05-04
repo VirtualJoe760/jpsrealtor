@@ -90,7 +90,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             <TableHead className={`${headClass} text-right`}>SqFt</TableHead>
             <TableHead className={`${headClass} text-right`}>LotSz</TableHead>
             <TableHead className={`${headClass} text-right`}>LP/SqFt</TableHead>
-            <TableHead className={`${headClass} text-right`}>Orig LP</TableHead>
             <TableHead className={`${headClass} text-right`}>LP</TableHead>
             {isClosed && <TableHead className={`${headClass} text-right`}>SP</TableHead>}
             {isClosed && <TableHead className={`${headClass} text-right`}>SP/SqFt</TableHead>}
@@ -121,7 +120,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
               <TableCell className={`${cellClass} text-right`}>{fmt(comp.livingArea)}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{fmt(comp.lotSize)}</TableCell>
               <TableCell className={`${cellClass} text-right`}>${fmt(comp.listPricePerSqft)}</TableCell>
-              <TableCell className={`${cellClass} text-right`}>{fmtPrice(comp.originalListPrice)}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{fmtPrice(comp.currentListPrice)}</TableCell>
               {isClosed && <TableCell className={`${cellClass} text-right font-semibold`}>{fmtPrice(comp.closePrice)}</TableCell>}
               {isClosed && <TableCell className={`${cellClass} text-right`}>${fmt(comp.salePricePerSqft)}</TableCell>}
@@ -155,7 +153,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             <TableCell className={`${footClass} text-right`}>{fmt(stats.avgSqft)}</TableCell>
             <TableCell className={`${footClass} text-right`}>{fmt(stats.avgLotSize)}</TableCell>
             <TableCell className={`${footClass} text-right`}>${fmt(stats.avgPricePerSqft)}</TableCell>
-            <TableCell className={`${footClass} text-right`} />
             <TableCell className={`${footClass} text-right`}>{fmtPrice(stats.avgPrice)}</TableCell>
             {isClosed && <TableCell className={`${footClass} text-right`}>{fmtPrice(stats.avgPrice)}</TableCell>}
             {isClosed && <TableCell className={`${footClass} text-right`}>${fmt(stats.avgPricePerSqft)}</TableCell>}
@@ -169,7 +166,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             {/* colSpan was 6 (City + Year + P/S/G + Date + BD + BTH); now 5 since P/S/G is hidden */}
             <TableCell className={footClass} colSpan={5} />
             <TableCell className={`${footClass} text-right`}>{fmt(stats.medianSqft)}</TableCell>
-            <TableCell className={footClass} />
             <TableCell className={footClass} />
             <TableCell className={footClass} />
             <TableCell className={`${footClass} text-right`}>{fmtPrice(stats.medianPrice)}</TableCell>

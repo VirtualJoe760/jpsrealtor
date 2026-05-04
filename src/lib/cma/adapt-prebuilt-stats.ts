@@ -114,6 +114,9 @@ function adaptComp(c: any): CMAComp {
     spa: resolvedBool(readBoolFlexible(c, SPA_FIELDS)),
     date: c.closeDate ?? c.onMarketDate ?? "",
     listPricePerSqft: c.listPricePerSqft ?? 0,
+    // Python builder writes `listPrice`; the TS comp shape expects
+    // `currentListPrice`. Normalize so the LP column has a value.
+    currentListPrice: c.currentListPrice ?? c.listPrice ?? 0,
     similarityScore: c.similarityScore ?? 0,
   } as CMAComp;
 }
