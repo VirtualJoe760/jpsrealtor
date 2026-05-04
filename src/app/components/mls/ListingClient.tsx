@@ -107,13 +107,30 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
   );
 }
 
-// CMA section — auto-loads when visible
-function CMASection({ listingKey, subdivisionName, isLight }: { listingKey: string; subdivisionName?: string; isLight: boolean }) {
+// CMA section — uses pre-computed cmaStats from the listing document when
+// available (sub-50ms render), falls back to on-demand /api/cma/generate
+// otherwise (1-20s). cmaStats is written by build-listing-cma.py on a
+// twice-weekly VPS cron — see docs/cma/LISTING_CMA_BACKEND_BUILDER.md.
+function CMASection({
+  listingKey,
+  subdivisionName,
+  cmaStats,
+  isLight,
+}: {
+  listingKey: string;
+  subdivisionName?: string;
+  cmaStats?: any;
+  isLight: boolean;
+}) {
   if (!listingKey) return null;
 
   return (
     <section className="py-8 px-4 md:px-8">
-      <CMAReport listingKey={listingKey} subdivisionName={subdivisionName} />
+      <CMAReport
+        listingKey={listingKey}
+        subdivisionName={subdivisionName}
+        result={cmaStats || undefined}
+      />
     </section>
   );
 }
@@ -1087,8 +1104,16 @@ export default function ListingClient({
           </>
         )}
 
-        {/* CMA Section — temporarily hidden */}
-        {/* <CMASection listingKey={listing.listingKey || ""} subdivisionName={listing.subdivisionName} isLight={isLight} /> */}
+        {/* CMA Section — uses pre-computed cmaStats from build-listing-cma cron
+            when present (sub-50ms), falls back to on-demand /api/cma/generate
+            otherwise. Was previously hidden because the on-demand path took
+            1-20s and stalled the page. */}
+        <CMASection
+          listingKey={listing.listingKey || ""}
+          subdivisionName={listing.subdivisionName}
+          cmaStats={(listing as any).cmaStats}
+          isLight={isLight}
+        />
       </div>
     </SpaticalBackground>
   );

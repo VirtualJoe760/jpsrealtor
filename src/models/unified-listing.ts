@@ -270,6 +270,13 @@ export interface IUnifiedListing extends Document {
   mlsareaMajor?: string;
   mlsareaMinor?: string;
 
+  // Pre-computed listing-level CMA, written by build-listing-cma.py on a
+  // twice-weekly cron (Mon + Thu 1 AM). When present, the listing detail
+  // page uses it directly (sub-50ms) instead of calling the on-demand
+  // /api/cma/generate endpoint (1–20s). Schema documented in
+  // docs/cma/LISTING_CMA_BACKEND_BUILDER.md.
+  cmaStats?: any;
+
   // Agent & Office
   listAgentId?: string;
   listAgentKey?: string;
@@ -452,6 +459,13 @@ const UnifiedListingSchema = new Schema<IUnifiedListing>(
     propertyTypeLabel: String,
     mlsareaMajor: String,
     mlsareaMinor: String,
+
+    // Pre-computed listing CMA — see interface comment above.
+    // Mixed type because PyMongo writes the full nested object directly
+    // (subject, activeComps[], closedComps[], stats, narrative,
+    // limitations, inferences, quality, ...). Without this field
+    // declared, Mongoose's strict mode silently drops it on every read.
+    cmaStats: { type: Schema.Types.Mixed },
 
     // Agent & Office
     listAgentId: String,
