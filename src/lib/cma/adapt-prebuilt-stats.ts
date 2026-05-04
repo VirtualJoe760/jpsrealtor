@@ -44,6 +44,26 @@ function resolvedBool(value: boolean | null | undefined): ResolvedAttribute<bool
   return { value: null, confidence: 0, level: "unknown", source: SOURCE };
 }
 
+/**
+ * Read a boolean from any of several possible field-name variants. Different
+ * MLS sync paths populate the listing differently — on the unified_listings
+ * doc itself we see `poolYn`, `poolYN`, and bare `pool` co-existing across
+ * sources. The Python build-listing-cma script tries to normalize these on
+ * the subject but the comp objects passed through with whatever the source
+ * MLS document had. So we try the same set of variants here.
+ */
+function readBoolFlexible(obj: any, names: string[]): boolean | null | undefined {
+  if (!obj) return undefined;
+  for (const n of names) {
+    const v = obj[n];
+    if (v === true || v === false) return v;
+  }
+  return undefined;
+}
+
+const POOL_FIELDS = ["pool", "poolYn", "poolYN", "Pool", "PoolPrivateYN"];
+const SPA_FIELDS = ["spa", "spaYn", "spaYN", "Spa", "SpaYN"];
+
 function resolvedString(value: string | null | undefined): ResolvedAttribute<string> {
   if (typeof value === "string" && value.length > 0) {
     return { value, confidence: 1, level: "confirmed", source: SOURCE };
@@ -90,8 +110,8 @@ function adaptComp(c: any): CMAComp {
     lotSize: c.lotSize ?? 0,
     lotSizeAcres: c.lotSizeAcres ?? (c.lotSize ? c.lotSize / 43560 : 0),
     garageSpaces: c.garageSpaces ?? 0,
-    pool: resolvedBool(c.pool),
-    spa: resolvedBool(c.spa),
+    pool: resolvedBool(readBoolFlexible(c, POOL_FIELDS)),
+    spa: resolvedBool(readBoolFlexible(c, SPA_FIELDS)),
     date: c.closeDate ?? c.onMarketDate ?? "",
     listPricePerSqft: c.listPricePerSqft ?? 0,
     similarityScore: c.similarityScore ?? 0,
@@ -174,12 +194,25 @@ export function adaptPrebuiltCmaStats(
   // the Python output; the rest (golf/gated/senior/remodeled/furnished)
   // weren't in scope for the pre-build script — leave them as unknown so
   // CMASubjectCard renders a "—" instead of a hard crash.
+  // Read pool/spa/view from EITHER the cmaStats subject (Python output)
+  // OR the listing doc directly. The Python script reads from the listing
+  // and normalizes onto subject, but if the script's field-name handling
+  // diverged, the listing is the canonical source for these.
+  const subjectPool =
+    readBoolFlexible(ps, POOL_FIELDS) ?? readBoolFlexible(listing, POOL_FIELDS);
+  const subjectSpa =
+    readBoolFlexible(ps, SPA_FIELDS) ?? readBoolFlexible(listing, SPA_FIELDS);
+  const subjectView =
+    [ps?.view, ps?.View, listing?.view, listing?.View].find(
+      (v) => typeof v === "string" && v.length > 0
+    ) ?? null;
+
   const resolved: ResolvedListingAttributes = {
-    pool: resolvedBool(ps.pool),
-    spa: resolvedBool(ps.spa),
-    view: resolvedString(ps.view),
-    viewCategories: parseViewCategories(ps.view),
-    garage: resolvedNumber(ps.garageSpaces),
+    pool: resolvedBool(subjectPool),
+    spa: resolvedBool(subjectSpa),
+    view: resolvedString(subjectView),
+    viewCategories: parseViewCategories(subjectView),
+    garage: resolvedNumber(ps.garageSpaces ?? listing?.garageSpaces),
     gatedCommunity: unknownBool(),
     seniorCommunity: unknownBool(),
     golf: unknownBool(),
