@@ -248,6 +248,28 @@ const CASES: Case[] = [
     message: "homes built after 2010 in Palm Desert",
     expect: { intent: "listing-search", filters: { minYear: 2010 } },
   },
+
+  // ============================================================
+  // HOA-as-filter without explicit "homes" / "with" keyword
+  // ============================================================
+  {
+    name: "terse hoa filter — 'hoa under 500 indian wells'",
+    message: "hoa under 500 indian wells",
+    expect: {
+      intent: "listing-search",
+      entityType: "city",
+      filters: { hasHOA: true, maxHOA: 500 },
+    },
+  },
+  {
+    name: "aggregate over hoa-filtered set — 'how many homes in indian wells have hoa under 500'",
+    message: "how many homes in indian wells have hoa under 500",
+    expect: {
+      intent: "aggregate",
+      entityType: "city",
+      filters: { hasHOA: true, maxHOA: 500 },
+    },
+  },
 ];
 
 // =============================================================================
