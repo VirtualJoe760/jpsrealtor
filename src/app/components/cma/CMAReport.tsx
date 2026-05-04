@@ -3,9 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { CMAResult, cmaCompsToMapListings } from "@/lib/cma/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useAgentProfile } from "@/app/hooks/useAgentProfile";
+import { Sparkles } from "lucide-react";
 import CMASubjectCard from "./CMASubjectCard";
 import CMACompTable from "./CMACompTable";
 import CMANarrative from "./CMANarrative";
+import PricePositionCard from "./PricePositionCard";
 import ListingsMap from "@/app/components/map/ListingsMap";
 import PricePerSqftBar from "./charts/PricePerSqftBar";
 import PriceTrendLine from "./charts/PriceTrendLine";
@@ -53,6 +56,9 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
   const [error, setError] = useState<string | null>(null);
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  // Pulled from /api/agent/public; falls back to Joseph's contact info if
+  // the public profile route is unavailable. Used in the AI-disclaimer footer.
+  const { agent } = useAgentProfile();
 
   useEffect(() => {
     if (preloadedResult || !listingKey) return;
@@ -164,6 +170,11 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
         </div>
       </RevealSection>
 
+      {/* Price Position — premium / at-market / advantage */}
+      <RevealSection>
+        <PricePositionCard result={result} />
+      </RevealSection>
+
       {/* Active Comps */}
       {result.activeComps.length > 0 && (
         <RevealSection>
@@ -259,6 +270,50 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
           </div>
         </RevealSection>
       )}
+
+      {/* AI disclaimer + agent contact CTA */}
+      <RevealSection>
+        <div
+          className={`rounded-xl px-4 py-3 text-xs flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 ${
+            isLight
+              ? "bg-amber-50 border border-amber-200 text-amber-900"
+              : "bg-amber-500/10 border border-amber-500/30 text-amber-200"
+          }`}
+        >
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Sparkles className="w-4 h-4" />
+            <span className="font-semibold">AI-generated CMA</span>
+          </div>
+          <p className="leading-snug">
+            This analysis was generated automatically from MLS data. For an
+            in-depth, human-reviewed valuation, contact{" "}
+            <strong>{agent.name}</strong>
+            {agent.phone ? (
+              <>
+                {" "}at{" "}
+                <a
+                  href={`tel:${agent.phone.replace(/[^0-9+]/g, "")}`}
+                  className="underline font-semibold"
+                >
+                  {agent.phone}
+                </a>
+              </>
+            ) : null}
+            {agent.email ? (
+              <>
+                {" "}or{" "}
+                <a
+                  href={`mailto:${agent.email}`}
+                  className="underline font-semibold"
+                >
+                  {agent.email}
+                </a>
+              </>
+            ) : null}
+            .
+          </p>
+        </div>
+      </RevealSection>
     </div>
   );
 }
