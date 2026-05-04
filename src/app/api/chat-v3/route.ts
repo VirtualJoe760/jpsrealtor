@@ -77,22 +77,20 @@ export async function POST(req: NextRequest) {
       return runAgentLoop(messages, userId, buildSnapshotPrompt(locationSnapshot));
     }
 
-    // ----- Multi-turn → Layer 3 -----
-    // First-cut behavior: any conversation longer than the first user turn
-    // goes through the agent loop, which already handles follow-ups with
-    // full message history. Phase 6 will revisit with entity-carry-forward.
-    if (messages.length > 2) {
-      console.log("[Chat V3] Multi-turn (n=" + messages.length + ") → Layer 3");
-      return runAgentLoop(messages, userId);
-    }
-
     // ----- Search-first attempt -----
+    // Parse the latest user message regardless of conversation length —
+    // intent + confidence already encode whether the message is
+    // self-contained ("cma for indian wells country club" → high confidence
+    // + subdivision entity, route via search-first). True follow-ups like
+    // "show me the 4-bed ones" come back conversational/low-confidence
+    // and naturally route to the agent loop below.
     const parsed = await parse(lastMessage.content);
     console.log(
       `[Chat V3] parsed: intent=${parsed.intent} confidence=${parsed.confidence.toFixed(2)} entities=${parsed.entities?.length ?? 0}`
     );
 
     // Low confidence or conversational → fall through to agent loop
+    // (which gets the full message history for follow-up context)
     if (parsed.intent === "conversational" || parsed.confidence < 0.5) {
       console.log("[Chat V3] Low-confidence or conversational → Layer 3");
       return runAgentLoop(messages, userId);
