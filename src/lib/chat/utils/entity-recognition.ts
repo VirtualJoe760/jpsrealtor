@@ -414,47 +414,77 @@ export async function identifyEntityType(query: string): Promise<EntityRecogniti
     }
   }
 
-  // Priority 4: Single match (subdivision or city)
-  if (subdivisionMatch) {
-    return {
-      type: "subdivision",
-      value: subdivisionMatch.name,
-      confidence: subdivisionMatch.confidence,
-      original: query
-    };
-  }
-
-  if (cityMatch) {
-    return {
-      type: "city",
-      value: cityMatch.name,
-      confidence: cityMatch.confidence,
-      original: query
-    };
-  }
-
-  // STEP 5: Check for known counties
+  // Priority 4: Find county/region matches BEFORE falling through to single
+  // city/subdivision matches, so we can pick the most-specific (longest)
+  // substring match across all four entity types. Without this, "coachella
+  // valley" returns "Coachella" (city, 9 chars) instead of "Coachella Valley"
+  // (region, 15 chars), and "Riverside County" returns "Riverside" (city)
+  // instead of the county.
+  let countyMatch: { name: string; confidence: number } | null = null;
   for (const county of KNOWN_COUNTIES) {
     if (lowerQuery.includes(county.toLowerCase())) {
-      return {
-        type: "county",
-        value: county,
-        confidence: 0.85,
-        original: query
-      };
+      countyMatch = { name: county, confidence: 0.85 };
+      break;
+    }
+  }
+  let regionMatch: { name: string; confidence: number } | null = null;
+  for (const region of KNOWN_REGIONS) {
+    if (lowerQuery.includes(region.toLowerCase())) {
+      regionMatch = { name: region, confidence: 0.80 };
+      break;
     }
   }
 
-  // STEP 6: Check for known regions
-  for (const region of KNOWN_REGIONS) {
-    if (lowerQuery.includes(region.toLowerCase())) {
-      return {
-        type: "region",
-        value: region,
-        confidence: 0.80,
-        original: query
-      };
-    }
+  // Score all candidates by match length (more specific → wins).
+  // Tiebreaker is confidence. Same-length, same-confidence falls back to
+  // existing tier order: subdivision > city > county > region.
+  type Candidate = { type: EntityType; name: string; confidence: number; len: number };
+  const candidates: Candidate[] = [];
+  if (subdivisionMatch) {
+    candidates.push({
+      type: "subdivision",
+      name: subdivisionMatch.name,
+      confidence: subdivisionMatch.confidence,
+      len: subdivisionMatch.name.length,
+    });
+  }
+  if (cityMatch) {
+    candidates.push({
+      type: "city",
+      name: cityMatch.name,
+      confidence: cityMatch.confidence,
+      len: cityMatch.name.length,
+    });
+  }
+  if (countyMatch) {
+    candidates.push({
+      type: "county",
+      name: countyMatch.name,
+      confidence: countyMatch.confidence,
+      len: countyMatch.name.length,
+    });
+  }
+  if (regionMatch) {
+    candidates.push({
+      type: "region",
+      name: regionMatch.name,
+      confidence: regionMatch.confidence,
+      len: regionMatch.name.length,
+    });
+  }
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => b.len - a.len || b.confidence - a.confidence);
+    const best = candidates[0];
+    console.log(
+      `[Entity Recognition] Longest-match wins: ${best.type} "${best.name}" (${best.len} chars, conf ${best.confidence}) over ${candidates.slice(1).map((c) => c.name).join(", ") || "no other candidates"}`
+    );
+    return {
+      type: best.type,
+      value: best.name,
+      confidence: best.confidence,
+      original: query,
+    };
   }
 
   // STEP 7: Default to general query
