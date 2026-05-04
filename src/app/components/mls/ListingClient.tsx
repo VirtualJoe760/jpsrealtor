@@ -14,6 +14,7 @@ import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground"
 import RelatedListings from "@/app/components/mls/RelatedListings";
 import NearbyListingsMap from "@/app/components/mls/NearbyListingsMap";
 import CMAReport from "@/app/components/cma/CMAReport";
+import { adaptPrebuiltCmaStats } from "@/lib/cma/adapt-prebuilt-stats";
 
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { trackViewContent, trackEvent } from "@/lib/meta-pixel";
@@ -111,25 +112,33 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
 // available (sub-50ms render), falls back to on-demand /api/cma/generate
 // otherwise (1-20s). cmaStats is written by build-listing-cma.py on a
 // twice-weekly VPS cron — see docs/cma/LISTING_CMA_BACKEND_BUILDER.md.
+//
+// Shape note: the Python script writes a flat shape (subject.pool: bool)
+// for storage compactness, but the TS components were built around the
+// on-demand engine's ResolvedAttribute shape (subject.resolved.pool).
+// adaptPrebuiltCmaStats() bridges the two without forcing a Python rewrite.
 function CMASection({
-  listingKey,
-  subdivisionName,
-  cmaStats,
+  listing,
   isLight,
 }: {
-  listingKey: string;
-  subdivisionName?: string;
-  cmaStats?: any;
+  listing: IUnifiedListing;
   isLight: boolean;
 }) {
+  const listingKey = listing.listingKey || "";
   if (!listingKey) return null;
+
+  // Prefer the pre-computed stats; null when the cron hasn't covered this
+  // listing yet, in which case CMAReport falls through to its existing
+  // /api/cma/subdivision/{slug} → /api/cma/generate flow.
+  const cmaStats = (listing as any).cmaStats;
+  const preloaded = cmaStats ? adaptPrebuiltCmaStats(cmaStats, listing) : null;
 
   return (
     <section className="py-8 px-4 md:px-8">
       <CMAReport
         listingKey={listingKey}
-        subdivisionName={subdivisionName}
-        result={cmaStats || undefined}
+        subdivisionName={listing.subdivisionName}
+        result={preloaded || undefined}
       />
     </section>
   );
@@ -1108,12 +1117,7 @@ export default function ListingClient({
             when present (sub-50ms), falls back to on-demand /api/cma/generate
             otherwise. Was previously hidden because the on-demand path took
             1-20s and stalled the page. */}
-        <CMASection
-          listingKey={listing.listingKey || ""}
-          subdivisionName={listing.subdivisionName}
-          cmaStats={(listing as any).cmaStats}
-          isLight={isLight}
-        />
+        <CMASection listing={listing} isLight={isLight} />
       </div>
     </SpaticalBackground>
   );
