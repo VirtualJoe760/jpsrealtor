@@ -75,7 +75,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
       <Table>
         <TableHeader>
           <TableRow className={isLight ? "bg-gray-50" : "bg-neutral-900/60"}>
-            <TableHead className={headClass}>Listing #</TableHead>
             <TableHead className={headClass}>Address</TableHead>
             <TableHead className={headClass}>City</TableHead>
             <TableHead className={headClass}>Year</TableHead>
@@ -107,7 +106,6 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
               key={comp.listingKey}
               className={isLight ? "hover:bg-gray-50" : "hover:bg-neutral-800/30"}
             >
-              <TableCell className={cellClass}>{comp.listingId}</TableCell>
               <TableCell className={`${cellClass} max-w-[180px] truncate`}>
                 {comp.address}
               </TableCell>
@@ -145,7 +143,7 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
         <TableFooter className={isLight ? "bg-gray-50" : "bg-neutral-900/60"}>
           {/* Average row */}
           <TableRow>
-            <TableCell className={footClass} colSpan={2}>
+            <TableCell className={footClass}>
               Total: {stats.count} · Average
             </TableCell>
             <TableCell className={footClass} />
@@ -167,7 +165,7 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
           </TableRow>
           {/* Median row */}
           <TableRow>
-            <TableCell className={footClass} colSpan={2}>Median</TableCell>
+            <TableCell className={footClass}>Median</TableCell>
             {/* colSpan was 6 (City + Year + P/S/G + Date + BD + BTH); now 5 since P/S/G is hidden */}
             <TableCell className={footClass} colSpan={5} />
             <TableCell className={`${footClass} text-right`}>{fmt(stats.medianSqft)}</TableCell>
