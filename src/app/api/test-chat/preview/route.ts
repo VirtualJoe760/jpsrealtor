@@ -26,6 +26,8 @@ import {
   type ListingFilters,
 } from "@/lib/chat-v2/listing-query";
 import { fetchPrimaryPhotos } from "@/lib/listings/fetch-primary-photos";
+import { adaptPrebuiltCmaStats } from "@/lib/cma/adapt-prebuilt-stats";
+import Subdivision from "@/models/subdivisions";
 
 // =============================================================================
 // Helpers
@@ -401,6 +403,147 @@ export async function POST(req: NextRequest) {
           ms: Date.now() - t0,
         });
       }
+    }
+
+    // ----- cma: pre-computed listing OR subdivision CMA -----
+    // Two scopes:
+    //   address entity     → listing-level (cmaStats subdoc on UnifiedListing,
+    //                        written by build-listing-cma.py twice-weekly cron)
+    //   subdivision entity → subdivision-level (SubdivisionCmaSection lazy-
+    //                        fetches via /api/cma/subdivision/[slug])
+    //
+    // For listing scope we run adaptPrebuiltCmaStats(stats, listing) and return
+    // the CMAResult shape that <CMAReport result={...} /> consumes directly.
+    // For subdivision scope we just return the slug — the section component
+    // owns its own intersection-observer-driven fetch.
+    if (parsed.intent === "cma") {
+      const addrEntity = parsed.entities?.find((e: any) => e.type === "address");
+      const subEntity = parsed.entities?.find((e: any) => e.type === "subdivision");
+
+      // ----- listing-level CMA -----
+      if (addrEntity) {
+        const houseNum = addrEntity.houseNumber;
+        const streetWords = (addrEntity.street || "")
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w: string) => w.length > 1);
+
+        // Fields cmaStats adapter pulls from the listing doc directly
+        // (lat/lng/garage/view/etc. are NOT on the cmaStats subdoc).
+        const cmaProjection: any = {
+          ...LISTING_PROJECTION,
+          cmaStats: 1,
+          latitude: 1,
+          longitude: 1,
+          view: 1,
+          View: 1,
+          garageSpaces: 1,
+          architecturalStyle: 1,
+          stories: 1,
+          lotFeatures: 1,
+          elementarySchoolDistrict: 1,
+          // Pool/spa across MLS field-name variants — adapter reads any of these
+          pool: 1,
+          poolYn: 1,
+          poolYN: 1,
+          spa: 1,
+          spaYn: 1,
+          spaYN: 1,
+        };
+
+        // Same resolution path as listing-detail, but status-agnostic — CMA
+        // is meaningful for Pending/Closed/Withdrawn too.
+        let listing: any = null;
+        if (houseNum) {
+          const slugRegex = new RegExp(`^${houseNum}-`);
+          listing = await UnifiedListing.findOne({ slugAddress: slugRegex })
+            .select(cmaProjection)
+            .lean();
+
+          if (!listing && streetWords.length > 0) {
+            const lookaheads = streetWords.map((w: string) => `(?=.*${w})`).join("");
+            const re = new RegExp(`^${houseNum}.*${lookaheads}`, "i");
+            listing = await UnifiedListing.findOne({ unparsedAddress: re })
+              .select(cmaProjection)
+              .lean();
+          }
+        }
+
+        if (!listing) {
+          return NextResponse.json({
+            component: "cma",
+            cmaScope: "listing",
+            cma: null,
+            reason: `no listing matched ${houseNum ? `house# ${houseNum} + ` : ""}street "${addrEntity.street}"`,
+            ms: Date.now() - t0,
+          });
+        }
+
+        const adapted = listing.cmaStats
+          ? adaptPrebuiltCmaStats(listing.cmaStats, listing)
+          : null;
+
+        return NextResponse.json({
+          component: "cma",
+          cmaScope: "listing",
+          listingKey: listing.listingKey,
+          slugAddress: listing.slugAddress,
+          subdivisionName: listing.subdivisionName,
+          cma: adapted,
+          hasPrebuilt: Boolean(adapted),
+          reason: adapted
+            ? undefined
+            : "no pre-computed cmaStats — CMAReport will fall back to /api/cma/generate",
+          ms: Date.now() - t0,
+        });
+      }
+
+      // ----- subdivision-level CMA -----
+      if (subEntity) {
+        // Prefer the slug already on the entity (resolved from LocationIndex).
+        // Otherwise derive it from the name; the subdivision lookup below
+        // falls back to a name match if the slug-derived lookup misses.
+        const derivedSlug = (subEntity.name as string)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        const slug = (subEntity as any).slug || derivedSlug;
+
+        // Verify the subdivision exists so we don't hand the section
+        // component a slug it'll just 404 on.
+        const sub: any = await Subdivision.findOne({
+          $or: [{ slug }, { name: subEntity.name }],
+        })
+          .select("name slug city")
+          .lean();
+
+        if (!sub) {
+          return NextResponse.json({
+            component: "cma",
+            cmaScope: "subdivision",
+            slug,
+            subdivisionName: subEntity.name,
+            reason: `subdivision "${subEntity.name}" not found in registry`,
+            ms: Date.now() - t0,
+          });
+        }
+
+        return NextResponse.json({
+          component: "cma",
+          cmaScope: "subdivision",
+          subdivisionName: sub.name,
+          slug: sub.slug,
+          city: sub.city,
+          ms: Date.now() - t0,
+        });
+      }
+
+      return NextResponse.json({
+        component: "cma",
+        cma: null,
+        reason: "cma intent without address or subdivision entity",
+        ms: Date.now() - t0,
+      });
     }
 
     // ----- not yet implemented -----

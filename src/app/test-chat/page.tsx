@@ -22,6 +22,8 @@ import ListingCarousel, { type Listing as CarouselListing } from "@/app/componen
 import ListingListView from "@/app/components/chat/ListingListView";
 import { ArticleResults } from "@/app/components/chat/ArticleCard";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
+import CMAReport from "@/app/components/cma/CMAReport";
+import SubdivisionCmaSection from "@/app/components/cma/subdivision/SubdivisionCmaSection";
 
 interface SearchResult {
   type: "listing" | "city" | "subdivision" | "county" | "region" | "article";
@@ -134,6 +136,15 @@ interface Preview {
   // For trend → AppreciationContainer
   locationType?: string;
   locationName?: string;
+  // For cma → CMAReport (listing scope) or SubdivisionCmaSection (subdivision scope)
+  cmaScope?: "listing" | "subdivision";
+  listingKey?: string;
+  slugAddress?: string;
+  subdivisionName?: string;
+  slug?: string;
+  city?: string;
+  cma?: any;
+  hasPrebuilt?: boolean;
   query?: string;
   reason?: string;
   ms?: number;
@@ -871,6 +882,57 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
         locationType={preview.locationType as any}
         period={(preview.period as any) || "5y"}
       />
+    );
+  }
+
+  if (preview.component === "cma") {
+    // Listing-level: pre-computed cmaStats adapted into CMAResult, mounted
+    // into the same CMAReport that powers /mls-listings/[slugAddress]. If
+    // hasPrebuilt is false, CMAReport falls back to /api/cma/generate via
+    // its existing useEffect.
+    if (preview.cmaScope === "listing") {
+      if (!preview.listingKey) {
+        return (
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+            {preview.reason || "No listing resolved for CMA."}
+          </div>
+        );
+      }
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {!preview.hasPrebuilt && preview.reason && (
+            <div className="bg-yellow-50 border-b border-yellow-200 px-3 py-2 text-xs text-yellow-800">
+              {preview.reason}
+            </div>
+          )}
+          <CMAReport
+            listingKey={preview.listingKey}
+            subdivisionName={preview.subdivisionName}
+            result={preview.cma || undefined}
+          />
+        </div>
+      );
+    }
+    // Subdivision-level: SubdivisionCmaSection lazy-loads its own data via
+    // /api/cma/subdivision/[slug] under an IntersectionObserver.
+    if (preview.cmaScope === "subdivision") {
+      if (!preview.slug) {
+        return (
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+            {preview.reason || "No subdivision slug for CMA."}
+          </div>
+        );
+      }
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <SubdivisionCmaSection slug={preview.slug} />
+        </div>
+      );
+    }
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+        {preview.reason || "CMA scope unclear."}
+      </div>
     );
   }
 
