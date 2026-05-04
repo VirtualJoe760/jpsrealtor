@@ -79,7 +79,12 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             <TableHead className={headClass}>Address</TableHead>
             <TableHead className={headClass}>City</TableHead>
             <TableHead className={headClass}>Year</TableHead>
-            <TableHead className={headClass}>P/S/G</TableHead>
+            {/* P/S/G column hidden until backend Python script writes
+                pool/spa onto comp objects under canonical field names —
+                see docs/cma/BACKEND_FIX_COMP_POOL_SPA.md. Showing "?/?/2"
+                across the board makes the report look broken even though
+                the missing data is a server-side normalization gap. */}
+            {/* <TableHead className={headClass}>P/S/G</TableHead> */}
             <TableHead className={headClass}>Date</TableHead>
             <TableHead className={`${headClass} text-right`}>BD</TableHead>
             <TableHead className={`${headClass} text-right`}>BTH</TableHead>
@@ -108,9 +113,10 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
               </TableCell>
               <TableCell className={cellClass}>{comp.city}</TableCell>
               <TableCell className={cellClass}>{comp.yearBuilt || "—"}</TableCell>
-              <TableCell className={cellClass}>
+              {/* P/S/G column hidden — see header comment */}
+              {/* <TableCell className={cellClass}>
                 <span title="Pool / Spa / Garage">{poolSpaGarage(comp)}</span>
-              </TableCell>
+              </TableCell> */}
               <TableCell className={cellClass}>{formatDate(comp.date)}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{comp.bedsTotal}</TableCell>
               <TableCell className={`${cellClass} text-right`}>{comp.bathsTotal}</TableCell>
@@ -144,7 +150,7 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             </TableCell>
             <TableCell className={footClass} />
             <TableCell className={footClass} />
-            <TableCell className={footClass} />
+            {/* one fewer empty cell — P/S/G column was removed */}
             <TableCell className={footClass} />
             <TableCell className={`${footClass} text-right`}>{stats.avgBedsTotal.toFixed(1)}</TableCell>
             <TableCell className={`${footClass} text-right`}>{stats.avgBathsTotal.toFixed(1)}</TableCell>
@@ -162,7 +168,8 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
           {/* Median row */}
           <TableRow>
             <TableCell className={footClass} colSpan={2}>Median</TableCell>
-            <TableCell className={footClass} colSpan={6} />
+            {/* colSpan was 6 (City + Year + P/S/G + Date + BD + BTH); now 5 since P/S/G is hidden */}
+            <TableCell className={footClass} colSpan={5} />
             <TableCell className={`${footClass} text-right`}>{fmt(stats.medianSqft)}</TableCell>
             <TableCell className={footClass} />
             <TableCell className={footClass} />
