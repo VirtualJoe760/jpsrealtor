@@ -318,8 +318,12 @@ export default function PreviewRenderer({
           </div>
         );
       }
+      // SubdivisionCmaSection's inner cards expect ambient padding from the
+      // host page (it ships without its own outer gutter). Without `p-*` the
+      // "Market Analysis" header and snapshot grid butt up against the
+      // wrapper edges.
       return (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden p-4 md:p-6">
           <SubdivisionCmaSection slug={preview.slug} />
         </div>
       );
