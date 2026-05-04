@@ -17,6 +17,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppreciationContainer } from "@/app/components/chat/AppreciationContainer";
+import ListingDetailCard from "@/app/components/chat/ListingDetailCard";
+import ListingCarousel, { type Listing as CarouselListing } from "@/app/components/chat/ListingCarousel";
+import ListingListView from "@/app/components/chat/ListingListView";
+import { ArticleResults } from "@/app/components/chat/ArticleCard";
+import { MLSProvider } from "@/app/components/mls/MLSProvider";
 
 interface SearchResult {
   type: "listing" | "city" | "subdivision" | "county" | "region" | "article";
@@ -200,6 +205,18 @@ const intentColor = (i: string) => {
 };
 
 export default function TestChatPage() {
+  // ListingCarousel / ListingListView consume useMLSContext, which is only
+  // available under <MLSProvider>. /chap wraps its tree in this provider;
+  // /test-chat needs the same wrap so the production listing components
+  // mount without errors.
+  return (
+    <MLSProvider>
+      <TestChatPageInner />
+    </MLSProvider>
+  );
+}
+
+function TestChatPageInner() {
   const [input, setInput] = useState("");
   const [autocomplete, setAutocomplete] = useState<SearchResult[]>([]);
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
@@ -758,12 +775,34 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
         </div>
       );
     }
-    return <ListingCard listing={preview.listing} large />;
+    // Use the production ListingDetailCard — owns photos (Spark API),
+    // stats grid, CMA + similar-homes shortcuts.
+    const l = preview.listing;
+    return (
+      <ListingDetailCard
+        listingKey={l.listingKey}
+        slugAddress={l.slugAddress || l.listingKey}
+        address={l.address}
+        primaryPhotoUrl={l.primaryPhotoUrl}
+        city={l.city}
+        subdivision={l.subdivision}
+        price={l.price}
+        status={l.standardStatus}
+        beds={l.beds}
+        baths={l.baths}
+        sqft={l.sqft}
+        lotSizeSqft={l.lotSize}
+        yearBuilt={l.yearBuilt}
+        propertySubType={l.propertySubType}
+        hoaFee={l.associationFee}
+        daysOnMarket={l.daysOnMarket}
+      />
+    );
   }
 
   if (preview.component === "neighborhood" || preview.component === "areaStats") {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {preview.stats && (
           <StatsCard
             stats={preview.stats}
@@ -772,16 +811,10 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
           />
         )}
         {preview.listings && preview.listings.length > 0 && (
-          <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1.5">
-              Top {preview.listings.length} listings (sample)
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {preview.listings.map((l) => (
-                <ListingCard key={l.listingKey} listing={l} />
-              ))}
-            </div>
-          </div>
+          <ListingCarousel
+            listings={preview.listings.map(toCarouselListing)}
+            title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
+          />
         )}
       </div>
     );
@@ -789,16 +822,14 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
 
   if (preview.component === "listingResults") {
     return (
-      <div>
-        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1.5">
-          {preview.totalCount ?? 0} listings · showing top {preview.listings?.length ?? 0}
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {preview.listings?.map((l) => (
-            <ListingCard key={l.listingKey} listing={l} />
-          ))}
-        </div>
-      </div>
+      <ListingListView
+        listings={(preview.listings || []).map(toCarouselListing)}
+        title={`${preview.totalCount ?? 0} listings`}
+        totalCount={preview.totalCount}
+        hasMore={Boolean(
+          preview.totalCount && preview.listings && preview.listings.length < preview.totalCount
+        )}
+      />
     );
   }
 
@@ -852,27 +883,17 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
       );
     }
     return (
-      <div className="space-y-2">
-        {preview.articles.map((a, i) => (
-          <article
-            key={a.slug || i}
-            className="bg-white border border-emerald-200 rounded-lg p-3"
-          >
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900">
-                article
-              </span>
-              {a.category && (
-                <span className="text-xs text-gray-500">{a.category}</span>
-              )}
-            </div>
-            <div className="text-sm font-semibold text-gray-900">{a.title}</div>
-            {a.excerpt && (
-              <p className="text-xs text-gray-600 mt-1 line-clamp-3">{a.excerpt}</p>
-            )}
-          </article>
-        ))}
-      </div>
+      <ArticleResults
+        results={preview.articles.map((a, i) => ({
+          _id: a.slug || `article-${i}`,
+          title: a.title,
+          slug: a.slug || "",
+          excerpt: a.excerpt || "",
+          category: a.category || "",
+          publishedAt: new Date().toISOString(),
+        }))}
+        query={preview.query || ""}
+      />
     );
   }
 
@@ -883,6 +904,39 @@ function ComponentPreview({ preview }: { preview: Preview | null }) {
   );
 }
 
+/**
+ * Map a preview listing (slim shape from /api/test-chat/preview) into the
+ * Listing shape that ListingCarousel / ListingListView expect. Both
+ * components fetch their own photos via Spark API so we don't need to
+ * pre-populate `image`; just plumb through the structural fields.
+ */
+function toCarouselListing(l: PreviewListing): CarouselListing {
+  return {
+    id: l.listingKey,
+    listingKey: l.listingKey,
+    listingId: l.listingKey,
+    price: l.price ?? 0,
+    beds: l.beds ?? 0,
+    baths: l.baths ?? 0,
+    sqft: l.sqft ?? 0,
+    city: l.city ?? "",
+    address: l.address ?? "",
+    image: l.primaryPhotoUrl,
+    subdivision: l.subdivision,
+    slug: l.slugAddress,
+    slugAddress: l.slugAddress,
+    url: `/mls-listings/${l.slugAddress || l.listingKey}`,
+    daysOnMarket: l.daysOnMarket,
+    standardStatus: l.standardStatus,
+    propertySubType: l.propertySubType,
+    yearBuilt: l.yearBuilt,
+    lotSizeSqft: l.lotSize,
+    associationFee: l.associationFee,
+  };
+}
+
+// Kept for any future fallback. The main render path now uses
+// ListingDetailCard / ListingCarousel / ListingListView from production.
 function ListingCard({ listing, large = false }: { listing: PreviewListing; large?: boolean }) {
   return (
     <div className={`bg-white border border-gray-200 rounded-lg overflow-hidden flex ${large ? "flex-col" : "flex-row"}`}>
