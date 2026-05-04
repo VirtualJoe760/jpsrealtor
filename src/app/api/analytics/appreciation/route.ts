@@ -84,10 +84,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Time filter
+    // Time filter. Pull ONE extra year past the displayed window so the
+    // analyzer can compute year-over-year appreciation for the FIRST
+    // displayed year (the baseline-year row gets dropped before output —
+    // see analyzeAppreciation). Without this, the chart shows +0.0% for
+    // the first year because there's nothing prior to compare against.
     const period = params.period || '5y';
     const yearsMap = { '1y': 1, '3y': 3, '5y': 5, '10y': 10 };
-    filters.yearsBack = yearsMap[period] || parseInt(params.yearsBack || '5');
+    const displayedYears = yearsMap[period] || parseInt(params.yearsBack || '5');
+    filters.yearsBack = displayedYears + 1;
 
     // Property filters based on market type
     const marketType = params.marketType || 'residential';  // Default to residential sales

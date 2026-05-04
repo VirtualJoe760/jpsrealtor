@@ -149,12 +149,20 @@ export function analyzeAppreciation(
   // Only include current year if we're past June (at least 6 months of data)
   const includeCurrentYear = currentMonth >= 6; // July or later
 
-  // Calculate the end year and start year for complete data
+  // Calculate the end year and start year for complete data.
+  // displayStartYear = first year shown in the chart (e.g., 2021 for a 5y
+  // request ending in 2025). baselineYear = one year prior, used solely
+  // to compute the displayStartYear's year-over-year appreciation rate
+  // (e.g., 2020 → 2021). The route fetches yearsBack+1 of data so the
+  // baseline year's sales reach this function; we filter, group, and
+  // compute YoY for ALL years, then drop the baseline row before output.
   const endYear = includeCurrentYear ? currentYear : currentYear - 1;
-  const startYear = endYear - years + 1;
+  const displayStartYear = endYear - years + 1;
+  const baselineYear = displayStartYear - 1;
 
-  // Create date boundaries for filtering
-  const startDate = new Date(startYear, 0, 1); // Jan 1 of start year
+  // Create date boundaries for filtering — extend back to the baseline year
+  // so the YoY loop has a prior data point for the first displayed year.
+  const startDate = new Date(baselineYear, 0, 1); // Jan 1 of baseline year
   const endDate = new Date(endYear, 11, 31, 23, 59, 59); // Dec 31 of end year
 
   // Filter sales data - API already filters by property type, so just validate data quality
@@ -258,7 +266,8 @@ export function analyzeAppreciation(
     })
     .sort((a, b) => a.year - b.year);
 
-  // Calculate year-over-year appreciation rates
+  // Calculate year-over-year appreciation rates. The loop starts at i=1
+  // so the first row (baseline year, if present) gets the default 0.
   for (let i = 1; i < yearlyData.length; i++) {
     const prevYear = yearlyData[i - 1];
     const currYear = yearlyData[i];
@@ -269,9 +278,48 @@ export function analyzeAppreciation(
     );
   }
 
-  // Overall appreciation metrics
-  const startYearData = yearlyData[0];
-  const endYearData = yearlyData[yearlyData.length - 1];
+  // Drop the baseline year from the displayed output. It only existed so
+  // displayStartYear could compute its YoY rate against a prior data
+  // point; including it in the chart would re-introduce the +0.0%
+  // misrepresentation we're trying to fix.
+  // If the location had no baseline data (yearlyData starts at
+  // displayStartYear), there's nothing to drop and the first year's rate
+  // stays 0 — we can't compute YoY without a prior reference.
+  const displayedYearlyData =
+    yearlyData.length > 0 && yearlyData[0].year === baselineYear
+      ? yearlyData.slice(1)
+      : yearlyData;
+
+  // Guard: if filtering left us with nothing displayable, bail out the
+  // same way the relevantSales-too-small branch above does.
+  if (displayedYearlyData.length === 0) {
+    return {
+      period,
+      appreciation: {
+        annual: 0,
+        cumulative: 0,
+        twoYear: 0,
+        fiveYear: 0,
+        trend: 'neutral',
+        byYear: []
+      },
+      marketData: {
+        startAvgPrice: 0,
+        endAvgPrice: 0,
+        startPricePerSqFt: 0,
+        endPricePerSqFt: 0,
+        totalSales: relevantSales.length,
+        confidence: 'low'
+      }
+    };
+  }
+
+  // Overall appreciation metrics — use the DISPLAYED range, not the full
+  // yearlyData (which may include the baseline year). This keeps the
+  // "5-year appreciation" metric consistent with the user's requested
+  // window even though we fetched one extra year for YoY.
+  const startYearData = displayedYearlyData[0];
+  const endYearData = displayedYearlyData[displayedYearlyData.length - 1];
   const actualYears = endYearData.year - startYearData.year;
 
   const annualAppreciation = actualYears > 0
@@ -283,10 +331,11 @@ export function analyzeAppreciation(
     endYearData.avgSalePrice
   );
 
-  // Calculate 2-year appreciation
+  // Calculate 2-year appreciation — uses the displayed range, so the
+  // baseline year (if dropped above) doesn't skew the metric.
   let twoYearAppreciation = 0;
-  if (yearlyData.length >= 2) {
-    const twoYearsAgo = yearlyData[yearlyData.length - 2];
+  if (displayedYearlyData.length >= 2) {
+    const twoYearsAgo = displayedYearlyData[displayedYearlyData.length - 2];
     twoYearAppreciation = calculateAppreciationRate(
       twoYearsAgo.avgSalePrice,
       endYearData.avgSalePrice
@@ -295,19 +344,20 @@ export function analyzeAppreciation(
 
   // Calculate 5-year appreciation
   let fiveYearAppreciation = 0;
-  if (yearlyData.length >= 5) {
-    const fiveYearsAgo = yearlyData[0];
+  if (displayedYearlyData.length >= 5) {
+    const fiveYearsAgo = displayedYearlyData[0];
     fiveYearAppreciation = calculateAppreciationRate(
       fiveYearsAgo.avgSalePrice,
       endYearData.avgSalePrice
     );
-  } else if (yearlyData.length > 1) {
+  } else if (displayedYearlyData.length > 1) {
     // Use available data if less than 5 years
     fiveYearAppreciation = cumulativeAppreciation;
   }
 
-  // Determine market trend using Bullish/Bearish terminology
-  const recentRates = yearlyData.slice(-3).map(y => y.appreciationRate).filter(r => r !== 0);
+  // Determine market trend using Bullish/Bearish terminology — only the
+  // displayed years, since the baseline row's rate is always 0.
+  const recentRates = displayedYearlyData.slice(-3).map(y => y.appreciationRate).filter(r => r !== 0);
   const avgRecentRate = calculateAverage(recentRates);
 
   // Calculate standard deviation for volatility check
@@ -348,7 +398,7 @@ export function analyzeAppreciation(
       twoYear: Number(twoYearAppreciation.toFixed(2)),
       fiveYear: Number(fiveYearAppreciation.toFixed(2)),
       trend,
-      byYear: yearlyData
+      byYear: displayedYearlyData
     },
     marketData: {
       startAvgPrice: startYearData.avgSalePrice,
