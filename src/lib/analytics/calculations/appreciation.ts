@@ -278,15 +278,21 @@ export function analyzeAppreciation(
     );
   }
 
-  // Drop the baseline year from the displayed output. It only existed so
-  // displayStartYear could compute its YoY rate against a prior data
-  // point; including it in the chart would re-introduce the +0.0%
-  // misrepresentation we're trying to fix.
-  // If the location had no baseline data (yearlyData starts at
-  // displayStartYear), there's nothing to drop and the first year's rate
-  // stays 0 — we can't compute YoY without a prior reference.
+  // Drop the first year from the displayed output whenever it has a
+  // rate of 0 — that means no prior data point exists to compute YoY
+  // against. Two cases produce this:
+  //   (a) yearlyData[0] is the baseline year we fetched specifically to
+  //       inform displayStartYear's YoY (rare — closed_listings has a
+  //       5-year TTL so the "extra" baseline year is usually empty), OR
+  //   (b) yearlyData[0] IS the displayStartYear and there's nothing
+  //       prior in the data (the common case under the TTL).
+  //
+  // Either way, including a year that says "+0.0%" misrepresents the
+  // chart. Per the user's directive: "it should take all the years into
+  // account, it should just only display the year over year starting
+  // after the first year so that it has data."
   const displayedYearlyData =
-    yearlyData.length > 0 && yearlyData[0].year === baselineYear
+    yearlyData.length > 1 && yearlyData[0].appreciationRate === 0
       ? yearlyData.slice(1)
       : yearlyData;
 
