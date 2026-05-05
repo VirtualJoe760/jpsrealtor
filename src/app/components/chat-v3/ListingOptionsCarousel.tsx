@@ -69,17 +69,23 @@ export default function ListingOptionsCarousel({
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listingsCount = listings?.length ?? 0;
 
-  // Continuous smooth scroll using requestAnimationFrame. The rAF loop
-  // runs from mount to unmount. Each frame reads pausedRef live, so
-  // user interaction doesn't restart the loop. We read scrollRef.current
-  // INSIDE the frame (not captured in closure) so the loop survives any
-  // hot-reload that swaps the underlying DOM node.
+  // Continuous smooth scroll using requestAnimationFrame.
+  //
+  // Subtlety: browsers floor fractional scrollLeft values, so writing
+  // 0.2 each frame leaves DOM at 0 forever and the carousel never
+  // moves. Solution: accumulate position in a JS-side `virtualLeft`
+  // (full precision), and only commit to el.scrollLeft as an integer
+  // — that way fractional ticks add up and eventually cross a pixel
+  // boundary, producing visible motion.
+  //
+  // The rAF runs from mount to unmount. Each frame reads pausedRef
+  // live, so user interaction doesn't restart the loop.
   useEffect(() => {
     if (listingsCount <= 1) return;
 
     let rafId = 0;
     let lastTs = performance.now();
-    let frameCount = 0;
+    let virtualLeft = 0;
 
     const step = (ts: number) => {
       const dt = (ts - lastTs) / 1000; // seconds
@@ -88,41 +94,26 @@ export default function ListingOptionsCarousel({
       if (el && !pausedRef.current) {
         const maxScroll = el.scrollWidth - el.clientWidth;
         if (maxScroll > 0) {
-          let next = el.scrollLeft + SCROLL_SPEED_PX_PER_SEC * dt;
-          if (next >= maxScroll - 1) {
-            next = 0;
-          }
-          el.scrollLeft = next;
-          // One-time confirmation that rAF is alive + scrolling. After
-          // 5 frames we go silent. Lets us see in the console whether
-          // the loop is firing or not.
-          if (frameCount < 5) {
-            console.log(
-              `[Carousel] rAF tick ${frameCount} — scrollLeft=${next.toFixed(1)} max=${maxScroll}`
-            );
-            frameCount++;
-          }
-        } else if (frameCount < 5) {
-          console.log(
-            `[Carousel] rAF tick ${frameCount} — maxScroll=0 (sw=${el.scrollWidth} cw=${el.clientWidth})`
-          );
-          frameCount++;
+          // Drift the virtual position. Wrap to start when we hit
+          // the end so the loop reads as continuous.
+          virtualLeft += SCROLL_SPEED_PX_PER_SEC * dt;
+          if (virtualLeft >= maxScroll - 1) virtualLeft = 0;
+          // Sync user-driven scrolls (mouse drag / wheel / touch
+          // flick) back into virtualLeft so we don't snap them
+          // back when the user lets go.
+          const dom = el.scrollLeft;
+          if (Math.abs(dom - virtualLeft) > 4) virtualLeft = dom;
+          // Commit as an integer — fractional values get floored
+          // by the browser, which prevents accumulation.
+          const target = Math.round(virtualLeft);
+          if (target !== el.scrollLeft) el.scrollLeft = target;
         }
-      } else if (frameCount < 5) {
-        console.log(
-          `[Carousel] rAF tick ${frameCount} — el=${!!el} paused=${pausedRef.current}`
-        );
-        frameCount++;
       }
       rafId = requestAnimationFrame(step);
     };
 
-    console.log(`[Carousel] mounting rAF loop (${listingsCount} listings)`);
     rafId = requestAnimationFrame(step);
-    return () => {
-      console.log("[Carousel] unmounting, canceling rAF");
-      cancelAnimationFrame(rafId);
-    };
+    return () => cancelAnimationFrame(rafId);
   }, [listingsCount]);
 
   const pause = () => {
