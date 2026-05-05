@@ -121,6 +121,7 @@ Defined in:
 - `src/app/components/chat-v3/ListingOptionsCarousel.tsx` (dispatches both)
 - `src/app/components/cma/CMACompTable.tsx` (active comp rows dispatch open-listing-panel)
 - `src/app/components/mls/map/ListingBottomPanel.tsx` (AI button dispatches send-message — "Tell me about {address}")
+- `src/app/components/chat/ListingDetailCard.tsx` (See Similar Listings + Generate CMA buttons dispatch send-message)
 
 ChatWidget listeners: `src/app/components/chat/ChatWidget.tsx` near
 the auto-send useEffect.

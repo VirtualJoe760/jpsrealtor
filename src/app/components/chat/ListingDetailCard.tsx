@@ -22,6 +22,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
+
+// ChatMapView pulls in maplibre-gl which is heavy; lazy-load so it
+// only ships when the listing card actually renders. Same pattern
+// the ListingOptionsViewer Map tab uses.
+const ChatMapView = dynamic(
+  () => import("@/app/components/chat/ChatMapView"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />
+    ),
+  }
+);
 import {
   ChevronLeft,
   ChevronRight,
@@ -106,6 +120,22 @@ interface EnrichedListing {
   yearBuilt?: number;
   garageSpaces?: number;
   stories?: number;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface NearbyListing {
+  listingKey: string;
+  slugAddress?: string;
+  unparsedAddress: string;
+  city: string;
+  listPrice: number;
+  bedroomsTotal?: number;
+  bathroomsTotalInteger?: number;
+  livingArea?: number;
+  primaryPhotoUrl?: string | null;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function ListingDetailCard({
@@ -142,6 +172,7 @@ export default function ListingDetailCard({
   const [enriched, setEnriched] = useState<EnrichedListing | null>(null);
   const [showRemarks, setShowRemarks] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [nearby, setNearby] = useState<NearbyListing[]>([]);
 
   // ---------- Photo fetch ----------
   useEffect(() => {
@@ -191,6 +222,32 @@ export default function ListingDetailCard({
       cancelled = true;
     };
   }, [slugAddress, listingKey]);
+
+  // ---------- Nearby listings fetch ----------
+  // Same /api/listings/related endpoint the production
+  // /mls-listings/[slugAddress] page uses for its similar-listings
+  // section. Subdivision-first with city fallback (the route handles
+  // it). Drives the small nearby map above the agent section.
+  useEffect(() => {
+    if (!city) return;
+    let cancelled = false;
+    const params = new URLSearchParams({ city, limit: "12" });
+    if (subdivision) params.set("subdivision", subdivision);
+    if (listingKey) params.set("exclude", listingKey);
+    (async () => {
+      try {
+        const res = await fetch(`/api/listings/related?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data?.listings)) setNearby(data.listings);
+      } catch {
+        // soft-fail — no nearby section if fetch errors
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [city, subdivision, listingKey]);
 
   // ---------- Lightbox keyboard nav ----------
   useEffect(() => {
@@ -514,6 +571,61 @@ export default function ListingDetailCard({
           </div>
         )}
 
+        {/* Nearby listings — small inline map above the agent section.
+            Uses the same /api/listings/related endpoint that powers
+            the full /mls-listings page's similar-listings section,
+            mounted in ChatMapView so it reads "similar to show homes"
+            visually. Subject is rendered as the map's center listing
+            when its coordinates are present. */}
+        {nearby.length > 0 && (
+          <Section title="Nearby Listings" isLight={isLight}>
+            <div className="rounded-lg overflow-hidden border border-gray-200">
+              <ChatMapView
+                listings={[
+                  // Subject first so it lands as the map center
+                  ...((e.latitude && e.longitude)
+                    ? [
+                        {
+                          id: listingKey,
+                          listingKey,
+                          listingId: listingKey,
+                          address,
+                          latitude: e.latitude,
+                          longitude: e.longitude,
+                          price,
+                          beds: beds ?? e.bedroomsTotal,
+                          baths: baths ?? e.bathroomsTotalInteger,
+                          sqft: sqft ?? e.livingArea,
+                          image: photos[0] || primaryPhotoUrl,
+                          city,
+                          subdivision,
+                          slugAddress,
+                          slug: slugAddress,
+                        },
+                      ]
+                    : []),
+                  ...nearby.map((l) => ({
+                    id: l.listingKey,
+                    listingKey: l.listingKey,
+                    listingId: l.listingKey,
+                    address: l.unparsedAddress,
+                    latitude: l.latitude,
+                    longitude: l.longitude,
+                    price: l.listPrice,
+                    beds: l.bedroomsTotal,
+                    baths: l.bathroomsTotalInteger,
+                    sqft: l.livingArea,
+                    image: l.primaryPhotoUrl || undefined,
+                    city: l.city,
+                    slugAddress: l.slugAddress,
+                    slug: l.slugAddress,
+                  })),
+                ]}
+              />
+            </div>
+          </Section>
+        )}
+
         {/* Agent section */}
         <Section title="Your Agent" isLight={isLight}>
           <div
@@ -595,6 +707,50 @@ export default function ListingDetailCard({
           >
             <ExternalLink className="w-4 h-4" />
             View Full Listing
+          </Link>
+          {/* See Similar Listings — dispatches a chat message that
+              produces a listing-search response (Panel/List/Map
+              toggle). Uses subdivision when available since that's
+              the tightest "similar" filter; falls back to city.
+              Same data source as the inline nearby map above. */}
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              const scope = subdivision || city;
+              if (!scope) return;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:send-message", {
+                  detail: { message: `show similar homes in ${scope}` },
+                })
+              );
+            }}
+            disabled={!subdivision && !city}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600 disabled:opacity-50"
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            See Similar Listings
+          </button>
+          {/* Open in Map View — navigates to /chap?view=map with the
+              listing pre-selected. The map page reads ?listing= and
+              opens the bottom panel for that property. */}
+          <Link
+            href={
+              e.latitude && e.longitude
+                ? `/chap?view=map&lat=${e.latitude}&lng=${e.longitude}&zoom=15&listing=${slugAddress || listingKey}`
+                : `/chap?view=map&listing=${slugAddress || listingKey}`
+            }
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Open in Map View
           </Link>
           <button
             onClick={() => {
