@@ -75,11 +75,7 @@ function StatsCard({
   propertyType?: string;
 }) {
   if (!stats || stats.totalListings === 0) {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-        No listings matched.
-      </div>
-    );
+    return <SoftNote>No listings matched.</SoftNote>;
   }
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -153,6 +149,18 @@ function StatsCard({
 }
 
 // ---------------------------------------------------------------------------
+// SoftNote — subtle gray italic line for clarification / disambiguation
+// messages. Used in place of the yellow alert boxes that were too visually
+// loud for what's really just a "I need a bit more context" nudge.
+// ---------------------------------------------------------------------------
+
+function SoftNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs italic text-gray-500 mt-1.5 px-1">{children}</p>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PreviewRenderer — main export
 // ---------------------------------------------------------------------------
 
@@ -170,20 +178,14 @@ export default function PreviewRenderer({
     );
   }
   if (preview.reason && !preview.component) {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-        {preview.reason}
-      </div>
-    );
+    return <SoftNote>{preview.reason}</SoftNote>;
   }
 
   // listingDetail → ListingDetailCard
   if (preview.component === "listingDetail") {
     if (!preview.listing) {
       return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-          {preview.reason || "No matching listing found."}
-        </div>
+        <SoftNote>{preview.reason || "No matching listing found."}</SoftNote>
       );
     }
     const l = preview.listing;
@@ -263,17 +265,13 @@ export default function PreviewRenderer({
   // trend → AppreciationContainer
   if (preview.component === "trend") {
     if (preview.reason && !preview.locationName) {
-      return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-          {preview.reason}
-        </div>
-      );
+      return <SoftNote>{preview.reason}</SoftNote>;
     }
     if (!preview.locationName || !preview.locationType) {
       return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+        <SoftNote>
           {preview.reason || "No trend data available — entity scope missing."}
-        </div>
+        </SoftNote>
       );
     }
     return (
@@ -285,21 +283,38 @@ export default function PreviewRenderer({
     );
   }
 
-  // cma → CMAReport (listing) or SubdivisionCmaSection (subdivision)
+  // cma → CMAReport (listing) / SubdivisionCmaSection / disambiguation list
   if (preview.component === "cma") {
+    // listingOptions → user typed a street with no house number; show the
+    // properties on that street so they can pick which one to CMA.
+    if (preview.cmaScope === "listingOptions") {
+      const opts = preview.listings || [];
+      if (opts.length === 0) {
+        return (
+          <SoftNote>{preview.reason || "No properties found on that street."}</SoftNote>
+        );
+      }
+      return (
+        <div className="space-y-2">
+          {preview.reason && <SoftNote>{preview.reason}</SoftNote>}
+          <ListingCarousel
+            listings={opts.map(toCarouselListing)}
+            title={`${opts.length} ${opts.length === 1 ? "property" : "properties"}${preview.scope?.value ? " on " + preview.scope.value : ""}`}
+          />
+        </div>
+      );
+    }
     if (preview.cmaScope === "listing") {
       if (!preview.listingKey) {
         return (
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-            {preview.reason || "No listing resolved for CMA."}
-          </div>
+          <SoftNote>{preview.reason || "No listing resolved for CMA."}</SoftNote>
         );
       }
       return (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {!preview.hasPrebuilt && preview.reason && (
-            <div className="bg-yellow-50 border-b border-yellow-200 px-3 py-2 text-xs text-yellow-800">
-              {preview.reason}
+            <div className="px-3 pt-2">
+              <SoftNote>{preview.reason}</SoftNote>
             </div>
           )}
           <CMAReport
@@ -313,9 +328,7 @@ export default function PreviewRenderer({
     if (preview.cmaScope === "subdivision") {
       if (!preview.slug) {
         return (
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-            {preview.reason || "No subdivision slug for CMA."}
-          </div>
+          <SoftNote>{preview.reason || "No subdivision slug for CMA."}</SoftNote>
         );
       }
       // SubdivisionCmaSection's inner cards expect ambient padding from the
@@ -328,20 +341,16 @@ export default function PreviewRenderer({
         </div>
       );
     }
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-        {preview.reason || "CMA scope unclear."}
-      </div>
-    );
+    return <SoftNote>{preview.reason || "CMA scope unclear."}</SoftNote>;
   }
 
   // articles → ArticleResults
   if (preview.component === "articles") {
     if (!preview.articles || preview.articles.length === 0) {
       return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+        <SoftNote>
           No matching articles found{preview.query ? ` for "${preview.query}"` : ""}.
-        </div>
+        </SoftNote>
       );
     }
     return (

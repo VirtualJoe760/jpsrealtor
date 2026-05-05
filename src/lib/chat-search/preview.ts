@@ -417,6 +417,7 @@ export async function runPreview(
   if (parsed.intent === "cma") {
     const addrEntity = parsed.entities?.find((e: any) => e.type === "address");
     const subEntity = parsed.entities?.find((e: any) => e.type === "subdivision");
+    const streetEntity = parsed.entities?.find((e: any) => e.type === "street");
 
     // ----- listing-level CMA -----
     if (addrEntity) {
@@ -526,10 +527,57 @@ export async function runPreview(
       };
     }
 
+    // ----- street-level CMA: disambiguation step -----
+    // User typed a street with no house number ("cma for desi drive").
+    // Pull the active listings on that street and let them pick one to
+    // run a real CMA on. We reuse the street primitive from the regular
+    // listing-search path; the difference is the cmaScope marker so the
+    // renderer knows to frame these as "pick one to CMA".
+    if (streetEntity) {
+      const cityName = (streetEntity as any).cityName;
+      const scope: ListingScope = {
+        type: "street",
+        streetName: (streetEntity as any).street,
+        cityName,
+        cityId: cityName?.toLowerCase().replace(/\s+/g, "-"),
+      };
+      try {
+        const { query, Model } = await buildListingQuery(scope, {});
+        const docs = await Model.find(query)
+          .select(LISTING_PROJECTION)
+          .limit(8)
+          .lean();
+        const withPhotos = await attachPhotos(docs as any[]);
+        const listings = withPhotos.map(mapListing);
+
+        return {
+          component: "cma",
+          cmaScope: "listingOptions",
+          listings,
+          totalCount: listings.length,
+          scope: {
+            type: "street",
+            value: (streetEntity as any).street,
+          },
+          // Narrator picks this up to phrase the prompt naturally.
+          reason: `Found ${listings.length} ${listings.length === 1 ? "property" : "properties"} on ${(streetEntity as any).street}${cityName ? `, ${cityName}` : ""}. Pick one to run a CMA on.`,
+          ms: Date.now() - t0,
+        };
+      } catch (err: any) {
+        return {
+          component: "cma",
+          cmaScope: "listingOptions",
+          listings: [],
+          reason: err?.message || "street CMA lookup failed",
+          ms: Date.now() - t0,
+        };
+      }
+    }
+
     return {
       component: "cma",
       cma: null,
-      reason: "cma intent without address or subdivision entity",
+      reason: "Tell me which property you'd like the CMA for — an address, a street, or a subdivision name.",
       ms: Date.now() - t0,
     };
   }

@@ -95,8 +95,10 @@ export interface PreviewResult {
   period?: string;
   locationType?: string;
   locationName?: string;
-  // cma
-  cmaScope?: "listing" | "subdivision";
+  // cma — "listing" / "subdivision" run a real CMA;
+  // "listingOptions" is a disambiguation step (multiple addresses
+  // matched a street, ask the user to pick one).
+  cmaScope?: "listing" | "subdivision" | "listingOptions";
   listingKey?: string;
   slugAddress?: string;
   subdivisionName?: string;
