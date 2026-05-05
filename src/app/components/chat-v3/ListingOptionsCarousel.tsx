@@ -69,8 +69,13 @@ export default function ListingOptionsCarousel({
   // jump back to 0 without animation (snap reset) so the rotation is
   // seamless. Browser-native scroll-snap is disabled for the auto path
   // because snap-stop fights the per-frame increments.
+  //
+  // Dep on listings.length (not listings itself) — parent passes a new
+  // array reference each render, which would otherwise cancel + restart
+  // the rAF every paint and prevent any visible accumulation.
+  const listingsCount = listings?.length ?? 0;
   useEffect(() => {
-    if (paused || !listings || listings.length <= 1) return;
+    if (paused || listingsCount <= 1) return;
     const el = scrollRef.current;
     if (!el) return;
 
@@ -96,12 +101,30 @@ export default function ListingOptionsCarousel({
 
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [paused, listings]);
+  }, [paused, listingsCount]);
 
   const pauseFor = (ms: number) => {
     setPaused(true);
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
     resumeTimer.current = setTimeout(() => setPaused(false), ms);
+  };
+
+  // Translate vertical wheel scroll into horizontal carousel scroll
+  // when the cursor is over the strip — without this the page
+  // scrolls vertically and the user can't browse the carousel with
+  // a mouse wheel. Also pauses auto-scroll for a few seconds so the
+  // user's intent isn't fought by the rotation.
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Only intercept when the dominant axis is vertical (regular
+    // mouse wheels). Trackpads that already produce deltaX let the
+    // browser's native horizontal scroll do its thing.
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }
+    pauseFor(PAUSE_AFTER_INTERACTION_MS);
   };
 
   // Cleanup any pending resume timer on unmount.
@@ -126,9 +149,13 @@ export default function ListingOptionsCarousel({
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
-        onWheel={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
-        className="flex gap-3 overflow-x-auto pb-2"
-        style={{ scrollbarWidth: "thin" }}
+        onWheel={handleWheel}
+        // Hidden scrollbar — Firefox/standards via scrollbarWidth,
+        // WebKit/Blink via the arbitrary variant on ::-webkit-scrollbar.
+        // Carousel rotates on its own and pauses on hover, so a visible
+        // scrollbar is just chrome the user doesn't need.
+        className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {listings.map((l, i) => (
           <article
