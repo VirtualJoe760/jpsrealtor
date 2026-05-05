@@ -12,10 +12,14 @@
 //                  with "generate a cma for {address}". This keeps the
 //                  card decoupled from ChatProvider — anyone can listen.
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Bed, Bath, Maximize2, FileText, ExternalLink, Eye } from "lucide-react";
+import { Bed, Bath, Maximize2, FileText, ExternalLink, Eye, ChevronDown } from "lucide-react";
 import type { PreviewListing } from "@/lib/chat-search/types";
+
+const INITIAL_PAGE_SIZE = 6;
+const PAGE_INCREMENT = 10;
 
 const SEND_MESSAGE_EVENT = "chatv3:send-message";
 const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
@@ -69,6 +73,13 @@ export default function ListingOptionsList({
   // + view toggle so the list's own header would duplicate.
   hideHeader?: boolean;
 }) {
+  // Show 6 cards initially, expand by 10 each click. Caps at the full
+  // list length — the upstream limit (50 in preview.ts) bounds the
+  // total. Avoids dumping 50 cards into the chat scroll on first paint.
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
+  const visible = listings.slice(0, visibleCount);
+  const remaining = Math.max(0, listings.length - visibleCount);
+
   if (!listings || listings.length === 0) return null;
 
   return (
@@ -84,7 +95,7 @@ export default function ListingOptionsList({
       )}
 
       <ul className="space-y-2">
-        {listings.map((l) => (
+        {visible.map((l) => (
           <li
             key={l.listingKey}
             className="flex gap-3 p-2 sm:p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
@@ -170,6 +181,19 @@ export default function ListingOptionsList({
           </li>
         ))}
       </ul>
+
+      {remaining > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            setVisibleCount((c) => Math.min(c + PAGE_INCREMENT, listings.length))
+          }
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-200 rounded-md transition-colors"
+        >
+          <ChevronDown className="w-3.5 h-3.5" />
+          Show {Math.min(remaining, PAGE_INCREMENT)} more · {remaining} remaining
+        </button>
+      )}
     </div>
   );
 }

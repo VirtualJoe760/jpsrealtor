@@ -108,6 +108,9 @@ const LISTING_PROJECTION = {
   standardStatus: 1,
   mlsId: 1,
   mlsSource: 1,
+  // For map markers in ListingOptionsViewer's map mode
+  latitude: 1,
+  longitude: 1,
 };
 
 function pickLocalPhoto(l: any): string | undefined {
@@ -154,6 +157,8 @@ function mapListing(l: any) {
     onMarketDate: l.onMarketDate,
     daysOnMarket: l.daysOnMarket,
     standardStatus: l.standardStatus,
+    latitude: l.latitude,
+    longitude: l.longitude,
   };
 }
 
@@ -243,7 +248,7 @@ export async function runPreview(
       const docs = await Model.find(query)
         .select(LISTING_PROJECTION)
         .sort({ listPrice: -1 })
-        .limit(6)
+        .limit(50)
         .lean();
       const withPhotos = await attachPhotos(docs as any[]);
       listings = withPhotos.map(mapListing);
@@ -281,7 +286,7 @@ export async function runPreview(
     };
     const filters: ListingFilters = parsed.filters || {};
     const { query, Model } = await buildListingQuery(scope, filters);
-    const docs = await Model.find(query).select(LISTING_PROJECTION).limit(20).lean();
+    const docs = await Model.find(query).select(LISTING_PROJECTION).limit(50).lean();
     const total = await Model.countDocuments(query);
     const withPhotos = await attachPhotos(docs as any[]);
     return {

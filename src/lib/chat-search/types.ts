@@ -34,6 +34,9 @@ export interface PreviewListing {
   onMarketDate?: string;
   daysOnMarket?: number;
   standardStatus?: string;
+  // For ListingOptionsViewer's map mode — projected by preview.ts
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface PreviewStats {
