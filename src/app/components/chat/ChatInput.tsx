@@ -375,16 +375,17 @@ export default function ChatInput({
   }
 
   // Conversation variant
+  // The mobile path keeps a backdrop blur behind the input so messages
+  // peek through as the user scrolls; the desktop path drops it.
+  // Previously this wrapper also painted a top-fade gradient + maskImage,
+  // which on desktop read as a faint floating card sitting above the
+  // input bar. Removed — the gradient/mask were doing nothing useful at
+  // md+ widths and were creating visual noise that looked like a hidden
+  // dropdown.
   return (
     <div
-      className={`fixed bottom-0 left-0 pr-[10px] pl-3 sm:px-4 pb-[100px] sm:pb-4 pt-6 z-30 backdrop-blur-xl md:relative md:bottom-auto md:left-auto md:right-auto md:pr-4 md:pb-4 md:backdrop-blur-none ${
-        isLight ? 'bg-gradient-to-t from-white/90 via-white/70 to-transparent' : 'bg-gradient-to-t from-black/70 via-black/50 to-transparent'
-      } ${className}`}
-      style={{
-        right: '10px',
-        maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 100%)',
-      }}
+      className={`fixed bottom-0 left-0 pr-[10px] pl-3 sm:px-4 pb-[100px] sm:pb-4 pt-6 z-30 backdrop-blur-xl md:relative md:bottom-auto md:left-auto md:right-auto md:pr-4 md:pb-4 md:pt-0 md:backdrop-blur-none ${className}`}
+      style={{ right: '10px' }}
     >
       <div className="max-w-4xl mx-auto relative" ref={containerRef}>
         <div
