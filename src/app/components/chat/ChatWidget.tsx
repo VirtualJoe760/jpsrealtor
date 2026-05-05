@@ -196,6 +196,38 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     return () => window.removeEventListener("chatv3:send-message", handler);
   }, []); // handleAIQuery is stable enough for this; it reads via closure
 
+  // ListingOptionsCarousel "Heart" button → toggle favorite. Maps the
+  // slim PreviewListing onto the production mapListing shape that
+  // toggleFavorite (from useMLSContext) expects, then calls it.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const l = (e as CustomEvent<{ listing: any }>).detail?.listing;
+      if (!l) return;
+      console.log("[ChatWidget] chatv3:toggle-favorite →", l.listingKey);
+      const mapListing = {
+        _id: l.listingKey,
+        listingId: l.listingKey,
+        listingKey: l.listingKey,
+        slug: l.slugAddress,
+        slugAddress: l.slugAddress,
+        primaryPhotoUrl: l.primaryPhotoUrl || "",
+        unparsedAddress: l.address,
+        address: l.address,
+        latitude: l.latitude || 0,
+        longitude: l.longitude || 0,
+        listPrice: l.price,
+        bedsTotal: l.beds,
+        bathroomsTotalInteger: l.baths,
+        livingArea: l.sqft,
+        city: l.city,
+        subdivisionName: l.subdivision,
+      };
+      toggleFavorite(mapListing as any);
+    };
+    window.addEventListener("chatv3:toggle-favorite", handler);
+    return () => window.removeEventListener("chatv3:toggle-favorite", handler);
+  }, [toggleFavorite]);
+
   // ListingOptionsList/Carousel/CMA-table "View" → open ListingBottomPanel
   // with the full sibling group so swipes navigate through every property in
   // the visible set, not just the one that was clicked. Falls back to a

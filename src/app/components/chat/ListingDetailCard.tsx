@@ -572,59 +572,70 @@ export default function ListingDetailCard({
         )}
 
         {/* Nearby listings — small inline map above the agent section.
-            Uses the same /api/listings/related endpoint that powers
-            the full /mls-listings page's similar-listings section,
-            mounted in ChatMapView so it reads "similar to show homes"
-            visually. Subject is rendered as the map's center listing
-            when its coordinates are present. */}
-        {nearby.length > 0 && (
-          <Section title="Nearby Listings" isLight={isLight}>
-            <div className="rounded-lg overflow-hidden border border-gray-200">
-              <ChatMapView
-                listings={[
-                  // Subject first so it lands as the map center
-                  ...((e.latitude && e.longitude)
-                    ? [
-                        {
-                          id: listingKey,
-                          listingKey,
-                          listingId: listingKey,
-                          address,
-                          latitude: e.latitude,
-                          longitude: e.longitude,
-                          price,
-                          beds: beds ?? e.bedroomsTotal,
-                          baths: baths ?? e.bathroomsTotalInteger,
-                          sqft: sqft ?? e.livingArea,
-                          image: photos[0] || primaryPhotoUrl,
-                          city,
-                          subdivision,
-                          slugAddress,
-                          slug: slugAddress,
-                        },
-                      ]
-                    : []),
-                  ...nearby.map((l) => ({
-                    id: l.listingKey,
-                    listingKey: l.listingKey,
-                    listingId: l.listingKey,
-                    address: l.unparsedAddress,
-                    latitude: l.latitude,
-                    longitude: l.longitude,
-                    price: l.listPrice,
-                    beds: l.bedroomsTotal,
-                    baths: l.bathroomsTotalInteger,
-                    sqft: l.livingArea,
-                    image: l.primaryPhotoUrl || undefined,
-                    city: l.city,
-                    slugAddress: l.slugAddress,
-                    slug: l.slugAddress,
-                  })),
-                ]}
-              />
-            </div>
-          </Section>
-        )}
+            Pre-filter to listings that have lat/lng so we don't trigger
+            ChatMapView's empty-validListings early-return path. That
+            path violates rules-of-hooks (it has hooks AFTER the early
+            return), so when nearby data loads we'd get a hook-order
+            crash. Only mount the map when we have at least one
+            mappable point. */}
+        {(() => {
+          const mappableNearby = nearby.filter(
+            (l) => typeof l.latitude === "number" && typeof l.longitude === "number"
+          );
+          const subjectHasCoords =
+            typeof e.latitude === "number" && typeof e.longitude === "number";
+          const totalMappable = mappableNearby.length + (subjectHasCoords ? 1 : 0);
+          if (totalMappable === 0) return null;
+
+          const mapListings = [
+            // Subject first so it lands as the map center
+            ...(subjectHasCoords
+              ? [
+                  {
+                    id: listingKey,
+                    listingKey,
+                    listingId: listingKey,
+                    address,
+                    latitude: e.latitude,
+                    longitude: e.longitude,
+                    price,
+                    beds: beds ?? e.bedroomsTotal,
+                    baths: baths ?? e.bathroomsTotalInteger,
+                    sqft: sqft ?? e.livingArea,
+                    image: photos[0] || primaryPhotoUrl,
+                    city,
+                    subdivision,
+                    slugAddress,
+                    slug: slugAddress,
+                  },
+                ]
+              : []),
+            ...mappableNearby.map((l) => ({
+              id: l.listingKey,
+              listingKey: l.listingKey,
+              listingId: l.listingKey,
+              address: l.unparsedAddress,
+              latitude: l.latitude,
+              longitude: l.longitude,
+              price: l.listPrice,
+              beds: l.bedroomsTotal,
+              baths: l.bathroomsTotalInteger,
+              sqft: l.livingArea,
+              image: l.primaryPhotoUrl || undefined,
+              city: l.city,
+              slugAddress: l.slugAddress,
+              slug: l.slugAddress,
+            })),
+          ];
+
+          return (
+            <Section title="Nearby Listings" isLight={isLight}>
+              <div className="rounded-lg overflow-hidden border border-gray-200">
+                <ChatMapView listings={mapListings} />
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Agent section */}
         <Section title="Your Agent" isLight={isLight}>

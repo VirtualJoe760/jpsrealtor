@@ -115,6 +115,7 @@ ChatWidget listens and routes them through its existing handlers.
 |---|---|---|
 | `chatv3:send-message` | `{ message: string }` | Submits as a fresh chat turn via `handleAIQuery` — flows through parser → preview → narrate |
 | `chatv3:open-listing-panel` | `{ listing, siblings?, index? }` | Builds queue from `siblings` (one-item fallback), clamps `index`, calls `handleOpenListingPanel(queue, startIndex)` so swipes traverse the visible group |
+| `chatv3:toggle-favorite` | `{ listing }` | Maps slim PreviewListing onto the production mapListing shape and calls `toggleFavorite` from `useMLSContext` — toggles like-state in the user's favorites |
 
 Defined in:
 - `src/app/components/chat-v3/ListingOptionsList.tsx` (dispatches both)

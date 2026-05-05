@@ -16,11 +16,12 @@
 
 import { useEffect, useRef } from "react";
 import Image from "next/image";
-import { Bed, Bath, Maximize2, FileText, Eye } from "lucide-react";
+import { Bed, Bath, Maximize2, FileText, Eye, Sparkles, Heart } from "lucide-react";
 import type { PreviewListing } from "@/lib/chat-search/types";
 
 const SEND_MESSAGE_EVENT = "chatv3:send-message";
 const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
+const TOGGLE_FAVORITE_EVENT = "chatv3:toggle-favorite";
 
 function dispatchChatMessage(message: string) {
   if (typeof window === "undefined") return;
@@ -37,6 +38,13 @@ function dispatchOpenPanel(
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing, siblings, index } })
+  );
+}
+
+function dispatchToggleFavorite(listing: PreviewListing) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(TOGGLE_FAVORITE_EVENT, { detail: { listing } })
   );
 }
 
@@ -212,22 +220,47 @@ export default function ListingOptionsCarousel({
                   {l.subdivision}
                 </div>
               )}
-              <div className="flex items-center gap-2.5 text-xs text-gray-600 pt-0.5">
-                <span className="inline-flex items-center gap-1">
-                  <Bed className="w-3.5 h-3.5" />
-                  {fmtCount(l.beds)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Bath className="w-3.5 h-3.5" />
-                  {fmtCount(l.baths)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  {fmtSqft(l.sqft)}
-                </span>
+              {/* Stats row — bd/ba/sqft on the left, AI + heart icons
+                  on the right. Same row keeps the card compact;
+                  justify-between pushes the icon group to the
+                  opposite end so it reads as a balanced trailing
+                  action cluster. */}
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <div className="flex items-center gap-2.5 text-xs text-gray-600 min-w-0">
+                  <span className="inline-flex items-center gap-1">
+                    <Bed className="w-3.5 h-3.5" />
+                    {fmtCount(l.beds)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Bath className="w-3.5 h-3.5" />
+                    {fmtCount(l.baths)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    {fmtSqft(l.sqft)}
+                  </span>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={() =>
+                      dispatchChatMessage(`Tell me about ${l.address}`)
+                    }
+                    title="Ask AI about this property"
+                    className="w-6 h-6 inline-flex items-center justify-center bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 border border-blue-200 rounded transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => dispatchToggleFavorite(l)}
+                    title="Save to favorites"
+                    className="w-6 h-6 inline-flex items-center justify-center bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 border border-rose-200 rounded transition-colors"
+                  >
+                    <Heart className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
 
-              {/* Actions */}
+              {/* Primary actions */}
               <div className="flex gap-1.5 pt-2">
                 <button
                   onClick={() => dispatchOpenPanel(l, listings, i)}
