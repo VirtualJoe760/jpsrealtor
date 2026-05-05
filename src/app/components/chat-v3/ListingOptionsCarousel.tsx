@@ -42,7 +42,9 @@ const fmtCount = (n?: number) =>
 const fmtSqft = (n?: number) =>
   typeof n === "number" && n > 0 ? n.toLocaleString() : "—";
 
-const AUTO_SCROLL_INTERVAL_MS = 4000;
+// Continuous-scroll speed in px/sec — slow enough that a user can read
+// each card as it drifts past, fast enough to feel alive on long lists.
+const SCROLL_SPEED_PX_PER_SEC = 32;
 const PAUSE_AFTER_INTERACTION_MS = 6000;
 
 export default function ListingOptionsCarousel({
@@ -58,26 +60,38 @@ export default function ListingOptionsCarousel({
   // expires we keep auto-scroll suspended so we don't fight the user.
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-advance: pick the next card edge based on current scrollLeft and
-  // smooth-scroll to it. Wraps to the start when we hit the end. The
-  // wrapping check uses scrollWidth - clientWidth (max scroll) with a
-  // small slack — exact equality would miss when the browser settles a
-  // few pixels short.
+  // Continuous smooth scroll using requestAnimationFrame. Each frame we
+  // advance scrollLeft by `speed * deltaSec` px. When we hit the end we
+  // jump back to 0 without animation (snap reset) so the rotation is
+  // seamless. Browser-native scroll-snap is disabled for the auto path
+  // because snap-stop fights the per-frame increments.
   useEffect(() => {
     if (paused || !listings || listings.length <= 1) return;
-    const tick = () => {
-      const el = scrollRef.current;
-      if (!el || el.children.length === 0) return;
-      const cardWidth = (el.children[0] as HTMLElement).offsetWidth + 12; // gap-3
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let rafId = 0;
+    let lastTs = performance.now();
+
+    const step = (ts: number) => {
+      const dt = (ts - lastTs) / 1000; // seconds
+      lastTs = ts;
       const maxScroll = el.scrollWidth - el.clientWidth;
-      const atEnd = el.scrollLeft >= maxScroll - 8;
-      el.scrollTo({
-        left: atEnd ? 0 : el.scrollLeft + cardWidth,
-        behavior: "smooth",
-      });
+      if (maxScroll <= 0) {
+        rafId = requestAnimationFrame(step);
+        return;
+      }
+      let next = el.scrollLeft + SCROLL_SPEED_PX_PER_SEC * dt;
+      if (next >= maxScroll - 1) {
+        // Wrap to start without animation so the loop reads as continuous.
+        next = 0;
+      }
+      el.scrollLeft = next;
+      rafId = requestAnimationFrame(step);
     };
-    const id = setInterval(tick, AUTO_SCROLL_INTERVAL_MS);
-    return () => clearInterval(id);
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
   }, [paused, listings]);
 
   const pauseFor = (ms: number) => {
@@ -98,19 +112,18 @@ export default function ListingOptionsCarousel({
       {title && (
         <h4 className="text-sm font-semibold text-gray-900 px-1">{title}</h4>
       )}
-      {/* Horizontal scroll list. snap-x makes finger-flicks land on a
-          card edge instead of mid-card. Hide native scrollbar in the
-          chat surface — it's distracting and the swipe affordance is
-          already implied by the cards bleeding off the right edge.
-          Mouse enter / touch / wheel pauses auto-scroll for a few
-          seconds so the rotation doesn't fight the user. */}
+      {/* Horizontal scroll list with continuous auto-rotation. We don't
+          use scroll-snap here because snap-stop fights the per-frame
+          scrollLeft increments — the carousel would judder at every
+          snap point. User interaction pauses the rAF loop so they can
+          flick freely without the auto-scroll fighting back. */}
       <div
         ref={scrollRef}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
         onWheel={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
-        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto pb-2"
         style={{ scrollbarWidth: "thin" }}
       >
         {listings.map((l) => (
