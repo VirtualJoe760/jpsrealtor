@@ -117,9 +117,10 @@ ChatWidget listens and routes them through its existing handlers.
 | `chatv3:open-listing-panel` | `{ listing, siblings?, index? }` | Builds queue from `siblings` (one-item fallback), clamps `index`, calls `handleOpenListingPanel(queue, startIndex)` so swipes traverse the visible group |
 
 Defined in:
-- `src/app/components/chat-v3/ListingOptionsList.tsx`
-- `src/app/components/chat-v3/ListingOptionsCarousel.tsx`
-- `src/app/components/cma/CMACompTable.tsx` (active comp rows only)
+- `src/app/components/chat-v3/ListingOptionsList.tsx` (dispatches both)
+- `src/app/components/chat-v3/ListingOptionsCarousel.tsx` (dispatches both)
+- `src/app/components/cma/CMACompTable.tsx` (active comp rows dispatch open-listing-panel)
+- `src/app/components/mls/map/ListingBottomPanel.tsx` (AI button dispatches send-message — "Tell me about {address}")
 
 ChatWidget listeners: `src/app/components/chat/ChatWidget.tsx` near
 the auto-send useEffect.

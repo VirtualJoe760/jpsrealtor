@@ -4,7 +4,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Share2, Calendar } from "lucide-react";
+import { X, Share2, Calendar, Sparkles } from "lucide-react";
 import {
   motion,
   useAnimationControls,
@@ -454,6 +454,33 @@ export default function ListingBottomPanel({
           </div>
 
           <div className="flex gap-1.5 flex-shrink-0 mt-1">
+            {/* AI ask — dispatches chatv3:send-message so ChatWidget
+                picks it up and routes a fresh chat turn through the
+                same parser → preview → narrate pipe. The address is
+                the canonical handle the user types ("tell me about
+                {address}"). Uses a soft accent color so it reads as
+                the active action vs the neutral share/calendar. */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("chatv3:send-message", {
+                    detail: { message: `Tell me about ${address}` },
+                  })
+                );
+                // Close the panel so the user sees the chat response
+                // streaming in below — the panel was covering the
+                // message feed.
+                onClose();
+              }}
+              title="Ask AI about this property"
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                isLight
+                  ? "bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200"
+                  : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={() => navigator.share?.({ title: address, url: window.location.href })}
               className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
