@@ -209,14 +209,31 @@ export async function runPreview(
       .split(/\s+/)
       .filter((w: string) => w.length > 1);
 
+    // Match BOTH house # (slug prefix) AND every street word
+    // (unparsedAddress lookahead) in the same query. Previously the
+    // slug-only first lookup returned whichever 74300-* listing came
+    // first in natural order — fine when only one 74300 exists, but
+    // wrong when "74300 Quail Lakes Drive" and "74300 Country Club
+    // Drive" both exist (the Country Club one was winning).
     const slugRegex = new RegExp(`^${houseNum}-`);
-    let listing: any = await UnifiedListing.findOne({
+    const streetLookahead =
+      streetWords.length > 0
+        ? new RegExp(streetWords.map((w: string) => `(?=.*${w})`).join(""), "i")
+        : null;
+
+    const primaryQuery: any = {
       slugAddress: slugRegex,
       standardStatus: "Active",
-    })
+    };
+    if (streetLookahead) primaryQuery.unparsedAddress = streetLookahead;
+
+    let listing: any = await UnifiedListing.findOne(primaryQuery)
       .select(LISTING_PROJECTION)
       .lean();
 
+    // Fallback: drop the slug constraint and rely solely on
+    // unparsedAddress matching the full house# + street phrase. Covers
+    // listings whose slug uses an alternate house# format.
     if (!listing && streetWords.length > 0) {
       const lookaheads = streetWords.map((w: string) => `(?=.*${w})`).join("");
       const re = new RegExp(`^${houseNum}.*${lookaheads}`, "i");
@@ -476,8 +493,18 @@ export async function runPreview(
 
       let listing: any = null;
       if (houseNum) {
+        // Same fix as listing-detail: combine house# slug prefix AND
+        // street-word lookahead so multiple-listings-share-a-house#
+        // can't return the wrong property. (Previously the slug-only
+        // first lookup picked whichever 74300-* came first.)
         const slugRegex = new RegExp(`^${houseNum}-`);
-        listing = await UnifiedListing.findOne({ slugAddress: slugRegex })
+        const streetLookahead =
+          streetWords.length > 0
+            ? new RegExp(streetWords.map((w: string) => `(?=.*${w})`).join(""), "i")
+            : null;
+        const primary: any = { slugAddress: slugRegex };
+        if (streetLookahead) primary.unparsedAddress = streetLookahead;
+        listing = await UnifiedListing.findOne(primary)
           .select(cmaProjection)
           .lean();
 

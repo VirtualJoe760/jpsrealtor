@@ -21,6 +21,7 @@
 // only the fields available from the slim props.
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -617,58 +618,64 @@ export default function ListingDetailCard({
       </div>
 
       {/* ==== Lightbox ==== */}
-      {lightboxOpen && photos.length > 0 && (
-        <div
-          className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center"
-          onClick={() => setLightboxOpen(false)}
-        >
-          <button
-            onClick={(ev) => {
-              ev.stopPropagation();
-              setLightboxOpen(false);
-            }}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+      {/* Rendered via portal into document.body — chat messages animate
+          via Framer Motion which sets transform on parents, and any
+          transformed ancestor breaks position:fixed (it positions
+          relative to the ancestor instead of the viewport). The portal
+          escapes that containing block so the overlay stays pinned to
+          the actual viewport regardless of chat scroll position. */}
+      {lightboxOpen && photos.length > 0 && typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="absolute top-4 left-4 text-white/80 text-sm font-mono px-3 py-1 rounded-full bg-white/10"
+            className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center"
+            onClick={() => setLightboxOpen(false)}
           >
-            {currentIndex + 1} / {photos.length}
-          </div>
-          <img
-            src={photos[currentIndex]}
-            alt={`${address} — photo ${currentIndex + 1}`}
-            className="max-w-full max-h-full object-contain"
-            onClick={(ev) => ev.stopPropagation()}
-          />
-          {photos.length > 1 && (
-            <>
-              <button
-                onClick={(ev) => {
-                  ev.stopPropagation();
-                  goTo(currentIndex - 1);
-                }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                aria-label="Previous photo"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={(ev) => {
-                  ev.stopPropagation();
-                  goTo(currentIndex + 1);
-                }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                aria-label="Next photo"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-        </div>
-      )}
+            <button
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setLightboxOpen(false);
+              }}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="absolute top-4 left-4 text-white/80 text-sm font-mono px-3 py-1 rounded-full bg-white/10">
+              {currentIndex + 1} / {photos.length}
+            </div>
+            <img
+              src={photos[currentIndex]}
+              alt={`${address} — photo ${currentIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onClick={(ev) => ev.stopPropagation()}
+            />
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    goTo(currentIndex - 1);
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    goTo(currentIndex + 1);
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
