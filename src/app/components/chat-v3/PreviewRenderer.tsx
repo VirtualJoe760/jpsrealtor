@@ -219,7 +219,7 @@ export default function PreviewRenderer({
     );
   }
 
-  // neighborhood / areaStats → stats + carousel
+  // neighborhood / areaStats → stats + listing options with View + Generate CMA
   if (preview.component === "neighborhood" || preview.component === "areaStats") {
     return (
       <div className="space-y-4">
@@ -231,27 +231,23 @@ export default function PreviewRenderer({
           />
         )}
         {preview.listings && preview.listings.length > 0 && (
-          <ListingCarousel
-            listings={preview.listings.map(toCarouselListing)}
-            title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
+          <ListingOptionsList
+            listings={preview.listings}
+            scopeLabel={preview.scope?.value}
+            mode="view-cma"
           />
         )}
       </div>
     );
   }
 
-  // listingResults → ListingListView
+  // listingResults → list with View + Generate CMA per card
   if (preview.component === "listingResults") {
     return (
-      <ListingListView
-        listings={(preview.listings || []).map(toCarouselListing)}
-        title={`${preview.totalCount ?? 0} listings`}
-        totalCount={preview.totalCount}
-        hasMore={Boolean(
-          preview.totalCount &&
-            preview.listings &&
-            preview.listings.length < preview.totalCount
-        )}
+      <ListingOptionsList
+        listings={preview.listings || []}
+        scopeLabel={preview.scope?.value}
+        mode="view-cma"
       />
     );
   }

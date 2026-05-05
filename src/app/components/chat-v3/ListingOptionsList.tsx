@@ -14,17 +14,26 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bed, Bath, Maximize2, FileText, ExternalLink } from "lucide-react";
+import { Bed, Bath, Maximize2, FileText, ExternalLink, Eye } from "lucide-react";
 import type { PreviewListing } from "@/lib/chat-search/types";
 
 const SEND_MESSAGE_EVENT = "chatv3:send-message";
+const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
 
 export type ChatV3SendMessageEvent = CustomEvent<{ message: string }>;
+export type ChatV3OpenPanelEvent = CustomEvent<{ listing: PreviewListing }>;
 
 function dispatchChatMessage(message: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent(SEND_MESSAGE_EVENT, { detail: { message } })
+  );
+}
+
+function dispatchOpenPanel(listing: PreviewListing) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing } })
   );
 }
 
@@ -43,9 +52,18 @@ const fmtSqft = (n?: number) =>
 export default function ListingOptionsList({
   listings,
   scopeLabel,
+  mode = "details-cma",
 }: {
   listings: PreviewListing[];
   scopeLabel?: string;
+  // "details-cma": Details link → /mls-listings/[slug] + Generate CMA button
+  //   (used for cma intent disambiguation — they wanted to research specific
+  //   properties on full pages before deciding which to CMA)
+  // "view-cma": View button → opens ListingBottomPanel via window event +
+  //   Generate CMA. Used for listing-search / street-listings / neighborhood
+  //   intents where the user is browsing inventory and a quick panel is the
+  //   natural action.
+  mode?: "details-cma" | "view-cma";
 }) {
   if (!listings || listings.length === 0) return null;
 
@@ -116,13 +134,23 @@ export default function ListingOptionsList({
 
             {/* Actions */}
             <div className="flex flex-col gap-1.5 self-center flex-shrink-0">
-              <Link
-                href={`/mls-listings/${l.slugAddress || l.listingKey}`}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Details
-              </Link>
+              {mode === "view-cma" ? (
+                <button
+                  onClick={() => dispatchOpenPanel(l)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  View
+                </button>
+              ) : (
+                <Link
+                  href={`/mls-listings/${l.slugAddress || l.listingKey}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Details
+                </Link>
+              )}
               <button
                 onClick={() =>
                   dispatchChatMessage(`generate a cma for ${l.address}`)
@@ -140,6 +168,6 @@ export default function ListingOptionsList({
   );
 }
 
-// Re-export the event name so callers (ChatWidget) can subscribe with
+// Re-export the event names so callers (ChatWidget) can subscribe with
 // the same string instead of duplicating it.
-export { SEND_MESSAGE_EVENT };
+export { SEND_MESSAGE_EVENT, OPEN_PANEL_EVENT };

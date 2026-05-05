@@ -179,6 +179,29 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     return () => window.removeEventListener("chatv3:send-message", handler);
   }, []); // handleAIQuery is stable enough for this; it reads via closure
 
+  // ListingOptionsList "View" button → open ListingBottomPanel.
+  // The slim PreviewListing carries enough fields to feed handleOpenListingPanel
+  // ([listing], startIndex). Cast through the production Listing shape since
+  // the panel reads many more fields; missing ones it tolerates as undefined.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const previewListing = (e as CustomEvent<{ listing: any }>).detail?.listing;
+      if (!previewListing) return;
+      console.log("[ChatWidget] chatv3:open-listing-panel →", previewListing.listingKey);
+      // Map slim shape onto Listing shape the panel expects. The handler
+      // does its own deeper fetch (/api/mls-listings/[slug]) so we just
+      // need the slug + address signal here.
+      const asListing: any = {
+        ...previewListing,
+        listingId: previewListing.listingKey,
+        slug: previewListing.slugAddress,
+      };
+      handleOpenListingPanel([asListing], 0);
+    };
+    window.addEventListener("chatv3:open-listing-panel", handler);
+    return () => window.removeEventListener("chatv3:open-listing-panel", handler);
+  }, []);
+
   const handleCopy = async (text: string, id: string) => {
     try {
       await navigator.clipboard.writeText(text);
