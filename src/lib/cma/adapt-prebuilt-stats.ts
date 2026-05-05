@@ -171,18 +171,36 @@ function filterCompsByDistance(comps: any[], subject: any): any[] {
 }
 
 /**
- * Compute the stats fields the TypeScript CMAStats interface requires but
- * the Python script doesn't currently write: minSqft / maxSqft /
- * medianSqft / avgBedsTotal / avgBathsTotal. Derived from the comp array.
+ * Compute every stats field from the comp array when it's missing on
+ * the rawStats input. Used in two modes:
+ *
+ *   - Augment Python-pre-computed stats (rawStats has avgPrice etc, we
+ *     just fill in the few fields Python doesn't write — minSqft,
+ *     maxSqft, medianSqft, avgBedsTotal, avgBathsTotal).
+ *
+ *   - Full recompute when callers pass `{}` (we filter out-of-region
+ *     comps after Python wrote its stats, so the original avgs no
+ *     longer match the visible comp set). In this mode every field
+ *     gets derived from the filtered comp array.
  */
 function fillMissingStats(rawStats: any, comps: any[], priceField: "listPrice" | "closePrice"): any {
   const stats = { ...(rawStats || {}) };
 
-  // Computed safely even when comps is empty — avoids divide-by-zero +
-  // makes the table render with zero placeholders instead of crashing.
-  const sqfts = comps
-    .map((c) => c?.livingArea)
-    .filter((v) => typeof v === "number" && v > 0) as number[];
+  // Pull each metric column from comps with positive-number guards so
+  // outliers/missing data don't drag averages to 0. priceField switches
+  // between active (listPrice) and closed (closePrice) tables.
+  const numbers = (key: string) =>
+    comps
+      .map((c) => c?.[key])
+      .filter((v) => typeof v === "number" && v > 0) as number[];
+
+  const sqfts = numbers("livingArea");
+  const lots = numbers("lotSize");
+  const prices = numbers(priceField);
+  const ppsfs = numbers("listPricePerSqft");
+  const doms = comps
+    .map((c) => c?.daysOnMarket)
+    .filter((v) => typeof v === "number" && v >= 0) as number[];
   const beds = comps
     .map((c) => c?.bedsTotal)
     .filter((v) => typeof v === "number") as number[];
@@ -198,27 +216,30 @@ function fillMissingStats(rawStats: any, comps: any[], priceField: "listPrice" |
     return sorted[Math.floor(sorted.length / 2)];
   };
 
+  // Sqft / beds / baths — Python doesn't write these, always derive
   if (stats.minSqft == null) stats.minSqft = sqfts.length ? Math.min(...sqfts) : 0;
   if (stats.maxSqft == null) stats.maxSqft = sqfts.length ? Math.max(...sqfts) : 0;
   if (stats.medianSqft == null) stats.medianSqft = median(sqfts);
   if (stats.avgBedsTotal == null) stats.avgBedsTotal = avg(beds);
   if (stats.avgBathsTotal == null) stats.avgBathsTotal = avg(baths);
 
-  // Defensive defaults for fields the Python script DOES write but might
-  // be missing on edge cases (e.g., a single-comp result set).
+  // Price / lot / dom / ppsf — fall back to comp-derived values when the
+  // Python rawStats didn't carry them OR when caller forced recompute via
+  // empty rawStats. Previously these defaulted to 0 which made the
+  // average row read $0 / 0 sqft after our region filter.
   stats.count = stats.count ?? comps.length;
-  stats.avgPrice = stats.avgPrice ?? 0;
-  stats.minPrice = stats.minPrice ?? 0;
-  stats.maxPrice = stats.maxPrice ?? 0;
-  stats.medianPrice = stats.medianPrice ?? 0;
-  stats.avgPricePerSqft = stats.avgPricePerSqft ?? 0;
-  stats.avgSqft = stats.avgSqft ?? 0;
-  stats.avgLotSize = stats.avgLotSize ?? 0;
-  stats.avgDaysOnMarket = stats.avgDaysOnMarket ?? 0;
-
-  // Suppress unused-param warning — priceField reserved for future use
-  // (e.g., recomputing avgPrice from comps if missing).
-  void priceField;
+  if (stats.avgPrice == null || stats.avgPrice === 0) stats.avgPrice = avg(prices);
+  if (stats.minPrice == null || stats.minPrice === 0)
+    stats.minPrice = prices.length ? Math.min(...prices) : 0;
+  if (stats.maxPrice == null || stats.maxPrice === 0)
+    stats.maxPrice = prices.length ? Math.max(...prices) : 0;
+  if (stats.medianPrice == null || stats.medianPrice === 0) stats.medianPrice = median(prices);
+  if (stats.avgPricePerSqft == null || stats.avgPricePerSqft === 0)
+    stats.avgPricePerSqft = avg(ppsfs);
+  if (stats.avgSqft == null || stats.avgSqft === 0) stats.avgSqft = avg(sqfts);
+  if (stats.avgLotSize == null || stats.avgLotSize === 0) stats.avgLotSize = avg(lots);
+  if (stats.avgDaysOnMarket == null || stats.avgDaysOnMarket === 0)
+    stats.avgDaysOnMarket = avg(doms);
 
   return stats;
 }
