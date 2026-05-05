@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, SquarePen, Bed, Bath, Square, MapPin, Building2, Home } from "lucide-react";
+import { Send, SquarePen, Bed, Bath, Square, MapPin, Building2, Home, ChevronDown } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface ChatInputProps {
@@ -52,6 +52,39 @@ export default function ChatInput({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close the suggestions dropdown when the user clicks/taps anywhere
+  // outside the input + dropdown chrome. Without this, the dropdown was
+  // staying up after the user clicked off it (e.g., onto a listing card)
+  // because mobile/desktop blur timing was inconsistent — only fired when
+  // input lost focus, not on outside taps that didn't happen to focus
+  // anything else.
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const handlePointer = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current) return;
+      const target = e.target as Node;
+      if (!containerRef.current.contains(target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("touchstart", handlePointer);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("touchstart", handlePointer);
+    };
+  }, [showSuggestions]);
+
+  // When the parent clears the message (after a send), drop suggestions
+  // so the dropdown doesn't linger over the new response.
+  useEffect(() => {
+    if (message.length === 0 && showSuggestions) {
+      setShowSuggestions(false);
+      setSuggestions([]);
+      setSelectedIndex(-1);
+    }
+  }, [message, showSuggestions]);
 
   // iOS Safari fix: Force viewport recalculation when keyboard closes
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -175,6 +208,32 @@ export default function ChatInput({
           ? "bg-white border border-gray-200"
           : "bg-neutral-800 border border-neutral-700"
       }`}>
+        {/* Mobile grip handle — tap to dismiss the dropdown with one thumb.
+            Hidden at md+ since desktop has click-outside + Esc + blur,
+            but on mobile a thumb-reachable affordance is more obvious. */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowSuggestions(false);
+            setSuggestions([]);
+            setSelectedIndex(-1);
+          }}
+          aria-label="Close suggestions"
+          className={`md:hidden w-full flex flex-col items-center justify-center pt-2 pb-1.5 -mb-1 active:bg-gray-100 ${
+            isLight ? "active:bg-gray-100" : "active:bg-neutral-700/50"
+          }`}
+        >
+          <div
+            className={`w-12 h-1 rounded-full ${
+              isLight ? "bg-gray-300" : "bg-neutral-600"
+            }`}
+          />
+          <ChevronDown
+            className={`w-3.5 h-3.5 mt-0.5 ${
+              isLight ? "text-gray-400" : "text-neutral-500"
+            }`}
+          />
+        </button>
         {suggestions.map((result, i) => (
           <button
             key={`${result.type}-${result.label}-${i}`}
