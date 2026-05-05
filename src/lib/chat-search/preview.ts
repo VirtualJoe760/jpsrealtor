@@ -31,11 +31,24 @@ import { multiSourceSearch } from "@/lib/search/multi-source-search";
 import type { ParsedQuery, PreviewResult } from "./types";
 
 // Strip the CMA preamble from the raw query so the search index gets
-// just the location text. "cma for desi drive" → "desi drive";
-// "valuation of 77095 desi drive" → "77095 desi drive".
-const CMA_PREAMBLE_RE = /^\s*(cma|comparable sales?|comps?|valuation)\s+(for|of|on|in|at)?\s*/i;
+// just the location text. Catches phrasings like:
+//   "cma for desi drive" → "desi drive"
+//   "valuation of 77095 desi drive" → "77095 desi drive"
+//   "generate a cma for 77638 via venito" → "77638 via venito"
+//   "give me a cma on ..." / "what's the cma for ..." / etc.
+const CMA_PREAMBLE_RE =
+  /^\s*(?:(?:can\s+you\s+|please\s+|could\s+you\s+|i\s+(?:want|need)\s+|i'?d\s+like\s+|give\s+me\s+|generate\s+|run\s+|create\s+|prepare\s+|pull\s+|do\s+|what'?s\s+the\s+|whats\s+the\s+)*)\s*(?:a\s+|an\s+|the\s+)?(cma|comparable\s+(?:market\s+)?analysis|comparable\s+sales?|comps?|valuation)\s+(?:for|of|on|in|at)?\s*/i;
 function stripCmaPreamble(raw: string): string {
   return raw.replace(CMA_PREAMBLE_RE, "").trim();
+}
+
+// Detect a "this is a specific full address" signal — house number + a
+// 5-digit ZIP. When present, we auto-select the top search hit instead
+// of showing a disambiguation list (the user already pointed at one
+// property; throwing options at them would be confusing).
+const HOUSE_NUM_AND_ZIP_RE = /^\s*\d{1,6}\b.*\b\d{5}\b/;
+function looksLikeFullAddress(cleaned: string): boolean {
+  return HOUSE_NUM_AND_ZIP_RE.test(cleaned);
 }
 
 // =============================================================================
@@ -635,8 +648,75 @@ export async function runPreview(
             if (!aExact && bExact) return 1;
             return (hitOrder.get(a.listingKey) ?? 999) - (hitOrder.get(b.listingKey) ?? 999);
           });
-          const listings = ranked.map(mapListing);
 
+          // ----- Auto-promote the top hit when the query is a full address -----
+          // A query like "77638 Via Venito, Indian Wells, CA 92210" (house
+          // number + ZIP) is the user pointing at one specific property —
+          // either typed or via a Generate CMA button. Throwing a picker
+          // at them would be silly; just CMA the top match.
+          //
+          // Only promote when the top hit's address contains every word of
+          // the query. Otherwise we fall through to listingOptions and let
+          // them disambiguate.
+          const topHit = ranked[0];
+          const topAddr = topHit
+            ? ((topHit.unparsedAddress || topHit.unparsedFirstLineAddress || "") as string).toLowerCase()
+            : "";
+          const topIsExactMatch = topHit && queryWords.every((w) => topAddr.includes(w));
+          if (looksLikeFullAddress(cleaned) && topIsExactMatch) {
+            // The hit from the search-index path was hydrated under
+            // LISTING_PROJECTION which doesn't carry cmaStats or the
+            // pool/spa/view fields the adapter reads. Re-fetch the
+            // promoted listing under the full cma projection so the
+            // adapter has everything it needs.
+            const fullCmaProjection: any = {
+              ...LISTING_PROJECTION,
+              cmaStats: 1,
+              latitude: 1,
+              longitude: 1,
+              view: 1,
+              View: 1,
+              garageSpaces: 1,
+              architecturalStyle: 1,
+              stories: 1,
+              lotFeatures: 1,
+              elementarySchoolDistrict: 1,
+              pool: 1,
+              poolYn: 1,
+              poolYN: 1,
+              spa: 1,
+              spaYn: 1,
+              spaYN: 1,
+            };
+            const fullListing: any = await UnifiedListing.findOne({
+              listingKey: topHit.listingKey,
+            })
+              .select(fullCmaProjection)
+              .lean();
+            const subjectListing = fullListing || topHit;
+            const adapted = subjectListing.cmaStats
+              ? adaptPrebuiltCmaStats(subjectListing.cmaStats, subjectListing)
+              : null;
+            // Carry over the photo we already attached so mapListing
+            // doesn't re-fetch when we build the slim subject payload.
+            if (topHit._photo) subjectListing._photo = topHit._photo;
+            return {
+              component: "cma",
+              cmaScope: "listing",
+              listingKey: subjectListing.listingKey,
+              slugAddress: subjectListing.slugAddress,
+              subdivisionName: subjectListing.subdivisionName,
+              listing: mapListing(subjectListing),
+              cma: adapted,
+              hasPrebuilt: Boolean(adapted),
+              reason: adapted
+                ? undefined
+                : "no pre-computed cmaStats — CMAReport will fall back to /api/cma/generate",
+              ms: Date.now() - t0,
+            };
+          }
+
+          const listings = ranked.map(mapListing);
           return {
             component: "cma",
             cmaScope: "listingOptions",
