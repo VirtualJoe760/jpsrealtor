@@ -70,37 +70,59 @@ export default function ListingOptionsCarousel({
   const listingsCount = listings?.length ?? 0;
 
   // Continuous smooth scroll using requestAnimationFrame. The rAF loop
-  // is set up ONCE on mount (or when length goes from 0/1 → many) and
-  // runs until unmount. Each frame reads pausedRef live, so user
-  // interaction doesn't restart the loop.
+  // runs from mount to unmount. Each frame reads pausedRef live, so
+  // user interaction doesn't restart the loop. We read scrollRef.current
+  // INSIDE the frame (not captured in closure) so the loop survives any
+  // hot-reload that swaps the underlying DOM node.
   useEffect(() => {
     if (listingsCount <= 1) return;
-    const el = scrollRef.current;
-    if (!el) return;
 
     let rafId = 0;
     let lastTs = performance.now();
+    let frameCount = 0;
 
     const step = (ts: number) => {
       const dt = (ts - lastTs) / 1000; // seconds
       lastTs = ts;
-      // Skip motion while paused but keep ticking so we resume cleanly.
-      if (!pausedRef.current) {
+      const el = scrollRef.current;
+      if (el && !pausedRef.current) {
         const maxScroll = el.scrollWidth - el.clientWidth;
         if (maxScroll > 0) {
           let next = el.scrollLeft + SCROLL_SPEED_PX_PER_SEC * dt;
           if (next >= maxScroll - 1) {
-            // Wrap to start so the loop reads as continuous.
             next = 0;
           }
           el.scrollLeft = next;
+          // One-time confirmation that rAF is alive + scrolling. After
+          // 5 frames we go silent. Lets us see in the console whether
+          // the loop is firing or not.
+          if (frameCount < 5) {
+            console.log(
+              `[Carousel] rAF tick ${frameCount} — scrollLeft=${next.toFixed(1)} max=${maxScroll}`
+            );
+            frameCount++;
+          }
+        } else if (frameCount < 5) {
+          console.log(
+            `[Carousel] rAF tick ${frameCount} — maxScroll=0 (sw=${el.scrollWidth} cw=${el.clientWidth})`
+          );
+          frameCount++;
         }
+      } else if (frameCount < 5) {
+        console.log(
+          `[Carousel] rAF tick ${frameCount} — el=${!!el} paused=${pausedRef.current}`
+        );
+        frameCount++;
       }
       rafId = requestAnimationFrame(step);
     };
 
+    console.log(`[Carousel] mounting rAF loop (${listingsCount} listings)`);
     rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      console.log("[Carousel] unmounting, canceling rAF");
+      cancelAnimationFrame(rafId);
+    };
   }, [listingsCount]);
 
   const pause = () => {
