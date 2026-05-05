@@ -13,7 +13,7 @@ import { AppreciationContainer } from "@/app/components/chat/AppreciationContain
 import ListingDetailCard from "@/app/components/chat/ListingDetailCard";
 import { ArticleResults } from "@/app/components/chat/ArticleCard";
 import ListingOptionsList from "@/app/components/chat-v3/ListingOptionsList";
-import ListingOptionsCarousel from "@/app/components/chat-v3/ListingOptionsCarousel";
+import ListingOptionsViewer from "@/app/components/chat-v3/ListingOptionsViewer";
 import type { PreviewResult, PreviewStats } from "@/lib/chat-search/types";
 
 // ---------------------------------------------------------------------------
@@ -198,39 +198,28 @@ export default function PreviewRenderer({
           />
         )}
         {preview.listings && preview.listings.length > 0 && (
-          <>
-            <ListingOptionsCarousel
-              listings={preview.listings}
-              title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
-            />
-            <ListingOptionsList
-              listings={preview.listings}
-              scopeLabel={preview.scope?.value}
-              mode="view-cma"
-            />
-          </>
+          <ListingOptionsViewer
+            listings={preview.listings}
+            title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
+            scopeLabel={preview.scope?.value}
+          />
         )}
       </div>
     );
   }
 
-  // listingResults → carousel (browse) + list with View + Generate CMA
+  // listingResults → toggleable panel/list view
   if (preview.component === "listingResults") {
     const ls = preview.listings || [];
+    if (ls.length === 0) {
+      return <SoftNote>No matching listings.</SoftNote>;
+    }
     return (
-      <div className="space-y-4">
-        {ls.length > 0 && (
-          <ListingOptionsCarousel
-            listings={ls}
-            title={`${preview.totalCount ?? ls.length} listings${preview.scope?.value ? " · " + preview.scope.value : ""}`}
-          />
-        )}
-        <ListingOptionsList
-          listings={ls}
-          scopeLabel={preview.scope?.value}
-          mode="view-cma"
-        />
-      </div>
+      <ListingOptionsViewer
+        listings={ls}
+        title={`${preview.totalCount ?? ls.length} listings${preview.scope?.value ? " · " + preview.scope.value : ""}`}
+        scopeLabel={preview.scope?.value}
+      />
     );
   }
 

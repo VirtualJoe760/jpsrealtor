@@ -53,6 +53,7 @@ export default function ListingOptionsList({
   listings,
   scopeLabel,
   mode = "details-cma",
+  hideHeader = false,
 }: {
   listings: PreviewListing[];
   scopeLabel?: string;
@@ -64,18 +65,23 @@ export default function ListingOptionsList({
   //   intents where the user is browsing inventory and a quick panel is the
   //   natural action.
   mode?: "details-cma" | "view-cma";
+  // When mounted inside ListingOptionsViewer, the viewer renders the title
+  // + view toggle so the list's own header would duplicate.
+  hideHeader?: boolean;
 }) {
   if (!listings || listings.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <div className="flex items-baseline justify-between px-1">
-        <h4 className="text-sm font-semibold text-gray-900">
-          {listings.length} {listings.length === 1 ? "property" : "properties"}
-          {scopeLabel ? ` on ${scopeLabel}` : ""}
-        </h4>
-        <span className="text-xs text-gray-500">Pick one</span>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-baseline justify-between px-1">
+          <h4 className="text-sm font-semibold text-gray-900">
+            {listings.length} {listings.length === 1 ? "property" : "properties"}
+            {scopeLabel ? ` on ${scopeLabel}` : ""}
+          </h4>
+          <span className="text-xs text-gray-500">Pick one</span>
+        </div>
+      )}
 
       <ul className="space-y-2">
         {listings.map((l) => (
