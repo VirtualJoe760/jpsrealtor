@@ -287,16 +287,35 @@ export function describeContext(input: NarrationInput): string {
       parts.push(
         `Layer 1 CMA: listing-level for ${preview.subdivisionName ? preview.subdivisionName + " · " : ""}listing ${preview.listingKey}.${preview.hasPrebuilt ? " Pre-computed cmaStats present." : " No pre-computed stats — CMAReport will generate on demand."}`
       );
+      parts.push(
+        "  → A CMA report component is rendering below your message. Lead the user into it; do not summarize comp data."
+      );
     } else if (preview.cmaScope === "subdivision") {
       parts.push(
         `Layer 1 CMA: subdivision-level for ${preview.subdivisionName} (slug: ${preview.slug}).`
       );
+      parts.push(
+        "  → A CMA report component is rendering below your message. Lead the user into it; do not summarize comp data."
+      );
+    } else if (preview.cmaScope === "listingOptions") {
+      // Disambiguation: multiple listings matched the user's query (e.g. a
+      // street with no house number). The picker component is rendering
+      // below the message. Narrator should ASK the user to pick one — NOT
+      // claim no matches were found, since we did find listings.
+      const count = preview.listings?.length ?? 0;
+      const where = preview.scope?.value || "your search";
+      parts.push(
+        `Layer 1 CMA: DISAMBIGUATION — ${count} listing${count === 1 ? "" : "s"} matched "${where}". A picker component is rendering below your message.`
+      );
+      parts.push(
+        `  → IMPORTANT: lead with "I found ${count} listing${count === 1 ? "" : "s"} on ${where} — which one would you like a CMA for?" or similar phrasing. DO NOT say "we couldn't find matches" — we did find them, the user just needs to pick one.`
+      );
     } else {
       parts.push(`Layer 1 CMA: ${preview.reason || "scope not resolved"}.`);
+      parts.push(
+        "  → No matches found. Ask the user for a specific address, street, or subdivision name."
+      );
     }
-    parts.push(
-      "  → A CMA report component is rendering below your message. Lead the user into it; do not summarize comp data."
-    );
   }
 
   if (Array.isArray(searchResults) && searchResults.length > 0) {

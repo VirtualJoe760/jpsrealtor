@@ -27,7 +27,16 @@ import {
 } from "@/lib/chat-v2/listing-query";
 import { fetchPrimaryPhotos } from "@/lib/listings/fetch-primary-photos";
 import { adaptPrebuiltCmaStats } from "@/lib/cma/adapt-prebuilt-stats";
+import { multiSourceSearch } from "@/lib/search/multi-source-search";
 import type { ParsedQuery, PreviewResult } from "./types";
+
+// Strip the CMA preamble from the raw query so the search index gets
+// just the location text. "cma for desi drive" → "desi drive";
+// "valuation of 77095 desi drive" → "77095 desi drive".
+const CMA_PREAMBLE_RE = /^\s*(cma|comparable sales?|comps?|valuation)\s+(for|of|on|in|at)?\s*/i;
+function stripCmaPreamble(raw: string): string {
+  return raw.replace(CMA_PREAMBLE_RE, "").trim();
+}
 
 // =============================================================================
 // Helpers
@@ -572,6 +581,40 @@ export async function runPreview(
           ms: Date.now() - t0,
         };
       }
+    }
+
+    // ----- last-resort search-index fallback -----
+    // Parser didn't tag any address/subdivision/street entity (happens for
+    // arbitrary streets that aren't in the LocationIndex — most local
+    // streets aren't). Run multiSourceSearch on the raw query stripped of
+    // the CMA preamble; if we get listing hits, treat them as candidates
+    // and present as listingOptions so the user can pick one.
+    try {
+      const cleaned = stripCmaPreamble(parsed.raw);
+      if (cleaned.length >= 2) {
+        const hits = await multiSourceSearch(cleaned, { limit: 8 });
+        const listingHits = hits.filter((h) => h.type === "listing" && h.entityId);
+        if (listingHits.length > 0) {
+          // Hydrate by listingKey to get full bed/bath/sqft/photo data.
+          const keys = listingHits.map((h) => h.entityId).filter(Boolean) as string[];
+          const docs = await UnifiedListing.find({ listingKey: { $in: keys } })
+            .select(LISTING_PROJECTION)
+            .lean();
+          const withPhotos = await attachPhotos(docs as any[]);
+          const listings = withPhotos.map(mapListing);
+          return {
+            component: "cma",
+            cmaScope: "listingOptions",
+            listings,
+            totalCount: listings.length,
+            scope: { type: "search", value: cleaned },
+            reason: `I found multiple listings matching "${cleaned}". Which one do you want me to do a CMA for?`,
+            ms: Date.now() - t0,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[preview cma] search-index fallback failed:", err);
     }
 
     return {
