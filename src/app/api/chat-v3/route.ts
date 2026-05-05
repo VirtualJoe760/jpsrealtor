@@ -31,6 +31,7 @@ import type { ChatRequest } from "@/lib/chat-v2/types";
 import { parse } from "@/lib/chat-search/parse";
 import { runPreview } from "@/lib/chat-search/preview";
 import { streamNarration } from "@/lib/chat-search/narrate";
+import { fetchNearbyPOIs, describePOIBundle } from "@/lib/chat-search/nearby-pois";
 import type { ParsedQuery } from "@/lib/chat-search/types";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -70,11 +71,31 @@ export async function POST(req: NextRequest) {
     }
 
     // ----- locationSnapshot mode: brief markdown overview, no tools -----
-    // Falls through to the agent loop with the snapshot-specific system
-    // prompt that disables tool use and caps response length.
+    // Pulls cached Google Places POIs near the location from the
+    // points_of_interest collection and injects them as AUTHORITATIVE
+    // context. Without this the AI hallucinates community highlights
+    // from general knowledge ("Cathedral City Waterpark" etc) — now
+    // it grounds its highlights in real, rated POIs.
     if (locationSnapshot) {
       console.log("[Chat V3] locationSnapshot mode →", locationSnapshot.name);
-      return runAgentLoop(messages, userId, buildSnapshotPrompt(locationSnapshot));
+      let poiContext = "";
+      try {
+        const bundle = await fetchNearbyPOIs(
+          locationSnapshot.name,
+          locationSnapshot.type
+        );
+        poiContext = describePOIBundle(bundle);
+        console.log(
+          `[Chat V3] POI bundle: ${bundle.total} hits in ${Object.keys(bundle.byCategory).length} categories${bundle.center ? "" : " (no center resolved)"}`
+        );
+      } catch (err) {
+        console.warn("[Chat V3] POI fetch failed:", err);
+      }
+      return runAgentLoop(
+        messages,
+        userId,
+        buildSnapshotPrompt(locationSnapshot, poiContext)
+      );
     }
 
     // ----- Search-first attempt -----
@@ -212,19 +233,31 @@ async function runAgentLoop(
 // locationSnapshot system prompt — same wording as chat-v2 for parity
 // =============================================================================
 
-function buildSnapshotPrompt(snapshot: NonNullable<ChatRequest["locationSnapshot"]>): string {
+function buildSnapshotPrompt(
+  snapshot: NonNullable<ChatRequest["locationSnapshot"]>,
+  poiContext: string = ""
+): string {
+  // poiContext (when present) is the AUTHORITATIVE block from
+  // describePOIBundle — categorized real Google Places hits within
+  // ~3 miles of the location's center. Tells the AI to source its
+  // Community Highlights from this list, not general knowledge.
+  const poiSection = poiContext
+    ? `\n\n${poiContext}\n`
+    : `\n\n(No nearby POI data available for this location — keep Community Highlights brief and avoid naming specific businesses or attractions you can't verify.)\n`;
+
   return `${SYSTEM_PROMPT}
 
 ## LOCATION SNAPSHOT MODE (FROM MAP SEARCH) - OVERRIDE NORMAL BEHAVIOR!
 
 The user just searched for "${snapshot.name}" in the map search bar. They want a BRIEF markdown overview of this ${snapshot.type}.
-
+${poiSection}
 **CRITICAL RULES FOR LOCATION SNAPSHOT:**
 1. DO NOT use any tools (no searchHomes, no getAppreciation, no searchArticles)
 2. Respond with 2-3 short paragraphs in pure markdown
 3. Include general market info, notable features, and community highlights
-4. Keep it conversational and under 150 words
-5. End with a helpful suggestion about viewing listings or market data
+4. Community Highlights MUST quote 2-3 specific POIs by name from the AUTHORITATIVE list above (when present). Do NOT invent businesses, parks, golf courses, or attractions that aren't on the list. If the list is empty, omit specific names and speak generally.
+5. Keep it conversational and under 150 words
+6. End with a helpful suggestion about viewing listings or market data
 
 Now respond to the user's query about "${snapshot.name}" following these rules.`;
 }
