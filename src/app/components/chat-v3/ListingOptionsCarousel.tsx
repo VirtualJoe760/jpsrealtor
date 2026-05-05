@@ -14,7 +14,7 @@
 // is hovering/touching the carousel and for 6s after they manually
 // scrolled. Used inside ListingOptionsViewer alongside ListingOptionsList.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Bed, Bath, Maximize2, FileText, Eye } from "lucide-react";
 import type { PreviewListing } from "@/lib/chat-search/types";
@@ -59,23 +59,22 @@ export default function ListingOptionsCarousel({
   title?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [paused, setPaused] = useState(false);
-  // Resume timer fires after the user stops interacting; until it
-  // expires we keep auto-scroll suspended so we don't fight the user.
+  // Refs for paused state + resume timer so the rAF loop reads them
+  // without retriggering the effect. The previous state-based
+  // implementation re-fired the effect on every render (parent passes
+  // fresh listings array) — even with a stable [paused, listingsCount]
+  // dep, dev hot-reload + React strict mode were enough to keep
+  // canceling rAF before any frame painted visible motion.
+  const pausedRef = useRef(false);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Continuous smooth scroll using requestAnimationFrame. Each frame we
-  // advance scrollLeft by `speed * deltaSec` px. When we hit the end we
-  // jump back to 0 without animation (snap reset) so the rotation is
-  // seamless. Browser-native scroll-snap is disabled for the auto path
-  // because snap-stop fights the per-frame increments.
-  //
-  // Dep on listings.length (not listings itself) — parent passes a new
-  // array reference each render, which would otherwise cancel + restart
-  // the rAF every paint and prevent any visible accumulation.
   const listingsCount = listings?.length ?? 0;
+
+  // Continuous smooth scroll using requestAnimationFrame. The rAF loop
+  // is set up ONCE on mount (or when length goes from 0/1 → many) and
+  // runs until unmount. Each frame reads pausedRef live, so user
+  // interaction doesn't restart the loop.
   useEffect(() => {
-    if (paused || listingsCount <= 1) return;
+    if (listingsCount <= 1) return;
     const el = scrollRef.current;
     if (!el) return;
 
@@ -85,28 +84,35 @@ export default function ListingOptionsCarousel({
     const step = (ts: number) => {
       const dt = (ts - lastTs) / 1000; // seconds
       lastTs = ts;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) {
-        rafId = requestAnimationFrame(step);
-        return;
+      // Skip motion while paused but keep ticking so we resume cleanly.
+      if (!pausedRef.current) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll > 0) {
+          let next = el.scrollLeft + SCROLL_SPEED_PX_PER_SEC * dt;
+          if (next >= maxScroll - 1) {
+            // Wrap to start so the loop reads as continuous.
+            next = 0;
+          }
+          el.scrollLeft = next;
+        }
       }
-      let next = el.scrollLeft + SCROLL_SPEED_PX_PER_SEC * dt;
-      if (next >= maxScroll - 1) {
-        // Wrap to start without animation so the loop reads as continuous.
-        next = 0;
-      }
-      el.scrollLeft = next;
       rafId = requestAnimationFrame(step);
     };
 
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [paused, listingsCount]);
+  }, [listingsCount]);
 
+  const pause = () => {
+    pausedRef.current = true;
+  };
+  const resume = () => {
+    pausedRef.current = false;
+  };
   const pauseFor = (ms: number) => {
-    setPaused(true);
+    pause();
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => setPaused(false), ms);
+    resumeTimer.current = setTimeout(resume, ms);
   };
 
   // Translate vertical wheel scroll into horizontal carousel scroll
@@ -146,8 +152,8 @@ export default function ListingOptionsCarousel({
           flick freely without the auto-scroll fighting back. */}
       <div
         ref={scrollRef}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
+        onMouseEnter={pause}
+        onMouseLeave={resume}
         onTouchStart={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
         onWheel={handleWheel}
         // Hidden scrollbar — Firefox/standards via scrollbarWidth,
