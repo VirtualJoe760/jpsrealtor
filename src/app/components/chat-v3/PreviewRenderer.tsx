@@ -219,7 +219,10 @@ export default function PreviewRenderer({
     );
   }
 
-  // neighborhood / areaStats → stats + listing options with View + Generate CMA
+  // neighborhood / areaStats → stats + horizontal carousel (browse) +
+  // vertical list (act). The carousel is image-forward for skimming;
+  // the list has the View + Generate CMA buttons for committing to a
+  // specific property. Both render off the same data.
   if (preview.component === "neighborhood" || preview.component === "areaStats") {
     return (
       <div className="space-y-4">
@@ -231,24 +234,39 @@ export default function PreviewRenderer({
           />
         )}
         {preview.listings && preview.listings.length > 0 && (
-          <ListingOptionsList
-            listings={preview.listings}
-            scopeLabel={preview.scope?.value}
-            mode="view-cma"
-          />
+          <>
+            <ListingCarousel
+              listings={preview.listings.map(toCarouselListing)}
+              title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
+            />
+            <ListingOptionsList
+              listings={preview.listings}
+              scopeLabel={preview.scope?.value}
+              mode="view-cma"
+            />
+          </>
         )}
       </div>
     );
   }
 
-  // listingResults → list with View + Generate CMA per card
+  // listingResults → carousel (browse) + list with View + Generate CMA
   if (preview.component === "listingResults") {
+    const ls = preview.listings || [];
     return (
-      <ListingOptionsList
-        listings={preview.listings || []}
-        scopeLabel={preview.scope?.value}
-        mode="view-cma"
-      />
+      <div className="space-y-4">
+        {ls.length > 0 && (
+          <ListingCarousel
+            listings={ls.map(toCarouselListing)}
+            title={`${preview.totalCount ?? ls.length} listings${preview.scope?.value ? " · " + preview.scope.value : ""}`}
+          />
+        )}
+        <ListingOptionsList
+          listings={ls}
+          scopeLabel={preview.scope?.value}
+          mode="view-cma"
+        />
+      </div>
     );
   }
 
