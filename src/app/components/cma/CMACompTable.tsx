@@ -14,30 +14,38 @@ import CMAConfidenceBadge from "./CMAConfidenceBadge";
 // active inventory.
 const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
 
-function dispatchOpenPanel(comp: CMAComp) {
+function compToSlim(comp: CMAComp) {
+  return {
+    listingKey: comp.listingKey,
+    slugAddress: (comp as any).slugAddress, // Python may not write this on cmaStats comps
+    address: comp.address,
+    city: comp.city,
+    subdivision: comp.subdivisionName ?? undefined,
+    price: comp.currentListPrice ?? (comp as any).listPrice ?? 0,
+    beds: comp.bedsTotal,
+    baths: comp.bathsTotal,
+    sqft: comp.livingArea,
+    lotSize: comp.lotSize,
+    yearBuilt: comp.yearBuilt,
+    primaryPhotoUrl: (comp as any).primaryPhotoUrl,
+    standardStatus: "Active",
+    latitude: (comp as any).latitude,
+    longitude: (comp as any).longitude,
+  };
+}
+
+function dispatchOpenPanel(comp: CMAComp, allComps: CMAComp[], index: number) {
   if (typeof window === "undefined") return;
-  // Slim shape compatible with the chat-v3 PreviewListing the
-  // ChatWidget handler maps onto the production Listing shape.
+  // Pass the full active-comp set + the clicked index so the bottom
+  // panel's swipe queue can navigate through all comps, not just the
+  // one that was clicked.
+  const siblings = allComps.map(compToSlim);
   window.dispatchEvent(
     new CustomEvent(OPEN_PANEL_EVENT, {
       detail: {
-        listing: {
-          listingKey: comp.listingKey,
-          slugAddress: (comp as any).slugAddress, // Python writes this on cmaStats comps; safe to pass undefined
-          address: comp.address,
-          city: comp.city,
-          subdivision: comp.subdivisionName ?? undefined,
-          price: comp.currentListPrice ?? (comp as any).listPrice ?? 0,
-          beds: comp.bedsTotal,
-          baths: comp.bathsTotal,
-          sqft: comp.livingArea,
-          lotSize: comp.lotSize,
-          yearBuilt: comp.yearBuilt,
-          primaryPhotoUrl: (comp as any).primaryPhotoUrl,
-          standardStatus: "Active",
-          latitude: (comp as any).latitude,
-          longitude: (comp as any).longitude,
-        },
+        listing: compToSlim(comp),
+        siblings,
+        index,
       },
     })
   );
@@ -138,10 +146,10 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
         </TableHeader>
 
         <TableBody>
-          {comps.map((comp) => (
+          {comps.map((comp, i) => (
             <TableRow
               key={comp.listingKey}
-              onClick={!isClosed ? () => dispatchOpenPanel(comp) : undefined}
+              onClick={!isClosed ? () => dispatchOpenPanel(comp, comps, i) : undefined}
               className={`${
                 isLight ? "hover:bg-gray-50" : "hover:bg-neutral-800/30"
               } ${

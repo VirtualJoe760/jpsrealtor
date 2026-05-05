@@ -179,24 +179,34 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     return () => window.removeEventListener("chatv3:send-message", handler);
   }, []); // handleAIQuery is stable enough for this; it reads via closure
 
-  // ListingOptionsList "View" button → open ListingBottomPanel.
-  // The slim PreviewListing carries enough fields to feed handleOpenListingPanel
-  // ([listing], startIndex). Cast through the production Listing shape since
-  // the panel reads many more fields; missing ones it tolerates as undefined.
+  // ListingOptionsList/Carousel/CMA-table "View" → open ListingBottomPanel
+  // with the full sibling group so swipes navigate through every property in
+  // the visible set, not just the one that was clicked. Falls back to a
+  // single-item queue when callers don't have siblings (e.g. one-off cards).
   useEffect(() => {
     const handler = (e: Event) => {
-      const previewListing = (e as CustomEvent<{ listing: any }>).detail?.listing;
+      const detail = (e as CustomEvent<{
+        listing: any;
+        siblings?: any[];
+        index?: number;
+      }>).detail;
+      const previewListing = detail?.listing;
       if (!previewListing) return;
       console.log("[ChatWidget] chatv3:open-listing-panel →", previewListing.listingKey);
-      // Map slim shape onto Listing shape the panel expects. The handler
-      // does its own deeper fetch (/api/mls-listings/[slug]) so we just
-      // need the slug + address signal here.
-      const asListing: any = {
-        ...previewListing,
-        listingId: previewListing.listingKey,
-        slug: previewListing.slugAddress,
-      };
-      handleOpenListingPanel([asListing], 0);
+      const toListing = (l: any) => ({
+        ...l,
+        listingId: l.listingKey,
+        slug: l.slugAddress,
+      });
+      const queue =
+        detail?.siblings && detail.siblings.length > 0
+          ? detail.siblings.map(toListing)
+          : [toListing(previewListing)];
+      const startIndex = Math.max(
+        0,
+        Math.min(queue.length - 1, detail?.index ?? 0)
+      );
+      handleOpenListingPanel(queue, startIndex);
     };
     window.addEventListener("chatv3:open-listing-panel", handler);
     return () => window.removeEventListener("chatv3:open-listing-panel", handler);

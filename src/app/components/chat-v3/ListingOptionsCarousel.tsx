@@ -29,10 +29,14 @@ function dispatchChatMessage(message: string) {
   );
 }
 
-function dispatchOpenPanel(listing: PreviewListing) {
+function dispatchOpenPanel(
+  listing: PreviewListing,
+  siblings?: PreviewListing[],
+  index?: number
+) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing } })
+    new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing, siblings, index } })
   );
 }
 
@@ -126,7 +130,7 @@ export default function ListingOptionsCarousel({
         className="flex gap-3 overflow-x-auto pb-2"
         style={{ scrollbarWidth: "thin" }}
       >
-        {listings.map((l) => (
+        {listings.map((l, i) => (
           <article
             key={l.listingKey}
             className="flex-shrink-0 w-64 sm:w-72 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm snap-start"
@@ -180,7 +184,7 @@ export default function ListingOptionsCarousel({
               {/* Actions */}
               <div className="flex gap-1.5 pt-2">
                 <button
-                  onClick={() => dispatchOpenPanel(l)}
+                  onClick={() => dispatchOpenPanel(l, listings, i)}
                   className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
                 >
                   <Eye className="w-3.5 h-3.5" />

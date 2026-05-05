@@ -34,10 +34,18 @@ function dispatchChatMessage(message: string) {
   );
 }
 
-function dispatchOpenPanel(listing: PreviewListing) {
+function dispatchOpenPanel(
+  listing: PreviewListing,
+  siblings?: PreviewListing[],
+  index?: number
+) {
   if (typeof window === "undefined") return;
+  // siblings + index let the bottom panel queue swipe through every
+  // listing in the visible group, not just the one that was clicked.
+  // When omitted (callers that don't have a list), the handler falls
+  // back to a single-item queue.
   window.dispatchEvent(
-    new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing } })
+    new CustomEvent(OPEN_PANEL_EVENT, { detail: { listing, siblings, index } })
   );
 }
 
@@ -95,7 +103,7 @@ export default function ListingOptionsList({
       )}
 
       <ul className="space-y-2">
-        {visible.map((l) => (
+        {visible.map((l, i) => (
           <li
             key={l.listingKey}
             className="flex gap-3 p-2 sm:p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
@@ -153,7 +161,7 @@ export default function ListingOptionsList({
             <div className="flex flex-col gap-1.5 self-center flex-shrink-0">
               {mode === "view-cma" ? (
                 <button
-                  onClick={() => dispatchOpenPanel(l)}
+                  onClick={() => dispatchOpenPanel(l, visible, i)}
                   className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
                 >
                   <Eye className="w-3.5 h-3.5" />
