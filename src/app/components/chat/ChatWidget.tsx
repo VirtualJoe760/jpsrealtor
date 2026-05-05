@@ -212,7 +212,14 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       console.log("[ChatWidget] chatv3:open-listing-panel →", previewListing.listingKey);
       const toListing = (l: any) => ({
         ...l,
-        listingId: l.listingKey,
+        // The production swipe-queue + dislike API both read
+        // `listing.id` as the canonical identifier. Our slim
+        // PreviewListing only carries `listingKey`. Without `id`
+        // the API call sent `listingKey: undefined` and the
+        // Mongoose schema validation 500'd on save.
+        id: l.id ?? l.listingKey,
+        listingId: l.listingId ?? l.listingKey,
+        listingKey: l.listingKey,
         slug: l.slugAddress,
         // handleSwipeLeft / handleSwipeRight on the legacy static-queue
         // path read `url.replace('/mls-listings/', '')` to derive the
