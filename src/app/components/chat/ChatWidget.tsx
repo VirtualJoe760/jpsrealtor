@@ -18,6 +18,7 @@ import { SourceBubbles } from "./SourceBubble";
 import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
+import PreviewRenderer from "@/app/components/chat-v3/PreviewRenderer";
 import ListingDetailCard from "./ListingDetailCard";
 import ListingOptionsCard from "./ListingOptionsCard";
 import ClarificationCard from "./ClarificationCard";
@@ -276,7 +277,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
     try {
       // Determine endpoint based on mode
-      const endpoint = mode === 'contact_import' ? '/api/contact-cleaning/assistant' : '/api/chat-v2';
+      const endpoint = mode === 'contact_import' ? '/api/contact-cleaning/assistant' : '/api/chat-v3';
 
       // Call AI API with Server-Sent Events (SSE) streaming
       const response = await fetch(endpoint, {
@@ -310,6 +311,11 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       let fullText = "";
       let components: ComponentData | undefined;
       let receivedToolCalls: any[] | undefined;
+      // chat-v3 search-first turns emit a single `preview` SSE event with
+      // a Layer 1 PreviewResult. PreviewRenderer mounts it below the
+      // assistant message. Layer 3 fallback (agent loop) leaves this
+      // undefined and renders via the legacy `components` map instead.
+      let receivedPreview: any = undefined;
 
       // Read SSE stream
       const reader = response.body?.getReader();
@@ -381,6 +387,14 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     receivedToolCalls = data.tool_calls;
                   }
 
+                  if (data.preview !== undefined) {
+                    // chat-v3 search-first preview payload — single event
+                    // per turn. Capture; we render via PreviewRenderer at
+                    // message-display time.
+                    console.log('[ChatWidget] 🧩 Received preview:', data.preview?.component);
+                    receivedPreview = data.preview;
+                  }
+
                   if (data.done) {
                     // Stream complete
                     console.log('[ChatWidget] ✅ Stream complete. Components:', components);
@@ -398,8 +412,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       .replace(/\[CONTACT_IMPORT_SUCCESS\]/g, '')
                       .trim();
 
-                    // Add message with tool_calls for conversation context
-                    addMessage(cleanText, "assistant", undefined, components, receivedToolCalls);
+                    // Add message with tool_calls + preview for conversation context
+                    addMessage(cleanText, "assistant", undefined, components, receivedToolCalls, undefined, undefined, receivedPreview);
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                     // Tutorial mode: notify when results received
@@ -540,7 +554,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
     // Don't show user message or loading state since this is background
     try {
-      const response = await fetch("/api/chat-v2", {
+      const response = await fetch("/api/chat-v3", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -772,7 +786,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       console.log('🤖 [ChatWidget] Sending location snapshot request to AI (locationSnapshot mode)');
 
       try {
-        const response = await fetch("/api/chat-v2", {
+        const response = await fetch("/api/chat-v3", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1668,7 +1682,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   </div>
                 )}
 
-                {/* Consolidated component rendering */}
+                {/* Consolidated component rendering — legacy chat-v2 shape */}
                 {msg.components && (
                   <ChatResultsContainer
                     components={msg.components}
@@ -1678,6 +1692,15 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     onListViewSelected={tutorial.run && tutorial.stepIndex === 4 ? tutorial.onListViewSelected : undefined}
                     onViewClick={tutorial.run && tutorial.stepIndex === 6 ? tutorial.onViewListingClicked : undefined}
                   />
+                )}
+
+                {/* chat-v3 search-first preview — Layer 1 component payload.
+                    Coexists with msg.components for backward compat: agent-loop
+                    turns produce components, search-first turns produce preview. */}
+                {msg.preview && (
+                  <div className="mt-2 max-w-full">
+                    <PreviewRenderer preview={msg.preview} />
+                  </div>
                 )}
               </motion.div>
             ))}

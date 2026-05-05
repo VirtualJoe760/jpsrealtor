@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import type { Listing } from "./ListingCarousel";
 import type { SourceType } from "./SourceBubble";
 import type { ComparisonItem } from "./SubdivisionComparisonChart";
+import type { PreviewResult } from "@/lib/chat-search/types";
 
 // Component data from API response
 export interface ComponentData {
@@ -251,7 +252,8 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   listings?: Listing[];
-  components?: ComponentData; // Structured component data
+  components?: ComponentData; // Structured component data (Layer 3 / chat-v2 shape)
+  preview?: PreviewResult | null; // Layer 1 component payload (chat-v3 search-first)
   tool_calls?: any[]; // For assistant messages that call tools
   tool_call_id?: string; // For tool response messages
   name?: string; // For tool messages
@@ -271,7 +273,8 @@ interface ChatContextType {
     components?: ComponentData,
     tool_calls?: any[],
     tool_call_id?: string,
-    name?: string
+    name?: string,
+    preview?: PreviewResult | null
   ) => void;
   clearMessages: () => void;
   hasUnreadMessage: boolean;
@@ -353,7 +356,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     components?: ComponentData,
     tool_calls?: any[],
     tool_call_id?: string,
-    name?: string
+    name?: string,
+    preview?: PreviewResult | null
   ) => {
     const newMessage: ChatMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -362,6 +366,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       timestamp: new Date(),
       listings,
       components,
+      preview,
       tool_calls,
       tool_call_id,
       name,
