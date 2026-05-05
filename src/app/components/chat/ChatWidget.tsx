@@ -709,13 +709,20 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     setNotificationPreview(preview);
                     setShowNotification(true);
 
-                    // Play notification sound
-                    try {
-                      const audio = new Audio('/sounds/notification.mp3');
-                      audio.volume = 0.5;
-                      audio.play().catch(e => console.log('Could not play sound:', e));
-                    } catch (e) {
-                      console.log('Could not play notification sound:', e);
+                    // On mobile (coarse pointer / touch primary), skip the
+                    // audio entirely — iOS engages the audio session even
+                    // at low volume, which pauses Spotify/Apple Music in
+                    // the background. Vibrate is enough on phones.
+                    const isMobile = typeof window !== 'undefined' &&
+                      window.matchMedia?.('(pointer: coarse)').matches;
+                    if (!isMobile) {
+                      try {
+                        const audio = new Audio('/sounds/notification.mp3');
+                        audio.volume = 0.5;
+                        audio.play().catch(e => console.log('Could not play sound:', e));
+                      } catch (e) {
+                        console.log('Could not play notification sound:', e);
+                      }
                     }
 
                     // Vibrate if supported
@@ -953,14 +960,21 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                         });
                         console.log('🔔 [ChatWidget] Notification toast content set');
 
-                        // Play notification sound
-                        try {
-                          const audio = new Audio('/sounds/notification.mp3');
-                          audio.volume = 0.5;
-                          audio.play().catch(err => console.warn('Failed to play notification sound:', err));
-                          console.log('🔔 [ChatWidget] Notification sound played');
-                        } catch (err) {
-                          console.warn('Failed to create notification audio:', err);
+                        // Skip audio on mobile (see other site above)
+                        const isMobile = typeof window !== 'undefined' &&
+                          window.matchMedia?.('(pointer: coarse)').matches;
+                        if (!isMobile) {
+                          try {
+                            const audio = new Audio('/sounds/notification.mp3');
+                            audio.volume = 0.5;
+                            audio.play().catch(err => console.warn('Failed to play notification sound:', err));
+                            console.log('🔔 [ChatWidget] Notification sound played');
+                          } catch (err) {
+                            console.warn('Failed to create notification audio:', err);
+                          }
+                        } else if (navigator.vibrate) {
+                          // Brief vibration as the mobile alert cue.
+                          navigator.vibrate([200, 100, 200]);
                         }
                       } else {
                         console.log('🔔 [ChatWidget] User in chat view - no notification needed');
