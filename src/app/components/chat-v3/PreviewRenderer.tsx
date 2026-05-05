@@ -11,46 +11,10 @@ import CMAReport from "@/app/components/cma/CMAReport";
 import SubdivisionCmaSection from "@/app/components/cma/subdivision/SubdivisionCmaSection";
 import { AppreciationContainer } from "@/app/components/chat/AppreciationContainer";
 import ListingDetailCard from "@/app/components/chat/ListingDetailCard";
-import ListingCarousel, {
-  type Listing as CarouselListing,
-} from "@/app/components/chat/ListingCarousel";
-import ListingListView from "@/app/components/chat/ListingListView";
 import { ArticleResults } from "@/app/components/chat/ArticleCard";
 import ListingOptionsList from "@/app/components/chat-v3/ListingOptionsList";
-import type {
-  PreviewResult,
-  PreviewListing,
-  PreviewStats,
-} from "@/lib/chat-search/types";
-
-// ---------------------------------------------------------------------------
-// Adapter: PreviewListing → ListingCarousel/ListingListView Listing shape
-// ---------------------------------------------------------------------------
-
-function toCarouselListing(l: PreviewListing): CarouselListing {
-  return {
-    id: l.listingKey,
-    listingKey: l.listingKey,
-    listingId: l.listingKey,
-    price: l.price ?? 0,
-    beds: l.beds ?? 0,
-    baths: l.baths ?? 0,
-    sqft: l.sqft ?? 0,
-    city: l.city ?? "",
-    address: l.address ?? "",
-    image: l.primaryPhotoUrl,
-    subdivision: l.subdivision,
-    slug: l.slugAddress,
-    slugAddress: l.slugAddress,
-    url: `/mls-listings/${l.slugAddress || l.listingKey}`,
-    daysOnMarket: l.daysOnMarket,
-    standardStatus: l.standardStatus,
-    propertySubType: l.propertySubType,
-    yearBuilt: l.yearBuilt,
-    lotSizeSqft: l.lotSize,
-    associationFee: l.associationFee,
-  };
-}
+import ListingOptionsCarousel from "@/app/components/chat-v3/ListingOptionsCarousel";
+import type { PreviewResult, PreviewStats } from "@/lib/chat-search/types";
 
 // ---------------------------------------------------------------------------
 // StatsCard — same as the one in test-chat. Kept here so /chat-v3 can render
@@ -235,8 +199,8 @@ export default function PreviewRenderer({
         )}
         {preview.listings && preview.listings.length > 0 && (
           <>
-            <ListingCarousel
-              listings={preview.listings.map(toCarouselListing)}
+            <ListingOptionsCarousel
+              listings={preview.listings}
               title={`Top ${preview.listings.length} listings · ${preview.scope?.value || ""}`}
             />
             <ListingOptionsList
@@ -256,8 +220,8 @@ export default function PreviewRenderer({
     return (
       <div className="space-y-4">
         {ls.length > 0 && (
-          <ListingCarousel
-            listings={ls.map(toCarouselListing)}
+          <ListingOptionsCarousel
+            listings={ls}
             title={`${preview.totalCount ?? ls.length} listings${preview.scope?.value ? " · " + preview.scope.value : ""}`}
           />
         )}
