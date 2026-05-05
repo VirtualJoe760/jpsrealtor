@@ -82,8 +82,15 @@ export async function GET(req: NextRequest) {
       };
     }
 
+    // latitude/longitude added so callers can plot the listings on
+    // a map (chat-side ListingDetailCard's nearby map). Without these
+    // fields the map filter dropped every nearby record and rendered
+    // only the subject pin.
+    const projection =
+      "listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea mlsId latitude longitude";
+
     let listings = await UnifiedListing.find(query)
-      .select("listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea mlsId")
+      .select(projection)
       .sort({ listPrice: -1 })
       .limit(limit)
       .lean();
@@ -101,7 +108,7 @@ export async function GET(req: NextRequest) {
       }
 
       listings = await UnifiedListing.find(cityQuery)
-        .select("listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea mlsId")
+        .select(projection)
         .sort({ listPrice: -1 })
         .limit(limit)
         .lean();
@@ -121,6 +128,8 @@ export async function GET(req: NextRequest) {
       bathroomsTotalInteger: l.bathroomsTotalInteger,
       livingArea: l.livingArea,
       primaryPhotoUrl: photoMap.get(l.listingKey) || null,
+      latitude: l.latitude,
+      longitude: l.longitude,
     }));
 
     return NextResponse.json({ listings: mapped });

@@ -228,10 +228,12 @@ export default function ListingDetailCard({
   // /mls-listings/[slugAddress] page uses for its similar-listings
   // section. Subdivision-first with city fallback (the route handles
   // it). Drives the small nearby map above the agent section.
+  // Capped at 5 — small inline map gets cluttered fast and the
+  // user just wants a sense of what's nearby, not a full inventory.
   useEffect(() => {
     if (!city) return;
     let cancelled = false;
-    const params = new URLSearchParams({ city, limit: "12" });
+    const params = new URLSearchParams({ city, limit: "5" });
     if (subdivision) params.set("subdivision", subdivision);
     if (listingKey) params.set("exclude", listingKey);
     (async () => {
