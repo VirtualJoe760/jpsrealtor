@@ -288,20 +288,9 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
             This analysis was generated automatically from MLS data. For an
             in-depth, human-reviewed valuation, contact{" "}
             <strong>{agent.name}</strong>
-            {agent.phone ? (
-              <>
-                {" "}at{" "}
-                <a
-                  href={`tel:${agent.phone.replace(/[^0-9+]/g, "")}`}
-                  className="underline font-semibold"
-                >
-                  {agent.phone}
-                </a>
-              </>
-            ) : null}
             {agent.email ? (
               <>
-                {" "}or{" "}
+                {" "}at{" "}
                 <a
                   href={`mailto:${agent.email}`}
                   className="underline font-semibold"
