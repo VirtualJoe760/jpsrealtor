@@ -214,6 +214,13 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
         ...l,
         listingId: l.listingKey,
         slug: l.slugAddress,
+        // handleSwipeLeft / handleSwipeRight on the legacy static-queue
+        // path read `url.replace('/mls-listings/', '')` to derive the
+        // slug. Without this field the dislike toggle crashes with
+        // "Cannot read properties of undefined (reading 'replace')".
+        url: l.slugAddress
+          ? `/mls-listings/${l.slugAddress}`
+          : `/mls-listings/${l.listingKey}`,
       });
       const queue =
         detail?.siblings && detail.siblings.length > 0
@@ -1182,12 +1189,21 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       // Legacy static array mode
       const currentListing = currentListingQueue[currentListingIndex];
       if (currentListing) {
+        // Slug can come from `url` (production Listing shape), `slug` /
+        // `slugAddress` (alternate shapes), or fall back to listingKey.
+        // Crashed previously when chat-v3 listings arrived without a
+        // url field.
+        const slug =
+          (currentListing as any).url?.replace?.('/mls-listings/', '') ||
+          (currentListing as any).slugAddress ||
+          (currentListing as any).slug ||
+          currentListing.id;
         const mapListing = {
           _id: currentListing.id,
           listingId: currentListing.id,
           listingKey: currentListing.id,
-          slug: currentListing.url.replace('/mls-listings/', ''),
-          slugAddress: currentListing.url.replace('/mls-listings/', ''),
+          slug,
+          slugAddress: slug,
           primaryPhotoUrl: currentListing.image || '',
           unparsedAddress: currentListing.address,
           address: currentListing.address,
@@ -1257,12 +1273,17 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       // Legacy static array mode
       const currentListing = currentListingQueue[currentListingIndex];
       if (currentListing) {
+        const slug =
+          (currentListing as any).url?.replace?.('/mls-listings/', '') ||
+          (currentListing as any).slugAddress ||
+          (currentListing as any).slug ||
+          currentListing.id;
         const mapListing = {
           _id: currentListing.id,
           listingId: currentListing.id,
           listingKey: currentListing.id,
-          slug: currentListing.url.replace('/mls-listings/', ''),
-          slugAddress: currentListing.url.replace('/mls-listings/', ''),
+          slug,
+          slugAddress: slug,
           primaryPhotoUrl: currentListing.image || '',
           unparsedAddress: currentListing.address,
           address: currentListing.address,
@@ -1918,11 +1939,17 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
             isLeftSidebarCollapsed={false}
             isDisliked={dislikedListings.some(d => d.listingKey === currentListingQueue[currentListingIndex].id)}
             onRemoveDislike={() => {
+              const cur = currentListingQueue[currentListingIndex] as any;
+              const slug =
+                cur.url?.replace?.('/mls-listings/', '') ||
+                cur.slugAddress ||
+                cur.slug ||
+                cur.id;
               const mapListing = {
-                _id: currentListingQueue[currentListingIndex].id,
-                listingKey: currentListingQueue[currentListingIndex].id,
-                slug: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
-                slugAddress: currentListingQueue[currentListingIndex].url.replace('/mls-listings/', ''),
+                _id: cur.id,
+                listingKey: cur.id,
+                slug,
+                slugAddress: slug,
               };
               removeDislike(mapListing as any);
             }}
