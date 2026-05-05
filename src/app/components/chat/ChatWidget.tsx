@@ -163,6 +163,23 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     }
   }, [autoSendMessage]);
 
+  // When the map closes (or on first chat-only mount), jump to the
+  // bottom of the messages list. The chat is a feed with the newest
+  // message at the bottom, so users coming back from the map view
+  // expect to land on the latest exchange — not at the top of the
+  // scroll. Two rAFs because the map's clip-path / pointer-events
+  // transition leaves the chat container size briefly stale; scrolling
+  // before the layout settles puts the anchor in the wrong spot.
+  useEffect(() => {
+    if (isMapVisible) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isMapVisible]);
+
   // chat-v3 in-message components (e.g. ListingOptionsList "Generate CMA")
   // dispatch a window event to submit a fresh chat turn without coupling
   // to ChatProvider internals. We listen and route through handleAIQuery
