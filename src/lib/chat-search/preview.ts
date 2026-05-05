@@ -486,12 +486,17 @@ export async function runPreview(
         ? adaptPrebuiltCmaStats(listing.cmaStats, listing)
         : null;
 
+      // Surface subject metadata to the narrator as a `listing` payload —
+      // without this, the narrator only sees the listingKey and invents
+      // status/price details (had it claiming an active listing was a
+      // "closed sale" until we plumbed this through).
       return {
         component: "cma",
         cmaScope: "listing",
         listingKey: listing.listingKey,
         slugAddress: listing.slugAddress,
         subdivisionName: listing.subdivisionName,
+        listing: mapListing(listing),
         cma: adapted,
         hasPrebuilt: Boolean(adapted),
         reason: adapted

@@ -284,11 +284,25 @@ export function describeContext(input: NarrationInput): string {
   } else if (preview?.component === "cma") {
     parts.push("");
     if (preview.cmaScope === "listing") {
+      // Surface subject metadata so the narrator can't invent status/price.
+      // Without this it was hallucinating "closed sale" on active listings.
+      const subj = preview.listing;
       parts.push(
-        `Layer 1 CMA: listing-level for ${preview.subdivisionName ? preview.subdivisionName + " · " : ""}listing ${preview.listingKey}.${preview.hasPrebuilt ? " Pre-computed cmaStats present." : " No pre-computed stats — CMAReport will generate on demand."}`
+        `Layer 1 CMA: listing-level CMA for the property below.${preview.hasPrebuilt ? " Pre-computed cmaStats present." : " No pre-computed stats — CMAReport will generate on demand."}`
       );
+      if (subj) {
+        parts.push(`  Subject AUTHORITATIVE facts (quote precisely):`);
+        parts.push(`    address: ${subj.address}`);
+        if (subj.subdivision) parts.push(`    subdivision: ${subj.subdivision}`);
+        if (subj.city) parts.push(`    city: ${subj.city}`);
+        if (subj.standardStatus) parts.push(`    status: ${subj.standardStatus} (DO NOT call this closed unless it literally says Closed)`);
+        if (subj.price) parts.push(`    list price: $${subj.price.toLocaleString()}`);
+        if (subj.beds) parts.push(`    beds: ${subj.beds}`);
+        if (subj.baths) parts.push(`    baths: ${subj.baths}`);
+        if (subj.sqft) parts.push(`    sqft: ${subj.sqft.toLocaleString()}`);
+      }
       parts.push(
-        "  → A CMA report component is rendering below your message. Lead the user into it; do not summarize comp data."
+        "  → REQUIRED phrasing: a single sentence acknowledging the CMA was generated for {address}, optionally with the list price. Example: \"Pulled the CMA for 78715 Naples Drive — listed at $585,000.\" or \"Here's the CMA for 77095 Desi Drive (listed at $1.3M).\" Do NOT invent status, sale dates, or any field not in the AUTHORITATIVE block above. Do NOT summarize comp data — the report below speaks for itself."
       );
     } else if (preview.cmaScope === "subdivision") {
       parts.push(
