@@ -66,6 +66,12 @@ export interface ParsedQuery {
 
 // Full street-suffix list — matches what's in the chat-v2 system prompt and
 // the existing field-name conventions in unified-listing.ts.
+// Standard US street suffixes the parser uses for ADDRESS_REGEX.
+// Kept intentionally minimal — addresses with non-standard suffixes
+// (Cove, Trail, Vista, Calle, Via, Camino, etc.) are resolved by
+// the describe-intent path in preview.ts via search_index, which
+// is suffix-agnostic. Don't extend this list to chase new suffixes;
+// the describe path already covers them.
 const STREET_SUFFIXES = [
   "drive", "dr",
   "street", "st",
@@ -84,27 +90,6 @@ const STREET_SUFFIXES = [
   "loop",
   "alley", "aly",
   "plaza", "plz",
-  // Common Coachella Valley + western US suffixes the original list
-  // missed — caused 'Tell me about 706 Summit Cove' to fall through
-  // to a zip-area search instead of resolving to listing-detail.
-  "cove",
-  "vista",
-  "path",
-  "ridge",
-  "run",
-  "row",
-  "walk",
-  "crossing",
-  "pass",
-  "point", "pt",
-  "ranch",
-  "manor",
-  "park",
-  "mountain", "mtn",
-  "canyon", "cyn",
-  "hill", "hills",
-  "heights",
-  "valley",
 ];
 
 const SUFFIX_GROUP = STREET_SUFFIXES.join("|");

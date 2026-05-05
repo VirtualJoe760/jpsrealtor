@@ -65,6 +65,18 @@ Renderer: `src/app/components/chat-v3/PreviewRenderer.tsx`.
 | `locationSnapshot` mode | Map-bar search (request body has `locationSnapshot`) | `fetchNearbyPOIs` enriches with cached Google Places, then Layer 3 with snapshot system prompt |
 | Layer 3 fallback | conversational / confidence < 0.5 | `streamWithToolSupport` from `chat-v2/streaming.ts` with full message history + all 8 tools |
 
+## "Describe X" resolver (preview.ts pre-dispatch)
+
+Catches `tell me about X / what about X / details for X / describe X / info on X / give me info on X` queries before any intent dispatch runs. Strips the preamble, runs `multiSourceSearch` against `search_index`, routes by the top hit's type:
+
+| Top hit type | Routes to | Notes |
+|---|---|---|
+| `listing` | `listingDetail` component | Sale-first (propertyType='A'), falls through to ANY when no sale exists at the address. Sanity-checks that resolved listing's address contains every word of the subject — guards against $text false positives. |
+| `subdivision` | `neighborhood` component (subdivision scope) | Runs `computeAreaStats` + 50-listing search |
+| `city` | `neighborhood` component (city scope) | Same |
+
+This is the **scalable address-resolution path**. Suffix-agnostic — "Summit Cove", "Via Venito", "Calle Real", any future-MLS street style — all become text the index ranks. Don't extend `STREET_SUFFIXES` to chase new suffixes; this path covers them.
+
 ---
 
 ## Auxiliary helpers

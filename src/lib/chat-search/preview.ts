@@ -176,6 +176,133 @@ function mapListing(l: any) {
 }
 
 // =============================================================================
+// Describe-intent resolver
+// =============================================================================
+
+/**
+ * Resolve a "describe X" subject text against the search index and
+ * mount the right component based on what the top hit is. Returns
+ * null when nothing matches strongly enough — caller falls through
+ * to the regular intent dispatch.
+ *
+ * Sale-first listing resolution: when the top hit is a listing,
+ * we prefer propertyType='A' over rental records at the same
+ * address, falling through to ANY propertyType only when no sale
+ * exists.
+ */
+async function resolveDescribeIntent(
+  subject: string,
+  t0: number
+): Promise<PreviewResult | null> {
+  const hits = await multiSourceSearch(subject, { limit: 6 });
+  if (hits.length === 0) return null;
+  const top = hits[0];
+  if (!top.entityId) return null;
+
+  const subjectWords = subject
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter((w) => w.length > 2);
+
+  // ---- listing top hit → listingDetail ----
+  if (top.type === "listing") {
+    const initial: any = await UnifiedListing.findOne({ listingKey: top.entityId })
+      .select(LISTING_PROJECTION)
+      .lean();
+    if (!initial) return null;
+
+    // Sanity check: the resolved listing's address must contain
+    // every word of the subject. Guards against $text false
+    // positives where the top hit just shares one keyword.
+    const addrText = (
+      (initial.unparsedAddress || initial.unparsedFirstLineAddress || "") as string
+    ).toLowerCase();
+    const matchesAddress = subjectWords.every((w) => addrText.includes(w));
+    if (!matchesAddress) return null;
+
+    // Prefer sale listing if the resolved one is a rental/etc.
+    let chosen = initial;
+    if (initial.propertyType !== "A") {
+      const sale: any = await UnifiedListing.findOne({
+        unparsedAddress: initial.unparsedAddress,
+        propertyType: "A",
+        standardStatus: "Active",
+      })
+        .select(LISTING_PROJECTION)
+        .lean();
+      if (sale) chosen = sale;
+    }
+
+    const [withPhoto] = await attachPhotos([chosen]);
+    return {
+      component: "listingDetail",
+      listing: mapListing(withPhoto),
+      ms: Date.now() - t0,
+    };
+  }
+
+  // ---- subdivision top hit → neighborhood (subdivision scope) ----
+  if (top.type === "subdivision") {
+    const sub: any = await Subdivision.findOne({
+      $or: [{ name: top.label }, { slug: top.slug }],
+    })
+      .select("name city")
+      .lean();
+    if (!sub) return null;
+    const scope: ListingScope = {
+      type: "subdivision",
+      subdivisionName: sub.name,
+      cityName: sub.city,
+    };
+    const stats = await computeAreaStats(scope, {});
+    const { query, Model } = await buildListingQuery(scope, {});
+    const docs = await Model.find(query)
+      .select(LISTING_PROJECTION)
+      .sort({ listPrice: -1 })
+      .limit(50)
+      .lean();
+    const withPhotos = await attachPhotos(docs as any[]);
+    return {
+      component: "neighborhood",
+      scope: { type: "subdivision", value: sub.name },
+      propertyType: "A",
+      stats,
+      listings: withPhotos.map(mapListing),
+      ms: Date.now() - t0,
+    };
+  }
+
+  // ---- city top hit → neighborhood (city scope) ----
+  if (top.type === "city") {
+    const cityName = top.label;
+    const scope: ListingScope = {
+      type: "city",
+      cityName,
+      cityId: cityName.toLowerCase().replace(/\s+/g, "-"),
+    };
+    const stats = await computeAreaStats(scope, {});
+    const { query, Model } = await buildListingQuery(scope, {});
+    const docs = await Model.find(query)
+      .select(LISTING_PROJECTION)
+      .sort({ listPrice: -1 })
+      .limit(50)
+      .lean();
+    const withPhotos = await attachPhotos(docs as any[]);
+    return {
+      component: "neighborhood",
+      scope: { type: "city", value: cityName },
+      propertyType: "A",
+      stats,
+      listings: withPhotos.map(mapListing),
+      ms: Date.now() - t0,
+    };
+  }
+
+  // Unknown top hit type — let the regular intent dispatch try
+  return null;
+}
+
+// =============================================================================
 // Main entry point
 // =============================================================================
 
@@ -187,22 +314,22 @@ export interface RunPreviewOptions {
   origin?: string;
 }
 
-// Detect "house# <street word> … 5-digit zip" anywhere in the raw
-// query — covers addresses the parser's ADDRESS_REGEX can't tag
-// because the street has no recognized suffix (Via Venito, Vista del
-// Sol, Calle Real, Camino Maravilla, plus suffixes the parser's
-// list misses like Cove / Trail). The parser tags those queries as
-// zip-search or conversational, which would fall through to the
-// agent loop and hallucinate; we want to short-circuit to a real
-// listing-detail render whenever the query clearly names a specific
-// property.
+// "Describe X" intent — anything that reads as the user pointing at
+// a specific subject: tell me about, what's about, info on, details
+// for, describe, give me info, etc. We strip this prefix and let
+// search_index ($text over every address / subdivision / city /
+// county) resolve the subject. This is the scalable path:
+// suffix-agnostic, future-proof, no hardcoded suffix list.
 //
-// House number is 1-6 digits (real US addresses can be as short as
-// "1 Main St"). We require it to be followed by whitespace + a
-// capital letter so we don't false-positive on bare numbers
-// inside otherwise-conversational text. Then a 5-digit zip
-// somewhere downstream.
-const ADDRESS_WITH_ZIP_RE = /\b(\d{1,6})\s+[A-Z][a-zA-Z]+.*\b(\d{5})\b/;
+// Examples of preambles this catches:
+//   "tell me about 706 Summit Cove"
+//   "what about Indian Wells Country Club"
+//   "details for 77638 Via Venito"
+//   "info on 75550 Beryl Lane"
+//   "describe Bighorn Golf Club"
+//   "give me info on 77013 Desi Drive"
+const DESCRIBE_PREAMBLE_RE =
+  /^\s*(?:(?:can\s+you\s+|please\s+|could\s+you\s+|i\s+(?:want|need)\s+(?:to\s+know\s+(?:about\s+)?)?|i'?d\s+like\s+(?:to\s+know\s+(?:about\s+)?)?)*)\s*(?:tell\s+me\s+(?:about\s+|more\s+about\s+)?|what(?:'s|\s+is|\s+can\s+you\s+tell\s+me|\s+do\s+you\s+know)?\s+about\s+|info(?:rmation)?\s+(?:about|on|for)\s+|details?\s+(?:about|on|for|of)\s+|describe\s+|show\s+me\s+(?:info\s+(?:about|on)\s+)?|give\s+me\s+(?:info|details)\s+(?:about|on|for)?\s+|about\s+)/i;
 
 export async function runPreview(
   parsed: ParsedQuery,
@@ -213,83 +340,30 @@ export async function runPreview(
 
   await dbConnect();
 
-  // ----- address-shape short-circuit -----
-  // If the raw query contains "<4-6 digits> ... <5-digit ZIP>" AND no
-  // addrEntity got tagged by the parser, attempt a multiSourceSearch
-  // resolution and auto-promote the top hit. Auto-promote criteria:
-  // top hit's address contains every word of the query that's longer
-  // than 2 chars. Same pattern as the cma fallback — if the address
-  // matches we render listingDetail directly.
-  const addrEntityFromParser = parsed.entities?.find(
-    (e: any) => e.type === "address"
-  );
-  if (!addrEntityFromParser && ADDRESS_WITH_ZIP_RE.test(parsed.raw)) {
+  // ----- "describe X" short-circuit (search-index resolver) -----
+  // When the user prefaces a query with "tell me about / what about /
+  // details for / describe / etc.", we strip the preamble and treat
+  // the rest as the SUBJECT of inquiry. multiSourceSearch resolves it
+  // against search_index — same data the autocomplete uses, $text
+  // over every listing address, subdivision, city, county. The top
+  // hit's TYPE tells us how to render:
+  //
+  //   listing      → listingDetail
+  //   subdivision  → neighborhood (subdivision scope)
+  //   city         → neighborhood (city scope)
+  //
+  // This is the scalable path. It's suffix-agnostic — "Summit Cove",
+  // "Via Venito", "Calle Real" all become text the index ranks.
+  // No hardcoded street suffix list to maintain.
+  if (DESCRIBE_PREAMBLE_RE.test(parsed.raw)) {
     try {
-      // Strip "tell me about / what about / details for" preamble so
-      // the search index gets just the address text.
-      const cleaned = parsed.raw
-        .replace(
-          /^\s*(?:(?:can\s+you\s+|please\s+|could\s+you\s+|i\s+(?:want|need)\s+|i'?d\s+like\s+|give\s+me\s+|show\s+me\s+|tell\s+me\s+|what\s+(?:can\s+you\s+tell\s+me\s+|about\s+|do\s+you\s+know\s+about\s+)?|details\s+(?:for|of|on|about)\s+|info(?:rmation)?\s+(?:for|of|on|about)\s+|about\s+)*)/i,
-          ""
-        )
-        .trim();
-      if (cleaned.length >= 6) {
-        const hits = await multiSourceSearch(cleaned, { limit: 6 });
-        const listingHits = hits.filter((h) => h.type === "listing" && h.entityId);
-        if (listingHits.length > 0) {
-          const queryWords = cleaned
-            .toLowerCase()
-            .split(/[\s,]+/)
-            .filter((w: string) => w.length > 2);
-          const topKey = listingHits[0].entityId!;
-          // Hydrate the top hit + verify it actually matches the
-          // address words. If it doesn't (rare, but cheap to guard),
-          // fall through and let the regular intent dispatch run.
-          const top: any = await UnifiedListing.findOne({ listingKey: topKey })
-            .select(LISTING_PROJECTION)
-            .lean();
-          if (top) {
-            const addrText = (
-              (top.unparsedAddress || top.unparsedFirstLineAddress || "") as string
-            ).toLowerCase();
-            const isMatch = queryWords.every((w) => addrText.includes(w));
-            if (isMatch) {
-              // Prefer the sale listing (propertyType='A') when the
-              // same address has both a sale and a rental record.
-              // Without this we'd pick whichever the search index
-              // surfaced first — often the rental, which renders a
-              // confusing "$9,000/month for $1/month HOA" card on a
-              // "tell me about" query. Rentals fall through only
-              // when no sale exists for the address.
-              if (top.propertyType !== "A") {
-                const sale: any = await UnifiedListing.findOne({
-                  unparsedAddress: top.unparsedAddress,
-                  propertyType: "A",
-                  standardStatus: "Active",
-                })
-                  .select(LISTING_PROJECTION)
-                  .lean();
-                if (sale) {
-                  const [withPhoto] = await attachPhotos([sale]);
-                  return {
-                    component: "listingDetail",
-                    listing: mapListing(withPhoto),
-                    ms: Date.now() - t0,
-                  };
-                }
-              }
-              const [withPhoto] = await attachPhotos([top]);
-              return {
-                component: "listingDetail",
-                listing: mapListing(withPhoto),
-                ms: Date.now() - t0,
-              };
-            }
-          }
-        }
+      const subject = parsed.raw.replace(DESCRIBE_PREAMBLE_RE, "").trim();
+      if (subject.length >= 2) {
+        const result = await resolveDescribeIntent(subject, t0);
+        if (result) return result;
       }
     } catch (err) {
-      console.warn("[preview] address-shape short-circuit failed:", err);
+      console.warn("[preview] describe-intent resolver failed:", err);
     }
   }
 
