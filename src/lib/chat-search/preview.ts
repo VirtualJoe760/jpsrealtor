@@ -187,6 +187,16 @@ export interface RunPreviewOptions {
   origin?: string;
 }
 
+// Detect "house# … 5-digit zip" anywhere in the raw query — covers
+// addresses the parser's ADDRESS_REGEX can't tag because the street
+// has no recognized suffix (Via Venito, Vista del Sol, Calle Real,
+// Camino Maravilla, etc — all common in the Coachella Valley).
+// The parser tags those queries as conversational, which would fall
+// through to the agent loop and hallucinate; we want to short-circuit
+// to a real listing-detail render whenever the query clearly names
+// a specific property.
+const ADDRESS_WITH_ZIP_RE = /\b(\d{4,6})\b.*\b(\d{5})\b/;
+
 export async function runPreview(
   parsed: ParsedQuery,
   options: RunPreviewOptions = {}
@@ -195,6 +205,86 @@ export async function runPreview(
   const { origin } = options;
 
   await dbConnect();
+
+  // ----- address-shape short-circuit -----
+  // If the raw query contains "<4-6 digits> ... <5-digit ZIP>" AND no
+  // addrEntity got tagged by the parser, attempt a multiSourceSearch
+  // resolution and auto-promote the top hit. Auto-promote criteria:
+  // top hit's address contains every word of the query that's longer
+  // than 2 chars. Same pattern as the cma fallback — if the address
+  // matches we render listingDetail directly.
+  const addrEntityFromParser = parsed.entities?.find(
+    (e: any) => e.type === "address"
+  );
+  if (!addrEntityFromParser && ADDRESS_WITH_ZIP_RE.test(parsed.raw)) {
+    try {
+      // Strip "tell me about / what about / details for" preamble so
+      // the search index gets just the address text.
+      const cleaned = parsed.raw
+        .replace(
+          /^\s*(?:(?:can\s+you\s+|please\s+|could\s+you\s+|i\s+(?:want|need)\s+|i'?d\s+like\s+|give\s+me\s+|show\s+me\s+|tell\s+me\s+|what\s+(?:can\s+you\s+tell\s+me\s+|about\s+|do\s+you\s+know\s+about\s+)?|details\s+(?:for|of|on|about)\s+|info(?:rmation)?\s+(?:for|of|on|about)\s+|about\s+)*)/i,
+          ""
+        )
+        .trim();
+      if (cleaned.length >= 6) {
+        const hits = await multiSourceSearch(cleaned, { limit: 6 });
+        const listingHits = hits.filter((h) => h.type === "listing" && h.entityId);
+        if (listingHits.length > 0) {
+          const queryWords = cleaned
+            .toLowerCase()
+            .split(/[\s,]+/)
+            .filter((w: string) => w.length > 2);
+          const topKey = listingHits[0].entityId!;
+          // Hydrate the top hit + verify it actually matches the
+          // address words. If it doesn't (rare, but cheap to guard),
+          // fall through and let the regular intent dispatch run.
+          const top: any = await UnifiedListing.findOne({ listingKey: topKey })
+            .select(LISTING_PROJECTION)
+            .lean();
+          if (top) {
+            const addrText = (
+              (top.unparsedAddress || top.unparsedFirstLineAddress || "") as string
+            ).toLowerCase();
+            const isMatch = queryWords.every((w) => addrText.includes(w));
+            if (isMatch) {
+              // Prefer the sale listing (propertyType='A') when the
+              // same address has both a sale and a rental record.
+              // Without this we'd pick whichever the search index
+              // surfaced first — often the rental, which renders a
+              // confusing "$9,000/month for $1/month HOA" card on a
+              // "tell me about" query. Rentals fall through only
+              // when no sale exists for the address.
+              if (top.propertyType !== "A") {
+                const sale: any = await UnifiedListing.findOne({
+                  unparsedAddress: top.unparsedAddress,
+                  propertyType: "A",
+                  standardStatus: "Active",
+                })
+                  .select(LISTING_PROJECTION)
+                  .lean();
+                if (sale) {
+                  const [withPhoto] = await attachPhotos([sale]);
+                  return {
+                    component: "listingDetail",
+                    listing: mapListing(withPhoto),
+                    ms: Date.now() - t0,
+                  };
+                }
+              }
+              const [withPhoto] = await attachPhotos([top]);
+              return {
+                component: "listingDetail",
+                listing: mapListing(withPhoto),
+                ms: Date.now() - t0,
+              };
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[preview] address-shape short-circuit failed:", err);
+    }
+  }
 
   // ----- listing-detail: look up the specific listing -----
   if (parsed.intent === "listing-detail") {
@@ -227,22 +317,48 @@ export async function runPreview(
     };
     if (streetLookahead) primaryQuery.unparsedAddress = streetLookahead;
 
-    let listing: any = await UnifiedListing.findOne(primaryQuery)
+    // Prefer the sale listing (propertyType='A') over rental ('B') /
+    // multifamily ('C') / land ('D') when both exist for the same
+    // address. Rentals reuse listPrice for monthly rent which renders
+    // confusingly on a "tell me about" card; sale is the default
+    // user expectation.
+    let listing: any = await UnifiedListing.findOne({
+      ...primaryQuery,
+      propertyType: "A",
+    })
       .select(LISTING_PROJECTION)
       .lean();
 
+    // No sale listing? Fall through to ANY propertyType so we still
+    // surface land/rental when nothing else exists at that address.
+    if (!listing) {
+      listing = await UnifiedListing.findOne(primaryQuery)
+        .select(LISTING_PROJECTION)
+        .lean();
+    }
+
     // Fallback: drop the slug constraint and rely solely on
     // unparsedAddress matching the full house# + street phrase. Covers
-    // listings whose slug uses an alternate house# format.
+    // listings whose slug uses an alternate house# format. Sale-first
+    // again then ANY.
     if (!listing && streetWords.length > 0) {
       const lookaheads = streetWords.map((w: string) => `(?=.*${w})`).join("");
       const re = new RegExp(`^${houseNum}.*${lookaheads}`, "i");
       listing = await UnifiedListing.findOne({
         unparsedAddress: re,
         standardStatus: "Active",
+        propertyType: "A",
       })
         .select(LISTING_PROJECTION)
         .lean();
+      if (!listing) {
+        listing = await UnifiedListing.findOne({
+          unparsedAddress: re,
+          standardStatus: "Active",
+        })
+          .select(LISTING_PROJECTION)
+          .lean();
+      }
     }
 
     if (!listing) {
@@ -497,6 +613,7 @@ export async function runPreview(
         // street-word lookahead so multiple-listings-share-a-house#
         // can't return the wrong property. (Previously the slug-only
         // first lookup picked whichever 74300-* came first.)
+        // Also prefer propertyType='A' (sale) over rental/etc.
         const slugRegex = new RegExp(`^${houseNum}-`);
         const streetLookahead =
           streetWords.length > 0
@@ -504,16 +621,26 @@ export async function runPreview(
             : null;
         const primary: any = { slugAddress: slugRegex };
         if (streetLookahead) primary.unparsedAddress = streetLookahead;
-        listing = await UnifiedListing.findOne(primary)
+        listing = await UnifiedListing.findOne({ ...primary, propertyType: "A" })
           .select(cmaProjection)
           .lean();
+        if (!listing) {
+          listing = await UnifiedListing.findOne(primary)
+            .select(cmaProjection)
+            .lean();
+        }
 
         if (!listing && streetWords.length > 0) {
           const lookaheads = streetWords.map((w: string) => `(?=.*${w})`).join("");
           const re = new RegExp(`^${houseNum}.*${lookaheads}`, "i");
-          listing = await UnifiedListing.findOne({ unparsedAddress: re })
+          listing = await UnifiedListing.findOne({ unparsedAddress: re, propertyType: "A" })
             .select(cmaProjection)
             .lean();
+          if (!listing) {
+            listing = await UnifiedListing.findOne({ unparsedAddress: re })
+              .select(cmaProjection)
+              .lean();
+          }
         }
       }
 
