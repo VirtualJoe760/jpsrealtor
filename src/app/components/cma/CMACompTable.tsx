@@ -8,6 +8,41 @@ import {
 import { useTheme } from "@/app/contexts/ThemeContext";
 import CMAConfidenceBadge from "./CMAConfidenceBadge";
 
+// Same event ChatWidget listens for from ListingOptionsList — opens
+// the production ListingBottomPanel for an active listing. Closed
+// comp rows don't dispatch since /api/mls-listings/[slug] only serves
+// active inventory.
+const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
+
+function dispatchOpenPanel(comp: CMAComp) {
+  if (typeof window === "undefined") return;
+  // Slim shape compatible with the chat-v3 PreviewListing the
+  // ChatWidget handler maps onto the production Listing shape.
+  window.dispatchEvent(
+    new CustomEvent(OPEN_PANEL_EVENT, {
+      detail: {
+        listing: {
+          listingKey: comp.listingKey,
+          slugAddress: (comp as any).slugAddress, // Python writes this on cmaStats comps; safe to pass undefined
+          address: comp.address,
+          city: comp.city,
+          subdivision: comp.subdivisionName ?? undefined,
+          price: comp.currentListPrice ?? (comp as any).listPrice ?? 0,
+          beds: comp.bedsTotal,
+          baths: comp.bathsTotal,
+          sqft: comp.livingArea,
+          lotSize: comp.lotSize,
+          yearBuilt: comp.yearBuilt,
+          primaryPhotoUrl: (comp as any).primaryPhotoUrl,
+          standardStatus: "Active",
+          latitude: (comp as any).latitude,
+          longitude: (comp as any).longitude,
+        },
+      },
+    })
+  );
+}
+
 function fmt(n: number | undefined | null): string {
   if (n == null || isNaN(n)) return "—";
   return n.toLocaleString();
@@ -106,7 +141,13 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
           {comps.map((comp) => (
             <TableRow
               key={comp.listingKey}
-              className={isLight ? "hover:bg-gray-50" : "hover:bg-neutral-800/30"}
+              onClick={!isClosed ? () => dispatchOpenPanel(comp) : undefined}
+              className={`${
+                isLight ? "hover:bg-gray-50" : "hover:bg-neutral-800/30"
+              } ${
+                !isClosed ? "cursor-pointer" : ""
+              }`}
+              title={!isClosed ? "Click to view photos and full details" : undefined}
             >
               <TableCell className={`${cellClass} max-w-[180px] truncate`}>
                 {comp.address}
