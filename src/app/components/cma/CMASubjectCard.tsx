@@ -24,9 +24,11 @@ function fmtPrice(n: number): string {
 export default function CMASubjectCard({
   subject,
   tier,
+  primaryPhotoUrl,
 }: {
   subject: CMASubject;
   tier: CMATier;
+  primaryPhotoUrl?: string;
 }) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -52,15 +54,29 @@ export default function CMASubjectCard({
     <Card className={`${isLight ? "bg-white/80 border-gray-300" : "bg-black/40 border-neutral-800/50"} backdrop-blur-xl`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className={`text-xl md:text-2xl ${isLight ? "text-gray-900" : "text-white"}`}>
-              {subject.address}
-            </CardTitle>
-            <p className={`text-sm mt-1 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
-              {subject.subdivisionName && <span>{subject.subdivisionName} · </span>}
-              {subject.city} · {subject.propertySubType}
-              {subject.landType === "Lease" && <span className="text-amber-400"> · Lease Land</span>}
-            </p>
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            {/* Primary photo — small thumbnail at top-left of the
+                header. Hides when no photo URL is supplied so the
+                card layout stays clean for properties without
+                photos. */}
+            {primaryPhotoUrl && (
+              <img
+                src={primaryPhotoUrl}
+                alt={subject.address}
+                className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover flex-shrink-0"
+                loading="lazy"
+              />
+            )}
+            <div className="min-w-0">
+              <CardTitle className={`text-xl md:text-2xl ${isLight ? "text-gray-900" : "text-white"}`}>
+                {subject.address}
+              </CardTitle>
+              <p className={`text-sm mt-1 ${isLight ? "text-gray-500" : "text-neutral-400"}`}>
+                {subject.subdivisionName && <span>{subject.subdivisionName} · </span>}
+                {subject.city} · {subject.propertySubType}
+                {subject.landType === "Lease" && <span className="text-amber-400"> · Lease Land</span>}
+              </p>
+            </div>
           </div>
           <div className="text-right flex-shrink-0">
             <div className={`text-2xl md:text-3xl font-extrabold ${isLight ? "text-blue-600" : "text-emerald-400"}`}>

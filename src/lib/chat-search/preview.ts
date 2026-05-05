@@ -187,15 +187,22 @@ export interface RunPreviewOptions {
   origin?: string;
 }
 
-// Detect "house# … 5-digit zip" anywhere in the raw query — covers
-// addresses the parser's ADDRESS_REGEX can't tag because the street
-// has no recognized suffix (Via Venito, Vista del Sol, Calle Real,
-// Camino Maravilla, etc — all common in the Coachella Valley).
-// The parser tags those queries as conversational, which would fall
-// through to the agent loop and hallucinate; we want to short-circuit
-// to a real listing-detail render whenever the query clearly names
-// a specific property.
-const ADDRESS_WITH_ZIP_RE = /\b(\d{4,6})\b.*\b(\d{5})\b/;
+// Detect "house# <street word> … 5-digit zip" anywhere in the raw
+// query — covers addresses the parser's ADDRESS_REGEX can't tag
+// because the street has no recognized suffix (Via Venito, Vista del
+// Sol, Calle Real, Camino Maravilla, plus suffixes the parser's
+// list misses like Cove / Trail). The parser tags those queries as
+// zip-search or conversational, which would fall through to the
+// agent loop and hallucinate; we want to short-circuit to a real
+// listing-detail render whenever the query clearly names a specific
+// property.
+//
+// House number is 1-6 digits (real US addresses can be as short as
+// "1 Main St"). We require it to be followed by whitespace + a
+// capital letter so we don't false-positive on bare numbers
+// inside otherwise-conversational text. Then a 5-digit zip
+// somewhere downstream.
+const ADDRESS_WITH_ZIP_RE = /\b(\d{1,6})\s+[A-Z][a-zA-Z]+.*\b(\d{5})\b/;
 
 export async function runPreview(
   parsed: ParsedQuery,

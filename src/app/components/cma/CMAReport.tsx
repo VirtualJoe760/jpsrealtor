@@ -9,6 +9,7 @@ import CMASubjectCard from "./CMASubjectCard";
 import CMACompTable from "./CMACompTable";
 import CMANarrative from "./CMANarrative";
 import PricePositionCard from "./PricePositionCard";
+import CMASubjectGallery from "./CMASubjectGallery";
 import ListingsMap from "@/app/components/map/ListingsMap";
 import PricePerSqftBar from "./charts/PricePerSqftBar";
 import PriceTrendLine from "./charts/PriceTrendLine";
@@ -59,6 +60,10 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
   // Pulled from /api/agent/public; falls back to Joseph's contact info if
   // the public profile route is unavailable. Used in the AI-disclaimer footer.
   const { agent } = useAgentProfile();
+  // Subject property photos — drives both the small primary photo on
+  // the subject card header and the horizontal carousel rendered
+  // between Price Position and Active Properties.
+  const [subjectPhotos, setSubjectPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     if (preloadedResult || !listingKey) return;
@@ -100,6 +105,35 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
     fetchCMA();
     return () => { cancelled = true; };
   }, [listingKey, preloadedResult, subdivisionName]);
+
+  // Fetch subject property photos. Runs whenever the listingKey on
+  // the result changes. Uses the same Spark-backed photos endpoint
+  // ListingDetailCard / CommunitySpotlight already use, so the
+  // 1-hour cache is shared. Capped at 30 photos.
+  useEffect(() => {
+    const key = result?.subject?.listingKey || listingKey;
+    if (!key) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/listings/${key}/photos`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const urls: string[] = (data.photos || [])
+          .slice(0, 30)
+          .map((p: any) =>
+            p.uri1600 || p.uri1280 || p.uri1024 || p.uri800 || p.uri640 || p.uriLarge
+          )
+          .filter(Boolean);
+        if (!cancelled) setSubjectPhotos(urls);
+      } catch {
+        // Soft-fail — gallery just doesn't render
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [result?.subject?.listingKey, listingKey]);
 
   if (loading) {
     return (
@@ -162,7 +196,11 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
       <RevealSection>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
-            <CMASubjectCard subject={result.subject} tier={result.tier} />
+            <CMASubjectCard
+              subject={result.subject}
+              tier={result.tier}
+              primaryPhotoUrl={subjectPhotos[0]}
+            />
           </div>
           <div className="flex flex-col justify-between">
             <CMANarrative result={result} />
@@ -174,6 +212,21 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
       <RevealSection>
         <PricePositionCard result={result} />
       </RevealSection>
+
+      {/* Subject property photo carousel — sits between price position
+          and active comps so the user can browse the home before
+          looking at competing inventory. Click any photo for full-
+          screen lightbox. Hidden when no photos are available. */}
+      {subjectPhotos.length > 0 && (
+        <RevealSection>
+          <div className={sectionClass}>
+            <CMASubjectGallery
+              photos={subjectPhotos}
+              address={result.subject.address}
+            />
+          </div>
+        </RevealSection>
+      )}
 
       {/* Active Comps */}
       {result.activeComps.length > 0 && (

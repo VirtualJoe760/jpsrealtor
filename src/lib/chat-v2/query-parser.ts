@@ -84,6 +84,27 @@ const STREET_SUFFIXES = [
   "loop",
   "alley", "aly",
   "plaza", "plz",
+  // Common Coachella Valley + western US suffixes the original list
+  // missed — caused 'Tell me about 706 Summit Cove' to fall through
+  // to a zip-area search instead of resolving to listing-detail.
+  "cove",
+  "vista",
+  "path",
+  "ridge",
+  "run",
+  "row",
+  "walk",
+  "crossing",
+  "pass",
+  "point", "pt",
+  "ranch",
+  "manor",
+  "park",
+  "mountain", "mtn",
+  "canyon", "cyn",
+  "hill", "hills",
+  "heights",
+  "valley",
 ];
 
 const SUFFIX_GROUP = STREET_SUFFIXES.join("|");
