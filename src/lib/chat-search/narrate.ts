@@ -298,17 +298,15 @@ export function describeContext(input: NarrationInput): string {
         "  → A CMA report component is rendering below your message. Lead the user into it; do not summarize comp data."
       );
     } else if (preview.cmaScope === "listingOptions") {
-      // Disambiguation: multiple listings matched the user's query (e.g. a
-      // street with no house number). The picker component is rendering
-      // below the message. Narrator should ASK the user to pick one — NOT
-      // claim no matches were found, since we did find listings.
+      // Disambiguation: multiple listings matched the user's query. Use the
+      // exact phrasing the agent prefers — short, no over-explaining.
       const count = preview.listings?.length ?? 0;
       const where = preview.scope?.value || "your search";
       parts.push(
         `Layer 1 CMA: DISAMBIGUATION — ${count} listing${count === 1 ? "" : "s"} matched "${where}". A picker component is rendering below your message.`
       );
       parts.push(
-        `  → IMPORTANT: lead with "I found ${count} listing${count === 1 ? "" : "s"} on ${where} — which one would you like a CMA for?" or similar phrasing. DO NOT say "we couldn't find matches" — we did find them, the user just needs to pick one.`
+        `  → REQUIRED phrasing: "I've found ${count} result${count === 1 ? "" : "s"} for ${where}. Let me know which one you want a CMA for." Output that single sentence verbatim — no preamble, no explanation, no extra context. The picker component speaks for itself.`
       );
     } else {
       parts.push(`Layer 1 CMA: ${preview.reason || "scope not resolved"}.`);

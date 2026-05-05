@@ -595,20 +595,45 @@ export async function runPreview(
         const hits = await multiSourceSearch(cleaned, { limit: 8 });
         const listingHits = hits.filter((h) => h.type === "listing" && h.entityId);
         if (listingHits.length > 0) {
-          // Hydrate by listingKey to get full bed/bath/sqft/photo data.
           const keys = listingHits.map((h) => h.entityId).filter(Boolean) as string[];
           const docs = await UnifiedListing.find({ listingKey: { $in: keys } })
             .select(LISTING_PROJECTION)
             .lean();
           const withPhotos = await attachPhotos(docs as any[]);
-          const listings = withPhotos.map(mapListing);
+
+          // ----- Re-rank to surface the closest matches -----
+          // The search index returns hits ordered by its own scoring, but
+          // Mongo's $in doesn't preserve order, AND $text scoring can rank
+          // a "Drive"-keyword false positive above an exact "Desi Drive"
+          // match. Pin listings whose address contains every word of the
+          // cleaned query to the top, then everything else in search-index
+          // order. So a query for "desi drive" puts the actual Desi Drive
+          // properties first; tangential "Drive"-keyword hits land below.
+          const queryWords = cleaned
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w: string) => w.length > 1);
+          const hitOrder = new Map<string, number>();
+          listingHits.forEach((h, i) => h.entityId && hitOrder.set(h.entityId, i));
+
+          const ranked = (withPhotos as any[]).slice().sort((a, b) => {
+            const aAddr = ((a.unparsedAddress || a.unparsedFirstLineAddress || "") as string).toLowerCase();
+            const bAddr = ((b.unparsedAddress || b.unparsedFirstLineAddress || "") as string).toLowerCase();
+            const aExact = queryWords.every((w) => aAddr.includes(w));
+            const bExact = queryWords.every((w) => bAddr.includes(w));
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            return (hitOrder.get(a.listingKey) ?? 999) - (hitOrder.get(b.listingKey) ?? 999);
+          });
+          const listings = ranked.map(mapListing);
+
           return {
             component: "cma",
             cmaScope: "listingOptions",
             listings,
             totalCount: listings.length,
             scope: { type: "search", value: cleaned },
-            reason: `I found multiple listings matching "${cleaned}". Which one do you want me to do a CMA for?`,
+            reason: `I've found ${listings.length} result${listings.length === 1 ? "" : "s"} for ${cleaned}. Let me know which one you want a CMA for.`,
             ms: Date.now() - t0,
           };
         }
