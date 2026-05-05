@@ -154,9 +154,16 @@ function StatsCard({
 // loud for what's really just a "I need a bit more context" nudge.
 // ---------------------------------------------------------------------------
 
+// Left indent matches the assistant avatar offset (w-7 sm:w-8 + gap-2 sm:gap-3)
+// so the note's first character lines up with the bubble text start, instead
+// of starting flush with the avatar column. Negative margin top pulls it up
+// closer to the bubble — visually it sits adjacent to the copy/share buttons,
+// reading as part of the same response rather than a separate block.
 function SoftNote({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs italic text-gray-500 mt-1.5 px-1">{children}</p>
+    <p className="text-xs italic text-gray-500 pl-9 sm:pl-11 -mt-1.5">
+      {children}
+    </p>
   );
 }
 
