@@ -163,6 +163,22 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     }
   }, [autoSendMessage]);
 
+  // chat-v3 in-message components (e.g. ListingOptionsList "Generate CMA")
+  // dispatch a window event to submit a fresh chat turn without coupling
+  // to ChatProvider internals. We listen and route through handleAIQuery
+  // so the new turn flows through the same parser → preview → narrate pipe.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<{ message: string }>).detail?.message;
+      if (typeof msg === "string" && msg.trim()) {
+        console.log("[ChatWidget] chatv3:send-message →", msg);
+        handleAIQuery(msg);
+      }
+    };
+    window.addEventListener("chatv3:send-message", handler);
+    return () => window.removeEventListener("chatv3:send-message", handler);
+  }, []); // handleAIQuery is stable enough for this; it reads via closure
+
   const handleCopy = async (text: string, id: string) => {
     try {
       await navigator.clipboard.writeText(text);

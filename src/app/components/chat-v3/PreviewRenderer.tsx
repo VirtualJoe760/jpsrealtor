@@ -16,6 +16,7 @@ import ListingCarousel, {
 } from "@/app/components/chat/ListingCarousel";
 import ListingListView from "@/app/components/chat/ListingListView";
 import { ArticleResults } from "@/app/components/chat/ArticleCard";
+import ListingOptionsList from "@/app/components/chat-v3/ListingOptionsList";
 import type {
   PreviewResult,
   PreviewListing,
@@ -301,14 +302,11 @@ export default function PreviewRenderer({
           <SoftNote>{preview.reason || "No properties found on that street."}</SoftNote>
         );
       }
+      // Dedicated component renders Details + Generate CMA buttons per
+      // card. The Generate CMA button dispatches a window event that
+      // ChatWidget picks up and submits as a fresh chat turn.
       return (
-        <div className="space-y-2">
-          {preview.reason && <SoftNote>{preview.reason}</SoftNote>}
-          <ListingCarousel
-            listings={opts.map(toCarouselListing)}
-            title={`${opts.length} ${opts.length === 1 ? "property" : "properties"}${preview.scope?.value ? " on " + preview.scope.value : ""}`}
-          />
-        </div>
+        <ListingOptionsList listings={opts} scopeLabel={preview.scope?.value} />
       );
     }
     if (preview.cmaScope === "listing") {
