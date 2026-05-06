@@ -104,7 +104,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
   // Map control for showing listings on background map
   const { showMapWithListings, showMapAtLocation, hideMap, isMapVisible, prePositionMap, setMapVisible } = useMapControl();
-  const { isMapVisible: isMapVisibleState } = useMapState();
+  const { isMapVisible: isMapVisibleState, resetMapState } = useMapState();
 
   // Auto-scroll to bottom on new messages
   const messagesEndRef = useChatScroll(messages);
@@ -1094,6 +1094,11 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
     setMessage("");
     setShowNewChatModal(false);
     hideMap(); // Hide map when starting new chat
+    // Wipe persisted map view so the next map open re-runs
+    // resolveSpawnPoint() — re-prompts geolocation if granted, falls
+    // back to Palm Desert. Map view is scoped to the chat session,
+    // so a fresh chat gets a fresh map.
+    resetMapState();
   };
 
   const cancelNewChat = () => {

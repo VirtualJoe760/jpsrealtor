@@ -144,9 +144,16 @@
       "Bash(find /f/web-clients/joseph-sardella/jpsrealtor/src -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \n\\))",
       "Bash(mkdir -p \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/api/campaigns/[id]/ad-metrics\")",
       "Bash(mkdir -p \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/api/campaigns/[id]/ad-status\")",
-      "Bash(find F:/web-clients/joseph-sardella/jpsrealtor -type f \\\\\\(-name *chat*log* -o -name *conversation* -o -name *messages*log* \\\\\\))"
+      "Bash(find F:/web-clients/joseph-sardella/jpsrealtor -type f \\\\\\(-name *chat*log* -o -name *conversation* -o -name *messages*log* \\\\\\))",
+      "Bash(npx tsx *)",
+      "Bash(sed -n '63,95p' \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/ListingListView.tsx\")",
+      "Bash(sed -n '155,200p' \"F:/web-clients/joseph-sardella/jpsrealtor/src/app/components/chat/ArticleCard.tsx\")",
+      "Bash(wait %1)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "gsc"
+  ]
 }

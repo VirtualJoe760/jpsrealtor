@@ -6,6 +6,7 @@
 
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { usePathname, useRouter } from "next/navigation";
 import { Map, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
@@ -24,7 +25,9 @@ export default function MapToggleButton() {
       if (isMapVisible) {
         hideMap();
       } else {
-        showMapAtLocation(37.0, -119.5, 5);
+        resolveSpawnPoint().then((spawn) => {
+          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+        });
       }
     } else {
       router.push("/chap");

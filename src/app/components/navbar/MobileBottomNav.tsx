@@ -5,6 +5,7 @@ import { Home, Search, User, MessageSquare, Map, MapPin } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { usePWA } from "@/app/contexts/PWAContext";
 import { useState, useRef, useCallback, useEffect } from "react";
 
@@ -89,7 +90,9 @@ export default function MobileBottomNav() {
     } else if (path === "/chap?view=map") {
       // Map mode
       if (isChapPage) {
-        showMapAtLocation(37.0, -119.5, 5);
+        resolveSpawnPoint().then((spawn) => {
+          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+        });
       } else {
         router.push("/chap?view=map");
       }

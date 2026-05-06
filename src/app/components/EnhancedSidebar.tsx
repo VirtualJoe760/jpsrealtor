@@ -30,6 +30,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useMapControl } from "../hooks/useMapControl";
+import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { trackEvent } from "@/lib/meta-pixel";
 import { trackClickToCall } from "@/lib/google-ads";
 
@@ -142,7 +143,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const handleMapToggle = () => {
     if (isChapPage) {
       if (!isMapVisible) {
-        showMapAtLocation(37.0, -119.5, 5);
+        // Resolve spawn point once — geolocation prompt or Palm Desert.
+        // Off-page click goes through the URL → /chap effect runs the
+        // same resolver path on mount, so we only need this branch.
+        resolveSpawnPoint().then((spawn) => {
+          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+        });
       }
       if (onClose) onClose();
     } else {

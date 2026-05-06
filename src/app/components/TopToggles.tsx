@@ -8,6 +8,7 @@ import { Sun, Moon, Map, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -106,8 +107,10 @@ export default function TopToggles() {
           // User has searched - reveal the pre-positioned map
           setMapVisible(true);
         } else {
-          // No search yet - show default California view
-          showMapAtLocation(37.0, -119.5, 5);
+          // No persisted view → resolve spawn point (geolocation or Palm Desert)
+          resolveSpawnPoint().then((spawn) => {
+            showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+          });
         }
       }
     } else {

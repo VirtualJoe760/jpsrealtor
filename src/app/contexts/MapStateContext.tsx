@@ -59,6 +59,12 @@ interface MapStateContextType {
   // Map interaction mode
   isMapInteractive: boolean;
   setMapInteractive: (interactive: boolean) => void;
+
+  // Wipes the persisted map view (sessionStorage `mapViewState`) and
+  // nulls in-memory viewState. The chat-session "New Chat" handler
+  // calls this so the next map open re-runs resolveSpawnPoint() —
+  // re-prompting geolocation / falling back to Palm Desert.
+  resetMapState: () => void;
 }
 
 const MapStateContext = createContext<MapStateContextType | undefined>(undefined);
@@ -161,6 +167,21 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
     setIsMapVisible(true);
   }, []);
 
+  // Tied to "New Chat" — clears the persisted map view so the next
+  // open re-runs resolveSpawnPoint(). We deliberately do NOT touch
+  // mapVisible / displayListings / selectedListing here; those are
+  // ephemeral UI state. Only the position survives chats, and it's
+  // what we want to reset.
+  const resetMapState = useCallback(() => {
+    console.log('🗺️ [MapStateContext] Resetting map view state for new chat');
+    setViewStateInternal(null);
+    try {
+      sessionStorage.removeItem('mapViewState');
+    } catch {
+      // Ignore — non-fatal
+    }
+  }, []);
+
   const value: MapStateContextType = {
     isMapVisible,
     setMapVisible,
@@ -178,6 +199,7 @@ export function MapStateProvider({ children }: MapStateProviderProps) {
     setMapOpacity,
     isMapInteractive,
     setMapInteractive: setIsMapInteractive,
+    resetMapState,
   };
 
   return (

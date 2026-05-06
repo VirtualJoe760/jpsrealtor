@@ -17,6 +17,7 @@ import MapSearchBar from "@/app/components/map/MapSearchBar";
 import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
+import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import type { Filters } from "@/types/types";
 import { useChatTutorial } from "@/app/components/tutorial";
@@ -101,38 +102,58 @@ function HomeContent() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  // Check for view parameter on initial mount with conflict resolution
+  // Check for view parameter on initial mount.
+  //
+  // Resolution rules:
+  //   1. URL is the user's most recent intent — it always wins. If the
+  //      URL says ?view=map we show the map; if it doesn't, we hide.
+  //   2. When the URL spawns the map for the first time (no saved
+  //      viewState), we resolve a spawn point: geolocation → Palm Desert.
+  //   3. Lat/lng/zoom URL params (deep-link from a listing page, etc.)
+  //      override the resolver — they're explicit coordinates.
+  //
+  // Previously the page treated session-state as authoritative and
+  // re-added ?view=map when the URL disagreed. That meant clicking
+  // the sidebar "Chat" button (router.push("/chap")) reopened the map
+  // because last-session had it open. URL-wins fixes that.
   useEffect(() => {
     const viewParam = searchParams?.get('view');
     const mapParam = searchParams?.get('map');
     const urlWantsMap = viewParam === 'map' || mapParam === 'open';
 
-    // Conflict resolution: if URL and state disagree, state wins (user's last action)
-    // sessionStorage is already loaded into isMapVisible state
-    if (urlWantsMap && !isMapVisible) {
-      // URL wants map — show it (user clicked Map in sidebar/nav)
-      console.log('🔧 [CHAP] URL wants map, showing map');
-      showMapAtLocation(37.0, -119.5, 5);
-    } else if (!urlWantsMap && isMapVisible) {
-      // State wants map but URL doesn't have it - sync URL
-      console.log('🔧 [HomePage] URL/state conflict: Adding missing ?view=map parameter');
-      router.replace('/chap?view=map', { scroll: false });
-    } else if (urlWantsMap && isMapVisible) {
-      // Both agree map should be visible - restore position if available
+    if (urlWantsMap) {
+      // Lat/lng/zoom in URL → deep link from a specific listing.
+      // Honor it directly without geolocation.
       const latParam = searchParams?.get('lat');
       const lngParam = searchParams?.get('lng');
       const zoomParam = searchParams?.get('zoom');
-
       if (latParam && lngParam && zoomParam) {
         const lat = parseFloat(latParam);
         const lng = parseFloat(lngParam);
         const zoom = parseFloat(zoomParam);
-        console.log('🗺️ [HomePage] Restoring map view from URL:', { lat, lng, zoom });
+        console.log('🗺️ [CHAP] Restoring map view from URL:', { lat, lng, zoom });
         showMapAtLocation(lat, lng, zoom);
+      } else if (viewState) {
+        // We have persisted viewState (mid-chat — user already opened
+        // the map this session and panned somewhere). Re-show without
+        // re-running geolocation.
+        console.log('🗺️ [CHAP] URL wants map, restoring persisted viewState');
+        showMapAtLocation(viewState.centerLat, viewState.centerLng, viewState.zoom);
       } else {
-        // Show entire California on initial map load
-        showMapAtLocation(37.0, -119.5, 5);
+        // Fresh chat session, no persisted view → resolve spawn point.
+        // Browser will prompt for geolocation on first call; outside
+        // CA / denied / timed out all collapse to Palm Desert.
+        console.log('🗺️ [CHAP] URL wants map, resolving spawn point');
+        resolveSpawnPoint().then((spawn) => {
+          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+        });
       }
+    } else if (isMapVisible) {
+      // URL says "no map" but state says map is open. URL wins —
+      // user's most recent action (e.g. sidebar Chat button) takes
+      // precedence over saved session state.
+      console.log('🔧 [CHAP] URL says no map, hiding (URL wins over state)');
+      hideMap();
     }
 
     setInitialLoad(false);
@@ -314,9 +335,12 @@ function HomeContent() {
           viewState.zoom
         );
       } else {
-        // Default: Show entire California
-        console.log('🗺️ [handleToggleMap] No pre-positioned location, showing California');
-        showMapAtLocation(37.0, -119.5, 5);
+        // No pre-positioned location → resolve spawn point
+        // (geolocation prompt or Palm Desert fallback).
+        console.log('🗺️ [handleToggleMap] No pre-positioned location, resolving spawn point');
+        resolveSpawnPoint().then((spawn) => {
+          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
+        });
       }
     }
   };
