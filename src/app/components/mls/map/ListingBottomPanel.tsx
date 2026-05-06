@@ -16,6 +16,7 @@ import {
 import type { MapListing } from "@/types/types";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PannelCarousel from "./PannelCarousel";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import DislikedBadge from "./DislikedBadge";
@@ -109,6 +110,7 @@ export default function ListingBottomPanel({
 
   const controls = useAnimationControls();
   const panelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Stable portal container — must be declared before any early returns
   const portalRef = useRef<HTMLDivElement | null>(null);
@@ -462,15 +464,20 @@ export default function ListingBottomPanel({
                 the active action vs the neutral share/calendar. */}
             <button
               onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent("chatv3:send-message", {
-                    detail: { message: `Tell me about ${address}` },
-                  })
-                );
-                // Close the panel so the user sees the chat response
-                // streaming in below — the panel was covering the
-                // message feed.
+                // Navigate to /chap with the AI query as a URL param
+                // — works from any page (map view, /mls-listings, etc).
+                // /chap reads the param on mount, hides the map if
+                // visible, and passes the message to ChatWidget's
+                // autoSendMessage prop. URL navigation preserves the
+                // pattern: same-page nav doesn't unmount the chat
+                // tree (Next.js client routing), so chat history
+                // survives. Cross-page nav lands the user at the
+                // chat view with the response already streaming.
+                const url = `/chap?aiQuery=${encodeURIComponent(
+                  `Tell me about ${address}`
+                )}`;
                 onClose();
+                router.push(url);
               }}
               title="Ask AI about this property"
               className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${

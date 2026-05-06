@@ -36,6 +36,14 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  // Captured ?aiQuery= param. ListingBottomPanel's AI button (and any
+  // future "ask AI" affordance from another page or the map) navigates
+  // here with the query in the URL. We snapshot it on mount, hide the
+  // map so the chat is visible, clear the URL param so it doesn't
+  // re-fire on subsequent renders, then pass it to ChatWidget's
+  // autoSendMessage prop. ChatWidget's existing effect runs once per
+  // value change and routes through handleAIQuery.
+  const [pendingAiQuery, setPendingAiQuery] = useState<string | null>(null);
   const { viewState } = useMapState();
   const {
     selectedListing,
@@ -153,6 +161,24 @@ function HomeContent() {
 
     window.addEventListener('toggleMapControls', handleToggleControls);
     return () => window.removeEventListener('toggleMapControls', handleToggleControls);
+  }, []);
+
+  // Capture ?aiQuery= from URL → autoSendMessage to ChatWidget.
+  // Drives the "ask AI about this property" flow from anywhere
+  // (ListingBottomPanel, /mls-listings page CTAs, etc).
+  useEffect(() => {
+    const aiQuery = searchParams?.get('aiQuery');
+    if (!aiQuery) return;
+    setPendingAiQuery(aiQuery);
+    // Hide map so the chat response is visible
+    if (isMapVisible) hideMap();
+    // Clear the param so it doesn't re-fire on re-renders
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('aiQuery');
+    const next = params.toString() ? `/chap?${params.toString()}` : '/chap';
+    router.replace(next, { scroll: false });
+    // searchParams excluded from deps because we update it ourselves
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Restore selected listing from URL parameter
@@ -402,7 +428,7 @@ function HomeContent() {
       {/* Chat Widget - renders above both backgrounds */}
       {/* When map is visible, only the input bar should capture clicks */}
       <div className="relative z-20" style={{ pointerEvents: mounted && isMapVisible ? 'none' : 'auto' }} suppressHydrationWarning>
-        <ChatWidget />
+        <ChatWidget autoSendMessage={pendingAiQuery ?? undefined} />
       </div>
 
       {/* Favorites Panel - always mounted, hidden via CSS */}
