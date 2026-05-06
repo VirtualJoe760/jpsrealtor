@@ -224,32 +224,67 @@ export default function ListingDetailCard({
   }, [slugAddress, listingKey]);
 
   // ---------- Nearby listings fetch ----------
-  // Same /api/listings/related endpoint the production
-  // /mls-listings/[slugAddress] page uses for its similar-listings
-  // section. Subdivision-first with city fallback (the route handles
-  // it). Drives the small nearby map above the agent section.
-  // Capped at 5 — small inline map gets cluttered fast and the
-  // user just wants a sense of what's nearby, not a full inventory.
+  // Two-strategy: prefer geographic-radius (bbox query against
+  // unified_listings) when the subject has lat/lng, fall back to
+  // subdivision/city affinity. The geo path is more reliable —
+  // doesn't fail when the subdivision name is unique or the city
+  // is sparsely indexed. Capped at 5 entries; the inline map gets
+  // cluttered fast.
   useEffect(() => {
-    if (!city) return;
     let cancelled = false;
-    const params = new URLSearchParams({ city, limit: "5" });
-    if (subdivision) params.set("subdivision", subdivision);
-    if (listingKey) params.set("exclude", listingKey);
+    const subjLat = enriched?.latitude;
+    const subjLng = enriched?.longitude;
+
     (async () => {
       try {
-        const res = await fetch(`/api/listings/related?${params.toString()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data?.listings)) setNearby(data.listings);
+        let listings: any[] = [];
+
+        // Strategy 1 — geo bbox (~3 mile radius). Most reliable when
+        // we have subject coordinates.
+        if (
+          typeof subjLat === "number" &&
+          typeof subjLng === "number" &&
+          subjLat !== 0 &&
+          subjLng !== 0
+        ) {
+          const params = new URLSearchParams({
+            lat: String(subjLat),
+            lng: String(subjLng),
+            radius: "3",
+            limit: "5",
+          });
+          if (listingKey) params.set("exclude", listingKey);
+          const res = await fetch(`/api/listings/nearby?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.listings)) listings = data.listings;
+          }
+        }
+
+        // Strategy 2 — subdivision/city affinity fallback. Used when
+        // we don't have subject coords OR the geo query came back
+        // empty (rural area, sparse data).
+        if (listings.length === 0 && city) {
+          const params = new URLSearchParams({ city, limit: "5" });
+          if (subdivision) params.set("subdivision", subdivision);
+          if (listingKey) params.set("exclude", listingKey);
+          const res = await fetch(`/api/listings/related?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.listings)) listings = data.listings;
+          }
+        }
+
+        if (!cancelled) setNearby(listings);
       } catch {
         // soft-fail — no nearby section if fetch errors
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [city, subdivision, listingKey]);
+  }, [city, subdivision, listingKey, enriched?.latitude, enriched?.longitude]);
 
   // ---------- Lightbox keyboard nav ----------
   useEffect(() => {
