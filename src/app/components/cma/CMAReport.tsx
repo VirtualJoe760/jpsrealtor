@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { CMAResult, cmaCompsToMapListings } from "@/lib/cma/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useAgentProfile } from "@/app/hooks/useAgentProfile";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Home, Eye } from "lucide-react";
 import CMASubjectCard from "./CMASubjectCard";
 import CMACompTable from "./CMACompTable";
 import CMANarrative from "./CMANarrative";
@@ -323,6 +323,96 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
           </div>
         </RevealSection>
       )}
+
+      {/* Bottom action row — same surface as ListingDetailCard's
+          buttons. Sparkles asks the AI for a property description,
+          See Similar Listings opens a chat search for the
+          subdivision/city, View opens the production
+          ListingBottomPanel via the chatv3:open-listing-panel
+          window event ChatWidget already listens for. */}
+      <RevealSection>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:send-message", {
+                  detail: { message: `Tell me about ${result.subject.address}` },
+                })
+              );
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/30"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Generate Listing Description
+          </button>
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              const scope =
+                result.subject.subdivisionName || result.subject.city;
+              if (!scope) return;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:send-message", {
+                  detail: { message: `show similar homes in ${scope}` },
+                })
+              );
+            }}
+            disabled={!result.subject.subdivisionName && !result.subject.city}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            See Similar Listings
+          </button>
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              // Same shape ListingOptionsList / Carousel dispatch.
+              // ChatWidget's listener maps it onto the production
+              // Listing shape and calls handleOpenListingPanel.
+              const subj = result.subject as any;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:open-listing-panel", {
+                  detail: {
+                    listing: {
+                      listingKey: subj.listingKey,
+                      slugAddress: subj.slugAddress,
+                      address: subj.address,
+                      city: subj.city,
+                      subdivision: subj.subdivisionName,
+                      price: subj.listPrice,
+                      beds: subj.bedsTotal,
+                      baths: subj.bathsTotal,
+                      sqft: subj.livingArea,
+                      lotSize: subj.lotSize,
+                      yearBuilt: subj.yearBuilt,
+                      latitude: subj.latitude,
+                      longitude: subj.longitude,
+                      standardStatus: "Active",
+                    },
+                  },
+                })
+              );
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+            }`}
+          >
+            <Eye className="w-4 h-4" />
+            View in Panel
+          </button>
+        </div>
+      </RevealSection>
 
       {/* AI disclaimer + agent contact CTA */}
       <RevealSection>
