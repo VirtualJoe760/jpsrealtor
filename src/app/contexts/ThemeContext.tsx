@@ -185,7 +185,8 @@ function getThemeColor(theme: ThemeName): string {
 }
 
 /**
- * Listing data interface
+ * Listing data interface — drives the theme-transition overlay
+ * showcase. agentName is rendered as a "Listed by …" treatment.
  */
 interface FeaturedListing {
   photoUrl: string;
@@ -195,32 +196,67 @@ interface FeaturedListing {
   beds: number;
   baths: number;
   sqft?: number;
+  agentName?: string;
+  officeName?: string;
 }
 
 /**
- * Featured Obsidian Group listings (fetched from API)
+ * Featured eXp listings near the user (fetched from API)
  */
 let FEATURED_LISTINGS: FeaturedListing[] = [];
 
+// Auto-expanding radius — start tight (5mi), expand outward until
+// we get at least one usable listing or exhaust the schedule. The
+// jumps are intentionally large because each step is an API round
+// trip; we'd rather do 4 wide buckets than 20 narrow ones. 500mi
+// covers any reasonable continental US fallback when geolocation
+// is denied AND the Palm Desert default has no nearby inventory.
+const RADIUS_SCHEDULE_MILES = [5, 25, 100, 500];
+
 /**
- * Fetch Obsidian Group featured listings
+ * Fetch nearby eXp featured listings.
+ *
+ * Resolves a center point via resolveSpawnPoint() (geolocation
+ * prompt → user's coords if granted-and-in-CA, else Palm Desert),
+ * then queries /api/listings/featured with an auto-expanding
+ * radius until we get at least one usable listing.
  */
 async function fetchFeaturedListings(): Promise<void> {
   try {
-    const response = await fetch('/api/listings/featured');
-    if (!response.ok) {
-      console.warn('[ThemeContext] Failed to fetch featured listings:', response.status);
-      return;
+    // Lazy-import to avoid pulling the geolocation helper into the
+    // module-init bundle (it's only needed once on mount).
+    const { resolveSpawnPoint } = await import('@/lib/map/resolve-spawn-point');
+    const center = await resolveSpawnPoint();
+
+    for (const radius of RADIUS_SCHEDULE_MILES) {
+      const url = `/api/listings/featured?lat=${center.lat}&lng=${center.lng}&radius=${radius}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(
+          `[ThemeContext] /api/listings/featured ${response.status} (radius ${radius}mi)`
+        );
+        continue;
+      }
+
+      const data = await response.json();
+      const usable = (data?.listings || []).filter((l: any) => l.photoUrl);
+      if (usable.length > 0) {
+        FEATURED_LISTINGS = usable;
+        console.log(
+          `[ThemeContext] Loaded ${usable.length} eXp listings within ${radius}mi of ` +
+            `(${center.lat.toFixed(3)}, ${center.lng.toFixed(3)})`
+        );
+        return;
+      }
+      // Empty at this radius — expand and retry.
+      console.log(
+        `[ThemeContext] No eXp listings within ${radius}mi, expanding`
+      );
     }
 
-    const data = await response.json();
-    if (data.success && data.listings && data.listings.length > 0) {
-      // Store full listing objects
-      FEATURED_LISTINGS = data.listings.filter((listing: any) => listing.photoUrl);
-      console.log(`[ThemeContext] Loaded ${FEATURED_LISTINGS.length} Obsidian Group featured listings`);
-    } else {
-      console.warn('[ThemeContext] No featured listings returned from API');
-    }
+    console.warn(
+      '[ThemeContext] Exhausted radius schedule with no listings — overlay will fall back to solid-color transition'
+    );
   } catch (error) {
     console.error('[ThemeContext] Error fetching featured listings:', error);
   }
@@ -254,8 +290,9 @@ function restoreFeaturedListings(): void {
 }
 
 /**
- * Get random Obsidian Group listing
- * Returns null if no listings available
+ * Get a random nearby eXp broker listing for the overlay showcase.
+ * Returns null if no listings available — caller falls back to a
+ * solid-color transition with no property card.
  */
 function getRandomListing(): FeaturedListing | null {
   if (FEATURED_LISTINGS.length === 0) restoreFeaturedListings(); // Try cache first
@@ -412,7 +449,7 @@ function playExitAnimation(
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
 
-    // Get random Obsidian Group listing
+    // Get random eXp broker listing near user
     const listing = getRandomListing();
 
     // If no listings available, show simple solid color transition
@@ -458,7 +495,7 @@ function playExitAnimation(
             opacity: 0;
             animation: fadeInText 0.5s ease-out ${duration}ms forwards;
           ">
-            Featured Team Property
+            Broker Listing
           </div>
           <div style="
             margin-top: 20px;
@@ -513,6 +550,19 @@ function playExitAnimation(
                 ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
               </div>
             </div>
+            ${listing.agentName ? `
+              <div style="
+                margin-top: 18px;
+                padding-top: 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.15);
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.85);
+                letter-spacing: 0.5px;
+              ">
+                <span style="opacity: 0.6; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px;">Listed by</span>
+                <span style="margin-left: 8px; font-weight: 600;">${listing.agentName}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -610,7 +660,7 @@ function playEnterAnimation(
     // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
 
-    // Get random Obsidian Group listing
+    // Get random eXp broker listing near user
     const listing = getRandomListing();
 
     // If no listings available, show simple solid color transition
@@ -662,7 +712,7 @@ function playEnterAnimation(
             letter-spacing: 1px;
             opacity: 0;
           ">
-            Featured Team Property
+            Broker Listing
           </div>
           <div id="enter-details" style="
             margin-top: 20px;
@@ -716,6 +766,19 @@ function playEnterAnimation(
                 ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
               </div>
             </div>
+            ${listing.agentName ? `
+              <div style="
+                margin-top: 18px;
+                padding-top: 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.15);
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.85);
+                letter-spacing: 0.5px;
+              ">
+                <span style="opacity: 0.6; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px;">Listed by</span>
+                <span style="margin-left: 8px; font-weight: 600;">${listing.agentName}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -816,7 +879,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch Obsidian Group featured listings on mount
+  // Fetch nearby eXp broker listings on mount (geolocation prompt → Palm Desert fallback)
   useEffect(() => {
     fetchFeaturedListings();
   }, []);
