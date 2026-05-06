@@ -225,7 +225,8 @@ export interface CMAStats {
   minPrice: number;
   maxPrice: number;
   medianPrice: number;
-  avgPricePerSqft: number;
+  avgPricePerSqft: number;        // List price per sqft (active comps)
+  avgSalePricePerSqft?: number;   // Sale price per sqft (closed only)
   avgSqft: number;
   minSqft: number;
   maxSqft: number;

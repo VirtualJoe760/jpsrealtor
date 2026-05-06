@@ -212,7 +212,10 @@ export default function CMACompTable({ title, comps, stats, isClosed }: CMACompT
             )}
             <TableCell className={`${footClass} text-right`}>{fmtPrice(stats.avgPrice)}</TableCell>
             {isClosed && <TableCell className={`${footClass} text-right`}>{fmtPrice(stats.avgPrice)}</TableCell>}
-            {isClosed && <TableCell className={`${footClass} text-right`}>${fmt(stats.avgPricePerSqft)}</TableCell>}
+            {/* SP/SqFt averages the comps' salePricePerSqft field —
+                NOT avgPricePerSqft (which is list-price-per-sqft and
+                was rendering $0 in this column). */}
+            {isClosed && <TableCell className={`${footClass} text-right`}>${fmt(stats.avgSalePricePerSqft || 0)}</TableCell>}
             {isClosed && <TableCell className={`${footClass} text-right`}>{fmtRatio(stats.avgSalePriceToListRatio)}</TableCell>}
             <TableCell className={`${footClass} text-right`}>{stats.avgDaysOnMarket}</TableCell>
             <TableCell className={footClass} />

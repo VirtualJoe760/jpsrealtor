@@ -198,6 +198,7 @@ function fillMissingStats(rawStats: any, comps: any[], priceField: "listPrice" |
   const lots = numbers("lotSize");
   const prices = numbers(priceField);
   const ppsfs = numbers("listPricePerSqft");
+  const salePpsfs = numbers("salePricePerSqft");
   const doms = comps
     .map((c) => c?.daysOnMarket)
     .filter((v) => typeof v === "number" && v >= 0) as number[];
@@ -236,6 +237,11 @@ function fillMissingStats(rawStats: any, comps: any[], priceField: "listPrice" |
   if (stats.medianPrice == null || stats.medianPrice === 0) stats.medianPrice = median(prices);
   if (stats.avgPricePerSqft == null || stats.avgPricePerSqft === 0)
     stats.avgPricePerSqft = avg(ppsfs);
+  // Closed comps carry salePricePerSqft on each row; the SP/SqFt
+  // column footer reads avgSalePricePerSqft. Without this it was
+  // showing $0 because nothing computed it.
+  if (stats.avgSalePricePerSqft == null || stats.avgSalePricePerSqft === 0)
+    stats.avgSalePricePerSqft = avg(salePpsfs);
   if (stats.avgSqft == null || stats.avgSqft === 0) stats.avgSqft = avg(sqfts);
   if (stats.avgLotSize == null || stats.avgLotSize === 0) stats.avgLotSize = avg(lots);
   if (stats.avgDaysOnMarket == null || stats.avgDaysOnMarket === 0)
