@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
+import { fetchPrimaryPhotos } from "@/lib/listings/fetch-primary-photos";
 
 const DEFAULT_RADIUS_MILES = 3;
 const MAX_RADIUS_MILES = 25;
@@ -77,16 +78,15 @@ export async function GET(req: NextRequest) {
     // as the cap on the JS-side distance sort below.
     const docs = await UnifiedListing.find(query)
       .select(
-        "listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea latitude longitude primaryPhotoUrl"
+        // mlsId + mlsSource needed for the Spark photo fallback
+        "listingKey slugAddress unparsedAddress city stateOrProvince listPrice bedroomsTotal bathroomsTotalInteger livingArea latitude longitude primaryPhotoUrl mlsId mlsSource"
       )
       .sort({ listPrice: -1 })
       .limit(Math.max(limit * 3, 12)) // overfetch so we can rank by distance
       .lean();
 
-    // Rank by Euclidean distance from subject (close enough at small
-    // radii — no need for haversine here since we're sorting, not
-    // measuring exact distances). Take the top `limit`.
-    const ranked = (docs as any[])
+    // Rank by Euclidean distance from subject, take top `limit`.
+    const top = (docs as any[])
       .map((d) => {
         const dLat = (d.latitude || 0) - lat;
         const dLng = (d.longitude || 0) - lng;
@@ -94,20 +94,40 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => a.distSq - b.distSq)
       .slice(0, limit)
-      .map(({ d }) => ({
-        listingKey: d.listingKey,
-        slugAddress: d.slugAddress,
-        unparsedAddress: d.unparsedAddress || "Unknown Address",
-        city: d.city || "",
-        stateOrProvince: d.stateOrProvince || "CA",
-        listPrice: d.listPrice || 0,
-        bedroomsTotal: d.bedroomsTotal,
-        bathroomsTotalInteger: d.bathroomsTotalInteger,
-        livingArea: d.livingArea,
-        latitude: d.latitude,
-        longitude: d.longitude,
-        primaryPhotoUrl: d.primaryPhotoUrl || null,
-      }));
+      .map(({ d }) => d);
+
+    // Photo fallback: unified_listings.primaryPhotoUrl is unreliable
+    // across MLS sources (some sync paths skip it). For any listing
+    // without a stored URL, batch-fetch the primary photo from Spark
+    // in a single round-trip (1-hour CDN cache). This drives the
+    // popup card photos on the inline nearby map.
+    const missingPhotos = top.filter(
+      (d) => !d.primaryPhotoUrl && d.mlsId && d.listingKey
+    );
+    let photoMap = new Map<string, string>();
+    if (missingPhotos.length > 0) {
+      try {
+        photoMap = await fetchPrimaryPhotos(missingPhotos);
+      } catch (err) {
+        console.warn("[listings/nearby] Spark photo fetch failed:", err);
+      }
+    }
+
+    const ranked = top.map((d) => ({
+      listingKey: d.listingKey,
+      slugAddress: d.slugAddress,
+      unparsedAddress: d.unparsedAddress || "Unknown Address",
+      city: d.city || "",
+      stateOrProvince: d.stateOrProvince || "CA",
+      listPrice: d.listPrice || 0,
+      bedroomsTotal: d.bedroomsTotal,
+      bathroomsTotalInteger: d.bathroomsTotalInteger,
+      livingArea: d.livingArea,
+      latitude: d.latitude,
+      longitude: d.longitude,
+      primaryPhotoUrl:
+        d.primaryPhotoUrl || photoMap.get(d.listingKey) || null,
+    }));
 
     return NextResponse.json({
       listings: ranked,
