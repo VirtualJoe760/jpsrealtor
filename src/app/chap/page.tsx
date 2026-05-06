@@ -166,20 +166,41 @@ function HomeContent() {
   // Capture ?aiQuery= from URL → autoSendMessage to ChatWidget.
   // Drives the "ask AI about this property" flow from anywhere
   // (ListingBottomPanel, /mls-listings page CTAs, etc).
+  //
+  // Watches searchParams (not just []) because Next App Router
+  // doesn't remount the page on same-route navigation — when the
+  // user is on /chap?view=map and the panel pushes
+  // /chap?aiQuery=..., the component instance stays alive and only
+  // the URL changes. Effect re-fires, captures the new query, and
+  // calls hideMap() so the chat response is visible.
+  //
+  // Guard against re-processing the same query by stashing it in a
+  // ref. After we capture and clear the URL param, the effect
+  // re-fires with no aiQuery, which is fine — the early return
+  // skips it.
+  const lastProcessedAiQuery = useRef<string | null>(null);
   useEffect(() => {
     const aiQuery = searchParams?.get('aiQuery');
     if (!aiQuery) return;
+    if (lastProcessedAiQuery.current === aiQuery) return;
+    lastProcessedAiQuery.current = aiQuery;
+
     setPendingAiQuery(aiQuery);
-    // Hide map so the chat response is visible
+    // Hide map so the chat response is visible. Also clear any
+    // ?view=map and ?listing= params so the URL ends up clean
+    // (otherwise the map would re-open on the next render via the
+    // initial-load effect at line 97).
     if (isMapVisible) hideMap();
-    // Clear the param so it doesn't re-fire on re-renders
     const params = new URLSearchParams(searchParams.toString());
     params.delete('aiQuery');
+    params.delete('view');
+    params.delete('listing');
+    params.delete('lat');
+    params.delete('lng');
+    params.delete('zoom');
     const next = params.toString() ? `/chap?${params.toString()}` : '/chap';
     router.replace(next, { scroll: false });
-    // searchParams excluded from deps because we update it ourselves
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, isMapVisible, hideMap, router]);
 
   // Restore selected listing from URL parameter
   useEffect(() => {
