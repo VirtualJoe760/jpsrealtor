@@ -79,18 +79,24 @@ export default function CMASubjectGallery({ photos, address }: Props) {
     resumeTimer.current = setTimeout(resume, ms);
   };
 
-  // Translate vertical wheel scroll into horizontal — without it the
-  // page scrolls instead of the strip when the cursor is over the
-  // carousel.
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  // Translate vertical wheel scroll into horizontal carousel scroll.
+  // Native addEventListener with {passive: false} so preventDefault
+  // actually stops the page from scrolling — React's synthetic
+  // onWheel is passive by default in React 19 and would let the
+  // page scroll alongside the carousel.
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    }
-    pauseFor(PAUSE_AFTER_INTERACTION_MS);
-  };
+    const handler = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+      pauseFor(PAUSE_AFTER_INTERACTION_MS);
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
 
   // Cleanup pending resume timer on unmount
   useEffect(() => () => {
@@ -135,7 +141,6 @@ export default function CMASubjectGallery({ photos, address }: Props) {
         onMouseEnter={pause}
         onMouseLeave={resume}
         onTouchStart={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
-        onWheel={handleWheel}
         className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >

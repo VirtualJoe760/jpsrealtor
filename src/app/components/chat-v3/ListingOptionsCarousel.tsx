@@ -137,22 +137,28 @@ export default function ListingOptionsCarousel({
   };
 
   // Translate vertical wheel scroll into horizontal carousel scroll
-  // when the cursor is over the strip — without this the page
-  // scrolls vertically and the user can't browse the carousel with
-  // a mouse wheel. Also pauses auto-scroll for a few seconds so the
-  // user's intent isn't fought by the rotation.
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  // when the cursor is over the strip. React's synthetic onWheel is
+  // attached as PASSIVE by default in React 19, which makes
+  // preventDefault() a no-op — the page keeps scrolling alongside
+  // the carousel. We attach the listener natively with
+  // {passive: false} via addEventListener so preventDefault actually
+  // takes effect.
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Only intercept when the dominant axis is vertical (regular
-    // mouse wheels). Trackpads that already produce deltaX let the
-    // browser's native horizontal scroll do its thing.
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    }
-    pauseFor(PAUSE_AFTER_INTERACTION_MS);
-  };
+    const handler = (e: WheelEvent) => {
+      // Only intercept when the dominant axis is vertical (regular
+      // mouse wheels). Trackpads that already produce deltaX let the
+      // browser's native horizontal scroll do its thing.
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+      pauseFor(PAUSE_AFTER_INTERACTION_MS);
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
 
   // Cleanup any pending resume timer on unmount.
   useEffect(() => () => {
@@ -176,7 +182,6 @@ export default function ListingOptionsCarousel({
         onMouseEnter={pause}
         onMouseLeave={resume}
         onTouchStart={() => pauseFor(PAUSE_AFTER_INTERACTION_MS)}
-        onWheel={handleWheel}
         // Hidden scrollbar — Firefox/standards via scrollbarWidth,
         // WebKit/Blink via the arbitrary variant on ::-webkit-scrollbar.
         // Carousel rotates on its own and pauses on hover, so a visible
