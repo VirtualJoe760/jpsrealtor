@@ -1058,20 +1058,33 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
       return;
     }
 
-    // Wait for map to be fully loaded before setting up event handlers
+    // Wait for map to be fully loaded before setting up event handlers.
+    // The deferred path also has to forward setupHoverHandlers' cleanup
+    // — once load fires it registers a mousemove handler that needs to
+    // be torn down when the effect re-runs (otherwise same handler-leak
+    // bug as the eager path below).
     if (!map.isStyleLoaded()) {
       console.log('⏸️ Map style not loaded, waiting...');
+      let cleanupAfterLoad: (() => void) | undefined;
       const onLoad = () => {
         console.log('🎨 Map style loaded, setting up hover handlers');
-        setupHoverHandlers();
+        cleanupAfterLoad = setupHoverHandlers();
       };
       map.once('load', onLoad);
       return () => {
         map.off('load', onLoad);
+        cleanupAfterLoad?.();
       };
     }
 
-    setupHoverHandlers();
+    // Capture the cleanup setupHoverHandlers returns and forward it
+    // as the effect's cleanup. Previously this return was discarded —
+    // each time dataToRender's identity changed the effect re-ran and
+    // registered ANOTHER mousemove handler without removing the prior
+    // one. With N leaked handlers all calling setHoveredPolygon, a
+    // single mouse move fired N synchronous setState calls, hitting
+    // React's "max update depth exceeded" after enough re-renders.
+    return setupHoverHandlers();
 
     function setupHoverHandlers() {
       console.log('🎨 Setting up global hover handlers for all polygon layers');
