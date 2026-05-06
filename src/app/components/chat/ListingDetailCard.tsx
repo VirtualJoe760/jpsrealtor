@@ -24,15 +24,16 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 
-// ChatMapView pulls in maplibre-gl which is heavy; lazy-load so it
-// only ships when the listing card actually renders. Same pattern
-// the ListingOptionsViewer Map tab uses.
-const ChatMapView = dynamic(
-  () => import("@/app/components/chat/ChatMapView"),
+// ListingsMap is the polished modern map (AnimatedMarker price pills,
+// hover/select states, popup cards) used on city/subdivision pages.
+// Lazy-load — maplibre-gl is heavy and we only need it when the
+// listing detail card renders.
+const ListingsMap = dynamic(
+  () => import("@/app/components/map/ListingsMap"),
   {
     ssr: false,
     loading: () => (
-      <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />
+      <div className="h-72 bg-gray-100 rounded-lg animate-pulse" />
     ),
   }
 );
@@ -240,7 +241,9 @@ export default function ListingDetailCard({
         let listings: any[] = [];
 
         // Strategy 1 — geo bbox (~3 mile radius). Most reliable when
-        // we have subject coordinates.
+        // we have subject coordinates. Limit raised to 25 — the
+        // upgraded ListingsMap clusters/handles density nicely so
+        // showing more nearby inventory is fine.
         if (
           typeof subjLat === "number" &&
           typeof subjLng === "number" &&
@@ -251,7 +254,7 @@ export default function ListingDetailCard({
             lat: String(subjLat),
             lng: String(subjLng),
             radius: "3",
-            limit: "5",
+            limit: "25",
           });
           if (listingKey) params.set("exclude", listingKey);
           const res = await fetch(`/api/listings/nearby?${params.toString()}`);
@@ -265,7 +268,7 @@ export default function ListingDetailCard({
         // we don't have subject coords OR the geo query came back
         // empty (rural area, sparse data).
         if (listings.length === 0 && city) {
-          const params = new URLSearchParams({ city, limit: "5" });
+          const params = new URLSearchParams({ city, limit: "12" });
           if (subdivision) params.set("subdivision", subdivision);
           if (listingKey) params.set("exclude", listingKey);
           const res = await fetch(`/api/listings/related?${params.toString()}`);
@@ -624,52 +627,71 @@ export default function ListingDetailCard({
           const totalMappable = mappableNearby.length + (subjectHasCoords ? 1 : 0);
           if (totalMappable === 0) return null;
 
+          // Map to the ListingsMap MapListing shape (different from
+          // the chat-v3 PreviewListing shape) — uses listPrice, bedsTotal,
+          // bathroomsTotalInteger, photoUrl rather than the slim
+          // price/beds/baths/image keys ChatMapView wanted.
           const mapListings = [
-            // Subject first so it lands as the map center
+            // Subject first so it lands at the map center
             ...(subjectHasCoords
               ? [
                   {
-                    id: listingKey,
                     listingKey,
-                    listingId: listingKey,
-                    address,
-                    latitude: e.latitude,
-                    longitude: e.longitude,
-                    price,
-                    beds: beds ?? e.bedroomsTotal,
-                    baths: baths ?? e.bathroomsTotalInteger,
-                    sqft: sqft ?? e.livingArea,
-                    image: photos[0] || primaryPhotoUrl,
-                    city,
-                    subdivision,
                     slugAddress,
-                    slug: slugAddress,
+                    address,
+                    latitude: e.latitude!,
+                    longitude: e.longitude!,
+                    listPrice: price,
+                    bedsTotal: beds ?? e.bedroomsTotal,
+                    bathroomsTotalInteger: baths ?? e.bathroomsTotalInteger,
+                    livingArea: sqft ?? e.livingArea,
+                    photoUrl: photos[0] || primaryPhotoUrl,
+                    subdivisionName: subdivision,
                   },
                 ]
               : []),
             ...mappableNearby.map((l) => ({
-              id: l.listingKey,
               listingKey: l.listingKey,
-              listingId: l.listingKey,
-              address: l.unparsedAddress,
-              latitude: l.latitude,
-              longitude: l.longitude,
-              price: l.listPrice,
-              beds: l.bedroomsTotal,
-              baths: l.bathroomsTotalInteger,
-              sqft: l.livingArea,
-              image: l.primaryPhotoUrl || undefined,
-              city: l.city,
               slugAddress: l.slugAddress,
-              slug: l.slugAddress,
+              address: l.unparsedAddress,
+              latitude: l.latitude!,
+              longitude: l.longitude!,
+              listPrice: l.listPrice,
+              bedsTotal: l.bedroomsTotal,
+              bathroomsTotalInteger: l.bathroomsTotalInteger,
+              livingArea: l.livingArea,
+              photoUrl: l.primaryPhotoUrl || undefined,
             })),
           ];
 
+          // "Open in Map View" — passed to ListingsMap as the action
+          // button so it sits inside the map chrome (overlay, bottom
+          // edge) rather than as a separate footer button.
+          const mapHref =
+            e.latitude && e.longitude
+              ? `/chap?view=map&lat=${e.latitude}&lng=${e.longitude}&zoom=15&listing=${slugAddress || listingKey}`
+              : `/chap?view=map&listing=${slugAddress || listingKey}`;
+
           return (
             <Section title="Nearby Listings" isLight={isLight}>
-              <div className="rounded-lg overflow-hidden border border-gray-200">
-                <ChatMapView listings={mapListings} />
-              </div>
+              <ListingsMap
+                listings={mapListings}
+                height="320px"
+                selectedListingKey={listingKey}
+                actionButton={
+                  <Link
+                    href={mapHref}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isLight
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700"
+                    }`}
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Open in Map View
+                  </Link>
+                }
+              />
             </Section>
           );
         })()}
