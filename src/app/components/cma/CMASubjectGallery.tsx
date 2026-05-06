@@ -13,6 +13,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import { chatThemeClasses } from "@/app/components/chat-v3/themeClasses";
 
 // Same pattern as chat-v3 ListingOptionsCarousel: rAF accumulator
 // drives a continuous smooth scroll. Browsers floor fractional
@@ -28,6 +30,9 @@ interface Props {
 }
 
 export default function CMASubjectGallery({ photos, address }: Props) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const t = chatThemeClasses(isLight);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
@@ -129,10 +134,10 @@ export default function CMASubjectGallery({ photos, address }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between px-1">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h4 className={`text-xs font-semibold uppercase tracking-wider ${t.textMuted}`}>
           Property Photos
         </h4>
-        <span className="text-xs text-gray-500">
+        <span className={`text-xs ${t.textMuted}`}>
           {photos.length} {photos.length === 1 ? "photo" : "photos"} · click to expand
         </span>
       </div>
@@ -148,7 +153,7 @@ export default function CMASubjectGallery({ photos, address }: Props) {
           <button
             key={i}
             onClick={() => setLightboxIndex(i)}
-            className="flex-shrink-0 w-72 sm:w-80 h-44 sm:h-52 rounded-lg overflow-hidden bg-gray-100 hover:ring-2 hover:ring-blue-400 transition-all cursor-zoom-in"
+            className={`flex-shrink-0 w-72 sm:w-80 h-44 sm:h-52 rounded-lg overflow-hidden transition-all cursor-zoom-in hover:ring-2 ${t.bgSecondary} ${isLight ? "hover:ring-blue-400" : "hover:ring-emerald-400"}`}
             type="button"
           >
             <img

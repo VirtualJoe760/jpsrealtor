@@ -17,7 +17,9 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Bed, Bath, Maximize2, FileText, Eye, Sparkles, Heart } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import type { PreviewListing } from "@/lib/chat-search/types";
+import { chatThemeClasses } from "./themeClasses";
 
 const SEND_MESSAGE_EVENT = "chatv3:send-message";
 const OPEN_PANEL_EVENT = "chatv3:open-listing-panel";
@@ -66,6 +68,9 @@ export default function ListingOptionsCarousel({
   listings: PreviewListing[];
   title?: string;
 }) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const t = chatThemeClasses(isLight);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Refs for paused state + resume timer so the rAF loop reads them
   // without retriggering the effect. The previous state-based
@@ -170,7 +175,7 @@ export default function ListingOptionsCarousel({
   return (
     <div className="space-y-2">
       {title && (
-        <h4 className="text-sm font-semibold text-gray-900 px-1">{title}</h4>
+        <h4 className={`text-sm font-semibold px-1 ${t.textPrimary}`}>{title}</h4>
       )}
       {/* Horizontal scroll list with continuous auto-rotation. We don't
           use scroll-snap here because snap-stop fights the per-frame
@@ -192,10 +197,10 @@ export default function ListingOptionsCarousel({
         {listings.map((l, i) => (
           <article
             key={l.listingKey}
-            className="flex-shrink-0 w-64 sm:w-72 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm snap-start"
+            className={`flex-shrink-0 w-64 sm:w-72 rounded-lg overflow-hidden shadow-sm snap-start border ${t.bgCard} ${t.border}`}
           >
             {/* Photo */}
-            <div className="relative w-full h-36 bg-gray-100">
+            <div className={`relative w-full h-36 ${t.bgSecondary}`}>
               {l.primaryPhotoUrl ? (
                 <Image
                   src={l.primaryPhotoUrl}
@@ -206,7 +211,7 @@ export default function ListingOptionsCarousel({
                   unoptimized
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                <div className={`w-full h-full flex items-center justify-center text-xs ${t.textFaint}`}>
                   No photo
                 </div>
               )}
@@ -217,21 +222,18 @@ export default function ListingOptionsCarousel({
 
             {/* Body */}
             <div className="p-3 space-y-1">
-              <div className="text-sm font-semibold text-gray-900 truncate">
+              <div className={`text-sm font-semibold truncate ${t.textPrimary}`}>
                 {l.address}
               </div>
               {l.subdivision && (
-                <div className="text-xs text-gray-500 truncate">
+                <div className={`text-xs truncate ${t.textMuted}`}>
                   {l.subdivision}
                 </div>
               )}
               {/* Stats row — bd/ba/sqft on the left, AI + heart icons
-                  on the right. Same row keeps the card compact;
-                  justify-between pushes the icon group to the
-                  opposite end so it reads as a balanced trailing
-                  action cluster. */}
+                  on the right. */}
               <div className="flex items-center justify-between gap-2 pt-0.5">
-                <div className="flex items-center gap-2.5 text-xs text-gray-600 min-w-0">
+                <div className={`flex items-center gap-2.5 text-xs min-w-0 ${t.textTertiary}`}>
                   <span className="inline-flex items-center gap-1">
                     <Bed className="w-3.5 h-3.5" />
                     {fmtCount(l.beds)}
@@ -251,14 +253,14 @@ export default function ListingOptionsCarousel({
                       dispatchChatMessage(`Tell me about ${l.address}`)
                     }
                     title="Ask AI about this property"
-                    className="w-6 h-6 inline-flex items-center justify-center bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 border border-blue-200 rounded transition-colors"
+                    className={`w-6 h-6 inline-flex items-center justify-center rounded transition-colors border ${t.accentBgSubtle} ${t.accentBorderSubtle}`}
                   >
                     <Sparkles className="w-3 h-3" />
                   </button>
                   <button
                     onClick={() => dispatchToggleFavorite(l)}
                     title="Save to favorites"
-                    className="w-6 h-6 inline-flex items-center justify-center bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 border border-rose-200 rounded transition-colors"
+                    className={`w-6 h-6 inline-flex items-center justify-center rounded transition-colors border ${t.favoriteBg} ${t.favoriteBgHover} ${t.favoriteText} ${t.favoriteBorder}`}
                   >
                     <Heart className="w-3 h-3" />
                   </button>
@@ -269,7 +271,7 @@ export default function ListingOptionsCarousel({
               <div className="flex gap-1.5 pt-2">
                 <button
                   onClick={() => dispatchOpenPanel(l, listings, i)}
-                  className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
+                  className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${t.textSecondary} ${t.bgSecondary} ${t.bgSecondaryHover} ${t.bgSecondaryActive}`}
                 >
                   <Eye className="w-3.5 h-3.5" />
                   View
@@ -278,7 +280,7 @@ export default function ListingOptionsCarousel({
                   onClick={() =>
                     dispatchChatMessage(`generate a cma for ${l.address}`)
                   }
-                  className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-md transition-colors"
+                  className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${t.accentBgSolid}`}
                 >
                   <FileText className="w-3.5 h-3.5" />
                   CMA

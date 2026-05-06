@@ -11,8 +11,10 @@
 import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { LayoutGrid, List, Map as MapIcon } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import ListingOptionsCarousel from "./ListingOptionsCarousel";
 import ListingOptionsList from "./ListingOptionsList";
+import { chatThemeClasses } from "./themeClasses";
 import type { PreviewListing } from "@/lib/chat-search/types";
 
 // ChatMapView pulls in maplibre-gl (heavy). Lazy-load it so users who
@@ -36,6 +38,9 @@ export default function ListingOptionsViewer({
   defaultMode?: ViewMode;
 }) {
   const [mode, setMode] = useState<ViewMode>(defaultMode);
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const t = chatThemeClasses(isLight);
 
   // Map mode needs lat/lng; if none of the listings carry coords, hide
   // the map tab entirely so the user doesn't switch to an empty map.
@@ -46,27 +51,29 @@ export default function ListingOptionsViewer({
 
   if (!listings || listings.length === 0) return null;
 
+  // Tab styling — selected tab gets the card background + primary text;
+  // unselected tabs are muted.
+  const tabBase = "inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors";
+  const tabSelected = `${t.bgCard} ${t.textPrimary} shadow-sm`;
+  const tabUnselected = `${t.textMuted} hover:${isLight ? "text-gray-700" : "text-neutral-200"}`;
+
   return (
     <div className="space-y-2">
       {/* Header row: title on the left, view toggle on the right. */}
       <div className="flex items-center justify-between gap-3 px-1">
-        <h4 className="text-sm font-semibold text-gray-900 truncate">
+        <h4 className={`text-sm font-semibold truncate ${t.textPrimary}`}>
           {title}
         </h4>
         <div
           role="tablist"
           aria-label="Listing view"
-          className="inline-flex bg-gray-100 rounded-md p-0.5 flex-shrink-0"
+          className={`inline-flex rounded-md p-0.5 flex-shrink-0 ${t.bgInputPill}`}
         >
           <button
             role="tab"
             aria-selected={mode === "panel"}
             onClick={() => setMode("panel")}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-              mode === "panel"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`${tabBase} ${mode === "panel" ? tabSelected : tabUnselected}`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
             Panel
@@ -75,11 +82,7 @@ export default function ListingOptionsViewer({
             role="tab"
             aria-selected={mode === "list"}
             onClick={() => setMode("list")}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-              mode === "list"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`${tabBase} ${mode === "list" ? tabSelected : tabUnselected}`}
           >
             <List className="w-3.5 h-3.5" />
             List
@@ -89,11 +92,7 @@ export default function ListingOptionsViewer({
               role="tab"
               aria-selected={mode === "map"}
               onClick={() => setMode("map")}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                mode === "map"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`${tabBase} ${mode === "map" ? tabSelected : tabUnselected}`}
             >
               <MapIcon className="w-3.5 h-3.5" />
               Map
@@ -112,7 +111,7 @@ export default function ListingOptionsViewer({
         />
       )}
       {mode === "map" && (
-        <div className="rounded-lg overflow-hidden border border-gray-200">
+        <div className={`rounded-lg overflow-hidden border ${t.border}`}>
           <ChatMapView
             listings={listings.map((l) => ({
               id: l.listingKey,

@@ -124,9 +124,12 @@ function StatsCard({
 // of starting flush with the avatar column. Negative margin top pulls it up
 // closer to the bubble — visually it sits adjacent to the copy/share buttons,
 // reading as part of the same response rather than a separate block.
+// Theme-neutral muted text — gray-500 reads acceptably on both light
+// (white bubble bg) and dark (neutral-800 bubble bg). dark:text-neutral-400
+// nudges contrast on the dark side without taking a useTheme dep.
 function SoftNote({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs italic text-gray-500 pl-9 sm:pl-11 -mt-1.5">
+    <p className="text-xs italic text-gray-500 dark:text-neutral-400 pl-9 sm:pl-11 -mt-1.5">
       {children}
     </p>
   );

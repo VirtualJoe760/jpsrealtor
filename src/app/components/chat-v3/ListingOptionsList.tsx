@@ -16,7 +16,9 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Bed, Bath, Maximize2, FileText, ExternalLink, Eye, ChevronDown } from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import type { PreviewListing } from "@/lib/chat-search/types";
+import { chatThemeClasses } from "./themeClasses";
 
 const INITIAL_PAGE_SIZE = 6;
 const PAGE_INCREMENT = 10;
@@ -81,6 +83,10 @@ export default function ListingOptionsList({
   // + view toggle so the list's own header would duplicate.
   hideHeader?: boolean;
 }) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const t = chatThemeClasses(isLight);
+
   // Show 6 cards initially, expand by 10 each click. Caps at the full
   // list length — the upstream limit (50 in preview.ts) bounds the
   // total. Avoids dumping 50 cards into the chat scroll on first paint.
@@ -94,11 +100,11 @@ export default function ListingOptionsList({
     <div className="space-y-2">
       {!hideHeader && (
         <div className="flex items-baseline justify-between px-1">
-          <h4 className="text-sm font-semibold text-gray-900">
+          <h4 className={`text-sm font-semibold ${t.textPrimary}`}>
             {listings.length} {listings.length === 1 ? "property" : "properties"}
             {scopeLabel ? ` on ${scopeLabel}` : ""}
           </h4>
-          <span className="text-xs text-gray-500">Pick one</span>
+          <span className={`text-xs ${t.textMuted}`}>Pick one</span>
         </div>
       )}
 
@@ -106,10 +112,10 @@ export default function ListingOptionsList({
         {visible.map((l, i) => (
           <li
             key={l.listingKey}
-            className="flex gap-3 p-2 sm:p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+            className={`flex gap-3 p-2 sm:p-3 ${t.bgCard} border ${t.border} rounded-lg ${t.borderHover} transition-colors`}
           >
             {/* Photo */}
-            <div className="flex-shrink-0 w-20 h-20 sm:w-28 sm:h-20 rounded-md overflow-hidden bg-gray-100">
+            <div className={`flex-shrink-0 w-20 h-20 sm:w-28 sm:h-20 rounded-md overflow-hidden ${t.bgSecondary}`}>
               {l.primaryPhotoUrl ? (
                 <Image
                   src={l.primaryPhotoUrl}
@@ -120,7 +126,7 @@ export default function ListingOptionsList({
                   unoptimized
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                <div className={`w-full h-full flex items-center justify-center text-xs ${t.textFaint}`}>
                   No photo
                 </div>
               )}
@@ -129,19 +135,19 @@ export default function ListingOptionsList({
             {/* Body */}
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-base font-bold text-blue-600">
+                <span className={`text-base font-bold ${t.accentText}`}>
                   {fmtPrice(l.price)}
                 </span>
-                <span className="text-sm text-gray-700 truncate">
+                <span className={`text-sm truncate ${t.textSecondary}`}>
                   {l.address}
                 </span>
               </div>
               {l.subdivision && (
-                <div className="text-xs text-gray-500 truncate mt-0.5">
+                <div className={`text-xs truncate mt-0.5 ${t.textMuted}`}>
                   {l.subdivision}
                 </div>
               )}
-              <div className="flex items-center gap-3 text-xs text-gray-600 mt-1.5">
+              <div className={`flex items-center gap-3 text-xs mt-1.5 ${t.textTertiary}`}>
                 <span className="inline-flex items-center gap-1">
                   <Bed className="w-3.5 h-3.5" />
                   {fmtCount(l.beds)} bd
@@ -162,7 +168,7 @@ export default function ListingOptionsList({
               {mode === "view-cma" ? (
                 <button
                   onClick={() => dispatchOpenPanel(l, visible, i)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${t.textSecondary} ${t.bgSecondary} ${t.bgSecondaryHover} ${t.bgSecondaryActive}`}
                 >
                   <Eye className="w-3.5 h-3.5" />
                   View
@@ -170,7 +176,7 @@ export default function ListingOptionsList({
               ) : (
                 <Link
                   href={`/mls-listings/${l.slugAddress || l.listingKey}`}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-md transition-colors"
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${t.textSecondary} ${t.bgSecondary} ${t.bgSecondaryHover} ${t.bgSecondaryActive}`}
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   Details
@@ -180,7 +186,7 @@ export default function ListingOptionsList({
                 onClick={() =>
                   dispatchChatMessage(`generate a cma for ${l.address}`)
                 }
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-md transition-colors"
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${t.accentBgSolid}`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 Generate CMA
@@ -196,7 +202,7 @@ export default function ListingOptionsList({
           onClick={() =>
             setVisibleCount((c) => Math.min(c + PAGE_INCREMENT, listings.length))
           }
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-200 rounded-md transition-colors"
+          className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors border ${t.textSecondary} ${t.bgPanel} ${t.bgSecondaryHover} ${t.bgSecondaryActive} ${t.border}`}
         >
           <ChevronDown className="w-3.5 h-3.5" />
           Show {Math.min(remaining, PAGE_INCREMENT)} more · {remaining} remaining
