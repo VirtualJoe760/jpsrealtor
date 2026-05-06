@@ -10,8 +10,9 @@
 
 import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { LayoutGrid, List, Map as MapIcon, ArrowUpDown } from "lucide-react";
+import { LayoutGrid, List, Map as MapIcon, ArrowUpDown, MapPin } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { useMapControl } from "@/app/hooks/useMapControl";
 import ListingOptionsCarousel from "./ListingOptionsCarousel";
 import ListingOptionsList from "./ListingOptionsList";
 import { chatThemeClasses } from "./themeClasses";
@@ -66,10 +67,14 @@ function sortListings(listings: PreviewListing[], key: SortKey): PreviewListing[
   }
 }
 
-// ChatMapView pulls in maplibre-gl (heavy). Lazy-load it so users who
-// stay on Panel/List don't pay the cost.
-const ChatMapView = dynamic(
-  () => import("@/app/components/chat/ChatMapView"),
+// ListingsMap is the modern AnimatedMarker map shared with the city/
+// subdivision pages and the inline ListingDetailCard nearby map. We
+// use it instead of the older ChatMapView so the chat-v3 Map tab
+// matches the listing-description aesthetic (price-pill markers,
+// photo popups, hover/select states). Lazy-load — maplibre-gl is
+// heavy and Panel/List users shouldn't pay the cost.
+const ListingsMap = dynamic(
+  () => import("@/app/components/map/ListingsMap"),
   { ssr: false, loading: () => <div className="h-72 bg-gray-100 rounded-lg animate-pulse" /> }
 );
 
@@ -91,6 +96,9 @@ export default function ListingOptionsViewer({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const t = chatThemeClasses(isLight);
+  // Same hook the ListingDetailCard nearby map and ChatMapView use to
+  // reveal the background map. Hard URL nav doesn't populate map state.
+  const { showMapWithListings } = useMapControl();
 
   // Sort once here and forward the result to whichever view is active —
   // panel/list/map all consume the same ordered array, so toggling
@@ -187,29 +195,66 @@ export default function ListingOptionsViewer({
           hideHeader
         />
       )}
-      {mode === "map" && (
-        <div className={`rounded-lg overflow-hidden border ${t.border}`}>
-          <ChatMapView
-            listings={sortedListings.map((l) => ({
-              id: l.listingKey,
-              listingKey: l.listingKey,
-              listingId: l.listingKey,
-              address: l.address,
-              latitude: l.latitude,
-              longitude: l.longitude,
-              price: l.price,
-              beds: l.beds,
-              baths: l.baths,
-              sqft: l.sqft,
-              image: l.primaryPhotoUrl,
-              city: l.city,
-              subdivision: l.subdivision,
-              slugAddress: l.slugAddress,
-              slug: l.slugAddress,
-            }))}
-          />
-        </div>
-      )}
+      {mode === "map" && (() => {
+        // Project PreviewListing → ListingsMap.MapListing shape
+        // (listPrice, bedsTotal, bathroomsTotalInteger, photoUrl, etc.)
+        // and filter to entries that actually carry coords so the map
+        // never tries to render a marker at (undefined, undefined).
+        const mapListings = sortedListings
+          .filter((l) => typeof l.latitude === "number" && typeof l.longitude === "number")
+          .map((l) => ({
+            listingKey: l.listingKey,
+            slugAddress: l.slugAddress,
+            address: l.address,
+            latitude: l.latitude!,
+            longitude: l.longitude!,
+            listPrice: l.price,
+            propertyType: l.standardStatus === "Active" ? "A" : undefined,
+            bedsTotal: l.beds,
+            bathroomsTotalInteger: l.baths,
+            livingArea: l.sqft,
+            lotSize: l.lotSize,
+            associationFee: l.associationFee,
+            subdivisionName: l.subdivision,
+            photoUrl: l.primaryPhotoUrl,
+          }));
+        if (mapListings.length === 0) return null;
+
+        // Same flow ChatMapView's button uses — set displayListings +
+        // fly to the cluster bounds in one shot. Center on the first
+        // listing's coords; ListingsMap honors fitBoundsOnLoad so the
+        // open-in-map view auto-fits to all markers.
+        const handleOpenInMapView = () => {
+          showMapWithListings(mapListings as any, {
+            centerLat: mapListings[0].latitude,
+            centerLng: mapListings[0].longitude,
+            zoom: 12,
+          });
+        };
+
+        return (
+          <div className={`relative rounded-lg overflow-hidden border ${t.border}`}>
+            <ListingsMap
+              listings={mapListings}
+              height="320px"
+              fitBoundsOnLoad
+              cooperativeGestures={false}
+            />
+            <button
+              type="button"
+              onClick={handleOpenInMapView}
+              className={`absolute bottom-4 left-4 z-10 inline-flex items-center gap-2 font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base ${
+                isLight
+                  ? "bg-blue-600 hover:bg-blue-500 text-white"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
+              }`}
+            >
+              <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+              Open in Map View
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
