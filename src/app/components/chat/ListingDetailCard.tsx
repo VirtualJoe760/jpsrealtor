@@ -707,20 +707,40 @@ export default function ListingDetailCard({
                   city. fitBoundsOnLoad=false respects the explicit
                   zoom; otherwise ListingsMap fits all 26 markers
                   and zooms way out. */}
+              {/* Center fallback: subject preferred, else first valid
+                  nearby listing. ListingsMap defaults to Palm Springs
+                  (33.83, -116.55) when center is undefined — that's
+                  why the map was spawning there before subject coords
+                  arrived. Always pass a real center.
+
+                  ListingsMap reads `center` once into initialViewState,
+                  so when subject coords arrive AFTER initial mount
+                  (enriched fetch is async) the map wouldn't recenter.
+                  Re-key on subjectHasCoords so the map remounts the
+                  moment subject coords show up, centered on the subject. */}
               <div className="relative">
-                <ListingsMap
-                  listings={mapListings}
-                  height="360px"
-                  fitBoundsOnLoad={false}
-                  zoom={13}
-                  center={
-                    subjectHasCoords
-                      ? { latitude: e.latitude!, longitude: e.longitude! }
-                      : undefined
-                  }
-                  selectedListingKey={listingKey}
-                  cooperativeGestures={false}
-                />
+                {(() => {
+                  const fallbackCoords = mappableNearby.find(
+                    (l) => typeof l.latitude === "number" && typeof l.longitude === "number"
+                  );
+                  const centerCoords = subjectHasCoords
+                    ? { latitude: e.latitude!, longitude: e.longitude! }
+                    : fallbackCoords
+                    ? { latitude: fallbackCoords.latitude!, longitude: fallbackCoords.longitude! }
+                    : undefined;
+                  return (
+                    <ListingsMap
+                      key={subjectHasCoords ? `subject:${listingKey}` : "nearby-fallback"}
+                      listings={mapListings}
+                      height="360px"
+                      fitBoundsOnLoad={false}
+                      zoom={13}
+                      center={centerCoords}
+                      selectedListingKey={listingKey}
+                      cooperativeGestures={false}
+                    />
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={handleOpenInMapView}
