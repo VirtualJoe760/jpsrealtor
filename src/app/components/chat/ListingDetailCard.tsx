@@ -674,24 +674,42 @@ export default function ListingDetailCard({
 
           return (
             <Section title="Nearby Listings" isLight={isLight}>
-              <ListingsMap
-                listings={mapListings}
-                height="320px"
-                selectedListingKey={listingKey}
-                actionButton={
-                  <Link
-                    href={mapHref}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isLight
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-emerald-600 text-white hover:bg-emerald-700"
-                    }`}
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Open in Map View
-                  </Link>
-                }
-              />
+              {/* Wrapper is relative so the Open-in-Map-View overlay
+                  Link can absolutely-position INSIDE the map chrome
+                  (bottom-left, matching the production overlay
+                  pattern) instead of rendering below the map via
+                  ListingsMap's actionButton prop.
+                  Zoom: tight default (15) + center on subject so
+                  the user sees the immediate block, not the whole
+                  city. fitBoundsOnLoad=false respects the explicit
+                  zoom; otherwise ListingsMap fits all 26 markers
+                  and zooms way out. */}
+              <div className="relative">
+                <ListingsMap
+                  listings={mapListings}
+                  height="360px"
+                  fitBoundsOnLoad={false}
+                  zoom={13}
+                  center={
+                    subjectHasCoords
+                      ? { latitude: e.latitude!, longitude: e.longitude! }
+                      : undefined
+                  }
+                  selectedListingKey={listingKey}
+                  cooperativeGestures={false}
+                />
+                <Link
+                  href={mapHref}
+                  className={`absolute bottom-4 left-4 z-10 inline-flex items-center gap-2 font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base ${
+                    isLight
+                      ? "bg-blue-600 hover:bg-blue-500 text-white"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                  }`}
+                >
+                  <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+                  Open in Map View
+                </Link>
+              </div>
             </Section>
           );
         })()}

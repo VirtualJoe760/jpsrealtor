@@ -59,6 +59,10 @@ export interface ListingsMapProps {
   actionButton?: React.ReactNode;
   /** Selected listing key (for highlighting) */
   selectedListingKey?: string;
+  /** Cooperative gestures (require Ctrl+scroll to zoom). Default true
+   *  for full-page maps. Pass false on embedded inline maps where
+   *  plain wheel-zoom is the natural interaction. */
+  cooperativeGestures?: boolean;
 }
 
 // ─── Price formatter ───
@@ -239,6 +243,7 @@ export default function ListingsMap({
   statusText,
   actionButton,
   selectedListingKey,
+  cooperativeGestures = true,
 }: ListingsMapProps) {
   const mapRef = useRef<any>(null);
   const { currentTheme } = useTheme();
@@ -328,7 +333,7 @@ export default function ListingsMap({
             onClick={handleMapClick}
             onMoveEnd={handleMoveEnd}
             cursor="default"
-            cooperativeGestures={true}
+            cooperativeGestures={cooperativeGestures}
           >
             {/* Markers */}
             {listings
