@@ -300,6 +300,36 @@ function getRandomListing(): FeaturedListing | null {
   return FEATURED_LISTINGS[Math.floor(Math.random() * FEATURED_LISTINGS.length)];
 }
 
+// One-listing-per-transition pin. The exit animation picks a listing,
+// the page reloads, the enter animation needs to render the SAME
+// listing (otherwise the user sees property A on exit and property B
+// on enter — two listings flashing past in one transition feels
+// chaotic). sessionStorage survives the reload; we set in exit, read
+// in enter, clear immediately after consumption so the next toggle
+// re-picks fresh.
+const ACTIVE_TRANSITION_LISTING_KEY = 'theme-transition-active-listing';
+
+function pinTransitionListing(listing: FeaturedListing): void {
+  try {
+    sessionStorage.setItem(ACTIVE_TRANSITION_LISTING_KEY, JSON.stringify(listing));
+  } catch {}
+}
+
+// Returns the pinned listing if exit-side stashed one (and clears it),
+// otherwise falls back to a fresh random pick. The fallback covers
+// edge cases — direct page load with the enter flag set but no pinned
+// listing (e.g. dev hot-reload, sessionStorage cleared mid-transition).
+function consumeTransitionListing(): FeaturedListing | null {
+  try {
+    const raw = sessionStorage.getItem(ACTIVE_TRANSITION_LISTING_KEY);
+    if (raw) {
+      sessionStorage.removeItem(ACTIVE_TRANSITION_LISTING_KEY);
+      return JSON.parse(raw) as FeaturedListing;
+    }
+  } catch {}
+  return getRandomListing();
+}
+
 /**
  * Get eXp logo path (always white)
  */
@@ -449,8 +479,12 @@ function playExitAnimation(
     const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
     const logoPath = getExpLogo(currentTheme);
 
-    // Get random eXp broker listing near user
+    // Pick a listing for THIS transition and pin it. The enter side
+    // (which runs after window.location.reload) will consume the same
+    // pinned listing — keeps one property visible across exit→enter
+    // instead of flashing two different ones.
     const listing = getRandomListing();
+    if (listing) pinTransitionListing(listing);
 
     // If no listings available, show simple solid color transition
     if (!listing) {
@@ -660,8 +694,10 @@ function playEnterAnimation(
     // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
 
-    // Get random eXp broker listing near user
-    const listing = getRandomListing();
+    // Read the listing pinned by the EXIT side (or fall back to a
+    // fresh random pick if the pin is missing — covers dev hot-reload
+    // and any edge case where sessionStorage was cleared mid-transition).
+    const listing = consumeTransitionListing();
 
     // If no listings available, show simple solid color transition
     if (!listing) {
