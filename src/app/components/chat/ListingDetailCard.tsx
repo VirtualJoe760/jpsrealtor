@@ -61,6 +61,10 @@ import {
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useAgentProfile } from "@/app/hooks/useAgentProfile";
+// Same hook ChatMapView uses to reveal the full map background. Hard
+// URL nav (router.push('/chap?view=map&...')) doesn't work right —
+// the background map state lives in MapStateContext, not the URL.
+import { useMapControl } from "@/app/hooks/useMapControl";
 
 interface ListingDetailCardProps {
   listingKey: string;
@@ -166,6 +170,7 @@ export default function ListingDetailCard({
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const { agent } = useAgentProfile();
+  const { showMapWithListings } = useMapControl();
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -664,13 +669,31 @@ export default function ListingDetailCard({
             })),
           ];
 
-          // "Open in Map View" — passed to ListingsMap as the action
-          // button so it sits inside the map chrome (overlay, bottom
-          // edge) rather than as a separate footer button.
-          const mapHref =
-            e.latitude && e.longitude
-              ? `/chap?view=map&lat=${e.latitude}&lng=${e.longitude}&zoom=15&listing=${slugAddress || listingKey}`
-              : `/chap?view=map&listing=${slugAddress || listingKey}`;
+          // "Open in Map View" — uses the same useMapControl flow as
+          // the top toggle and ChatMapView. Hard URL nav to /chap?view=map
+          // doesn't actually populate the background map (its state
+          // lives in MapStateContext, not the URL), so the previous
+          // <Link> just changed the URL without revealing real map
+          // state. showMapWithListings sets displayListings + flies to
+          // the bounds in one shot.
+          const handleOpenInMapView = () => {
+            // Reuse the exact mapListings shape the inline map gets —
+            // they already conform to MapListing (listingKey, lat, lng,
+            // listPrice, etc.).
+            const validForMap = mapListings.filter(
+              (l) => typeof l.latitude === "number" && typeof l.longitude === "number"
+            );
+            if (validForMap.length === 0) return;
+            const center =
+              subjectHasCoords
+                ? { centerLat: e.latitude!, centerLng: e.longitude!, zoom: 15 }
+                : {
+                    centerLat: validForMap[0].latitude!,
+                    centerLng: validForMap[0].longitude!,
+                    zoom: 15,
+                  };
+            showMapWithListings(validForMap as any, center);
+          };
 
           return (
             <Section title="Nearby Listings" isLight={isLight}>
@@ -698,8 +721,9 @@ export default function ListingDetailCard({
                   selectedListingKey={listingKey}
                   cooperativeGestures={false}
                 />
-                <Link
-                  href={mapHref}
+                <button
+                  type="button"
+                  onClick={handleOpenInMapView}
                   className={`absolute bottom-4 left-4 z-10 inline-flex items-center gap-2 font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base ${
                     isLight
                       ? "bg-blue-600 hover:bg-blue-500 text-white"
@@ -708,7 +732,7 @@ export default function ListingDetailCard({
                 >
                   <MapPin className="w-4 h-4 md:w-5 md:h-5" />
                   Open in Map View
-                </Link>
+                </button>
               </div>
             </Section>
           );
