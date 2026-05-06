@@ -782,24 +782,8 @@ export default function ListingDetailCard({
             <Home className="w-4 h-4" />
             See Similar Listings
           </button>
-          {/* Open in Map View — navigates to /chap?view=map with the
-              listing pre-selected. The map page reads ?listing= and
-              opens the bottom panel for that property. */}
-          <Link
-            href={
-              e.latitude && e.longitude
-                ? `/chap?view=map&lat=${e.latitude}&lng=${e.longitude}&zoom=15&listing=${slugAddress || listingKey}`
-                : `/chap?view=map&listing=${slugAddress || listingKey}`
-            }
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isLight
-                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
-            }`}
-          >
-            <MapPin className="w-4 h-4" />
-            Open in Map View
-          </Link>
+          {/* Open in Map View removed — the inline nearby map already
+              has its own overlay button that does the same nav. */}
           <button
             onClick={() => {
               if (typeof window === "undefined") return;

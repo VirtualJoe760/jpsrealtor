@@ -355,10 +355,20 @@ export default function ChatMapView({ listings, onSelectListing, searchFilters }
         })}
       </Map>
 
-      {/* In-map "Open in Map View" overlay was removed — every surface
-          that mounts ChatMapView now ships its own dedicated nav
-          button outside the map (ListingDetailCard's bottom action
-          row, etc), so the overlay was redundant chrome. */}
+      {/* Open in Map View Button */}
+      <div className="absolute bottom-4 left-4">
+        <button
+          onClick={handleOpenInMapView}
+          className={`flex items-center gap-2 font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm md:text-base ${
+            isLight
+              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+          }`}
+        >
+          <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+          <span>Open in Map View</span>
+        </button>
+      </div>
       </div>
     </div>
   );
