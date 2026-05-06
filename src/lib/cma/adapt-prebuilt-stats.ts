@@ -261,6 +261,21 @@ export function adaptPrebuiltCmaStats(
   if (!cmaStats || typeof cmaStats !== "object") return null;
   if (!cmaStats.subject || typeof cmaStats.subject !== "object") return null;
 
+  // Fresh-generation short-circuit. /api/cma/generate writes the
+  // CMAResult-shape object back to cmaStats with __source:"ts-engine"
+  // so the next request can skip regeneration. When we see that
+  // marker, the data is already in CMAResult shape — just unwrap and
+  // return. Skip the Python-flat-shape transform entirely.
+  if (cmaStats.__source === "ts-engine") {
+    // Strip our marker fields before returning the result. Spread
+    // produces a shallow clone so callers don't see the markers.
+    const { __source, __generatedAt, lastUpdated, ...result } = cmaStats;
+    void __source;
+    void __generatedAt;
+    void lastUpdated;
+    return result as CMAResult;
+  }
+
   const ps = cmaStats.subject;
 
   // Build the resolved attribute block. Pool/spa/view/garage come from

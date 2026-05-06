@@ -34,6 +34,35 @@ async function buildCMAForKey(
     maxCompsPerStatus: maxComps || 5,
     tierOverride,
   });
+
+  // Persist to UnifiedListing.cmaStats so subsequent requests skip
+  // regeneration. Lives until either:
+  //   (a) the Python build-listing-cma.py cron overwrites it on its
+  //       next twice-weekly run, or
+  //   (b) ~30 days of staleness (cron should refresh well before
+  //       this; the marker just guards against orphaned writes).
+  //
+  // __source: "ts-engine" tells the adapter to skip the Python-flat-
+  // shape transform — we already have CMAResult shape on disk.
+  // Fire-and-forget so the response isn't blocked by the write.
+  const stamped = {
+    ...result,
+    __source: "ts-engine" as const,
+    __generatedAt: new Date(),
+    lastUpdated: new Date(),
+  };
+  UnifiedListing.updateOne(
+    { listingKey },
+    { $set: { cmaStats: stamped } }
+  )
+    .exec()
+    .catch((err) =>
+      console.warn(
+        `[CMA Generate] failed to persist cmaStats for ${listingKey}:`,
+        err
+      )
+    );
+
   return { result };
 }
 

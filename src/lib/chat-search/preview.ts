@@ -754,7 +754,7 @@ export async function runPreview(
         hasPrebuilt: Boolean(adapted),
         reason: adapted
           ? undefined
-          : "no pre-computed cmaStats — CMAReport will fall back to /api/cma/generate",
+          : "Fresh generation",
         ms: Date.now() - t0,
       };
     }
@@ -946,7 +946,7 @@ export async function runPreview(
               hasPrebuilt: Boolean(adapted),
               reason: adapted
                 ? undefined
-                : "no pre-computed cmaStats — CMAReport will fall back to /api/cma/generate",
+                : "Fresh generation",
               ms: Date.now() - t0,
             };
           }
