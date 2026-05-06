@@ -170,11 +170,30 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   // scroll. Two rAFs because the map's clip-path / pointer-events
   // transition leaves the chat container size briefly stale; scrolling
   // before the layout settles puts the anchor in the wrong spot.
+  //
+  // We walk up from the sentinel to find the actual scrollable
+  // ancestor (the overflow-y-auto div) and set its scrollTop directly
+  // to scrollHeight. scrollIntoView({ block:"end" }) on the sentinel
+  // landed it at the visible bottom — but the container has 12rem
+  // bottom padding for the floating input, so the sentinel ended up
+  // hidden behind the input. scrollTop=scrollHeight pins the absolute
+  // bottom of content (incl. padding) to the visible bottom, putting
+  // the last message right above the input where users expect it.
   useEffect(() => {
     if (isMapVisible) return;
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+        const sentinel = messagesEndRef.current;
+        if (!sentinel) return;
+        let el: HTMLElement | null = sentinel.parentElement;
+        while (el) {
+          const overflowY = getComputedStyle(el).overflowY;
+          if (overflowY === "auto" || overflowY === "scroll") {
+            el.scrollTop = el.scrollHeight;
+            return;
+          }
+          el = el.parentElement;
+        }
       });
     });
     return () => cancelAnimationFrame(id);
