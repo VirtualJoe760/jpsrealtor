@@ -609,41 +609,62 @@ function playExitAnimation(
     `;
     overlay.innerHTML = contentHTML;
 
+    // Plain opacity fade-in. The user wants the transition to be one
+    // fade in → listing → fade out cycle, not a door/curtain animation.
+    // Start the overlay invisible, then animate to full opacity. CSS
+    // transition kicks in once requestAnimationFrame paints the
+    // initial opacity:0 frame. The exit class (door/curtain animation)
+    // is intentionally NOT applied — animationKey/duration are only
+    // kept in scope for compatibility with the rest of the system
+    // (sessionStorage flag still selects a "pair" for branching, but
+    // both phases now just fade).
+    overlay.style.opacity = '0';
+    overlay.style.transition = `opacity ${600}ms ease-in-out`;
+
     document.body.appendChild(overlay);
 
-    // Use requestAnimationFrame to ensure DOM is ready
+    // Suppress unused-var warnings — kept in scope for future use.
+    void exit;
+    void duration;
+
+    // Trigger the fade-in on the next paint frame (immediate set
+    // wouldn't transition since we'd still be on the initial render).
     requestAnimationFrame(() => {
-      overlay.classList.add(exit);
-      console.log(`[ThemeTransition] 🚪 EXIT: ${animationKey} (${duration}ms) → hold (2s) → cross-dissolve (600ms)`);
+      overlay.style.opacity = '1';
+      console.log(`[ThemeTransition] 🌅 EXIT: fade-in (600ms) → hold (1.5s) → cross-dissolve to ${solidColor} (600ms)`);
     });
 
     // Timeline:
-    // 1. Animation IN - duration ms
-    // 2. Hold with listing photo - 2000ms
-    // 3. Cross-dissolve to solid color - 600ms
+    // 1. Fade in overlay with listing - 600ms
+    // 2. Hold with listing photo - 1500ms
+    // 3. Cross-dissolve listing → solid color - 600ms
+    //    (so the cross-refresh boundary is solid→solid, no flash)
     // 4. Hold on solid color - 300ms (stability buffer)
-    // 5. Refresh triggers (stays on solid color)
+    // 5. Refresh triggers (overlay stays as solid color)
 
-    const holdDuration = 2000;
+    const fadeInDuration = 600;
+    const holdDuration = 1500;
     const crossDissolveDuration = 600;
-    const solidColorBuffer = 300; // Hold on solid color before refresh
+    const solidColorBuffer = 300;
 
-    // After animation + hold, start cross-dissolve to solid color
+    // After fade-in + hold, cross-dissolve listing content to solid
+    // color so the refresh boundary is seamless (blocking script on
+    // the new page paints the same solid color).
     setTimeout(() => {
       const contentDiv = overlay.querySelector('#exit-content') as HTMLElement;
       if (contentDiv) {
         contentDiv.classList.add('cross-dissolve-to-color');
-        console.log(`[ThemeTransition] Cross-dissolving to ${solidColor}...`);
+        console.log(`[ThemeTransition] Cross-dissolving listing → ${solidColor}...`);
       }
-    }, duration + holdDuration);
+    }, fadeInDuration + holdDuration);
 
-    // Resolve AFTER cross-dissolve completes AND solid color is stable
-    const totalDuration = duration + holdDuration + crossDissolveDuration + solidColorBuffer;
+    // Resolve once the solid color is stable. Overlay is NOT removed
+    // here — it stays visible across the refresh; ENTER fades it out.
+    const totalDuration =
+      fadeInDuration + holdDuration + crossDissolveDuration + solidColorBuffer;
     setTimeout(() => {
       console.log(`[ThemeTransition] EXIT complete - solid color stable, ready for refresh`);
       resolve();
-      // Overlay is NOT removed - stays visible during refresh
-      // The ENTER animation will remove it
     }, totalDuration);
   });
 }
