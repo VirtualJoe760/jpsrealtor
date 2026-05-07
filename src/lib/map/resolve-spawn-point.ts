@@ -26,12 +26,12 @@ export interface SpawnPoint {
 }
 
 // Palm Desert default — 33.7222, -116.3744 lands roughly at El Paseo
-// & Highway 111. Zoom 12 shows the whole valley at a glance without
-// being so wide that listings disappear.
+// & Highway 111. Zoom 10 gives the user a wider initial view; they
+// can pinch/scroll in to whatever density they want.
 export const PALM_DESERT: SpawnPoint = {
   lat: 33.7222,
   lng: -116.3744,
-  zoom: 12,
+  zoom: 10,
 };
 
 // California bounding box. Approximate but generous — better to
@@ -55,10 +55,10 @@ function isInsideCalifornia(lat: number, lng: number): boolean {
   );
 }
 
-// Default zoom when spawning at the user's actual location — tight
-// enough to show their immediate neighborhood (1-2 mi visible), not
-// so tight they can't see surrounding inventory.
-const USER_LOCATION_ZOOM = 12;
+// Default zoom when spawning at the user's actual location. Zoom 10
+// gives them a wide regional view (whole metro-ish area) on first
+// open — they can zoom in to the block-level detail themselves.
+const USER_LOCATION_ZOOM = 10;
 
 // Soft cap on the geolocation request so we don't hang the map open
 // indefinitely if the user dismisses the prompt or has a slow GPS
