@@ -93,7 +93,7 @@ export default function ServiceAreasStep({
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Specialization state
   const [specInput, setSpecInput] = useState("");
