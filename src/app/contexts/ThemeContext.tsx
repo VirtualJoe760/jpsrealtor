@@ -694,186 +694,39 @@ function playEnterAnimation(
     // Logo matches NEW theme
     const logoPath = getExpLogo(currentTheme);
 
-    // Read the listing pinned by the EXIT side (or fall back to a
-    // fresh random pick if the pin is missing — covers dev hot-reload
-    // and any edge case where sessionStorage was cleared mid-transition).
-    const listing = consumeTransitionListing();
+    // Consume + discard the pinned listing so it doesn't leak into a
+    // future transition. We deliberately do NOT render it here — the
+    // listing card was the "bye" reveal during the EXIT phase. After
+    // the page reload, the new theme should appear cleanly without
+    // re-flashing the same property card. (User feedback: showing the
+    // listing on both phases felt like seeing the same photo twice in
+    // one transition.)
+    consumeTransitionListing();
 
-    // If no listings available, show simple solid color transition
-    if (!listing) {
-      console.warn('[ThemeTransition] No featured listings available for ENTER, using simple color transition');
+    // Suppress unused-var warnings for refs no longer needed by the
+    // simple-fade path.
+    void logoPath;
+    void enter;
+    void duration;
 
-      // Create simple solid color overlay that fades out
-      overlay.style.transition = 'opacity 0.8s ease-out';
-      document.body.appendChild(overlay);
-
-      // Fade out and remove
-      requestAnimationFrame(() => {
-        overlay.style.opacity = '0';
-      });
-
-      setTimeout(() => {
-        overlay.remove();
-        // Force-clean any other stale overlays
-        document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
-        console.log(`[ThemeTransition] Simple ENTER transition complete`);
-        resolve();
-      }, 1000);
-      return;
-    }
-
-    // Content container with listing photo (starts hidden, will fade in from solid color)
-    const contentHTML = `
-      <div id="enter-content" style="
-        position: absolute;
-        inset: 0;
-        background-image: url('${listing.photoUrl}');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        opacity: 0;
-      ">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center; width: 90%; max-width: 600px;">
-          <img
-            src="${logoPath}"
-            alt="eXp Realty"
-            style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
-          />
-          <div id="enter-text" style="
-            margin-top: 30px;
-            font-size: 28px;
-            font-weight: 700;
-            color: white;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
-            letter-spacing: 1px;
-            opacity: 0;
-          ">
-            Broker Listing
-          </div>
-          <div id="enter-details" style="
-            margin-top: 20px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            opacity: 0;
-          ">
-            <div style="
-              font-size: 22px;
-              font-weight: 600;
-              color: white;
-              margin-bottom: 12px;
-              text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            ">
-              ${listing.address}
-            </div>
-            <div style="
-              font-size: 18px;
-              color: #e0e0e0;
-              margin-bottom: 8px;
-            ">
-              ${listing.city}
-            </div>
-            <div style="
-              display: flex;
-              justify-content: center;
-              gap: 30px;
-              margin-top: 16px;
-              flex-wrap: wrap;
-            ">
-              <div style="
-                font-size: 32px;
-                font-weight: 700;
-                color: #4ade80;
-                text-shadow: 0 2px 10px rgba(74, 222, 128, 0.5);
-              ">
-                $${listing.price.toLocaleString()}
-              </div>
-              <div style="
-                font-size: 20px;
-                color: white;
-                display: flex;
-                gap: 20px;
-                align-items: center;
-              ">
-                <span style="font-weight: 600;">${listing.beds} BD</span>
-                <span style="opacity: 0.5;">|</span>
-                <span style="font-weight: 600;">${listing.baths} BA</span>
-                ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
-              </div>
-            </div>
-            ${listing.agentName ? `
-              <div style="
-                margin-top: 18px;
-                padding-top: 14px;
-                border-top: 1px solid rgba(255, 255, 255, 0.15);
-                font-size: 14px;
-                color: rgba(255, 255, 255, 0.85);
-                letter-spacing: 0.5px;
-              ">
-                <span style="opacity: 0.6; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px;">Listed by</span>
-                <span style="margin-left: 8px; font-weight: 600;">${listing.agentName}</span>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      </div>
-      <style>
-        @keyframes fadeInText {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      </style>
-    `;
-    overlay.innerHTML = contentHTML;
-
+    // Simple solid-color fade-out. The page-reload already swapped to
+    // the new theme; this overlay just gracefully reveals the new UI.
+    overlay.style.transition = 'opacity 0.8s ease-out';
     document.body.appendChild(overlay);
 
-    // Timeline:
-    // 1. Cross-dissolve from solid color to listing photo - 600ms
-    // 2. Hold with listing photo - 2000ms
-    // 3. Animation OUT - duration ms
-    // 4. Fade out and remove
-
-    const crossDissolveDuration = 600;
-    const holdDuration = 2000;
-
-    // Start cross-dissolve immediately
     requestAnimationFrame(() => {
-      const contentDiv = overlay.querySelector('#enter-content') as HTMLElement;
-      if (contentDiv) {
-        console.log(`[ThemeTransition] 🔓 ENTER: Cross-dissolving from ${solidColor} (600ms) → hold (2s) → ${animationKey} (${duration}ms)`);
-        // Fade in the listing photo content
-        contentDiv.style.transition = 'opacity 600ms ease-in-out';
-        contentDiv.style.opacity = '1';
-      }
+      overlay.style.opacity = '0';
     });
 
-    // After cross-dissolve, fade in text and details
-    setTimeout(() => {
-      const textDiv = overlay.querySelector('#enter-text') as HTMLElement;
-      if (textDiv) {
-        textDiv.style.animation = 'fadeInText 0.5s ease-out forwards';
-      }
-
-      const detailsDiv = overlay.querySelector('#enter-details') as HTMLElement;
-      if (detailsDiv) {
-        detailsDiv.style.animation = 'fadeInText 0.5s ease-out 0.2s forwards';
-      }
-    }, crossDissolveDuration);
-
-    // After cross-dissolve + hold, play animation OUT
-    setTimeout(() => {
-      overlay.classList.add(enter);
-      console.log(`[ThemeTransition] Playing ${animationKey} animation OUT`);
-    }, crossDissolveDuration + holdDuration);
-
-    // Remove overlay after complete sequence
-    const totalDuration = crossDissolveDuration + holdDuration + duration;
     setTimeout(() => {
       overlay.remove();
+      // Force-clean any other stale overlays
+      document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
+      const instantOverlay = document.getElementById('instant-transition-overlay');
+      if (instantOverlay) instantOverlay.remove();
+      console.log('[ThemeTransition] ENTER fade complete');
       resolve();
-    }, totalDuration);
+    }, 1000);
 
     // SAFETY NET: Force remove ALL overlays after 6 seconds max
     setTimeout(() => {
