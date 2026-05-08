@@ -14,6 +14,8 @@ import ListingDetailCard from "@/app/components/chat/ListingDetailCard";
 import { ArticleResults } from "@/app/components/chat/ArticleCard";
 import ListingOptionsList from "@/app/components/chat-v3/ListingOptionsList";
 import ListingOptionsViewer from "@/app/components/chat-v3/ListingOptionsViewer";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import { chatThemeClasses, type ChatThemeClasses } from "./themeClasses";
 import type { PreviewResult, PreviewStats } from "@/lib/chat-search/types";
 
 // ---------------------------------------------------------------------------
@@ -21,11 +23,11 @@ import type { PreviewResult, PreviewStats } from "@/lib/chat-search/types";
 // areaStats / compare without depending on the sandbox file.
 // ---------------------------------------------------------------------------
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({ label, value, t }: { label: string; value: string; t: ChatThemeClasses }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm font-semibold text-gray-900">{value}</div>
+      <div className={`text-xs ${t.textMuted}`}>{label}</div>
+      <div className={`text-sm font-semibold ${t.textPrimary}`}>{value}</div>
     </div>
   );
 }
@@ -34,47 +36,51 @@ function StatsCard({
   stats,
   scope,
   propertyType,
+  t,
 }: {
   stats: PreviewStats;
   scope?: { type: string; value: string };
   propertyType?: string;
+  t: ChatThemeClasses;
 }) {
   if (!stats || stats.totalListings === 0) {
     return <SoftNote>No listings matched.</SoftNote>;
   }
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className={`${t.bgCard} border ${t.border} rounded-lg p-4`}>
       {scope && (
-        <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+        <div className={`text-xs uppercase tracking-wide mb-1 ${t.textMuted}`}>
           {scope.type} · {scope.value}
           {propertyType && propertyType !== "A" && ` · type ${propertyType}`}
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCell label="Total" value={stats.totalListings.toLocaleString()} />
-        <StatCell label="New (7d)" value={stats.newListingsCount.toString()} />
-        <StatCell label="Avg" value={`$${stats.avgPrice.toLocaleString()}`} />
-        <StatCell label="Median" value={`$${stats.medianPrice.toLocaleString()}`} />
+        <StatCell t={t} label="Total" value={stats.totalListings.toLocaleString()} />
+        <StatCell t={t} label="New (7d)" value={stats.newListingsCount.toString()} />
+        <StatCell t={t} label="Avg" value={`$${stats.avgPrice.toLocaleString()}`} />
+        <StatCell t={t} label="Median" value={`$${stats.medianPrice.toLocaleString()}`} />
         <StatCell
+          t={t}
           label="Range"
           value={`$${stats.priceRange.min.toLocaleString()}–$${stats.priceRange.max.toLocaleString()}`}
         />
         {stats.medianPricePerSqft > 0 && (
           <StatCell
+            t={t}
             label="Median $/sqft"
             value={`$${stats.medianPricePerSqft.toLocaleString()}`}
           />
         )}
       </div>
       {stats.hoa && (
-        <div className="text-xs text-gray-600 mt-3">
+        <div className={`text-xs mt-3 ${t.textTertiary}`}>
           <strong>HOA</strong> ({stats.hoa.count} listings):{" "}
           ${stats.hoa.min.toLocaleString()}–${stats.hoa.max.toLocaleString()}/mo · avg $
           {stats.hoa.avg.toLocaleString()}
         </div>
       )}
       {stats.amenities && (
-        <div className="text-xs text-gray-600 mt-1">
+        <div className={`text-xs mt-1 ${t.textTertiary}`}>
           <strong>Amenities</strong>:{" "}
           {[
             stats.amenities.poolPct && `${stats.amenities.poolPct}% pool`,
@@ -88,19 +94,19 @@ function StatsCard({
       )}
       {stats.propertyTypes && stats.propertyTypes.length > 0 && (
         <div className="mt-3">
-          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+          <div className={`text-xs uppercase tracking-wide font-medium mb-1 ${t.textMuted}`}>
             Property type breakdown
           </div>
           <table className="w-full text-xs">
             <tbody>
               {stats.propertyTypes.slice(0, 6).map((p) => (
-                <tr key={p.subType} className="border-t border-gray-100">
-                  <td className="py-1 text-gray-700">{p.subType}</td>
-                  <td className="py-1 text-right text-gray-600">{p.count}</td>
-                  <td className="py-1 text-right text-gray-600">
+                <tr key={p.subType} className={`border-t ${t.border}`}>
+                  <td className={`py-1 ${t.textSecondary}`}>{p.subType}</td>
+                  <td className={`py-1 text-right ${t.textTertiary}`}>{p.count}</td>
+                  <td className={`py-1 text-right ${t.textTertiary}`}>
                     ${p.avgPrice.toLocaleString()}
                   </td>
-                  <td className="py-1 text-right text-gray-500">
+                  <td className={`py-1 text-right ${t.textMuted}`}>
                     ${p.avgPricePerSqft || 0}/sqft
                   </td>
                 </tr>
@@ -144,10 +150,20 @@ export default function PreviewRenderer({
 }: {
   preview: PreviewResult | null;
 }) {
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === "lightgradient";
+  const t = chatThemeClasses(isLight);
+
   if (!preview) return null;
   if (preview.error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+      <div
+        className={`rounded p-3 text-sm border ${
+          isLight
+            ? "bg-red-50 border-red-200 text-red-700"
+            : "bg-red-500/10 border-red-500/30 text-red-300"
+        }`}
+      >
         {preview.error}
       </div>
     );
@@ -195,6 +211,7 @@ export default function PreviewRenderer({
       <div className="space-y-4">
         {preview.stats && (
           <StatsCard
+            t={t}
             stats={preview.stats}
             scope={preview.scope}
             propertyType={preview.propertyType}
@@ -231,10 +248,10 @@ export default function PreviewRenderer({
     return (
       <div className="grid gap-3 md:grid-cols-2">
         {preview.a && (
-          <StatsCard stats={preview.a.stats} scope={(preview as any).a.scope} />
+          <StatsCard t={t} stats={preview.a.stats} scope={(preview as any).a.scope} />
         )}
         {preview.b && (
-          <StatsCard stats={preview.b.stats} scope={(preview as any).b.scope} />
+          <StatsCard t={t} stats={preview.b.stats} scope={(preview as any).b.scope} />
         )}
       </div>
     );
@@ -286,7 +303,7 @@ export default function PreviewRenderer({
         );
       }
       return (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className={`${t.bgCard} border ${t.border} rounded-lg overflow-hidden`}>
           {!preview.hasPrebuilt && preview.reason && (
             <div className="px-3 pt-2">
               <SoftNote>{preview.reason}</SoftNote>
@@ -311,7 +328,7 @@ export default function PreviewRenderer({
       // "Market Analysis" header and snapshot grid butt up against the
       // wrapper edges.
       return (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden p-4 md:p-6">
+        <div className={`${t.bgCard} border ${t.border} rounded-lg overflow-hidden p-4 md:p-6`}>
           <SubdivisionCmaSection slug={preview.slug} />
         </div>
       );
@@ -344,7 +361,7 @@ export default function PreviewRenderer({
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-600">
+    <div className={`${t.bgPanel} border ${t.border} rounded p-3 text-sm ${t.textTertiary}`}>
       Component <code className="font-mono">{preview.component}</code> not yet wired.
     </div>
   );
