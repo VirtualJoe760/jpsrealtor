@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { CMAResult, cmaCompsToMapListings } from "@/lib/cma/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useAgentProfile } from "@/app/hooks/useAgentProfile";
-import { Sparkles, Home, Eye } from "lucide-react";
+import { Sparkles, Home, Eye, TrendingUp } from "lucide-react";
 import CMASubjectCard from "./CMASubjectCard";
 import CMACompTable from "./CMACompTable";
 import CMANarrative from "./CMANarrative";
@@ -371,6 +371,33 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
           >
             <Home className="w-4 h-4" />
             See Similar Listings
+          </button>
+          {/* Market Appreciation — subdivision-first, city fallback. Same
+              scope priority as See Similar Listings. Dispatches the
+              chatv3:send-message event with an "appreciation in …"
+              phrase that the parser routes to the trend intent →
+              AppreciationContainer. */}
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              const scope =
+                result.subject.subdivisionName || result.subject.city;
+              if (!scope) return;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:send-message", {
+                  detail: { message: `show appreciation in ${scope}` },
+                })
+              );
+            }}
+            disabled={!result.subject.subdivisionName && !result.subject.city}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Market Appreciation
           </button>
           <button
             onClick={() => {

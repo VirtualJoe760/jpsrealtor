@@ -54,6 +54,7 @@ import {
   X,
   Sparkles,
   TreePine,
+  TrendingUp,
   School as SchoolIcon,
   Phone,
   Mail,
@@ -865,6 +866,32 @@ export default function ListingDetailCard({
           >
             <Home className="w-4 h-4" />
             See Similar Listings
+          </button>
+          {/* Market Appreciation — subdivision-first, city fallback. Matches
+              the same scope priority as See Similar Listings. Dispatches
+              chatv3:send-message with "appreciation in …" → trend intent
+              → AppreciationContainer. Mirrors the equivalent button on
+              CMAReport's bottom action row. */}
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              const scope = subdivision || city;
+              if (!scope) return;
+              window.dispatchEvent(
+                new CustomEvent("chatv3:send-message", {
+                  detail: { message: `show appreciation in ${scope}` },
+                })
+              );
+            }}
+            disabled={!subdivision && !city}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600 disabled:opacity-50"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Market Appreciation
           </button>
           {/* Open in Map View removed — the inline nearby map already
               has its own overlay button that does the same nav. */}
