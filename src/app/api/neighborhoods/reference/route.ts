@@ -21,6 +21,34 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const citySlug = searchParams.get('city');
+    const search = searchParams.get('search');
+
+    // Global subdivision search across all cities — used by the campaign wizard
+    if (search && search.trim().length >= 2) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const subs = await Subdivision.find(
+        { name: { $regex: escaped, $options: 'i' } },
+        { name: 1, slug: 1, city: 1, _id: 0 }
+      )
+        .limit(30)
+        .sort({ name: 1 })
+        .lean();
+
+      const cityNames = Array.from(new Set(subs.map((s: any) => s.city).filter(Boolean)));
+      const cities = cityNames.length > 0
+        ? await City.find({ name: { $in: cityNames } }, { name: 1, slug: 1, _id: 0 }).lean()
+        : [];
+      const citySlugByName = new Map(cities.map((c: any) => [c.name, c.slug]));
+
+      const results = subs.map((s: any) => ({
+        name: s.name,
+        slug: s.slug,
+        city: s.city,
+        citySlug: citySlugByName.get(s.city) || String(s.city).toLowerCase().replace(/\s+/g, '-'),
+      }));
+
+      return NextResponse.json({ subdivisions: results });
+    }
 
     // If city param provided, return subdivisions for that city
     if (citySlug) {

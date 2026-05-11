@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import type { DateRange } from 'react-day-picker';
 import { uploadToCloudinary } from '@/app/utils/cloudinaryUpload';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
-import { adBudgetToCredits, AD_SPEND_CREDITS_PER_DOLLAR } from '@/config/credit-costs';
+import { adBudgetToCredits, CREDITS_PER_SPEND_DOLLAR as AD_SPEND_CREDITS_PER_DOLLAR } from '@/config/credits';
+import { Calendar } from '@/app/components/ui/calendar';
 import PipelineStepIndicator from './PipelineStepIndicator';
 import type { StepDefinition } from './PipelineStepIndicator';
 
@@ -28,6 +30,7 @@ interface CommunityPage {
   slug: string;
   url: string;
   listingCount?: number;
+  citySlug?: string;
 }
 
 // --- Meta Placements ---
@@ -64,12 +67,34 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [selectedPage, setSelectedPage] = useState<CommunityPage | null>(null);
   const [customUrl, setCustomUrl] = useState('');
   const [loadingPages, setLoadingPages] = useState(false);
+  // Unified search across community pages, landing pages, and blog posts
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [searchCommunities, setSearchCommunities] = useState<Array<{ name: string; slug: string; city: string; citySlug: string }>>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // --- Step 2: Audience ---
-  const [metaAudienceType, setMetaAudienceType] = useState<'contacts' | 'visitors'>('visitors');
+  type MetaAudience = 'contacts' | 'visitors';
+  type YoutubeAudience = 'cold' | 'visitors' | 'channelViewers';
+  const [metaAudienceTypes, setMetaAudienceTypes] = useState<MetaAudience[]>(['visitors']);
   const [geoCenter, setGeoCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [geoAddress, setGeoAddress] = useState('');
   const [radiusMiles, setRadiusMiles] = useState(5);
+  // YouTube
+  const [youtubeAudienceTypes, setYoutubeAudienceTypes] = useState<YoutubeAudience[]>(['visitors']);
+  const [youtubeGeoCenter, setYoutubeGeoCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [youtubeGeoAddress, setYoutubeGeoAddress] = useState('');
+  const [youtubeRadiusMiles, setYoutubeRadiusMiles] = useState(5);
+
+  const toggleMetaAudience = (a: MetaAudience) => {
+    setMetaAudienceTypes(metaAudienceTypes.includes(a)
+      ? metaAudienceTypes.filter(x => x !== a)
+      : [...metaAudienceTypes, a]);
+  };
+  const toggleYoutubeAudience = (a: YoutubeAudience) => {
+    setYoutubeAudienceTypes(youtubeAudienceTypes.includes(a)
+      ? youtubeAudienceTypes.filter(x => x !== a)
+      : [...youtubeAudienceTypes, a]);
+  };
 
   // --- Step 3: Configure ---
   // Google PPC
@@ -88,10 +113,14 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [metaHeadline, setMetaHeadline] = useState('');
   const [metaPlacements, setMetaPlacements] = useState(['facebook_feed', 'instagram_feed']);
   const [metaBudget, setMetaBudget] = useState(8);
+  // Meta schedule — 'continuous' runs until paused; 'scheduled' uses metaDateRange
+  const [metaScheduleMode, setMetaScheduleMode] = useState<'continuous' | 'scheduled'>('continuous');
+  const [metaDateRange, setMetaDateRange] = useState<DateRange | undefined>(undefined);
 
   // --- Step 4: Launch ---
   const [enableGoogle, setEnableGoogle] = useState(true);
   const [enableMeta, setEnableMeta] = useState(true);
+  const [enableYoutube, setEnableYoutube] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchResult, setLaunchResult] = useState<{ success: boolean; message: string } | null>(null);
   const [launchData, setLaunchData] = useState<any>(null);
@@ -101,50 +130,58 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
   }`;
 
-  // Fetch page data based on page type
+  // Preload regions, landing pages, and blog posts on mount so unified search works.
   useEffect(() => {
-    const fetchPages = async () => {
+    const fetchAll = async () => {
       setLoadingPages(true);
       try {
-        if (pageType === 'community' && regions.length === 0) {
-          // Lightweight reference endpoint — just names and slugs
-          const res = await fetch('/api/neighborhoods/reference');
-          const data = await res.json();
-          if (data.regions) setRegions(data.regions);
-        } else if (pageType === 'landing' && landingPages.length === 0) {
-          // Must pass excludeLandingPages=false to get LP articles back
-          const res = await fetch('/api/articles/list?excludeLandingPages=false&limit=100');
-          const data = await res.json();
-          if (data.articles) {
-            setLandingPages(
-              data.articles
-                .filter((a: any) => a.category === 'landing-page')
-                .map((a: any) => ({
-                  name: a.title, city: '', slug: a.slug, url: `/lp/${a.slug}`,
-                }))
-            );
-          }
-        } else if (pageType === 'blog' && blogPosts.length === 0) {
-          // Default excludeLandingPages=true already filters out LPs
-          const res = await fetch('/api/articles/list?limit=100');
-          const data = await res.json();
-          if (data.articles) {
-            setBlogPosts(data.articles.map((a: any) => ({
-              name: a.title,
-              city: a.category?.replace(/-/g, ' ') || '',
-              slug: a.slug,
-              url: `/insights/${a.category}/${a.slug}`,
-            })));
-          }
+        const [refRes, lpRes, blogRes] = await Promise.all([
+          fetch('/api/neighborhoods/reference').then(r => r.json()).catch(() => ({})),
+          fetch('/api/articles/list?excludeLandingPages=false&limit=100').then(r => r.json()).catch(() => ({})),
+          fetch('/api/articles/list?limit=100').then(r => r.json()).catch(() => ({})),
+        ]);
+        if (refRes?.regions) setRegions(refRes.regions);
+        if (lpRes?.articles) {
+          setLandingPages(
+            lpRes.articles
+              .filter((a: any) => a.category === 'landing-page')
+              .map((a: any) => ({ name: a.title, city: '', slug: a.slug, url: `/lp/${a.slug}` }))
+          );
         }
-      } catch {
-        // Fallback
+        if (blogRes?.articles) {
+          setBlogPosts(blogRes.articles.map((a: any) => ({
+            name: a.title,
+            city: a.category?.replace(/-/g, ' ') || '',
+            slug: a.slug,
+            url: `/insights/${a.category}/${a.slug}`,
+          })));
+        }
       } finally {
         setLoadingPages(false);
       }
     };
-    fetchPages();
-  }, [pageType]);
+    fetchAll();
+  }, []);
+
+  // Debounced subdivision search — only fires when unified search has 2+ chars.
+  useEffect(() => {
+    const q = globalSearch.trim();
+    if (q.length < 2) { setSearchCommunities([]); return; }
+    let cancelled = false;
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/neighborhoods/reference?search=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (!cancelled && data?.subdivisions) setSearchCommunities(data.subdivisions);
+      } catch {
+        if (!cancelled) setSearchCommunities([]);
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [globalSearch]);
 
   // Lazy-load subdivisions when a city is selected
   useEffect(() => {
@@ -279,6 +316,11 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://chatrealty.io${selectedPage.url}` : '');
   const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
 
+  // Days the Meta campaign will run. Null = continuous (until paused).
+  const metaDurationDays = (metaScheduleMode === 'scheduled' && metaDateRange?.from && metaDateRange?.to)
+    ? Math.max(1, Math.round((metaDateRange.to.getTime() - metaDateRange.from.getTime()) / 86400000) + 1)
+    : null;
+
   const buildPayload = () => ({
     pageUrl,
     pageName: selectedPage?.name || 'Custom',
@@ -290,12 +332,23 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
       geoTargeting: geoCenter ? { type: 'radius', center: geoCenter, radiusMiles } : undefined,
     } : undefined,
     meta: enableMeta ? {
-      audienceType: metaAudienceType,
+      audienceTypes: metaAudienceTypes,
+      audienceType: metaAudienceTypes[0],
       imageUrl: metaImageUrl,
       primaryText: metaPrimaryText,
       headline: metaHeadline,
       placements: metaPlacements,
       budget: metaBudget,
+      schedule: {
+        mode: metaScheduleMode,
+        startDate: metaScheduleMode === 'scheduled' ? metaDateRange?.from?.toISOString() ?? null : null,
+        endDate: metaScheduleMode === 'scheduled' ? metaDateRange?.to?.toISOString() ?? null : null,
+        durationDays: metaDurationDays,
+      },
+    } : undefined,
+    youtube: enableYoutube ? {
+      audienceTypes: youtubeAudienceTypes,
+      geoTargeting: youtubeGeoCenter ? { type: 'radius', center: youtubeGeoCenter, radiusMiles: youtubeRadiusMiles } : undefined,
     } : undefined,
   });
 
@@ -381,6 +434,123 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                 Choose which community or neighborhood page to promote. Google PPC will drive search traffic to this page, and Meta will retarget visitors.
               </p>
 
+              {/* Unified Search */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Search community pages, landing pages, or blog posts..."
+                  className={inputClasses}
+                />
+              </div>
+
+              {/* Search Results — replaces tabs/drill-down when active */}
+              {globalSearch.trim().length >= 2 ? (
+                <div className="space-y-4">
+                  {/* Communities */}
+                  <div>
+                    <h4 className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>
+                      Communities {searchLoading && '(loading...)'}
+                    </h4>
+                    {searchCommunities.length === 0 ? (
+                      <p className={`text-sm ${textSecondary} italic`}>No matching communities</p>
+                    ) : (
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {searchCommunities.map((sub) => (
+                          <button
+                            key={`${sub.citySlug}-${sub.slug}`}
+                            onClick={() => {
+                              setPageType('community');
+                              setSelectedPage({
+                                name: sub.name,
+                                city: sub.city,
+                                slug: sub.slug,
+                                citySlug: sub.citySlug,
+                                url: communityPageVariant === 'community'
+                                  ? `/neighborhoods/${sub.citySlug}/${sub.slug}`
+                                  : `/neighborhoods/${sub.citySlug}/${sub.slug}/${communityPageVariant}`,
+                              });
+                              setGlobalSearch('');
+                            }}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${
+                              isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                            }`}
+                          >
+                            <p className={`font-medium ${textPrimary}`}>{sub.name}</p>
+                            <p className={`text-xs ${textSecondary}`}>{sub.city}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Landing Pages */}
+                  <div>
+                    <h4 className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>Landing Pages</h4>
+                    {(() => {
+                      const matches = landingPages.filter(p =>
+                        p.name.toLowerCase().includes(globalSearch.toLowerCase())
+                      ).slice(0, 15);
+                      return matches.length === 0 ? (
+                        <p className={`text-sm ${textSecondary} italic`}>No matching landing pages</p>
+                      ) : (
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {matches.map((page) => (
+                            <button
+                              key={page.slug}
+                              onClick={() => {
+                                setPageType('landing');
+                                setSelectedPage(page);
+                                setGlobalSearch('');
+                              }}
+                              className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                              }`}
+                            >
+                              <p className={`font-medium ${textPrimary}`}>{page.name}</p>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Blog Posts */}
+                  <div>
+                    <h4 className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>Blog Posts</h4>
+                    {(() => {
+                      const matches = blogPosts.filter(p =>
+                        p.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
+                        p.city.toLowerCase().includes(globalSearch.toLowerCase())
+                      ).slice(0, 15);
+                      return matches.length === 0 ? (
+                        <p className={`text-sm ${textSecondary} italic`}>No matching blog posts</p>
+                      ) : (
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {matches.map((page) => (
+                            <button
+                              key={page.slug}
+                              onClick={() => {
+                                setPageType('blog');
+                                setSelectedPage(page);
+                                setGlobalSearch('');
+                              }}
+                              className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                isLight ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 bg-white' : 'border-gray-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-gray-800'
+                              }`}
+                            >
+                              <p className={`font-medium ${textPrimary}`}>{page.name}</p>
+                              {page.city && <p className={`text-xs ${textSecondary} capitalize`}>{page.city}</p>}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Page Type Tabs */}
               <div className="flex gap-2 mb-4 flex-wrap">
                 {([
@@ -538,6 +708,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                                 name: sub.name,
                                 city: currentCity.name,
                                 slug: sub.slug,
+                                citySlug: currentCity.slug,
                                 url: communityPageVariant === 'community'
                                   ? `/neighborhoods/${currentCity.slug}/${sub.slug}`
                                   : `/neighborhoods/${currentCity.slug}/${sub.slug}/${communityPageVariant}`,
@@ -594,6 +765,8 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                   placeholder="https://chatrealty.io/..." className={inputClasses}
                 />
               )}
+              </>
+              )}
 
               {/* Selected page summary */}
               {(selectedPage || (pageType === 'custom' && customUrl)) && (
@@ -602,6 +775,42 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                     {selectedPage ? `${selectedPage.name}${selectedPage.city ? ` — ${selectedPage.city}` : ''}` : 'Custom URL'}
                   </p>
                   <p className={`text-xs ${isLight ? 'text-purple-600' : 'text-indigo-400'}`}>{pageUrl}</p>
+
+                  {/* Buy / Sell / Community variant — visible after a community page is selected */}
+                  {pageType === 'community' && selectedPage && (selectedPage.citySlug || currentCity) && (
+                    <div className="mt-3 pt-3 border-t border-current/10">
+                      <p className={`text-xs ${textSecondary} mb-2`}>Page variant:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {([
+                          { id: 'buy' as const, label: 'Buy Page' },
+                          { id: 'sell' as const, label: 'Sell Page' },
+                          { id: 'community' as const, label: 'Community Page' },
+                        ]).map((v) => (
+                          <button
+                            key={v.id}
+                            onClick={() => {
+                              setCommunityPageVariant(v.id);
+                              const citySlug = selectedPage.citySlug || currentCity?.slug;
+                              if (!citySlug) return;
+                              setSelectedPage({
+                                ...selectedPage,
+                                url: v.id === 'community'
+                                  ? `/neighborhoods/${citySlug}/${selectedPage.slug}`
+                                  : `/neighborhoods/${citySlug}/${selectedPage.slug}/${v.id}`,
+                              });
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              communityPageVariant === v.id
+                                ? isLight ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
+                                : isLight ? 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -623,86 +832,220 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
         {/* ============ STEP 2: AUDIENCE ============ */}
         {currentStep === 'audience' && (
           <div className="space-y-6">
+            <p className={`text-sm ${textSecondary}`}>
+              Toggle either channel on or off. You can run Meta retargeting, Google PPC, or both — neither section is required.
+            </p>
+
             {/* Meta Audience */}
-            <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Meta Retargeting Audience</h3>
-              <p className={`text-sm ${textSecondary} mb-4`}>
-                Who should see retargeting ads on Facebook and Instagram?
-              </p>
-
-              <div className="space-y-3 mb-4">
-                <button
-                  onClick={() => setMetaAudienceType('visitors')}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    metaAudienceType === 'visitors'
-                      ? isLight ? 'border-pink-500 bg-pink-50' : 'border-pink-500 bg-pink-900/30'
-                      : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
-                  }`}
-                >
-                  <p className={`font-medium ${textPrimary}`}>Website Visitors</p>
-                  <p className={`text-sm ${textSecondary}`}>Retarget people who visited your site (via Meta Pixel) — shows ads to people who already know you</p>
-                </button>
-                <button
-                  onClick={() => setMetaAudienceType('contacts')}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    metaAudienceType === 'contacts'
-                      ? isLight ? 'border-pink-500 bg-pink-50' : 'border-pink-500 bg-pink-900/30'
-                      : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
-                  }`}
-                >
-                  <p className={`font-medium ${textPrimary}`}>CRM Contacts</p>
-                  <p className={`text-sm ${textSecondary}`}>Upload your contacts as a Custom Audience — show ads to people in your database</p>
-                </button>
+            <div className={`${cardBg} ${cardBorder} rounded-lg p-6 ${!enableMeta ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between mb-2 gap-4">
+                <div>
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>Meta Retargeting Audience</h3>
+                  <p className={`text-sm ${textSecondary} mt-1`}>
+                    Who should see retargeting ads on Facebook and Instagram?
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0 mt-1">
+                  <input type="checkbox" checked={enableMeta} onChange={(e) => setEnableMeta(e.target.checked)} className="w-4 h-4 rounded" />
+                  <span className={`text-sm ${textSecondary}`}>Enabled</span>
+                </label>
               </div>
 
-              <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-yellow-50 border border-yellow-200 text-yellow-800' : 'bg-yellow-900/20 border border-yellow-700/50 text-yellow-300'}`}>
-                Housing Special Ad Category is auto-applied. No age, gender, or ZIP targeting on Meta.
-              </div>
+              {enableMeta && (
+                <>
+                  <p className={`text-xs ${textSecondary} mt-4 mb-2`}>Select one or more audiences. Ads will reach people in any of the selected lists.</p>
+                  <div className="space-y-3 mb-4">
+                    {([
+                      { id: 'visitors' as const, label: 'Website Visitors', desc: 'Retarget people who visited your site (via Meta Pixel) — shows ads to people who already know you' },
+                      { id: 'contacts' as const, label: 'CRM Contacts', desc: 'Upload your contacts as a Custom Audience — show ads to people in your database' },
+                    ]).map((opt) => {
+                      const checked = metaAudienceTypes.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => toggleMetaAudience(opt.id)}
+                          className={`w-full text-left p-4 rounded-lg border-2 transition-all flex items-start gap-3 ${
+                            checked
+                              ? isLight ? 'border-pink-500 bg-pink-50' : 'border-pink-500 bg-pink-900/30'
+                              : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
+                          }`}
+                        >
+                          <input type="checkbox" checked={checked} readOnly className="mt-1 w-4 h-4 rounded pointer-events-none" />
+                          <div>
+                            <p className={`font-medium ${textPrimary}`}>{opt.label}</p>
+                            <p className={`text-sm ${textSecondary}`}>{opt.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {metaAudienceTypes.length === 0 && (
+                    <div className={`p-3 mb-3 rounded-lg text-sm ${isLight ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-amber-900/20 border border-amber-700/50 text-amber-300'}`}>
+                      No audience selected — Meta requires at least one Custom Audience for retargeting.
+                    </div>
+                  )}
+
+                  <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-yellow-50 border border-yellow-200 text-yellow-800' : 'bg-yellow-900/20 border border-yellow-700/50 text-yellow-300'}`}>
+                    Housing Special Ad Category is auto-applied. No age, gender, or ZIP targeting on Meta.
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Google PPC Geo Targeting */}
-            <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Google PPC Targeting Area</h3>
-              <p className={`text-sm ${textSecondary} mb-4`}>
-                Drop a pin on the map to set the area where your Google search ads will show.
-              </p>
-
-              <div className="mb-3">
-                <label className={`block text-sm ${textSecondary} mb-1`}>
-                  Radius: <span className={`font-semibold ${textPrimary}`}>{radiusMiles} miles</span>
-                </label>
-                <input
-                  type="range" min="1" max="50" value={radiusMiles}
-                  onChange={(e) => setRadiusMiles(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className={`flex justify-between text-xs ${textSecondary}`}>
-                  <span>1 mi</span><span>25 mi</span><span>50 mi</span>
+            <div className={`${cardBg} ${cardBorder} rounded-lg p-6 ${!enableGoogle ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between mb-2 gap-4">
+                <div>
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>Google PPC Targeting Area</h3>
+                  <p className={`text-sm ${textSecondary} mt-1`}>
+                    Drop a pin on the map to set the area where your Google search ads will show.
+                  </p>
                 </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0 mt-1">
+                  <input type="checkbox" checked={enableGoogle} onChange={(e) => setEnableGoogle(e.target.checked)} className="w-4 h-4 rounded" />
+                  <span className={`text-sm ${textSecondary}`}>Enabled</span>
+                </label>
               </div>
 
-              <PinDropMap
-                radiusMiles={radiusMiles}
-                onChange={(loc) => {
-                  setGeoCenter({ lat: loc.lat, lng: loc.lng });
-                  if (loc.address) setGeoAddress(loc.address);
-                }}
-                height="300px"
-                searchPlaceholder="Search for the community or neighborhood..."
-              />
+              {enableGoogle && (
+                <>
+                  <div className="mb-3 mt-4">
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      Radius: <span className={`font-semibold ${textPrimary}`}>{radiusMiles} miles</span>
+                    </label>
+                    <input
+                      type="range" min="1" max="50" value={radiusMiles}
+                      onChange={(e) => setRadiusMiles(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className={`flex justify-between text-xs ${textSecondary}`}>
+                      <span>1 mi</span><span>25 mi</span><span>50 mi</span>
+                    </div>
+                  </div>
 
-              {geoAddress && (
-                <p className={`text-sm ${textSecondary} mt-2`}>
-                  Ads will show to searchers near: <span className={`font-medium ${textPrimary}`}>{geoAddress}</span>
-                </p>
+                  <PinDropMap
+                    radiusMiles={radiusMiles}
+                    onChange={(loc) => {
+                      setGeoCenter({ lat: loc.lat, lng: loc.lng });
+                      if (loc.address) setGeoAddress(loc.address);
+                    }}
+                    height="300px"
+                    searchPlaceholder="Search for the community or neighborhood..."
+                  />
+
+                  {geoAddress && (
+                    <p className={`text-sm ${textSecondary} mt-2`}>
+                      Ads will show to searchers near: <span className={`font-medium ${textPrimary}`}>{geoAddress}</span>
+                    </p>
+                  )}
+                </>
               )}
             </div>
+
+            {/* YouTube Video Ads */}
+            <div className={`${cardBg} ${cardBorder} rounded-lg p-6 ${!enableYoutube ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between mb-2 gap-4">
+                <div>
+                  <h3 className={`text-lg font-semibold ${textPrimary}`}>YouTube Video Ads</h3>
+                  <p className={`text-sm ${textSecondary} mt-1`}>
+                    Run skippable in-stream or in-feed video ads on YouTube. Targets viewers in your area and (optionally) people already familiar with your brand.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0 mt-1">
+                  <input type="checkbox" checked={enableYoutube} onChange={(e) => setEnableYoutube(e.target.checked)} className="w-4 h-4 rounded" />
+                  <span className={`text-sm ${textSecondary}`}>Enabled</span>
+                </label>
+              </div>
+
+              {enableYoutube && (
+                <>
+                  <p className={`text-xs ${textSecondary} mt-4 mb-2`}>Select any combination. Cold Reach overrides retargeting (everyone in geo). Visitors + Channel Viewers reaches the union of both lists.</p>
+                  <div className="space-y-3 mb-4">
+                    {([
+                      { id: 'cold' as const, label: 'Cold Reach', desc: 'Target by location only — broad reach to viewers in your radius who haven’t seen you before' },
+                      { id: 'visitors' as const, label: 'Website Visitors (Retargeting)', desc: 'Show video ads to people who visited your site (via Google Ads remarketing tag) — warm audience, already aware of you' },
+                      { id: 'channelViewers' as const, label: 'YouTube Channel Viewers (Retargeting)', desc: 'Re-engage people who’ve watched videos on your YouTube channel' },
+                    ]).map((opt) => {
+                      const checked = youtubeAudienceTypes.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => toggleYoutubeAudience(opt.id)}
+                          className={`w-full text-left p-4 rounded-lg border-2 transition-all flex items-start gap-3 ${
+                            checked
+                              ? isLight ? 'border-red-500 bg-red-50' : 'border-red-500 bg-red-900/30'
+                              : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
+                          }`}
+                        >
+                          <input type="checkbox" checked={checked} readOnly className="mt-1 w-4 h-4 rounded pointer-events-none" />
+                          <div>
+                            <p className={`font-medium ${textPrimary}`}>{opt.label}</p>
+                            <p className={`text-sm ${textSecondary}`}>{opt.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {youtubeAudienceTypes.length === 0 && (
+                    <div className={`p-3 mb-3 rounded-lg text-sm ${isLight ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-amber-900/20 border border-amber-700/50 text-amber-300'}`}>
+                      No audience selected — pick at least one (Cold Reach for broad targeting, or one of the retargeting lists).
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      Radius: <span className={`font-semibold ${textPrimary}`}>{youtubeRadiusMiles} miles</span>
+                    </label>
+                    <input
+                      type="range" min="1" max="50" value={youtubeRadiusMiles}
+                      onChange={(e) => setYoutubeRadiusMiles(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className={`flex justify-between text-xs ${textSecondary}`}>
+                      <span>1 mi</span><span>25 mi</span><span>50 mi</span>
+                    </div>
+                  </div>
+
+                  <PinDropMap
+                    radiusMiles={youtubeRadiusMiles}
+                    onChange={(loc) => {
+                      setYoutubeGeoCenter({ lat: loc.lat, lng: loc.lng });
+                      if (loc.address) setYoutubeGeoAddress(loc.address);
+                    }}
+                    height="300px"
+                    searchPlaceholder="Search for the area to target..."
+                  />
+
+                  {youtubeGeoAddress && (
+                    <p className={`text-sm ${textSecondary} mt-2`}>
+                      Video ads will show to viewers near: <span className={`font-medium ${textPrimary}`}>{youtubeGeoAddress}</span>
+                    </p>
+                  )}
+
+                  <div className={`mt-4 p-3 rounded-lg text-sm ${isLight ? 'bg-yellow-50 border border-yellow-200 text-yellow-800' : 'bg-yellow-900/20 border border-yellow-700/50 text-yellow-300'}`}>
+                    Housing Special Ad Category restrictions: no ZIP code, age, gender, parental, or marital targeting. CRM Customer Match is not available. Radius targeting is allowed (Google&apos;s minimum is ~1 km).
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!enableGoogle && !enableMeta && !enableYoutube && (
+              <div className={`p-3 rounded-lg text-sm ${isLight ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-900/20 border border-red-700/50 text-red-400'}`}>
+                Enable at least one channel (Meta, Google PPC, or YouTube) to continue.
+              </div>
+            )}
 
             <div className="flex justify-between">
               <button onClick={() => handleBack('audience')} className={`px-6 py-3 rounded-lg font-medium ${isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-900' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}>
                 Back
               </button>
-              <button onClick={() => handleNext('audience')} className={`px-6 py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              <button
+                onClick={() => handleNext('audience')}
+                disabled={!enableGoogle && !enableMeta && !enableYoutube}
+                className={`px-6 py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
                 Configure Ads →
               </button>
             </div>
@@ -779,12 +1122,21 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                   {/* Budget */}
                   <div>
-                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
-                    <input type="number" min="5" value={googleBudget}
-                      onChange={(e) => setGoogleBudget(parseFloat(e.target.value) || 0)}
-                      className={inputClasses}
-                    />
-                    <p className={`text-xs ${textSecondary} mt-1`}>~{adBudgetToCredits(googleBudget, 30)} credits/month</p>
+                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget</label>
+                    <div className="relative">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${textSecondary} pointer-events-none`}>$</span>
+                      <input
+                        type="number" min="5" step="1" value={googleBudget}
+                        onChange={(e) => setGoogleBudget(parseFloat(e.target.value) || 0)}
+                        className={`${inputClasses} pl-7`}
+                      />
+                      <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textSecondary} pointer-events-none`}>/ day</span>
+                    </div>
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      ${googleBudget.toFixed(2)}/day ={' '}
+                      <span className={`font-medium ${textPrimary}`}>{adBudgetToCredits(googleBudget, 1)} credits/day</span>
+                      {' '}· ~{adBudgetToCredits(googleBudget, 30).toLocaleString()} credits/month
+                    </p>
                   </div>
                 </div>
               )}
@@ -908,12 +1260,68 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                   {/* Budget */}
                   <div>
-                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget (credits)</label>
-                    <input type="number" min="5" value={metaBudget}
-                      onChange={(e) => setMetaBudget(parseFloat(e.target.value) || 0)}
-                      className={inputClasses}
-                    />
-                    <p className={`text-xs ${textSecondary} mt-1`}>~{adBudgetToCredits(metaBudget, 30)} credits/month</p>
+                    <label className={`block text-sm font-medium ${textPrimary} mb-1`}>Daily Budget</label>
+                    <div className="relative">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${textSecondary} pointer-events-none`}>$</span>
+                      <input
+                        type="number" min="5" step="1" value={metaBudget}
+                        onChange={(e) => setMetaBudget(parseFloat(e.target.value) || 0)}
+                        className={`${inputClasses} pl-7`}
+                      />
+                      <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textSecondary} pointer-events-none`}>/ day</span>
+                    </div>
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      ${metaBudget.toFixed(2)}/day ={' '}
+                      <span className={`font-medium ${textPrimary}`}>{adBudgetToCredits(metaBudget, 1)} credits/day</span>
+                      {' '}· ~{adBudgetToCredits(metaBudget, 30).toLocaleString()} credits/month
+                    </p>
+                  </div>
+
+                  {/* Schedule */}
+                  <div>
+                    <label className={`block text-sm font-medium ${textPrimary} mb-2`}>Schedule</label>
+                    <div className="flex gap-2 mb-3">
+                      {([
+                        { id: 'continuous' as const, label: 'Run Continuously', desc: 'No end date — runs until paused' },
+                        { id: 'scheduled' as const, label: 'Set Date Range', desc: 'Pick start and end dates' },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setMetaScheduleMode(opt.id)}
+                          className={`flex-1 text-left p-3 rounded-lg border-2 transition-all ${
+                            metaScheduleMode === opt.id
+                              ? isLight ? 'border-pink-500 bg-pink-50' : 'border-pink-500 bg-pink-900/30'
+                              : isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'
+                          }`}
+                        >
+                          <p className={`text-sm font-medium ${textPrimary}`}>{opt.label}</p>
+                          <p className={`text-xs ${textSecondary}`}>{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    {metaScheduleMode === 'scheduled' && (
+                      <div className={`rounded-lg border ${isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-800'} flex justify-center`}>
+                        <Calendar
+                          mode="range"
+                          selected={metaDateRange}
+                          onSelect={setMetaDateRange}
+                          disabled={{ before: new Date() }}
+                          numberOfMonths={1}
+                        />
+                      </div>
+                    )}
+
+                    {metaScheduleMode === 'scheduled' && metaDurationDays !== null && (
+                      <p className={`text-xs ${textSecondary} mt-2`}>
+                        Runs for <span className={`font-medium ${textPrimary}`}>{metaDurationDays} day{metaDurationDays === 1 ? '' : 's'}</span>
+                        {' '}· Total: <span className={`font-medium ${textPrimary}`}>{adBudgetToCredits(metaBudget, metaDurationDays).toLocaleString()} credits</span>
+                        {' '}(${(metaBudget * metaDurationDays).toFixed(2)})
+                      </p>
+                    )}
+                    {metaScheduleMode === 'scheduled' && !metaDurationDays && (
+                      <p className={`text-xs ${textSecondary} mt-2 italic`}>Select a start and end date above.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -952,9 +1360,12 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               <div className="space-y-3 mb-6">
                 {enableGoogle && (
                   <div className={`p-4 rounded-lg ${isLight ? 'bg-blue-50 border border-blue-200' : 'bg-blue-900/20 border border-blue-700/50'}`}>
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-start mb-2 gap-3">
                       <h4 className={`font-medium ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>Google Search PPC</h4>
-                      <span className={`font-semibold ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>{googleBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
+                      <div className={`text-right ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
+                        <p className="font-semibold">${googleBudget.toFixed(2)}/day</p>
+                        <p className="text-xs">{googleBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</p>
+                      </div>
                     </div>
                     <div className={`text-sm ${textSecondary} space-y-1`}>
                       <p>Keywords: {keywords.length} ({keywords.slice(0, 3).join(', ')}{keywords.length > 3 ? '...' : ''})</p>
@@ -966,25 +1377,56 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
 
                 {enableMeta && (
                   <div className={`p-4 rounded-lg ${isLight ? 'bg-pink-50 border border-pink-200' : 'bg-pink-900/20 border border-pink-700/50'}`}>
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-start mb-2 gap-3">
                       <h4 className={`font-medium ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>Meta Retargeting</h4>
-                      <span className={`font-semibold ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>{metaBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</span>
+                      <div className={`text-right ${isLight ? 'text-pink-700' : 'text-pink-400'}`}>
+                        <p className="font-semibold">${metaBudget.toFixed(2)}/day</p>
+                        <p className="text-xs">{metaBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</p>
+                      </div>
                     </div>
                     <div className={`text-sm ${textSecondary} space-y-1`}>
-                      <p>Audience: {metaAudienceType === 'visitors' ? 'Website Visitors (Pixel)' : 'CRM Contacts'}</p>
+                      <p>Audience: {metaAudienceTypes.length === 0
+                        ? 'None selected'
+                        : metaAudienceTypes.map(a => a === 'visitors' ? 'Website Visitors (Pixel)' : 'CRM Contacts').join(' + ')}</p>
                       <p>Placements: {metaPlacements.map(p => p.replace(/_/g, ' ')).join(', ')}</p>
                       <p>Headline: {metaHeadline}</p>
+                      <p>
+                        Schedule: {metaScheduleMode === 'continuous'
+                          ? 'Runs continuously until paused'
+                          : metaDurationDays
+                            ? `${metaDateRange!.from!.toLocaleDateString()} → ${metaDateRange!.to!.toLocaleDateString()} (${metaDurationDays} days)`
+                            : 'No date range selected'}
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Total Budget */}
-              <div className={`p-4 rounded-lg mb-6 text-center ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
-                <p className={`text-sm ${textSecondary}`}>Total Daily Budget</p>
-                <p className={`text-3xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>{totalBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day</p>
-                <p className={`text-sm ${textSecondary}`}>~{adBudgetToCredits(totalBudget, 30)} credits/month</p>
-              </div>
+              {(() => {
+                const dailyCredits = totalBudget * AD_SPEND_CREDITS_PER_DOLLAR;
+                const days = enableMeta && metaScheduleMode === 'scheduled' && metaDurationDays ? metaDurationDays : null;
+                const totalDollars = days ? totalBudget * days : null;
+                const totalCredits = days ? dailyCredits * days : null;
+                return (
+                  <div className={`p-4 rounded-lg mb-6 text-center ${isLight ? 'bg-green-50 border border-green-200' : 'bg-green-900/20 border border-green-700/50'}`}>
+                    <p className={`text-sm ${textSecondary}`}>Daily Ad Spend</p>
+                    <p className={`text-3xl font-bold ${isLight ? 'text-green-600' : 'text-green-400'}`}>${totalBudget.toFixed(2)}/day</p>
+                    <p className={`text-sm ${textSecondary}`}>= {dailyCredits} credits/day deducted from balance</p>
+
+                    {days !== null ? (
+                      <div className={`mt-3 pt-3 border-t ${isLight ? 'border-green-200' : 'border-green-700/50'}`}>
+                        <p className={`text-sm ${textSecondary}`}>Total over {days} day{days === 1 ? '' : 's'}</p>
+                        <p className={`text-lg font-semibold ${textPrimary}`}>${totalDollars!.toFixed(2)} · {totalCredits!.toLocaleString()} credits</p>
+                      </div>
+                    ) : (
+                      <div className={`mt-3 pt-3 border-t ${isLight ? 'border-green-200' : 'border-green-700/50'}`}>
+                        <p className={`text-sm ${textSecondary}`}>Continuous — approx ${(totalBudget * 30).toFixed(2)}/mo · {adBudgetToCredits(totalBudget, 30).toLocaleString()} credits/mo</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Launch Error (inline) */}
               {launchResult && !launchResult.success && (
@@ -1016,9 +1458,13 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
                         <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
                         Saving & Launching...
                       </span>
-                    ) : (
-                      `Launch Campaign — ${totalBudget * AD_SPEND_CREDITS_PER_DOLLAR} credits/day`
-                    )}
+                    ) : (() => {
+                      const dailyCredits = totalBudget * AD_SPEND_CREDITS_PER_DOLLAR;
+                      const days = enableMeta && metaScheduleMode === 'scheduled' && metaDurationDays ? metaDurationDays : null;
+                      return days
+                        ? `Launch Campaign — ${(dailyCredits * days).toLocaleString()} credits ($${(totalBudget * days).toFixed(2)})`
+                        : `Launch Campaign — ${dailyCredits} credits/day ($${totalBudget.toFixed(2)}/day)`;
+                    })()}
                   </button>
                 </div>
               )}
