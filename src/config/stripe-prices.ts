@@ -1,12 +1,15 @@
 // src/config/stripe-prices.ts
-// Stripe price IDs and tier details for subscription system
+// Stripe price IDs and tier details for subscription system.
+//
+// Credit math is derived from src/config/credits.ts (1 credit = $0.10 spend).
+// Markup is applied at PURCHASE time, not at spend.
 //
 // Agent tiers (with marketing credits):
-//   Beginner     $125/mo  →  750 pts  → $93.75 ad spend  (25% margin)
-//   Experienced  $500/mo  → 3,200 pts → $400 ad spend    (20% margin)
-//   Top Agent  $1,000/mo  → 6,800 pts → $850 ad spend    (15% margin)
+//   Beginner     $125/mo  → 1,000 credits → $100 ad spend  (25% markup)
+//   Experienced  $500/mo  → 4,167 credits → $416.70 ad spend (20% markup)
+//   Top Agent  $1,000/mo  → 8,696 credits → $869.60 ad spend (15% markup)
 //
-// General user tier (no points):
+// General user tier (no credits):
 //   Pro  $9.99/mo  → premium search features only
 
 import type { SubscriptionTier, BillingInterval } from "@/models/AgentSubscription";
@@ -98,12 +101,12 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     tier: "beginner",
     monthlyPrice: 125,
     annualPrice: 1200,
-    description: "Launch your real estate marketing with 750 credits/month for Google Ads, Meta Ads, direct mail, and voicemail drops",
-    monthlyPoints: 750,
-    adSpendValue: 93.75,
+    description: "Launch your real estate marketing with 1,000 credits/month for Google Ads, Meta Ads, direct mail, and voicemail drops",
+    monthlyPoints: 1000,
+    adSpendValue: 100,
     marginPercent: 25,
     features: [
-      "750 marketing credits/month",
+      "1,000 marketing credits/month",
       "Google & Meta Ads campaigns",
       "Direct mail campaigns",
       "Voicemail drops",
@@ -119,13 +122,13 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     tier: "experienced",
     monthlyPrice: 500,
     annualPrice: 4800,
-    description: "Scale your business with 3,200 credits/month, better rates, and advanced campaign tools",
-    monthlyPoints: 3200,
-    adSpendValue: 400,
+    description: "Scale your business with 4,167 credits/month, better rates, and advanced campaign tools",
+    monthlyPoints: 4167,
+    adSpendValue: 416.7,
     marginPercent: 20,
     highlighted: true,
     features: [
-      "3,200 marketing credits/month",
+      "4,167 marketing credits/month",
       "Better credit value per dollar",
       "Priority ad placement",
       "Advanced campaign analytics",
@@ -142,12 +145,12 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     tier: "topagent",
     monthlyPrice: 1000,
     annualPrice: 9600,
-    description: "Maximum ROI for top producers — 6,800 credits/month at the best rate with white-glove service",
-    monthlyPoints: 6800,
-    adSpendValue: 850,
+    description: "Maximum ROI for top producers — 8,696 credits/month at the best rate with white-glove service",
+    monthlyPoints: 8696,
+    adSpendValue: 869.6,
     marginPercent: 15,
     features: [
-      "6,800 marketing credits/month",
+      "8,696 marketing credits/month",
       "Best credit value per dollar",
       "White-glove campaign management",
       "Custom reporting & dashboards",
