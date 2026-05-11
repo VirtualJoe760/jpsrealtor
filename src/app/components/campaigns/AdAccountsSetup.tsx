@@ -7,7 +7,13 @@ interface AdAccountStatus {
   connected: boolean;
   customerId?: string | null;
   adAccountId?: string | null;
+  adAccountName?: string | null;
   pageId?: string | null;
+  pageName?: string | null;
+  businessName?: string | null;
+  tokenExpiresAt?: string | null;
+  availableAdAccounts?: Array<{ id: string; name: string; businessName?: string }>;
+  availablePages?: Array<{ id: string; name: string }>;
   accountId?: string | null;
   locationId?: string | null;
   status: string;
@@ -57,6 +63,16 @@ export default function AdAccountsSetup() {
       }
     };
     fetchStatus();
+
+    // Surface OAuth callback results from query params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const metaStatus = params.get('meta_ads');
+      const metaErr = params.get('meta_error');
+      if (metaStatus === 'connected') setMessage('Meta Business connected!');
+      else if (metaStatus === 'connected_partial') setMessage('Meta connected, but no Ad Account or Page was found. Make sure your Facebook account manages at least one Page and has access to an Ad Account.');
+      else if (metaErr) setMessage(`Meta connection failed: ${metaErr}`);
+    }
   }, []);
 
   const saveGoogle = async () => {
@@ -264,56 +280,122 @@ export default function AdAccountsSetup() {
         {!meta?.connected ? (
           <div className="space-y-3">
             <p className={`text-sm ${textSecondary}`}>
-              Connect your Meta Ads account to run retargeting campaigns on Facebook and Instagram.
+              Connect your Meta Business account so we can run ads on Facebook and Instagram
+              on your behalf. We&apos;ll request permission to manage your Pages and Ad Account —
+              Meta bills your card directly.
             </p>
-            <div className={`p-3 rounded-lg ${isLight ? 'bg-gray-50' : 'bg-gray-800'}`}>
-              <div className="space-y-2">
-                <div>
-                  <label className={`block text-xs ${textSecondary} mb-1`}>Ad Account ID (from Meta Business Suite → Ad Accounts)</label>
-                  <input value={metaAdAccountId} onChange={(e) => setMetaAdAccountId(e.target.value)}
-                    placeholder="act_XXXXXXXXX" className={inputClasses} />
-                </div>
-                <div>
-                  <label className={`block text-xs ${textSecondary} mb-1`}>Facebook Page ID (from Page → About → Page ID)</label>
-                  <input value={metaPageId} onChange={(e) => setMetaPageId(e.target.value)}
-                    placeholder="Page ID (numeric)" className={inputClasses} />
-                </div>
-                <div>
-                  <label className={`block text-xs ${textSecondary} mb-1`}>Access Token (System User with ads_management permission)</label>
-                  <input value={metaAccessToken} onChange={(e) => setMetaAccessToken(e.target.value)}
-                    placeholder="Access token" type="password" className={inputClasses} />
-                  <p className={`text-xs ${textSecondary} mt-1`}>
-                    Leave blank to use your existing CAPI token (if it has ads_management scope)
-                  </p>
-                </div>
-              </div>
-              <button onClick={saveMeta} disabled={saving || !metaAdAccountId || !metaPageId}
-                className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white ${
-                  isLight ? 'bg-pink-600 hover:bg-pink-700' : 'bg-pink-600 hover:bg-pink-700'
-                } disabled:opacity-50`}>
-                {saving ? 'Saving...' : 'Save Meta Ads'}
-              </button>
+
+            <div className={`p-3 rounded-lg ${isLight ? 'bg-pink-50' : 'bg-pink-900/10'}`}>
+              <a
+                href="/api/auth/meta-ads/connect"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#1877F2] hover:bg-[#166FE5]"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Connect Meta Business
+              </a>
+              <p className={`text-xs ${textSecondary} mt-2`}>
+                You&apos;ll be redirected to Facebook to authorize ChatRealty to manage your ads.
+              </p>
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className={`text-sm ${textSecondary}`}>
-              Ad Account: <span className={`font-medium ${textPrimary}`}>{meta.adAccountId}</span>
-            </p>
-            {meta.pageId && (
+          <div className="space-y-3">
+            {meta.businessName && (
               <p className={`text-sm ${textSecondary}`}>
-                Page ID: <span className={`font-medium ${textPrimary}`}>{meta.pageId}</span>
+                Business: <span className={`font-medium ${textPrimary}`}>{meta.businessName}</span>
               </p>
             )}
+
+            {/* Ad Account selector — only show dropdown if there are multiple */}
+            {meta.availableAdAccounts && meta.availableAdAccounts.length > 1 ? (
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1`}>Ad Account</label>
+                <select
+                  value={meta.adAccountId || ''}
+                  onChange={async (e) => {
+                    const sel = meta.availableAdAccounts!.find((a) => a.id === e.target.value);
+                    if (!sel) return;
+                    await fetch('/api/agent/ad-accounts', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ platform: 'meta', adAccountId: sel.id, adAccountName: sel.name }),
+                    });
+                    setMeta({ ...meta, adAccountId: sel.id, adAccountName: sel.name });
+                  }}
+                  className={inputClasses}
+                >
+                  {meta.availableAdAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}{a.businessName ? ` — ${a.businessName}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className={`text-sm ${textSecondary}`}>
+                Ad Account: <span className={`font-medium ${textPrimary}`}>{meta.adAccountName || meta.adAccountId}</span>
+              </p>
+            )}
+
+            {/* Page selector — only show dropdown if there are multiple */}
+            {meta.availablePages && meta.availablePages.length > 1 ? (
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1`}>Facebook Page</label>
+                <select
+                  value={meta.pageId || ''}
+                  onChange={async (e) => {
+                    const sel = meta.availablePages!.find((p) => p.id === e.target.value);
+                    if (!sel) return;
+                    await fetch('/api/agent/ad-accounts', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ platform: 'meta', pageId: sel.id, pageName: sel.name }),
+                    });
+                    setMeta({ ...meta, pageId: sel.id, pageName: sel.name });
+                  }}
+                  className={inputClasses}
+                >
+                  {meta.availablePages.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : meta.pageName || meta.pageId ? (
+              <p className={`text-sm ${textSecondary}`}>
+                Facebook Page: <span className={`font-medium ${textPrimary}`}>{meta.pageName || meta.pageId}</span>
+              </p>
+            ) : null}
+
             {meta.connectedAt && (
               <p className={`text-xs ${textSecondary}`}>
                 Connected {new Date(meta.connectedAt).toLocaleDateString()}
+                {meta.tokenExpiresAt && (
+                  <> · Token expires {new Date(meta.tokenExpiresAt).toLocaleDateString()}</>
+                )}
               </p>
             )}
-            <button onClick={() => disconnect('meta')} disabled={saving}
-              className={`text-sm ${isLight ? 'text-red-600 hover:text-red-700' : 'text-red-400 hover:text-red-300'}`}>
-              Disconnect
-            </button>
+
+            <div className="flex gap-3">
+              <a
+                href="/api/auth/meta-ads/connect"
+                className={`text-sm ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+              >
+                Reconnect / Refresh token
+              </a>
+              <button
+                onClick={async () => {
+                  await fetch('/api/auth/meta-ads/disconnect', { method: 'POST' });
+                  setMeta({ connected: false, status: 'disconnected', connectedAt: null });
+                  setMessage('Meta Ads disconnected');
+                }}
+                disabled={saving}
+                className={`text-sm ${isLight ? 'text-red-600 hover:text-red-700' : 'text-red-400 hover:text-red-300'}`}
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
         )}
       </div>

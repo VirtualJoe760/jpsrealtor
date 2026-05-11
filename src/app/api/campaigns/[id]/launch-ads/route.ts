@@ -12,9 +12,12 @@ import {
 import {
   createFullMetaCampaign,
   isMetaAdsConfigured,
+  resolveAudienceIdsForLaunch,
+  runWithMetaCreds,
 } from '@/lib/meta-ads-api';
 import PointsLedger from '@/models/PointsLedger';
 import { adBudgetToCredits } from '@/config/credit-costs';
+import mongoose from 'mongoose';
 
 /**
  * POST /api/campaigns/[id]/launch-ads
@@ -62,8 +65,26 @@ export async function POST(
     const userId = (session.user as any).id;
 
     if (totalDailyBudget > 0) {
-      const ledger = await PointsLedger.findOne({ userId });
+      // Cast string userId → ObjectId; some Mongoose hot-reload paths skip auto-cast
+      const userIdObj = mongoose.isValidObjectId(userId)
+        ? new mongoose.Types.ObjectId(String(userId))
+        : userId;
+      const ledger = await PointsLedger.findOne({ userId: userIdObj });
       const currentBalance = ledger?.balance || 0;
+
+      // Diagnostic: also do a raw collection lookup to confirm storage
+      const rawCount = await PointsLedger.collection.countDocuments({ userId: userIdObj });
+
+      console.log('[launch-ads] Credit check:', {
+        userId,
+        userIdType: typeof userId,
+        modelCollection: PointsLedger.collection.collectionName,
+        rawCount,
+        ledgerFound: !!ledger,
+        currentBalance,
+        creditsEstimatedDaily,
+        totalDailyBudget,
+      });
 
       if (currentBalance < creditsEstimatedDaily) {
         return NextResponse.json({
@@ -157,23 +178,61 @@ export async function POST(
         try {
           const campaignName = `${pageName || 'Campaign'} — Retargeting — ${new Date().toLocaleDateString()}`;
 
-          // Get Facebook Page ID from env or default
-          const pageId = process.env.FACEBOOK_PAGE_ID || '';
+          // Page ID priority: agent's connected Page → env fallback (single-tenant dev)
+          const pageId = userMetaAds?.pageId || process.env.FACEBOOK_PAGE_ID || '';
           if (!pageId) {
-            throw new Error('FACEBOOK_PAGE_ID not configured');
+            throw new Error(
+              'No Facebook Page connected. Go to Settings → Integrations and connect your Meta Business account.'
+            );
           }
 
-          const metaResult = await createFullMetaCampaign({
-            name: campaignName,
-            pageId,
-            landingPageUrl: pageUrl,
-            dailyBudget: meta.budget || 8,
-            imageUrl: meta.imageUrl || undefined,
-            headline: meta.headline || pageName || 'Learn More',
-            primaryText: meta.primaryText || '',
-            placements: meta.placements || ['facebook_feed', 'instagram_feed'],
-            callToAction: 'LEARN_MORE',
-          });
+          // Run everything under this agent's Meta credentials. Inside the block,
+          // every Meta API call uses their token + ad account instead of env vars.
+          const metaResult = await runWithMetaCreds(
+            {
+              adAccountId: userMetaAds?.adAccountId,
+              accessToken: userMetaAds?.accessToken,
+              pageId,
+              pageAccessToken: userMetaAds?.pageAccessToken,
+            },
+            async () => {
+              // Resolve wizard audience selections → actual Meta Custom Audience IDs.
+              const audienceTypes: Array<'visitors' | 'contacts'> =
+                (meta.audienceTypes && meta.audienceTypes.length > 0)
+                  ? meta.audienceTypes
+                  : (meta.audienceType ? [meta.audienceType] : []);
+
+              const { audienceIds, warnings } = await resolveAudienceIdsForLaunch({
+                audienceTypes,
+                pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || process.env.META_PIXEL_ID,
+              });
+
+              console.log('[launch-ads] Meta audience resolution:', { audienceTypes, audienceIds, warnings });
+
+              if (audienceIds.length === 0) {
+                throw new Error(
+                  warnings.length > 0
+                    ? warnings.join(' ')
+                    : 'No Meta Custom Audiences could be resolved for this campaign. Please upload contacts to Meta or ensure your Pixel is firing.'
+                );
+              }
+
+              return createFullMetaCampaign({
+                name: campaignName,
+                pageId,
+                landingPageUrl: pageUrl,
+                dailyBudget: meta.budget || 8,
+                imageUrl: meta.imageUrl || undefined,
+                headline: meta.headline || pageName || 'Learn More',
+                primaryText: meta.primaryText || '',
+                placements: meta.placements || ['facebook_feed', 'instagram_feed'],
+                callToAction: 'LEARN_MORE',
+                customAudienceIds: audienceIds,
+                startTime: meta.schedule?.startDate || undefined,
+                endTime: meta.schedule?.endDate || undefined,
+              });
+            }
+          );
 
           // Save config to campaign
           campaign.metaAdsConfig = {

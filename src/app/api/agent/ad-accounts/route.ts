@@ -28,7 +28,13 @@ export async function GET() {
       meta: {
         connected: !!(user as any)?.adAccounts?.meta?.accessToken,
         adAccountId: (user as any)?.adAccounts?.meta?.adAccountId || null,
+        adAccountName: (user as any)?.adAccounts?.meta?.adAccountName || null,
         pageId: (user as any)?.adAccounts?.meta?.pageId || null,
+        pageName: (user as any)?.adAccounts?.meta?.pageName || null,
+        businessName: (user as any)?.adAccounts?.meta?.businessName || null,
+        tokenExpiresAt: (user as any)?.adAccounts?.meta?.tokenExpiresAt || null,
+        availableAdAccounts: (user as any)?.adAccounts?.meta?.availableAdAccounts || [],
+        availablePages: (user as any)?.adAccounts?.meta?.availablePages || [],
         status: (user as any)?.adAccounts?.meta?.status || 'disconnected',
         connectedAt: (user as any)?.adAccounts?.meta?.connectedAt || null,
       },
@@ -77,8 +83,10 @@ export async function POST(request: NextRequest) {
 
     if (platform === 'meta') {
       if (credentials.adAccountId) update['adAccounts.meta.adAccountId'] = credentials.adAccountId;
+      if (credentials.adAccountName) update['adAccounts.meta.adAccountName'] = credentials.adAccountName;
       if (credentials.accessToken) update['adAccounts.meta.accessToken'] = credentials.accessToken;
       if (credentials.pageId) update['adAccounts.meta.pageId'] = credentials.pageId;
+      if (credentials.pageName) update['adAccounts.meta.pageName'] = credentials.pageName;
       update['adAccounts.meta.connectedAt'] = new Date();
       update['adAccounts.meta.status'] = 'connected';
     }

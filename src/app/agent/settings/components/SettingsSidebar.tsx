@@ -13,6 +13,7 @@ import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
 import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
+import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
 
 interface SettingsSidebarProps {
   initialData: any;
@@ -85,6 +86,18 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
         return <CalendarStep {...stepProps} />;
       case "gbp":
         return <GoogleBusinessStep {...stepProps} />;
+      case "integrations":
+        return (
+          <div className="space-y-4">
+            <div>
+              <h2 className={`text-2xl font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Integrations</h2>
+              <p className={`text-sm mt-1 ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                Connect the ad and marketing accounts ChatRealty can act on for your campaigns.
+              </p>
+            </div>
+            <AdAccountsSetup />
+          </div>
+        );
     }
   };
 

@@ -211,8 +211,17 @@ export interface IUser extends Document {
     };
     meta?: {
       adAccountId?: string;       // format: act_XXXXXXXXX
-      accessToken?: string;       // System user or long-lived token with ads_management
+      adAccountName?: string;
+      accessToken?: string;       // Long-lived user token (~60d) with ads_management
+      tokenExpiresAt?: Date;
       pageId?: string;            // Facebook Page ID
+      pageName?: string;
+      pageAccessToken?: string;   // Page-scoped token (posts/ads as Page)
+      businessId?: string;
+      businessName?: string;
+      // Options the agent picks from in settings
+      availableAdAccounts?: Array<{ id: string; name: string; businessId?: string; businessName?: string }>;
+      availablePages?: Array<{ id: string; name: string }>;
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
     };
@@ -754,8 +763,26 @@ const UserSchema = new Schema<IUser>(
       },
       meta: {
         adAccountId: String,
+        adAccountName: String,
         accessToken: String,
+        tokenExpiresAt: Date,
         pageId: String,
+        pageName: String,
+        pageAccessToken: String,
+        businessId: String,
+        businessName: String,
+        availableAdAccounts: [{
+          _id: false,
+          id: String,
+          name: String,
+          businessId: String,
+          businessName: String,
+        }],
+        availablePages: [{
+          _id: false,
+          id: String,
+          name: String,
+        }],
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
       },

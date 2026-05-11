@@ -9,6 +9,8 @@
  * Docs: https://developers.facebook.com/docs/marketing-apis
  */
 
+import { AsyncLocalStorage } from 'async_hooks';
+
 const META_API_VERSION = 'v21.0';
 const META_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
@@ -19,20 +21,54 @@ const META_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 interface MetaAdsConfig {
   adAccountId: string; // format: act_XXXXXXXXX
   accessToken: string;
+  pageId?: string;
+  pageAccessToken?: string;
+}
+
+/** User-scoped Meta credentials (from User.adAccounts.meta) */
+export interface MetaUserCreds {
+  adAccountId?: string;
+  accessToken?: string;
+  pageId?: string;
+  pageAccessToken?: string;
+}
+
+// Request-scoped storage for per-user Meta credentials. Set by runWithMetaCreds()
+// at the launch route, read by getConfig() inside every Meta API call.
+const metaCredsStore = new AsyncLocalStorage<MetaUserCreds>();
+
+/**
+ * Run an async function with per-user Meta credentials bound to the call stack.
+ * Inside `fn`, any call to a Meta API helper will use these creds instead of env vars.
+ */
+export function runWithMetaCreds<T>(creds: MetaUserCreds | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!creds) return fn();
+  return metaCredsStore.run(creds, fn);
 }
 
 /**
- * Get config from user profile (per-agent) or fall back to env vars (single-tenant).
- * Pass userAdAccounts from the User model's adAccounts.meta field.
+ * Get config from (in priority order):
+ *   1. explicit userAdAccounts param
+ *   2. AsyncLocalStorage (set by runWithMetaCreds — the per-request mechanism)
+ *   3. env vars (single-tenant fallback)
  */
-function getConfig(userAdAccounts?: any): MetaAdsConfig {
-  const adAccountId = userAdAccounts?.adAccountId || process.env.META_AD_ACCOUNT_ID || '';
-  const accessToken = userAdAccounts?.accessToken || process.env.META_ADS_ACCESS_TOKEN || process.env.META_CAPI_ACCESS_TOKEN || '';
+function getConfig(userAdAccounts?: MetaUserCreds): MetaAdsConfig {
+  const stored = metaCredsStore.getStore();
+  const adAccountId = userAdAccounts?.adAccountId || stored?.adAccountId || process.env.META_AD_ACCOUNT_ID || '';
+  const accessToken = userAdAccounts?.accessToken || stored?.accessToken || process.env.META_ADS_ACCESS_TOKEN || process.env.META_CAPI_ACCESS_TOKEN || '';
+  const pageId = userAdAccounts?.pageId || stored?.pageId || process.env.FACEBOOK_PAGE_ID;
+  const pageAccessToken = userAdAccounts?.pageAccessToken || stored?.pageAccessToken;
 
   if (!adAccountId) throw new Error('META_AD_ACCOUNT_ID is not configured. Connect your Meta Ads account in Settings.');
   if (!accessToken) throw new Error('META_ADS_ACCESS_TOKEN is not configured. Connect your Meta Ads account in Settings.');
 
-  return { adAccountId, accessToken };
+  return { adAccountId, accessToken, pageId, pageAccessToken };
+}
+
+/** Public helper for callers that need the resolved Page ID for the current user. */
+export function getResolvedPageId(): string | undefined {
+  const stored = metaCredsStore.getStore();
+  return stored?.pageId || process.env.FACEBOOK_PAGE_ID;
 }
 
 /** Make authenticated request to Meta Marketing API */
@@ -98,8 +134,9 @@ export interface MetaAdSetParams {
     lng: number;
     radiusMiles: number;
   };
-  // Audience
-  customAudienceId?: string;
+  // Audience — pass one or more Meta Custom Audience IDs
+  customAudienceId?: string;       // legacy single-ID field
+  customAudienceIds?: string[];    // preferred multi-ID field
   placements: MetaPlacement[];
   // Retargeting
   audienceType?: 'website_visitors' | 'custom_audience';
@@ -145,6 +182,9 @@ export async function createCampaign(
       // CRITICAL: Housing SAC is mandatory for all real estate ads
       special_ad_categories: ['HOUSING'],
       special_ad_category_country: ['US'],
+      // Required when not using campaign-level budget (we use ad-set-level budget).
+      // false = each ad set spends its own budget independently.
+      is_adset_budget_sharing_enabled: false,
     }),
   });
 
@@ -178,9 +218,13 @@ export async function createAdSet(
     };
   }
 
-  // Custom audience for retargeting
-  if (params.customAudienceId) {
-    targeting.custom_audiences = [{ id: params.customAudienceId }];
+  // Custom audiences for retargeting (one or more)
+  const audienceIds = [
+    ...(params.customAudienceIds || []),
+    ...(params.customAudienceId ? [params.customAudienceId] : []),
+  ].filter(Boolean);
+  if (audienceIds.length > 0) {
+    targeting.custom_audiences = audienceIds.map((id) => ({ id }));
   }
 
   // Build publisher platforms from placements
@@ -259,9 +303,10 @@ export async function createAdCreative(
     },
   };
 
-  // Image or video
+  // Image: Meta v21 dropped `image_url` in link_data. Must upload first → use image_hash.
   if (params.imageUrl) {
-    objectStorySpec.link_data.image_url = params.imageUrl;
+    const { imageHash } = await uploadImageFromUrl(params.imageUrl, `${params.name} - image`);
+    objectStorySpec.link_data.image_hash = imageHash;
   }
   if (params.videoId) {
     objectStorySpec.link_data.video_id = params.videoId;
@@ -347,6 +392,7 @@ export interface CreateFullMetaCampaignParams {
     radiusMiles: number;
   };
   customAudienceId?: string;
+  customAudienceIds?: string[];
   startTime?: string;
   endTime?: string;
 }
@@ -383,6 +429,7 @@ export async function createFullMetaCampaign(
       radiusMiles: params.geoTargeting.radiusMiles,
     } : undefined,
     customAudienceId: params.customAudienceId,
+    customAudienceIds: params.customAudienceIds,
     placements: params.placements,
     startTime: params.startTime,
     endTime: params.endTime,
@@ -408,6 +455,119 @@ export async function createFullMetaCampaign(
   });
 
   return { campaignId, adSetId, creativeId, adId };
+}
+
+// ---------------------------------------------------------------------------
+// Custom Audiences
+// ---------------------------------------------------------------------------
+
+export interface MetaCustomAudience {
+  id: string;
+  name: string;
+  subtype: string;             // CUSTOM | WEBSITE | LOOKALIKE | ENGAGEMENT | etc.
+  customer_file_source?: string;
+}
+
+/** List all Custom Audiences in the ad account. */
+export async function listCustomAudiences(): Promise<MetaCustomAudience[]> {
+  const config = getConfig();
+  const res = await metaRequest(
+    `/${config.adAccountId}/customaudiences?fields=id,name,subtype,customer_file_source&limit=200`
+  );
+  return res.data || [];
+}
+
+/**
+ * Create a Website Custom Audience capturing all visitors over the past 180 days,
+ * sourced from the agent's Meta Pixel.
+ */
+export async function createWebsiteCustomAudience(params: {
+  name: string;
+  pixelId: string;
+  retentionDays?: number;
+}): Promise<{ audienceId: string }> {
+  const config = getConfig();
+  const retentionDays = params.retentionDays ?? 180;
+
+  // "All visitors" rule: match every PageView event from this Pixel.
+  // PageView fires on every page load, so this captures all site traffic.
+  const rule = {
+    inclusions: {
+      operator: 'or',
+      rules: [{
+        event_sources: [{ id: params.pixelId, type: 'pixel' }],
+        retention_seconds: retentionDays * 86400,
+        filter: {
+          operator: 'and',
+          filters: [
+            { field: 'event', operator: '=', value: 'PageView' },
+          ],
+        },
+      }],
+    },
+  };
+
+  // Meta API v21+: do not pass `subtype` — it's inferred from `pixel_id`.
+  const res = await metaRequest(`/${config.adAccountId}/customaudiences`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: params.name,
+      description: `All website visitors (past ${retentionDays} days) — auto-created by ChatRealty`,
+      pixel_id: params.pixelId,
+      retention_days: retentionDays,
+      rule: JSON.stringify(rule),
+    }),
+  });
+
+  return { audienceId: res.id };
+}
+
+/**
+ * Resolve wizard audience-type selections ('visitors' / 'contacts') into actual
+ * Meta Custom Audience IDs by looking up existing audiences in the ad account.
+ * For 'visitors', auto-creates a Website Custom Audience from the Pixel if none exists.
+ *
+ * Returns { audienceIds, warnings } — warnings are non-fatal notes (e.g. "no CRM audience found").
+ */
+export async function resolveAudienceIdsForLaunch(params: {
+  audienceTypes: Array<'visitors' | 'contacts'>;
+  pixelId?: string;
+}): Promise<{ audienceIds: string[]; warnings: string[] }> {
+  const audienceIds = new Set<string>();
+  const warnings: string[] = [];
+
+  const existing = await listCustomAudiences();
+
+  for (const type of params.audienceTypes) {
+    if (type === 'visitors') {
+      // Preference: WEBSITE (true Pixel visitors) → ENGAGEMENT (Page/IG/Video engagers,
+      // a reasonable "people who know the brand" audience) → any non-CUSTOM audience.
+      const pick =
+        existing.find((a) => a.subtype === 'WEBSITE') ||
+        existing.find((a) => a.subtype === 'ENGAGEMENT') ||
+        existing.find((a) => a.subtype === 'IG_BUSINESS') ||
+        existing.find((a) => a.subtype !== 'CUSTOM');
+      if (pick) {
+        audienceIds.add(pick.id);
+      } else {
+        warnings.push(
+          'No Website / Engagement Custom Audience found in your ad account. Create one in Meta Ads Manager → Audiences.'
+        );
+      }
+    } else if (type === 'contacts') {
+      // CRM Contacts → CUSTOM-subtype audience (customer-file uploads).
+      const crm = existing.find((a) => a.subtype === 'CUSTOM');
+      if (crm) {
+        audienceIds.add(crm.id);
+      } else {
+        warnings.push(
+          'No CRM Custom Audience found in your ad account. Upload your contacts to Meta as a Custom Audience to use this option.'
+        );
+      }
+    }
+  }
+
+  return { audienceIds: Array.from(audienceIds), warnings };
 }
 
 // ---------------------------------------------------------------------------
