@@ -150,6 +150,13 @@ export async function GET(request: NextRequest) {
           text: false,
         },
         analytics,
+        // Channel configs — used by the Strategy tab summary to compute daily spend
+        googleAdsConfig: campaign.googleAdsConfig
+          ? { budget: campaign.googleAdsConfig.budget }
+          : undefined,
+        metaAdsConfig: campaign.metaAdsConfig
+          ? { budget: campaign.metaAdsConfig.budget }
+          : undefined,
         createdAt: campaign.createdAt?.toISOString() || new Date().toISOString(),
         lastActivity: campaign.updatedAt?.toISOString() || new Date().toISOString(),
       };

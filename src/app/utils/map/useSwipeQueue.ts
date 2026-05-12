@@ -121,7 +121,10 @@ export function useSwipeQueue(strategy?: any): SwipeQueueHook {
       });
 
       if (!response.ok) {
-        console.error("❌ Failed to save swipe:", response.status);
+        const body = await response.text().catch(() => "<no body>");
+        console.error(
+          `❌ Failed to save swipe: ${response.status} — listingKey=${listingKey} action=${action} body=${body}`
+        );
       } else {
         console.log(`✅ Swipe saved: ${action} ${listingKey}`);
       }

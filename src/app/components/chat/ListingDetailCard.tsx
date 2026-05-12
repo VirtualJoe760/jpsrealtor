@@ -58,6 +58,7 @@ import {
   School as SchoolIcon,
   Phone,
   Mail,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
@@ -912,6 +913,43 @@ export default function ListingDetailCard({
           >
             <BarChart3 className="w-4 h-4" />
             Generate CMA
+          </button>
+          {/* Share — uses native Web Share API on mobile; falls back to
+              copying the URL to clipboard on desktop and shows a brief
+              "Copied" toast via the chat event bus. */}
+          <button
+            onClick={async () => {
+              if (typeof window === "undefined") return;
+              const url = `${window.location.origin}/mls-listings/${slugAddress || listingKey}`;
+              const shareData = {
+                title: address || "Listing",
+                text: `Check out this listing: ${address || ""}`,
+                url,
+              };
+              try {
+                if (typeof navigator !== "undefined" && navigator.share) {
+                  await navigator.share(shareData);
+                } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  await navigator.clipboard.writeText(url);
+                  window.dispatchEvent(
+                    new CustomEvent("chatv3:toast", {
+                      detail: { message: "Link copied to clipboard" },
+                    })
+                  );
+                }
+              } catch {
+                // User cancelled share or clipboard denied — no-op
+              }
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+            }`}
+            aria-label="Share listing"
+          >
+            <Share2 className="w-4 h-4" />
+            Share
           </button>
         </div>
       </div>

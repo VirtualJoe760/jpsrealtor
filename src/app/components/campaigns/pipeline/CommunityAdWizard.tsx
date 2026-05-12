@@ -117,6 +117,10 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [metaScheduleMode, setMetaScheduleMode] = useState<'continuous' | 'scheduled'>('continuous');
   const [metaDateRange, setMetaDateRange] = useState<DateRange | undefined>(undefined);
 
+  // Agent's custom domain for ad landing pages — falls back to chatrealty.io
+  // if the agent hasn't set one up. Fetched from /api/user/profile.
+  const [agentDomain, setAgentDomain] = useState<string>('chatrealty.io');
+
   // --- Step 4: Launch ---
   const [enableGoogle, setEnableGoogle] = useState(true);
   const [enableMeta, setEnableMeta] = useState(true);
@@ -130,16 +134,20 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
   }`;
 
-  // Preload regions, landing pages, and blog posts on mount so unified search works.
+  // Preload regions, landing pages, blog posts, and agent profile on mount.
+  // Agent profile is fetched for the customDomain used in ad landing-page URLs.
   useEffect(() => {
     const fetchAll = async () => {
       setLoadingPages(true);
       try {
-        const [refRes, lpRes, blogRes] = await Promise.all([
+        const [refRes, lpRes, blogRes, profileRes] = await Promise.all([
           fetch('/api/neighborhoods/reference').then(r => r.json()).catch(() => ({})),
           fetch('/api/articles/list?excludeLandingPages=false&limit=100').then(r => r.json()).catch(() => ({})),
           fetch('/api/articles/list?limit=100').then(r => r.json()).catch(() => ({})),
+          fetch('/api/user/profile').then(r => r.json()).catch(() => ({})),
         ]);
+        const customDomain = profileRes?.agentProfile?.customDomain || profileRes?.customDomain;
+        if (customDomain) setAgentDomain(customDomain);
         if (refRes?.regions) setRegions(refRes.regions);
         if (lpRes?.articles) {
           setLandingPages(
@@ -313,7 +321,11 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
       : [...metaPlacements, p]);
   };
 
-  const pageUrl = pageType === 'custom' ? customUrl : (selectedPage?.url ? `https://chatrealty.io${selectedPage.url}` : '');
+  // Build landing-page URL on the agent's custom domain. Falls back to chatrealty.io
+  // if the agent hasn't set up a custom domain yet.
+  const pageUrl = pageType === 'custom'
+    ? customUrl
+    : (selectedPage?.url ? `https://${agentDomain.replace(/^https?:\/\//, '')}${selectedPage.url}` : '');
   const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
 
   // Days the Meta campaign will run. Null = continuous (until paused).
@@ -762,7 +774,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               {/* ---- CUSTOM URL ---- */}
               {pageType === 'custom' && (
                 <input type="url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://chatrealty.io/..." className={inputClasses}
+                  placeholder={`https://${agentDomain}/...`} className={inputClasses}
                 />
               )}
               </>
@@ -1588,7 +1600,13 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
             {/* Modal Footer */}
             <div className={`px-6 pb-6`}>
               <button
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  // Triggers parent to refetch the campaign. The overview tab
+                  // sees metaAdsConfig.campaignId populated and renders the
+                  // active-campaign state instead of the wizard.
+                  onRefresh?.();
+                }}
                 className={`w-full py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
               >
                 Done
