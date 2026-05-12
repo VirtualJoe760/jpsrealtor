@@ -1,6 +1,8 @@
 # Campaign System Vision: Ad Campaigns + Direct Mail
 
-> Created: 2026-04-13 | Status: Planning
+> Created: 2026-04-13 | Status: ⚠️ **HISTORICAL — shipped May 2026**
+>
+> This was the original vision doc for transforming campaigns into a full marketing automation hub. The vision has been delivered (Meta retargeting verified launching May 11, 2026; direct mail, Google PPC, YouTube wizard, multi-tenant OAuth all in place). For the current state of what's built, see **[CAMPAIGNS_CURRENT_STATE.md](./CAMPAIGNS_CURRENT_STATE.md)**.
 
 ---
 

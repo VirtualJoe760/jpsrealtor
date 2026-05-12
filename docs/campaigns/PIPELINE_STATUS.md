@@ -1,8 +1,10 @@
 # Campaign Pipeline System - Implementation Status
 
-**Last Updated:** January 6, 2026
-**Status:** ✅ **PRODUCTION-READY** for Voicemail Campaigns
-**System Focus:** Linear Pipeline Workflow (Contacts → Scripts → Review → Audio → Send)
+> ⚠️ **HISTORICAL SNAPSHOT (Jan 6, 2026)** — Describes the voicemail-only era. The system has since expanded to digital ads (Meta/Google/YouTube), direct mail, multi-tenant OAuth, and a credits system. For the current state, see **[CAMPAIGNS_CURRENT_STATE.md](./CAMPAIGNS_CURRENT_STATE.md)**.
+
+**Original Last Updated:** January 6, 2026
+**Original Status:** ✅ **PRODUCTION-READY** for Voicemail Campaigns
+**Original System Focus:** Linear Pipeline Workflow (Contacts → Scripts → Review → Audio → Send)
 
 ---
 
