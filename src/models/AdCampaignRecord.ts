@@ -33,6 +33,11 @@ export interface IAdCampaignRecord extends Document {
     cpa: number;
   };
 
+  // Daily budget (USD) at launch — source of truth for live spend computation.
+  // Lives here (not Campaign.*Config) so deleting/archiving a record actually
+  // removes its contribution to the "Daily Ad Spend" summary on the Strategy tab.
+  dailyBudget: number;
+
   // Status
   status: AdCampaignStatus;
 
@@ -103,6 +108,12 @@ const AdCampaignRecordSchema = new Schema<IAdCampaignRecord>(
         type: Number,
         default: 0,
       },
+    },
+
+    // Daily budget (USD) at launch
+    dailyBudget: {
+      type: Number,
+      default: 0,
     },
 
     // Status
