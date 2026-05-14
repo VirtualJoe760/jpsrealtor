@@ -451,6 +451,11 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       // Read SSE stream
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      // Buffer holds incomplete SSE events between reads. A single large
+      // event (e.g. preview with 50 listings + photos > 8KB) can span
+      // multiple `reader.read()` calls; without buffering, JSON.parse fails
+      // on the partial chunk and the event is silently dropped.
+      let buffer = '';
 
       if (reader) {
         try {
@@ -458,13 +463,14 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
             const { done, value } = await reader.read();
             if (done) break;
 
-            // Decode the chunk
-            const chunk = decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-            // Process each SSE message (format: "data: {...}\n\n")
-            const lines = chunk.split('\n\n');
-
-            for (const line of lines) {
+            // Process every complete event in the buffer. Anything after the
+            // last "\n\n" is incomplete and stays in `buffer` for the next read.
+            let sepIdx;
+            while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+              const line = buffer.slice(0, sepIdx);
+              buffer = buffer.slice(sepIdx + 2);
               if (line.startsWith('data: ')) {
                 try {
                   const jsonStr = line.substring(6); // Remove "data: " prefix
@@ -708,6 +714,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       let components: ComponentData | undefined;
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      // See top-of-file note: buffer incomplete SSE events across reads.
+      let buffer = '';
 
       if (reader) {
         try {
@@ -715,10 +723,12 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n\n');
+            buffer += decoder.decode(value, { stream: true });
 
-            for (const line of lines) {
+            let sepIdx;
+            while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+              const line = buffer.slice(0, sepIdx);
+              buffer = buffer.slice(sepIdx + 2);
               if (line.startsWith('data: ')) {
                 try {
                   const jsonStr = line.substring(6);
@@ -943,6 +953,8 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
         let components: ComponentData | undefined;
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
+        // Buffer incomplete SSE events across TCP read boundaries.
+        let buffer = '';
 
         if (reader) {
           try {
@@ -950,10 +962,12 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
               const { done, value } = await reader.read();
               if (done) break;
 
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split('\n\n');
+              buffer += decoder.decode(value, { stream: true });
 
-              for (const line of lines) {
+              let sepIdx;
+              while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+                const line = buffer.slice(0, sepIdx);
+                buffer = buffer.slice(sepIdx + 2);
                 if (line.startsWith('data: ')) {
                   try {
                     const jsonStr = line.substring(6);
