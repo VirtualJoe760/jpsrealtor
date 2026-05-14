@@ -784,20 +784,14 @@ const MapView = forwardRef<MapViewHandles, MapViewProps>(function MapView(
     },
   }));
 
-  // Watch for centerLat/centerLng/zoom prop changes and fly to new location
-  useEffect(() => {
-    const map = mapRef.current?.getMap?.();
-    if (!map || !map.isStyleLoaded()) return;
-
-    if (centerLat !== undefined && centerLng !== undefined && zoom !== undefined) {
-      console.log('🗺️ [MapView] Props changed - flying to:', { centerLat, centerLng, zoom });
-      map.flyTo({
-        center: [centerLng, centerLat],
-        zoom: zoom,
-        duration: 1500,
-      });
-    }
-  }, [centerLat, centerLng, zoom]);
+  // [REMOVED] Duplicate flyTo effect that animated to centerLat/centerLng/zoom
+  // changes. The earlier useEffect (search for "Use jumpTo for immediate
+  // update") already handles prop changes via map.jumpTo. The flyTo here was
+  // running in parallel and produced a visible 1500ms animation from the
+  // map's mounted default position (California-wide) to the new prop target
+  // whenever the chat called prePositionMap — i.e. the "spawn at Palm
+  // Springs / fly to listings" bug. Imperative flyToCity() (above) remains
+  // for explicit smooth-fly callers.
 
   // Check if listing is selected
   const isSelected = (l: MapListing) => {
