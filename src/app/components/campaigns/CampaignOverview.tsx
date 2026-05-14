@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   EnvelopeIcon,
   MicrophoneIcon,
@@ -27,6 +27,9 @@ interface Campaign {
     googleAds: boolean;
     metaAds: boolean;
   };
+  // Budgets for active strategies — used to compute daily spend total
+  googleAdsConfig?: { budget?: number };
+  metaAdsConfig?: { budget?: number };
   analytics: {
     voicemailsSent?: number;
     voicemailsListened?: number;
@@ -60,6 +63,35 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
   const isLight = currentTheme === 'lightgradient';
 
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy>(null);
+
+  // Live daily ad spend — sourced from AdCampaignRecord (not Campaign.*Config)
+  // so deleted/archived ad runs stop contributing immediately.
+  const [dailySpend, setDailySpend] = useState<number>(0);
+  const [spendLoading, setSpendLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSpendLoading(true);
+    fetch(`/api/campaigns/${campaign.id}/spend-summary`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.success) {
+          setDailySpend(Number(data.totalDailyBudget) || 0);
+        } else {
+          setDailySpend(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDailySpend(0);
+      })
+      .finally(() => {
+        if (!cancelled) setSpendLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaign.id]);
 
   // If a strategy is selected, show the appropriate pipeline wizard
   if (selectedStrategy) {
@@ -118,8 +150,8 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
     },
     {
       id: 'digitalAds' as Strategy,
-      name: 'Community Ads',
-      description: 'Google PPC for search traffic + Meta retargeting for your community pages',
+      name: 'Digital Ads',
+      description: 'Google PPC + Meta retargeting + YouTube video ads for your community pages',
       icon: MegaphoneIcon,
       color: isLight ? 'purple' : 'indigo',
       active: campaign.activeStrategies.googleAds || campaign.activeStrategies.metaAds,
@@ -273,28 +305,52 @@ export default function CampaignOverview({ campaign, onRefresh }: CampaignOvervi
         })}
       </div>
 
-      {/* Campaign Info */}
-      <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
-        <h4 className={`text-sm font-semibold ${textPrimary} mb-4`}>Campaign Details</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className={textSecondary}>Created:</span>{' '}
-            <span className={textPrimary}>{new Date(campaign.createdAt).toLocaleDateString()}</span>
+      {/* Summary — strategies count + daily spend */}
+      {(() => {
+        const activeStrategiesList = [
+          campaign.activeStrategies.voicemail && 'Voicemail',
+          campaign.activeStrategies.directMail && 'Direct Mail',
+          (campaign.activeStrategies.googleAds || campaign.activeStrategies.metaAds) && 'Digital Ads',
+        ].filter(Boolean) as string[];
+        const activeCount = activeStrategiesList.length;
+        const totalStrategies = 3; // Voicemail, Direct Mail, Digital Ads
+
+        // Daily spend is fetched from /api/campaigns/[id]/spend-summary on mount
+        // (AdCampaignRecord aggregate). Show $0.00/day while loading.
+        const dailyCredits = Math.round(dailySpend * 10); // 1 credit = $0.10 (universal spend value)
+
+        return (
+          <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={`text-xs uppercase tracking-wide ${textSecondary} mb-1`}>Active Strategies</p>
+                <p className={`text-3xl font-bold ${textPrimary}`}>
+                  {activeCount}<span className={`text-lg font-normal ${textSecondary}`}> / {totalStrategies}</span>
+                </p>
+                {activeCount > 0 && (
+                  <p className={`text-xs ${textSecondary} mt-1`}>{activeStrategiesList.join(' · ')}</p>
+                )}
+              </div>
+              <div>
+                <p className={`text-xs uppercase tracking-wide ${textSecondary} mb-1`}>Daily Ad Spend</p>
+                <p className={`text-3xl font-bold ${textPrimary}`}>
+                  ${dailySpend.toFixed(2)}<span className={`text-lg font-normal ${textSecondary}`}>/day</span>
+                </p>
+                {dailySpend > 0 && (
+                  <p className={`text-xs ${textSecondary} mt-1`}>
+                    = {dailyCredits} credits/day · ~{(dailyCredits * 30).toLocaleString()} credits/mo
+                  </p>
+                )}
+                {dailySpend === 0 && (
+                  <p className={`text-xs ${textSecondary} mt-1 italic`}>
+                    {spendLoading ? 'Loading…' : 'No ads running'}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <span className={textSecondary}>Last Activity:</span>{' '}
-            <span className={textPrimary}>{new Date(campaign.lastActivity).toLocaleDateString()}</span>
-          </div>
-          <div>
-            <span className={textSecondary}>Type:</span>{' '}
-            <span className={`${textPrimary} capitalize`}>{campaign.type}</span>
-          </div>
-          <div>
-            <span className={textSecondary}>Status:</span>{' '}
-            <span className={`${textPrimary} capitalize`}>{campaign.status}</span>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }

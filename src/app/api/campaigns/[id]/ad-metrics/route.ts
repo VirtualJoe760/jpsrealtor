@@ -39,9 +39,33 @@ export async function GET(
     // ------- Meta Ads Metrics -------
     if (campaign.metaAdsConfig?.campaignId && isMetaAdsConfigured()) {
       try {
-        const [details, insights] = await Promise.all([
+        // Pull the rendered thumbnail from Meta's creative — what we have stored
+        // (Cloudinary URL or undefined) doesn't reflect what's actually serving.
+        const fetchThumbnail = async (): Promise<{ imageUrl?: string; thumbnailUrl?: string }> => {
+          const adId = campaign.metaAdsConfig?.adId;
+          if (!adId) return {};
+          try {
+            const token = process.env.META_ADS_ACCESS_TOKEN;
+            const res = await fetch(
+              `https://graph.facebook.com/v21.0/${adId}?fields=creative{image_url,thumbnail_url,object_story_spec}&access_token=${token}`
+            );
+            if (!res.ok) return {};
+            const j = await res.json();
+            const c = j?.creative || {};
+            const link = c?.object_story_spec?.link_data || {};
+            return {
+              imageUrl: c.image_url || link.picture || link.image_url,
+              thumbnailUrl: c.thumbnail_url,
+            };
+          } catch {
+            return {};
+          }
+        };
+
+        const [details, insights, thumb] = await Promise.all([
           getCampaignDetails(campaign.metaAdsConfig.campaignId),
           getCampaignInsights(campaign.metaAdsConfig.campaignId),
+          fetchThumbnail(),
         ]);
 
         const dailyBudget = details.dailyBudget
@@ -84,11 +108,13 @@ export async function GET(
                 reach: 0,
                 frequency: 0,
               },
-          // Ad creative info for preview
+          // Ad creative info for preview — thumbnail from Meta API takes priority,
+          // falls back to the Cloudinary URL the agent uploaded, if any.
           creative: {
             headline: campaign.metaAdsConfig.headline,
             primaryText: campaign.metaAdsConfig.primaryText,
-            imageUrl: campaign.metaAdsConfig.imageUrl,
+            imageUrl: thumb.imageUrl || campaign.metaAdsConfig.imageUrl,
+            thumbnailUrl: thumb.thumbnailUrl,
             landingPageUrl: campaign.metaAdsConfig.landingPageUrl,
             placements: campaign.metaAdsConfig.placements,
           },

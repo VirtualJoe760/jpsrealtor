@@ -151,6 +151,7 @@ export async function POST(
             platform: 'google',
             externalCampaignId: googleResult.campaignResourceName,
             externalAdGroupId: googleResult.adGroupResourceName,
+            dailyBudget: google.budget || 0,
             status: 'active',
             snapshotDate: new Date(),
           });
@@ -186,14 +187,41 @@ export async function POST(
             );
           }
 
-          // Run everything under this agent's Meta credentials. Inside the block,
-          // every Meta API call uses their token + ad account instead of env vars.
+          // Use the agent's ad account + page for targeting, but prefer the platform
+          // system-user token (META_ADS_ACCESS_TOKEN env) for the actual API calls.
+          // Why: OAuth user tokens hit a "(#3) Application does not have the capability"
+          // wall on write operations (image upload, ad creative) until the app is granted
+          // Advanced Access on ads_management — which is a separate Meta review process.
+          // System-user tokens already carry these capabilities for assets they own.
+          // For multi-tenant later: assign chatRealty's system user as a Partner on each
+          // agent's ad account so the same path keeps working across accounts.
+          const useSystemUserToken = !!process.env.META_ADS_ACCESS_TOKEN;
+          // When using the system-user token, ALSO use the env ad account it owns.
+          // Otherwise the system user can't reach the OAuth-selected ad account and the
+          // image upload (act-scoped) fails with "Application does not have the capability".
+          const resolvedAdAccountId = useSystemUserToken
+            ? (process.env.META_AD_ACCOUNT_ID || userMetaAds?.adAccountId)
+            : userMetaAds?.adAccountId;
+          const resolvedPageId = useSystemUserToken
+            ? (process.env.FACEBOOK_PAGE_ID || pageId)
+            : pageId;
+
+          console.log('[launch-ads] Meta token + asset resolution:', {
+            useSystemUserToken,
+            resolvedAdAccountId,
+            resolvedPageId,
+            envAdAccount: process.env.META_AD_ACCOUNT_ID,
+            envPageId: process.env.FACEBOOK_PAGE_ID,
+            userOAuthAdAccount: userMetaAds?.adAccountId,
+            userOAuthPageId: userMetaAds?.pageId,
+          });
+
           const metaResult = await runWithMetaCreds(
             {
-              adAccountId: userMetaAds?.adAccountId,
-              accessToken: userMetaAds?.accessToken,
-              pageId,
-              pageAccessToken: userMetaAds?.pageAccessToken,
+              adAccountId: resolvedAdAccountId,
+              accessToken: useSystemUserToken ? undefined : userMetaAds?.accessToken,
+              pageId: resolvedPageId,
+              pageAccessToken: useSystemUserToken ? undefined : userMetaAds?.pageAccessToken,
             },
             async () => {
               // Resolve wizard audience selections → actual Meta Custom Audience IDs.
@@ -219,7 +247,7 @@ export async function POST(
 
               return createFullMetaCampaign({
                 name: campaignName,
-                pageId,
+                pageId: resolvedPageId,
                 landingPageUrl: pageUrl,
                 dailyBudget: meta.budget || 8,
                 imageUrl: meta.imageUrl || undefined,
@@ -259,6 +287,7 @@ export async function POST(
             externalCampaignId: metaResult.campaignId,
             externalAdSetId: metaResult.adSetId,
             externalAdId: metaResult.adId,
+            dailyBudget: meta.budget || 0,
             status: 'active',
             snapshotDate: new Date(),
           });

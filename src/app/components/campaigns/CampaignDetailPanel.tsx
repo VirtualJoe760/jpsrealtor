@@ -16,6 +16,8 @@ import {
   ClockIcon,
   ChatBubbleLeftIcon,
   MicrophoneIcon,
+  AdjustmentsHorizontalIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { FileText, Volume2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -67,7 +69,7 @@ interface CampaignDetailPanelProps {
   onRefresh?: () => void;
 }
 
-type Tab = 'overview' | 'contacts' | 'history' | 'analytics';
+type Tab = 'overview' | 'contacts' | 'history' | 'manage' | 'analytics';
 
 export default function CampaignDetailPanel({ campaign, onClose, onRefresh }: CampaignDetailPanelProps) {
   const router = useRouter();
@@ -83,9 +85,10 @@ export default function CampaignDetailPanel({ campaign, onClose, onRefresh }: Ca
   };
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: 'overview', label: 'Overview', icon: ChartBarIcon },
+    { id: 'overview', label: 'Strategy', icon: ChartBarIcon },
     { id: 'contacts', label: 'Contacts', icon: UserGroupIcon },
-    { id: 'history', label: 'History', icon: ClockIcon },
+    { id: 'history', label: 'Active', icon: ClockIcon },
+    { id: 'manage', label: 'Manage', icon: AdjustmentsHorizontalIcon },
     { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
   ];
 
@@ -197,6 +200,7 @@ export default function CampaignDetailPanel({ campaign, onClose, onRefresh }: Ca
           {activeTab === 'overview' && <OverviewTab campaign={campaign} onRefresh={onRefresh} />}
           {activeTab === 'contacts' && <ContactsTab campaign={campaign} />}
           {activeTab === 'history' && <HistoryTab campaign={campaign} />}
+          {activeTab === 'manage' && <ManageTab campaign={campaign} onRefresh={onRefresh} />}
           {activeTab === 'analytics' && <AnalyticsTab campaign={campaign} />}
         </div>
 
@@ -396,6 +400,422 @@ function HistoryTab({ campaign }: { campaign: Campaign }) {
   );
 }
 
+// ============================================================================
+// ManageTab — list every ad campaign on Meta/Google linked to this parent.
+// Catches orphans from failed launches that never persisted to AdCampaignRecord.
+// Per-row actions: Delete (cascades on Meta + cleans DB), View in Ads Manager.
+// ============================================================================
+function ManageTab({ campaign, onRefresh }: { campaign: Campaign; onRefresh?: () => void }) {
+  const { textPrimary, textSecondary, cardBg, cardBorder } = useThemeClasses();
+  const { currentTheme } = useTheme();
+  const isLight = currentTheme === 'lightgradient';
+
+  const [runs, setRuns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [extendingFor, setExtendingFor] = useState<{ id: string; name: string } | null>(null);
+  const [extendDate, setExtendDate] = useState<string>('');
+  const [submittingExtend, setSubmittingExtend] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'meta' | 'google' | 'youtube'>('all');
+
+  // Filter runs by selected platform pill. 'all' shows everything.
+  const visibleRuns = selectedPlatform === 'all'
+    ? runs
+    : runs.filter((r) => r.platform === selectedPlatform);
+
+  const fetchRuns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/ad-runs`);
+      if (res.ok) {
+        const data = await res.json();
+        setRuns(data.runs || []);
+      }
+    } catch (err) {
+      console.error('[ManageTab] Fetch failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [campaign.id]);
+
+  useEffect(() => { fetchRuns(); }, [fetchRuns]);
+
+  const handleDelete = async (platform: string, externalId: string) => {
+    setDeletingId(externalId);
+    try {
+      const res = await fetch(
+        `/api/campaigns/${campaign.id}/ad-runs?platform=${platform}&externalId=${externalId}`,
+        { method: 'DELETE' }
+      );
+      if (res.ok) {
+        toast.success('Campaign deleted');
+        setRuns((prev) => prev.filter((r) => r.externalCampaignId !== externalId));
+        onRefresh?.();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Delete failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setDeletingId(null);
+      setConfirmDelete(null);
+    }
+  };
+
+  const handleToggleStatus = async (platform: string, externalId: string, currentStatus: string) => {
+    // CAMPAIGN_PAUSED & PAUSED → resume to ACTIVE. Anything else → pause.
+    const isPaused = currentStatus === 'PAUSED' || currentStatus === 'CAMPAIGN_PAUSED';
+    const next = isPaused ? 'ACTIVE' : 'PAUSED';
+    setTogglingId(externalId);
+    try {
+      const res = await fetch(
+        `/api/campaigns/${campaign.id}/ad-runs?platform=${platform}&externalId=${externalId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: next }),
+        }
+      );
+      if (res.ok) {
+        toast.success(next === 'PAUSED' ? 'Campaign paused' : 'Campaign resumed');
+        fetchRuns();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Update failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleSubmitExtend = async (platform: string, externalId: string) => {
+    if (!extendDate) {
+      toast.error('Pick an end date first');
+      return;
+    }
+    // Convert YYYY-MM-DD → ISO with end-of-day in local TZ
+    const iso = new Date(`${extendDate}T23:59:59`).toISOString();
+    setSubmittingExtend(true);
+    try {
+      const res = await fetch(
+        `/api/campaigns/${campaign.id}/ad-runs?platform=${platform}&externalId=${externalId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endTime: iso }),
+        }
+      );
+      if (res.ok) {
+        toast.success('End date updated');
+        setExtendingFor(null);
+        setExtendDate('');
+        fetchRuns();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Update failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setSubmittingExtend(false);
+    }
+  };
+
+  const handleDeleteAllOrphans = async () => {
+    const orphans = runs.filter((r) => r.isOrphan);
+    if (orphans.length === 0) return;
+    setBulkDeleting(true);
+    setBulkProgress({ done: 0, total: orphans.length });
+    let failed = 0;
+    for (let i = 0; i < orphans.length; i++) {
+      const r = orphans[i];
+      try {
+        const res = await fetch(
+          `/api/campaigns/${campaign.id}/ad-runs?platform=meta&externalId=${r.externalCampaignId}`,
+          { method: 'DELETE' }
+        );
+        if (!res.ok) failed++;
+      } catch {
+        failed++;
+      }
+      setBulkProgress({ done: i + 1, total: orphans.length });
+    }
+    setBulkDeleting(false);
+    setBulkProgress(null);
+    setConfirmBulkDelete(false);
+    if (failed === 0) {
+      toast.success(`Deleted ${orphans.length} orphan campaign${orphans.length === 1 ? '' : 's'}`);
+    } else {
+      toast.error(`Deleted ${orphans.length - failed} · ${failed} failed`);
+    }
+    fetchRuns();
+    onRefresh?.();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className={`animate-spin rounded-full h-10 w-10 border-b-2 ${isLight ? 'border-blue-600' : 'border-emerald-500'}`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h3 className={`text-lg font-semibold ${textPrimary}`}>Ad Campaigns</h3>
+          <p className={`text-sm ${textSecondary}`}>
+            All Meta and Google ad campaigns linked to this {campaign.neighborhood || 'campaign'}.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {runs.filter((r) => r.isOrphan).length > 0 && (
+            <button
+              onClick={() => setConfirmBulkDelete(true)}
+              disabled={bulkDeleting}
+              className={`px-3 py-1.5 text-sm rounded-lg font-medium text-white disabled:opacity-50 ${isLight ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}
+            >
+              Delete {runs.filter((r) => r.isOrphan).length} orphan{runs.filter((r) => r.isOrphan).length === 1 ? '' : 's'}
+            </button>
+          )}
+          <button
+            onClick={fetchRuns}
+            className={`px-3 py-1.5 text-sm rounded-lg ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-gray-200'}`}
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Platform filter pills */}
+      <PlatformPills
+        runs={runs}
+        selected={selectedPlatform}
+        onChange={setSelectedPlatform}
+        isLight={isLight}
+      />
+
+      {runs.length === 0 ? (
+        <div className={`${cardBg} ${cardBorder} rounded-lg p-8 text-center`}>
+          <p className={`text-sm ${textSecondary}`}>
+            No ad campaigns found for this campaign. Launch one from the Strategy tab.
+          </p>
+        </div>
+      ) : visibleRuns.length === 0 ? (
+        <div className={`${cardBg} ${cardBorder} rounded-lg p-8 text-center`}>
+          <p className={`text-sm ${textSecondary}`}>
+            No {selectedPlatform === 'meta' ? 'Meta' : selectedPlatform === 'google' ? 'Google' : 'YouTube'} campaigns
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {visibleRuns.map((r) => {
+            const isPaused = r.status === 'PAUSED' || r.status === 'CAMPAIGN_PAUSED';
+            const statusColor = r.status === 'ACTIVE'
+              ? isLight ? 'bg-green-100 text-green-700' : 'bg-green-900/30 text-green-400'
+              : isPaused
+                ? isLight ? 'bg-yellow-100 text-yellow-700' : 'bg-yellow-900/30 text-yellow-400'
+                : isLight ? 'bg-gray-100 text-gray-700' : 'bg-gray-900/30 text-gray-400';
+            return (
+              <div key={r.externalCampaignId} className={`${cardBg} ${cardBorder} rounded-lg p-3`}>
+                {/* Top row: name + orphan badge */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`font-medium ${textPrimary} text-sm truncate`}>{r.name}</span>
+                      {r.isOrphan && (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${isLight ? 'bg-orange-100 text-orange-700' : 'bg-orange-900/30 text-orange-400'}`}>
+                          ORPHAN
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-xs ${textSecondary} font-mono mt-0.5`}>{r.externalCampaignId}</div>
+                  </div>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${statusColor}`}>
+                    {(r.status || '').replace('CAMPAIGN_', '')}
+                  </span>
+                </div>
+
+                {/* Mid row: meta data */}
+                <div className={`flex items-center gap-3 text-xs ${textSecondary} mb-2`}>
+                  <span>
+                    {r.dailyBudget ? `$${r.dailyBudget.toFixed(2)}/day` : r.lifetimeBudget ? `$${r.lifetimeBudget.toFixed(2)} total` : '—'}
+                  </span>
+                  <span>·</span>
+                  <span>{r.createdTime ? new Date(r.createdTime).toLocaleDateString() : '—'}</span>
+                </div>
+
+                {/* Action row */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  <button
+                    onClick={() => handleToggleStatus(r.platform, r.externalCampaignId, r.status)}
+                    disabled={togglingId === r.externalCampaignId}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50 ${
+                      isPaused
+                        ? (isLight ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-green-900/20 text-green-400 hover:bg-green-900/40')
+                        : (isLight ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/40')
+                    }`}
+                  >
+                    {isPaused ? <PlayIcon className="w-3 h-3" /> : <PauseIcon className="w-3 h-3" />}
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setExtendingFor({ id: r.externalCampaignId, name: r.name });
+                      setExtendDate('');
+                    }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium ${isLight ? 'bg-purple-50 text-purple-700 hover:bg-purple-100' : 'bg-purple-900/20 text-purple-400 hover:bg-purple-900/40'}`}
+                  >
+                    <CalendarIcon className="w-3 h-3" />
+                    Extend
+                  </button>
+                  <a
+                    href={r.adsManagerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium ${isLight ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-blue-900/20 text-blue-400 hover:bg-blue-900/40'}`}
+                  >
+                    <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                    Open
+                  </a>
+                  <button
+                    onClick={() => setConfirmDelete({ id: r.externalCampaignId, name: r.name })}
+                    disabled={deletingId === r.externalCampaignId}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50 ${isLight ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-red-900/20 text-red-400 hover:bg-red-900/40'}`}
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bulk delete orphans modal */}
+      {confirmBulkDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className={`${cardBg} rounded-xl p-6 max-w-md w-full shadow-2xl`}>
+            <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
+              Delete {runs.filter((r) => r.isOrphan).length} orphan campaign{runs.filter((r) => r.isOrphan).length === 1 ? '' : 's'}?
+            </h3>
+            <p className={`text-sm ${textSecondary} mb-4`}>
+              This permanently deletes every campaign flagged as ORPHAN from Meta Ads Manager. Real (non-orphan) campaigns are skipped. This cannot be undone.
+            </p>
+            {bulkProgress && (
+              <div className={`mb-4 p-3 rounded-lg ${isLight ? 'bg-gray-50' : 'bg-slate-800'}`}>
+                <div className={`text-xs ${textSecondary} mb-1`}>
+                  Deleting {bulkProgress.done} of {bulkProgress.total}...
+                </div>
+                <div className={`h-1.5 rounded-full ${isLight ? 'bg-gray-200' : 'bg-slate-700'} overflow-hidden`}>
+                  <div
+                    className="h-full bg-red-500 transition-all"
+                    style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmBulkDelete(false)}
+                disabled={bulkDeleting}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAllOrphans}
+                disabled={bulkDeleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              >
+                {bulkDeleting ? 'Deleting...' : 'Delete all'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extend duration modal */}
+      {extendingFor && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className={`${cardBg} rounded-xl p-6 max-w-md w-full shadow-2xl`}>
+            <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Set end date</h3>
+            <p className={`text-sm ${textSecondary} mb-4`}>
+              Update the end date for <span className={`font-medium ${textPrimary}`}>{extendingFor.name}</span>. This applies to all ad sets in the campaign.
+            </p>
+            <input
+              type="date"
+              value={extendDate}
+              onChange={(e) => setExtendDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm mb-4 ${isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-slate-600 bg-slate-700 text-white'}`}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setExtendingFor(null); setExtendDate(''); }}
+                disabled={submittingExtend}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const row = runs.find((r) => r.externalCampaignId === extendingFor.id);
+                  handleSubmitExtend(row?.platform || 'meta', extendingFor.id);
+                }}
+                disabled={submittingExtend || !extendDate}
+                className={`px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+              >
+                {submittingExtend ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className={`${cardBg} rounded-xl p-6 max-w-md w-full shadow-2xl`}>
+            <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Delete this campaign?</h3>
+            <p className={`text-sm ${textSecondary} mb-4`}>
+              This permanently deletes <span className={`font-medium ${textPrimary}`}>{confirmDelete.name}</span> from Meta Ads Manager, including all ad sets, ads, and creatives. This cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-slate-700 hover:bg-slate-600 text-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const row = runs.find((r) => r.externalCampaignId === confirmDelete.id);
+                  handleDelete(row?.platform || 'meta', confirmDelete.id);
+                }}
+                disabled={deletingId === confirmDelete.id}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              >
+                {deletingId === confirmDelete.id ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalyticsTab({ campaign }: { campaign: Campaign }) {
   const { textPrimary, textSecondary, cardBg, cardBorder } = useThemeClasses();
   const { currentTheme } = useTheme();
@@ -404,6 +824,12 @@ function AnalyticsTab({ campaign }: { campaign: Campaign }) {
   const [adMetrics, setAdMetrics] = useState<any>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [togglingPlatform, setTogglingPlatform] = useState<string | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'meta' | 'google' | 'youtube'>('all');
+
+  const allPlatforms: any[] = adMetrics?.platforms || [];
+  const visiblePlatforms = selectedPlatform === 'all'
+    ? allPlatforms
+    : allPlatforms.filter((p: any) => p.platform === selectedPlatform);
 
   const hasAds = campaign.activeStrategies.metaAds || campaign.activeStrategies.googleAds;
 
@@ -531,7 +957,21 @@ function AnalyticsTab({ campaign }: { campaign: Campaign }) {
             </div>
           ) : adMetrics?.platforms?.length > 0 ? (
             <div className="space-y-4">
-              {adMetrics.platforms.map((p: any) => (
+              {/* Platform filter pills */}
+              <PlatformPills
+                runs={allPlatforms}
+                selected={selectedPlatform}
+                onChange={setSelectedPlatform}
+                isLight={isLight}
+              />
+              {visiblePlatforms.length === 0 ? (
+                <div className={`${cardBg} ${cardBorder} rounded-lg p-6 text-center`}>
+                  <p className={`text-sm ${textSecondary}`}>
+                    No {selectedPlatform === 'meta' ? 'Meta' : selectedPlatform === 'google' ? 'Google' : 'YouTube'} campaigns
+                  </p>
+                </div>
+              ) : null}
+              {visiblePlatforms.map((p: any) => (
                 <div key={p.platform} className={`${cardBg} ${cardBorder} rounded-lg overflow-hidden`}>
                   {/* Platform Header */}
                   <div className={`px-4 py-3 flex items-center justify-between ${
@@ -688,6 +1128,58 @@ function AnalyticsTab({ campaign }: { campaign: Campaign }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// PlatformPills — All / Meta / Google / YouTube filter row.
+// Used by both ManageTab (filters `runs`) and AnalyticsTab (filters `platforms`).
+// Each pill shows a count of rows for that platform.
+function PlatformPills({
+  runs,
+  selected,
+  onChange,
+  isLight,
+}: {
+  runs: any[];
+  selected: 'all' | 'meta' | 'google' | 'youtube';
+  onChange: (p: 'all' | 'meta' | 'google' | 'youtube') => void;
+  isLight: boolean;
+}) {
+  const counts = {
+    all: runs.length,
+    meta: runs.filter((r) => r.platform === 'meta').length,
+    google: runs.filter((r) => r.platform === 'google').length,
+    youtube: runs.filter((r) => r.platform === 'youtube').length,
+  };
+  const pills: { key: 'all' | 'meta' | 'google' | 'youtube'; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'meta', label: 'Meta' },
+    { key: 'google', label: 'Google' },
+    { key: 'youtube', label: 'YouTube' },
+  ];
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {pills.map((p) => {
+        const active = selected === p.key;
+        return (
+          <button
+            key={p.key}
+            onClick={() => onChange(p.key)}
+            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+              active
+                ? isLight
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-emerald-600 text-white'
+                : isLight
+                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+            }`}
+          >
+            {p.label} <span className="opacity-70">({counts[p.key]})</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

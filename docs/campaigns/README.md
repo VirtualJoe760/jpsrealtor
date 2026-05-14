@@ -1,188 +1,74 @@
 # Campaign System Documentation
 
-**Last Updated:** January 6, 2026
-**Current Status:** ✅ Production-Ready for Voicemail Campaigns
-**System Focus:** Linear Pipeline Workflow (Contacts → Scripts → Review → Audio → Send)
+**Last Updated:** 2026-05-11
+**Status:** ✅ Production — voicemail, direct mail, and Meta ads all verified launching end-to-end
+**Architecture:** Multi-channel marketing (Voicemail · Direct Mail · Meta Ads · Google PPC · YouTube) with per-agent OAuth and a unified credits system
 
 ---
 
-## 📚 **Documentation Index**
+## 📚 Start Here
 
-### Current Implementation
-- **[PIPELINE_STATUS.md](./PIPELINE_STATUS.md)** - Complete status of what's built vs. what was planned
-- **[VOICEMAIL_SCRIPT_GENERATION.md](./VOICEMAIL_SCRIPT_GENERATION.md)** - Script generation system details (Updated Jan 6, 2026)
-- **[CAMPAIGN_PANEL_REFACTORING.md](./CAMPAIGN_PANEL_REFACTORING.md)** - Pipeline refactoring approach
+**→ [CAMPAIGNS_CURRENT_STATE.md](./CAMPAIGNS_CURRENT_STATE.md)** — Single source of truth for the system. File paths, API routes, model schemas, credit math, OAuth flow, what's built, what's pending.
 
-### Architecture & Planning
-- **[CAMPAIGN_STRATEGY_ARCHITECTURE.md](./CAMPAIGN_STRATEGY_ARCHITECTURE.md)** - Original multi-channel vision
-- **[CAMPAIGN_STRATEGY_ACTION_PLAN.md](./CAMPAIGN_STRATEGY_ACTION_PLAN.md)** - 8-9 week implementation plan
-- **[CAMPAIGNS_UI_README.md](./CAMPAIGNS_UI_README.md)** - UI design patterns and components
-- **[DROP_COWBOY_ARCHITECTURE.md](./DROP_COWBOY_ARCHITECTURE.md)** - Voicemail delivery integration
-
-### Enhancement Planning
-- **[VOICEMAIL_ACTION_PLAN.md](./VOICEMAIL_ACTION_PLAN.md)** - Voicemail feature enhancements
+If you need the multi-tenant rollout plan: **[../multi-tenant/advertising/campaign-multi-tenant.md](../multi-tenant/advertising/campaign-multi-tenant.md)** — 5-phase plan from creds threading through nightly settle.
 
 ---
 
-## 🎯 **Quick Start**
+## Topic Docs
 
-### What Works Right Now
-1. **Create Campaign** - Name your campaign, select type
-2. **Add Contacts** - Import CSV, add from CRM, or manual entry
-3. **Generate Scripts** - 6 templates + custom prompts (AI-generated, 60-80 words)
-4. **Review Scripts** - Edit and approve scripts
-5. **Add Audio** - Choose AI voice (ElevenLabs) OR record your own
-6. **Send** - Send now or schedule for later
+### Digital Ads (Meta / Google / YouTube)
+- **[AD_PLATFORMS_OPTIONS.md](./AD_PLATFORMS_OPTIONS.md)** — Platform capability reference (campaign types, scopes, bid strategies)
+- **[../ad-campaign-setup/PAID_ADS_STRATEGY_RESEARCH.md](../ad-campaign-setup/PAID_ADS_STRATEGY_RESEARCH.md)** — Keyword data + benchmarks for Coachella Valley
+- **[../ad-campaign-setup/CRM_AUDIENCE_INTEGRATION.md](../ad-campaign-setup/CRM_AUDIENCE_INTEGRATION.md)** — How CRM contacts map to Meta/Google audiences
+- **[../ad-campaign-setup/TRACKING_STRATEGY.md](../ad-campaign-setup/TRACKING_STRATEGY.md)** — Conversion tracking via Pixel + GA4
+- **[../ad-campaign-setup/GOOGLE_ADS_SETUP.md](../ad-campaign-setup/GOOGLE_ADS_SETUP.md)** — Google Ads conversion tracking notes
 
-### Recent Fixes (Jan 6, 2026)
-- ✅ Scripts now display correctly in Review step
-- ✅ Using actual user data (no placeholders) in all templates
-- ✅ Template-specific content working
-- ✅ Script text displays in voice recorder
-- ✅ 60-80 word scripts with proper structure
-- ✅ Fixed custom prompt logic (only sends if user typed something)
-- ✅ Custom prompts now use actual user data instead of placeholders like "[Your Name]", "[First Name]", etc.
-- ✅ Bulk script update API endpoint (PUT /api/campaigns/[id]/scripts/update)
-- ✅ Voice recording navigation fixed (no longer redirects after recording)
-- ✅ **LATEST:** Drop Cowboy integration implemented - campaign send functionality working!
+### Voicemail
+- **[VOICEMAIL_SIMPLE_WORKFLOW_USER_GUIDE.md](./VOICEMAIL_SIMPLE_WORKFLOW_USER_GUIDE.md)** — End-user guide
+- **[VOICEMAIL_SCRIPT_GENERATION.md](./VOICEMAIL_SCRIPT_GENERATION.md)** — AI script generation (Groq) + ElevenLabs voice
+- **[README_VOICEMAIL_SIMPLIFIED.md](./README_VOICEMAIL_SIMPLIFIED.md)** — Why the simplified workflow exists (Drop Cowboy upload limitation)
+- **[VOICEMAIL_FULL_PIPELINE_PRESERVED.md](./VOICEMAIL_FULL_PIPELINE_PRESERVED.md)** — Full-pipeline code preserved for future BYOC activation
+- **[DROP_COWBOY_ARCHITECTURE.md](./DROP_COWBOY_ARCHITECTURE.md)** — Drop Cowboy integration architecture
+- **[DROP_COWBOY_API_LIMITATIONS.md](./DROP_COWBOY_API_LIMITATIONS.md)** — Known API limitations (no audio upload without BYOC)
+- **[DROP_COWBOY_INTEGRATION_COMPLETE.md](./DROP_COWBOY_INTEGRATION_COMPLETE.md)** — Marker doc: when Drop Cowboy shipped
+- **[RECORDING_SELECTOR_COMPONENT_SPEC.md](./RECORDING_SELECTOR_COMPONENT_SPEC.md)** — `PipelineAudioSimpleStep` component spec
 
----
+### Prospect Discovery (Contact CSV import + swipe organization)
+- **[PROSPECT_DISCOVERY_README.md](./PROSPECT_DISCOVERY_README.md)** — Feature overview
+- **[PROSPECT_DISCOVERY_IMPLEMENTATION_GUIDE.md](./PROSPECT_DISCOVERY_IMPLEMENTATION_GUIDE.md)** — Architecture + code paths
+- **[PROSPECT_DISCOVERY_TESTING_GUIDE.md](./PROSPECT_DISCOVERY_TESTING_GUIDE.md)** — Test scenarios
+- **[PROSPECT_DISCOVERY_COMPLETE.md](./PROSPECT_DISCOVERY_COMPLETE.md)** — Marker doc: when Prospect Discovery shipped
+- **[TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)** — Quick test checklist
 
-## 🏗️ **System Architecture**
+### UI / Components
+- **[CAMPAIGNS_UI_README.md](./CAMPAIGNS_UI_README.md)** — Card-grid + side-panel UI patterns
+- **[CONTACT_BANNER_PHOTO_STRATEGY.md](./CONTACT_BANNER_PHOTO_STRATEGY.md)** — Banner image fetching for contact view
 
-### Current State: Single-Channel MVP
-**Working:** Voicemail drop campaigns via Drop Cowboy
-**Planned:** Multi-channel (Email + SMS + Voicemail)
-
-### Pipeline Flow
-```
-Campaign Creation
-    ↓
-Step 1: Contacts (Import/Add)
-    ↓
-Step 2: Scripts (AI Generation)
-    ↓
-Step 3: Review (Edit/Approve)
-    ↓
-Step 4: Audio (AI Voice OR Record)
-    ↓
-Step 5: Send (Now OR Schedule)
-    ↓
-Delivery Tracking
-```
-
-### Key Components
-- **Frontend:** Pipeline wizard with 5 steps
-- **Backend:** Next.js API routes
-- **Database:** MongoDB with Mongoose
-- **AI:** Groq (GPT-OSS 120B) for scripts, ElevenLabs for voice
-- **Delivery:** Drop Cowboy integration
+### Historical (kept for context — not the current state)
+- **[CAMPAIGN_STRATEGY_ARCHITECTURE.md](./CAMPAIGN_STRATEGY_ARCHITECTURE.md)** — Original multi-channel architecture vision
+- **[CAMPAIGN_SYSTEM_VISION.md](./CAMPAIGN_SYSTEM_VISION.md)** — Original vision for ads + direct mail
+- **[PIPELINE_STATUS.md](./PIPELINE_STATUS.md)** — Snapshot from the voicemail-only era (Jan 2026)
 
 ---
 
-## 📖 **Documentation Guide**
+## Quick Reference
 
-### For Developers
-Start here:
-1. [PIPELINE_STATUS.md](./PIPELINE_STATUS.md) - Understand what's built
-2. [VOICEMAIL_SCRIPT_GENERATION.md](./VOICEMAIL_SCRIPT_GENERATION.md) - Script generation details
-3. [CAMPAIGN_STRATEGY_ARCHITECTURE.md](./CAMPAIGN_STRATEGY_ARCHITECTURE.md) - Long-term vision
+### The 3 Strategies an agent can run on a campaign
 
-### For Product/Planning
-Start here:
-1. [PIPELINE_STATUS.md](./PIPELINE_STATUS.md) - Current state
-2. [VOICEMAIL_ACTION_PLAN.md](./VOICEMAIL_ACTION_PLAN.md) - Enhancement roadmap
-3. [CAMPAIGN_STRATEGY_ACTION_PLAN.md](./CAMPAIGN_STRATEGY_ACTION_PLAN.md) - Multi-channel plan
+| Strategy | Wizard | Backend |
+|---|---|---|
+| **Voicemail** | `CampaignPipelineWizard` | Drop Cowboy + 11Labs + Groq |
+| **Direct Mail** | `DirectMailPipelineWizard` | thanks.io |
+| **Digital Ads** | `CommunityAdWizard` | Meta Marketing API + Google Ads + (YouTube planned) |
 
-### For UI/UX
-Start here:
-1. [CAMPAIGNS_UI_README.md](./CAMPAIGNS_UI_README.md) - UI patterns
-2. [CAMPAIGN_PANEL_REFACTORING.md](./CAMPAIGN_PANEL_REFACTORING.md) - Pipeline wizard design
+### Where Meta / Google / Credits live
 
----
-
-## ⚠️ **Important Notes**
-
-### Multi-Channel System
-The original architecture (CAMPAIGN_STRATEGY_ARCHITECTURE.md) planned for a comprehensive multi-channel system with Email, SMS, and Voicemail working together. **This is NOT yet built.**
-
-**Current Reality:** Only voicemail campaigns work.
-
-**Why the Difference?**
-The MVP focused on getting voicemail drop campaigns working end-to-end before expanding to other channels. The architecture supports multi-channel, but implementation is pending.
-
-### Documentation Status
-- ✅ **PIPELINE_STATUS.md** - Current (Jan 6, 2026)
-- ✅ **VOICEMAIL_SCRIPT_GENERATION.md** - Updated (Jan 6, 2026)
-- ⚠️ **CAMPAIGN_STRATEGY_ARCHITECTURE.md** - Aspirational (describes future state)
-- ⚠️ **CAMPAIGN_STRATEGY_ACTION_PLAN.md** - Planning doc (8-9 week estimate)
-- ⚠️ **VOICEMAIL_ACTION_PLAN.md** - Enhancement roadmap (not all completed)
-
----
-
-## 🔧 **Technical Details**
-
-### Tech Stack
-- **Framework:** Next.js 16 with Turbopack
-- **Language:** TypeScript
-- **Database:** MongoDB + Mongoose
-- **Auth:** NextAuth.js
-- **AI Models:**
-  - Groq (GPT-OSS 120B) - Script generation
-  - Anthropic Claude - Alternative/fallback
-- **Voice:** ElevenLabs API
-- **Delivery:** Drop Cowboy API
-- **UI:** React, Tailwind CSS, Framer Motion
-- **Notifications:** React Toastify
-
-### Database Models
-- **Campaign** - Main campaign entity
-- **VoicemailScript** - Scripts with audio & delivery tracking
-- **ContactCampaign** - Junction table for campaign-contact relationship
-- **User** - Agent profile (name, phone, brokerage, website)
-
----
-
-## 📋 **Next Steps**
-
-### Immediate (Week 1-2)
-1. Test Drop Cowboy integration end-to-end
-2. Test ElevenLabs audio generation
-3. Verify webhook for delivery status
-4. End-to-end testing with real account
-
-### Short-term (Month 1)
-4. Build Analytics Dashboard
-5. Create Template Library UI
-6. Integrate campaign history into CRM
-
-### Medium-term (Quarter 1)
-7. Consider Email Strategy (if needed)
-8. Consider SMS Strategy (if needed)
-9. Multi-channel coordination
-
----
-
-## 🤝 **Contributing**
-
-When updating campaign documentation:
-1. Update [PIPELINE_STATUS.md](./PIPELINE_STATUS.md) for feature changes
-2. Update specific docs (VOICEMAIL_SCRIPT_GENERATION.md, etc.) for technical details
-3. Keep this README synchronized with overall system status
-4. Mark documents as ✅ Current, ⚠️ Planning, or 🕒 Outdated
-
----
-
-## 📞 **Support**
-
-For questions about the campaign system:
-- **Technical:** See [PIPELINE_STATUS.md](./PIPELINE_STATUS.md) for implementation details
-- **Architecture:** See [CAMPAIGN_STRATEGY_ARCHITECTURE.md](./CAMPAIGN_STRATEGY_ARCHITECTURE.md) for design decisions
-- **Planning:** See [CAMPAIGN_STRATEGY_ACTION_PLAN.md](./CAMPAIGN_STRATEGY_ACTION_PLAN.md) for roadmap
-
----
-
-**Document Version:** 1.0
-**Created:** January 6, 2026
-**Last Updated:** January 6, 2026
-**Status:** Active
+| Concern | Path |
+|---|---|
+| Meta API client | `src/lib/meta-ads-api.ts` |
+| Google Ads client | `src/lib/google-ads-api.ts` |
+| Direct mail client | `src/lib/thanksio.ts` |
+| Credits config (rates, tiers) | `src/config/credits.ts` |
+| Credits operations | `src/lib/credits.ts` |
+| Meta OAuth | `src/app/api/auth/meta-ads/{connect,callback,disconnect}` |
+| Ad-runs management | `src/app/api/campaigns/[id]/ad-runs` (GET/PATCH/DELETE) |

@@ -1,5 +1,7 @@
 # Campaign-Strategy Architecture - Centralized Marketing System
 
+> ⚠️ **HISTORICAL** — This is the original architecture vision (early 2026). The system has since shipped and expanded with Meta/Google/YouTube ads, multi-tenant OAuth, and a credits system. For the current state, see **[CAMPAIGNS_CURRENT_STATE.md](./CAMPAIGNS_CURRENT_STATE.md)**.
+
 ## Executive Summary
 
 This document outlines the new **Campaign-Strategy** architecture for the agent dashboard, designed to centralize all marketing efforts around **Campaigns** with multiple **Strategies** (text, voicemail drop, email) that can be deployed to assigned **Contacts**.

@@ -366,6 +366,68 @@ export async function createFullSearchCampaign(
 }
 
 // ---------------------------------------------------------------------------
+// List campaigns (for Manage tab parity with Meta)
+// ---------------------------------------------------------------------------
+
+export interface GoogleAdsCampaignListItem {
+  resourceName: string;
+  id: string;
+  name: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+  dailyBudgetMicros?: number;
+}
+
+/**
+ * List all campaigns in the connected Google Ads customer account.
+ * Uses the searchStream endpoint with GAQL. Mirrors the Meta list-campaigns
+ * call in /api/campaigns/[id]/ad-runs so we can match-by-name and detect
+ * orphans (Google campaigns not tracked in AdCampaignRecord).
+ */
+export async function listCampaigns(): Promise<GoogleAdsCampaignListItem[]> {
+  const query = `
+    SELECT
+      campaign.resource_name,
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      campaign.start_date,
+      campaign.end_date,
+      campaign_budget.amount_micros
+    FROM campaign
+    ORDER BY campaign.id DESC
+    LIMIT 500
+  `;
+
+  const res = await googleAdsRequest('/googleAds:searchStream', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+
+  // searchStream returns an array of response chunks, each with `.results`
+  const chunks: any[] = Array.isArray(res) ? res : [res];
+  const out: GoogleAdsCampaignListItem[] = [];
+  for (const chunk of chunks) {
+    const results: any[] = chunk?.results || [];
+    for (const r of results) {
+      const c = r.campaign || {};
+      const b = r.campaignBudget || {};
+      out.push({
+        resourceName: c.resourceName || '',
+        id: String(c.id || ''),
+        name: c.name || '',
+        status: c.status || 'UNKNOWN',
+        startDate: c.startDate,
+        endDate: c.endDate,
+        dailyBudgetMicros: b.amountMicros ? Number(b.amountMicros) : undefined,
+      });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Check if Google Ads is configured
 // ---------------------------------------------------------------------------
 

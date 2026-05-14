@@ -1,26 +1,32 @@
 # Campaign System — Current State Reference
 
-> Last Updated: 2026-04-22 | Branch: feat/campaign-system-multi-channel
+> Last Updated: 2026-05-11 | Branch: main
 
 ---
 
 ## What Exists
 
-### 3 Strategy Cards (Campaign Detail Panel)
+### Campaign Detail Panel — 5 Tabs
+
+| Tab | Purpose |
+|-----|---------|
+| **Strategy** (was Overview) | Pick a strategy + see which are running. Routes to the right wizard. |
+| **Contacts** | Per-campaign contact manager |
+| **Active** (was History) | Voicemail / text / email activity log |
+| **Manage** (new) | List + control every Meta/Google ad campaign linked to this parent. Pause, resume, extend, delete, bulk-delete orphans. |
+| **Analytics** | Ad performance metrics + per-platform pause/resume (legacy AnalyticsTab) |
+
+### 3 Strategy Cards (Strategy Tab)
 
 | Card | Wizard | Status |
 |------|--------|--------|
 | **Voice Mails** | `CampaignPipelineWizard` | Working — Drop Cowboy + 11Labs |
 | **Direct Mail** | `DirectMailPipelineWizard` | Working — thanks.io API wired |
-| **Community Ads** | `CommunityAdWizard` | Working — Google PPC + Meta retargeting |
+| **Digital Ads** (was Community Ads) | `CommunityAdWizard` | **Working end-to-end** — Meta retargeting verified launching to Meta Ads Manager (May 11, 2026). Google PPC + YouTube wired in UI; Google needs ad-account OAuth + dev token; YouTube uses same Google path. |
 
 ### Create New Campaign Flow
 
 5-step wizard: Type → Details → Strategies → Contacts → Review
-
-- Strategy step shows 3 toggleable cards: Voice Mails, Direct Mail, Community Ads
-- Contacts step has tag-based quick-select
-- Creates campaign in MongoDB with `activeStrategies` flags
 
 ---
 
@@ -32,10 +38,13 @@
 |------|---------|
 | `src/models/Campaign.ts` | Main campaign model — strategies, configs, stats |
 | `src/models/DirectMailPiece.ts` | Individual mail piece tracking |
-| `src/models/AdCampaignRecord.ts` | Ad campaign performance snapshots |
+| `src/models/AdCampaignRecord.ts` | Per-launch record of platform IDs + metrics snapshots |
 | `src/models/ContactCampaign.ts` | Junction: contacts ↔ campaigns |
 | `src/models/VoicemailScript.ts` | Per-contact voicemail scripts |
 | `src/models/CampaignExecution.ts` | Execution history |
+| `src/models/CreditLedger.ts` (new) | Credit balance + transaction history. Stored in `pointsledgers` collection for back-compat. |
+| `src/models/PointsLedger.ts` | **Shim** — re-exports CreditLedger for legacy callers |
+| `src/models/User.ts` | Extended `adAccounts.meta` with token expiry, page/business names, available lists (for OAuth-driven account/page picking) |
 
 ### API Routes
 
@@ -53,12 +62,22 @@
 | `/api/campaigns/[id]/scripts/*` | CRUD | Script management |
 | `/api/campaigns/[id]/generate-scripts` | POST | AI script generation |
 | `/api/campaigns/[id]/generate-audio` | POST | 11Labs audio synthesis |
-| `/api/campaigns/[id]/history` | GET | Execution history |
+| `/api/campaigns/[id]/history` | GET | Execution history (voicemail/text/email) |
+| `/api/campaigns/[id]/ad-metrics` | GET | Live ad metrics (Meta/Google insights) |
+| `/api/campaigns/[id]/ad-status` | POST | Pause/resume legacy single linked campaign |
+| `/api/campaigns/[id]/ad-runs` (new) | GET | **List all Meta campaigns** in connected ad account matching this parent's name prefix. Flags orphans (in Meta but not in our DB). |
+| `/api/campaigns/[id]/ad-runs` (new) | DELETE | `?platform=meta&externalId=XXX` — deletes campaign on Meta + cleans AdCampaignRecord + clears `campaign.metaAdsConfig` if it was the active link. |
+| `/api/campaigns/[id]/ad-runs` (new) | PATCH | `?platform=meta&externalId=XXX` body `{status?, endTime?}` — pause/resume on the Campaign object; endTime fans out to each AdSet under the campaign. |
 | `/api/campaigns/[id]/recordings/list` | GET | Drop Cowboy recordings |
-| `/api/agent/ad-accounts` | GET/POST/DELETE | Ad platform credentials |
+| `/api/agent/ad-accounts` | GET/POST/DELETE | Ad platform credentials (reads from `User.adAccounts`) |
 | `/api/auth/google-ads/connect` | GET | Google OAuth initiation |
 | `/api/auth/google-ads/callback` | GET | Google OAuth callback |
-| `/api/neighborhoods/reference` | GET | Lightweight hierarchy for page selector |
+| `/api/auth/meta-ads/connect` (new) | GET | Meta Business OAuth — requests `ads_management`, `business_management`, `pages_*` scopes. CSRF via HMAC state. |
+| `/api/auth/meta-ads/callback` (new) | GET | Short→long token swap (~60 days). Fetches `/me/adaccounts` + `/me/accounts`, auto-picks first of each, stores everything on `User.adAccounts.meta`. |
+| `/api/auth/meta-ads/disconnect` (new) | POST | Clears stored Meta tokens. |
+| `/api/credits/balance` (new) | GET | Current credit balance + tier + recent transactions |
+| `/api/credits/quote` (new) | POST | Preview cost for any operation (discriminated by `type`) |
+| `/api/neighborhoods/reference` | GET | Hierarchy for page selector. **New `?search=` param** for global subdivision search (used by wizard unified search). |
 | `/api/thanksio/webhook` | POST | Delivery/scan event handler |
 
 ### Frontend Components
@@ -68,18 +87,20 @@
 | **Pages** | |
 | `src/app/agent/campaigns/page.tsx` | Campaign list (grid/list view) |
 | `src/app/agent/campaigns/new/page.tsx` | Create campaign wizard |
+| `src/app/agent/settings/page.tsx` | Agent settings (now includes Integrations tab) |
+| `src/app/data-deletion/page.tsx` (new) | Public data deletion instructions — required for Meta App Review |
 | **Campaign Detail** | |
 | `src/app/components/campaigns/CampaignCard.tsx` | Campaign card (grid/list) |
-| `src/app/components/campaigns/CampaignDetailPanel.tsx` | Right-side detail panel |
+| `src/app/components/campaigns/CampaignDetailPanel.tsx` | Slide-out detail panel. Contains 5 tabs incl. new `ManageTab` (lists ad-runs, delete/pause/extend/bulk-delete) |
 | `src/app/components/campaigns/CampaignOverview.tsx` | Strategy cards + wizard routing |
 | `src/app/components/campaigns/ContactSelector.tsx` | Contact selection with tag pills |
-| `src/app/components/campaigns/AdAccountsSetup.tsx` | Google/Meta account connection UI |
+| `src/app/components/campaigns/AdAccountsSetup.tsx` | Meta paste-in form replaced with **"Connect Meta Business"** OAuth button + dropdowns for Ad Account / Page selection |
 | `src/app/components/campaigns/PinDropMap.tsx` | Leaflet map for geo targeting |
 | **Pipeline Wizards** | |
 | `pipeline/CampaignPipelineWizard.tsx` | Voicemail wizard (simple + full mode) |
 | `pipeline/DirectMailPipelineWizard.tsx` | Direct mail wizard |
-| `pipeline/CommunityAdWizard.tsx` | Google PPC + Meta retargeting wizard |
-| `pipeline/PipelineStepIndicator.tsx` | Dynamic step indicator (accepts any steps) |
+| `pipeline/CommunityAdWizard.tsx` | Meta + Google PPC + YouTube wizard (per-channel toggles, multi-select audiences, calendar schedule, unified page search, Buy/Sell/Community variant toggle) |
+| `pipeline/PipelineStepIndicator.tsx` | Dynamic step indicator |
 | `pipeline/PipelineContactsStep.tsx` | Shared contacts step |
 | `pipeline/PipelineScriptsStep.tsx` | Voicemail script generation |
 | `pipeline/PipelineReviewStep.tsx` | Script review/edit |
@@ -87,18 +108,34 @@
 | `pipeline/PipelineAudioSimpleStep.tsx` | Audio selection (simple mode) |
 | `pipeline/PipelineSendStep.tsx` | Voicemail send (full) |
 | `pipeline/PipelineSendSimpleStep.tsx` | Voicemail send (simple) |
+| **UI** | |
+| `src/app/components/ui/calendar.tsx` (new) | shadcn-style date-range picker (react-day-picker) used by Meta schedule |
+| **Auth UI** | |
+| `src/app/auth/signin/page.tsx` | "Sign in with Facebook" button enabled |
+| `src/app/auth/signup/page.tsx` | "Sign up with Facebook" button added |
+| **Settings** | |
+| `src/app/agent/settings/components/SettingsSidebar.tsx` | New **Integrations** step containing `AdAccountsSetup` |
 | **Unused (can delete)** | |
 | `pipeline/DigitalAdsPipelineWizard.tsx` | Replaced by CommunityAdWizard |
 | `pipeline/GoogleAdsPipelineWizard.tsx` | Replaced by CommunityAdWizard |
 | `pipeline/MetaAdsPipelineWizard.tsx` | Replaced by CommunityAdWizard |
 
-### API Clients (src/lib/)
+### API Clients & Libs (src/lib/)
 
 | File | Purpose | Status |
 |------|---------|--------|
 | `src/lib/google-ads-api.ts` | Google Ads REST API v18 | Ready — needs refresh token |
-| `src/lib/meta-ads-api.ts` | Meta Marketing API v21 | Ready — token working |
+| `src/lib/meta-ads-api.ts` | Meta Marketing API v21 | **Working end-to-end.** Uses `AsyncLocalStorage` (`runWithMetaCreds`) for per-user credentials. New helpers: `listCustomAudiences`, `createWebsiteCustomAudience`, `resolveAudienceIdsForLaunch`. |
 | `src/lib/thanksio.ts` | Thanks.io direct mail API | Ready — API key working |
+| `src/lib/credits.ts` (new) | Unified credit operations: `quote`, `getBalance`, `debit`, `credit`, `ensureBalance`, `reserve`/`settle` stubs |
+
+### Config (src/config/)
+
+| File | Purpose |
+|------|---------|
+| `src/config/credits.ts` (new) | **Single source of truth.** `CREDIT_SPEND_VALUE = $0.10`. Tier purchase rates with markup. Direct mail per-piece costs. All conversion helpers. |
+| `src/config/credit-costs.ts` | **Shim** — re-exports from `credits.ts` |
+| `src/config/stripe-prices.ts` | Updated tier credit grants (1,000 / 4,167 / 8,696). Prices unchanged. |
 
 ### Documentation
 
@@ -106,6 +143,7 @@
 |------|---------|
 | `docs/campaigns/CAMPAIGN_SYSTEM_VISION.md` | Original architecture vision |
 | `docs/campaigns/AD_PLATFORMS_OPTIONS.md` | Google + Meta platform capabilities |
+| `docs/multi-tenant/advertising/campaign-multi-tenant.md` (new) | **5-phase plan** for multi-tenant ad management (creds threading → Meta OAuth → reserve-at-launch → nightly settle → onboarding) |
 | `docs/ad-campaign-setup/PAID_ADS_STRATEGY_RESEARCH.md` | Keyword data, benchmarks, strategies |
 | `docs/thanks/THANKSIO_INTEGRATION.md` | Thanks.io API reference + use cases |
 | `docs/google-ads/GOOGLE_ADS_API_DESIGN_DOC.md` | Google API design doc for app review |
@@ -122,8 +160,8 @@
 
   // Strategies (toggleable)
   activeStrategies: {
-    voicemail, email, text,      // legacy
-    directMail, googleAds, metaAds  // new
+    voicemail, email, text,                 // legacy outreach
+    directMail, googleAds, metaAds          // marketing channels
   },
 
   // Channel Configs
@@ -136,8 +174,8 @@
   // Stats
   stats: {
     totalContacts, scriptsGenerated, audioGenerated,
-    sent, delivered, listened, failed,           // voicemail
-    mailSent, mailDelivered, qrScans,            // direct mail
+    sent, delivered, listened, failed,            // voicemail
+    mailSent, mailDelivered, qrScans,             // direct mail
     adImpressions, adClicks, adConversions, adSpend  // digital ads
   },
 
@@ -146,21 +184,77 @@
 }
 ```
 
+## User.adAccounts.meta (Updated)
+
+```typescript
+adAccounts: {
+  google?: { customerId, developerToken, refreshToken, connectedAt, status },
+  meta?: {
+    adAccountId, adAccountName,
+    accessToken, tokenExpiresAt,              // long-lived user token (~60d)
+    pageId, pageName, pageAccessToken,
+    businessId, businessName,
+    availableAdAccounts: Array<{id, name, businessId, businessName}>,
+    availablePages: Array<{id, name}>,
+    connectedAt, status
+  }
+}
+```
+
+---
+
+## Credits System (New)
+
+**Model:** 1 credit = $0.10 universal spend value. Markup applied at PURCHASE, not at SPEND.
+
+| Tier | Monthly Price | Credits Granted | Markup |
+|------|---------------|-----------------|--------|
+| Beginner | $125 | 1,000 | 25% |
+| Experienced | $500 | 4,167 | 20% |
+| Top Agent | $1,000 | 8,696 | 15% |
+| Custom Top-up | (variable) | (variable) | 15% |
+
+Storage stays in `pointsledgers` collection (no migration). Model is canonical `CreditLedger`; `PointsLedger.ts` is a back-compat shim.
+
+Operations go through `src/lib/credits.ts`:
+- `quote({ type, params })` — preview cost
+- `getBalance(userId)`
+- `debit/credit(userId, credits, reason, metadata)`
+- `ensureBalance(userId, requiredCredits)`
+
 ---
 
 ## Credentials Status
 
 | Platform | Credential | Location | Status |
 |----------|-----------|----------|--------|
-| Google Ads | Developer Token | .env.local + user profile | `xUFCAy67JFPOlsaUj5MSzA` (Test mode) |
+| Google Ads | Developer Token | .env.local | Test mode |
 | Google Ads | Customer ID | .env.local + user profile | `802-958-0768` |
-| Google Ads | Manager ID | .env.local | `206-304-7113` |
-| Google Ads | Refresh Token | Not yet | Need OAuth flow |
-| Meta Ads | Ad Account ID | .env.local + user profile | `act_160011552` (verified working) |
+| Google Ads | Refresh Token | OAuth | Per-user via `/api/auth/google-ads/connect` |
+| Meta Ads | App ID | .env.local | `META_APP_ID=1706325400803513` (chatRealty, brand-approved, **Live mode**) |
+| Meta Ads | App Secret | .env.local | `META_APP_SECRET` |
+| Meta Ads | System User Token | .env.local | `META_ADS_ACCESS_TOKEN` — non-expiring, owned by Conversions API System User. **Used for write ops** (image upload, ad creative) since user OAuth tokens hit `(#3) capability` walls until app gets Advanced Access. |
+| Meta Ads | Ad Account ID | .env.local + user profile | `act_160011552` |
 | Meta Ads | Page ID | .env.local + user profile | `109387773924627` |
-| Meta Ads | Access Token | .env.local + user profile | 60-day token (expires ~June 21) |
+| Meta Ads | Pixel ID | .env.local | `NEXT_PUBLIC_META_PIXEL_ID=1378421466770456` |
+| Meta Ads | User OAuth Token | User.adAccounts.meta.accessToken | Stored per-agent via `/api/auth/meta-ads/connect` flow. ~60-day expiry. **Used for read ops + ad account/page identification**, not for write ops. |
 | Thanks.io | API Key | .env.local | Working (Paid Plan) |
-| Thanks.io | Test Mode | .env.local | `true` (auto-cancels orders) |
+| Thanks.io | Test Mode | .env.local | `true` |
+
+---
+
+## Multi-Tenant Token Strategy
+
+**Current hybrid (May 2026):**
+
+1. OAuth flow stores agent's per-user creds in `User.adAccounts.meta` (long-lived user token + ad account ID + page ID).
+2. `launch-ads/route.ts` calls `runWithMetaCreds({ adAccountId, pageId, ... })` with the agent's selections.
+3. **Inside that block**, `getConfig()` priority: explicit param → ALS store → env vars.
+4. For writes (ad creative, image upload), `launch-ads` deliberately passes `accessToken: undefined` so the env `META_ADS_ACCESS_TOKEN` (system user, full Marketing API capabilities) is used while still operating on the agent's selected ad account.
+
+**Why hybrid:** Without Meta's Advanced Access approval on `ads_management`, OAuth user tokens are limited (can list things, can't always create ad creatives / upload images). System user tokens carry the right capabilities. For multi-tenant scaling, the chatRealty system user needs to be added as a Partner on each agent's ad account.
+
+See `docs/multi-tenant/advertising/campaign-multi-tenant.md` for the 5-phase rollout plan.
 
 ---
 
@@ -168,62 +262,55 @@
 
 ```
 Step 1: SELECT PAGE
+  ├─ Unified search (community pages, landing pages, blog posts)
   ├─ Community (drill-down: Region → County → City → Subdivision)
-  │   └─ Buy Page / Sell Page / Community Page toggle
-  ├─ Landing Page (searchable list)
-  ├─ Blog Post (searchable list)
+  │   └─ Buy / Sell / Community page-variant toggle (lives in selected-page summary)
+  ├─ Landing Page (preloaded, filterable)
+  ├─ Blog Post (preloaded, filterable)
   └─ Custom URL
 
-Step 2: AUDIENCE
-  ├─ Meta: Website Visitors (Pixel) or CRM Contacts
-  └─ Google: PinDropMap with radius (1-50mi)
+Step 2: AUDIENCE  (each channel has its own enable toggle)
+  ├─ Meta Retargeting (toggleable)
+  │   └─ Multi-select: Website Visitors (Pixel) / CRM Contacts
+  ├─ Google PPC (toggleable)
+  │   └─ PinDropMap with radius (1-50 mi)
+  └─ YouTube Video Ads (toggleable)
+      └─ Multi-select: Cold Reach / Website Visitors / YouTube Channel Viewers
+      └─ Independent radius pin
 
 Step 3: CONFIGURE
-  ├─ Google PPC (toggleable)
-  │   ├─ Keywords (auto-generated, editable, add/remove)
-  │   ├─ Headlines (max 30 chars × 3+)
-  │   ├─ Descriptions (max 90 chars × 2+)
-  │   └─ Daily budget
-  └─ Meta Retargeting (toggleable)
-      ├─ Creative upload (image/video → Cloudinary)
-      ├─ Primary text + headline
-      ├─ Placements (FB Feed, IG Feed, Stories, Reels)
-      └─ Daily budget
+  ├─ Google PPC: Keywords, headlines (≤30 chars × 3+), descriptions (≤90 chars × 2+), $ budget
+  ├─ Meta Retargeting: Creative upload, primary text, headline, placements, $ budget
+  │   └─ Schedule: Continuous OR Date Range (shadcn calendar)
+  └─ YouTube: (not yet implemented end-to-end on launch route)
 
 Step 4: REVIEW & LAUNCH
+  ├─ Show $/day prominent, credits/day secondary; full totals if scheduled
   ├─ Save as Draft → /api/campaigns/[id]/save-ads
   └─ Launch → /api/campaigns/[id]/launch-ads
-      ├─ Google: Budget → Campaign → AdGroup → Keywords → RSA (all PAUSED)
-      └─ Meta: Campaign → AdSet → Creative → Ad (all PAUSED, Housing SAC)
+      ├─ Credit balance check
+      ├─ For Meta: resolveAudienceIdsForLaunch (existing CA preferred, falls back to ENGAGEMENT/IG audiences if no WEBSITE)
+      ├─ runWithMetaCreds → image_hash upload → Campaign (with is_adset_budget_sharing_enabled:false) → AdSet → Creative → Ad
+      └─ Persist AdCampaignRecord, flip campaign.activeStrategies.metaAds = true
 ```
 
 ---
 
-## DirectMailPipelineWizard Flow
+## Manage Tab (New)
 
-```
-Step 1: CONTACTS
-  ├─ ☑ Campaign Contacts (existing)
-  └─ ☑ Radius Send (can enable both)
-      ├─ Address + ZIP code
-      ├─ Record count slider (50-2000)
-      ├─ Audience filter (All / Likely to Move / Absentee Owners / High Net Worth)
-      └─ PinDropMap
+Replaces the implicit single-campaign view in Analytics. Each parent campaign now has a Manage tab showing **every Meta campaign** in the connected ad account whose name starts with the parent's neighborhood/page name.
 
-Step 2: DESIGN
-  ├─ Mail type: Postcard 4x6 ($0.65), 6x9 ($0.72), 6x11 ($0.93), Letter ($0.96), Notecard ($1.66)
-  ├─ Front image URL
-  ├─ Back image URL (postcards)
-  ├─ Message (handwritten for notecards)
-  ├─ QR code URL
-  └─ Return address
+**Card per row:**
+- Campaign name + Meta campaign ID
+- `ORPHAN` badge if Meta has it but our DB doesn't (left over from failed launches)
+- Status pill (ACTIVE / PAUSED / DELETED / IN_DRAFT / ...)
+- Budget ($/day or lifetime)
+- Created date
+- Actions: **Pause/Resume**, **Extend** (date picker → updates `end_time` on all ad sets), **Open** (deep link to Meta Ads Manager), **Delete** (cascades on Meta + cleans DB)
 
-Step 3: PREVIEW
-  └─ Cost estimate, front/back preview, message preview
-
-Step 4: SEND
-  └─ POST /api/campaigns/[id]/send-mail → thanks.io API
-```
+**Header actions:**
+- `Refresh` button
+- `Delete N orphans` button — bulk-deletes all flagged orphans with a progress bar
 
 ---
 
@@ -232,33 +319,30 @@ Step 4: SEND
 - ✅ Create campaign with contacts + strategy selection
 - ✅ Voicemail pipeline (simple + full mode)
 - ✅ Direct mail design → preview → send (test mode)
-- ✅ Community page drill-down (Region → City → Subdivision)
+- ✅ Community page drill-down + unified search
 - ✅ Auto-generate keywords + ad copy from page
 - ✅ PinDropMap geo targeting (right-click to pin)
 - ✅ Image/video upload to Cloudinary for ad creative
 - ✅ Save ad config as draft
 - ✅ Launch route calls Google + Meta APIs
-- ✅ Meta API verified working (ad account responds)
-- ✅ Tag-based contact quick-select
-- ✅ Buy/Sell/Community page variant toggle
-
-## GBP Integration (April 2026)
-
-GBP auto-posting is now integrated into the article publishing pipeline. When an article is published (not draft) via `POST /api/articles/publish`, the pipeline automatically creates a corresponding Google Business Profile post with the article title, excerpt, featured image, and a "Learn More" CTA linking back to the article. GBP posting is non-blocking -- if it fails, the article still publishes normally.
-
-GBP is now **per-user via OAuth**. Each agent can connect their own GBP account through the OAuth flow at `/api/auth/gbp/connect`. On connect, the system auto-discovers the agent's GBP account and location IDs. Per-user credentials are stored in `User.adAccounts.gbp` (refreshToken, accountId, locationId). The platform owner's env var credentials serve as a fallback when no user-specific GBP is connected.
-
-See `docs/chatrealty/GBP_AUTO_POSTING.md` and `docs/chatrealty/GBP_PER_USER.md` for full details.
+- ✅ **Meta ad launched + visible in Ads Manager** (verified May 11, 2026)
+- ✅ Meta Business OAuth flow (Connect button in Integrations settings)
+- ✅ Custom Audience resolution (existing CA or auto-create from Pixel)
+- ✅ Manage tab — list/pause/resume/extend/delete + bulk orphan cleanup
+- ✅ Facebook Login (for general users) via NextAuth
+- ✅ Data deletion compliance page at `/data-deletion`
 
 ---
 
 ## What's Pending
 
-- ⏳ Google Ads refresh token (need OAuth flow)
-- ⏳ Google Ads Basic Access approval (submitted, 2-7 days)
-- ⏳ Meta system user permanent token (using 60-day user token)
-- ⏳ Ad performance dashboard (pull metrics back from platforms)
-- ⏳ AdAccountsSetup component not yet added to settings page
+- ⏳ Google Ads OAuth + Developer Token review (Basic Access submitted)
+- ⏳ Meta `ads_management` **Advanced Access** review — would let us drop the system-user-token fallback and rely purely on OAuth user tokens for write ops
+- ⏳ YouTube Video campaigns on the launch route (UI done in wizard; backend not yet wired)
+- ⏳ Reserve-at-launch credit debiting (Phase 3 of multi-tenant plan)
+- ⏳ Nightly Meta `/insights` settle cron (Phase 4)
+- ⏳ "Add ChatRealty as Partner" agent onboarding step (Phase 5)
+- ⏳ AI-driven chat suggestion chips (proposed, not yet built)
 - ⏳ 3 unused wizard files to delete (Google/Meta/Digital standalone)
 
 ---
@@ -275,3 +359,5 @@ See `docs/chatrealty/GBP_AUTO_POSTING.md` and `docs/chatrealty/GBP_PER_USER.md` 
 | Notecard | $1.66 |
 | Radius lookup | $0.05/address |
 | Data append | $0.20/address |
+
+(Translated to credits via `creditsForOperation('direct_mail', ...)` in `src/lib/credits.ts`.)
