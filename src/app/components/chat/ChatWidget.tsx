@@ -530,6 +530,57 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     // message-display time.
                     console.log('[ChatWidget] 🧩 Received preview:', data.preview?.component);
                     receivedPreview = data.preview;
+
+                    // Pre-position the background map so opening the
+                    // full-screen map view goes directly to the listings
+                    // bounds — not to the default Palm Desert spawn point.
+                    const previewListings = Array.isArray(data.preview?.listings)
+                      ? data.preview.listings
+                      : [];
+                    const withCoords = previewListings.filter(
+                      (l: any) => (l?.latitude ?? l?.coordinates?.latitude) && (l?.longitude ?? l?.coordinates?.longitude)
+                    );
+                    if (withCoords.length > 0) {
+                      const lats = withCoords.map((l: any) => l.latitude ?? l.coordinates.latitude);
+                      const lngs = withCoords.map((l: any) => l.longitude ?? l.coordinates.longitude);
+                      const north = Math.max(...lats);
+                      const south = Math.min(...lats);
+                      const east = Math.max(...lngs);
+                      const west = Math.min(...lngs);
+                      const centerLat = (north + south) / 2;
+                      const centerLng = (east + west) / 2;
+                      const maxDiff = Math.max(north - south, east - west);
+                      let zoom = 12;
+                      if (maxDiff < 0.01) zoom = 14;
+                      else if (maxDiff < 0.05) zoom = 13;
+                      else if (maxDiff < 0.1) zoom = 12;
+                      else if (maxDiff < 0.5) zoom = 11;
+                      else if (maxDiff < 1) zoom = 10;
+                      else zoom = 9;
+
+                      const mapListings = withCoords.map((l: any) => ({
+                        _id: l.id || l._id || '',
+                        listingId: l.id || l._id || '',
+                        listingKey: l.listingKey || l.id || '',
+                        latitude: l.latitude ?? l.coordinates?.latitude,
+                        longitude: l.longitude ?? l.coordinates?.longitude,
+                        listPrice: l.price || l.listPrice || 0,
+                        address: l.address || '',
+                        primaryPhotoUrl: l.image || l.photoUrl || l.primaryPhotoUrl || '',
+                        bedsTotal: l.beds || l.bedsTotal || 0,
+                        bathroomsTotalInteger: l.baths || l.bathroomsTotalInteger || 0,
+                        livingArea: l.sqft || l.livingArea || 0,
+                        city: l.city || '',
+                        unparsedAddress: l.address || l.unparsedAddress || '',
+                        subdivisionName: l.subdivision || l.subdivisionName,
+                        propertyType: l.propertyType || l.type || 'A',
+                        mlsSource: l.mlsSource || 'GPS',
+                        slugAddress: l.slugAddress || l.slug || '',
+                      }));
+
+                      console.log('🗺️ [ChatWidget] Pre-positioning map from preview:', { centerLat, centerLng, zoom, count: mapListings.length });
+                      prePositionMap(mapListings, { centerLat, centerLng, zoom });
+                    }
                   }
 
                   if (data.done) {
