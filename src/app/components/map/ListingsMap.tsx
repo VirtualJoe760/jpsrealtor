@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Map, { Marker, ViewState } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import AnimatedMarker from "@/app/components/mls/map/AnimatedMarker";
@@ -258,16 +258,42 @@ export default function ListingsMap({
     ? "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
     : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
-  // Compute initial view
-  const initialViewState: Partial<ViewState> = {
-    latitude: center?.latitude ?? 33.8303,
-    longitude: center?.longitude ?? -116.5453,
-    zoom,
-    bearing: 0,
-    pitch: 0,
-  };
+  // Compute initial view. When the caller didn't pass a `center` prop but
+  // we have listings, derive the centroid + a reasonable zoom from the
+  // listings themselves — that way the map MOUNTS at the listings, not at
+  // the Palm Springs default. Otherwise the first frame is the default,
+  // then the post-mount fitBounds visibly flies the map to the listings.
+  const initialViewState: Partial<ViewState> = useMemo(() => {
+    if (center) {
+      return { latitude: center.latitude, longitude: center.longitude, zoom, bearing: 0, pitch: 0 };
+    }
+    const valid = listings.filter((l) => l.latitude && l.longitude);
+    if (valid.length > 0) {
+      const lats = valid.map((l) => l.latitude);
+      const lngs = valid.map((l) => l.longitude);
+      const north = Math.max(...lats);
+      const south = Math.min(...lats);
+      const east = Math.max(...lngs);
+      const west = Math.min(...lngs);
+      const centroidLat = (north + south) / 2;
+      const centroidLng = (east + west) / 2;
+      const maxDiff = Math.max(north - south, east - west);
+      let computedZoom = 12;
+      if (maxDiff < 0.01) computedZoom = 14;
+      else if (maxDiff < 0.05) computedZoom = 13;
+      else if (maxDiff < 0.1) computedZoom = 12;
+      else if (maxDiff < 0.5) computedZoom = 11;
+      else if (maxDiff < 1) computedZoom = 10;
+      else computedZoom = 9;
+      return { latitude: centroidLat, longitude: centroidLng, zoom: computedZoom, bearing: 0, pitch: 0 };
+    }
+    return { latitude: 33.8303, longitude: -116.5453, zoom, bearing: 0, pitch: 0 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial view is computed once
+  }, []);
 
-  // Fit bounds once when listings first arrive
+  // Refine bounds on first listings load. Uses duration:0 (instant) — the
+  // map is already centered close to here from initialViewState above, so
+  // animating would just produce the unwanted "spawn / fly" transition.
   useEffect(() => {
     if (!fitBoundsOnLoad || boundsSetRef.current || listings.length === 0) return;
     const map = mapRef.current?.getMap?.();
@@ -277,10 +303,9 @@ export default function ListingsMap({
     if (valid.length === 0) return;
 
     if (valid.length === 1) {
-      map.flyTo({
+      map.jumpTo({
         center: [valid[0].longitude, valid[0].latitude],
         zoom: 14,
-        duration: 600,
       });
     } else {
       const maplibregl = require("maplibre-gl");
@@ -289,7 +314,7 @@ export default function ListingsMap({
       map.fitBounds(bounds.toArray(), {
         padding: 50,
         maxZoom: 15,
-        duration: 600,
+        duration: 0,
       });
     }
     boundsSetRef.current = true;
