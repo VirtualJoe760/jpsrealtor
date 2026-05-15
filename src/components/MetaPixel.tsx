@@ -15,8 +15,12 @@ function MetaPixelCore() {
   }, []);
 
   useEffect(() => {
-    // Track page views on route change
+    // Skip Pixel on URLs carrying lat/lng — Meta blocks these as PII (May 2026 notice).
+    // lat/lng stay in the URL for Google Ads / YouTube attribution; Meta retargeting
+    // doesn't use radius targeting so suppressing PageView here is functionally safe.
     if (pathname) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("lat") || url.searchParams.has("lng")) return;
       pageView();
     }
   }, [pathname, searchParams]);

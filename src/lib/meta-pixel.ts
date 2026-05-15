@@ -45,11 +45,20 @@ export const initMetaPixel = () => {
   );
 
   window.fbq?.("init", FB_PIXEL_ID);
-  window.fbq?.("track", "PageView");
+  // Initial PageView is dispatched by MetaPixel.tsx so it goes through the lat/lng guard.
+};
+
+// Meta flags lat/lng as PII. Suppress any Pixel event when those params are in the URL,
+// because fbq always attaches event_source_url = window.location.href.
+const hasBlockedUrlParams = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const params = new URL(window.location.href).searchParams;
+  return params.has("lat") || params.has("lng");
 };
 
 // Track page view
 export const pageView = () => {
+  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", "PageView");
   }
@@ -57,6 +66,7 @@ export const pageView = () => {
 
 // Track standard events
 export const trackEvent = (name: string, options: Record<string, any> = {}) => {
+  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", name, options);
   }
