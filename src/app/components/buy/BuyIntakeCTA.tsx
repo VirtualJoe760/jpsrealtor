@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { Phone, Calendar, Instagram, Facebook, Youtube, Check, Loader2 } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
@@ -8,6 +8,7 @@ import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 import { formatPhone, toE164US, formatPrice, parsePrice } from "@/lib/format-input";
 import { trackLead, trackEvent } from "@/lib/meta-pixel";
 import { trackGenerateLead, trackClickToCall } from "@/lib/google-ads";
+import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 interface Props {
   agent: AgentProfile;
@@ -39,6 +40,8 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   // Theme-aware styles
   const wrapper = isLight
@@ -56,6 +59,10 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!turnstileToken) {
+      setError("Please complete the CAPTCHA challenge.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -77,6 +84,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
           timeframe: form.timeframe,
           message: form.message,
           createAccount: form.createAccount,
+          turnstileToken,
         }),
       });
       const data = await res.json();
@@ -86,6 +94,8 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
       trackGenerateLead({ source: "buy_inquiry" });
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     } finally {
       setSubmitting(false);
     }
@@ -314,9 +324,20 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
                 </div>
               )}
 
+              <div className="flex justify-center">
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken("")}
+                  onError={() => setTurnstileToken("")}
+                  theme={isLight ? "light" : "dark"}
+                  action="buy-intake"
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !turnstileToken}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all hover:scale-[1.01] disabled:opacity-60 disabled:hover:scale-100"
                 style={{ background: `linear-gradient(135deg, ${agent.brandColor}, ${agent.secondaryColor})` }}
               >

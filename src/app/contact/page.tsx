@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Check, Loader2, FileText, X } from 'lucide-react';
 import { useTheme } from '@/app/contexts/ThemeContext';
 import { STATES } from '@/app/constants/states';
 import CenterHero from '@/components/CenterHero';
 import SpaticalBackground from '@/app/components/backgrounds/SpaticalBackground';
+import TurnstileWidget, { TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 export default function MarketingConsentPage() {
   const { currentTheme } = useTheme();
@@ -37,6 +38,8 @@ export default function MarketingConsentPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const timeframeOptions = [
     { value: 'asap', label: 'ASAP' },
@@ -49,6 +52,11 @@ export default function MarketingConsentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!turnstileToken) {
+      setError('Please complete the CAPTCHA challenge.');
+      return;
+    }
 
     // Validation
     if (!firstName || !lastName || !email || !phone || !realEstateGoals) {
@@ -100,6 +108,7 @@ export default function MarketingConsentPage() {
             address: fullAddress,
             message: `Marketing Consent Form Submission\n\nOwns Real Estate: ${ownsRealEstate}\nTimeframe: ${timeframe || 'Not specified'}\nReal Estate Goals: ${realEstateGoals || 'Not specified'}\n\nSMS Non-Marketing Consent: ${smsNonMarketingConsent ? 'Yes' : 'No'}\nSMS Marketing Consent: ${smsMarketingConsent ? 'Yes' : 'No'}\nNewsletter Consent: ${newsletterConsent ? 'Yes' : 'No'}`,
             optIn: true,
+            turnstileToken,
           }),
         });
 
@@ -787,10 +796,22 @@ export default function MarketingConsentPage() {
                 </a>
               </div>
 
+              {/* Turnstile CAPTCHA */}
+              <div className="flex justify-center">
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                  onError={() => setTurnstileToken('')}
+                  theme={isLight ? 'light' : 'dark'}
+                  action="marketing-consent"
+                />
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || (!smsNonMarketingConsent && !smsMarketingConsent && !newsletterConsent)}
+                disabled={loading || !turnstileToken || (!smsNonMarketingConsent && !smsMarketingConsent && !newsletterConsent)}
                 className={`w-full py-4 px-6 rounded-lg font-semibold shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                   isLight
                     ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white'

@@ -1,7 +1,7 @@
 // src/app/auth/signup/page.tsx
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useRef, useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { useTheme } from '@/app/contexts/ThemeContext';
 import SpaticalBackground from '@/app/components/backgrounds/SpaticalBackground';
 import { trackCompleteRegistration } from '@/lib/meta-pixel';
 import { trackSignUp } from '@/lib/google-ads';
+import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -39,6 +40,9 @@ export default function SignUpPage() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   // Marketing consent fields (optional)
   const [showMarketingConsent, setShowMarketingConsent] = useState(false);
@@ -65,6 +69,10 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      setError("Please complete the CAPTCHA challenge.");
+      return;
+    }
     setIsLoading(true);
     setError("");
 
@@ -112,6 +120,8 @@ export default function SignUpPage() {
             smsConsent: marketingData.smsConsent,
             newsletterConsent: marketingData.newsletterConsent,
           }),
+          turnstileToken,
+          website: honeypot, // honeypot — real users won't see/fill this
         }),
       });
 
@@ -119,6 +129,8 @@ export default function SignUpPage() {
 
       if (!response.ok) {
         setError(data.error || "Failed to create account");
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
         return;
       }
 
@@ -480,9 +492,35 @@ export default function SignUpPage() {
                 </a>.
               </p>
 
+              {/* Honeypot — hidden from real users, bots fill it in */}
+              <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+                <label htmlFor="website">Website (leave blank)</label>
+                <input
+                  id="website"
+                  name="website"
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                />
+              </div>
+
+              {/* Turnstile CAPTCHA */}
+              <div className="flex justify-center">
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken("")}
+                  onError={() => setTurnstileToken("")}
+                  theme={isLight ? "light" : "dark"}
+                  action="signup"
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !turnstileToken}
                 className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isLight
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'

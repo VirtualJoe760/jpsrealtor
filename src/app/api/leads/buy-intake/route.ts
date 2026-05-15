@@ -16,6 +16,8 @@ import VerificationToken from "@/models/verificationToken";
 import { sendLeadWelcomeEmail } from "@/lib/email-resend";
 import { sendLeadEvent } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
+import { verifyTurnstile, clientIp } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ interface BuyIntakeBody {
   timeframe?: string;
   message?: string;
   createAccount?: boolean;
+  turnstileToken?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -62,6 +65,22 @@ export async function POST(request: NextRequest) {
     if (!firstName || !email) {
       return NextResponse.json(
         { error: "First name and email are required" },
+        { status: 400 }
+      );
+    }
+
+    const ipForLimit = clientIp(request) || "unknown";
+    const ipLimit = checkRateLimit(`buy-intake:ip:${ipForLimit}`, { max: 10, windowMs: 60 * 60 * 1000 });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { error: ipLimit.error },
+        { status: ipLimit.status, headers: { "Retry-After": String(ipLimit.retryAfter) } }
+      );
+    }
+    const captcha = await verifyTurnstile(body.turnstileToken, ipForLimit);
+    if (!captcha.success) {
+      return NextResponse.json(
+        { error: captcha.error || "CAPTCHA verification failed" },
         { status: 400 }
       );
     }

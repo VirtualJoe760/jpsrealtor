@@ -3,6 +3,8 @@ import nodemailer from "nodemailer";
 import { handleCors } from "@/utils/handleCors";
 import { getListId } from "@/utils/getListId";
 import { escapeHtml, isSafeUrl } from "@/lib/security";
+import { verifyTurnstile, clientIp, isTrustedInternalCall } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
@@ -20,7 +22,28 @@ export async function POST(req: NextRequest) {
     const baseUrl = `${protocol}://${host}`;
 
     // Parse the request body
-    const { firstName, lastName, email, phone, address, message, photos, optIn } = await req.json();
+    const { firstName, lastName, email, phone, address, message, photos, optIn, turnstileToken } = await req.json();
+
+    // Skip CAPTCHA + rate limit when called server-to-server (e.g. from the
+    // register route's SendFox subscription). User-facing browser calls always
+    // go through Turnstile.
+    if (!isTrustedInternalCall(req)) {
+      const ip = clientIp(req) || "unknown";
+      const ipLimit = checkRateLimit(`contact:ip:${ip}`, { max: 10, windowMs: 60 * 60 * 1000 });
+      if (!ipLimit.ok) {
+        return NextResponse.json(
+          { error: ipLimit.error },
+          { status: ipLimit.status, headers: { "Retry-After": String(ipLimit.retryAfter) } }
+        );
+      }
+      const captcha = await verifyTurnstile(turnstileToken, ip);
+      if (!captcha.success) {
+        return NextResponse.json(
+          { error: captcha.error || "CAPTCHA verification failed" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Configure Nodemailer transporter
     const transporter = nodemailer.createTransport({

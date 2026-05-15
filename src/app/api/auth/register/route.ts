@@ -8,6 +8,9 @@ import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
 import { sendCompleteRegistrationEvent } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
+import { verifyTurnstile, clientIp } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { isGibberishName, honeypotTripped } from "@/lib/spam-defenses";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
@@ -29,12 +32,53 @@ export async function POST(request: NextRequest) {
       timeframe,
       realEstateGoals,
       smsConsent,
-      newsletterConsent
+      newsletterConsent,
+      // Spam defenses
+      turnstileToken,
+      website, // honeypot — should always be empty
     } = body;
 
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Honeypot — silently accept the request but never create a user. Bots
+    // don't know they've been caught, and we don't reveal the defense.
+    if (honeypotTripped(website)) {
+      console.warn("[register] honeypot tripped from", clientIp(request));
+      return NextResponse.json(
+        { message: "User created successfully. Please check your email to verify your account.", emailSent: true },
+        { status: 201 }
+      );
+    }
+
+    // Gibberish-name detection — stops bots like "huUnwmncpxBqZSyvDlKjcs".
+    if (isGibberishName(name)) {
+      console.warn("[register] gibberish name rejected:", name);
+      return NextResponse.json(
+        { error: "Please enter a valid name." },
+        { status: 400 }
+      );
+    }
+
+    // Per-IP rate limit (20 signups per hour per IP — well above any human, blocks botnets per-node).
+    const ip = clientIp(request) || "unknown";
+    const ipLimit = checkRateLimit(`register:ip:${ip}`, { max: 20, windowMs: 60 * 60 * 1000 });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { error: ipLimit.error },
+        { status: ipLimit.status, headers: { "Retry-After": String(ipLimit.retryAfter) } }
+      );
+    }
+
+    // Turnstile CAPTCHA verify.
+    const captcha = await verifyTurnstile(turnstileToken, ip);
+    if (!captcha.success) {
+      return NextResponse.json(
+        { error: captcha.error || "CAPTCHA verification failed" },
         { status: 400 }
       );
     }
@@ -154,6 +198,7 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
           },
           body: JSON.stringify({
             firstName,

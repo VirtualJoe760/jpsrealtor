@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import ContactInfo from "./ContactInfo";
@@ -12,6 +12,7 @@ import MessageInput from "./MessageInput";
 import PhoneNumberInput from "./PhoneNumberInput";
 import EmailSubscribe from "./EmailSubscribe";
 import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
+import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 interface ContactProps {
   campaign?: string; // Optional campaign name
@@ -24,9 +25,15 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [optIn, setOptIn] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      alert("Please complete the CAPTCHA challenge.");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -63,6 +70,7 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
         photos: uploadedPhotoUrls,
         optIn,
         campaign, // Include campaign name
+        turnstileToken,
       };
 
 
@@ -79,6 +87,8 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Failed to send message. Please try again.");
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     } finally {
       setIsSubmitting(false);
     }
@@ -106,15 +116,25 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
                 onChange={setOptIn}
               />
             </div>
+            <div className="mt-6 flex justify-center sm:justify-end">
+              <TurnstileWidget
+                ref={turnstileRef}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+                theme={isLight ? "light" : "dark"}
+                action="contact"
+              />
+            </div>
             <div className="mt-8 flex justify-end">
               <button
                 type="submit"
-                className={`rounded-md px-3.5 py-2.5 text-center text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                className={`rounded-md px-3.5 py-2.5 text-center text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isLight
                     ? "bg-emerald-500 hover:bg-emerald-600 text-white focus-visible:outline-emerald-500"
                     : "bg-gray-700 hover:bg-gray-600 text-white focus-visible:outline-gray-500"
                 }`}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !turnstileToken}
               >
                 {isSubmitting ? "Sending..." : "Send message"}
               </button>

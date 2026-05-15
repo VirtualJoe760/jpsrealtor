@@ -3,9 +3,10 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, FormEvent, Suspense } from "react";
+import { useRef, useState, useEffect, FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
+import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 /** Returns true when the current hostname can handle auth directly. */
 function isAuthHub(): boolean {
@@ -43,6 +44,8 @@ function SignInForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const {
     currentTheme,
@@ -66,6 +69,10 @@ function SignInForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      setError("Please complete the CAPTCHA challenge.");
+      return;
+    }
     setIsLoading(true);
     setError("");
 
@@ -73,6 +80,7 @@ function SignInForm() {
       const result = await signIn("credentials", {
         email,
         password,
+        turnstileToken,
         redirect: false,
       });
 
@@ -83,6 +91,8 @@ function SignInForm() {
         } else {
           setError(result.error);
         }
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
         setIsLoading(false);
       } else if (result?.ok) {
         // Check if 2FA is required by making a quick session check
@@ -209,9 +219,21 @@ function SignInForm() {
               />
             </div>
 
+            {/* Turnstile CAPTCHA */}
+            <div className="flex justify-center">
+              <TurnstileWidget
+                ref={turnstileRef}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+                theme={isLight ? "light" : "dark"}
+                action="signin"
+              />
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
               className={`w-full py-3 px-4 font-semibold rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isLight
                   ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"

@@ -8,6 +8,8 @@ import FacebookProvider from "next-auth/providers/facebook";
 import bcrypt from "bcryptjs";
 import dbConnect from "./mongoose";
 import User from "@/models/User";
+import { verifyTurnstile } from "./turnstile";
+import { checkRateLimit } from "./rate-limit";
 
 /**
  * Determine the cookie domain for session sharing.
@@ -40,15 +42,32 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
         }
 
+        // Per-email rate limit on failed-or-not signin attempts (10/hr). Prevents
+        // credential-stuffing bots from hammering a single account.
+        const emailKey = credentials.email.toLowerCase();
+        const emailLimit = checkRateLimit(`signin:email:${emailKey}`, { max: 10, windowMs: 60 * 60 * 1000 });
+        if (!emailLimit.ok) {
+          throw new Error("Too many login attempts. Please try again later.");
+        }
+
+        // CAPTCHA verify. NextAuth's authorize doesn't get the raw request, so
+        // we can't pull the client IP here cleanly; verifyTurnstile works fine
+        // without remoteip — Cloudflare uses the token alone for validation.
+        const captcha = await verifyTurnstile(credentials.turnstileToken);
+        if (!captcha.success) {
+          throw new Error("CAPTCHA verification failed. Please try again.");
+        }
+
         await dbConnect();
 
-        const user = await User.findOne({ email: credentials.email.toLowerCase() });
+        const user = await User.findOne({ email: emailKey });
 
         if (!user || !user.password) {
           throw new Error("Invalid credentials");

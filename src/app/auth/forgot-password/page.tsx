@@ -1,10 +1,11 @@
 // src/app/auth/forgot-password/page.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useRef, useState, FormEvent } from "react";
 import Link from "next/link";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { ArrowLeft, Mail } from "lucide-react";
+import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +13,8 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const {
     currentTheme,
@@ -24,6 +27,10 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      setError("Please complete the CAPTCHA challenge.");
+      return;
+    }
     setIsLoading(true);
     setError("");
     setMessage("");
@@ -32,13 +39,15 @@ export default function ForgotPasswordPage() {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         setError(data.error || "Failed to send reset email");
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
         setIsLoading(false);
         return;
       }
@@ -47,6 +56,8 @@ export default function ForgotPasswordPage() {
       setEmailSent(true);
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +106,18 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
+            {/* Turnstile CAPTCHA */}
+            <div className="flex justify-center">
+              <TurnstileWidget
+                ref={turnstileRef}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+                theme={isLight ? "light" : "dark"}
+                action="forgot-password"
+              />
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
@@ -105,7 +128,7 @@ export default function ForgotPasswordPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
                 isLoading
                   ? "bg-gray-400 cursor-not-allowed"
