@@ -5,7 +5,7 @@
  * Creates ImportBatch record and tracks progress/errors
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
@@ -15,6 +15,10 @@ import Campaign from '@/models/Campaign';
 import Label from '@/models/Label';
 import * as Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+
+// Serverless runtimes terminate the function after the HTTP response is sent.
+// `after()` keeps the worker alive until the queued work finishes (up to maxDuration).
+export const maxDuration = 300;
 
 // ============================================================================
 // POST /api/crm/contacts/import/confirm
@@ -187,19 +191,32 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[Confirm] Import context: context=${context || 'regular'}, campaignId=${campaignId || 'null'}, campaignTag=${campaignTag || 'null'}`);
 
-    // Start async processing (fire and forget)
-    // This allows us to return the batchId immediately while processing continues
-    processImportAsync(
-      importBatch._id.toString(),
-      rows,
-      mappingLookup,
-      userId,
-      campaignId,
-      campaignTag,
-      context,
-      label
-    ).catch((error) => {
-      console.error('[Confirm] Async processing error:', error);
+    // Queue the heavy work to run after the response is sent. `after()` keeps
+    // the serverless worker alive past the return statement; a bare
+    // fire-and-forget Promise gets killed the moment Vercel sends the 200.
+    after(async () => {
+      try {
+        await processImportAsync(
+          importBatch._id.toString(),
+          rows,
+          mappingLookup,
+          userId,
+          campaignId,
+          campaignTag,
+          context,
+          label
+        );
+      } catch (error) {
+        console.error('[Confirm] Async processing error:', error);
+        try {
+          await ImportBatch.findByIdAndUpdate(importBatch._id, {
+            status: 'failed',
+            completedAt: new Date(),
+          });
+        } catch (updateErr) {
+          console.error('[Confirm] Failed to mark batch failed:', updateErr);
+        }
+      }
     });
 
     // Return batchId immediately so frontend can start polling
