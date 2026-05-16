@@ -276,9 +276,19 @@ async function processImportAsync(
     if (c.phone) existingByPhone.set(c.phone, c);
     if (c.email) existingByEmail.set(c.email.toLowerCase(), c);
   }
-  console.log(
-    `[Confirm] Pre-fetched ${existingForUser.length} existing contacts for dedup ` +
-    `(${existingByPhone.size} with phone, ${existingByEmail.size} with email)`
+  // TEMP DIAGNOSTIC: console.error so it surfaces in Vercel's error-level log view.
+  // Remove these once the dedup bug is identified.
+  console.error(
+    `[Confirm][DEBUG] userId=${userId} (type=${typeof userId}); pre-fetched ` +
+    `${existingForUser.length} contacts (${existingByPhone.size} with phone, ${existingByEmail.size} with email)`
+  );
+  console.error(
+    `[Confirm][DEBUG] First 5 phone keys:`,
+    JSON.stringify(Array.from(existingByPhone.keys()).slice(0, 5))
+  );
+  console.error(
+    `[Confirm][DEBUG] First 5 email keys:`,
+    JSON.stringify(Array.from(existingByEmail.keys()).slice(0, 5))
   );
 
   // Process each row
@@ -520,6 +530,14 @@ async function processImportAsync(
           : contactData.email
             ? existingByEmail.get(contactData.email.toLowerCase())
             : null;
+        // TEMP DIAGNOSTIC: log the first 3 rows' dedup lookups.
+        if (i < 3) {
+          console.error(
+            `[Confirm][DEBUG] Row ${rowNumber} contactData.phone=${JSON.stringify(contactData.phone)} ` +
+            `email=${JSON.stringify(contactData.email)}; matched=${!!existingContact}` +
+            (existingContact ? ` (existingPhone=${JSON.stringify(existingContact.phone)}, existingEmail=${JSON.stringify(existingContact.email)})` : '')
+          );
+        }
 
         if (existingContact) {
           console.log(`[Confirm] Row ${rowNumber}: Duplicate detected - Contact ${existingContact._id} already exists`);
