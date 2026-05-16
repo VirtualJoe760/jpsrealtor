@@ -257,12 +257,39 @@ async function processImportAsync(
 ) {
   await dbConnect();
 
+  // ------------------------------------------------------------------
+  // Pre-flight: hoist label creation + dedup fetch out of the row loop.
+  // The original implementation ran `ensureLabelExists` and `Contact.findOne`
+  // on every single row — N×267 round trips to Atlas, which routinely
+  // blew past Vercel's function timeout on imports of a few hundred rows.
+  // ------------------------------------------------------------------
+  if (campaignTag) await ensureLabelExists(campaignTag, userId);
+  if (label) await ensureLabelExists(label, userId);
+
+  const existingForUser = await Contact.find(
+    { userId },
+    { _id: 1, phone: 1, email: 1, tags: 1 }
+  ).lean();
+  const existingByPhone = new Map<string, any>();
+  const existingByEmail = new Map<string, any>();
+  for (const c of existingForUser) {
+    if (c.phone) existingByPhone.set(c.phone, c);
+    if (c.email) existingByEmail.set(c.email.toLowerCase(), c);
+  }
+  console.log(
+    `[Confirm] Pre-fetched ${existingForUser.length} existing contacts for dedup ` +
+    `(${existingByPhone.size} with phone, ${existingByEmail.size} with email)`
+  );
+
   // Process each row
   let successCount = 0;
   let errorCount = 0;
   let skipCount = 0;
   const importedContactIds: string[] = [];
   const errors: any[] = [];
+  const toInsert: any[] = [];                 // staged for bulk insertMany
+  const toInsertRowNumbers: number[] = [];    // row numbers parallel to toInsert
+  const existingTagWrites: any[] = [];        // bulkWrite ops for scenario-1 tag adds
 
   for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -477,31 +504,23 @@ async function processImportAsync(
         delete contactData.email2;
         delete contactData.email3;
 
-        // Add campaign tag and/or label
+        // Add campaign tag and/or label (labels were ensured up-front, before the loop)
         const tagsToAdd = [];
-        if (campaignTag) {
-          tagsToAdd.push(campaignTag);
-          // Ensure label exists for campaign tag
-          await ensureLabelExists(campaignTag, userId);
-        }
-        if (label) {
-          tagsToAdd.push(label);
-          // Ensure label exists for import label
-          await ensureLabelExists(label, userId);
-        }
+        if (campaignTag) tagsToAdd.push(campaignTag);
+        if (label) tagsToAdd.push(label);
         if (tagsToAdd.length > 0) {
           contactData.tags = tagsToAdd;
         }
 
-        // Check for duplicate by phone or email
-        const duplicateFilter: any = { userId };
-        if (contactData.phone) {
-          duplicateFilter.phone = contactData.phone;
-        } else if (contactData.email) {
-          duplicateFilter.email = contactData.email;
-        }
+        // Dedup against the in-memory map built before the loop. Also covers
+        // within-CSV dupes because we register every new contact into the map
+        // as we go (see "stage for bulk insert" below).
+        const existingContact = contactData.phone
+          ? existingByPhone.get(contactData.phone)
+          : contactData.email
+            ? existingByEmail.get(contactData.email.toLowerCase())
+            : null;
 
-        const existingContact = await Contact.findOne(duplicateFilter);
         if (existingContact) {
           console.log(`[Confirm] Row ${rowNumber}: Duplicate detected - Contact ${existingContact._id} already exists`);
           console.log(`[Confirm] Row ${rowNumber}: Existing tags: [${existingContact.tags?.join(', ') || 'none'}]`);
@@ -513,24 +532,18 @@ async function processImportAsync(
           // 3. Regular import - skip duplicates
 
           if (campaignTag) {
-            // Scenario 1: Existing campaign - tag the contact and add to selection
-            console.log(`[Confirm] Row ${rowNumber}: Scenario 1 - Existing campaign import (has tag) - tagging contact`);
-
-            // Add campaign tag if not already present
+            // Scenario 1: Existing campaign - stage a tag update (flushed via bulkWrite below)
             const hadTag = existingContact.tags?.includes(campaignTag);
             if (!hadTag) {
-              await Contact.findByIdAndUpdate(existingContact._id, {
-                $addToSet: { tags: campaignTag }
+              existingTagWrites.push({
+                updateOne: {
+                  filter: { _id: existingContact._id },
+                  update: { $addToSet: { tags: campaignTag } },
+                },
               });
-              console.log(`[Confirm] Row ${rowNumber}: Added tag "${campaignTag}" to existing contact`);
-            } else {
-              console.log(`[Confirm] Row ${rowNumber}: Contact already has tag "${campaignTag}"`);
             }
-
-            // Add to imported list so it gets selected
             importedContactIds.push(existingContact._id.toString());
             successCount++;
-            console.log(`[Confirm] Row ${rowNumber}: Added existing contact to selection (successCount: ${successCount})`);
           } else if (context === 'campaign') {
             // Scenario 2: Campaign import (creation or no tag yet) - add to selection without tagging
             console.log(`[Confirm] Row ${rowNumber}: Scenario 2 - Campaign import (context='campaign') - adding to selection without tag`);
@@ -552,22 +565,12 @@ async function processImportAsync(
           continue;
         }
 
-        // Create contact
-        console.log(`[Confirm] Row ${rowNumber}: Creating new contact`);
-        const newContact = await Contact.create(contactData);
-        importedContactIds.push(newContact._id.toString());
-        successCount++;
-        console.log(`[Confirm] Row ${rowNumber}: Created new contact ${newContact._id} (successCount: ${successCount})`);
-
-        // Update batch progress every 10 rows
-        if ((i + 1) % 10 === 0) {
-          await ImportBatch.findByIdAndUpdate(batchId, {
-            'progress.processed': i + 1,
-            'progress.successful': successCount,
-            'progress.failed': errorCount,
-            'progress.duplicates': skipCount,
-          });
-        }
+        // Stage for bulk insertMany. Register in the dedup maps so the next
+        // CSV row with the same phone/email is caught as an in-CSV duplicate.
+        toInsert.push(contactData);
+        toInsertRowNumbers.push(rowNumber);
+        if (contactData.phone) existingByPhone.set(contactData.phone, contactData);
+        if (contactData.email) existingByEmail.set(contactData.email.toLowerCase(), contactData);
       } catch (error: any) {
         errorCount++;
         errors.push({
@@ -580,6 +583,69 @@ async function processImportAsync(
       }
     }
 
+  // ------------------------------------------------------------------
+  // Flush staged scenario-1 tag updates (existing contacts that need a
+  // campaign tag added). Single bulkWrite instead of N findByIdAndUpdate.
+  // ------------------------------------------------------------------
+  if (existingTagWrites.length > 0) {
+    try {
+      await Contact.bulkWrite(existingTagWrites, { ordered: false });
+      console.log(`[Confirm] Tagged ${existingTagWrites.length} existing contacts with "${campaignTag}"`);
+    } catch (err: any) {
+      console.error('[Confirm] bulkWrite (tag updates) failed:', err);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Bulk insert new contacts in chunks. ordered:false so a single bad
+  // row (e.g. unexpected schema validation failure) doesn't abort the
+  // remainder of the chunk. Each chunk also flushes progress to Mongo
+  // so the UI advances during the bulk-insert phase.
+  // ------------------------------------------------------------------
+  const CHUNK = 100;
+  // Rows that didn't make it into `toInsert` (skipped or hit prep errors)
+  // are already accounted for; "processed" counts forward as we insert.
+  let processed = rows.length - toInsert.length;
+
+  for (let start = 0; start < toInsert.length; start += CHUNK) {
+    const chunk = toInsert.slice(start, start + CHUNK);
+    const chunkRowNumbers = toInsertRowNumbers.slice(start, start + CHUNK);
+    let inserted: any[] = [];
+    try {
+      inserted = await Contact.insertMany(chunk, { ordered: false });
+    } catch (err: any) {
+      // BulkWriteError: some succeeded, some failed (e.g. unique-index race)
+      inserted = err?.insertedDocs || [];
+      const writeErrors = err?.writeErrors || [];
+      for (const we of writeErrors) {
+        const failedIdx = we?.index ?? -1;
+        errors.push({
+          row: failedIdx >= 0 ? chunkRowNumbers[failedIdx] : -1,
+          field: 'unknown',
+          value: '',
+          error: we?.errmsg || 'insertMany failed',
+        });
+      }
+      errorCount += chunk.length - inserted.length;
+      console.error(
+        `[Confirm] insertMany chunk ${start}-${start + chunk.length}: ` +
+        `${inserted.length} succeeded, ${chunk.length - inserted.length} failed`
+      );
+    }
+    for (const doc of inserted) {
+      importedContactIds.push(doc._id.toString());
+    }
+    successCount += inserted.length;
+    processed += chunk.length;
+
+    await ImportBatch.findByIdAndUpdate(batchId, {
+      'progress.processed': processed,
+      'progress.successful': successCount,
+      'progress.failed': errorCount,
+      'progress.duplicates': skipCount,
+    });
+  }
+
   // Final batch update
   await ImportBatch.findByIdAndUpdate(batchId, {
     'progress.processed': rows.length,
@@ -589,7 +655,7 @@ async function processImportAsync(
     status: errorCount === rows.length ? 'failed' : 'completed',
     completedAt: new Date(),
     importedContactIds: importedContactIds,
-    importErrors: errors.slice(0, 100), // Limit to first 100 errors
+    importErrors: errors.slice(0, 100),
   });
 
   console.log(
