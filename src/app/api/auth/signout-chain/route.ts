@@ -52,29 +52,23 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(redirectTo);
 
-  // Clear the host-only cookie variant (set by default credential/oauth signin
-  // where cookies.sessionToken.options.domain is undefined).
-  response.cookies.set(cookieName, "", {
-    maxAge: 0,
-    path: "/",
-    secure: isProd,
-    httpOnly: true,
-    sameSite: "lax",
-  });
-
-  // Clear the .{apex}-scoped variant (set by /api/auth/receive when the user
-  // arrived via the cross-domain transfer flow). Two Set-Cookie headers ship
-  // because the browser treats same-name cookies with different Domain
-  // attributes as distinct entries.
+  // The browser treats same-name cookies with different Domain attributes as
+  // distinct entries. We need to clear BOTH the host-only variant (set by
+  // default credential/oauth signin) AND the .{apex}-scoped variant (set by
+  // /api/auth/receive on the cross-domain transfer flow). NextResponse.cookies
+  // .set() keys by name and overwrites on second call, so we'd lose one of
+  // the clears — use headers.append() directly to ship two real Set-Cookie
+  // headers.
+  const secureAttr = isProd ? "Secure; " : "";
+  response.headers.append(
+    "Set-Cookie",
+    `${cookieName}=; Max-Age=0; Path=/; ${secureAttr}HttpOnly; SameSite=Lax`
+  );
   if (apex && apex !== "localhost") {
-    response.cookies.set(cookieName, "", {
-      maxAge: 0,
-      path: "/",
-      secure: isProd,
-      httpOnly: true,
-      sameSite: "lax",
-      domain: `.${apex}`,
-    });
+    response.headers.append(
+      "Set-Cookie",
+      `${cookieName}=; Max-Age=0; Path=/; ${secureAttr}HttpOnly; SameSite=Lax; Domain=.${apex}`
+    );
   }
 
   // No-store so intermediaries don't accidentally serve a cached version
