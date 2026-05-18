@@ -174,20 +174,14 @@ export async function proxy(request: NextRequest) {
   // 5. Platform root (chatrealty.io, www.chatrealty.io, bare localhost)
   //    Show the ChatRealty platform landing page at /
   // -----------------------------------------------------------------------
-  const isPlatform =
-    bareHost.includes("chatrealty") &&
-    !bareHost.includes(".chatrealty"); // subdomains are agent sites, not platform
-
-  // TEMP DIAGNOSTIC: error-level so it surfaces in Vercel's default log view.
-  // Remove once the chatrealty rewrite bug is identified.
-  console.error(
-    `[PROXY-DEBUG] host=${bareHost} pathname=${pathname} ` +
-    `detectedSubdomain=${detectedSubdomain ?? "<none>"} ` +
-    `isPlatform=${isPlatform} ownerMatch=${OWNER_HOSTNAMES.has(bareHost)}`
-  );
+  // Bare apex OR www on chatrealty = the platform. Real subdomains (agent
+  // slugs, `agent`, etc.) were already handled above via detectedSubdomain.
+  // The earlier `!bareHost.includes(".chatrealty")` check was buggy because
+  // "www.chatrealty.io" contains ".chatrealty" (the dot between www and
+  // chatrealty), so www traffic was misclassified as a subdomain.
+  const isPlatform = bareHost.includes("chatrealty") && !detectedSubdomain;
 
   if (isPlatform && pathname === "/") {
-    console.error(`[PROXY-DEBUG] REWRITING ${bareHost}/ -> /chat-landing`);
     const url = request.nextUrl.clone();
     url.pathname = "/chat-landing";
     return NextResponse.rewrite(url);
