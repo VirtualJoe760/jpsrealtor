@@ -93,9 +93,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch agent branding data — from subdomain agent or logged-in user
+  // Fetch agent branding data — from the domain owner (subdomain OR apex),
+  // not the currently logged-in user. The /api/agent-branding endpoint
+  // resolves the owner via subdomain -> customDomain -> DomainRegistry ->
+  // PRIMARY_AGENT_EMAIL fallback, so it returns the right agent for
+  // jpsrealtor.com (Joseph) just as well as bethanyklier.chatrealty.io.
   useEffect(() => {
-    // Detect subdomain to load the domain owner's branding (even if not logged in)
     const host = typeof window !== "undefined" ? window.location.hostname : "";
     let subdomain: string | null = null;
     if (host.includes("chatrealty")) {
@@ -106,37 +109,16 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       if (sub && sub !== "www") subdomain = sub;
     }
 
-    if (subdomain) {
-      // On an agent subdomain — fetch branding from public endpoint
-      fetch(`/api/agent-branding?subdomain=${encodeURIComponent(subdomain)}`)
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (data?.branding) setBranding(data.branding);
-        })
-        .catch(() => {});
-    } else if (status === "authenticated") {
-      // On main domain — use logged-in user's profile
-      fetch("/api/user/profile")
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (!data?.profile) return;
-          const p = data.profile;
-          const ap = p.agentProfile || {};
-          setBranding({
-            agentName: p.name,
-            brokerageName: p.brokerageName || ap.brokerageName,
-            teamName: ap.teamName || p.team?.name,
-            licenseNumber: p.licenseNumber || ap.licenseNumber,
-            phone: ap.cellPhone || ap.officePhone || p.phone,
-            email: p.email,
-            teamLogo: ap.teamLogo,
-            teamLogoDark: ap.teamLogoDark,
-            brokerLogo: ap.brokerLogo,
-            brokerLogoDark: ap.brokerLogoDark,
-          });
-        })
-        .catch(() => {});
-    }
+    // Always show the DOMAIN OWNER's branding, not the visitor's. The
+    // /api/agent-branding endpoint resolves the owner from subdomain ->
+    // customDomain -> DomainRegistry -> PRIMARY_AGENT_EMAIL fallback.
+    const qs = subdomain ? `?subdomain=${encodeURIComponent(subdomain)}` : "";
+    fetch(`/api/agent-branding${qs}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.branding) setBranding(data.branding);
+      })
+      .catch(() => {});
   }, [status]);
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
