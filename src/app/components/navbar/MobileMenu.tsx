@@ -2,7 +2,8 @@
 
 import { DisclosureButton } from "@headlessui/react";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutChain } from "@/lib/signout-chain";
 import Link from "next/link";
 import { X, User, Settings, LogOut, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -160,7 +161,7 @@ export default function MobileMenu({
               <button
                 onClick={() => {
                   onClose();
-                  signOut({ callbackUrl: '/' });
+                  signOutChain();
                 }}
                 className={`flex items-center w-full rounded-md px-3 py-2 text-lg font-medium transition-colors ${
                   isLight

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOutChain } from "@/lib/signout-chain";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -183,7 +183,7 @@ export default function ProfileCard({
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  signOut({ callbackUrl: "/" });
+                  signOutChain();
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                   isLight

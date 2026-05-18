@@ -24,7 +24,8 @@ import {
   Users,
   MapPin,
 } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutChain } from "@/lib/signout-chain";
 import { useSidebar } from "./SidebarContext";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -208,10 +209,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     setDashboardDropdownOpen(!dashboardDropdownOpen);
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     setDashboardDropdownOpen(false);
     if (onClose) onClose();
-    await signOut({ callbackUrl: "/" });
+    signOutChain();
   };
 
   const toggleTheme = () => {

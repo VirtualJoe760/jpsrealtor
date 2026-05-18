@@ -212,7 +212,14 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/signin",
-    signOut: "/auth/signout",
+    // Safety net: anywhere in the codebase still calling next-auth/react's
+    // signOut() without our signOutChain() wrapper will, after the local
+    // cookie clear, land here. The page auto-redirects to jpsrealtor.com after
+    // 5s with a button to chatrealty.io. The user's session on OTHER apexes
+    // will still be intact in this fallback path — only the wrapper actually
+    // chains. Find and migrate any straggler signOut() calls when you spot
+    // them in logs.
+    signOut: "/auth/signed-out",
     error: "/auth/error",
     verifyRequest: "/auth/verify-request",
   },

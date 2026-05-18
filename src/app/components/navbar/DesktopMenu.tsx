@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutChain } from "@/lib/signout-chain";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { User, Settings, LogOut, ChevronDown, BarChart3 } from "lucide-react";
@@ -149,7 +150,7 @@ export default function DesktopMenu() {
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
-                    signOut({ callbackUrl: '/' });
+                    signOutChain();
                   }}
                   className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
                     isLight
