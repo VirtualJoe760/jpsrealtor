@@ -226,8 +226,11 @@ async function handleAuthProtection(request: NextRequest, pathname: string) {
     const token = await getToken({ req: request });
     const isAuth = !!token;
 
-    // Authenticated user on auth page → redirect to dashboard
-    if (isAuthPage && isAuth) {
+    // Authenticated user on auth page → redirect to dashboard.
+    // EXCEPT /auth/signed-out — user is mid-signout. If any apex's cookie
+    // didn't clear in the chain, this would bounce them to /dashboard
+    // instead of showing the "you've been signed out" page.
+    if (isAuthPage && isAuth && pathname !== "/auth/signed-out") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
