@@ -13,8 +13,15 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 
 const REDIRECT_DELAY_SECONDS = 5;
-const AUTO_REDIRECT_URL = "https://jpsrealtor.com/";
 const CHATREALTY_URL = "https://chatrealty.io/";
+
+// Where to auto-redirect after the countdown. Stays on whatever apex the
+// chain landed on (in prod that's jpsrealtor.com per signout-chain.ts;
+// on localhost it's localhost) instead of always jumping to jpsrealtor.com.
+function getAutoRedirectUrl(): string {
+  if (typeof window === "undefined") return "/";
+  return `${window.location.origin}/`;
+}
 
 export default function SignedOutPage() {
   const { currentTheme } = useTheme();
@@ -27,7 +34,7 @@ export default function SignedOutPage() {
       setSeconds((s) => {
         if (s <= 1) {
           clearInterval(interval);
-          window.location.href = AUTO_REDIRECT_URL;
+          window.location.href = getAutoRedirectUrl();
           return 0;
         }
         return s - 1;
