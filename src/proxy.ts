@@ -178,7 +178,16 @@ export async function proxy(request: NextRequest) {
     bareHost.includes("chatrealty") &&
     !bareHost.includes(".chatrealty"); // subdomains are agent sites, not platform
 
+  // TEMP DIAGNOSTIC: error-level so it surfaces in Vercel's default log view.
+  // Remove once the chatrealty rewrite bug is identified.
+  console.error(
+    `[PROXY-DEBUG] host=${bareHost} pathname=${pathname} ` +
+    `detectedSubdomain=${detectedSubdomain ?? "<none>"} ` +
+    `isPlatform=${isPlatform} ownerMatch=${OWNER_HOSTNAMES.has(bareHost)}`
+  );
+
   if (isPlatform && pathname === "/") {
+    console.error(`[PROXY-DEBUG] REWRITING ${bareHost}/ -> /chat-landing`);
     const url = request.nextUrl.clone();
     url.pathname = "/chat-landing";
     return NextResponse.rewrite(url);
