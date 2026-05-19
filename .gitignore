@@ -71,6 +71,12 @@ ca_counties.json
 # Video files
 *.mp4
 
-# Google credentials for MCP servers
+# API credential files (e.g. GSC service-account JSON used by mcp-gsc).
+# Live at src/.credentials/ — never commit any contents of that folder.
 gsc-credentials.json
 *-credentials.json
+/src/.credentials/
+
+# Finance / fundraising materials (private — investor lists, business model, game plan)
+/finance
+

@@ -8,7 +8,7 @@
         "mcp-gsc@latest"
       ],
       "env": {
-        "GOOGLE_GSC_CREDENTIALS_PATH": "F:/web-clients/joseph-sardella/jpsrealtor/gsc-credentials.json"
+        "GOOGLE_GSC_CREDENTIALS_PATH": "src/.credentials/gsc-credentials.json"
       }
     }
   }

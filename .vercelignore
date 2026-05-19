@@ -25,12 +25,6 @@ post-photos/
 *.spec.js
 *.spec.ts
 
-# JSON data files
-bighorn_active_listings.json
-ca_cities.json
-
-# Python installer
-get-pip.py
 
 # IDE and editor files
 .vscode/
