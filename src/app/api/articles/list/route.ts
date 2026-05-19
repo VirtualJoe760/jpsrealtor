@@ -94,11 +94,22 @@ export async function GET(request: Request) {
         authorName: doc.author.name,
       }));
 
-      return NextResponse.json({
-        success: true,
-        articles,
-        total: articles.length,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          articles,
+          total: articles.length,
+        },
+        {
+          headers: {
+            "X-Articles-Source": "mongo",
+            "X-Articles-IsProd": String(IS_PRODUCTION),
+            "X-Articles-OwnerId": String(ownerId),
+            "X-Articles-Count": String(articles.length),
+            "Cache-Control": "no-store, max-age=0",
+          },
+        }
+      );
 
     } else {
       // LOCALHOST: Read MDX files
@@ -158,11 +169,22 @@ export async function GET(request: Request) {
         return dateB.getTime() - dateA.getTime();
       });
 
-      return NextResponse.json({
-        success: true,
-        articles,
-        total: articles.length,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          articles,
+          total: articles.length,
+        },
+        {
+          headers: {
+            "X-Articles-Source": "mdx",
+            "X-Articles-IsProd": String(IS_PRODUCTION),
+            "X-Articles-OwnerId": String(ownerId),
+            "X-Articles-Count": String(articles.length),
+            "Cache-Control": "no-store, max-age=0",
+          },
+        }
+      );
     }
   } catch (error) {
     console.error('Article list error:', error);
