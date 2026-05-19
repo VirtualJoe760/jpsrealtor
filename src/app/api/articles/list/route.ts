@@ -101,13 +101,12 @@ export async function GET(request: Request) {
           total: articles.length,
         },
         {
-          headers: {
-            "X-Articles-Source": "mongo",
-            "X-Articles-IsProd": String(IS_PRODUCTION),
-            "X-Articles-OwnerId": String(ownerId),
-            "X-Articles-Count": String(articles.length),
-            "Cache-Control": "no-store, max-age=0",
-          },
+          // no-store needed because vercel.json's catch-all otherwise stamps
+          // `immutable, max-age=31536000` on API responses, freezing per-user
+          // scoped data in the browser for a year. Same fix needed on any
+          // /api/* route that returns dynamic data until vercel.json is
+          // tightened to scope the immutable rule to /_next/static/*.
+          headers: { "Cache-Control": "no-store, max-age=0" },
         }
       );
 
@@ -175,15 +174,7 @@ export async function GET(request: Request) {
           articles,
           total: articles.length,
         },
-        {
-          headers: {
-            "X-Articles-Source": "mdx",
-            "X-Articles-IsProd": String(IS_PRODUCTION),
-            "X-Articles-OwnerId": String(ownerId),
-            "X-Articles-Count": String(articles.length),
-            "Cache-Control": "no-store, max-age=0",
-          },
-        }
+        { headers: { "Cache-Control": "no-store, max-age=0" } }
       );
     }
   } catch (error) {
