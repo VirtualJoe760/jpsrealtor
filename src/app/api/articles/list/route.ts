@@ -6,6 +6,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { IS_PRODUCTION } from '@/lib/environment';
 import { listArticles } from '@/lib/services/article.service';
+import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 
 interface Article {
   title: string;
@@ -36,21 +37,31 @@ export async function GET(request: Request) {
     const excludeLandingPages = searchParams.get("excludeLandingPages") !== "false";
     const showAll = searchParams.get("all") === "true";
 
-    // Check session for agent scoping
+    // Resolve the DOMAIN owner (whose site is this?), not the visitor. Articles
+    // should be scoped to the site they're displayed on — jpsrealtor.com shows
+    // Joseph's articles, bethanyklier.chatrealty.io shows Bethany's, etc.
+    // Admins can still see everything across the network with ?all=true.
     const session = await getServerSession(authOptions);
     const isImpersonating = !!(session?.user as any)?.impersonatedBy;
-    const isAdmin = session?.user?.isAdmin && !isImpersonating;
-    const userId = session?.user?.id;
+    const isAdmin = !!session?.user?.isAdmin && !isImpersonating;
+    const { ownerId, source } = await resolveDomainOwner(request);
 
-    console.log('[Articles List] Agent scoping:', { userId, isAdmin, isImpersonating, email: session?.user?.email });
+    console.log('[Articles List] Domain scoping:', {
+      ownerId, source, isAdmin, showAll,
+    });
 
     if (IS_PRODUCTION) {
       // PRODUCTION: Fetch from MongoDB
       const filters: any = {};
 
-      // Agent scoping: filter by authorId (admins only bypass with ?all=true)
-      if (userId && !(isAdmin && showAll)) {
-        filters.authorId = userId;
+      // Scope by domain owner. Admin can bypass with ?all=true.
+      if (!(isAdmin && showAll)) {
+        if (!ownerId) {
+          // Defensive: no owner resolved (PRIMARY_AGENT_EMAIL missing?) ->
+          // return nothing rather than leaking the whole network.
+          return NextResponse.json({ success: true, articles: [], total: 0 });
+        }
+        filters.authorId = ownerId;
       }
 
       // Exclude landing pages from insights feed
@@ -117,10 +128,11 @@ export async function GET(request: Request) {
         // Skip landing pages from insights feed
         if (excludeLandingPages && data.section === "landing-page") continue;
 
-        // Agent scoping: only show articles authored by this agent
-        // Articles with no authorId are legacy (pre-scoping) — only visible to admins with ?all=true
+        // Domain scoping: only show articles authored by the domain owner.
+        // Articles with no authorId are legacy (pre-scoping) — visible only
+        // to admins with ?all=true.
         if (!(isAdmin && showAll)) {
-          if (!data.authorId || data.authorId !== userId) {
+          if (!ownerId || !data.authorId || data.authorId !== ownerId) {
             continue;
           }
         }
