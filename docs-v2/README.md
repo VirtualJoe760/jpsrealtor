@@ -25,14 +25,14 @@ and migrating each legacy doc through a refactor checklist (see `CLAUDE.md`).
 | `routing/` | ✅ Drafted | `src/proxy.ts` host routing |
 | `auth/` | ✅ Drafted | NextAuth, cross-domain, signout chain, 2FA |
 | `multi-tenant/` | ✅ Drafted | `resolveDomainOwner` pattern + DomainRegistry |
-| `crm/` | ⏳ Not started | Contact schema, import pipeline, FUB, anti-spam |
-| `cms/` | ⏳ Not started | Articles: Mongo source of truth, MDX mirror, publishing pipeline |
-| `listings/` | ⏳ Not started | UnifiedListing, MLS pipeline, photos |
-| `chat/` | ⏳ Not started | Chat-v3 (parser → preview → narrate), CHAP, map |
-| `commerce/` | ⏳ Not started | Stripe tiers, CreditLedger, Transactions |
-| `integrations/` | ⏳ Not started | External APIs (Cloudinary, Twilio, Resend, etc.) |
-| `tech-debt.md` | ⏳ Not started | Live list of known issues |
-| `archive/` | ⏳ Not started | Where retired legacy docs land |
+| `crm/` | ✅ Drafted | Contact schema, import pipeline, FUB, anti-spam |
+| `cms/` | ✅ Drafted | Articles: Mongo source of truth, MDX mirror, publishing pipeline |
+| `listings/` | ✅ Drafted | UnifiedListing, MLS pipeline, photos |
+| `chat/` | ✅ Drafted | Chat-v3 (parser → preview → narrate), CHAP, map |
+| `commerce/` | ✅ Drafted | Stripe tiers, CreditLedger, Transactions |
+| `integrations/` | ✅ Drafted | External APIs (Cloudinary, Twilio, Resend, etc.) |
+| `tech-debt.md` | ✅ Drafted | Live list of known issues |
+| `archive/` | ⏳ Phase 3 | Where retired legacy docs land (next phase) |
 
 ## Migration plan
 
