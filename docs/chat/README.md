@@ -1,8 +1,8 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-05-21
-related: [../listings/README.md, ../multi-tenant/README.md]
+last_verified: 2026-05-23
+related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md]
 supersedes: docs/chat-production/CHAT_V3.md
 ---
 
@@ -19,7 +19,8 @@ supersedes: docs/chat-production/CHAT_V3.md
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\parse.ts` | Layer 0 — message → ParsedQuery (thin wrapper over chat-v2 query-parser) |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\preview.ts` | Layer 1 — intent dispatcher → PreviewResult |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\narrate.ts` | Layer 2 — Groq narrator (one-shot + streaming) |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\nearby-pois.ts` | POI bundle for `locationSnapshot` map-bar overviews |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\nearby-pois.ts` | POI bundle + hero photo + area stats + page URL resolver for `locationSnapshot` map-bar overviews |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat\SnapshotCard.tsx` | Card rendered above the snapshot text (hero photo, stat tiles, CTA button) |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\types.ts` | `ParsedQuery`, `PreviewResult`, `NarrationInput` shapes |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\chat-v3\route.ts` | Production SSE endpoint |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\chap\page.tsx` | CHAP page — ChatWidget + MapLayer co-located |
@@ -27,7 +28,7 @@ supersedes: docs/chat-production/CHAT_V3.md
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat\ChatProvider.tsx` | Conversation state, persistence (5 convos), preview field on messages |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat-v3\PreviewRenderer.tsx` | Maps `PreviewResult.component` → production component |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\map\resolve-spawn-point.ts` | Geolocation → Palm Desert fallback for map spawn |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` | **Tools registry — source of truth** |
+| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` | **Tools registry — source of truth** |
 
 ## The 4-layer architecture (chat-v3, May 2026)
 
@@ -77,11 +78,11 @@ POIs come from the `points_of_interest` collection (Google Places sync). Two-tie
 | Communities (large landmarks) | 13+ | Individual labeled markers |
 | Everything else (restaurants, parks, golf, shopping, etc.) | 15+ | Clustered, expand on zoom-in |
 
-Clicking any POI opens an **info panel**. The map-search-bar overview mode (`locationSnapshot`) also pulls a categorized POI bundle via `fetchNearbyPOIs(name, type, radiusMiles)` and `describePOIBundle()` injects it into the system prompt — the snapshot narrator quotes 2–3 POIs by name from that authoritative list, never inventing businesses.
+Clicking any POI opens an **info panel**. The map-search-bar overview mode (`locationSnapshot`) also pulls a categorized POI bundle via `fetchNearbyPOIs(name, type, radiusMiles)` and `describePOIBundle()` injects it into the system prompt — the snapshot narrator quotes 2–3 POIs by name from that authoritative list, never inventing businesses. Alongside POIs, `resolveSnapshotMeta(name, type)` (in the same module) returns a `{ heroPhoto, stats, pageLink }` bundle that the route emits as a single `snapshotMeta` SSE event before narration starts. The client mounts a `SnapshotCard` above the streaming text — hero image, active-listings / median / $/sqft / DOM tiles, and a CTA button to the area page. See [TOOLS_INDEX.md](./TOOLS_INDEX.md#locationsnapshot-card-payload) for the full schema and resolver tables.
 
 ## Tools registry — the sync rule
 
-**`F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` is the source of truth.** It enumerates everything the chat can call, dispatch, or emit across all three layers — Layer 1 preview primitives, Layer 3 agent-loop tools, and `chatv3:*` window events. Any new tool, any new preview intent, any new `chatv3:*` event MUST land in TOOLS_INDEX in the same commit it's introduced. Forget this and the tool will silently break (autocomplete won't know about it, the docs will be wrong, future Claude won't be able to find it).
+**`F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` is the source of truth.** It enumerates everything the chat can call, dispatch, or emit across all three layers — Layer 1 preview primitives, Layer 3 agent-loop tools, and `chatv3:*` window events. Any new tool, any new preview intent, any new `chatv3:*` event MUST land in TOOLS_INDEX in the same commit it's introduced. Forget this and the tool will silently break (autocomplete won't know about it, the docs will be wrong, future Claude won't be able to find it).
 
 The corresponding source files to update in sync:
 
@@ -92,7 +93,7 @@ The corresponding source files to update in sync:
 | Layer 3 executors | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-v2\tool-executors.ts` |
 | UI renderer | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat-v3\PreviewRenderer.tsx` |
 | Window events | wherever they're dispatched / listened |
-| **Registry** | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` |
+| **Registry** | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` |
 
 ## Chat history / persistence
 
@@ -100,7 +101,7 @@ The root home (`/`) uses `?view=` params (`chat`, `map`) — insights is the def
 
 ## Gotchas
 
-- **TOOLS_INDEX sync.** New `tools.ts` entries, new `preview.ts` intents, new `chatv3:*` events MUST update `docs/chat-production/TOOLS_INDEX.md` in the same commit. This is the most common drift in this subsystem.
+- **TOOLS_INDEX sync.** New `tools.ts` entries, new `preview.ts` intents, new `chatv3:*` events MUST update `docs/chat/TOOLS_INDEX.md` in the same commit. This is the most common drift in this subsystem.
 - **Map view is session-scoped.** New Chat resets `viewState`; the spawn point re-resolves on next toggle. Don't try to persist map state across chats — it's intentional.
 - **URL wins over saved state for `?view=map`.** Clicking the sidebar "Chat" link closes the map even if session state had it open. Don't add code that re-adds `?view=map` from state.
 - **Narrator uses Groq (`llama-3.1-8b-instant`).** ~1s response, ~$0.0001/call. Per memory, the operator was experimenting with `openai/gpt-oss-120b` for higher quality — confirm current model against `DEFAULT_MODEL` in narrate.ts before quoting cost. The narrator can ONLY use data in the context block — it's prompted hard against fabrication, but cheap models still sometimes break the rule on edge cases. The `AUTHORITATIVE` label is doing real work.
@@ -117,9 +118,9 @@ The preview dispatcher in `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\cha
 
 - [routing/README.md](../routing/README.md) — how the host/subdomain proxy lands traffic on `/chap`
 - [multi-tenant/README.md](../multi-tenant/README.md) — agent scoping (the chat itself is not currently agent-scoped, but downstream lead capture is)
-- `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` — full tool/intent/component table
-- `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\CHAT_V3.md` — current canonical architecture doc (superseded by this README; move to archive)
-- `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\MIGRATION_ROADMAP.md` — phase plan for the chat-v3 cutover
+- [./TOOLS_INDEX.md](./TOOLS_INDEX.md) — full tool/intent/component table (source of truth for chat tools)
+- `F:\web-clients\joseph-sardella\jpsrealtor\docs\archive\chat-production\CHAT_V3.md` — previous canonical architecture doc (superseded by this README, retained for history)
+- `F:\web-clients\joseph-sardella\jpsrealtor\docs\archive\chat-production\MIGRATION_ROADMAP.md` — phase plan for the chat-v3 cutover (archived)
 
 ---
 
@@ -167,9 +168,9 @@ The three roadmap/architecture/registry docs are the **current canonical referen
 
 | File | Classification | Action |
 |---|---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\CHAT_V3.md` | CURRENT — superseded by this docs-v2/chat/README.md | Add `supersedes`, move to archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` | **CURRENT** | Keep — this is the source of truth for tools |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\MIGRATION_ROADMAP.md` | CURRENT (phase plan, historical-leaning) | Keep, mark `status: partial` once cutover is fully complete |
+| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\CHAT_V3.md` | CURRENT — superseded by this docs-v2/chat/README.md | Archived 2026-05-21 |
+| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` | **CURRENT** | **Restored 2026-05-23** to `docs/chat/TOOLS_INDEX.md` — the archive sweep moved it by accident; this is still the source of truth for tools |
+| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\MIGRATION_ROADMAP.md` | CURRENT (phase plan, historical-leaning) | Archived 2026-05-21; consult only for chat-v3 cutover history |
 | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\architecture.md` | HISTORICAL — pre-v3 architecture | Archive |
 | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\chat-analysis.md` | HISTORICAL — analysis driving the chat-v3 design | Archive |
 | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\latency-deep-dive.md` | HISTORICAL — root-cause analysis for v2 latency | Archive |

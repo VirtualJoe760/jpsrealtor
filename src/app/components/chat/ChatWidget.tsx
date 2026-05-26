@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, User, Copy, Check, Share, Map, MessageSquare } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useSession } from "next-auth/react";
@@ -19,6 +20,8 @@ import type { Listing } from "./ListingCarousel";
 import { cleanResponseText } from "@/lib/chat/response-parser";
 import ChatResultsContainer from "./ChatResultsContainer";
 import PreviewRenderer from "@/app/components/chat-v3/PreviewRenderer";
+import SnapshotCard from "./SnapshotCard";
+import type { SnapshotMeta } from "@/lib/chat-search/types";
 import ListingDetailCard from "./ListingDetailCard";
 import ListingOptionsCard from "./ListingOptionsCard";
 import ClarificationCard from "./ClarificationCard";
@@ -1002,6 +1005,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
         let fullText = "";
         let components: ComponentData | undefined;
+        let snapshotMeta: SnapshotMeta | null = null;
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         // Buffer incomplete SSE events across TCP read boundaries.
@@ -1033,6 +1037,10 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       components = { ...(components || {}), ...data.components };
                     }
 
+                    if (data.snapshotMeta) {
+                      snapshotMeta = data.snapshotMeta as SnapshotMeta;
+                    }
+
                     if (data.done) {
                       // Remove component markers from message
                       const cleanText = fullText
@@ -1045,7 +1053,7 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
                       // Add location snapshot as background digest
                       addMessage(`Tell me about ${locationName}`, "user");
-                      addMessage(cleanText, "assistant", undefined, components);
+                      addMessage(cleanText, "assistant", undefined, components, undefined, undefined, undefined, undefined, snapshotMeta);
                       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                       // If user is in map view, notify them of new message
@@ -1583,6 +1591,9 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                         />
                       </div>
                     )}
+                    {msg.role === "assistant" && msg.snapshotMeta && (
+                      <SnapshotCard meta={msg.snapshotMeta} />
+                    )}
                     <div
                       className={`rounded-2xl px-3 sm:px-5 py-3 sm:py-4 select-text ${
                         msg.role === "user"
@@ -1810,7 +1821,33 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                                     ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border border-gray-200'
                                     : 'bg-gradient-to-br from-neutral-900 to-neutral-800 text-neutral-200 border border-neutral-700'
                                 }`} {...props} />
-                              )
+                              ),
+                            a: ({ node, href, children, ...props }: any) => {
+                              const linkClass = `font-medium underline underline-offset-2 transition-colors ${
+                                isLight
+                                  ? 'text-blue-600 hover:text-blue-800'
+                                  : 'text-emerald-300 hover:text-emerald-200'
+                              }`;
+                              const isInternal = typeof href === 'string' && href.startsWith('/');
+                              if (isInternal) {
+                                return (
+                                  <Link href={href} className={linkClass} {...props}>
+                                    {children}
+                                  </Link>
+                                );
+                              }
+                              return (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={linkClass}
+                                  {...props}
+                                >
+                                  {children}
+                                </a>
+                              );
+                            }
                           }}
                         >
                           {cleanResponseText(msg.content)}

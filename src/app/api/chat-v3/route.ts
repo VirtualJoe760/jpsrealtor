@@ -31,7 +31,9 @@ import type { ChatRequest } from "@/lib/chat-v2/types";
 import { parse } from "@/lib/chat-search/parse";
 import { runPreview } from "@/lib/chat-search/preview";
 import { streamNarration } from "@/lib/chat-search/narrate";
-import { fetchNearbyPOIs, describePOIBundle } from "@/lib/chat-search/nearby-pois";
+import { fetchNearbyPOIs, describePOIBundle, resolveSnapshotMeta } from "@/lib/chat-search/nearby-pois";
+import type { PageLink } from "@/lib/chat-search/nearby-pois";
+import type { SnapshotMeta } from "@/lib/chat-search/types";
 import type { ParsedQuery } from "@/lib/chat-search/types";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -79,23 +81,36 @@ export async function POST(req: NextRequest) {
     if (locationSnapshot) {
       console.log("[Chat V3] locationSnapshot mode →", locationSnapshot.name);
       let poiContext = "";
+      let snapshotMeta: SnapshotMeta | null = null;
+      const tResolve = Date.now();
       try {
-        const bundle = await fetchNearbyPOIs(
-          locationSnapshot.name,
-          locationSnapshot.type
-        );
+        const [bundle, meta] = await Promise.all([
+          fetchNearbyPOIs(locationSnapshot.name, locationSnapshot.type),
+          resolveSnapshotMeta(locationSnapshot.name, locationSnapshot.type),
+        ]);
         poiContext = describePOIBundle(bundle);
+        snapshotMeta = meta;
         console.log(
-          `[Chat V3] POI bundle: ${bundle.total} hits in ${Object.keys(bundle.byCategory).length} categories${bundle.center ? "" : " (no center resolved)"}`
+          `[Chat V3] snapshot resolve ${Date.now() - tResolve}ms · POIs=${bundle.total}/${Object.keys(bundle.byCategory).length}cat${bundle.center ? "" : " (no center)"} · pageLink=${meta.pageLink?.url ?? "(none)"} · heroPhoto=${meta.heroPhoto ? "yes" : "no"} · activeListings=${meta.stats?.activeListings ?? "?"}`
         );
       } catch (err) {
-        console.warn("[Chat V3] POI fetch failed:", err);
+        console.warn("[Chat V3] POI fetch / snapshot resolve failed:", err);
       }
-      return runAgentLoop(
+      const agentRes = await runAgentLoop(
         messages,
         userId,
-        buildSnapshotPrompt(locationSnapshot, poiContext)
+        buildSnapshotPrompt(locationSnapshot, poiContext, snapshotMeta?.pageLink ?? null)
       );
+      // The SnapshotCard now carries the page link as a styled CTA button,
+      // so we no longer append a markdown link to the text — wrap the
+      // agent stream just to emit the `snapshotMeta` event upfront.
+      if (snapshotMeta && agentRes.body) {
+        return new NextResponse(
+          wrapAgentStreamWithSnapshotMeta(agentRes.body, snapshotMeta),
+          { headers: getSSEHeaders() }
+        );
+      }
+      return agentRes;
     }
 
     // ----- Search-first attempt -----
@@ -235,7 +250,8 @@ async function runAgentLoop(
 
 function buildSnapshotPrompt(
   snapshot: NonNullable<ChatRequest["locationSnapshot"]>,
-  poiContext: string = ""
+  poiContext: string = "",
+  pageLink: PageLink | null = null
 ): string {
   // poiContext (when present) is the AUTHORITATIVE block from
   // describePOIBundle — categorized real Google Places hits within
@@ -244,6 +260,13 @@ function buildSnapshotPrompt(
   const poiSection = poiContext
     ? `\n\n${poiContext}\n`
     : `\n\n(No nearby POI data available for this location — keep Community Highlights brief and avoid naming specific businesses or attractions you can't verify.)\n`;
+
+  // When pageLink is resolved, the SnapshotCard above the text already
+  // carries it as a styled CTA button — the LLM should NOT add a
+  // duplicate "view the page" sentence in the prose.
+  const closingRule = pageLink
+    ? `Do NOT add a closing CTA or "view the page" sentence — a page link button is already shown above your response.`
+    : `End with a helpful suggestion about viewing listings or market data`;
 
   return `${SYSTEM_PROMPT}
 
@@ -257,9 +280,58 @@ ${poiSection}
 3. Include general market info, notable features, and community highlights
 4. Community Highlights MUST quote 2-3 specific POIs by name from the AUTHORITATIVE list above (when present). Do NOT invent businesses, parks, golf courses, or attractions that aren't on the list. If the list is empty, omit specific names and speak generally.
 5. Keep it conversational and under 150 words
-6. End with a helpful suggestion about viewing listings or market data
+6. ${closingRule}
 
 Now respond to the user's query about "${snapshot.name}" following these rules.`;
+}
+
+// =============================================================================
+// Stream wrapper — emits a `snapshotMeta` event upfront so the
+// SnapshotCard renders immediately, then forwards the agent loop's
+// stream verbatim. Used by locationSnapshot mode only.
+// =============================================================================
+
+function wrapAgentStreamWithSnapshotMeta(
+  source: ReadableStream<Uint8Array>,
+  snapshotMeta: SnapshotMeta
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream({
+    async start(controller) {
+      const reader = source.getReader();
+      const send = (obj: any) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+
+      // Emit the card meta first — client mounts the card immediately
+      // and the LLM narration streams into the text region below it.
+      send({ snapshotMeta });
+
+      let buffer = "";
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let sepIdx: number;
+          while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+            const raw = buffer.slice(0, sepIdx);
+            buffer = buffer.slice(sepIdx + 2);
+            if (!raw.startsWith("data: ")) continue;
+            controller.enqueue(encoder.encode(`${raw}\n\n`));
+          }
+        }
+      } catch (err: any) {
+        console.error("[Chat V3] snapshot stream wrap error:", err);
+        send({ error: err?.message || "stream wrap failed", done: true });
+      } finally {
+        reader.releaseLock();
+        controller.close();
+      }
+    },
+  });
 }
 
 // =============================================================================

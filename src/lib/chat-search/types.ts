@@ -153,3 +153,27 @@ export interface NarrationResult {
   finishReason?: string;
   error?: string;
 }
+
+// =============================================================================
+// Snapshot card meta — locationSnapshot mode (route-level, not Layer 1)
+// =============================================================================
+//
+// Emitted as a `snapshotMeta` SSE event before the LLM narration tokens
+// so the SnapshotCard can render immediately while the text streams in
+// below it. Resolved server-side by `resolveSnapshotMeta` in
+// `src/lib/chat-search/nearby-pois.ts`.
+
+export interface SnapshotStats {
+  activeListings: number;
+  medianPrice?: number;
+  avgPricePerSqft?: number;
+  avgDom?: number;
+}
+
+export interface SnapshotMeta {
+  name: string;
+  type: string;
+  heroPhoto?: string | null;
+  stats?: SnapshotStats | null;
+  pageLink?: { url: string; label: string } | null;
+}

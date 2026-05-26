@@ -19,7 +19,10 @@
 import dbConnect from "@/lib/mongoose";
 import LocationIndex from "@/models/LocationIndex";
 import Subdivision from "@/models/subdivisions";
+import { City } from "@/models/cities";
 import PointOfInterest from "@/models/PointOfInterest";
+import { soCalCounties, findCityByName } from "@/app/constants/counties";
+import type { SnapshotMeta, SnapshotStats } from "./types";
 
 export interface POISummary {
   name: string;
@@ -180,6 +183,187 @@ export async function fetchNearbyPOIs(
     byCategory,
     topPicks,
   };
+}
+
+// Snapshot mode wants to surface a "view full page" link alongside the
+// AI-narrated overview. We resolve it server-side so the LLM can't
+// hallucinate URLs — the system prompt gets the resolved string and is
+// instructed to paste it verbatim. Routing reference:
+//   subdivision → /neighborhoods/{cityId}/{slug}
+//   city        → /neighborhoods/{cityId}
+//   county      → /neighborhoods/{countySlug}
+//   region/?    → null (no link)
+export interface PageLink {
+  url: string;
+  label: string;
+}
+
+export async function resolvePageUrl(
+  name: string,
+  type: string
+): Promise<PageLink | null> {
+  await dbConnect();
+  const trimmedName = name.trim();
+  if (!trimmedName) return null;
+
+  if (type === "subdivision") {
+    const sub: any = await Subdivision.findOne({
+      name: new RegExp(`^${trimmedName}$`, "i"),
+    })
+      .select("slug city name")
+      .lean();
+    if (!sub?.slug || !sub?.city) return null;
+    const cityMatch = findCityByName(sub.city);
+    if (!cityMatch) return null;
+    return {
+      url: `/neighborhoods/${cityMatch.city.id}/${sub.slug}`,
+      label: `${sub.name} subdivision page`,
+    };
+  }
+
+  if (type === "city") {
+    const cityMatch = findCityByName(trimmedName);
+    if (!cityMatch) return null;
+    return {
+      url: `/neighborhoods/${cityMatch.city.id}`,
+      label: `${cityMatch.city.name} page`,
+    };
+  }
+
+  if (type === "county") {
+    const normalized = trimmedName.toLowerCase();
+    const county = soCalCounties.find(
+      (c) => c.name.toLowerCase() === normalized
+    );
+    if (!county) return null;
+    return {
+      url: `/neighborhoods/${county.slug}`,
+      label: `${county.name} County page`,
+    };
+  }
+
+  return null;
+}
+
+// =============================================================================
+// Snapshot card meta — hero photo, area stats, page link
+// =============================================================================
+//
+// Bundles everything the client SnapshotCard needs in one round-trip so
+// the route handler can emit it as a single `snapshotMeta` SSE event
+// before the LLM narration starts streaming.
+//
+// Performance note: this MUST stay fast (target <100ms total). It runs
+// inline before the LLM call in locationSnapshot mode, so every ms
+// delays first-token. The original implementation aggregated stats on
+// the fly from UnifiedListing — a 5000-doc scan with a case-insensitive
+// regex took ~10s on production data. Now we read pre-computed cached
+// fields from the per-type model (Subdivision.cmaStats, City.listingCount,
+// LocationIndex.activeListingCount) — one findOne per snapshot.
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function roundOrUndef(n: unknown): number | undefined {
+  return typeof n === "number" && isFinite(n) ? Math.round(n) : undefined;
+}
+
+export async function resolveSnapshotMeta(
+  name: string,
+  type: string
+): Promise<SnapshotMeta> {
+  await dbConnect();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return { name, type, heroPhoto: null, stats: null, pageLink: null };
+  }
+  const exact = new RegExp(`^${escapeRegex(trimmed)}$`, "i");
+
+  if (type === "subdivision") {
+    // Subdivision.cmaStats is pre-computed nightly by the VPS cron —
+    // contains median/avg price, $/sqft, DOM. Top-level fields are the
+    // fallback when cmaStats isn't built yet.
+    const sub: any = await Subdivision.findOne({ name: exact })
+      .select("photo cmaStats listingCount medianPrice slug city name")
+      .lean();
+    if (!sub) {
+      return { name, type, heroPhoto: null, stats: null, pageLink: null };
+    }
+    const active = sub.cmaStats?.active;
+    const cityMatch = sub.city ? findCityByName(sub.city) : null;
+    return {
+      name,
+      type,
+      heroPhoto: sub.photo || null,
+      stats: {
+        activeListings: active?.count ?? sub.listingCount ?? 0,
+        medianPrice: active?.medianPrice ?? sub.medianPrice,
+        avgPricePerSqft: roundOrUndef(active?.avgPricePerSqft),
+        avgDom: roundOrUndef(active?.avgDom),
+      },
+      pageLink:
+        cityMatch && sub.slug
+          ? {
+              url: `/neighborhoods/${cityMatch.city.id}/${sub.slug}`,
+              label: `${sub.name} subdivision page`,
+            }
+          : null,
+    };
+  }
+
+  if (type === "city") {
+    const c: any = await City.findOne({ name: exact })
+      .select("photo listingCount medianPrice name")
+      .lean();
+    const cityMatch = findCityByName(trimmed);
+    return {
+      name,
+      type,
+      heroPhoto: c?.photo || null,
+      // City model doesn't cache $/sqft or DOM — only count + median.
+      stats: c
+        ? { activeListings: c.listingCount ?? 0, medianPrice: c.medianPrice }
+        : null,
+      pageLink: cityMatch
+        ? {
+            url: `/neighborhoods/${cityMatch.city.id}`,
+            label: `${cityMatch.city.name} page`,
+          }
+        : null,
+    };
+  }
+
+  if (type === "county") {
+    const loc: any = await LocationIndex.findOne({
+      name: exact,
+      type: "county",
+    })
+      .select("activeListingCount listingCount")
+      .lean();
+    const normalized = trimmed.toLowerCase();
+    const county = soCalCounties.find(
+      (c) => c.name.toLowerCase() === normalized
+    );
+    return {
+      name,
+      type,
+      heroPhoto: null,
+      stats: loc
+        ? {
+            activeListings: loc.activeListingCount ?? loc.listingCount ?? 0,
+          }
+        : null,
+      pageLink: county
+        ? {
+            url: `/neighborhoods/${county.slug}`,
+            label: `${county.name} County page`,
+          }
+        : null,
+    };
+  }
+
+  return { name, type, heroPhoto: null, stats: null, pageLink: null };
 }
 
 /**
