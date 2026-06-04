@@ -24,6 +24,7 @@ import AgentNav from "@/app/components/AgentNav";
 import TipTapEditor from "@/app/components/TipTapEditor";
 import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../components/LandingPageOptions";
+import ClaudeLandingPageChat from "../components/ClaudeLandingPageChat";
 import { useDeploymentStatus } from "../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "generate" | "edit" | "preview";
@@ -76,6 +77,11 @@ export default function NewArticlePage() {
   // Landing page config (separate state so linter doesn't revert it)
   const [lpConfig, setLpConfig] = useState<LandingPageConfig>(DEFAULT_LANDING_PAGE_CONFIG);
 
+  // Landing-page generator mode (only meaningful when category === "landing-page").
+  // Default to Groq (fast/free); Claude requires the agent to have added their key.
+  const [lpGenMode, setLpGenMode] = useState<"groq" | "claude">("groq");
+  const [anthropicConnected, setAnthropicConnected] = useState<boolean | null>(null);
+
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -102,6 +108,27 @@ export default function NewArticlePage() {
       router.push("/auth/signin");
     }
   }, [status, router]);
+
+  // Probe whether this agent has an Anthropic key connected — gates the
+  // "Claude · chat" toggle option for landing pages.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/integrations/anthropic");
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setAnthropicConnected(data.status === "connected");
+        }
+      } catch {
+        if (!cancelled) setAnthropicConnected(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   // Handle Groq generation
   const handleGenerate = async () => {
@@ -430,6 +457,11 @@ export default function NewArticlePage() {
     );
   }
 
+  // When the agent is using Claude chat to build a landing page, we hide the
+  // Groq topic/generate UI and show the chat component instead.
+  const claudeMode =
+    formData.category === "landing-page" && lpGenMode === "claude" && anthropicConnected;
+
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-new-article">
       <div className="max-w-7xl mx-auto">
@@ -603,29 +635,85 @@ export default function NewArticlePage() {
                   AI Article Generator
                 </h2>
                 <p className={`text-sm ${textSecondary}`}>
-                  Powered by Groq AI for lightning-fast article generation
+                  {formData.category === "landing-page" && lpGenMode === "claude"
+                    ? "Chat with Claude to design your landing page (uses your Anthropic key)"
+                    : "Powered by Groq AI for lightning-fast article generation"}
                 </p>
               </div>
 
-              {/* Topic Input */}
-              <div>
-                <label
-                  className={`block text-sm font-semibold ${textSecondary} mb-2`}
-                >
-                  Topic
-                </label>
-                <textarea
-                  value={generationTopic}
-                  onChange={(e) => setGenerationTopic(e.target.value)}
-                  placeholder="Example: Benefits of investing in Palm Desert golf communities, focusing on ROI and lifestyle amenities..."
-                  rows={4}
-                  className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none resize-none transition-all ${
-                    isLight
-                      ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                      : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
-                  }`}
-                />
-              </div>
+              {/* Landing Page model toggle */}
+              {formData.category === "landing-page" && (
+                <div>
+                  <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
+                    AI model
+                  </label>
+                  <div className={`inline-flex rounded-lg p-1 border-2 ${isLight ? "bg-slate-100 border-slate-300" : "bg-gray-800 border-gray-700"}`}>
+                    <button
+                      type="button"
+                      onClick={() => setLpGenMode("groq")}
+                      className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                        lpGenMode === "groq"
+                          ? isLight ? "bg-white text-blue-700 shadow" : "bg-gray-900 text-emerald-300 shadow"
+                          : textSecondary
+                      }`}
+                    >
+                      Groq · fast
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (anthropicConnected) setLpGenMode("claude");
+                      }}
+                      disabled={!anthropicConnected}
+                      title={
+                        anthropicConnected
+                          ? "Conversational design with Claude"
+                          : "Add your Anthropic API key in Settings → Integrations to enable Claude"
+                      }
+                      className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                        !anthropicConnected
+                          ? "opacity-50 cursor-not-allowed " + textMuted
+                          : lpGenMode === "claude"
+                            ? isLight ? "bg-white text-purple-700 shadow" : "bg-gray-900 text-purple-300 shadow"
+                            : textSecondary
+                      }`}
+                    >
+                      Claude · chat
+                    </button>
+                  </div>
+                  {anthropicConnected === false && (
+                    <p className={`text-xs ${textMuted} mt-1.5`}>
+                      Add your Anthropic API key in{" "}
+                      <a href="/agent/settings" className={isLight ? "text-blue-600 underline" : "text-blue-400 underline"}>
+                        Settings → Integrations
+                      </a>{" "}
+                      to unlock Claude.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Topic Input (Groq mode only) */}
+              {!claudeMode && (
+                <div>
+                  <label
+                    className={`block text-sm font-semibold ${textSecondary} mb-2`}
+                  >
+                    Topic
+                  </label>
+                  <textarea
+                    value={generationTopic}
+                    onChange={(e) => setGenerationTopic(e.target.value)}
+                    placeholder="Example: Benefits of investing in Palm Desert golf communities, focusing on ROI and lifestyle amenities..."
+                    rows={4}
+                    className={`w-full px-4 py-3 rounded-lg ${textPrimary} placeholder-gray-400 focus:outline-none resize-none transition-all ${
+                      isLight
+                        ? "bg-white border-2 border-slate-300 shadow-md hover:shadow-lg focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                        : "bg-gray-800 border-2 border-gray-700 shadow-lg shadow-black/50 hover:shadow-xl hover:shadow-black/60 focus:shadow-2xl focus:shadow-emerald-500/20 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    }`}
+                  />
+                </div>
+              )}
 
               {/* Category Selection */}
               <div>
@@ -712,31 +800,47 @@ export default function NewArticlePage() {
                 />
               )}
 
-              {/* Generate Button */}
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || !generationTopic.trim()}
-                className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-base ${
-                  isLight
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-purple-600 hover:bg-purple-700"
-                } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating Article...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Generate Article
-                  </>
-                )}
-              </button>
+              {/* Generate Button (Groq mode only) */}
+              {!claudeMode && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !generationTopic.trim()}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-base ${
+                    isLight
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-purple-600 hover:bg-purple-700"
+                  } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Generating Article...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Generate Article
+                    </>
+                  )}
+                </button>
+              )}
 
-              {/* Generation Preview - Hidden on mobile */}
-              {generatedPreview && (
+              {/* Claude chat (replaces Groq topic + button when active) */}
+              {claudeMode && (
+                <ClaudeLandingPageChat
+                  formData={formData}
+                  lpConfig={lpConfig}
+                  onFormDataChange={setFormData}
+                  onLpConfigChange={setLpConfig}
+                  isLight={isLight}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  textMuted={textMuted}
+                />
+              )}
+
+              {/* Generation Preview - Hidden on mobile, hidden in Claude mode */}
+              {generatedPreview && !claudeMode && (
                 <div className="mt-6 hidden lg:block">
                   <div className="flex items-center justify-between mb-3">
                     <h3
