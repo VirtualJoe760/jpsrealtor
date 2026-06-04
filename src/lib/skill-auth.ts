@@ -15,6 +15,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { hashToken } from "@/lib/secrets";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { LEGACY_DEFAULT_SCOPES, type Scope } from "@/lib/skill-scopes";
 
 export type SkillAuthSuccess = {
@@ -103,6 +104,64 @@ const NO_STORE = { "Cache-Control": "no-store" };
  *   if (denied) return denied;
  *   // auth is narrowed to SkillAuthSuccess here
  */
+// ---------------------------------------------------------------------------
+// Rate limiting
+// ---------------------------------------------------------------------------
+//
+// Per-token sliding window. Tiers match docs/mcp/scopes-and-safety.md:
+//   identity  → 200/min   (whoami, my_*)
+//   read      → 100/min   (any :read scope)
+//   write     → 30/min    (any :write scope, draft-only)
+//   send      → 5/min     (campaigns:send only)
+//
+// In-memory; survives the lifetime of the serverless function instance only.
+// Switch to Upstash Redis when we need cross-instance counts.
+
+export type RateLimitTier = "identity" | "read" | "write" | "send";
+
+const RATE_LIMIT_TIERS: Record<RateLimitTier, { max: number; windowMs: number }> = {
+  identity: { max: 200, windowMs: 60_000 },
+  read: { max: 100, windowMs: 60_000 },
+  write: { max: 30, windowMs: 60_000 },
+  send: { max: 5, windowMs: 60_000 },
+};
+
+/**
+ * Check the rate limit for an authenticated request. Call AFTER auth +
+ * requireScope; uses the token's identity (last4 + name fingerprint) as the
+ * bucket key so distinct tokens can't share each other's quota.
+ *
+ * Returns a 429 Response on block, or null when the request may proceed.
+ */
+export function skillRateLimit(
+  auth: SkillAuthSuccess,
+  tier: RateLimitTier
+): NextResponse | null {
+  const config = RATE_LIMIT_TIERS[tier];
+  // Bucket key combines tier + tokenLast4 so each tier is its own window.
+  // tokenLast4 isn't unique on its own (collision space is 14 bits) but
+  // we're scoped to a single Vercel instance anyway — collisions only
+  // cause slight under-limit, never wrongful blocks.
+  const key = `skill:${tier}:${auth.tokenLast4}:${auth.tokenName}`;
+  const r = checkRateLimit(key, config);
+  if (r.ok) return null;
+  return NextResponse.json(
+    {
+      error: "rate_limited",
+      message: r.error,
+      tier,
+      retryAfter: r.retryAfter,
+    },
+    {
+      status: 429,
+      headers: {
+        "Cache-Control": "no-store",
+        "Retry-After": String(r.retryAfter),
+      },
+    }
+  );
+}
+
 export function requireScope(
   auth: SkillAuthResult,
   scope: Scope

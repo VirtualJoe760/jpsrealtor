@@ -4,7 +4,7 @@
 // confirm the connection and know what URL to print for created pages.
 
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateSkillRequest } from "@/lib/skill-auth";
+import { authenticateSkillRequest, skillRateLimit } from "@/lib/skill-auth";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
       { status: auth.status, headers: NO_STORE }
     );
   }
+  const rateLimited = skillRateLimit(auth, "identity");
+  if (rateLimited) return rateLimited;
   const user = auth.user;
   const ap = (user.agentProfile as any) || {};
   // Construct the agent's public LP base URL. Prefer custom domain → subdomain
