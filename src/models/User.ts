@@ -185,6 +185,30 @@ export interface IUser extends Document {
     metaTitle?: string; // Page title for SEO
     metaDescription?: string; // Meta description for SEO
     metaKeywords?: string[]; // SEO keywords
+
+    // AI Integrations (per-agent bring-your-own-key + API tokens for desktop skill)
+    aiIntegrations?: {
+      // Agent's own Anthropic API key — used for in-CMS Claude chat builder
+      // apiKeyEncrypted is AES-256-GCM via src/lib/secrets.ts (never returned to client)
+      anthropic?: {
+        apiKeyEncrypted?: string;
+        last4?: string; // e.g. "ab12"
+        model?: string; // default "claude-sonnet-4-5-20250929"
+        status?: "connected" | "disconnected" | "invalid";
+        addedAt?: Date;
+        lastVerifiedAt?: Date;
+      };
+      // ChatRealty-issued API tokens for desktop / Claude Code skill auth.
+      // Plaintext shown ONCE on creation; only sha256 hash is persisted.
+      apiTokens?: Array<{
+        tokenHash: string; // sha256 hex
+        last4: string;
+        name: string; // user-supplied label, e.g. "MacBook"
+        createdAt: Date;
+        lastUsedAt?: Date;
+        revokedAt?: Date;
+      }>;
+    };
   };
 
   // Google Calendar Integration (per-agent)
@@ -736,6 +760,26 @@ const UserSchema = new Schema<IUser>(
       metaTitle: String,
       metaDescription: String,
       metaKeywords: [String],
+
+      // AI Integrations (bring-your-own-key + ChatRealty API tokens)
+      aiIntegrations: {
+        anthropic: {
+          apiKeyEncrypted: String,
+          last4: String,
+          model: { type: String, default: "claude-sonnet-4-5-20250929" },
+          status: { type: String, enum: ["connected", "disconnected", "invalid"], default: "disconnected" },
+          addedAt: Date,
+          lastVerifiedAt: Date,
+        },
+        apiTokens: [{
+          tokenHash: { type: String, required: true },
+          last4: { type: String, required: true },
+          name: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+          lastUsedAt: Date,
+          revokedAt: Date,
+        }],
+      },
     },
 
     // Google Calendar Integration (per-agent)
