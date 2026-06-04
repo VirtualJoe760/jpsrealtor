@@ -34,12 +34,17 @@ export async function GET(
   const subject: any = await UnifiedListing.findOne({ listingKey })
     .select(
       "listingKey unparsedAddress city subdivisionName propertyType listPrice " +
-      "bedroomsTotal bathroomsTotalInteger livingArea"
+      "bedroomsTotal bedsTotal bathroomsTotalInteger bathsTotal livingArea"
     )
     .lean();
   if (!subject) {
     return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
   }
+
+  // Coalesce the two field-name variants so comparables works whether the
+  // subject came from a CRMLS or GPS-style source.
+  const subjectBeds = subject.bedroomsTotal ?? subject.bedsTotal ?? null;
+  const subjectBaths = subject.bathroomsTotalInteger ?? subject.bathsTotal ?? null;
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
@@ -53,15 +58,6 @@ export async function GET(
   } else if (subject.city) {
     query.city = subject.city;
   }
-  if (subject.bedroomsTotal != null) {
-    query.bedroomsTotal = { $gte: subject.bedroomsTotal - 1, $lte: subject.bedroomsTotal + 1 };
-  }
-  if (subject.bathroomsTotalInteger != null) {
-    query.bathroomsTotalInteger = {
-      $gte: subject.bathroomsTotalInteger - 1,
-      $lte: subject.bathroomsTotalInteger + 1,
-    };
-  }
   if (typeof subject.listPrice === "number") {
     query.closePrice = {
       $gte: Math.floor(subject.listPrice * 0.8),
@@ -69,10 +65,22 @@ export async function GET(
     };
   }
 
+  // bed/bath filters: ±1 against EITHER field-name variant on the comp record.
+  const andClauses: Record<string, any>[] = [];
+  if (subjectBeds != null) {
+    const range = { $gte: subjectBeds - 1, $lte: subjectBeds + 1 };
+    andClauses.push({ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] });
+  }
+  if (subjectBaths != null) {
+    const range = { $gte: subjectBaths - 1, $lte: subjectBaths + 1 };
+    andClauses.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
+  }
+  if (andClauses.length > 0) query.$and = andClauses;
+
   const items: any[] = await UnifiedClosedListing.find(query)
     .select(
       "listingKey unparsedAddress city subdivisionName closePrice closeDate " +
-      "bedroomsTotal bathroomsTotalInteger livingArea daysOnMarket"
+      "bedroomsTotal bedsTotal bathroomsTotalInteger livingArea daysOnMarket"
     )
     .sort({ closeDate: -1 })
     .limit(12)
@@ -92,8 +100,8 @@ export async function GET(
         listingKey: subject.listingKey,
         address: subject.unparsedAddress,
         listPrice: subject.listPrice,
-        beds: subject.bedroomsTotal,
-        baths: subject.bathroomsTotalInteger,
+        beds: subjectBeds,
+        baths: subjectBaths,
         sqft: subject.livingArea,
       },
       comparables: items.map((c) => ({
@@ -101,7 +109,7 @@ export async function GET(
         address: c.unparsedAddress || null,
         closePrice: c.closePrice ?? null,
         closeDate: c.closeDate || null,
-        beds: c.bedroomsTotal ?? null,
+        beds: c.bedroomsTotal ?? c.bedsTotal ?? null,
         baths: c.bathroomsTotalInteger ?? null,
         sqft: c.livingArea ?? null,
         daysOnMarket: c.daysOnMarket ?? null,

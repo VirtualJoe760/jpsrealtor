@@ -58,24 +58,31 @@ export async function GET(req: NextRequest) {
     if (minPrice !== undefined) query.listPrice.$gte = minPrice;
     if (maxPrice !== undefined) query.listPrice.$lte = maxPrice;
   }
+
+  // UnifiedListing carries two field names for beds and baths because
+  // different MLS sources populate different fields. Match against either.
+  const andClauses: Record<string, any>[] = [];
   if (minBeds !== undefined || maxBeds !== undefined) {
-    query.bedroomsTotal = {};
-    if (minBeds !== undefined) query.bedroomsTotal.$gte = minBeds;
-    if (maxBeds !== undefined) query.bedroomsTotal.$lte = maxBeds;
+    const range: Record<string, number> = {};
+    if (minBeds !== undefined) range.$gte = minBeds;
+    if (maxBeds !== undefined) range.$lte = maxBeds;
+    andClauses.push({ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] });
   }
   if (minBaths !== undefined || maxBaths !== undefined) {
-    query.bathroomsTotalInteger = {};
-    if (minBaths !== undefined) query.bathroomsTotalInteger.$gte = minBaths;
-    if (maxBaths !== undefined) query.bathroomsTotalInteger.$lte = maxBaths;
+    const range: Record<string, number> = {};
+    if (minBaths !== undefined) range.$gte = minBaths;
+    if (maxBaths !== undefined) range.$lte = maxBaths;
+    andClauses.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
   }
+  if (andClauses.length > 0) query.$and = andClauses;
 
   await dbConnect();
   const [items, total] = await Promise.all([
     UnifiedListing.find(query)
       .select(
         "listingKey unparsedAddress city subdivisionName propertyType propertyTypeLabel " +
-        "standardStatus listPrice bedroomsTotal bathroomsTotalInteger livingArea " +
-        "daysOnMarket onMarketDate media"
+        "standardStatus listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathsTotal " +
+        "livingArea daysOnMarket onMarketDate media"
       )
       .sort({ onMarketDate: -1 })
       .skip(skip)
@@ -94,8 +101,8 @@ export async function GET(req: NextRequest) {
         propertyType: l.propertyTypeLabel || l.propertyType || null,
         status: l.standardStatus || null,
         listPrice: l.listPrice ?? null,
-        beds: l.bedroomsTotal ?? null,
-        baths: l.bathroomsTotalInteger ?? null,
+        beds: l.bedroomsTotal ?? l.bedsTotal ?? null,
+        baths: l.bathroomsTotalInteger ?? l.bathsTotal ?? null,
         sqft: l.livingArea ?? null,
         daysOnMarket: l.daysOnMarket ?? null,
         onMarketDate: l.onMarketDate || null,

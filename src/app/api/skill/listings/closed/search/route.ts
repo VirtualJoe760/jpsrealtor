@@ -55,17 +55,20 @@ export async function GET(req: NextRequest) {
     if (minPrice !== undefined) query.closePrice.$gte = minPrice;
     if (maxPrice !== undefined) query.closePrice.$lte = maxPrice;
   }
+  // Match either bed field — UnifiedClosedListing has both bedsTotal and
+  // bedroomsTotal populated by different MLS sources.
   if (minBeds !== undefined || maxBeds !== undefined) {
-    query.bedroomsTotal = {};
-    if (minBeds !== undefined) query.bedroomsTotal.$gte = minBeds;
-    if (maxBeds !== undefined) query.bedroomsTotal.$lte = maxBeds;
+    const range: Record<string, number> = {};
+    if (minBeds !== undefined) range.$gte = minBeds;
+    if (maxBeds !== undefined) range.$lte = maxBeds;
+    query.$and = [{ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] }];
   }
 
   await dbConnect();
   const items: any[] = await UnifiedClosedListing.find(query)
     .select(
       "listingKey unparsedAddress city subdivisionName propertyType propertyTypeLabel " +
-      "listPrice closePrice closeDate bedroomsTotal bathroomsTotalInteger livingArea daysOnMarket"
+      "listPrice closePrice closeDate bedroomsTotal bedsTotal bathroomsTotalInteger livingArea daysOnMarket"
     )
     .sort({ closeDate: -1 })
     .skip(skip)
@@ -83,7 +86,7 @@ export async function GET(req: NextRequest) {
         listPrice: l.listPrice ?? null,
         closePrice: l.closePrice ?? null,
         closeDate: l.closeDate || null,
-        beds: l.bedroomsTotal ?? null,
+        beds: l.bedroomsTotal ?? l.bedsTotal ?? null,
         baths: l.bathroomsTotalInteger ?? null,
         sqft: l.livingArea ?? null,
         daysOnMarket: l.daysOnMarket ?? null,

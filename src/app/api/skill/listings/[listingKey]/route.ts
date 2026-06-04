@@ -28,7 +28,8 @@ export async function GET(
     .select(
       "listingKey unparsedAddress city stateOrProvince postalCode subdivisionName " +
       "propertyType propertyTypeLabel propertySubType standardStatus listPrice " +
-      "originalListPrice bedroomsTotal bathroomsTotalInteger bathroomsTotalDecimal " +
+      "originalListPrice bedroomsTotal bedsTotal " +
+      "bathroomsTotalInteger bathroomsTotalDecimal bathsTotal " +
       "livingArea lotSizeArea lotSizeUnits yearBuilt stories levels " +
       "associationFee associationFeeFrequency associationYn communityFeatures " +
       "poolYn spa view garageSpaces parkingTotal heating cooling " +
@@ -53,8 +54,8 @@ export async function GET(
       status: l.standardStatus || null,
       listPrice: l.listPrice ?? null,
       originalListPrice: l.originalListPrice ?? null,
-      beds: l.bedroomsTotal ?? null,
-      baths: l.bathroomsTotalInteger ?? null,
+      beds: l.bedroomsTotal ?? l.bedsTotal ?? null,
+      baths: l.bathroomsTotalInteger ?? l.bathsTotal ?? null,
       bathsDecimal: l.bathroomsTotalDecimal ?? null,
       sqft: l.livingArea ?? null,
       lotSize: l.lotSizeArea ?? null,
