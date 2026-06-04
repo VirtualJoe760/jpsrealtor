@@ -1,0 +1,65 @@
+// src/app/api/skill/market/stats/route.ts
+//
+// GET → quick market snapshot for a city / subdivision / property type:
+// median list price, active count, median days on market. Aggregated
+// server-side from the active UnifiedListing feed.
+
+import { NextRequest, NextResponse } from "next/server";
+import dbConnect from "@/lib/mongoose";
+import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
+import UnifiedListing from "@/models/unified-listing";
+
+const NO_STORE = { "Cache-Control": "no-store" };
+
+function median(nums: number[]): number | null {
+  if (nums.length === 0) return null;
+  const sorted = nums.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+export async function GET(req: NextRequest) {
+  const auth = await authenticateSkillRequest(req);
+  const denied = requireScope(auth, "market:read");
+  if (denied) return denied;
+  if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const rl = skillRateLimit(auth, "read");
+  if (rl) return rl;
+
+  const sp = req.nextUrl.searchParams;
+  const city = sp.get("city")?.trim();
+  const subdivision = sp.get("subdivision")?.trim();
+  const propertyType = sp.get("propertyType")?.trim();
+
+  if (!city && !subdivision) {
+    return NextResponse.json(
+      { error: "validation_failed", message: "Provide city or subdivision" },
+      { status: 400, headers: NO_STORE }
+    );
+  }
+
+  const query: Record<string, any> = { standardStatus: "Active" };
+  if (city) query.city = city;
+  if (subdivision) query.subdivisionName = subdivision;
+  if (propertyType) query.propertyType = propertyType;
+
+  await dbConnect();
+  const docs: any[] = await UnifiedListing.find(query)
+    .select("listPrice daysOnMarket bedroomsTotal bathroomsTotalInteger livingArea")
+    .lean();
+
+  const prices = docs.map((d) => d.listPrice).filter((p) => typeof p === "number") as number[];
+  const dom = docs.map((d) => d.daysOnMarket).filter((d) => typeof d === "number") as number[];
+
+  return NextResponse.json(
+    {
+      scope: { city: city || null, subdivision: subdivision || null, propertyType: propertyType || null },
+      activeCount: docs.length,
+      medianListPrice: median(prices),
+      averageListPrice: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
+      medianDaysOnMarket: median(dom),
+      priceRange: prices.length ? { min: Math.min(...prices), max: Math.max(...prices) } : null,
+    },
+    { headers: NO_STORE }
+  );
+}
