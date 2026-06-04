@@ -134,12 +134,14 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
   const hostname = await getHostnameFromHeaders()
   const config = getDomainConfig(hostname)
 
-  // Enrich with dynamic OG image from the agent's profile
-  // Works for: agent subdomains and custom domains (jpsrealtor.com, etc.)
+  // Enrich with the agent's profile so jpsrealtor.com / bethanyklier.chatrealty.io /
+  // etc. show the owning agent's metaTitle / metaDescription / OG image instead of
+  // the generic "Real Estate Agent" fallback in getDomainConfig().
   if (config.type === 'agent') {
     const bare = normalizeHostname(hostname)
 
-    // Extract subdomain from chatrealty or localhost
+    // Extract subdomain from chatrealty or localhost — used to identify
+    // *.chatrealty.io agent subdomains BEFORE hitting the database.
     let subdomain: string | undefined
     if (bare.includes('chatrealty')) {
       const parts = bare.split('chatrealty')[0]?.replace(/\.$/, '')
@@ -149,53 +151,60 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
       if (sub && sub !== 'www') subdomain = sub
     }
 
-    // For owner/custom domains, look up the agent by customDomain
-    if (!subdomain) {
-      try {
-        const dbConnect = (await import('@/lib/mongoose')).default
-        await dbConnect()
-        const mongoose = await import('mongoose')
-        const db = mongoose.default.connection.db
-        if (db) {
-          const agent = await db.collection('users').findOne(
-            { 'agentProfile.customDomain': bare },
-            { projection: { 'agentProfile.subdomain': 1 } }
-          )
-          if (agent) {
-            subdomain = (agent as any).agentProfile?.subdomain
-          }
-        }
-      } catch {
-        // Non-blocking
-      }
-    }
+    // Single $or lookup — matches whichever of {customDomain, subdomain} is set
+    // on the agent's record. Project everything we need in one round trip so a
+    // custom-domain agent with an empty subdomain field still gets enriched.
+    // (Previously this was a two-hop lookup that silently fell through to the
+    // bare "Real Estate Agent" defaults when only customDomain was set.)
+    try {
+      const dbConnect = (await import('@/lib/mongoose')).default
+      await dbConnect()
+      const mongoose = await import('mongoose')
+      const db = mongoose.default.connection.db
+      if (db) {
+        const or: Record<string, string>[] = [{ 'agentProfile.customDomain': bare }]
+        if (subdomain) or.push({ 'agentProfile.subdomain': subdomain })
 
-    if (subdomain) {
-      try {
-        const dbConnect = (await import('@/lib/mongoose')).default
-        await dbConnect()
-        const mongoose = await import('mongoose')
-        const db = mongoose.default.connection.db
-        if (db) {
-          const agent = await db.collection('users').findOne(
-            { 'agentProfile.subdomain': subdomain },
-            { projection: { name: 1, brokerageName: 1, 'agentProfile.headline': 1, 'agentProfile.metaTitle': 1, 'agentProfile.metaDescription': 1 } }
-          )
-          if (agent) {
-            config.siteName = agent.name || config.siteName
-            config.defaultTitle = (agent as any).agentProfile?.metaTitle || `${agent.name} | ChatRealty`
-            config.titleTemplate = `%s | ${agent.name}`
-            config.siteDescription = (agent as any).agentProfile?.metaDescription || (agent as any).agentProfile?.headline || `Real estate services by ${agent.name}`
-            // Use the dynamic OG image for all agent-owned domains
-            const ogBase = process.env.NODE_ENV === 'production'
-              ? 'https://chatrealty.io'
-              : `http://localhost:${process.env.PORT || 3000}`
-            config.ogImage = `${ogBase}/api/og?subdomain=${subdomain}`
+        const agent: any = await db.collection('users').findOne(
+          { $or: or },
+          {
+            projection: {
+              name: 1,
+              brokerageName: 1,
+              'agentProfile.subdomain': 1,
+              'agentProfile.headline': 1,
+              'agentProfile.metaTitle': 1,
+              'agentProfile.metaDescription': 1,
+            },
+          }
+        )
+
+        if (agent) {
+          const ap = agent.agentProfile || {}
+          const agentName = agent.name || config.siteName
+          config.siteName = agentName
+          config.defaultTitle = ap.metaTitle || `${agentName} | ChatRealty`
+          config.titleTemplate = `%s | ${agentName}`
+          config.siteDescription =
+            ap.metaDescription ||
+            ap.headline ||
+            `Real estate services by ${agentName}`
+
+          // Resolved subdomain may have come from the DB (for custom-domain
+          // matches) or from the hostname parse above (for chatrealty.io
+          // subdomains). Prefer whichever is set.
+          const resolvedSubdomain = subdomain || ap.subdomain
+          if (resolvedSubdomain) {
+            const ogBase =
+              process.env.NODE_ENV === 'production'
+                ? 'https://chatrealty.io'
+                : `http://localhost:${process.env.PORT || 3000}`
+            config.ogImage = `${ogBase}/api/og?subdomain=${resolvedSubdomain}`
           }
         }
-      } catch {
-        // Non-blocking — use defaults
       }
+    } catch {
+      // Non-blocking — fall back to the bare defaults from getDomainConfig().
     }
   }
 
