@@ -6,9 +6,11 @@
 
 import type { ToolDef } from "./types.js";
 import { whoami } from "./whoami.js";
+import { my_agent_profile } from "./my_agent_profile.js";
+import { my_stats } from "./my_stats.js";
 
 // Agent meta
-const META: ToolDef[] = [whoami];
+const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
 
 // Future domains land here:
 //   const MLS: ToolDef[] = [searchListings, getListing, ...];
