@@ -42,9 +42,18 @@ type ApiToken = {
   id: string;
   last4: string;
   name: string;
+  scopes: string[];
   createdAt: string;
   lastUsedAt: string | null;
 };
+
+type Preset = {
+  label: string;
+  description: string;
+  scopes: string[];
+};
+
+type PresetId = "content_drafting" | "lead_aware" | "full_workspace" | "custom";
 
 export default function IntegrationsStep({ isLight }: StepProps) {
   const cardClass = `rounded-xl border p-6 ${
@@ -74,6 +83,14 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   const [creatingToken, setCreatingToken] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
 
+  // Scope catalog + presets loaded from the API on mount
+  const [scopeCatalog, setScopeCatalog] = useState<string[]>([]);
+  const [presets, setPresets] = useState<Record<string, Preset>>({});
+  // Which preset the user picked for the next-minted token
+  const [selectedPreset, setSelectedPreset] = useState<PresetId>("content_drafting");
+  // When preset=custom, which scopes are checked
+  const [customScopes, setCustomScopes] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     (async () => {
       try {
@@ -89,12 +106,20 @@ export default function IntegrationsStep({ isLight }: StepProps) {
         if (res.ok) {
           const data = await res.json();
           setTokens(data.tokens || []);
+          if (Array.isArray(data.catalog)) setScopeCatalog(data.catalog);
+          if (data.presets && typeof data.presets === "object") setPresets(data.presets);
         }
       } finally {
         setTokensLoading(false);
       }
     })();
   }, []);
+
+  // Effective scopes for the next-minted token
+  const effectiveScopes: string[] =
+    selectedPreset === "custom"
+      ? Array.from(customScopes)
+      : presets[selectedPreset]?.scopes || [];
 
   // ---- Anthropic handlers ----
   const handleTest = async () => {
@@ -175,12 +200,16 @@ export default function IntegrationsStep({ isLight }: StepProps) {
       toast.error("Give this token a name (e.g. 'MacBook')");
       return;
     }
+    if (effectiveScopes.length === 0) {
+      toast.error("Pick at least one scope (or choose a preset)");
+      return;
+    }
     setCreatingToken(true);
     try {
       const res = await fetch("/api/integrations/api-tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, scopes: effectiveScopes }),
       });
       const data = await res.json();
       if (res.ok && data.token) {
@@ -448,34 +477,129 @@ export default function IntegrationsStep({ isLight }: StepProps) {
 
         {/* Create token */}
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newTokenName}
-              onChange={(e) => setNewTokenName(e.target.value)}
-              placeholder="Name this token (e.g. MacBook, Office Desktop)"
-              maxLength={60}
-              className={`flex-1 px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                isLight
-                  ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
-                  : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
-              }`}
-            />
-            <button
-              onClick={handleCreateToken}
-              disabled={!newTokenName.trim() || creatingToken}
-              className={`px-4 py-2.5 rounded-lg text-sm font-bold text-white flex items-center gap-1.5 disabled:opacity-50 ${
-                isLight ? "bg-purple-600 hover:bg-purple-700" : "bg-purple-600 hover:bg-purple-700"
-              }`}
-            >
-              {creatingToken ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              Generate
-            </button>
+          <input
+            type="text"
+            value={newTokenName}
+            onChange={(e) => setNewTokenName(e.target.value)}
+            placeholder="Name this token (e.g. MacBook, Office Desktop)"
+            maxLength={60}
+            className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+              isLight
+                ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
+                : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
+            }`}
+          />
+
+          {/* Preset / scope picker */}
+          <div>
+            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
+              What can this token do?
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(Object.keys(presets) as Array<Exclude<PresetId, "custom">>).map((id) => {
+                const p = presets[id];
+                if (!p) return null;
+                const isSelected = selectedPreset === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSelectedPreset(id)}
+                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                      isSelected
+                        ? isLight
+                          ? "border-purple-500 bg-purple-50"
+                          : "border-purple-400 bg-purple-950/30"
+                        : isLight
+                          ? "border-gray-200 hover:border-gray-300"
+                          : "border-gray-700 hover:border-gray-600"
+                    }`}
+                  >
+                    <div className={`text-sm font-semibold ${textPrimary}`}>{p.label}</div>
+                    <div className={`text-xs mt-0.5 ${textMuted}`}>{p.description}</div>
+                    <div className={`text-xs mt-1 ${textMuted}`}>{p.scopes.length} scopes</div>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setSelectedPreset("custom")}
+                className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                  selectedPreset === "custom"
+                    ? isLight
+                      ? "border-purple-500 bg-purple-50"
+                      : "border-purple-400 bg-purple-950/30"
+                    : isLight
+                      ? "border-gray-200 hover:border-gray-300"
+                      : "border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <div className={`text-sm font-semibold ${textPrimary}`}>Custom</div>
+                <div className={`text-xs mt-0.5 ${textMuted}`}>Pick individual scopes — including high-risk ones like campaign send.</div>
+                <div className={`text-xs mt-1 ${textMuted}`}>{customScopes.size} selected</div>
+              </button>
+            </div>
+
+            {/* Custom scope checkboxes */}
+            {selectedPreset === "custom" && scopeCatalog.length > 0 && (
+              <div className={`mt-3 p-3 rounded-lg border ${isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/40 border-gray-700"}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {scopeCatalog.map((scope) => {
+                    const isSend = scope === "campaigns:send";
+                    const checked = customScopes.has(scope);
+                    return (
+                      <label
+                        key={scope}
+                        className={`flex items-start gap-2 text-xs cursor-pointer p-1.5 rounded ${
+                          isSend && checked
+                            ? isLight ? "bg-red-50" : "bg-red-950/20"
+                            : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set(customScopes);
+                            if (e.target.checked) {
+                              next.add(scope);
+                              if (isSend) {
+                                alert(
+                                  "campaigns:send lets Claude launch campaigns that cost real money (postcards, voicemails, ads). Consider creating a separate, scoped token just for sending and revoking it when not in use."
+                                );
+                              }
+                            } else {
+                              next.delete(scope);
+                            }
+                            setCustomScopes(next);
+                          }}
+                          className="mt-0.5"
+                        />
+                        <code className={`font-mono ${isSend ? (isLight ? "text-red-700" : "text-red-400") : textPrimary}`}>
+                          {scope}
+                        </code>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          <button
+            onClick={handleCreateToken}
+            disabled={!newTokenName.trim() || creatingToken || effectiveScopes.length === 0}
+            className={`w-full px-4 py-2.5 rounded-lg text-sm font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+              isLight ? "bg-purple-600 hover:bg-purple-700" : "bg-purple-600 hover:bg-purple-700"
+            }`}
+          >
+            {creatingToken ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Generate token with {effectiveScopes.length} scope{effectiveScopes.length === 1 ? "" : "s"}
+          </button>
         </div>
 
         {/* Token list */}
@@ -490,21 +614,50 @@ export default function IntegrationsStep({ isLight }: StepProps) {
               {tokens.map((t) => (
                 <div
                   key={t.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                  className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${
                     isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/50 border-gray-700"
                   }`}
                 >
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className={`text-sm font-medium ${textPrimary}`}>{t.name}</div>
                     <div className={`text-xs ${textMuted}`}>
                       crt_live_…{t.last4} · created{" "}
                       {new Date(t.createdAt).toLocaleDateString()}
                       {t.lastUsedAt && ` · last used ${new Date(t.lastUsedAt).toLocaleDateString()}`}
                     </div>
+                    {/* Scope chips */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {t.scopes.length === 0 ? (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                            isLight ? "bg-amber-100 text-amber-800" : "bg-amber-900/40 text-amber-300"
+                          }`}
+                          title="This token was minted before per-token scopes existed. It runs with a safe read-only fallback set on each call. Revoke and re-mint to pick explicit scopes."
+                        >
+                          legacy
+                        </span>
+                      ) : (
+                        t.scopes.map((s) => {
+                          const isSend = s === "campaigns:send";
+                          return (
+                            <span
+                              key={s}
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                                isSend
+                                  ? isLight ? "bg-red-100 text-red-700" : "bg-red-950/40 text-red-300"
+                                  : isLight ? "bg-gray-200 text-gray-700" : "bg-gray-700 text-gray-300"
+                              }`}
+                            >
+                              {s}
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleRevokeToken(t.id)}
-                    className={`p-2 rounded-md ${
+                    className={`p-2 rounded-md flex-shrink-0 ${
                       isLight ? "text-red-600 hover:bg-red-50" : "text-red-400 hover:bg-red-950/30"
                     }`}
                     title="Revoke"

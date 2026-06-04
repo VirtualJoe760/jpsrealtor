@@ -204,6 +204,10 @@ export interface IUser extends Document {
         tokenHash: string; // sha256 hex
         last4: string;
         name: string; // user-supplied label, e.g. "MacBook"
+        // Per-token scopes (e.g. "landing_pages:write"). Catalog and defaults
+        // in src/lib/skill-scopes.ts. Empty array = legacy token; auth helper
+        // substitutes LEGACY_DEFAULT_SCOPES on use.
+        scopes?: string[];
         createdAt: Date;
         lastUsedAt?: Date;
         revokedAt?: Date;
@@ -775,6 +779,7 @@ const UserSchema = new Schema<IUser>(
           tokenHash: { type: String, required: true },
           last4: { type: String, required: true },
           name: { type: String, required: true },
+          scopes: { type: [String], default: [] },
           createdAt: { type: Date, default: Date.now },
           lastUsedAt: Date,
           revokedAt: Date,

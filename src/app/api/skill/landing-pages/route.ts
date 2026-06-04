@@ -31,7 +31,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
-import { authenticateSkillRequest } from "@/lib/skill-auth";
+import { authenticateSkillRequest, requireScope } from "@/lib/skill-auth";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -47,12 +47,9 @@ function slugify(s: string): string {
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateSkillRequest(req);
-  if (auth.ok === false) {
-    return NextResponse.json(
-      { error: auth.reason },
-      { status: auth.status, headers: NO_STORE }
-    );
-  }
+  const denied = requireScope(auth, "landing_pages:write");
+  if (denied) return denied;
+  if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
 
   let body: any;
   try {

@@ -12,6 +12,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { generateApiToken } from "@/lib/secrets";
+import { normalizeScopes, PRESETS, SCOPES } from "@/lib/skill-scopes";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -33,10 +34,11 @@ export async function GET() {
       id: String(t._id || i),
       last4: t.last4,
       name: t.name,
+      scopes: Array.isArray(t.scopes) ? t.scopes : [],
       createdAt: t.createdAt,
       lastUsedAt: t.lastUsedAt || null,
     }));
-  return NextResponse.json({ tokens }, { headers: NO_STORE });
+  return NextResponse.json({ tokens, catalog: SCOPES, presets: PRESETS }, { headers: NO_STORE });
 }
 
 export async function POST(req: NextRequest) {
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: NO_STORE });
   }
 
-  let body: { name?: string };
+  let body: { name?: string; scopes?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -58,6 +60,14 @@ export async function POST(req: NextRequest) {
       { error: "name is required (e.g. 'MacBook', 'Office Desktop')" },
       { status: 400, headers: NO_STORE }
     );
+  }
+
+  // Scopes — accept array of scope strings; unknown values are silently
+  // dropped (so a client typo doesn't grant the wrong scope). If empty after
+  // normalization, fall back to the Content Drafting preset.
+  let scopes = normalizeScopes(body.scopes);
+  if (scopes.length === 0) {
+    scopes = [...PRESETS.content_drafting.scopes];
   }
 
   await dbConnect();
@@ -83,6 +93,7 @@ export async function POST(req: NextRequest) {
     tokenHash: hash,
     last4,
     name,
+    scopes,
     createdAt: new Date(),
   });
   user.markModified("agentProfile.aiIntegrations.apiTokens");
@@ -94,6 +105,7 @@ export async function POST(req: NextRequest) {
       token: plaintext,
       last4,
       name,
+      scopes,
       createdAt: new Date().toISOString(),
     },
     { headers: NO_STORE }

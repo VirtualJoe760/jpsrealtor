@@ -11,16 +11,25 @@
 // We sha256 the incoming token and look for a matching, non-revoked entry on
 // any User. On hit, we bump lastUsedAt and return the User document.
 
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { hashToken } from "@/lib/secrets";
+import { LEGACY_DEFAULT_SCOPES, type Scope } from "@/lib/skill-scopes";
 
 export type SkillAuthSuccess = {
   ok: true;
   user: any; // mongoose user doc — full doc, caller decides what to read
   tokenName: string;
   tokenLast4: string;
+  /**
+   * Effective scopes for this request. Pulled from the token's stored scopes
+   * array; if it's empty (legacy token minted before scopes existed), falls
+   * back to LEGACY_DEFAULT_SCOPES so existing skill installs don't break.
+   */
+  scopes: Scope[];
+  /** True if scopes were filled from the legacy fallback rather than the token. */
+  isLegacyScopes: boolean;
 };
 
 export type SkillAuthFailure = {
@@ -66,10 +75,55 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
     // Best-effort — don't fail the request on a save error here.
   });
 
+  // Resolve effective scopes. Empty/missing → legacy fallback so tokens
+  // minted before scopes shipped keep working in their original capacity.
+  const storedScopes: string[] = Array.isArray(entry.scopes) ? entry.scopes : [];
+  const isLegacyScopes = storedScopes.length === 0;
+  const scopes = (isLegacyScopes ? LEGACY_DEFAULT_SCOPES : (storedScopes as Scope[]));
+
   return {
     ok: true,
     user,
     tokenName: entry.name,
     tokenLast4: entry.last4,
+    scopes,
+    isLegacyScopes,
   };
+}
+
+const NO_STORE = { "Cache-Control": "no-store" };
+
+/**
+ * Convenience for route handlers — checks that the auth succeeded AND
+ * carries the required scope. Returns a Response to short-circuit on
+ * failure, or null when the request is good to proceed.
+ *
+ *   const auth = await authenticateSkillRequest(req);
+ *   const denied = requireScope(auth, "landing_pages:write");
+ *   if (denied) return denied;
+ *   // auth is narrowed to SkillAuthSuccess here
+ */
+export function requireScope(
+  auth: SkillAuthResult,
+  scope: Scope
+): NextResponse | null {
+  if (auth.ok === false) {
+    return NextResponse.json(
+      { error: auth.reason },
+      { status: auth.status, headers: NO_STORE }
+    );
+  }
+  if (!auth.scopes.includes(scope)) {
+    return NextResponse.json(
+      {
+        error: "missing_scope",
+        message: `This token does not have the '${scope}' scope. Re-mint with that scope from Settings → Integrations.`,
+        required: scope,
+        tokenScopes: auth.scopes,
+        isLegacyToken: auth.isLegacyScopes,
+      },
+      { status: 403, headers: NO_STORE }
+    );
+  }
+  return null;
 }
