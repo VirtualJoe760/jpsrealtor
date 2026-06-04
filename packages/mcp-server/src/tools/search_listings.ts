@@ -34,6 +34,16 @@ export const search_listings: ToolDef = {
         description:
           'Filter on pool. true = listing has a pool (poolFeatures populated, not "None"). false = no pool. Omit to include both.',
       },
+      maxDaysOnMarket: {
+        type: "number",
+        description:
+          'Only listings that came on the market within the last N days. e.g. 2 = "new this week", 7 = "new this week", 30 = "newer than a month". Useful for "what just hit the market" queries.',
+      },
+      minDaysOnMarket: {
+        type: "number",
+        description:
+          'Only listings that have been on the market at least N days. Useful for "stale" / "lingering" searches that might be ripe for price reductions.',
+      },
       limit: { type: "number", description: "Max results per page (1-50, default 20)" },
       skip: { type: "number", description: "Pagination offset" },
     },

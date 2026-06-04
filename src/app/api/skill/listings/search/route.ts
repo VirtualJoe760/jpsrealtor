@@ -49,6 +49,13 @@ export async function GET(req: NextRequest) {
   const minBaths = num(sp.get("minBaths"));
   const maxBaths = num(sp.get("maxBaths"));
 
+  // Days-on-market filters work against onMarketDate (the DB doesn't
+  // actually store daysOnMarket — see route comment above the response).
+  // maxDaysOnMarket=2 → onMarketDate >= now - 2 days (new listings only).
+  // minDaysOnMarket=30 → onMarketDate <= now - 30 days (stale listings).
+  const maxDaysOnMarket = num(sp.get("maxDaysOnMarket"));
+  const minDaysOnMarket = num(sp.get("minDaysOnMarket"));
+
   const limit = Math.min(MAX_LIMIT, Math.max(1, num(sp.get("limit")) || DEFAULT_LIMIT));
   const skip = Math.max(0, num(sp.get("skip")) || 0);
 
@@ -83,6 +90,22 @@ export async function GET(req: NextRequest) {
     andClauses.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
   }
 
+  if (maxDaysOnMarket !== undefined || minDaysOnMarket !== undefined) {
+    // onMarketDate is stored as an ISO 8601 string ("2026-05-07T07:18:17Z"),
+    // not a Date — Mongo $gte against a Date object silently never matches.
+    // ISO 8601 Z-suffixed strings sort lexically, so string comparison works.
+    const range: Record<string, string> = {};
+    if (maxDaysOnMarket !== undefined) {
+      // "on market at most N days" → onMarketDate is recent
+      range.$gte = new Date(Date.now() - maxDaysOnMarket * 86400000).toISOString();
+    }
+    if (minDaysOnMarket !== undefined) {
+      // "on market at least N days" → onMarketDate is old
+      range.$lte = new Date(Date.now() - minDaysOnMarket * 86400000).toISOString();
+    }
+    query.onMarketDate = range;
+  }
+
   // hasPool: pool data lives in poolFeatures (string). True = the field
   // exists and isn't literally "None"; false = field missing or "None".
   if (hasPool === "true" || hasPool === "1" || hasPool === "yes") {
@@ -101,20 +124,31 @@ export async function GET(req: NextRequest) {
   if (andClauses.length > 0) query.$and = andClauses;
 
   await dbConnect();
+  // Use the native collection (not the Mongoose model) so the schema's
+  // declared types don't auto-cast our filter values. Specifically,
+  // onMarketDate is declared as Date in the schema but stored as an ISO 8601
+  // STRING in the DB. Mongoose's query casting silently converts our string
+  // cutoff to a Date object, which never matches the stored strings.
+  // Bypassing Mongoose via .collection avoids that whole problem.
+  const projection = {
+    listingKey: 1, unparsedAddress: 1, city: 1, subdivisionName: 1,
+    propertyType: 1, propertyTypeLabel: 1, standardStatus: 1,
+    listPrice: 1, currentPrice: 1, currentPricePublic: 1,
+    bedroomsTotal: 1, bedsTotal: 1, bathroomsTotalInteger: 1, bathsTotal: 1,
+    livingArea: 1, yearBuilt: 1, daysOnMarket: 1, onMarketDate: 1,
+    media: 1, poolFeatures: 1,
+    latitude: 1, longitude: 1, coordinates: 1,
+  } as const;
+
+  const col = UnifiedListing.collection;
   const [items, total] = await Promise.all([
-    UnifiedListing.find(query)
-      .select(
-        "listingKey unparsedAddress city subdivisionName propertyType propertyTypeLabel " +
-        "standardStatus listPrice currentPrice currentPricePublic " +
-        "bedroomsTotal bedsTotal bathroomsTotalInteger bathsTotal " +
-        "livingArea yearBuilt daysOnMarket onMarketDate media poolFeatures " +
-        "latitude longitude coordinates"
-      )
+    col
+      .find(query, { projection })
       .sort({ onMarketDate: -1 })
       .skip(skip)
       .limit(limit)
-      .lean(),
-    UnifiedListing.countDocuments(query),
+      .toArray(),
+    col.countDocuments(query),
   ]);
 
   return NextResponse.json(
