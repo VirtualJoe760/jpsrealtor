@@ -17,6 +17,10 @@ import { get_market_stats } from "./get_market_stats.js";
 import { get_subdivision_cma } from "./get_subdivision_cma.js";
 import { get_neighborhood_info } from "./get_neighborhood_info.js";
 import { get_mortgage_rates } from "./get_mortgage_rates.js";
+import { create_landing_page } from "./create_landing_page.js";
+import { list_my_landing_pages } from "./list_my_landing_pages.js";
+import { get_landing_page } from "./get_landing_page.js";
+import { update_landing_page } from "./update_landing_page.js";
 
 // Agent meta
 const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
@@ -38,12 +42,20 @@ const MARKET: ToolDef[] = [
   get_mortgage_rates,
 ];
 
+// CMS — landing pages
+const CMS_LP: ToolDef[] = [
+  create_landing_page,
+  list_my_landing_pages,
+  get_landing_page,
+  update_landing_page,
+];
+
 // Future domains land here:
-//   const CMS: ToolDef[] = [...];
+//   const CMS_ARTICLES: ToolDef[] = [...];
 //   const CRM: ToolDef[] = [...];
 //   const CAMPAIGNS: ToolDef[] = [...];
 
-export const ALL_TOOLS: ToolDef[] = [...META, ...MLS, ...MARKET];
+export const ALL_TOOLS: ToolDef[] = [...META, ...MLS, ...MARKET, ...CMS_LP];
 
 export function toolByName(name: string): ToolDef | undefined {
   return ALL_TOOLS.find((t) => t.name === name);

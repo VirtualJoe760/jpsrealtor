@@ -45,6 +45,67 @@ function slugify(s: string): string {
     .slice(0, 80);
 }
 
+// GET → list this agent's landing pages. Filterable by status, paginated.
+// landing_pages:read scope; read rate tier.
+const MAX_LIST_LIMIT = 50;
+const DEFAULT_LIST_LIMIT = 20;
+
+export async function GET(req: NextRequest) {
+  const auth = await authenticateSkillRequest(req);
+  const denied = requireScope(auth, "landing_pages:read");
+  if (denied) return denied;
+  if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const rl = skillRateLimit(auth, "read");
+  if (rl) return rl;
+
+  const sp = req.nextUrl.searchParams;
+  const status = sp.get("status")?.trim(); // draft / published / archived (optional)
+  const limit = Math.min(MAX_LIST_LIMIT, Math.max(1, Number(sp.get("limit")) || DEFAULT_LIST_LIMIT));
+  const skip = Math.max(0, Number(sp.get("skip")) || 0);
+
+  await dbConnect();
+  const query: Record<string, any> = {
+    category: "landing-page",
+    "author.id": auth.user._id,
+  };
+  if (status && ["draft", "published", "archived"].includes(status)) {
+    query.status = status;
+  }
+
+  const [items, total] = await Promise.all([
+    Article.find(query)
+      .select("title slug excerpt status visibility featuredImage seo standalone heroType formEnabled createdAt updatedAt publishedAt")
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Article.countDocuments(query),
+  ]);
+
+  return NextResponse.json(
+    {
+      items: items.map((l: any) => ({
+        slugId: l.slug,
+        title: l.title,
+        excerpt: l.excerpt,
+        status: l.status,
+        visibility: l.visibility || null,
+        featuredImageUrl: l.featuredImage?.url || null,
+        heroType: l.heroType || null,
+        formEnabled: !!l.formEnabled,
+        createdAt: l.createdAt,
+        updatedAt: l.updatedAt,
+        publishedAt: l.publishedAt || null,
+      })),
+      total,
+      skip,
+      limit,
+      hasMore: skip + items.length < total,
+    },
+    { headers: NO_STORE }
+  );
+}
+
 export async function POST(req: NextRequest) {
   const auth = await authenticateSkillRequest(req);
   const denied = requireScope(auth, "landing_pages:write");
