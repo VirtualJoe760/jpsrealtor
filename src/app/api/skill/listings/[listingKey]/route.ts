@@ -32,8 +32,16 @@ export async function GET(
       "bathroomsTotalInteger bathroomsTotalDecimal bathsTotal " +
       "livingArea lotSizeArea lotSizeUnits yearBuilt stories levels " +
       "associationFee associationFeeFrequency associationYn communityFeatures " +
-      "poolYn spa view garageSpaces parkingTotal heating cooling " +
-      "daysOnMarket onMarketDate publicRemarks supplement media OpenHouses"
+      // Both casings on pool/spa — the Python sync writes RESO names verbatim
+      // (poolYN / spaYN, capital N), but the model declared lowercase. Strict
+      // mode means the lowercase fields are always empty. Reading both.
+      "poolYn poolYN pool poolFeatures poolPrivateYn spa spaYn spaYN spaFeatures " +
+      "view garageSpaces parkingTotal heating cooling " +
+      "daysOnMarket onMarketDate publicRemarks supplement media OpenHouses " +
+      // Extras worth surfacing: post-reduction price, coordinates for map,
+      // listing-side agent / office for buyer-side context.
+      "currentPrice currentPricePublic latitude longitude coordinates " +
+      "listAgentName listOfficeName"
     )
     .lean();
 
@@ -53,6 +61,7 @@ export async function GET(
       propertySubType: l.propertySubType || null,
       status: l.standardStatus || null,
       listPrice: l.listPrice ?? null,
+      currentPrice: l.currentPrice ?? l.currentPricePublic ?? l.listPrice ?? null,
       originalListPrice: l.originalListPrice ?? null,
       beds: l.bedroomsTotal ?? l.bedsTotal ?? null,
       baths: l.bathroomsTotalInteger ?? l.bathsTotal ?? null,
@@ -61,19 +70,32 @@ export async function GET(
       lotSize: l.lotSizeArea ?? null,
       lotSizeUnits: l.lotSizeUnits || null,
       yearBuilt: l.yearBuilt ?? null,
-      stories: l.stories ?? null,
+      // stories is essentially never populated in the feed; the equivalent
+      // info lives in `levels` ("One", "Two", "Ground"). Removed to avoid
+      // false-null noise. Use levels.
       levels: l.levels || null,
       hoaFee: l.associationFee ?? null,
       hoaFeeFrequency: l.associationFeeFrequency || null,
       communityFeatures: l.communityFeatures || null,
-      pool: !!l.poolYn,
-      spa: !!l.spa,
+      // Pool / spa booleans use RESO casing in the DB (poolYN, spaYN — capital N),
+      // but the legacy model schema declared poolYn/spaYn — those are always empty.
+      // Read both, plus the features strings, plus the privacy variant.
+      pool: !!(l.poolYN || l.poolYn || l.pool || l.poolPrivateYn || (l.poolFeatures && !/^\s*none\s*$/i.test(l.poolFeatures))),
+      poolFeatures: l.poolFeatures || null,
+      spa: !!(l.spaYN || l.spaYn || l.spa || (l.spaFeatures && !/^\s*none\s*$/i.test(l.spaFeatures))),
+      spaFeatures: l.spaFeatures || null,
       view: l.view || null,
       garageSpaces: l.garageSpaces ?? null,
       parkingTotal: l.parkingTotal ?? null,
       heating: l.heating || null,
       cooling: l.cooling || null,
-      daysOnMarket: l.daysOnMarket ?? null,
+      // daysOnMarket isn't sync'd into the doc. Derive from onMarketDate
+      // (which is always present on active listings).
+      daysOnMarket:
+        l.daysOnMarket ??
+        (l.onMarketDate
+          ? Math.max(0, Math.floor((Date.now() - new Date(l.onMarketDate).getTime()) / 86400000))
+          : null),
       onMarketDate: l.onMarketDate || null,
       publicRemarks: l.publicRemarks || null,
       supplement: l.supplement || null,
@@ -86,6 +108,10 @@ export async function GET(
         l.media?.[0]?.MediaURL ||
         l.media?.[0]?.Uri800 ||
         null,
+      latitude: typeof l.latitude === "number" ? l.latitude : l.coordinates?.[1] ?? null,
+      longitude: typeof l.longitude === "number" ? l.longitude : l.coordinates?.[0] ?? null,
+      listAgentName: l.listAgentName || null,
+      listOfficeName: l.listOfficeName || null,
       hasOpenHouses: Array.isArray(l.OpenHouses) && l.OpenHouses.length > 0,
       slug: `/mls-listings/${l.listingKey}`,
     },

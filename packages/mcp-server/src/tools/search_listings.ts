@@ -29,6 +29,11 @@ export const search_listings: ToolDef = {
       maxBeds: { type: "number" },
       minBaths: { type: "number" },
       maxBaths: { type: "number" },
+      hasPool: {
+        type: "boolean",
+        description:
+          'Filter on pool. true = listing has a pool (poolFeatures populated, not "None"). false = no pool. Omit to include both.',
+      },
       limit: { type: "number", description: "Max results per page (1-50, default 20)" },
       skip: { type: "number", description: "Pagination offset" },
     },

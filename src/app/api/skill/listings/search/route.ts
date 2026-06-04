@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
   const subdivision = sp.get("subdivision")?.trim();
   const propertyType = sp.get("propertyType")?.trim();
   const status = (sp.get("status")?.trim() || "Active");
+  // "true" / "false" — true requires a poolFeatures string; false excludes it.
+  const hasPool = sp.get("hasPool")?.trim().toLowerCase();
 
   const minPrice = num(sp.get("minPrice"));
   const maxPrice = num(sp.get("maxPrice"));
@@ -80,6 +82,22 @@ export async function GET(req: NextRequest) {
     if (maxBaths !== undefined) range.$lte = maxBaths;
     andClauses.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
   }
+
+  // hasPool: pool data lives in poolFeatures (string). True = the field
+  // exists and isn't literally "None"; false = field missing or "None".
+  if (hasPool === "true" || hasPool === "1" || hasPool === "yes") {
+    andClauses.push({
+      poolFeatures: { $exists: true, $nin: [null, "", "None", "none"] },
+    });
+  } else if (hasPool === "false" || hasPool === "0" || hasPool === "no") {
+    andClauses.push({
+      $or: [
+        { poolFeatures: { $exists: false } },
+        { poolFeatures: { $in: [null, "", "None", "none"] } },
+      ],
+    });
+  }
+
   if (andClauses.length > 0) query.$and = andClauses;
 
   await dbConnect();
@@ -87,8 +105,10 @@ export async function GET(req: NextRequest) {
     UnifiedListing.find(query)
       .select(
         "listingKey unparsedAddress city subdivisionName propertyType propertyTypeLabel " +
-        "standardStatus listPrice bedroomsTotal bedsTotal bathroomsTotalInteger bathsTotal " +
-        "livingArea daysOnMarket onMarketDate media"
+        "standardStatus listPrice currentPrice currentPricePublic " +
+        "bedroomsTotal bedsTotal bathroomsTotalInteger bathsTotal " +
+        "livingArea yearBuilt daysOnMarket onMarketDate media poolFeatures " +
+        "latitude longitude coordinates"
       )
       .sort({ onMarketDate: -1 })
       .skip(skip)
@@ -110,7 +130,17 @@ export async function GET(req: NextRequest) {
         beds: l.bedroomsTotal ?? l.bedsTotal ?? null,
         baths: l.bathroomsTotalInteger ?? l.bathsTotal ?? null,
         sqft: l.livingArea ?? null,
-        daysOnMarket: l.daysOnMarket ?? null,
+        yearBuilt: l.yearBuilt ?? null,
+        pool: !!(l.poolFeatures && !/^\s*none\s*$/i.test(l.poolFeatures)),
+        poolFeatures: l.poolFeatures || null,
+        currentPrice: l.currentPrice ?? l.currentPricePublic ?? l.listPrice ?? null,
+        latitude: typeof l.latitude === "number" ? l.latitude : l.coordinates?.[1] ?? null,
+        longitude: typeof l.longitude === "number" ? l.longitude : l.coordinates?.[0] ?? null,
+        daysOnMarket:
+          l.daysOnMarket ??
+          (l.onMarketDate
+            ? Math.max(0, Math.floor((Date.now() - new Date(l.onMarketDate).getTime()) / 86400000))
+            : null),
         onMarketDate: l.onMarketDate || null,
         primaryPhotoUrl:
           l.media?.[0]?.uriLarge ||
