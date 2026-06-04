@@ -1,15 +1,17 @@
 ---
 title: MCP Scopes, Rate Limits, and Safety
-status: partial
+status: current
 last_verified: 2026-06-02
 related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md]
 ---
 
 # MCP Scopes, Rate Limits, and Safety
 
-> Design doc. Defines the security and trust model around the MCP server.
-> Reflects the *target* state — today's `crt_live_*` tokens are scope-less
-> and rate-limit-free.
+> Phase 1 shipped: scopes catalog + 4 presets + UI picker + per-route
+> enforcement + tiered rate limits are all live.
+> `McpToolCallLog` collection, daily spend cap, and two-call confirmation
+> flow for `campaigns:send` remain design-only — they land with the
+> campaigns tools in Phase 3/4.
 
 ## Token scope model
 

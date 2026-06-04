@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import {
   Save,
@@ -32,6 +32,12 @@ type TabType = "generate" | "edit" | "preview";
 export default function NewArticlePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // BYOK Claude chat is only surfaced when ?advanced=1 is in the URL.
+  // Most agents don't have an Anthropic API key; the desktop MCP server
+  // (which uses their existing Claude subscription) is the headline path.
+  // Power users + devs can still reach this via the query flag.
+  const showByokToggle = searchParams?.get("advanced") === "1";
   const { currentTheme } = useTheme();
   const {
     cardBg,
@@ -460,7 +466,10 @@ export default function NewArticlePage() {
   // When the agent is using Claude chat to build a landing page, we hide the
   // Groq topic/generate UI and show the chat component instead.
   const claudeMode =
-    formData.category === "landing-page" && lpGenMode === "claude" && anthropicConnected;
+    showByokToggle &&
+    formData.category === "landing-page" &&
+    lpGenMode === "claude" &&
+    anthropicConnected;
 
   return (
     <div className="min-h-screen py-12 px-4" data-page="admin-new-article">
@@ -635,14 +644,16 @@ export default function NewArticlePage() {
                   AI Article Generator
                 </h2>
                 <p className={`text-sm ${textSecondary}`}>
-                  {formData.category === "landing-page" && lpGenMode === "claude"
+                  {claudeMode
                     ? "Chat with Claude to design your landing page (uses your Anthropic key)"
                     : "Powered by Groq AI for lightning-fast article generation"}
                 </p>
               </div>
 
-              {/* Landing Page model toggle */}
-              {formData.category === "landing-page" && (
+              {/* Landing Page model toggle — gated behind ?advanced=1.
+                  Most agents use the desktop MCP server (their Claude
+                  subscription); this BYOK in-browser path is power-user only. */}
+              {showByokToggle && formData.category === "landing-page" && (
                 <div>
                   <label className={`block text-sm font-semibold ${textSecondary} mb-2`}>
                     AI model

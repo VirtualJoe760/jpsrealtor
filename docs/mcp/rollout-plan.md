@@ -1,6 +1,6 @@
 ---
 title: MCP Server Rollout Plan
-status: partial
+status: current
 last_verified: 2026-06-02
 related: [./README.md, ./tools.md, ./scopes-and-safety.md]
 ---
@@ -9,6 +9,9 @@ related: [./README.md, ./tools.md, ./scopes-and-safety.md]
 
 Phased ship plan. Each phase is a coherent, demoable chunk and includes the
 schema migrations, doc updates, and tech-debt deltas it incurs.
+
+**Phase 1 is shipped** (commits `b8fa75b3` through `6b086b4c` on
+`feat/landing-page-claude-byok-and-skill`). Phase 2+ is design.
 
 ## Phase 0 · Already shipped
 
@@ -25,13 +28,13 @@ on branch `feat/landing-page-claude-byok-and-skill`.
   parallel Anthropic-BYOK feature; reused here for any future symmetric
   secret storage
 
-## Phase 1 · Core MCP server + content + market read
+## Phase 1 · Core MCP server + content + market read · ✅ SHIPPED
 
 **Goal:** an agent can install the MCP server in Claude Desktop / Code, get
 context (`whoami`, agent profile, market data, listings) and create / edit
 landing-page drafts.
 
-### What ships
+### What shipped
 
 | Item | New code |
 |---|---|

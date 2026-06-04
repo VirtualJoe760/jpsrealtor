@@ -1,15 +1,17 @@
 ---
 title: MCP Tool Catalog
-status: partial
+status: current
 last_verified: 2026-06-02
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
 # MCP Tool Catalog
 
-> Design doc. Each tool listed here is a target; only the ones marked **Phase 1**
-> + already-shipped (`create_landing_page`, `list_my_landing_pages`,
-> `get_landing_page`, `whoami`) have backing REST routes today.
+> Phase 1 status: all 16 tools in §1 (Agent meta), §2 (MLS / Listings),
+> §3 (Market data), and §4 (CMS Landing Pages) are **shipped and callable**.
+> Routes live under `src/app/api/skill/*`. MCP wrappers in
+> `packages/mcp-server/src/tools/`. Phase 2+ (articles, CRM, campaigns,
+> analytics) is design-only.
 
 Every tool is a thin wrapper over a `/api/skill/*` REST endpoint. The MCP
 server's only responsibilities are: declare the JSON Schema, pass the bearer

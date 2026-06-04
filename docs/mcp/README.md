@@ -1,15 +1,20 @@
 ---
 title: ChatRealty MCP Server
-status: partial
+status: current
 last_verified: 2026-06-02
 related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md]
 ---
 
 # ChatRealty MCP Server
 
-> **Status: design.** This document defines the target architecture for the MCP server.
-> A predecessor "skill" (`@chatrealty/install-skill`) shipped in commit `94e1b490` and is the
-> Phase 1 fallback for Claude Code users. The MCP server itself is not yet built.
+> **Status: Phase 1 shipped.** `@chatrealty/mcp-server` v0.1.0 + 16 tools across
+> agent meta / MLS / market / CMS landing pages are live in
+> `packages/mcp-server/`. Backend routes under `src/app/api/skill/*` enforce
+> per-token scopes (12 scopes, 4 UI presets) and tiered rate limits
+> (identity / read / write / send). The legacy `@chatrealty/install-skill`
+> ships alongside as a fallback for Claude Code installs without MCP support.
+> Phase 2+ (articles, CRM, campaigns, hosted MCP, send) still in design —
+> see [rollout-plan.md](./rollout-plan.md).
 
 ## TL;DR
 
