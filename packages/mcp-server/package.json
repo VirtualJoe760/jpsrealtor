@@ -1,6 +1,6 @@
 {
   "name": "@chatrealty/mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Model Context Protocol server for ChatRealty — lets agents read MLS data and draft landing pages, articles, contacts, and campaigns from any Claude client using their own Claude subscription.",
   "bin": {
     "chatrealty-mcp-server": "./dist/index.js"
@@ -8,7 +8,8 @@
   "main": "./dist/index.js",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -26,9 +27,23 @@
     "claude-desktop",
     "claude-code",
     "real-estate",
-    "chatrealty"
+    "chatrealty",
+    "mls"
   ],
+  "author": "Joey Sardella <josephsardella@gmail.com>",
   "license": "MIT",
+  "homepage": "https://chatrealty.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VirtualJoe760/jpsrealtor.git",
+    "directory": "packages/mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/VirtualJoe760/jpsrealtor/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },

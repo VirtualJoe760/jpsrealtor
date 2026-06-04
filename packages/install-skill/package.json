@@ -1,15 +1,15 @@
 {
   "name": "@chatrealty/install-skill",
-  "version": "0.1.0",
-  "description": "Install the ChatRealty Claude skill — lets you create landing pages on ChatRealty from Claude Code / Claude Desktop.",
+  "version": "0.1.1",
+  "description": "Install the ChatRealty Claude skill — lets you create landing pages on ChatRealty from Claude Code / Claude Desktop. For the full tool catalog, use @chatrealty/mcp-server instead.",
   "bin": {
     "chatrealty-install-skill": "./dist/cli.js"
   },
   "main": "./dist/cli.js",
   "files": [
     "dist",
-    "skill-template",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -26,7 +26,20 @@
     "real-estate",
     "chatrealty"
   ],
+  "author": "Joey Sardella <josephsardella@gmail.com>",
   "license": "MIT",
+  "homepage": "https://chatrealty.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VirtualJoe760/jpsrealtor.git",
+    "directory": "packages/install-skill"
+  },
+  "bugs": {
+    "url": "https://github.com/VirtualJoe760/jpsrealtor/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"

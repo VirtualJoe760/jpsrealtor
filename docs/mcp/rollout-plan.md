@@ -1,8 +1,8 @@
 ---
 title: MCP Server Rollout Plan
 status: current
-last_verified: 2026-06-02
-related: [./README.md, ./tools.md, ./scopes-and-safety.md]
+last_verified: 2026-06-04
+related: [./README.md, ./tools.md, ./scopes-and-safety.md, ./publishing.md]
 ---
 
 # MCP Server Rollout Plan
@@ -73,21 +73,22 @@ landing-page drafts.
   areas, or platform-wide? Default platform-wide and let Claude filter
   feels right but worth confirming.
 
-## Phase 2 · Articles + CRM read + analytics + hosted MCP
+## Phase 2 · Articles + CRM read + analytics + hosted MCP · 🟡 PARTIAL
 
 **Goal:** Claude can read leads to tailor content; agents on Claude Desktop
 can add ChatRealty as a Connector via URL (no `npx`).
 
 ### What ships
 
-| Item | New code |
-|---|---|
-| Tools: CMS articles | `create_article`, `list_my_articles`, `get_article`, `update_article` |
-| Tools: CRM read | `search_my_contacts`, `get_contact`, `my_recent_leads` |
-| Tools: analytics read | `my_landing_page_traffic`, `my_campaign_performance`, `my_ad_spend_summary` |
-| Hosted MCP endpoint | `mcp.chatrealty.io` — HTTP/SSE transport, same `/api/skill/*` backend; Connector install URL surfaced in Integrations tab |
-| `/legal/ai-tools` disclosure page | Plain-English description of what flows to Claude when each scope is granted |
-| PII-redaction layer | In `McpToolCallLog` insertion path and in any contact tool response that lands in the audit log |
+| Item | Status | New code |
+|---|---|---|
+| Tools: CMS articles | ✅ shipped (commit `8e173476`) | `create_article`, `list_my_articles`, `get_article`, `update_article` |
+| Tools: CRM read | ✅ shipped (commit `fde127ab`) | `search_my_contacts`, `get_contact`, `my_recent_leads` |
+| `@chatrealty/mcp-server` v0.2.0 npm publish prep | ✅ shipped — LICENSE + repo metadata + publishing guide | See [publishing.md](./publishing.md) |
+| Tools: analytics read | ⏳ designed | `my_landing_page_traffic`, `my_campaign_performance`, `my_ad_spend_summary` |
+| Hosted MCP endpoint | ⏳ designed | `mcp.chatrealty.io` — HTTP/SSE transport, same `/api/skill/*` backend; Connector install URL surfaced in Integrations tab |
+| `/legal/ai-tools` disclosure page | ⏳ designed | Plain-English description of what flows to Claude when each scope is granted |
+| PII-redaction layer | ⏳ designed | In `McpToolCallLog` insertion path and in any contact tool response that lands in the audit log |
 
 ### Schema migrations Phase 2
 
