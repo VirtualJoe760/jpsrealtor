@@ -25,6 +25,9 @@ import { create_article } from "./create_article.js";
 import { list_my_articles } from "./list_my_articles.js";
 import { get_article } from "./get_article.js";
 import { update_article } from "./update_article.js";
+import { search_my_contacts } from "./search_my_contacts.js";
+import { get_contact } from "./get_contact.js";
+import { my_recent_leads } from "./my_recent_leads.js";
 
 // Agent meta
 const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
@@ -62,11 +65,27 @@ const CMS_ARTICLES: ToolDef[] = [
   update_article,
 ];
 
+// CRM — contacts (read only in Phase 2; writes land in Phase 3).
+// All require the contacts:read scope, which is NOT in the default UI
+// preset — agent must opt into PII exposure when minting a token.
+const CRM_READ: ToolDef[] = [
+  search_my_contacts,
+  get_contact,
+  my_recent_leads,
+];
+
 // Future domains land here:
-//   const CRM: ToolDef[] = [...];
+//   const CRM_WRITE: ToolDef[] = [...];
 //   const CAMPAIGNS: ToolDef[] = [...];
 
-export const ALL_TOOLS: ToolDef[] = [...META, ...MLS, ...MARKET, ...CMS_LP, ...CMS_ARTICLES];
+export const ALL_TOOLS: ToolDef[] = [
+  ...META,
+  ...MLS,
+  ...MARKET,
+  ...CMS_LP,
+  ...CMS_ARTICLES,
+  ...CRM_READ,
+];
 
 export function toolByName(name: string): ToolDef | undefined {
   return ALL_TOOLS.find((t) => t.name === name);
