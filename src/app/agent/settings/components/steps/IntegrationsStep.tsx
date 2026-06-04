@@ -82,6 +82,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   const [newTokenName, setNewTokenName] = useState("");
   const [creatingToken, setCreatingToken] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [installTab, setInstallTab] = useState<"claude_code" | "claude_desktop" | "skill">("claude_code");
 
   // Scope catalog + presets loaded from the API on mount
   const [scopeCatalog, setScopeCatalog] = useState<string[]>([]);
@@ -454,15 +455,100 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                 Copy
               </button>
             </div>
-            <div className={`mt-3 text-xs ${isLight ? "text-amber-900" : "text-amber-300"}`}>
-              <p className="font-semibold mb-1">Install the skill (one command):</p>
-              <code
-                className={`block px-3 py-2 rounded-md text-xs font-mono ${
-                  isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
-                } ${textPrimary}`}
-              >
-                npx @chatrealty/install-skill {revealedToken.slice(0, 18)}…
-              </code>
+            {/* Install commands — pick a target client */}
+            <div className="mt-4">
+              <p className={`text-xs font-semibold mb-2 ${isLight ? "text-amber-900" : "text-amber-300"}`}>
+                Install in your Claude client
+              </p>
+              <div className={`inline-flex rounded-md p-0.5 border ${isLight ? "bg-white border-amber-200" : "bg-gray-900 border-amber-900"}`}>
+                <button
+                  type="button"
+                  onClick={() => setInstallTab("claude_code")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded ${
+                    installTab === "claude_code"
+                      ? isLight ? "bg-amber-200 text-amber-900" : "bg-amber-800/60 text-amber-200"
+                      : textMuted
+                  }`}
+                >
+                  Claude Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallTab("claude_desktop")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded ${
+                    installTab === "claude_desktop"
+                      ? isLight ? "bg-amber-200 text-amber-900" : "bg-amber-800/60 text-amber-200"
+                      : textMuted
+                  }`}
+                >
+                  Claude Desktop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallTab("skill")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded ${
+                    installTab === "skill"
+                      ? isLight ? "bg-amber-200 text-amber-900" : "bg-amber-800/60 text-amber-200"
+                      : textMuted
+                  }`}
+                >
+                  Skill (legacy)
+                </button>
+              </div>
+
+              {installTab === "claude_code" && (
+                <div className={`mt-2 text-xs ${isLight ? "text-amber-900" : "text-amber-300"} space-y-2`}>
+                  <p>Two commands. The first adds ChatRealty as an MCP server; the second registers your token in the env.</p>
+                  <code
+                    className={`block px-3 py-2 rounded-md text-xs font-mono ${
+                      isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                    } ${textPrimary}`}
+                  >
+                    claude mcp add chatrealty -- npx -y @chatrealty/mcp-server
+                  </code>
+                  <code
+                    className={`block px-3 py-2 rounded-md text-xs font-mono ${
+                      isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                    } ${textPrimary}`}
+                  >
+                    claude mcp add-env chatrealty CHATREALTY_API_TOKEN={revealedToken.slice(0, 18)}…
+                  </code>
+                  <p>Restart Claude Code. The ChatRealty tools (whoami, search_listings, create_landing_page, …) will appear in the tool tray.</p>
+                </div>
+              )}
+
+              {installTab === "claude_desktop" && (
+                <div className={`mt-2 text-xs ${isLight ? "text-amber-900" : "text-amber-300"} space-y-2`}>
+                  <p>Settings → Connectors → Add Custom Connector → Local. Paste this JSON:</p>
+                  <code
+                    className={`block px-3 py-2 rounded-md text-xs font-mono whitespace-pre ${
+                      isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                    } ${textPrimary}`}
+                  >{`{
+  "chatrealty": {
+    "command": "npx",
+    "args": ["-y", "@chatrealty/mcp-server"],
+    "env": {
+      "CHATREALTY_API_TOKEN": "${revealedToken}"
+    }
+  }
+}`}</code>
+                  <p>Restart Claude Desktop. Confirm the connector loads with the tool list visible.</p>
+                </div>
+              )}
+
+              {installTab === "skill" && (
+                <div className={`mt-2 text-xs ${isLight ? "text-amber-900" : "text-amber-300"} space-y-2`}>
+                  <p>Older landing-page-only skill (markdown + curl). MCP above is recommended; this is here for Claude Code installs that don't yet support MCP servers.</p>
+                  <code
+                    className={`block px-3 py-2 rounded-md text-xs font-mono ${
+                      isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                    } ${textPrimary}`}
+                  >
+                    npx @chatrealty/install-skill {revealedToken.slice(0, 18)}…
+                  </code>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setRevealedToken(null)}
