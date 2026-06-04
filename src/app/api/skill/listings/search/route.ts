@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
+import { applyPropertyTypeFilter } from "@/lib/property-type";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_LIMIT = 50;
@@ -52,7 +53,12 @@ export async function GET(req: NextRequest) {
   const query: Record<string, any> = { standardStatus: status };
   if (city) query.city = city;
   if (subdivision) query.subdivisionName = subdivision;
-  if (propertyType) query.propertyType = propertyType;
+
+  // Default to "A" (Residential sale) when caller omits propertyType so
+  // rentals ($2k/mo) don't pollute under-$1.5M searches. Pass "all" to mix.
+  // Pass "Residential Lease" / "Rental" / "B" to search rentals only.
+  const ptResult = applyPropertyTypeFilter(query, propertyType, "A");
+
   if (minPrice !== undefined || maxPrice !== undefined) {
     query.listPrice = {};
     if (minPrice !== undefined) query.listPrice.$gte = minPrice;
@@ -106,13 +112,22 @@ export async function GET(req: NextRequest) {
         sqft: l.livingArea ?? null,
         daysOnMarket: l.daysOnMarket ?? null,
         onMarketDate: l.onMarketDate || null,
-        primaryPhotoUrl: l.media?.[0]?.MediaURL || l.media?.[0]?.Uri800 || null,
+        primaryPhotoUrl:
+          l.media?.[0]?.uriLarge ||
+          l.media?.[0]?.uri1024 ||
+          l.media?.[0]?.uri800 ||
+          l.media?.[0]?.uri640 ||
+          l.media?.[0]?.MediaURL ||
+          l.media?.[0]?.Uri800 ||
+          null,
         slug: `/mls-listings/${l.listingKey}`,
       })),
       total,
       skip,
       limit,
       hasMore: skip + items.length < total,
+      appliedPropertyType: ptResult.applied,
+      propertyTypeRecognized: ptResult.recognized,
     },
     { headers: NO_STORE }
   );

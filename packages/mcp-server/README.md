@@ -2,7 +2,7 @@
 
 Model Context Protocol server for ChatRealty. Lets any Claude client (Claude Code, Claude Desktop, claude.ai) read and write to your ChatRealty platform using **your own Claude subscription** — no Anthropic API key needed.
 
-**v0.2.0** — 23 tools across agent meta, MLS search, market data, CMS landing pages, CMS articles, and CRM contact reads. Backed by per-token scopes and tiered rate limits on the ChatRealty side. Roadmap (analytics reads, hosted MCP endpoint, CRM writes, campaign drafts and sends) lives in `docs/mcp/rollout-plan.md` in the ChatRealty repo.
+**v0.3.0** — 23 tools across agent meta, MLS search, market data, CMS landing pages, CMS articles, and CRM contact reads. v0.3.0 adds rental + land + multi-family search (the prior versions silently returned 0 results for non-sale property types), fixes photo URLs (PascalCase/camelCase mismatch in the underlying sync), and adds a `limit` param to `get_listing_photos`. Backed by per-token scopes and tiered rate limits on the ChatRealty side. Roadmap (analytics reads, hosted MCP endpoint, CRM writes, campaign drafts and sends) lives in `docs/mcp/rollout-plan.md` in the ChatRealty repo.
 
 ## Get your token
 

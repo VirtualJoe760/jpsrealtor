@@ -8,7 +8,7 @@ import type { ToolDef } from "./types.js";
 export const search_listings: ToolDef = {
   name: "search_listings",
   description:
-    "Search the active MLS feed by city, subdivision, property type, beds, baths, and price range. Returns a paginated list of listings with key fields and a slug for the public detail page. Use this to find specific properties or sample what's on the market.",
+    "Search the active MLS feed by city, subdivision, property type, beds, baths, and price range. Returns a paginated list of listings with key fields and a slug for the public detail page. By default returns sales only (Residential) — pass propertyType: \"Residential Lease\" for rentals, \"Land\" for land, or \"all\" to mix everything. For rentals, listPrice is the monthly rent (typically $1,500-$15,000) not the sale price.",
   inputSchema: {
     type: "object",
     properties: {
@@ -16,7 +16,8 @@ export const search_listings: ToolDef = {
       subdivision: { type: "string", description: 'e.g. "PGA West"' },
       propertyType: {
         type: "string",
-        description: 'Property type, e.g. "Residential" or "Land"',
+        description:
+          'Defaults to "Residential" (sales). Accepts: "Residential" / "Sale" (sales, code A) | "Residential Lease" / "Rental" / "Lease" (rentals, code B) | "Multi-family" / "Income" (code C) | "Land" (code D) | "all" to mix. Raw codes A/B/C/D also accepted.',
       },
       status: {
         type: "string",

@@ -4,13 +4,17 @@ import type { ToolDef } from "./types.js";
 export const get_market_stats: ToolDef = {
   name: "get_market_stats",
   description:
-    "Returns a quick market snapshot for a city or subdivision: median list price, active count, median days on market, price range. Computed from the active MLS feed. Provide city, subdivision, or both — at least one is required.",
+    "Returns a quick market snapshot for a city or subdivision: median list price, active count, median days on market, price range. Computed from the active MLS feed. Provide city, subdivision, or both — at least one is required. Defaults to Residential sales — median list price is meaningless if you mix $2k/mo rentals with $1M sales. Pass propertyType: \"Residential Lease\" for a rental-market snapshot.",
   inputSchema: {
     type: "object",
     properties: {
       city: { type: "string" },
       subdivision: { type: "string" },
-      propertyType: { type: "string", description: 'e.g. "Residential", "Land"' },
+      propertyType: {
+        type: "string",
+        description:
+          'Defaults to "Residential" (sales). Accepts: "Residential" / "Sale" | "Residential Lease" / "Rental" | "Multi-family" | "Land" | "all". Raw codes A/B/C/D also accepted.',
+      },
     },
     additionalProperties: false,
   },

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
+import { applyPropertyTypeFilter } from "@/lib/property-type";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -41,7 +42,11 @@ export async function GET(req: NextRequest) {
   const query: Record<string, any> = { standardStatus: "Active" };
   if (city) query.city = city;
   if (subdivision) query.subdivisionName = subdivision;
-  if (propertyType) query.propertyType = propertyType;
+
+  // Default to "A" (sales). Median list price + DOM are meaningless mixed
+  // across $2k rentals and $1M sales. Caller can pass "all" or a specific
+  // type ("Residential Lease" for the rental snapshot).
+  const ptResult = applyPropertyTypeFilter(query, propertyType, "A");
 
   await dbConnect();
   const docs: any[] = await UnifiedListing.find(query)
@@ -53,7 +58,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     {
-      scope: { city: city || null, subdivision: subdivision || null, propertyType: propertyType || null },
+      scope: { city: city || null, subdivision: subdivision || null, propertyType: ptResult.applied },
+      propertyTypeRecognized: ptResult.recognized,
       activeCount: docs.length,
       medianListPrice: median(prices),
       averageListPrice: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,

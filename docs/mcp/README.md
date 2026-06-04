@@ -2,22 +2,26 @@
 title: ChatRealty MCP Server
 status: current
 last_verified: 2026-06-04
+last_verified_note: v0.3.0 (propertyType resolver + photo URL fix)
 related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md, ./publishing.md]
 ---
 
 # ChatRealty MCP Server
 
-> **Status: Phase 1 shipped, Phase 2 partial.** `@chatrealty/mcp-server` v0.2.0
+> **Status: Phase 1 shipped, Phase 2 partial.** `@chatrealty/mcp-server` v0.3.0
 > ships 23 tools across agent meta / MLS / market / CMS landing pages
 > (Phase 1) plus CMS articles and CRM read (Phase 2). Code lives in
 > `packages/mcp-server/`. Backend routes under `src/app/api/skill/*` enforce
 > per-token scopes (12 scopes, 4 UI presets) and tiered rate limits
 > (identity / read / write / send). The legacy `@chatrealty/install-skill`
 > ships alongside as a fallback for Claude Code installs without MCP support.
-> Both packages are prepped for `npm publish` — see
-> [publishing.md](./publishing.md). Phase 2 remaining (analytics reads,
-> hosted MCP, `/legal/ai-tools`) + Phase 3/4 (CRM writes, campaign drafts,
-> sends) still in design — see [rollout-plan.md](./rollout-plan.md).
+> Both packages live on npm under the `@chatrealty` scope — see
+> [publishing.md](./publishing.md). v0.3.0 added the human-readable
+> propertyType resolver (rentals/land/multi-family now searchable, sales
+> are the default), photo-URL fix (camelCase field mismatch), and a `limit`
+> param on `get_listing_photos`. Phase 2 remaining (analytics reads, hosted
+> MCP, `/legal/ai-tools`) + Phase 3/4 (CRM writes, campaign drafts, sends)
+> still in design — see [rollout-plan.md](./rollout-plan.md).
 
 ## TL;DR
 

@@ -78,7 +78,14 @@ export async function GET(
       publicRemarks: l.publicRemarks || null,
       supplement: l.supplement || null,
       photoCount: Array.isArray(l.media) ? l.media.length : 0,
-      primaryPhotoUrl: l.media?.[0]?.MediaURL || l.media?.[0]?.Uri800 || null,
+      primaryPhotoUrl:
+        l.media?.[0]?.uriLarge ||
+        l.media?.[0]?.uri1024 ||
+        l.media?.[0]?.uri800 ||
+        l.media?.[0]?.uri640 ||
+        l.media?.[0]?.MediaURL ||
+        l.media?.[0]?.Uri800 ||
+        null,
       hasOpenHouses: Array.isArray(l.OpenHouses) && l.OpenHouses.length > 0,
       slug: `/mls-listings/${l.listingKey}`,
     },

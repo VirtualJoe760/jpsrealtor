@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedClosedListing from "@/models/unified-closed-listing";
+import { applyPropertyTypeFilter } from "@/lib/property-type";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_LIMIT = 50;
@@ -49,7 +50,11 @@ export async function GET(req: NextRequest) {
   const query: Record<string, any> = { closeDate: { $gte: since } };
   if (city) query.city = city;
   if (subdivision) query.subdivisionName = subdivision;
-  if (propertyType) query.propertyType = propertyType;
+
+  // Closed CMA work is almost always against sales — default to "A".
+  // Pass "all" to mix; pass "Residential Lease" to look at expired/closed rentals.
+  const ptResult = applyPropertyTypeFilter(query, propertyType, "A");
+
   if (minPrice !== undefined || maxPrice !== undefined) {
     query.closePrice = {};
     if (minPrice !== undefined) query.closePrice.$gte = minPrice;
@@ -96,6 +101,8 @@ export async function GET(req: NextRequest) {
       skip,
       limit,
       count: items.length,
+      appliedPropertyType: ptResult.applied,
+      propertyTypeRecognized: ptResult.recognized,
     },
     { headers: NO_STORE }
   );

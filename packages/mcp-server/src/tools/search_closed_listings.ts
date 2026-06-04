@@ -6,13 +6,17 @@ import type { ToolDef } from "./types.js";
 export const search_closed_listings: ToolDef = {
   name: "search_closed_listings",
   description:
-    "Search closed/sold listings — same filter surface as search_listings, plus a lookbackMonths window (default 12, max 60). For historical comparisons and 'X homes in this area sold for $Y last year'-style content.",
+    "Search closed/sold listings — same filter surface as search_listings, plus a lookbackMonths window (default 12, max 60). For historical comparisons and 'X homes in this area sold for $Y last year'-style content. Defaults to sales only (Residential) since CMA work is sale-focused; pass propertyType: \"Residential Lease\" for closed/expired rental comps.",
   inputSchema: {
     type: "object",
     properties: {
       city: { type: "string" },
       subdivision: { type: "string" },
-      propertyType: { type: "string" },
+      propertyType: {
+        type: "string",
+        description:
+          'Defaults to "Residential" (sales). Accepts: "Residential" / "Sale" | "Residential Lease" / "Rental" | "Multi-family" | "Land" | "all" to mix. Raw codes A/B/C/D also accepted.',
+      },
       minPrice: { type: "number" },
       maxPrice: { type: "number" },
       minBeds: { type: "number" },
