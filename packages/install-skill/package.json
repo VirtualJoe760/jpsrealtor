@@ -1,0 +1,34 @@
+{
+  "name": "@chatrealty/install-skill",
+  "version": "0.1.0",
+  "description": "Install the ChatRealty Claude skill — lets you create landing pages on ChatRealty from Claude Code / Claude Desktop.",
+  "bin": {
+    "chatrealty-install-skill": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "files": [
+    "dist",
+    "skill-template",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "claude-desktop",
+    "skill",
+    "real-estate",
+    "chatrealty"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
