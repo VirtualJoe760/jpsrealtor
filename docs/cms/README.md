@@ -1,8 +1,8 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-05-21
-related: [../multi-tenant/README.md, ../auth/README.md]
+last_verified: 2026-06-02
+related: [../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md]
 supersedes: docs/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
 
@@ -31,6 +31,10 @@ site only displays its owner's articles.
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\agent\cms\` | Per-agent CMS (sees only their own via `resolveDomainOwner`). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\lp\[slug]\page.tsx` | Landing page renderer (category=landing-page articles). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\scripts\fix-article-authors-mongo.ts` | Backfill for orphan `author.id` values. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-landing-page\route.ts` | Streaming Claude landing-page builder. Uses **agent's own** Anthropic API key (BYOK). Tool-call architecture (`set_article_field`, `set_landing_page_option`, etc.). |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\agent\cms\components\ClaudeLandingPageChat.tsx` | In-CMS chat UI for the BYOK flow. SSE event loop, fills the article form via tool_use events as Claude talks. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\skill\landing-pages\route.ts` | Token-authenticated landing-page draft creation for the Claude Code / Claude Desktop skill. Draft-only. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\` | npm package (`@chatrealty/install-skill`) — agents run `npx @chatrealty/install-skill <token>` to install the skill into `~/.claude/skills/chatrealty-landing-page/`. |
 
 ## MongoDB is source of truth
 
@@ -123,6 +127,28 @@ Landing pages have their own renderer and layout
 and aren't shown in the insights feed. The list route excludes them by default
 (`excludeLandingPages=true` is the default).
 
+## Landing-page AI builders
+
+Three paths for generating a landing page draft, all writing to the same
+`Article` model with `category: "landing-page"`:
+
+| Path | Surface | Model | Auth | Notes |
+|---|---|---|---|---|
+| Groq | `/agent/cms/new` "Generate" panel (default) | `openai/gpt-oss-120b` via Groq | session | Single-shot. Topic textarea → full JSON response → form fills. Uses platform `GROQ_API_KEY`. Free for the agent. |
+| Claude (BYOK, in-site) | `/agent/cms/new` "Generate" panel with model toggle = "Claude · chat" | `claude-sonnet-4-5-*` via Anthropic | session + per-agent key | Multi-turn chat with tool calls. Claude asks questions and uses `set_article_field` / `set_landing_page_option` / `add_form_field` / `finalize` to populate the form live. Requires the agent to have saved their Anthropic key in Settings → Integrations. |
+| Claude (BYOK, desktop skill) | Claude Code / Claude Desktop, via `@chatrealty/install-skill` | Whatever model the agent's local Claude is using | bearer token (`crt_live_*`) | The agent runs `npx @chatrealty/install-skill <token>` once; afterwards any Claude window can create drafts by calling `POST /api/skill/landing-pages`. Draft-only — no publish endpoint v1. |
+
+**Storage of the Anthropic key**: encrypted at rest with AES-256-GCM via
+`F:\web-clients\joseph-sardella\jpsrealtor\src\lib\secrets.ts`, keyed by
+`SECRETS_ENCRYPTION_KEY` env. Stored on
+`User.agentProfile.aiIntegrations.anthropic.apiKeyEncrypted`. The plaintext
+never leaves the server (test/save endpoints return only status + last4).
+
+**ChatRealty API tokens**: stored as sha256 hash on
+`User.agentProfile.aiIntegrations.apiTokens[]`. The plaintext is returned
+ONCE on creation and shown to the agent in a single-time reveal modal in
+Settings → Integrations. See `../integrations/README.md` for the auth contract.
+
 ## Gotchas
 
 - **MongoDB is canonical, NOT MDX.** Treat `src/posts/*.mdx` as a build/git
@@ -151,6 +177,14 @@ and aren't shown in the insights feed. The list route excludes them by default
   before writing to it or the field disappears at save time.
 - **`Article.slug` is unique.** `createArticle` upserts by slug, so re-publishing
   the same slug updates in place rather than creating a duplicate.
+- **BYOK requires `SECRETS_ENCRYPTION_KEY`** in every environment that
+  reads/writes Anthropic keys. Missing the env var means the save endpoint
+  throws on encrypt and the draft route throws on decrypt. Generate one with
+  `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+- **Skill API tokens are draft-only by design.** `/api/skill/landing-pages`
+  cannot publish — agents must review in the CMS first. If you add a publish
+  endpoint later, gate it behind a per-token `scopes: ["publish"]` capability
+  rather than enabling it globally.
 
 ## Reference implementation
 

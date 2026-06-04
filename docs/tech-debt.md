@@ -1,7 +1,7 @@
 ---
 title: Tech Debt / Known Issues
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-06-02
 ---
 
 # Tech Debt / Known Issues
@@ -33,6 +33,7 @@ Severity legend:
 | 🟡 medium | In-memory rate limiter doesn't survive across serverless instances | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\rate-limit.ts` | Vercel serverless functions cold-start fresh; an attacker who spreads requests across instances sidesteps the per-IP / per-email window. Mitigation today: traffic is low and most attacks fail Turnstile first. | Eventual: KV-backed (Upstash Redis works on Vercel edge runtime). Move the sliding-window logic behind a `RateLimitStore` interface so swap is trivial. |
 | 🟢 low | Three "master" docs in `/docs/architecture/` predate Next.js 16, chat-v3, multi-tenant, ChatRealty | `F:\web-clients\joseph-sardella\jpsrealtor\docs\architecture\MASTER_SYSTEM_ARCHITECTURE.md`, `DATABASE_MODELS.md`, `FRONTEND_ARCHITECTURE.md` | All dated Jan 2025. Misleading for anyone (or any Claude) onboarding. | Rewrite as area docs under `docs-v2/` (cms/, listings/, chat/, etc.). Move originals to `docs-v2/archive/` when superseded. |
 | 🟢 low | Mongoose strict mode silently drops unschema'd fields on save | all `src/models/*.ts` | When you add a field to an API payload or UI form without adding it to the Mongoose schema, the field just disappears at write time with no error. Frequent gotcha when iterating on a new feature. | Mitigation: `docs/MONGOOSE_SCHEMA_GUIDE.md` exists; add a checklist item to PR template — "If touching a model, sync schema → interface → API → UI." |
+| 🟠 high | Existing OAuth / API credentials are stored **plaintext** in Mongo | `User.calendarSettings.refreshToken`, `User.adAccounts.google.{developerToken,refreshToken}`, `User.adAccounts.meta.{accessToken,pageAccessToken}` in `F:\web-clients\joseph-sardella\jpsrealtor\src\models\User.ts` | A database compromise or careless `find().lean()` log dump exposes every connected agent's third-party tokens. The new Anthropic BYOK feature (June 2026) ships its own encryption helper (`F:\web-clients\joseph-sardella\jpsrealtor\src\lib\secrets.ts`) — these older credentials should be migrated to use it. | Add `encryptSecret` / `decryptSecret` wrappers around the relevant read/write call sites (gcal-api.ts, google-ads-api.ts, meta-ads-api.ts). Backfill existing rows with a one-shot script that encrypts in place. Requires `SECRETS_ENCRYPTION_KEY` in all environments. |
 
 ---
 
