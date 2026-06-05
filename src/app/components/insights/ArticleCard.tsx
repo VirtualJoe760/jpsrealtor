@@ -44,24 +44,40 @@ export default function ArticleCard({
       ? "Real Estate Tips"
       : "Articles";
 
-  // Highlight search terms in text
+  // Highlight search terms in text.
+  // Splits the text on matches and wraps them in real <mark> React nodes rather
+  // than string-replacing into dangerouslySetInnerHTML. The old approach re-scanned
+  // its own injected markup, so a term like "la" (e.g. "La Quinta") matched the "la"
+  // inside the injected class="..." and corrupted the output. Building React nodes
+  // also escapes the term for regex safety and removes the XSS surface.
   const highlightText = (text: string) => {
-    if (!highlightTerms.length) return text;
+    const escaped = highlightTerms
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
-    let highlighted = text;
-    highlightTerms.forEach((term) => {
-      const regex = new RegExp(`(${term})`, "gi");
-      highlighted = highlighted.replace(
-        regex,
-        `<mark class="${
-          isLight
-            ? "bg-yellow-200 text-gray-900"
-            : "bg-yellow-500/30 text-yellow-300"
-        }">$1</mark>`
-      );
-    });
+    if (!escaped.length) return text;
 
-    return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+    const markClass = isLight
+      ? "bg-yellow-200 text-gray-900"
+      : "bg-yellow-500/30 text-yellow-300";
+
+    // Single capturing group → matches land on odd indices after split.
+    const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+
+    return (
+      <span>
+        {text.split(regex).map((part, i) =>
+          i % 2 === 1 ? (
+            <mark key={i} className={markClass}>
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
   };
 
   return (

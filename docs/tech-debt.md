@@ -56,6 +56,7 @@ Recent fixes from the May 2026 work. Format: `date — sha — one-liner`.
 | 2026-05-19 | `ef2000be`, `375bd0a0` | Root directory cleanup — removed ~1.27 GB of stale root-level artifacts and rotated SSH keys. |
 | 2026-05-21 | `106d0b9c` | docs-v2/ foundation + first 3 priority area docs (routing, auth, multi-tenant). |
 | 2026-06-05 | _(pending)_ | `/api/insights/community-spotlight` + `/api/insights/favorite-spotlight` now stamp `Cache-Control: no-store` on every response (handler wrapper) and get a dedicated `/api/insights/(.*)` no-store rule in `vercel.json`. These render the homepage's per-user "Favorites Spotlight" + "Real Estate in {city}" sections from `swipeAnalytics`/`likedListings`; previously they inherited the immutable catch-all and could leak one user's favorites/preferred areas into a shared CDN node. |
+| 2026-06-05 | _(pending)_ | Article search highlighter (`ArticleCard.tsx` + `ArticleAccordion.tsx`) rewritten to split text and wrap matches in real `<mark>` React nodes instead of regex-replacing into `dangerouslySetInnerHTML`. The old code re-scanned its own injected markup, so any search term that is a substring of the injected `class="…"` (notably **"la"** → "La Quinta", a core local query) shattered the tag and leaked raw HTML into article titles. Fix also escapes the term (regex-injection safe) and removes the XSS surface. |
 
 ---
 
