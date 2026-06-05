@@ -14,7 +14,7 @@ import {
   buildSimpleLuxuryTransformations,
   type SimpleLuxuryData,
   type CloudinaryTransformation,
-} from "./simple-luxury.js";
+} from "./simple-luxury";
 
 export type CoverTemplateId = "simple-luxury";
 
