@@ -80,3 +80,5 @@ gsc-credentials.json
 # Finance / fundraising materials (private — investor lists, business model, game plan)
 /finance
 
+temp-images/
+.dev-server.log
