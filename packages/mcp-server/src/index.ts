@@ -27,7 +27,7 @@ import { ALL_TOOLS, toolByName } from "./tools/index.js";
 import { HttpError } from "./http.js";
 
 const PKG_NAME = "@chatrealty/mcp-server";
-const PKG_VERSION = "0.1.0";
+const PKG_VERSION = "0.8.0";
 
 async function main(): Promise<void> {
   let config;

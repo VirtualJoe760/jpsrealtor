@@ -29,6 +29,8 @@ import { search_my_contacts } from "./search_my_contacts.js";
 import { get_contact } from "./get_contact.js";
 import { my_recent_leads } from "./my_recent_leads.js";
 import { post_instagram_carousel } from "./post_instagram_carousel.js";
+import { stage_listing_with_agent } from "./stage_listing_with_agent.js";
+import { create_listing_cover } from "./create_listing_cover.js";
 
 // Agent meta
 const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
@@ -75,6 +77,11 @@ const CRM_READ: ToolDef[] = [
   my_recent_leads,
 ];
 
+// Images — AI generation + templated cover slides. Returns Cloudinary URLs
+// for review. Not auto-posted; the agent (or Claude after agent confirmation)
+// passes the result into post_instagram_carousel separately.
+const IMAGES: ToolDef[] = [stage_listing_with_agent, create_listing_cover];
+
 // Social — real-world publish. Each tool requires its own scope; nothing
 // here lands in a default preset. Confirm with the agent before calling.
 const SOCIAL: ToolDef[] = [post_instagram_carousel];
@@ -90,6 +97,7 @@ export const ALL_TOOLS: ToolDef[] = [
   ...CMS_LP,
   ...CMS_ARTICLES,
   ...CRM_READ,
+  ...IMAGES,
   ...SOCIAL,
 ];
 
