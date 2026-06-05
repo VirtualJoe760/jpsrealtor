@@ -35,6 +35,10 @@ export const SCOPES = [
 
   // Analytics (agent's own data)
   "analytics:read",
+
+  // Social posting (real-world publish — Instagram carousels for now).
+  // Never in a default preset; users have to opt in when minting a token.
+  "social:post",
 ] as const;
 
 export type Scope = (typeof SCOPES)[number];

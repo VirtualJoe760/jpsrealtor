@@ -28,6 +28,7 @@ import { update_article } from "./update_article.js";
 import { search_my_contacts } from "./search_my_contacts.js";
 import { get_contact } from "./get_contact.js";
 import { my_recent_leads } from "./my_recent_leads.js";
+import { post_instagram_carousel } from "./post_instagram_carousel.js";
 
 // Agent meta
 const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
@@ -74,6 +75,10 @@ const CRM_READ: ToolDef[] = [
   my_recent_leads,
 ];
 
+// Social — real-world publish. Each tool requires its own scope; nothing
+// here lands in a default preset. Confirm with the agent before calling.
+const SOCIAL: ToolDef[] = [post_instagram_carousel];
+
 // Future domains land here:
 //   const CRM_WRITE: ToolDef[] = [...];
 //   const CAMPAIGNS: ToolDef[] = [...];
@@ -85,6 +90,7 @@ export const ALL_TOOLS: ToolDef[] = [
   ...CMS_LP,
   ...CMS_ARTICLES,
   ...CRM_READ,
+  ...SOCIAL,
 ];
 
 export function toolByName(name: string): ToolDef | undefined {
