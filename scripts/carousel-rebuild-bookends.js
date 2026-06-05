@@ -25,7 +25,7 @@ cloudinary.config({
 const SLUG = process.argv[2];
 if (!SLUG) { console.error("usage: node scripts/carousel-rebuild-bookends.js <slug>"); process.exit(1); }
 
-const CFG = require(path.join(__dirname, "data", `${SLUG}.js`));
+const CFG = require(path.join(__dirname, "data", "carousels", `${SLUG}.js`));
 const ORIGINALS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "originals");
 const EDITS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "_edits");
 
