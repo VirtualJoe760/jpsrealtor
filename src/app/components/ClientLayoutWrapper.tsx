@@ -18,6 +18,7 @@ import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContex
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
+import { fetchAgentPublic } from "../hooks/useAgentProfile";
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   // Sync favorites status on login (once per session)
@@ -29,8 +30,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   // Apply agent font via CSS variable (NOT body.style — that crashes MapLibre/React reconciliation)
   useEffect(() => {
-    fetch("/api/agent/public")
-      .then((res) => res.ok ? res.json() : null)
+    fetchAgentPublic()
       .then((data) => {
         const font = data?.profile?.agentProfile?.fontFamily;
         if (font) {

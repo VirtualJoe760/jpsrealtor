@@ -19,6 +19,7 @@ import CommunitySpotlight from "@/app/components/insights/CommunitySpotlight";
 import AgentHero from "@/app/components/insights/AgentHero";
 import AccountBentoGrid from "@/app/components/insights/AccountBentoGrid";
 import BrowseByCityGrid from "@/app/components/insights/BrowseByCityGrid";
+import { fetchAgentPublic } from "@/app/hooks/useAgentProfile";
 
 interface Article {
   title: string;
@@ -147,9 +148,8 @@ const InsightsPage = () => {
         if (sub && sub !== "www") subParam = `?subdomain=${sub}`;
       }
 
-      const response = await fetch(`/api/agent/public${subParam}`);
-      if (response.ok) {
-        const data = await response.json();
+      const data = await fetchAgentPublic(subParam);
+      if (data) {
         setAgentProfile(data.profile);
         setSiteActive(data.hasActiveSubscription !== false);
         // Set banner image if available
