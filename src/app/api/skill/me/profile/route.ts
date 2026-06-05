@@ -72,6 +72,30 @@ export async function GET(req: NextRequest) {
       // Brand colors so Claude can suggest matching theme overrides
       brandColors: ap.brandColors || {},
       siteName: ap.siteName || null,
+
+      // Domain + branding assets actually populated in the typical agent
+      // profile but missed by the earlier shape.
+      customDomain: ap.customDomain || null,
+      subdomain: ap.subdomain || null,
+      brokerLogo: ap.brokerLogo || null,
+      brokerLogoDark: ap.brokerLogoDark || null,
+      teamLogo: ap.teamLogo || null,
+
+      // SEO defaults the agent has set — useful to inherit when drafting LP /
+      // article SEO blocks if the user doesn't supply their own.
+      defaultMetaTitle: ap.metaTitle || null,
+      defaultMetaDescription: ap.metaDescription || null,
+      defaultMetaKeywords: ap.metaKeywords || null,
+
+      // Testimonials — high-signal social proof for LP drafts.
+      testimonials: Array.isArray(ap.testimonials)
+        ? ap.testimonials.map((t: any) => ({
+            quote: t?.quote,
+            author: t?.author,
+            role: t?.role,
+            location: t?.location,
+          }))
+        : [],
     },
     { headers: NO_STORE }
   );

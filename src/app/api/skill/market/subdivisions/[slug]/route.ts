@@ -26,10 +26,31 @@ export async function GET(
   await dbConnect();
 
   const sub: any = await Subdivision.findOne({ slug })
-    .select("name slug city county region cmaStats parentSubdivision hierarchyLevel")
+    .select("_id name slug city county region cmaStats parentSubdivision hierarchyLevel")
     .lean();
   if (!sub) {
     return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
+  }
+
+  // Detect "parent subdivision with no real CMA". The nightly cron builds
+  // cmaStats on leaf subdivisions only. Parents like "PGA West" carry the
+  // old-schema empty totals; their actual market data is split across child
+  // subdivisions (PGA Stadium, PGA Greg Norman, etc.). When this happens,
+  // return a child list so the caller can pick one to drill into.
+  const isParentWithoutCma =
+    sub.cmaStats?.totals !== undefined &&
+    !sub.cmaStats?.active?.count;
+
+  let children: { name: string; slug: string }[] = [];
+  if (isParentWithoutCma) {
+    const kids: any[] = await Subdivision.find({ parentSubdivision: sub._id })
+      .select("name slug")
+      .sort({ name: 1 })
+      .limit(50)
+      .lean();
+    children = kids
+      .filter((k) => k.slug)
+      .map((k) => ({ name: k.name, slug: k.slug }));
   }
 
   return NextResponse.json(
@@ -42,6 +63,15 @@ export async function GET(
       parentSubdivision: sub.parentSubdivision || null,
       hierarchyLevel: sub.hierarchyLevel || null,
       cmaStats: sub.cmaStats || null,
+      // For parent subdivisions, list the children that DO have CMA data.
+      // Call get_subdivision_cma with one of their slugs for real numbers.
+      ...(isParentWithoutCma && children.length > 0
+        ? {
+            isParent: true,
+            childSubdivisions: children,
+            note: `${sub.name} is a parent subdivision — CMA stats live on its child courses/communities listed in childSubdivisions. Call get_subdivision_cma with one of those slugs for real data.`,
+          }
+        : {}),
     },
     { headers: NO_STORE }
   );

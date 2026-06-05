@@ -4,7 +4,7 @@ import type { ToolDef } from "./types.js";
 export const get_neighborhood_info: ToolDef = {
   name: "get_neighborhood_info",
   description:
-    "Returns city / neighborhood overview: population, demographics, schools, parks, dining, shopping, points of interest, and editorial narrative. Use this to inject local color into landing pages and articles.",
+    "Returns a city market snapshot: active listing count, price range, average + median list price, property-type breakdown (sales/rentals/multi-family), number of subdivisions, and the MLS sources covering this city. Useful as a quick aggregate when writing a city-focused landing page or article. NOTE: this does NOT return population, schools, parks, dining, points-of-interest, or demographics — those don't live in the City model. For per-subdivision price stats, use get_subdivision_cma.",
   inputSchema: {
     type: "object",
     properties: {

@@ -46,8 +46,13 @@ export async function GET(req: NextRequest) {
 
   const since = new Date();
   since.setMonth(since.getMonth() - lookbackMonths);
+  // closeDate is stored as either a real Date (newer docs) or an ISO
+  // date-only string like "2021-06-17" (older 787k docs). Match both
+  // via $or; native collection bypasses Mongoose's auto-casting that
+  // would re-cast the string branch back to Date.
+  const sinceIsoDay = since.toISOString().slice(0, 10);
 
-  const query: Record<string, any> = { closeDate: { $gte: since } };
+  const query: Record<string, any> = {};
   if (city) query.city = city;
   if (subdivision) query.subdivisionName = subdivision;
 
@@ -62,23 +67,36 @@ export async function GET(req: NextRequest) {
   }
   // Match either bed field — UnifiedClosedListing has both bedsTotal and
   // bedroomsTotal populated by different MLS sources.
+  const andClauses: Record<string, any>[] = [
+    {
+      $or: [
+        { closeDate: { $gte: since } },
+        { closeDate: { $gte: sinceIsoDay } },
+      ],
+    },
+  ];
   if (minBeds !== undefined || maxBeds !== undefined) {
     const range: Record<string, number> = {};
     if (minBeds !== undefined) range.$gte = minBeds;
     if (maxBeds !== undefined) range.$lte = maxBeds;
-    query.$and = [{ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] }];
+    andClauses.push({ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] });
   }
+  query.$and = andClauses;
 
   await dbConnect();
-  const items: any[] = await UnifiedClosedListing.find(query)
-    .select(
-      "listingKey unparsedAddress city subdivisionName propertyType propertyTypeLabel " +
-      "listPrice closePrice closeDate bedroomsTotal bedsTotal bathroomsTotalInteger livingArea daysOnMarket"
-    )
+  const items: any[] = await UnifiedClosedListing.collection
+    .find(query, {
+      projection: {
+        listingKey: 1, unparsedAddress: 1, city: 1, subdivisionName: 1,
+        propertyType: 1, propertyTypeLabel: 1, listPrice: 1, closePrice: 1,
+        closeDate: 1, bedroomsTotal: 1, bedsTotal: 1, bathroomsTotalInteger: 1,
+        livingArea: 1, daysOnMarket: 1,
+      },
+    })
     .sort({ closeDate: -1 })
     .skip(skip)
     .limit(limit)
-    .lean();
+    .toArray();
 
   return NextResponse.json(
     {

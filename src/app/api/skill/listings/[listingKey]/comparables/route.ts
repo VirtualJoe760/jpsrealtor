@@ -48,25 +48,37 @@ export async function GET(
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
+  // closeDate is stored as either a real Date (newer docs, ~100k) or an ISO
+  // date-only string like "2021-06-17" (older docs, ~787k). Mongoose casts
+  // our Date cutoff and Mongo type-ranking means Date queries never match
+  // string-typed docs. Match both via $or, using the native collection so
+  // Mongoose doesn't re-cast either branch.
+  const sinceIsoDay = since.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-  const query: Record<string, any> = {
-    closeDate: { $gte: since },
+  const baseQuery: Record<string, any> = {
     propertyType: subject.propertyType,
   };
   if (subject.subdivisionName) {
-    query.subdivisionName = subject.subdivisionName;
+    baseQuery.subdivisionName = subject.subdivisionName;
   } else if (subject.city) {
-    query.city = subject.city;
+    baseQuery.city = subject.city;
   }
   if (typeof subject.listPrice === "number") {
-    query.closePrice = {
+    baseQuery.closePrice = {
       $gte: Math.floor(subject.listPrice * 0.8),
       $lte: Math.ceil(subject.listPrice * 1.2),
     };
   }
 
   // bed/bath filters: ±1 against EITHER field-name variant on the comp record.
-  const andClauses: Record<string, any>[] = [];
+  const andClauses: Record<string, any>[] = [
+    {
+      $or: [
+        { closeDate: { $gte: since } },
+        { closeDate: { $gte: sinceIsoDay } },
+      ],
+    },
+  ];
   if (subjectBeds != null) {
     const range = { $gte: subjectBeds - 1, $lte: subjectBeds + 1 };
     andClauses.push({ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] });
@@ -75,16 +87,22 @@ export async function GET(
     const range = { $gte: subjectBaths - 1, $lte: subjectBaths + 1 };
     andClauses.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
   }
-  if (andClauses.length > 0) query.$and = andClauses;
+  baseQuery.$and = andClauses;
 
-  const items: any[] = await UnifiedClosedListing.find(query)
-    .select(
-      "listingKey unparsedAddress city subdivisionName closePrice closeDate " +
-      "bedroomsTotal bedsTotal bathroomsTotalInteger livingArea daysOnMarket"
-    )
+  // Native collection to skip Mongoose's auto-casting (which would re-cast
+  // both branches of the closeDate $or back into Date and break the string
+  // branch). Project the same fields the previous .select() did.
+  const items: any[] = await UnifiedClosedListing.collection
+    .find(baseQuery, {
+      projection: {
+        listingKey: 1, unparsedAddress: 1, city: 1, subdivisionName: 1,
+        closePrice: 1, closeDate: 1, bedroomsTotal: 1, bedsTotal: 1,
+        bathroomsTotalInteger: 1, livingArea: 1, daysOnMarket: 1,
+      },
+    })
     .sort({ closeDate: -1 })
     .limit(12)
-    .lean();
+    .toArray();
 
   // Compute quick aggregates so Claude can write a one-sentence summary
   // without doing math itself.

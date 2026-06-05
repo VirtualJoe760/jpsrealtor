@@ -1,7 +1,11 @@
 // src/app/api/skill/market/neighborhoods/[slug]/route.ts
 //
-// GET → neighborhood / city overview: top-level location info, narrative,
-// and (when present) point-of-interest snapshot.
+// GET → city snapshot from the aggregated City model. The City model is
+// built by the listings sync — it carries listing counts, price aggregates,
+// property-type breakdown, features, and keywords. It does NOT carry
+// population, demographics, schools, parks, etc. — those fields were
+// promised by an earlier version of this route but never existed in the
+// schema, so they were always null. Reshaped to return real data.
 
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
@@ -26,8 +30,10 @@ export async function GET(
 
   const city: any = await City.findOne({ slug })
     .select(
-      "name slug county region state population area description narrative " +
-      "schools parks dining shopping pointsOfInterest demographics"
+      "name slug county region coordinates " +
+      "listingCount priceRange avgPrice medianPrice " +
+      "propertyTypes features keywords subdivisionCount mlsSources " +
+      "isOcean lastUpdated"
     )
     .lean();
   if (!city) {
@@ -40,17 +46,22 @@ export async function GET(
       slug: city.slug,
       county: city.county || null,
       region: city.region || null,
-      state: city.state || null,
-      population: city.population ?? null,
-      area: city.area ?? null,
-      description: city.description || null,
-      narrative: city.narrative || null,
-      schools: city.schools || null,
-      parks: city.parks || null,
-      dining: city.dining || null,
-      shopping: city.shopping || null,
-      pointsOfInterest: city.pointsOfInterest || null,
-      demographics: city.demographics || null,
+      coordinates: city.coordinates || null,
+
+      // Market snapshot (the actually populated fields)
+      activeListingCount: city.listingCount ?? null,
+      priceRange: city.priceRange ?? null,
+      avgListPrice: city.avgPrice ?? null,
+      medianListPrice: city.medianPrice ?? null,
+      propertyTypeBreakdown: city.propertyTypes ?? null,
+      subdivisionCount: city.subdivisionCount ?? null,
+      mlsSources: city.mlsSources ?? [],
+
+      // Editorial-ish (often empty but populated for some cities)
+      features: city.features?.length ? city.features : null,
+      keywords: city.keywords?.length ? city.keywords : null,
+
+      lastUpdated: city.lastUpdated || null,
     },
     { headers: NO_STORE }
   );

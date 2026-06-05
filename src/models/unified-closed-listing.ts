@@ -236,26 +236,32 @@ export interface IUnifiedClosedListing extends Document {
   OpenHouses?: IOpenHouse[];
   VirtualTours?: IVirtualTour[];
 
-  // Features
-  poolYn?: boolean;
+  // Features — CANONICAL casing matches DB (RESO style). Yn forms aliased.
+  poolYN?: boolean;
+  poolYn?: boolean; // alias
   pool?: boolean;
   spa?: boolean;
-  spaYn?: boolean;
-  viewYn?: boolean;
+  spaYN?: boolean;
+  spaYn?: boolean; // alias
+  viewYN?: boolean;
+  viewYn?: boolean; // alias
   view?: string;
   furnished?: string;
   roof?: string;
   cooling?: string;
-  coolingYn?: boolean;
+  coolingYN?: boolean;
+  coolingYn?: boolean; // alias
   heating?: string;
-  heatingYn?: boolean;
+  heatingYN?: boolean;
+  heatingYn?: boolean; // alias
   garageSpaces?: number;
   carportSpaces?: number;
   parkingTotal?: number;
   parkingFeatures?: string;
   stories?: number;
   levels?: string;
-  seniorCommunityYn?: boolean;
+  seniorCommunityYN?: boolean;
+  seniorCommunityYn?: boolean; // alias
   gatedCommunity?: boolean;
   rvAccess?: boolean;
 
@@ -267,7 +273,8 @@ export interface IUnifiedClosedListing extends Document {
   landLeaseYearsRemaining?: number;
   associationFee?: number;
   associationFeeFrequency?: string;
-  associationYn?: boolean;
+  associationYN?: boolean;
+  associationYn?: boolean; // alias
   communityFeatures?: string;
   lotFeatures?: string;
 
@@ -414,26 +421,26 @@ const UnifiedClosedListingSchema = new Schema<IUnifiedClosedListing>(
     OpenHouses: [OpenHouseSchema],
     VirtualTours: [VirtualTourSchema],
 
-    // Features
-    poolYn: Boolean,
+    // Features — canonical YN casing, Yn aliased for back-compat.
+    poolYN: { type: Boolean, alias: "poolYn" },
     pool: Boolean,
     spa: Boolean,
-    spaYn: Boolean,
-    viewYn: Boolean,
+    spaYN: { type: Boolean, alias: "spaYn" },
+    viewYN: { type: Boolean, alias: "viewYn" },
     view: String,
     furnished: String,
     roof: String,
     cooling: String,
-    coolingYn: Boolean,
+    coolingYN: { type: Boolean, alias: "coolingYn" },
     heating: String,
-    heatingYn: Boolean,
+    heatingYN: { type: Boolean, alias: "heatingYn" },
     garageSpaces: Number,
     carportSpaces: Number,
     parkingTotal: Number,
     parkingFeatures: String,
     stories: Number,
     levels: String,
-    seniorCommunityYn: Boolean,
+    seniorCommunityYN: { type: Boolean, alias: "seniorCommunityYn" },
     gatedCommunity: Boolean,
     rvAccess: Boolean,
 
@@ -445,7 +452,7 @@ const UnifiedClosedListingSchema = new Schema<IUnifiedClosedListing>(
     landLeaseYearsRemaining: Number,
     associationFee: Number,
     associationFeeFrequency: String,
-    associationYn: Boolean,
+    associationYN: { type: Boolean, alias: "associationYn" },
     communityFeatures: String,
     lotFeatures: String,
 

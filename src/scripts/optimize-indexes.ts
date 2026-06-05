@@ -62,7 +62,7 @@ async function optimizeIndexes() {
 
     console.log("  Creating features index...");
     await listingsCollection.createIndex(
-      { standardStatus: 1, poolYn: 1, spaYn: 1, associationFee: 1 },
+      { standardStatus: 1, poolYN: 1, spaYN: 1, associationFee: 1 },
       { name: "idx_status_features" }
     );
 
