@@ -288,6 +288,20 @@ input, textarea, select {
   user-select: text;
 }
 
+/* Prevent iOS Safari from auto-zooming the viewport when a form control is
+   focused. Safari zooms whenever the focused field's font-size is < 16px, and
+   on a fixed-layout map page (the /chap map search + filters) that zoom sticks
+   and breaks the layout. Forcing the 16px accessible minimum on small screens
+   kills the auto-zoom while leaving pinch-zoom (user-scalable=yes) intact.
+   !important is needed to win over Tailwind's text-sm/text-xs utility classes. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Re-enable selection for chat messages */
 [data-page="chat"] .select-text,
 [data-page="chat"] .select-text * {
