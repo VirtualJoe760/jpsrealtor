@@ -46,7 +46,15 @@ async function getPostFromDB(slugId: string): Promise<Post | null> {
       ...(doc.formButtonText && { formButtonText: doc.formButtonText }),
       ...(doc.formRecipients && { formRecipients: doc.formRecipients }),
       ...(doc.formDisclaimer && { formDisclaimer: doc.formDisclaimer }),
-      ...(doc.formFields && { formFields: doc.formFields }),
+      ...(doc.formFields && {
+        formFields: (doc.formFields as any[]).map((f) => ({
+          id: f.id,
+          label: f.label,
+          type: f.type,
+          required: f.required,
+          options: f.options ? Array.from(f.options) : [],
+        })),
+      }),
     } as Post;
   } catch (err) {
     console.error("[fetchPosts] MongoDB lookup failed:", err);

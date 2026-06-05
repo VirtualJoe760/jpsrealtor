@@ -1,8 +1,8 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-05-21
-related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md]
+last_verified: 2026-06-02
+related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
 # External Integrations
@@ -21,6 +21,8 @@ Every external API the platform talks to is wrapped in a single file under `src/
 | **OpenAI / GPT** | (via Groq's `openai/gpt-oss-120b` route) | Premium tier reasoning + function calling | same as Groq | Tool-calling routes | We do NOT use OpenAI's API directly — premium goes through Groq. |
 | **ElevenLabs (11Labs)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\services\audio-generation.service.ts` | Voicemail audio synthesis (Drop Cowboy ringless campaigns) | `ELEVENLABS_API_KEY` | `/api/voicemail/generate-audio`, `/api/campaigns/[id]/scripts/[scriptId]/*` | Output MP3 is uploaded to Cloudinary, then Drop Cowboy fetches the URL. |
 | **Runway ML** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\ai\runway\route.ts` | AI video gen (curb-appeal feature) | `RUNWAY_API_KEY` | `/api/ai/runway/*`, `/curb-appeal` | Async task model — poll `/api/ai/runway/[id]` for completion. State persisted on `RunwayTask`. |
+| **Anthropic (platform)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-article\route.ts` | Admin article drafter (streaming) | `ANTHROPIC_API_KEY` | `/api/claude/draft-article` (admin only) | SSE streaming via `@anthropic-ai/sdk`. Uses global platform key, not per-agent. |
+| **Anthropic (BYOK)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-landing-page\route.ts` | Conversational landing-page builder for agents using **their own** Anthropic key | per-agent `User.agentProfile.aiIntegrations.anthropic.apiKeyEncrypted` | `/api/claude/draft-landing-page`, surfaced in `/agent/cms/new` when category=landing-page and the agent has chosen "Claude · chat" | Key is AES-256-GCM encrypted at rest via `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\secrets.ts`. Requires `SECRETS_ENCRYPTION_KEY` env. Tool-call architecture — Claude fires `set_article_field`, `set_landing_page_option`, `add_form_field`, `finalize` as the chat progresses, and the client live-updates the form. |
 
 ### Media / Storage
 
@@ -84,6 +86,12 @@ Every external API the platform talks to is wrapped in a single file under `src/
 |---|---|---|---|---|---|
 | **API Ninjas** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\mortgage-rates\route.ts` | Live mortgage rate quotes | `API_NINJAS_KEY` | Insights / mortgage calculator | |
 | **FRED (St. Louis Fed)** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\market-stats\route.ts`, `src\app\api\stats\market\route.ts` | Macro / economic data series (mortgage rates, CPI, etc.) | `FRED_API_KEY` | Market stats widgets, insights page | No shared wrapper. |
+
+### ChatRealty-issued (outbound integrations from agents)
+
+| Name | File | Purpose | Credential | Notes |
+|---|---|---|---|---|
+| **ChatRealty API tokens (skill + MCP)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-auth.ts`, `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\skill\*` | Bearer-token auth for the Claude Code / Claude Desktop skill (`@chatrealty/install-skill`) AND the planned MCP server (`@chatrealty/mcp-server`) so agents can read MLS data, draft landing pages / articles, review leads, and build campaigns from any Claude window using their own Claude subscription | `User.agentProfile.aiIntegrations.apiTokens[]` — stored as sha256 hash, plaintext shown to the agent ONCE on creation. Tokens look like `crt_live_<32 bytes base64url>`. Per-token scopes planned (`landing_pages:write`, `contacts:read`, `campaigns:send`, etc.) — see [../mcp/scopes-and-safety.md](../mcp/scopes-and-safety.md). | Agent mints up to 10 tokens per account in Settings → Integrations. Each token has a name (e.g. "MacBook"), createdAt, lastUsedAt. Revoke sets `revokedAt` (we keep the row for audit). Skill API endpoints are `/api/skill/me`, `/api/skill/landing-pages` (POST/GET), all token-auth, no session. Draft-only — no publish endpoint v1. Installer package lives at `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\`. Full MCP design at [../mcp/README.md](../mcp/README.md). |
 
 ### MCP servers (Claude Code)
 

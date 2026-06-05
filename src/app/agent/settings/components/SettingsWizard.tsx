@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
-import { ChevronLeft, ChevronRight, SkipForward, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Save, X } from "lucide-react";
 import SettingsStepIndicator, {
   STEPS,
   type SettingsStep,
@@ -18,6 +18,7 @@ import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
 import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
+import IntegrationsStep from "./steps/IntegrationsStep";
 // BillingStep removed — billing is now in /agent/subscription
 
 interface SettingsWizardProps {
@@ -129,6 +130,8 @@ export default function SettingsWizard({
         return <CalendarStep {...stepProps} />;
       case "gbp":
         return <GoogleBusinessStep {...stepProps} />;
+      case "integrations":
+        return <IntegrationsStep {...stepProps} />;
     }
   };
 
@@ -200,6 +203,31 @@ export default function SettingsWizard({
         </button>
 
         <div className="flex gap-3">
+          {/* Skip the entire wizard — mark as completed and bounce to sidebar mode */}
+          {!isLastStep && (
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    "Skip setup? You can come back and edit any of these settings later from /agent/settings."
+                  )
+                ) {
+                  localStorage.setItem("agent_settings_visited", "true");
+                  localStorage.setItem("agent_settings_completed", "true");
+                  window.location.href = "/agent/settings";
+                }
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isLight
+                  ? "text-gray-500 hover:bg-gray-100 border border-gray-300"
+                  : "text-gray-400 hover:bg-gray-800 border border-gray-700"
+              }`}
+            >
+              <X className="w-4 h-4" />
+              Skip wizard
+            </button>
+          )}
+
           {!isLastStep && (
             <button
               onClick={goNext}

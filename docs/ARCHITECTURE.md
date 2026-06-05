@@ -32,6 +32,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — *not yet written* |
 | Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) — *not yet written* |
 | External integrations | `src/lib/` (each integration is one file) | [integrations/](./integrations/) — *not yet written* |
+| MCP server (agent's Claude → ChatRealty) | `packages/mcp-server/` (planned) + `src/app/api/skill/*` | [mcp/](./mcp/) |
 
 ## Cross-cutting invariants
 

@@ -92,26 +92,27 @@ const UNIFIED_LISTINGS_INDEXES: IndexDefinition[] = [
     keys: { propertySubType: 1, city: 1, listPrice: 1 },
   },
 
-  // Amenity indexes
+  // Amenity indexes — DB writes RESO-style casing (poolYN, spaYN, etc.),
+  // the old lowercase-Yn indexes covered fields that didn't exist.
   {
-    name: 'poolYn_city_listPrice',
-    keys: { poolYn: 1, city: 1, listPrice: 1 },
+    name: 'poolYN_city_listPrice',
+    keys: { poolYN: 1, city: 1, listPrice: 1 },
   },
   {
-    name: 'spaYn_city',
-    keys: { spaYn: 1, city: 1 },
+    name: 'spaYN_city',
+    keys: { spaYN: 1, city: 1 },
   },
   {
-    name: 'viewYn_city_listPrice',
-    keys: { viewYn: 1, city: 1, listPrice: 1 },
+    name: 'viewYN_city_listPrice',
+    keys: { viewYN: 1, city: 1, listPrice: 1 },
   },
   {
     name: 'gatedCommunity_city',
     keys: { gatedCommunity: 1, city: 1 },
   },
   {
-    name: 'seniorCommunityYn_city',
-    keys: { seniorCommunityYn: 1, city: 1 },
+    name: 'seniorCommunityYN_city',
+    keys: { seniorCommunityYN: 1, city: 1 },
   },
   {
     name: 'garageSpaces_city',
