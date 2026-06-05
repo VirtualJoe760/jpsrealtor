@@ -30,7 +30,7 @@ export default function FiltersPanel({
   const textAccent = isLight ? 'text-blue-600' : 'text-emerald-400';
   const inputBg = isLight ? 'bg-gray-50' : 'bg-zinc-900';
   const inputBorder = isLight ? 'border-gray-300' : 'border-zinc-700';
-  const inputFocus = isLight ? 'focus:border-blue-500' : '${inputFocus}';
+  const inputFocus = isLight ? 'focus:border-blue-500' : 'focus:border-emerald-500';
   const buttonInactive = isLight ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-zinc-800 text-white hover:bg-zinc-700';
   const buttonActive = isLight ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-black';
   const hoverAccent = isLight ? 'hover:text-blue-600' : 'hover:text-emerald-400';
@@ -249,7 +249,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
                 <input
                   type="text"
@@ -257,7 +257,7 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function FiltersPanel({
                   type="number"
                   value={beds}
                   onChange={(e) => setBeds(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                   placeholder="Any"
                   min="0"
                 />
@@ -281,7 +281,7 @@ export default function FiltersPanel({
                   type="number"
                   value={baths}
                   onChange={(e) => setBaths(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                   placeholder="Any"
                   min="0"
                 />
@@ -302,7 +302,7 @@ export default function FiltersPanel({
               <select
                 value={propertySubType}
                 onChange={(e) => setPropertySubType(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none`}
               >
                 <option value="">All Types</option>
                 <option value="Single Family Residence">Single Family Home</option>
@@ -324,7 +324,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minSqft}
                   onChange={(e) => setMinSqft(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
                 <input
                   type="text"
@@ -332,7 +332,7 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxSqft}
                   onChange={(e) => setMaxSqft(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
               </div>
             </div>
@@ -347,7 +347,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minLotSize}
                   onChange={(e) => setMinLotSize(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
                 <input
                   type="text"
@@ -355,7 +355,7 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxLotSize}
                   onChange={(e) => setMaxLotSize(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
               </div>
             </div>
@@ -370,7 +370,7 @@ export default function FiltersPanel({
                   placeholder="Min"
                   value={minYear}
                   onChange={(e) => setMinYear(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
                 <input
                   type="text"
@@ -378,7 +378,7 @@ export default function FiltersPanel({
                   placeholder="Max"
                   value={maxYear}
                   onChange={(e) => setMaxYear(e.target.value.replace(/\D/g, ""))}
-                  className="w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                  className={`w-1/2 px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 />
               </div>
             </div>
@@ -389,7 +389,7 @@ export default function FiltersPanel({
               <select
                 value={landType}
                 onChange={(e) => setLandType(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none`}
               >
                 <option value="">All</option>
                 <option value="Fee Simple">Fee Simple (Own Land)</option>
@@ -497,7 +497,7 @@ export default function FiltersPanel({
                 type="number"
                 value={minGarages}
                 onChange={(e) => setMinGarages(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 placeholder="Any"
                 min="0"
               />
@@ -517,7 +517,7 @@ export default function FiltersPanel({
               <select
                 value={hoaPresence}
                 onChange={(e) => setHoaPresence(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none`}
               >
                 <option value="any">Any</option>
                 <option value="yes">Yes</option>
@@ -533,7 +533,7 @@ export default function FiltersPanel({
                 inputMode="numeric"
                 value={hoa}
                 onChange={(e) => setHoa(e.target.value.replace(/\D/g, ""))}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 placeholder="No Limit"
               />
             </div>
@@ -598,7 +598,7 @@ export default function FiltersPanel({
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md text-white ${inputFocus} focus:outline-none`}
               >
                 <option value="">All Cities</option>
                 <option value="Palm Springs">Palm Springs</option>
@@ -620,7 +620,7 @@ export default function FiltersPanel({
                 type="text"
                 value={subdivision}
                 onChange={(e) => setSubdivision(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none"
+                className={`w-full px-2 py-1.5 text-sm ${inputBg} border ${inputBorder} rounded-md placeholder-gray-500 ${inputFocus} focus:outline-none`}
                 placeholder="Search by name..."
               />
             </div>
