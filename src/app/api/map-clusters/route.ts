@@ -770,21 +770,50 @@ export async function GET(req: NextRequest) {
 
       } else if (useCityBasedClustering) {
 
-        // Query City model for all cities in viewport
-        const cities = await City.find({
-          isOcean: { $ne: true }, // Filter out ocean cities
-          listingCount: { $gte: 1 }, // Minimum 1 listing per city
+        // Per-city stats computed LIVE over the property-type-filtered listings
+        // (matchStage already carries the listingType→propertyType filter, the
+        // viewport bounds, Active status, and listPrice>0). The pre-aggregated
+        // City collection stores ALL-property-type listingCount/priceRange — so a
+        // sale view backed by it counts rentals too and drags the price floor down
+        // to a ~$1.1K monthly rent. Grouping the filtered listings by city is the
+        // same correct pattern the grid-clustering path below uses.
+        // See docs/archive/map/MAPPING_SYSTEM_ARCHITECTURE.md (City Clustering).
+        const cityStats = await UnifiedListing.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: "$city",
+              count: { $sum: 1 },
+              avgPrice: { $avg: "$listPrice" },
+              minPrice: { $min: "$listPrice" },
+              maxPrice: { $max: "$listPrice" },
+              propertyTypes: { $addToSet: "$propertyType" },
+              mlsSources: { $addToSet: "$mlsSource" },
+              centroidLat: { $avg: "$latitude" },
+              centroidLng: { $avg: "$longitude" },
+            },
+          },
+          { $sort: { count: -1 } },
+          { $limit: 100 },
+        ]);
+
+        // Curated city-center coordinates (nicer marker anchors than the listing
+        // centroid) — placement only; the stats above are the source of truth.
+        const cityDocs = await City.find({
+          isOcean: { $ne: true },
           'coordinates.latitude': { $gte: south, $lte: north },
           'coordinates.longitude': { $gte: west, $lte: east }
         })
-        .select('name listingCount coordinates avgPrice priceRange mlsSources')
-        .sort({ listingCount: -1 }) // Sort by population (listing count) descending
+        .select('name coordinates')
         .lean();
+        const coordsByName = new Map<string, any>(
+          cityDocs.map((c: any) => [c.name, c.coordinates])
+        );
 
-        console.log(`📍 Found ${cities.length} cities in viewport (zoom ${zoom})`);
+        console.log(`📍 Found ${cityStats.length} cities with ${listingType} listings in viewport (zoom ${zoom})`);
 
-        // Calculate total listing count from cities
-        listingCount = cities.reduce((sum, city: any) => sum + (city.listingCount || 0), 0);
+        // Total = filtered (property-type-correct) listing count across cities
+        listingCount = cityStats.reduce((sum, c: any) => sum + (c.count || 0), 0);
 
         // At zoom 11, if there are very few listings, skip city boundaries and show listings directly
         if (zoom >= 11 && listingCount > 0 && listingCount <= 300) {
@@ -837,23 +866,31 @@ export async function GET(req: NextRequest) {
           );
         }
 
-        // Transform City documents to cluster format
-        clusters = cities.map((city: any) => ({
-          latitude: city.coordinates?.latitude || 0,
-          longitude: city.coordinates?.longitude || 0,
-          count: city.listingCount,
-          cityName: city.name,
-          avgPrice: Math.round(city.avgPrice || 0),
-          minPrice: city.priceRange?.min || 0,
-          maxPrice: city.priceRange?.max || 0,
-          propertyTypes: ['A'], // Simplified for now
-          mlsSources: city.mlsSources || [],
-          sampleListingIds: [], // Not needed for display
-          photoUrl: null, // Photo lookup removed for performance
-          isCluster: true,
-          clusterType: 'city',
-          polygon: CITY_BOUNDARIES[city.name]?.coordinates || null,
-        }));
+        // Transform per-city aggregated stats to cluster format. Stats come from
+        // the filtered aggregation (count/min/max/avg/propertyTypes reflect the
+        // requested listingType); coordinates fall back to the listing centroid
+        // when a curated city center isn't available.
+        clusters = cityStats
+          .filter((c: any) => c._id)
+          .map((c: any) => {
+            const coords = coordsByName.get(c._id);
+            return {
+              latitude: coords?.latitude ?? c.centroidLat ?? 0,
+              longitude: coords?.longitude ?? c.centroidLng ?? 0,
+              count: c.count,
+              cityName: c._id,
+              avgPrice: Math.round(c.avgPrice || 0),
+              minPrice: Math.round(c.minPrice || 0),
+              maxPrice: Math.round(c.maxPrice || 0),
+              propertyTypes: c.propertyTypes || [],
+              mlsSources: c.mlsSources || [],
+              sampleListingIds: [], // Not needed for display
+              photoUrl: null, // Photo lookup removed for performance
+              isCluster: true,
+              clusterType: 'city',
+              polygon: CITY_BOUNDARIES[c._id]?.coordinates || null,
+            };
+          });
 
         // Set clusterPipeline to null to skip aggregation
         clusterPipeline = null;
