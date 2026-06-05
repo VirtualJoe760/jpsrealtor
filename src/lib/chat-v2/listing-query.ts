@@ -138,6 +138,53 @@ function pickModelAndFields(opts?: BuildOptions) {
  * Mirrors src/app/api/cities/[cityId]/listings/route.ts filter logic so chat
  * stats stay in sync with the carousel.
  */
+// Normalize the many propertyType conventions the chat produces onto the
+// actual schema (propertyType letter code A/B/C/D + an optional propertySubType
+// narrow). Callers are inconsistent:
+//   - the query-parser and the searchHomes tool emit lowercase subtype/listing
+//     words ("house"/"condo"/"townhouse"/"rental"/"land")
+//   - the searchListings/getAreaStats tools emit raw codes ("A".."D")
+// Previously buildListingQuery used filters.propertyType verbatim as the
+// propertyType field, so any subtype word (e.g. "house" from "average home
+// price in X") matched ZERO docs and the area looked empty. This maps them:
+//   house/home/single-family/sfr → A (all residential)
+//   condo / townhouse            → A + propertySubType narrow
+//   rental/lease/for-rent        → B (listPrice is the monthly rent)
+//   multi-family/duplex/income   → C
+//   land/lot/vacant/acreage      → D
+export function normalizePropertyType(raw?: string): {
+  propertyType: string;
+  propertySubType?: RegExp;
+} {
+  if (!raw) return { propertyType: "A" };
+  const v = String(raw).trim().toLowerCase();
+
+  // Raw MLS letter codes pass straight through.
+  if (v === "a" || v === "b" || v === "c" || v === "d") {
+    return { propertyType: v.toUpperCase() };
+  }
+
+  // Listing type → top-level propertyType code.
+  if (/\b(rental|lease|for[- ]?rent|to rent|renting)\b/.test(v) || v === "rent")
+    return { propertyType: "B" };
+  if (/\b(multi[- ]?family|multifamily|duplex|triplex|fourplex|income)\b/.test(v))
+    return { propertyType: "C" };
+  if (/\b(land|vacant|acreage)\b/.test(v) || /\blots?\b/.test(v))
+    return { propertyType: "D" };
+
+  // Residential sub-types → A + a sub-type narrow (safe within the
+  // already city/subdivision-scoped match, so the /i regex is cheap).
+  if (/\b(condo|condominium)\b/.test(v))
+    return { propertyType: "A", propertySubType: /condo/i };
+  if (/\b(town ?house|town ?home)\b/.test(v))
+    return { propertyType: "A", propertySubType: /town/i };
+
+  // house / home / single-family / sfr / anything else residential → all
+  // residential sale (NO sub-type narrow, so "average home price" counts
+  // every residential listing, not just single-family).
+  return { propertyType: "A" };
+}
+
 export async function buildListingQuery(
   scope: ListingScope,
   filters: ListingFilters,
@@ -152,12 +199,18 @@ export async function buildListingQuery(
   const { Model, priceField, dateField } = pickModelAndFields(opts);
   const dataset = opts?.dataset || "active";
 
-  const propertyType = filters.propertyType || "A";
+  const { propertyType, propertySubType } = normalizePropertyType(
+    filters.propertyType
+  );
 
   // ---- Base scope-level constraints ----
   const query: Record<string, any> = {
     propertyType,
-    propertySubType: { $nin: ["Co-Ownership", "Timeshare"] },
+    // Always drop fractional-ownership noise; additionally narrow to a
+    // residential sub-type when the query asked for one (condo/townhouse).
+    propertySubType: propertySubType
+      ? { $nin: ["Co-Ownership", "Timeshare"], $regex: propertySubType }
+      : { $nin: ["Co-Ownership", "Timeshare"] },
     [priceField]: { $exists: true, $ne: null, $gt: 0 },
   };
 

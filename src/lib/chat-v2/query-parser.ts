@@ -307,9 +307,15 @@ function extractFilters(raw: string): ListingFilters & { closedSinceDays?: numbe
   if (/\b(single[- ]story|one story|1 story)\b/i.test(lower)) f.stories = 1;
   if (/\b(two[- ]story|2 story)\b/i.test(lower)) f.stories = 2;
 
-  // ---- Property type (lowercase strings — searchHomes-style; downstream
-  // code maps these to propertySubType filtering) ----
-  if (/\b(condo|condominium)\b/i.test(lower)) (f as any).propertyType = "condo";
+  // ---- Property / listing type (lowercase tokens; normalizePropertyType in
+  // listing-query.ts maps these onto the A/B/C/D code + propertySubType) ----
+  // Listing-type words are checked first so "homes for rent" reads as a rental,
+  // not a sale. Patterns are deliberately specific to avoid this market's
+  // "Indian lease land" terminology being mistaken for rentals/land.
+  if (/\b(for rent|for lease|rentals?|to rent|renting|rent)\b/i.test(lower)) (f as any).propertyType = "rental";
+  else if (/\b(multi[- ]?family|multifamily|duplex|triplex|fourplex|income propert(?:y|ies))\b/i.test(lower)) (f as any).propertyType = "multifamily";
+  else if (/\b(vacant land|land for sale|raw land|acreage|vacant lots?)\b/i.test(lower)) (f as any).propertyType = "land";
+  else if (/\b(condo|condominium)\b/i.test(lower)) (f as any).propertyType = "condo";
   else if (/\b(townhouse|town home|townhome)\b/i.test(lower)) (f as any).propertyType = "townhouse";
   else if (/\b(single[- ]family|sfr|house|home)\b/i.test(lower) && !/\bhomes?\s+in\b/i.test(lower)) {
     // Only set "house" if it's a clear noun, not "homes in Beverly Hills"
