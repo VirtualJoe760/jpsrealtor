@@ -83,9 +83,10 @@ const TEMPLATES = {
     invocation: {
       generateNarration: "node scripts/generate-narration.js <slug> [voice_id]",
       prepEmpties: "node scripts/reel-prep-empties.js <slug>",
-      kickoffKling: "node scripts/reel-kickoff-kling.js <slug>",
-      kickoffLuma: "node scripts/reel-kickoff-luma.js <slug>",
+      smokeComfy: "node scripts/reel-smoke-comfyui.js  (single-clip smoke test, 1-Makena great room)",
       kickoffComfy: "(forthcoming) node scripts/reel-kickoff-comfyui.js <slug>",
+      kickoffKling: "node scripts/reel-kickoff-kling.js <slug>     (fallback)",
+      kickoffLuma: "node scripts/reel-kickoff-luma.js <slug>       (fallback, key not configured)",
     },
     outputs: {
       empties: "4 PNGs at jpsrealtor/content/<slug>/generated/empties/<shot-id>.png",
@@ -95,9 +96,26 @@ const TEMPLATES = {
     },
     referenceListings: ["1-makena"],
     estimatedCost:
-      "Kling pro+std: ~$2.50/reel  ·  RunPod B200 self-hosted: ~$1.50/reel  ·  RunPod H100 self-hosted: ~$0.45/reel  ·  RunPod 4090 Serverless: ~$0.25/reel",
-    estimatedTime: "~10 minutes end-to-end (audio + empties + 9 video gens + stitch)",
-    status: "wip-phase-2-video-provider-selection",
+      "RunPod A40 self-hosted (CHOSEN, proven 2026-06-05): ~$0.02/reel warm  ·  Kling pro+std: ~$2.50/reel  ·  Luma ray-2: ~$2.50/reel (key not configured)",
+    estimatedTime:
+      "Warm A40: ~3 minutes end-to-end. Per-clip: ~6s warm, ~89s cold (first-time model load).",
+    proofOfWork:
+      "First successful WAN 2.2 14B I2V generation on 2026-06-05: 1-Makena great room empty→staged, 480x832 9:16, 81 frames, 4-step Lightning LoRA, completed in 6.4s warm on A40.",
+    comfyConfig: {
+      provider: "RunPod A40 pod (HearmemanAI ComfyUI WAN template)",
+      url: "COMFYUI_URL env var",
+      model: "WAN 2.2 14B I2V (wan2.2_i2v_high_noise_14B_fp16 + wan2.2_i2v_low_noise_14B_fp16, two-expert MoE)",
+      vae: "wan_2.1_vae.safetensors  (NOT wan2.2_vae — 14B I2V was trained with the 2.1 VAE; using 2.2 VAE causes 48 vs 16 channel mismatch)",
+      textEncoder: "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      clipVision: "clip_vision_h.safetensors  (from Wan_2.1_ComfyUI_repackaged)",
+      loras: [
+        "wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step_1022.safetensors",
+        "wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors",
+      ],
+      latentNode: "WanImageToVideo  (NOT Wan22ImageToVideoLatent or WanFirstLastFrameToVideo — those are for the 5B model with the 48-ch 2.2 VAE)",
+      output: "VHS_VideoCombine → h264 mp4, save_output:true required",
+    },
+    status: "wip-phase-3-production-pipeline-build (smoke test passed, building kickoff + stitch)",
   },
 };
 
