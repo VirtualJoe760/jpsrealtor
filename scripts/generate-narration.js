@@ -12,6 +12,7 @@
 require("dotenv").config({ path: ".env.local" });
 const fs = require("fs");
 const path = require("path");
+const { storage } = require("./lib/content-storage");
 
 const SLUG = process.argv[2];
 const VOICE_OVERRIDE = process.argv[3]; // optional voice_id override
@@ -61,7 +62,15 @@ const MODEL_ID = "eleven_turbo_v2_5"; // fast, natural
 
   const buf = Buffer.from(await r.arrayBuffer());
   fs.writeFileSync(OUT_FILE, buf);
-  console.log(`Saved: ${OUT_FILE} (${(buf.length / 1024).toFixed(1)} KB)`);
+  console.log(`Saved local: ${OUT_FILE} (${(buf.length / 1024).toFixed(1)} KB)`);
+
+  // Mirror to Cloudinary (source of truth)
+  try {
+    const url = await storage(SLUG).putLocal(OUT_FILE, "generated/narration.mp3");
+    console.log(`Cloudinary:  ${url}`);
+  } catch (e) {
+    console.warn(`(cloudinary mirror failed: ${e.message})`);
+  }
 
   // Measure duration via ffprobe (bundled with ffmpeg)
   const { execSync } = require("child_process");

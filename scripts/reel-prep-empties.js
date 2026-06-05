@@ -5,8 +5,10 @@
 // 2.5 Flash Image (NanoBanana) — furniture, decor, rugs, art removed,
 // architecture preserved.
 //
-// Reads scripts/data/reels/<slug>.js for the config (which photos, etc).
-// Writes empty versions to temp-images/<slug>/empties/.
+// Cloudinary is the source of truth. Reads source photos from
+// jpsrealtor/content/<slug>/source/ (pulled into the local cache if
+// missing) and writes empties to jpsrealtor/content/<slug>/generated/empties/.
+// Local temp-images/<slug>/{originals,empties}/ remains as a dev cache.
 //
 //   usage: node scripts/reel-prep-empties.js <slug>
 
@@ -14,13 +16,16 @@ require("dotenv").config({ path: ".env.local" });
 const { GoogleGenAI } = require("@google/genai");
 const fs = require("fs");
 const path = require("path");
+const { storage } = require("./lib/content-storage");
 
 const SLUG = process.argv[2];
 if (!SLUG) { console.error("usage: node scripts/reel-prep-empties.js <slug>"); process.exit(1); }
 
 const CFG = require(path.join(__dirname, "data", "reels", `${SLUG}.js`));
-const ORIGINALS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "originals");
-const OUT_DIR = path.join(__dirname, "..", "temp-images", SLUG, "empties");
+const STORE = storage(SLUG);
+const LOCAL_BASE = path.join(__dirname, "..", "temp-images", SLUG);
+const ORIGINALS_DIR = path.join(LOCAL_BASE, "originals");
+const OUT_DIR = path.join(LOCAL_BASE, "empties");
 
 const EMPTY_PROMPT = (roomDesc) => `Take this image of a ${roomDesc} and REMOVE every piece of movable furniture, decor, and styling. Specifically remove: sofas, sectionals, chairs, ottomans, beds, mattresses, bedding, pillows, throws, rugs, artwork, sculptures, vases, books, decorative objects, plants in movable pots, table lamps, area rugs.
 
@@ -52,8 +57,21 @@ function readB64(filePath) {
   const t0 = Date.now();
   const results = await Promise.all(
     targets.map(async (shot) => {
+      // Ensure source photo is local (fetch from Cloudinary if not cached)
       const srcPath = path.join(ORIGINALS_DIR, shot.photo);
-      if (!fs.existsSync(srcPath)) return { id: shot.id, error: `missing ${srcPath}` };
+      if (!fs.existsSync(srcPath)) {
+        try {
+          await STORE.ensureLocal(`source/${shot.photo}`);
+          // ensureLocal puts to STORE.localPath('source/<photo>') — copy to ORIGINALS_DIR
+          const fetched = STORE.localPath(`source/${shot.photo}`);
+          if (fetched !== srcPath) {
+            fs.mkdirSync(path.dirname(srcPath), { recursive: true });
+            fs.copyFileSync(fetched, srcPath);
+          }
+        } catch (e) {
+          return { id: shot.id, error: `missing source and cloud fetch failed: ${e.message}` };
+        }
+      }
       const src = readB64(srcPath);
       try {
         const response = await ai.models.generateContent({
@@ -69,9 +87,13 @@ function readB64(filePath) {
         const parts = response?.candidates?.[0]?.content?.parts || [];
         const imagePart = parts.find((p) => p?.inlineData?.data);
         if (!imagePart) return { id: shot.id, error: "no image returned" };
+        const buf = Buffer.from(imagePart.inlineData.data, "base64");
+        // Write local cache
         const outPath = path.join(OUT_DIR, `${shot.id}.png`);
-        fs.writeFileSync(outPath, Buffer.from(imagePart.inlineData.data, "base64"));
-        return { id: shot.id, outPath, kb: (fs.statSync(outPath).size / 1024).toFixed(0) };
+        fs.writeFileSync(outPath, buf);
+        // Mirror to Cloudinary (source of truth)
+        const url = await STORE.putBuffer(buf, `generated/empties/${shot.id}.png`, { mime: "image/png" });
+        return { id: shot.id, outPath, url, kb: (buf.length / 1024).toFixed(0) };
       } catch (e) {
         return { id: shot.id, error: e.message };
       }

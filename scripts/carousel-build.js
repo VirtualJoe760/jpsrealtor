@@ -1,6 +1,7 @@
 // scripts/carousel-build.js
 //
-// Unified IG carousel builder. Takes a config from scripts/data/<slug>.js
+// Unified IG carousel builder for the "simple-luxury-carousel" template.
+// Takes a config from scripts/data/carousels/<slug>.js
 // and produces all 10 slides into temp-images/<slug>/_edits/.
 //
 //   usage: node scripts/carousel-build.js <slug>
@@ -28,7 +29,7 @@ cloudinary.config({
 const SLUG = process.argv[2];
 if (!SLUG) { console.error("usage: node scripts/carousel-build.js <slug>"); process.exit(1); }
 
-const CFG = require(path.join(__dirname, "data", `${SLUG}.js`));
+const CFG = require(path.join(__dirname, "data", "carousels", `${SLUG}.js`));
 
 const ORIGINALS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "originals");
 const EDITS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "_edits");
