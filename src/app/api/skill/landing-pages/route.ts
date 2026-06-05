@@ -162,7 +162,9 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
-  const doc = await Article.create({
+  let doc;
+  try {
+  doc = await Article.create({
     title,
     slug,
     excerpt,
@@ -212,6 +214,13 @@ export async function POST(req: NextRequest) {
           { id: "phone", label: "Phone Number", type: "tel", required: false },
         ],
   });
+  } catch (err: any) {
+    console.error("[create_landing_page] Article.create failed:", err?.message, err?.errors);
+    return NextResponse.json(
+      { error: "create_failed", message: err?.message || String(err), validation: err?.errors ? Object.fromEntries(Object.entries(err.errors).map(([k, v]: any) => [k, v?.message])) : null },
+      { status: 500, headers: NO_STORE }
+    );
+  }
 
   // Build URLs. We don't know the host the skill is running against, so reuse
   // the /me logic: prefer custom domain → subdomain → jpsrealtor.com.

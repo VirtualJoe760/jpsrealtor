@@ -249,9 +249,10 @@ const ArticleSchema = new Schema<IArticle>(
     formRecipients: String,
     formDisclaimer: String,
     formFields: [{
-      id: String,
-      label: String,
-      type: String,
+      _id: false,
+      id: { type: String },
+      label: { type: String },
+      type: { type: String },
       required: { type: Boolean, default: false },
       options: [String],
     }],
