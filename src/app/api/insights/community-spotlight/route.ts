@@ -8,6 +8,15 @@ import UnifiedListing from "@/models/unified-listing";
 import { normalizeSubdivisionName, getCityFromNonHOA } from "@/app/utils/subdivisionUtils";
 
 export async function GET(req: NextRequest) {
+  const res = await handler(req);
+  // Per-user data (the user's preferred communities/areas) — override the vercel.json
+  // immutable catch-all so it isn't cached into a shared CDN node and leaked to the
+  // next visitor. See docs/ARCHITECTURE.md (cache trap invariant).
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
+
+async function handler(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 

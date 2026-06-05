@@ -1,7 +1,7 @@
 ---
 title: Tech Debt / Known Issues
 status: current
-last_verified: 2026-06-02
+last_verified: 2026-06-05
 ---
 
 # Tech Debt / Known Issues
@@ -21,7 +21,7 @@ Severity legend:
 
 | Severity | Issue | Location | Impact | Recommended fix |
 |---|---|---|---|---|
-| 🟠 high | `vercel.json` catch-all caches every path as `public, max-age=31536000, immutable` — including `/api/*` | `F:\web-clients\joseph-sardella\jpsrealtor\vercel.json` (the `/(.*)` rule) | Any dynamic API route that forgets to set its own `Cache-Control: no-store` will freeze per-user / per-domain data in browser/CDN caches for a year. Recurring class of bug. | Scope the catch-all to `/_next/static/*` and `/(.*\.(js\|css\|woff2\|png\|jpg\|svg\|webp\|ico))$`. Add a sane default for HTML (`s-maxage=60, stale-while-revalidate=300`). |
+| 🟠 high | `vercel.json` catch-all caches every path as `public, max-age=31536000, immutable` — including `/api/*` | `F:\web-clients\joseph-sardella\jpsrealtor\vercel.json` (the `/(.*)` rule) | Any dynamic API route that forgets to set its own `Cache-Control: no-store` will freeze per-user / per-domain data in browser/CDN caches for a year. Recurring class of bug. (`/api/insights/*` patched 2026-06-05 — see Resolved.) | Scope the catch-all to `/_next/static/*` and `/(.*\.(js\|css\|woff2\|png\|jpg\|svg\|webp\|ico))$`. Add a sane default for HTML (`s-maxage=60, stale-while-revalidate=300`). |
 | 🟠 high | Most public-facing API routes still scope content by `session.user.id` instead of the domain owner | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\` (audit pending) | Class of bug. Visitor sees the wrong agent's content on apex domains, or empty pages, or leaked content from another tenant. Bethany-article-on-jpsrealtor (May 18) was one instance. | Grep every API route under `src/app/api/`, classify each as agent-private (correctly uses `session.user.id`) vs public-facing (must use `resolveDomainOwner`), then migrate the public-facing ones. Reference impl: `/api/articles/list/route.ts`. |
 | 🟠 high | `AGENT_DOMAIN_MAP` in `src/proxy.ts` is hardcoded empty | `F:\web-clients\joseph-sardella\jpsrealtor\src\proxy.ts:18-20` | Custom agent domains currently get content resolution via `DomainRegistry` lookup inside `resolveDomainOwner`, but the proxy's static map never reads from it. If a custom domain ever needs URL rewriting at the proxy layer (e.g. `/` → `/agent/{id}`), it'll silently miss. | Either dynamic-load from `DomainRegistry` at edge (with KV cache) or document explicitly why the static map is intentionally unused. |
 | 🟠 high | `src/proxy.ts` hardcodes `http://localhost:3000/` as the non-admin redirect on `agent.chatrealty.io` | `F:\web-clients\joseph-sardella\jpsrealtor\src\proxy.ts:106` | In production, real users who hit `agent.chatrealty.io` without admin get sent to localhost. Silent failure for anyone external. | Use `new URL("/", request.url)` (request origin) or env-aware `process.env.NEXTAUTH_URL`. |
@@ -55,6 +55,7 @@ Recent fixes from the May 2026 work. Format: `date — sha — one-liner`.
 | 2026-05-19 | `b3321103` | Moved GSC service-account credentials out of project root into `src/.credentials/` so they stop appearing in dir listings. |
 | 2026-05-19 | `ef2000be`, `375bd0a0` | Root directory cleanup — removed ~1.27 GB of stale root-level artifacts and rotated SSH keys. |
 | 2026-05-21 | `106d0b9c` | docs-v2/ foundation + first 3 priority area docs (routing, auth, multi-tenant). |
+| 2026-06-05 | _(pending)_ | `/api/insights/community-spotlight` + `/api/insights/favorite-spotlight` now stamp `Cache-Control: no-store` on every response (handler wrapper) and get a dedicated `/api/insights/(.*)` no-store rule in `vercel.json`. These render the homepage's per-user "Favorites Spotlight" + "Real Estate in {city}" sections from `swipeAnalytics`/`likedListings`; previously they inherited the immutable catch-all and could leak one user's favorites/preferred areas into a shared CDN node. |
 
 ---
 
