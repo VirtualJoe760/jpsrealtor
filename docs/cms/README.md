@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-06-02
+last_verified: 2026-06-05
 related: [../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md]
 supersedes: docs/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -148,6 +148,39 @@ never leaves the server (test/save endpoints return only status + last4).
 `User.agentProfile.aiIntegrations.apiTokens[]`. The plaintext is returned
 ONCE on creation and shown to the agent in a single-time reveal modal in
 Settings → Integrations. See `../integrations/README.md` for the auth contract.
+
+## Newsletter (backend — June 2026)
+
+A native newsletter system (Resend + Mongo), domain-scoped like articles. The
+public signup replaces the formerly-dead `/newsletter-signup` sidebar link. **v1
+ships the backend + signup page only** — the in-CMS composer and AI-generated
+newsletter workflow are a deliberate follow-up.
+
+| Piece | File |
+|---|---|
+| Subscriber model (per-owner list, unique `{ownerId,email}`, `unsubscribeToken`) | `src/models/NewsletterSubscriber.ts` |
+| Issue model (draft → sending → sent/failed) | `src/models/Newsletter.ts` |
+| Public signup (Turnstile + rate-limit + `resolveDomainOwner` + `no-store`) | `POST /api/newsletter/subscribe` |
+| One-click unsubscribe (GET page + RFC 8058 POST) | `/api/newsletter/unsubscribe?token=` |
+| Subscriber list + status counts (auth, owner-scoped) | `GET /api/newsletter/subscribers` |
+| Issue CRUD (auth, draft-only edits) | `GET/POST /api/newsletter/issues`, `GET/PATCH/DELETE /api/newsletter/issues/[id]` |
+| Send via Resend (batched 100s, per-recipient unsubscribe + `List-Unsubscribe` headers) | `POST /api/newsletter/issues/[id]/send` |
+| Public signup page | `src/app/newsletter-signup/page.tsx` |
+
+- **Subscribers are scoped to `resolveDomainOwner`** at signup (the domain owner
+  builds their own list); the CMS routes scope to `session.user.id` (the agent
+  manages their own). On `jpsrealtor.com` these are the same user.
+- **Turnstile can't be exercised on localhost** — the sitekey is registered for
+  `chatrealty.io` / `jpsrealtor.com` / `josephsardella.com` only (error 110200),
+  so the captcha-gated subscribe only completes on those domains. Same limit as
+  every other captcha form.
+- **Sending uses Resend** (`RESEND_API_KEY`), `from` = `EMAIL_FROM` (fallback
+  `newsletter@jpsrealtor.com`). Each email carries a per-recipient unsubscribe
+  link + `List-Unsubscribe`/`List-Unsubscribe-Post` headers for bulk-sender
+  compliance. The send route claims the issue (`status: sending`) before sending
+  so a double-click can't double-send.
+- **Not yet built:** the CMS UI (compose/preview/send) and AI-generated drafts.
+  Issues are HTML in `bodyHtml`; the future composer/AI fills that field.
 
 ## Gotchas
 
