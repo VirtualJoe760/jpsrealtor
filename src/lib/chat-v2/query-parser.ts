@@ -361,6 +361,26 @@ function extractFilters(raw: string): ListingFilters & { closedSinceDays?: numbe
   const garageM = lower.match(/\b(\d+)[- ]?car garage\b/i);
   if (garageM) f.garageSpaces = parseInt(garageM[1], 10);
 
+  // ---- Recency: "new this week", "just listed", "newly listed" ----
+  if (/\b(just listed|newly listed|new listings?|new to (?:the )?market|just (?:hit|came on|on) the market|new this week|hit the market)\b/i.test(lower)) {
+    f.maxDaysOnMarket = 7;
+  } else if (/\b(?:new|listed) (?:this|in the last|last) month\b/i.test(lower)) {
+    f.maxDaysOnMarket = 30;
+  }
+
+  // ---- Sort ----
+  // The listing-search default is price-descending; only set sort when the
+  // query implies an explicit ordering ("cheapest" must NOT show priciest first).
+  if (/\b(cheapest|least expensive|lowest[- ]priced?|most affordable|best deals?|bargains?)\b/i.test(lower)) {
+    f.sort = "priceAsc";
+  } else if (/\b(cheap|affordable|inexpensive|budget[- ]friendly)\b/i.test(lower)) {
+    f.sort = "priceAsc";
+  } else if (/\b(most expensive|priciest|highest[- ]priced?|luxury|high[- ]end|top of the line)\b/i.test(lower)) {
+    f.sort = "priceDesc";
+  } else if (/\b(newest|most recent|latest|freshest)\b/i.test(lower)) {
+    f.sort = "newest";
+  }
+
   // ---- Stories ----
   if (/\b(single[- ]story|one story|1 story)\b/i.test(lower)) f.stories = 1;
   if (/\b(two[- ]story|2 story)\b/i.test(lower)) f.stories = 2;

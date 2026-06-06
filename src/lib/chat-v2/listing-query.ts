@@ -74,6 +74,10 @@ export interface ListingFilters {
   hasHOA?: boolean;
   minHOA?: number;
   maxHOA?: number;
+  // Recency window for active listings — "new this week" → 7, "this month" → 30.
+  maxDaysOnMarket?: number;
+  // Result ordering. Default (undefined) keeps the legacy price-descending sort.
+  sort?: "priceAsc" | "priceDesc" | "newest";
 }
 
 export interface BuildOptions {
@@ -380,6 +384,14 @@ export async function buildListingQuery(
     if (filters.minYear) f.$gte = filters.minYear;
     if (filters.maxYear) f.$lte = filters.maxYear;
     query.yearBuilt = f;
+  }
+
+  // Recency — "new this week / just listed". Only meaningful for active
+  // listings, where onMarketDate is the relevant timestamp.
+  if (dataset === "active" && filters.maxDaysOnMarket && filters.maxDaysOnMarket > 0) {
+    const since = new Date();
+    since.setDate(since.getDate() - filters.maxDaysOnMarket);
+    query.onMarketDate = { $gte: since };
   }
 
   // Amenity booleans — across ~76k listings synced from 8 MLSs, three
