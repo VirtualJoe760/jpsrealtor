@@ -15,8 +15,8 @@ import { getAboutData, Reveal } from "./aboutShared";
 import AboutBackground from "./AboutBackground";
 import { Phone, Mail, MapPin, Award, Star, MessageCircle, Calendar, CheckCircle2, Building2, ChevronDown } from "lucide-react";
 
-// Raw-three.js galaxy (lazy — keeps `three` out of the main bundle, client-only).
-const GalaxyBackground = nextDynamic(() => import("./GalaxyBackground"), { ssr: false });
+// Raw-three.js scroll morph (lazy — keeps `three` out of the main bundle, client-only).
+const ParticleMorph = nextDynamic(() => import("./ParticleMorph"), { ssr: false });
 
 /** Swipeable carousel on mobile, grid on desktop — same markup. */
 function SwipeRow({ children, cols = "md:grid-cols-3" }: { children: React.ReactNode; cols?: string }) {
@@ -129,32 +129,32 @@ export default function AboutClient() {
         </motion.div>
       </section>
 
-      {/* ── Story (rotating spiral galaxy backdrop) ───────────── */}
+      {/* ── Scroll-scrubbed particle morph through Coachella Valley landmarks ── */}
+      <ParticleMorph
+        images={["/about-morph/01-ferriswheel.jpg", "/about-morph/02-clubhouse.jpg", "/about-morph/03-mcmhouse.jpg", "/about-morph/04-golf.jpg"]}
+        labels={["Coachella", "Indian Wells", "Palm Springs", "Mountain-View Golf"]}
+        heading="Rooted in the Coachella Valley"
+      />
+
+      {/* ── Story ─────────────────────────────────────────────── */}
       {d.storyParas.length > 0 && (
-        <section className="relative overflow-hidden py-20 md:py-28 bg-[#050308]">
-          <GalaxyBackground />
-          {/* blend into the next section at the bottom */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050308]" />
-          {/* legibility: uniform on mobile; on desktop darken the right (text) column while leaving the galaxy glowing around the portrait on the left */}
-          <div className="absolute inset-0 bg-black/50 md:hidden" />
-          <div className="absolute inset-0 hidden md:block bg-gradient-to-l from-black/92 from-35% via-black/55 to-transparent" />
-          <div className="relative z-10 max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+        <section className="py-16 md:py-28">
+          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10 md:gap-16 items-start">
             {d.headshot && (
-              // Plain (always-opaque) wrapper — over the galaxy, an opacity reveal would let stars bleed through the portrait.
-              <div className="order-1">
-                <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto md:max-w-none md:sticky md:top-24 bg-[#0a0a12]" style={{ boxShadow: `0 30px 70px -25px ${d.brand}66, 0 0 80px -8px ${d.brand}66` }}>
+              <Reveal y={50} className="order-1">
+                <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto md:max-w-none md:sticky md:top-24" style={{ boxShadow: `0 30px 70px -25px ${d.brand}66` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={d.headshot} alt={d.name} className="w-full h-full object-cover" />
                 </div>
-              </div>
+              </Reveal>
             )}
             <div className={`order-2 ${d.headshot ? "" : "md:col-span-2 max-w-3xl mx-auto"}`}>
               <Reveal>
                 <span className="text-sm font-semibold tracking-widest uppercase" style={{ color: d.brand }}>About</span>
-                <h2 className="text-3xl md:text-5xl font-bold mt-2 mb-6 text-white" style={{ textShadow: "0 2px 18px rgba(0,0,0,0.7)" }}>Meet {d.name}</h2>
+                <h2 className={`text-3xl md:text-5xl font-bold mt-2 mb-6 ${text}`}>Meet {d.name}</h2>
               </Reveal>
               {d.storyParas.map((p, i) => (
-                <Reveal key={i} delay={i * 0.05}><p className="mb-5 text-base md:text-lg leading-relaxed text-gray-100" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.85)" }}>{p}</p></Reveal>
+                <Reveal key={i} delay={i * 0.05}><p className={`mb-5 text-base md:text-lg leading-relaxed ${sub}`}>{p}</p></Reveal>
               ))}
             </div>
           </div>
