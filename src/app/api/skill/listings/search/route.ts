@@ -155,15 +155,19 @@ export async function GET(req: NextRequest) {
   } as const;
 
   const col = UnifiedListing.collection;
-  const [items, total] = await Promise.all([
-    col
-      .find(query, { projection })
-      .sort({ onMarketDate: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray(),
-    col.countDocuments(query),
-  ]);
+  // Fetch one extra row to derive hasMore instead of countDocuments(). An exact
+  // count scans EVERY match (the pool/era filters can't be served from an index,
+  // so it's a collection-ish scan) and ran in parallel with find — i.e. it set
+  // the floor on the warm query time. Exact total only when results fit one page.
+  const docs = await col
+    .find(query, { projection })
+    .sort({ onMarketDate: -1 })
+    .skip(skip)
+    .limit(limit + 1)
+    .toArray();
+  const hasMore = docs.length > limit;
+  const items = hasMore ? docs.slice(0, limit) : docs;
+  const total = hasMore ? null : skip + items.length;
 
   return NextResponse.json(
     {
@@ -203,7 +207,7 @@ export async function GET(req: NextRequest) {
       total,
       skip,
       limit,
-      hasMore: skip + items.length < total,
+      hasMore,
       appliedPropertyType: ptResult.applied,
       propertyTypeRecognized: ptResult.recognized,
     },
