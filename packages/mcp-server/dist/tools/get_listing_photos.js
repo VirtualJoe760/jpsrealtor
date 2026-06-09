@@ -26,12 +26,11 @@ async function fetchImageBlock(url) {
 }
 exports.get_listing_photos = {
     name: "get_listing_photos",
-    description: "Returns ordered photo URLs for an MLS listing, plus a galleryUrl link to the full public gallery. " +
-        "IMPORTANT: plain photo URLs do NOT render in most chat clients (Claude shows a broken-image icon). " +
-        "To actually SHOW the home's photos to a person, set `embed` to the number of photos to display (e.g. embed: 8) — " +
-        "those come back as inline RENDERED images. Leave embed unset/0 only when you just need URLs programmatically " +
-        "(e.g. picking a hero image for create_landing_page). `limit` controls how many URLs are listed (default 12, max 60); " +
-        "totalAvailable + truncated tell you whether the listing has more.",
+    description: "Shows a home's photos. BY DEFAULT returns the first 6 photos as inline RENDERED images that display directly in " +
+        "chat, plus the photo URLs and a galleryUrl link to the full public gallery. (Plain URLs alone do NOT render in chat " +
+        "clients — Claude shows a broken-image icon — which is why this embeds real images by default.) Tune with `embed`: " +
+        "raise it (up to 12) to show more, lower it to show fewer, or set embed:0 for URL-only when you just need a hero " +
+        "image URL programmatically (e.g. for create_landing_page). `limit` controls how many URLs are listed (default 12, max 60).",
     inputSchema: {
         type: "object",
         properties: {
@@ -42,8 +41,8 @@ exports.get_listing_photos = {
             },
             embed: {
                 type: "number",
-                description: "Number of photos to return as inline RENDERED images so they display in chat (0-12, default 0). " +
-                    "Set this (e.g. 8) whenever a person wants to SEE the home. Leave 0 for URL-only programmatic use.",
+                description: "How many photos to return as inline RENDERED images so they display in chat (0-12, default 6). " +
+                    "Raise to show more, lower to show fewer, or set 0 for URL-only (e.g. picking a landing-page hero).",
             },
         },
         required: ["listingKey"],
@@ -57,7 +56,11 @@ exports.get_listing_photos = {
         const data = await (0, http_js_1.request)(config, `/api/skill/listings/${encodeURIComponent(listingKey)}/photos`, { query });
         const galleryUrl = `${config.apiBase.replace(/\/+$/, "")}/mls-listings/${encodeURIComponent(listingKey)}`;
         const enriched = { ...data, galleryUrl };
-        const embedN = typeof embed === "number" ? Math.max(0, Math.min(12, Math.floor(embed))) : 0;
+        // Default to embedding 6 rendered photos so "show me this home" displays
+        // images without the caller having to opt in (and even if a stale client
+        // schema doesn't send `embed` at all). embed:0 opts out for URL-only use.
+        const DEFAULT_EMBED = 6;
+        const embedN = typeof embed === "number" ? Math.max(0, Math.min(12, Math.floor(embed))) : DEFAULT_EMBED;
         const photos = Array.isArray(data?.photos) ? data.photos : [];
         // URL-only path (backward compatible): return the JSON data as before.
         if (embedN === 0 || photos.length === 0) {
