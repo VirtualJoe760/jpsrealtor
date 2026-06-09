@@ -53,7 +53,7 @@ interface RegistryDomain {
   ownerType: string;
   target: { type: string; path: string; agentSubdomain?: string };
   vercel: { registered: boolean; verified: boolean; sslStatus: string };
-  cloudflare: { registered: boolean; status?: string; zoneId?: string; nameserversUpdated?: boolean; nameservers?: string[]; registrar?: string; nameserverCheckedAt?: string };
+  cloudflare: { registered: boolean; status?: string; zoneId?: string; nameserversUpdated?: boolean; nameservers?: string[]; registrar?: string; nameserverCheckedAt?: string; lastError?: string; lastAttemptAt?: string };
   gsc: { registered: boolean; verified: boolean };
   analytics: { gaEnabled: boolean; measurementId?: string };
   createdAt: string;
@@ -858,13 +858,14 @@ export default function AdminDomainsPage() {
             </div>
           ) : (
             <>
-            {/* Cloudflare provision button for unregistered domains */}
-            {registryDomains.some((d) => !d.cloudflare.registered && d.type !== "agent_subdomain") && (
+            {/* Cloudflare provision button for unregistered domains (excludes hard failures,
+                which get their own red banner below). */}
+            {registryDomains.some((d) => !d.cloudflare.registered && d.cloudflare.status !== "failed" && d.type !== "agent_subdomain") && (
               <div className={`${cardBg} border ${border} rounded-xl p-4 mb-4 flex items-center justify-between`}>
                 <div className="flex items-center gap-2">
                   <Cloud size={18} className="text-orange-500" />
                   <span className={`text-sm ${textPrimary}`}>
-                    {registryDomains.filter((d) => !d.cloudflare.registered && d.type !== "agent_subdomain").length} domain(s) not yet on Cloudflare
+                    {registryDomains.filter((d) => !d.cloudflare.registered && d.cloudflare.status !== "failed" && d.type !== "agent_subdomain").length} domain(s) not yet on Cloudflare
                   </span>
                 </div>
                 <button
@@ -890,6 +891,53 @@ export default function AdminDomainsPage() {
                 >
                   Provision All on Cloudflare
                 </button>
+              </div>
+            )}
+            {/* Failed Cloudflare provisioning banner — surfaces the persisted error so a
+                403/permission failure doesn't silently vanish after the approval toast. */}
+            {registryDomains.some((d) => d.cloudflare.status === "failed") && (
+              <div className={`${cardBg} border border-red-500/40 rounded-xl p-4 mb-4`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AlertTriangle size={18} className="text-red-500 flex-shrink-0" />
+                    <span className={`text-sm ${textPrimary}`}>
+                      {registryDomains.filter((d) => d.cloudflare.status === "failed").length} domain(s) failed Cloudflare provisioning
+                    </span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/domains/registry/cloudflare-provision", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ all: true }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          toast.success(`Cloudflare: ${data.succeeded}/${data.total} domains provisioned`);
+                          fetchData();
+                        } else {
+                          toast.error(data.error || "Retry failed");
+                        }
+                      } catch {
+                        toast.error("Retry failed");
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+                  >
+                    Retry Provisioning
+                  </button>
+                </div>
+                <ul className={`mt-2 text-xs ${textSecondary} space-y-1`}>
+                  {registryDomains
+                    .filter((d) => d.cloudflare.status === "failed")
+                    .slice(0, 4)
+                    .map((d) => (
+                      <li key={d._id} className="truncate">
+                        <span className="font-medium">{d.domain}</span>: {d.cloudflare.lastError || "unknown error"}
+                      </li>
+                    ))}
+                </ul>
               </div>
             )}
             {/* Pending nameserver updates banner */}
@@ -977,6 +1025,10 @@ export default function AdminDomainsPage() {
                               ) : (
                                 <Clock size={16} className="mx-auto text-amber-500" />
                               )
+                            ) : rd.cloudflare.status === "failed" ? (
+                              <span title={`Cloudflare provisioning failed: ${rd.cloudflare.lastError || "unknown error"}`}>
+                                <AlertTriangle size={16} className="mx-auto text-red-500" />
+                              </span>
                             ) : (
                               <XCircle size={16} className="mx-auto text-gray-400" />
                             )}

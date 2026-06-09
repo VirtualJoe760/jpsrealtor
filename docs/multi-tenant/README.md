@@ -1,7 +1,7 @@
 ---
 title: Multi-tenant scoping (resolveDomainOwner)
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-06-08
 related: [../routing/README.md, ../auth/README.md]
 supersedes: docs/multi-tenant/index.md
 ---
@@ -103,7 +103,7 @@ The systematic fix is to grep every API route for `session.user.id`, classify ea
 - **The fallback returns Joseph.** If `PRIMARY_AGENT_EMAIL` is misconfigured (or that user doesn't exist), the resolver returns `null` and the caller has to handle that defensively. Look at `/api/articles/list`'s handling: if `ownerId` is null AND admin-bypass isn't set, return empty rather than leaking the whole network.
 - **Mongoose casts the string id to ObjectId** when you pass `filters.authorId = ownerId` and the schema field is ObjectId. So you don't need to wrap in `new mongoose.Types.ObjectId(...)` unless using raw Mongo collection access.
 - **`AGENT_DOMAIN_MAP` in `proxy.ts` is empty.** Custom-domain agents get resolved by content endpoints via the chain above, but the proxy doesn't know about them. If a custom domain ever needs URL rewriting (`/` → `/agent/{id}`), that gap matters.
-- **`DomainRegistry` lookup uses raw mongo.** The collection isn't a Mongoose model in `src/lib/resolveDomainOwner.ts` — it uses `mongoose.connection.db.collection("domainregistries")`. Watch case sensitivity (`domainregistries`, lowercase, no underscore).
+- **`DomainRegistry` lookup uses raw mongo — AND reads the WRONG collection.** `src/lib/resolveDomainOwner.ts:100` queries `mongoose.connection.db.collection("domainregistries")`, but the `DomainRegistry` Mongoose model (`src/models/DomainRegistry.ts:285`) is bound to `collection: "domain_registry"`. So the admin approval/provisioning flow writes a custom domain into `domain_registry` while this resolver reads `domainregistries` — they're two different collections (1 vs 4 docs as of 2026-06-08). A newly-approved custom domain may not resolve to its agent here; it only works if `agentProfile.customDomain` (the earlier resolver step) is also set. Tracked in `../tech-debt.md`. Fix = unify on one collection for both the model and the resolver, then migrate the legacy docs.
 
 ## Reference implementation
 

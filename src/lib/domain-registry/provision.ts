@@ -56,7 +56,9 @@ export async function provisionDomain(registryId: string): Promise<ProvisionResu
     result.vercel = { success: false, error: vercelResult.reason?.message || "Unknown error" };
   }
 
-  // Process Cloudflare result and update registry
+  // Process Cloudflare result and update registry.
+  // Always stamp the attempt time so the admin UI can show "last tried".
+  registry.cloudflare.lastAttemptAt = new Date();
   if (cloudflareResult.status === "fulfilled") {
     const cfResult = cloudflareResult.value;
     result.cloudflare = cfResult;
@@ -68,6 +70,7 @@ export async function provisionDomain(registryId: string): Promise<ProvisionResu
       registry.cloudflare.status = "pending"; // Pending until nameservers updated at registrar
       registry.cloudflare.nameserversUpdated = false;
       registry.cloudflare.registeredAt = new Date();
+      registry.cloudflare.lastError = undefined;
 
       // Determine registrar from purchase info
       if (registry.purchase.purchasedViaVercel) {
@@ -87,9 +90,23 @@ export async function provisionDomain(registryId: string): Promise<ProvisionResu
       registry.cloudflare.registered = true;
       registry.cloudflare.nameserversUpdated = true;
       registry.cloudflare.status = "active";
+      registry.cloudflare.lastError = undefined;
+    } else {
+      // Provisioning ran but failed (e.g., the CF token lacks Zone:Create → 403).
+      // Persist the reason so it survives past the approval toast — otherwise the
+      // failure silently vanishes once the row leaves the Pending tab, leaving the
+      // domain stuck with no Cloudflare caching and no visible error.
+      // NOTE: the domain can still go live via the Vercel CNAME; CF is the cache layer.
+      registry.cloudflare.registered = false;
+      registry.cloudflare.status = "failed";
+      registry.cloudflare.lastError = cfResult.error || "Cloudflare provisioning failed";
     }
   } else {
-    result.cloudflare = { success: false, error: cloudflareResult.reason?.message || "Unknown error" };
+    const msg = cloudflareResult.reason?.message || "Unknown error";
+    result.cloudflare = { success: false, error: msg };
+    registry.cloudflare.registered = false;
+    registry.cloudflare.status = "failed";
+    registry.cloudflare.lastError = msg;
   }
 
   // Update overall status

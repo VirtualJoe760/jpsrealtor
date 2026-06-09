@@ -51,11 +51,13 @@ export interface IDomainRegistry extends Document {
     registered: boolean;
     zoneId?: string;
     nameservers?: string[];          // Cloudflare-assigned NS (e.g., haley.ns.cloudflare.com)
-    status?: string;                 // "active", "pending", "moved", etc.
+    status?: string;                 // "active", "pending", "moved", "failed", etc.
     nameserversUpdated: boolean;     // Has the registrar been updated to point to CF nameservers?
     nameserverCheckedAt?: Date;      // Last time we polled Cloudflare for zone activation
     registrar?: string;              // Where the domain was registered (GoDaddy, Vercel, etc.)
     registeredAt?: Date;
+    lastError?: string;              // Why the last provisioning attempt failed (e.g., token lacks Zone:Create)
+    lastAttemptAt?: Date;            // When provisioning was last attempted (success or failure)
   };
 
   // Google Search Console
@@ -207,6 +209,8 @@ const DomainRegistrySchema = new Schema<IDomainRegistry>(
       nameserverCheckedAt: Date,
       registrar: String,
       registeredAt: Date,
+      lastError: String,
+      lastAttemptAt: Date,
     },
 
     // GSC

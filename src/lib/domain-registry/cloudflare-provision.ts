@@ -451,12 +451,26 @@ export async function provisionAllUnregisteredDomains(): Promise<{
             "cloudflare.nameservers": result.nameservers,
             "cloudflare.status": "pending", // Pending until nameservers are updated at registrar
             "cloudflare.registeredAt": new Date(),
+            "cloudflare.lastAttemptAt": new Date(),
           },
+          $unset: { "cloudflare.lastError": "" },
         }
       );
     } else {
       failed++;
       console.error(`[Cloudflare Provision] Failed for ${domain}:`, result.error);
+      // Persist the failure so it's visible in the admin UI and survives the request.
+      await DomainRegistry.findOneAndUpdate(
+        { domain },
+        {
+          $set: {
+            "cloudflare.registered": false,
+            "cloudflare.status": "failed",
+            "cloudflare.lastError": result.error || "Cloudflare provisioning failed",
+            "cloudflare.lastAttemptAt": new Date(),
+          },
+        }
+      );
     }
   }
 
