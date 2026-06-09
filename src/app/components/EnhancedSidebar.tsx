@@ -23,7 +23,6 @@ import {
   Briefcase,
   Users,
   MapPin,
-  Info,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { signOutChain } from "@/lib/signout-chain";
@@ -155,7 +154,6 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     { label: "Chat", icon: MessageSquare, action: "chat" },
     { label: "Map", icon: Map, action: "map" },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
-    { label: "About", icon: Info, href: "/about" },
   ];
 
   const dashboardItems = [

@@ -27,6 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
       return {
         title,
         description,
+        // Kept out of search engines while the About page is still being built.
+        robots: { index: false, follow: false },
         openGraph: { title, description, images: ap.headshot ? [{ url: ap.headshot }] : [] },
         twitter: { card: "summary_large_image", title, description },
       };
@@ -34,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     /* fall through to default */
   }
-  return { title: "About", description: "Get to know your local real estate agent." };
+  return { title: "About", description: "Get to know your local real estate agent.", robots: { index: false, follow: false } };
 }
 
 export default function AboutPage() {

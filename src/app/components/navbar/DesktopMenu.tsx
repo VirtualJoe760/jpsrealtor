@@ -9,7 +9,6 @@ import { User, Settings, LogOut, ChevronDown, BarChart3 } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const navigation = [
-  { name: "About", href: "/about" },
   { name: 'Home', href: '/' },
   { name: "Listings", href: "/mls-listings" },
   { name: "Neighborhoods", href: "/neighborhoods" },

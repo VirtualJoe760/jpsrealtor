@@ -25,7 +25,6 @@ import {
   Briefcase,
   Users,
   MapPin,
-  Info,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { signOutChain } from "@/lib/signout-chain";
@@ -120,7 +119,6 @@ export default function EnhancedNavbar() {
     { label: "Chat", icon: MessageSquare, action: "chat" as const },
     { label: "Map", icon: Map, action: "map" as const },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
-    { label: "About", icon: Info, href: "/about" },
   ];
 
   const dashboardItems = [

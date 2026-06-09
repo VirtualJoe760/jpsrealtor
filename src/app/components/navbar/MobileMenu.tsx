@@ -10,7 +10,6 @@ import { useState, useEffect } from "react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
 const navigation = [
-  { name: "About", href: "/about" },
   { name: "Home", href: "/" },
   { name: "Listings", href: "/mls-listings" },
   { name: "Neighborhoods", href: "/neighborhoods" },
