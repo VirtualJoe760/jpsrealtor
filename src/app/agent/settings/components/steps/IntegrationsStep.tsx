@@ -19,6 +19,7 @@ import {
   Trash2,
   Plus,
   ExternalLink,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -82,7 +83,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   const [newTokenName, setNewTokenName] = useState("");
   const [creatingToken, setCreatingToken] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
-  const [installTab, setInstallTab] = useState<"claude_code" | "claude_desktop" | "skill">("claude_code");
+  const [installTab, setInstallTab] = useState<"claude_remote" | "claude_code" | "claude_desktop" | "skill">("claude_remote");
 
   // Scope catalog + presets loaded from the API on mount
   const [scopeCatalog, setScopeCatalog] = useState<string[]>([]);
@@ -406,10 +407,11 @@ export default function IntegrationsStep({ isLight }: StepProps) {
             <Terminal className={`w-6 h-6 ${isLight ? "text-purple-600" : "text-purple-400"}`} />
           </div>
           <div className="flex-1">
-            <h3 className={`text-lg font-bold ${textPrimary}`}>ChatRealty Desktop Skill</h3>
+            <h3 className={`text-lg font-bold ${textPrimary}`}>Connect Claude (ChatRealty MCP)</h3>
             <p className={`text-sm mt-0.5 ${textMuted}`}>
-              Generate an API token so you can create landing pages on ChatRealty from
-              Claude Code or Claude Desktop. After installing the skill, just say
+              Generate an API token, then connect ChatRealty to Claude on your phone,
+              the web, or the desktop / CLI apps. Once connected, just say
+              <em> &ldquo;search active listings in La Quinta under $800k&rdquo;</em> or
               <em> &ldquo;create a landing page about X&rdquo;</em> in any Claude window.
             </p>
           </div>
@@ -460,7 +462,18 @@ export default function IntegrationsStep({ isLight }: StepProps) {
               <p className={`text-xs font-semibold mb-2 ${isLight ? "text-amber-900" : "text-amber-300"}`}>
                 Install in your Claude client
               </p>
-              <div className={`inline-flex rounded-md p-0.5 border ${isLight ? "bg-white border-amber-200" : "bg-gray-900 border-amber-900"}`}>
+              <div className={`inline-flex flex-wrap rounded-md p-0.5 border ${isLight ? "bg-white border-amber-200" : "bg-gray-900 border-amber-900"}`}>
+                <button
+                  type="button"
+                  onClick={() => setInstallTab("claude_remote")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded ${
+                    installTab === "claude_remote"
+                      ? isLight ? "bg-amber-200 text-amber-900" : "bg-amber-800/60 text-amber-200"
+                      : textMuted
+                  }`}
+                >
+                  Web &amp; mobile
+                </button>
                 <button
                   type="button"
                   onClick={() => setInstallTab("claude_code")}
@@ -495,6 +508,44 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                   Skill (legacy)
                 </button>
               </div>
+
+              {installTab === "claude_remote" && (
+                <div className={`mt-2 text-xs ${isLight ? "text-amber-900" : "text-amber-300"} space-y-2`}>
+                  <p className="flex items-center gap-1.5 font-semibold">
+                    <Smartphone className="w-3.5 h-3.5" /> Easiest — works on iPhone, Android, and claude.ai. Nothing to install.
+                  </p>
+                  <ol className="list-decimal ml-4 space-y-1">
+                    <li>Copy the token above.</li>
+                    <li>In the Claude app (or claude.ai): <strong>Settings → Connectors → Add custom connector</strong>.</li>
+                    <li>Paste this URL:</li>
+                  </ol>
+                  <div className="flex gap-2">
+                    <code
+                      className={`flex-1 px-3 py-2 rounded-md text-xs font-mono break-all ${
+                        isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                      } ${textPrimary}`}
+                    >
+                      https://www.chatrealty.io/api/mcp/mcp
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("https://www.chatrealty.io/api/mcp/mcp")}
+                      className={`px-3 py-2 rounded-md text-xs font-medium flex items-center gap-1.5 ${
+                        isLight ? "bg-amber-100 text-amber-900 hover:bg-amber-200" : "bg-amber-900/40 text-amber-200 hover:bg-amber-900/60"
+                      }`}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </button>
+                  </div>
+                  <p>
+                    On the <strong>&ldquo;Connect ChatRealty to Claude&rdquo;</strong> approval screen, paste the
+                    token above and approve. Your tools (search_listings, find_comparables, get_market_stats,
+                    create_landing_page, …) appear right away.
+                  </p>
+                  <p className={textMuted}>Use the <code>www.</code> URL exactly as shown — the bare domain redirects and won&apos;t connect.</p>
+                </div>
+              )}
 
               {installTab === "claude_code" && (
                 <div className={`mt-2 text-xs ${isLight ? "text-amber-900" : "text-amber-300"} space-y-2`}>
