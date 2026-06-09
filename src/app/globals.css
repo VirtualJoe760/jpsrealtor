@@ -119,6 +119,33 @@ body {
   }
 }
 
+/* Animated mesh-gradient "aurora" blobs for the About page section backdrops.
+   Pure CSS (GPU-accelerated transform/opacity) — works regardless of WebGL/R3F. */
+.about-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  will-change: transform;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-blob { animation: none !important; }
+}
+@keyframes aboutFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(12%, 9%) scale(1.18); }
+  66% { transform: translate(-9%, -7%) scale(0.92); }
+}
+@keyframes aboutFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-15%, 11%) scale(1.25); }
+}
+@keyframes aboutFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  40% { transform: translate(11%, -13%) scale(0.9); }
+  75% { transform: translate(-7%, 7%) scale(1.15); }
+}
+
 /* Custom slow spin animation for bottom nav */
 @keyframes spin-slow {
   from {

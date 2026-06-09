@@ -11,6 +11,7 @@ import { motion, useTransform, useMotionValue } from "framer-motion";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { fetchAgentPublic } from "@/app/hooks/useAgentProfile";
 import { getAboutData, Reveal } from "./aboutShared";
+import AboutBackground from "./AboutBackground";
 import { Phone, Mail, MapPin, Award, Star, MessageCircle, Calendar, CheckCircle2, Building2, ChevronDown } from "lucide-react";
 
 /** Swipeable carousel on mobile, grid on desktop — same markup. */
@@ -124,10 +125,11 @@ export default function AboutClient() {
         </motion.div>
       </section>
 
-      {/* ── Stats ─────────────────────────────────────────────── */}
+      {/* ── Stats (animated aurora) ───────────────────────────── */}
       {d.stats.length > 0 && (
-        <section className="py-12 md:py-14" style={{ backgroundColor: d.brand }}>
-          <div className="max-w-5xl mx-auto px-6 grid grid-cols-3 gap-4 md:gap-6 text-center text-white">
+        <section className="relative overflow-hidden py-14 md:py-16">
+          <AboutBackground color={d.brand} overlay="bg-black/20" />
+          <div className="relative z-10 max-w-5xl mx-auto px-6 grid grid-cols-3 gap-4 md:gap-6 text-center text-white">
             {d.stats.slice(0, 4).map((s, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div className="text-3xl md:text-5xl font-extrabold leading-none">{s.value}</div>
@@ -203,12 +205,21 @@ export default function AboutClient() {
         </section>
       )}
 
-      {/* ── Service areas ─────────────────────────────────────── */}
+      {/* ── Service areas (photo backdrop) ────────────────────── */}
       {d.serviceAreas.length > 0 && (
-        <section className={`py-16 md:py-24 ${sectionAlt}`}>
-          <div className="max-w-5xl mx-auto px-6 text-center">
-            <Reveal><h2 className={`text-3xl md:text-5xl font-bold mb-3 ${text}`}>Where {d.firstName} works</h2><p className={`mb-9 ${sub}`}>Serving buyers and sellers across these communities.</p></Reveal>
-            <div className="flex flex-wrap gap-3 justify-center">{d.serviceAreas.map((a, i) => <Reveal key={i} delay={i * 0.04}><span className={`flex items-center gap-1.5 px-4 py-2 rounded-full border ${cardBg} ${text}`}><MapPin className="w-4 h-4" style={{ color: d.brand }} /> {a.name}</span></Reveal>)}</div>
+        <section className="relative overflow-hidden py-20 md:py-28">
+          {d.heroBg ? (
+            <div className="absolute inset-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={d.heroBg} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${d.brand}cc, rgba(0,0,0,0.8))` }} />
+            </div>
+          ) : (
+            <AboutBackground color={d.brand} overlay="bg-black/45" />
+          )}
+          <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+            <Reveal><h2 className="text-3xl md:text-5xl font-bold mb-3 text-white">Where {d.firstName} works</h2><p className="mb-9 text-white/85">Serving buyers and sellers across these communities.</p></Reveal>
+            <div className="flex flex-wrap gap-3 justify-center">{d.serviceAreas.map((a, i) => <Reveal key={i} delay={i * 0.04}><span className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-white"><MapPin className="w-4 h-4 text-white" /> {a.name}</span></Reveal>)}</div>
           </div>
         </section>
       )}
@@ -233,9 +244,10 @@ export default function AboutClient() {
         </section>
       )}
 
-      {/* ── Connect ───────────────────────────────────────────── */}
-      <section className="py-20 md:py-28" style={{ background: `linear-gradient(135deg, ${d.brand}, ${isLight ? "#1e3a5f" : "#000000"})` }}>
-        <Reveal className="max-w-3xl mx-auto px-6 text-center text-white">
+      {/* ── Connect (animated aurora) ─────────────────────────── */}
+      <section className="relative overflow-hidden py-20 md:py-28">
+        <AboutBackground color={d.brand} overlay="bg-black/35" />
+        <Reveal className="relative z-10 max-w-3xl mx-auto px-6 text-center text-white">
           <h2 className="text-3xl md:text-5xl font-bold mb-3">Let&apos;s connect</h2>
           <p className="opacity-90 mb-8 text-lg">Have a question or ready to start? {d.firstName} is here to help.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
