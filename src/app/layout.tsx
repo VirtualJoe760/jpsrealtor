@@ -24,7 +24,7 @@ import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
-import { getServerNavLayout } from "@/lib/nav-layout";
+import { getServerTenantConfig } from "@/lib/nav-layout";
 
 // Theme constants - must match ThemeContext.tsx
 const THEME_COOKIE_NAME = 'site-theme';
@@ -117,12 +117,22 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Read theme from cookie on the server
-  const cookieStore = await cookies();
-  const serverTheme = getServerTheme(cookieStore);
+  // Resolve this tenant's layout/branding config server-side (avoids the
+  // post-hydration flash for nav layout AND font).
+  const tenant = await getServerTenantConfig();
+  const navLayout = tenant.navLayout;
+  const agentFont = tenant.fontFamily;
 
-  // Resolve this tenant's nav layout server-side (avoids a post-hydration flash).
-  const navLayout = await getServerNavLayout();
+  // Theme: an agent's themeMode locks the site to light/dark; otherwise the
+  // visitor's `site-theme` cookie wins (and they can toggle).
+  const cookieStore = await cookies();
+  const cookieTheme = getServerTheme(cookieStore);
+  const themeLocked = tenant.themeMode === "light" || tenant.themeMode === "dark";
+  const serverTheme: ThemeName = tenant.themeMode === "light"
+    ? "lightgradient"
+    : tenant.themeMode === "dark"
+      ? "blackspace"
+      : cookieTheme;
 
   // Get theme color for Dynamic Island/status bar
   const themeColor = serverTheme === 'lightgradient' ? '#ffffff' : '#000000';
@@ -166,7 +176,10 @@ export default async function RootLayout({
                   var cookieTheme = cookieMatch ? cookieMatch[2] : null;
                   var localStorageTheme = localStorage.getItem('site-theme');
 
-                  var theme = cookieTheme || localStorageTheme || 'lightgradient';
+                  // When the tenant locks the theme (themeMode light/dark only),
+                  // the server injects it here and it wins over cookie/localStorage.
+                  var lockedTheme = ${themeLocked ? `'${serverTheme}'` : "null"};
+                  var theme = lockedTheme || cookieTheme || localStorageTheme || 'lightgradient';
 
                   if (theme !== 'lightgradient' && theme !== 'blackspace') {
                     theme = 'lightgradient';
@@ -196,7 +209,12 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className={`theme-${serverTheme}`} suppressHydrationWarning>
+      <body
+        className={`theme-${serverTheme}`}
+        data-nav-layout={navLayout}
+        style={{ ["--agent-font" as any]: `'${agentFont}', sans-serif` }}
+        suppressHydrationWarning
+      >
         {/* Blocking script: Create solid color overlay IMMEDIATELY if returning from theme toggle */}
         <script
           dangerouslySetInnerHTML={{
@@ -276,7 +294,12 @@ export default async function RootLayout({
             </Script>
           </>
         )}
-        <ClientLayoutWrapper initialTheme={serverTheme} navLayout={navLayout}>
+        <ClientLayoutWrapper
+          initialTheme={serverTheme}
+          navLayout={navLayout}
+          themeLocked={themeLocked}
+          forcedTheme={themeLocked ? serverTheme : undefined}
+        >
           {children}
           <Footer />
         </ClientLayoutWrapper>

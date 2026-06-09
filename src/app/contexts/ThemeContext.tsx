@@ -71,6 +71,7 @@ interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: ThemeName) => void;
   toggleTheme: () => void;
+  themeLocked: boolean; // tenant forces light/dark — hide toggles
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -761,31 +762,27 @@ function playEnterAnimation(
 interface ThemeProviderProps {
   children: ReactNode;
   initialTheme?: ThemeName;
+  // When the tenant locks the theme (agentProfile.themeMode = light|dark), the
+  // visitor can't toggle and the cookie/localStorage is ignored.
+  themeLocked?: boolean;
+  forcedTheme?: ThemeName;
 }
 
-export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+export function ThemeProvider({ children, initialTheme, themeLocked = false, forcedTheme }: ThemeProviderProps) {
   // Initialize with the server-provided theme to prevent hydration mismatch
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>(initialTheme || 'lightgradient');
+  const [currentTheme, setCurrentTheme] = useState<ThemeName>(forcedTheme || initialTheme || 'lightgradient');
   const [mounted, setMounted] = useState(false);
 
-  // After mount, sync with cookie/localStorage if needed (handles edge cases like stale props)
+  // After mount, sync with cookie/localStorage if needed (handles edge cases like stale props).
+  // When the theme is LOCKED, skip this — the agent's forced theme always wins.
   useEffect(() => {
-    console.log('=== [THEMECONTEXT MOUNT] ===');
-    console.log('[ThemeContext] Initial theme from props:', initialTheme);
-    console.log('[ThemeContext] Current theme state:', currentTheme);
-
     setMounted(true);
+    if (themeLocked) return;
+
     const storedTheme = getInitialTheme();
-
-    console.log('[ThemeContext] Stored theme from getInitialTheme():', storedTheme);
-    console.log('[ThemeContext] Themes match:', storedTheme === currentTheme);
-
     // Only update if stored theme differs (e.g., user changed theme in another tab)
     if (storedTheme !== currentTheme) {
-      console.log('[ThemeContext] Theme mismatch detected, updating from', currentTheme, 'to', storedTheme);
       setCurrentTheme(storedTheme);
-    } else {
-      console.log('[ThemeContext] Theme already matches, no update needed');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -886,10 +883,14 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
       console.log('[ThemeContext] ✅ Browser mode - Meta tags updated (helps ensure Dynamic Island shows correct color)');
     }
 
-    // Persist to both cookie (for SSR) and localStorage (for backup)
-    setThemeCookie(currentTheme);
-    localStorage.setItem("site-theme", currentTheme);
-  }, [currentTheme, mounted]);
+    // Persist to both cookie (for SSR) and localStorage (for backup).
+    // Skip when the theme is locked — we don't want a tenant's forced theme to
+    // overwrite the visitor's own preference cookie (which other sites rely on).
+    if (!themeLocked) {
+      setThemeCookie(currentTheme);
+      localStorage.setItem("site-theme", currentTheme);
+    }
+  }, [currentTheme, mounted, themeLocked]);
 
   // Play ENTER animation on mount if coming from theme toggle
   useEffect(() => {
@@ -924,6 +925,8 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
   };
 
   const toggleTheme = async () => {
+    // Locked tenants (themeMode light/dark only) can't switch themes.
+    if (themeLocked) return;
     const newTheme = currentTheme === "blackspace" ? "lightgradient" : "blackspace";
     const oldColor = getThemeColor(currentTheme);
 
@@ -965,6 +968,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
     theme: themes[currentTheme],
     setTheme,
     toggleTheme,
+    themeLocked,
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

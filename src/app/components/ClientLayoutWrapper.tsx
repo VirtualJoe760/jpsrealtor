@@ -19,7 +19,6 @@ import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContex
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
-import { fetchAgentPublic } from "../hooks/useAgentProfile";
 
 function LayoutContent({ children, navLayout = "sidebar" }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar" }) {
   // Sync favorites status on login (once per session)
@@ -30,17 +29,16 @@ function LayoutContent({ children, navLayout = "sidebar" }: { children: React.Re
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
 
-  // Apply agent font via CSS variable (NOT body.style — that crashes MapLibre/React reconciliation)
+  // Agent font is now applied server-side (root layout sets --agent-font on
+  // <body>), so there's no client fetch/flash here anymore.
+
+  // Keep --sidebar-width in sync with the collapse state so left-anchored /
+  // centered overlays (via --nav-left-offset) shift correctly in sidebar mode.
   useEffect(() => {
-    fetchAgentPublic()
-      .then((data) => {
-        const font = data?.profile?.agentProfile?.fontFamily;
-        if (font) {
-          document.documentElement.style.setProperty("--agent-font", `'${font}', sans-serif`);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (navLayout === "sidebar") {
+      document.body.style.setProperty("--sidebar-width", isCollapsed ? "80px" : "280px");
+    }
+  }, [isCollapsed, navLayout]);
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -128,6 +126,7 @@ function LayoutContent({ children, navLayout = "sidebar" }: { children: React.Re
       {/* Toast Notifications */}
       <ToastContainer
         position="top-right"
+        style={{ top: "calc(1rem + var(--nav-top-offset))" }}
         autoClose={3000}
         hideProgressBar={false}
         newestOnTop={true}
@@ -146,12 +145,16 @@ interface ClientLayoutWrapperProps {
   children: React.ReactNode;
   initialTheme?: ThemeName;
   navLayout?: "sidebar" | "navbar";
+  themeLocked?: boolean;
+  forcedTheme?: ThemeName;
 }
 
 export default function ClientLayoutWrapper({
   children,
   initialTheme,
   navLayout = "sidebar",
+  themeLocked = false,
+  forcedTheme,
 }: ClientLayoutWrapperProps) {
   // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
@@ -185,7 +188,7 @@ export default function ClientLayoutWrapper({
   }, []);
 
   return (
-    <ThemeProvider initialTheme={initialTheme}>
+    <ThemeProvider initialTheme={initialTheme} themeLocked={themeLocked} forcedTheme={forcedTheme}>
       <PWAProvider>
         <MapStateProvider>
           <Providers>

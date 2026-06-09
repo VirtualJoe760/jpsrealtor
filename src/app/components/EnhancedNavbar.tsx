@@ -40,7 +40,7 @@ export default function EnhancedNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { currentTheme, toggleTheme: toggleThemeMode } = useTheme();
+  const { currentTheme, toggleTheme: toggleThemeMode, themeLocked } = useTheme();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const isLight = currentTheme === "lightgradient";
   const isChapPage = pathname === "/chap";
@@ -297,14 +297,16 @@ export default function EnhancedNavbar() {
           )}
         </div>
 
-        {/* Theme toggle */}
-        <button
-          onClick={() => toggleThemeMode()}
-          title={isLight ? "Dark Mode" : "Light Mode"}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${iconBtn}`}
-        >
-          {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-        </button>
+        {/* Theme toggle — hidden when the tenant locks light/dark only */}
+        {!themeLocked && (
+          <button
+            onClick={() => toggleThemeMode()}
+            title={isLight ? "Dark Mode" : "Light Mode"}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${iconBtn}`}
+          >
+            {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
+        )}
       </div>
     </header>
   );

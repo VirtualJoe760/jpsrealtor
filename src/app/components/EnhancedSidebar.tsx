@@ -44,7 +44,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { isCollapsed, toggleSidebar, setSidebarCollapsed } = useSidebar();
-  const { currentTheme, toggleTheme: toggleThemeMode } = useTheme();
+  const { currentTheme, toggleTheme: toggleThemeMode, themeLocked } = useTheme();
   const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const isLight = currentTheme === "lightgradient";
   const isChapPage = pathname === "/chap";
@@ -395,7 +395,8 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
 
       {/* Footer - extra padding on mobile for safe area */}
       <div className={`mt-auto ${isMobile ? 'pb-20' : ''}`}>
-        {/* Theme Toggle */}
+        {/* Theme Toggle — hidden when the tenant locks light/dark only */}
+        {!themeLocked && (
         <div className={`px-3 py-2 border-t overflow-hidden ${effectivelyCollapsed ? '' : 'mx-3'} ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
           <button
             onClick={toggleTheme}
@@ -411,6 +412,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             )}
           </button>
         </div>
+        )}
 
         {/* Agent Branding - Required Agency Treatment */}
         {!effectivelyCollapsed && branding.agentName && (

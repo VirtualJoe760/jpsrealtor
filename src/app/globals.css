@@ -50,6 +50,38 @@
 
   /* Mobile navigation height (used for body padding calculations) */
   --mobile-nav-height: 60px;
+
+  /* Nav-aware offsets for fixed/floating overlays so they clear the active nav.
+     Defaults assume no nav chrome (mobile, or pages that hide the nav). The
+     md+ values are set by the body[data-nav-layout] rules below.
+       --nav-top-offset  : space a top-anchored overlay must drop to clear a top navbar
+       --nav-left-offset : space a left-anchored/centered overlay must shift to clear the sidebar
+       --sidebar-width   : current sidebar width (ClientLayoutWrapper updates this on collapse) */
+  --nav-top-offset: 0px;
+  --nav-left-offset: 0px;
+  --sidebar-width: 280px;
+}
+
+/* On desktop/tablet the nav chrome exists. Navbar mode → top overlays drop 4rem
+   (the 64px bar). Sidebar mode → left/centered overlays shift by the sidebar width. */
+@media (min-width: 768px) {
+  body[data-nav-layout="navbar"] {
+    --nav-top-offset: 4rem;
+  }
+  body[data-nav-layout="sidebar"] {
+    --nav-left-offset: var(--sidebar-width, 280px);
+  }
+
+  /* Nav-aware overlay helpers (desktop/tablet only — mobile keeps its own
+     positioning since it has no top navbar / left sidebar).
+       .nav-top-center : a top-centered floating card — drops below the navbar
+                         and re-centers over the content area (clearing the sidebar). */
+  .nav-top-center {
+    top: calc(1.5rem + var(--nav-top-offset)) !important;
+    left: calc(50% + (var(--nav-left-offset) / 2)) !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
 }
 
 /* iOS Keyboard Fix: Use dynamic viewport units */
