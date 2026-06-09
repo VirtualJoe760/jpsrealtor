@@ -64,7 +64,7 @@ preserved.
 | Var | Required | Notes |
 |---|---|---|
 | `SECRETS_ENCRYPTION_KEY` | **yes** | Already used by `lib/secrets.ts`. Encrypts the `crt_live` token at rest on the OAuth records. Must be base64 of 32 random bytes. |
-| `MCP_PUBLIC_ORIGIN` | no | Override the auto-detected origin (e.g. `https://jpsrealtor.com`) if proxy headers are wrong. Falls back to `NEXT_PUBLIC_SITE_URL` → `NEXTAUTH_URL` → `https://jpsrealtor.com`. |
+| `MCP_PUBLIC_ORIGIN` | no | Override the auto-detected origin (e.g. `https://www.chatrealty.io`) if proxy headers are wrong. Falls back to `NEXT_PUBLIC_SITE_URL` → `NEXTAUTH_URL` → `https://www.chatrealty.io`. |
 
 No `REDIS_URL` / `KV_URL` needed — SSE is disabled.
 
@@ -73,16 +73,19 @@ No `REDIS_URL` / `KV_URL` needed — SSE is disabled.
 1. Confirm `SECRETS_ENCRYPTION_KEY` is set in the Vercel **Production** env.
 2. Merge `feat/mcp-http-oauth` and let Vercel deploy.
 3. Smoke-test discovery (should return JSON, not 404):
-   - `GET https://jpsrealtor.com/.well-known/oauth-authorization-server`
-   - `GET https://jpsrealtor.com/.well-known/oauth-protected-resource`
-4. *(Optional)* point `mcp.chatrealty.io` at the app and set `MCP_PUBLIC_ORIGIN` to it.
+   - `GET https://www.chatrealty.io/.well-known/oauth-authorization-server`
+   - `GET https://www.chatrealty.io/.well-known/oauth-protected-resource`
+4. The metadata is host-relative, so the server self-advertises whatever domain
+   it's reached on. Use the canonical **`www.chatrealty.io`** host. The apex
+   `chatrealty.io` 307-redirects to `www`, and a redirect on the connector URL
+   breaks the OAuth handshake — so always give clients the `www` URL.
 
 ## Connect from your phone
 
 1. Mint a token at **Settings → Integrations** with at least `listings:read` and
    `market:read` (add `contacts:read` only if you want lead PII in Claude).
 2. Claude app → **Settings → Connectors → Add custom connector**.
-3. URL: `https://jpsrealtor.com/api/mcp/mcp`
+3. URL: `https://www.chatrealty.io/api/mcp/mcp`  *(use `www`; the bare apex redirects)*
 4. The OAuth screen opens → paste your `crt_live_…` token → **Approve & connect**.
 5. Ask: *"Search active listings in La Quinta under $800k with a pool."*
 

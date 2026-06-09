@@ -28,9 +28,10 @@ export const OAUTH_TOKEN_PATH = `${MCP_BASE_PATH}/oauth/token`;
 export const OAUTH_REGISTER_PATH = `${MCP_BASE_PATH}/oauth/register`;
 
 /**
- * Public origin of this deployment, e.g. "https://jpsrealtor.com".
- * Respects proxy headers (Vercel sets X-Forwarded-*). Falls back to an env
- * override, then to the canonical production domain.
+ * Public origin of this deployment, e.g. "https://www.chatrealty.io".
+ * Respects proxy headers (Vercel sets X-Forwarded-*) so the metadata always
+ * self-advertises whatever host the client connected through. Falls back to an
+ * env override, then to the canonical ChatRealty production domain.
  */
 export function getOrigin(req: Request): string {
   try {
@@ -44,7 +45,7 @@ export function getOrigin(req: Request): string {
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.NEXTAUTH_URL;
   if (env) return env.replace(/\/+$/, "");
-  return "https://jpsrealtor.com";
+  return "https://www.chatrealty.io";
 }
 
 // We are our own authorization server: issuer == origin.
