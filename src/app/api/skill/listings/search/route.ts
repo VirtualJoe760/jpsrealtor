@@ -48,6 +48,8 @@ export async function GET(req: NextRequest) {
   const maxBeds = num(sp.get("maxBeds"));
   const minBaths = num(sp.get("minBaths"));
   const maxBaths = num(sp.get("maxBaths"));
+  const minYearBuilt = num(sp.get("minYearBuilt"));
+  const maxYearBuilt = num(sp.get("maxYearBuilt"));
 
   // Days-on-market filters work against onMarketDate (the DB doesn't
   // actually store daysOnMarket — see route comment above the response).
@@ -72,6 +74,15 @@ export async function GET(req: NextRequest) {
     query.listPrice = {};
     if (minPrice !== undefined) query.listPrice.$gte = minPrice;
     if (maxPrice !== undefined) query.listPrice.$lte = maxPrice;
+  }
+
+  // yearBuilt range — lets era queries ("mid-century 1950s-60s", "new builds")
+  // filter server-side in one call instead of fetching a broad set and having
+  // the caller sift by year.
+  if (minYearBuilt !== undefined || maxYearBuilt !== undefined) {
+    query.yearBuilt = {};
+    if (minYearBuilt !== undefined) query.yearBuilt.$gte = minYearBuilt;
+    if (maxYearBuilt !== undefined) query.yearBuilt.$lte = maxYearBuilt;
   }
 
   // UnifiedListing carries two field names for beds and baths because
@@ -136,7 +147,10 @@ export async function GET(req: NextRequest) {
     listPrice: 1, currentPrice: 1, currentPricePublic: 1,
     bedroomsTotal: 1, bedsTotal: 1, bathroomsTotalInteger: 1, bathsTotal: 1,
     livingArea: 1, yearBuilt: 1, daysOnMarket: 1, onMarketDate: 1,
-    media: 1, poolFeatures: 1,
+    // Only the first photo is used (primaryPhotoUrl). $slice avoids pulling the
+    // full ~31-photo media array per listing — a big payload cut on large result
+    // sets, which was the main search-latency driver.
+    media: { $slice: 1 }, poolFeatures: 1,
     latitude: 1, longitude: 1, coordinates: 1,
   } as const;
 

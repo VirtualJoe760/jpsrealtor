@@ -8,7 +8,7 @@ import type { ToolDef } from "./types.js";
 export const search_listings: ToolDef = {
   name: "search_listings",
   description:
-    "Search the active MLS feed by city, subdivision, property type, beds, baths, and price range. Returns a paginated list of listings with key fields and a slug for the public detail page. By default returns sales only (Residential) — pass propertyType: \"Residential Lease\" for rentals, \"Land\" for land, or \"all\" to mix everything. For rentals, listPrice is the monthly rent (typically $1,500-$15,000) not the sale price.",
+    "Search the active MLS feed by city, subdivision, property type, beds, baths, price range, and build era. Returns a paginated list of listings with key fields and a slug for the public detail page. By default returns sales only (Residential) — pass propertyType: \"Residential Lease\" for rentals, \"Land\" for land, or \"all\" to mix everything. For rentals, listPrice is the monthly rent (typically $1,500-$15,000) not the sale price. Filter by build era with minYearBuilt/maxYearBuilt (e.g. mid-century modern ≈ 1945-1969) — prefer this over fetching everything and sifting by year yourself.",
   inputSchema: {
     type: "object",
     properties: {
@@ -29,6 +29,8 @@ export const search_listings: ToolDef = {
       maxBeds: { type: "number" },
       minBaths: { type: "number" },
       maxBaths: { type: "number" },
+      minYearBuilt: { type: "number", description: "Earliest year built (inclusive). For mid-century-modern era homes use ~1945-1969." },
+      maxYearBuilt: { type: "number", description: "Latest year built (inclusive). For 'new construction' use a recent year (e.g. 2020)." },
       hasPool: {
         type: "boolean",
         description:
