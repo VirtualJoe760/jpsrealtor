@@ -105,6 +105,9 @@ export async function GET(request: NextRequest) {
         insightsBannerImage: profile?.insightsBannerImage,
         heroImage: profile?.heroImage,
         heroPhoto: profile?.heroPhoto,
+        // Dark-theme hero variants (used by AgentHero when the active theme is dark).
+        heroImageDark: profile?.heroImageDark,
+        heroPhotoDark: profile?.heroPhotoDark,
         teamLogo: profile?.teamLogo,
         brokerLogo: profile?.brokerLogo,
         galleryPhotos: profile?.galleryPhotos,

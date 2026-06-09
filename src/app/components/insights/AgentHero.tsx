@@ -18,12 +18,17 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [headshotLoaded, setHeadshotLoaded] = useState(false);
 
-  // Use heroImage as primary background, fallback chain for all possible photo fields
-  const heroImage = agentProfile?.agentProfile?.heroImage ||
-                    agentProfile?.agentProfile?.heroPhoto ||
-                    agentProfile?.agentProfile?.insightsBannerImage ||
-                    agentProfile?.agentProfile?.coverPhoto ||
-                    agentProfile?.agentProfile?.galleryPhotos?.[0];
+  // Theme-aware hero background. The agent can upload a light (`heroPhoto`) and a
+  // dark (`heroPhotoDark`) variant in Settings → Photos; pick the one matching the
+  // active theme. Dark falls back to the light hero if no dark variant is set, then
+  // a generic fallback chain.
+  const ap = agentProfile?.agentProfile;
+  const heroLight = ap?.heroImage || ap?.heroPhoto;
+  const heroDark = ap?.heroImageDark || ap?.heroPhotoDark;
+  const heroImage = (isLight ? heroLight : (heroDark || heroLight)) ||
+                    ap?.insightsBannerImage ||
+                    ap?.coverPhoto ||
+                    ap?.galleryPhotos?.[0];
 
   // Use custom hero headline if available, otherwise use default
   const heroHeadline = agentProfile?.agentProfile?.heroHeadline ||
