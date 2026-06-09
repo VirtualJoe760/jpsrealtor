@@ -20,10 +20,14 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50);
     const skip = (page - 1) * limit;
 
-    // Build query: only users with serviceProvider role and servicePartnerProfile
+    // Build query: only users with serviceProvider role and servicePartnerProfile.
+    // Approval gate: only admin-approved partners are publicly listed. Partners
+    // predating the `status` field (none at rollout) are treated as approved so a
+    // backfill isn't required, while any new applicant stays "pending" and hidden.
     const query: any = {
       roles: "serviceProvider",
       "servicePartnerProfile.type": { $exists: true },
+      "servicePartnerProfile.status": { $in: ["approved", null] },
     };
 
     // Filter by service partner type

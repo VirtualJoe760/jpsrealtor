@@ -1,7 +1,7 @@
 ---
 title: Listings / MLS
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-06-05
 related: [../multi-tenant/README.md]
 ---
 
@@ -141,6 +141,15 @@ breakdown, but same aggregation cron.
 Photo sync is asynchronous: the photo cron (9 AM / 9:30 AM) runs hours after
 the fetch cron (6 AM), so new listings briefly show with placeholder images
 until the next sync wave.
+
+**Detail-page photos are DB-first (June 2026).** `/api/listings/[listingKey]/photos`
+now serves the synced `media[]` array first and only falls back to a live Spark
+fetch when the DB has no stored media (then `primaryPhotoUrl` as a last resort);
+the response carries a `source: "db" | "spark" | "primaryPhotoUrl" | "none"`
+field. Previously the route *always* hit Spark live and ignored `media[]` — so a
+listing that went **off-market** (and thus dropped out of the live Spark feed)
+returned zero photos and showed a "no photo" placeholder even though its photos
+were already synced. Reading `media[]` keeps photos working after off-market.
 
 ## Frontend routes
 

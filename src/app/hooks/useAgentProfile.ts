@@ -68,6 +68,34 @@ const FALLBACK: AgentProfile = {
 
 let cachedProfile: AgentProfile | null = null;
 
+export interface AgentPublicResponse {
+  profile?: any;
+  subscription?: any;
+  hasActiveSubscription?: boolean;
+}
+
+// Shared client fetch for /api/agent/public so the homepage, the layout wrapper,
+// and this hook don't each fire (and re-fire under React StrictMode) their own
+// request — on the owner domain all three hit the same URL. Memoizes the in-flight
+// promise per URL; a failed fetch is evicted so a later caller can retry.
+const agentPublicCache = new Map<string, Promise<AgentPublicResponse | null>>();
+
+export function fetchAgentPublic(subParam = ""): Promise<AgentPublicResponse | null> {
+  const url = `/api/agent/public${subParam}`;
+  let inflight = agentPublicCache.get(url);
+  if (!inflight) {
+    inflight = fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+      .then((data) => {
+        if (data == null) agentPublicCache.delete(url);
+        return data;
+      });
+    agentPublicCache.set(url, inflight);
+  }
+  return inflight;
+}
+
 export function useAgentProfile() {
   const [agent, setAgent] = useState<AgentProfile>(cachedProfile || FALLBACK);
   const [loading, setLoading] = useState(!cachedProfile);
@@ -75,8 +103,7 @@ export function useAgentProfile() {
   useEffect(() => {
     if (cachedProfile) return;
 
-    fetch("/api/agent/public")
-      .then(r => r.ok ? r.json() : null)
+    fetchAgentPublic()
       .then(raw => {
         if (!raw) return;
         // The route returns { profile: { ..., agentProfile: { ... } } }.

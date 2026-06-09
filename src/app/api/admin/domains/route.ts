@@ -338,8 +338,15 @@ function buildApprovalMessage(
   if (cfSuccess) {
     parts.push("Cloudflare: zone + cache rules + page rules + worker routes configured.");
   } else {
-    const cfError = "error" in result.cloudflare ? result.cloudflare.error : "unknown";
-    parts.push(`Cloudflare: ${cfError || "not configured"}.`);
+    const cfError = ("error" in result.cloudflare ? result.cloudflare.error : "") || "not configured";
+    const isPermissionError = /permission|zone\.create|zone:create|\b403\b/i.test(cfError);
+    if (isPermissionError) {
+      parts.push(
+        `Cloudflare: ${cfError}. The CF API token lacks the account-level Zone:Create permission — the site still goes live via the Vercel CNAME below, but Cloudflare caching is off. Grant the permission, then use "Provision All on Cloudflare" in the Registry tab to retry.`
+      );
+    } else {
+      parts.push(`Cloudflare: ${cfError}. The site can still go live via the Vercel CNAME below; retry from the Registry tab once resolved.`);
+    }
   }
 
   if (nsInstructions) {

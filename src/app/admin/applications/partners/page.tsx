@@ -18,6 +18,10 @@ interface PartnerApplication {
   licenseNumber?: string;
   nmlsId?: string;
   createdAt: string;
+  status?: "pending" | "approved" | "rejected";
+  appliedAt?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
 }
 
 export default function AdminPartnerApplicationsPage() {
@@ -32,6 +36,8 @@ export default function AdminPartnerApplicationsPage() {
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
+  const [autoApprove, setAutoApprove] = useState<boolean | null>(null);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -42,8 +48,47 @@ export default function AdminPartnerApplicationsPage() {
   useEffect(() => {
     if (status === "authenticated") {
       fetchPartners();
+      fetchAutoApprove();
     }
   }, [status]);
+
+  const fetchAutoApprove = async () => {
+    try {
+      const res = await fetch("/api/admin/settings/partner-approval");
+      if (res.ok) {
+        const data = await res.json();
+        setAutoApprove(!!data.autoApprove);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  const toggleAutoApprove = async () => {
+    if (autoApprove === null) return;
+    const next = !autoApprove;
+    setSavingToggle(true);
+    setAutoApprove(next); // optimistic
+    try {
+      const res = await fetch("/api/admin/settings/partner-approval", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoApprove: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Updated");
+      } else {
+        setAutoApprove(!next); // revert
+        toast.error(data.error || "Failed to update");
+      }
+    } catch {
+      setAutoApprove(!next);
+      toast.error("Failed to update");
+    } finally {
+      setSavingToggle(false);
+    }
+  };
 
   const fetchPartners = async () => {
     try {
@@ -93,6 +138,20 @@ export default function AdminPartnerApplicationsPage() {
     return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  const statusBadge = (s?: string) => {
+    const status = s || "approved"; // legacy partners with no status are treated as approved
+    const map: Record<string, string> = {
+      pending: "bg-amber-500/20 text-amber-400",
+      approved: "bg-green-500/20 text-green-400",
+      rejected: "bg-red-500/20 text-red-400",
+    };
+    return (
+      <span className={`px-2 py-1 text-xs rounded-full capitalize ${map[status] || map.approved}`}>
+        {status}
+      </span>
+    );
+  };
+
   if (status === "loading" || loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -103,9 +162,37 @@ export default function AdminPartnerApplicationsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Partner Applications</h1>
-        <p className={`${textSecondary} mt-1`}>Review and manage service partner registrations</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Partner Applications</h1>
+          <p className={`${textSecondary} mt-1`}>Review and manage service partner registrations</p>
+        </div>
+        {autoApprove !== null && (
+          <div className={`${cardBg} ${border} border rounded-xl px-4 py-3 flex items-center gap-3 shrink-0`}>
+            <div className="text-right">
+              <div className={`text-sm font-medium ${textPrimary}`}>Auto-approve partners</div>
+              <div className={`text-xs ${textSecondary}`}>
+                {autoApprove ? "New applications go live immediately" : "Manual review · auto-approve after 24h"}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoApprove}
+              disabled={savingToggle}
+              onClick={toggleAutoApprove}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                autoApprove ? "bg-green-500" : "bg-gray-400"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  autoApprove ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        )}
       </div>
 
       {partners.length === 0 ? (
@@ -128,6 +215,7 @@ export default function AdminPartnerApplicationsPage() {
                   <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400">
                     {formatType(partner.type)}
                   </span>
+                  {statusBadge(partner.status)}
                 </div>
                 <p className={`text-sm ${textSecondary} truncate`}>{partner.email}</p>
                 <div className={`text-sm ${textSecondary} mt-2 flex flex-wrap gap-x-4 gap-y-1`}>
@@ -140,22 +228,26 @@ export default function AdminPartnerApplicationsPage() {
               </div>
 
               <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => handleAction(partner._id, "approve")}
-                  disabled={processing === partner._id}
-                  className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => setRejectModal(partner._id)}
-                  disabled={processing === partner._id}
-                  className="flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject
-                </button>
+                {partner.status !== "approved" && (
+                  <button
+                    onClick={() => handleAction(partner._id, "approve")}
+                    disabled={processing === partner._id}
+                    className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    {partner.status === "rejected" ? "Re-approve" : "Approve"}
+                  </button>
+                )}
+                {partner.status !== "rejected" && (
+                  <button
+                    onClick={() => setRejectModal(partner._id)}
+                    disabled={processing === partner._id}
+                    className="flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    {partner.status === "approved" ? "Revoke" : "Reject"}
+                  </button>
+                )}
               </div>
             </div>
           ))}

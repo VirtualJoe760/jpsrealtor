@@ -142,7 +142,7 @@ export default function HoverStatsOverlay({ data, californiaStats = { count: 0, 
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto z-50 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 md:w-auto nav-top-center z-50 pointer-events-none">
       {/* Mobile: Always visible card container */}
       <div
         className={`

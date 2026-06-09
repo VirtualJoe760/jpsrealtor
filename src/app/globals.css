@@ -50,6 +50,38 @@
 
   /* Mobile navigation height (used for body padding calculations) */
   --mobile-nav-height: 60px;
+
+  /* Nav-aware offsets for fixed/floating overlays so they clear the active nav.
+     Defaults assume no nav chrome (mobile, or pages that hide the nav). The
+     md+ values are set by the body[data-nav-layout] rules below.
+       --nav-top-offset  : space a top-anchored overlay must drop to clear a top navbar
+       --nav-left-offset : space a left-anchored/centered overlay must shift to clear the sidebar
+       --sidebar-width   : current sidebar width (ClientLayoutWrapper updates this on collapse) */
+  --nav-top-offset: 0px;
+  --nav-left-offset: 0px;
+  --sidebar-width: 280px;
+}
+
+/* On desktop/tablet the nav chrome exists. Navbar mode → top overlays drop 4rem
+   (the 64px bar). Sidebar mode → left/centered overlays shift by the sidebar width. */
+@media (min-width: 768px) {
+  body[data-nav-layout="navbar"] {
+    --nav-top-offset: 4rem;
+  }
+  body[data-nav-layout="sidebar"] {
+    --nav-left-offset: var(--sidebar-width, 280px);
+  }
+
+  /* Nav-aware overlay helpers (desktop/tablet only — mobile keeps its own
+     positioning since it has no top navbar / left sidebar).
+       .nav-top-center : a top-centered floating card — drops below the navbar
+                         and re-centers over the content area (clearing the sidebar). */
+  .nav-top-center {
+    top: calc(1.5rem + var(--nav-top-offset)) !important;
+    left: calc(50% + (var(--nav-left-offset) / 2)) !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
 }
 
 /* iOS Keyboard Fix: Use dynamic viewport units */
@@ -85,6 +117,33 @@ body {
   .pr-safe {
     padding-right: max(0px, env(safe-area-inset-right));
   }
+}
+
+/* Animated mesh-gradient "aurora" blobs for the About page section backdrops.
+   Pure CSS (GPU-accelerated transform/opacity) — works regardless of WebGL/R3F. */
+.about-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  will-change: transform;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-blob { animation: none !important; }
+}
+@keyframes aboutFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(12%, 9%) scale(1.18); }
+  66% { transform: translate(-9%, -7%) scale(0.92); }
+}
+@keyframes aboutFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-15%, 11%) scale(1.25); }
+}
+@keyframes aboutFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  40% { transform: translate(11%, -13%) scale(0.9); }
+  75% { transform: translate(-7%, 7%) scale(1.15); }
 }
 
 /* Custom slow spin animation for bottom nav */
@@ -286,6 +345,20 @@ input, textarea, select {
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
+}
+
+/* Prevent iOS Safari from auto-zooming the viewport when a form control is
+   focused. Safari zooms whenever the focused field's font-size is < 16px, and
+   on a fixed-layout map page (the /chap map search + filters) that zoom sticks
+   and breaks the layout. Forcing the 16px accessible minimum on small screens
+   kills the auto-zoom while leaving pinch-zoom (user-scalable=yes) intact.
+   !important is needed to win over Tailwind's text-sm/text-xs utility classes. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Re-enable selection for chat messages */

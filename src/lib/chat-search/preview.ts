@@ -472,9 +472,15 @@ export async function runPreview(
     let listings: any[] = [];
     if (parsed.intent === "listing-search") {
       const { query, Model } = await buildListingQuery(scope, filters);
+      const sortSpec =
+        filters.sort === "priceAsc"
+          ? { listPrice: 1 as const }
+          : filters.sort === "newest"
+          ? { onMarketDate: -1 as const }
+          : { listPrice: -1 as const };
       const docs = await Model.find(query)
         .select(LISTING_PROJECTION)
-        .sort({ listPrice: -1 })
+        .sort(sortSpec)
         .limit(50)
         .lean();
       const withPhotos = await attachPhotos(docs as any[]);

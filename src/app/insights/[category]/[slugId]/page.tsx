@@ -3,6 +3,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import YouTube from "@/components/mdx/YouTube";
 import { Post } from "@/types/post";
 import MDXLink from "@/app/components/mdx/Link";
+import { rehypeUnwrapNestedP } from "@/lib/mdx/rehype-unwrap-nested-p";
 import ArticlePageClient from "./ArticlePageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
@@ -106,7 +107,13 @@ export default async function PostPage({
     }
 
     // Render MDX content on server
-    const mdxContent = <MDXRemote source={post.content} components={{ YouTube, MDXLink }} />;
+    const mdxContent = (
+      <MDXRemote
+        source={post.content}
+        components={{ YouTube, MDXLink }}
+        options={{ mdxOptions: { rehypePlugins: [rehypeUnwrapNestedP] } }}
+      />
+    );
 
     const baseUrl = await getBaseUrlFromHeaders();
     const articleUrl = `${baseUrl}/insights/${category}/${slugId}`;

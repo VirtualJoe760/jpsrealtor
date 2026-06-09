@@ -17,7 +17,7 @@ import { useChatContext } from "./chat/ChatProvider";
 import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
-  const { currentTheme, toggleTheme } = useTheme();
+  const { currentTheme, toggleTheme, themeLocked } = useTheme();
   const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
   const { viewState } = useMapState();
   const { hasUnreadMessage, setUnreadMessage } = useChatContext();
@@ -136,7 +136,8 @@ export default function TopToggles() {
       {/* Mobile: Centered container with toggles on left/right */}
       {/* pt-safe-plus: safe area + 2rem additional spacing for breathing room */}
       <div className="md:hidden max-w-7xl mx-auto px-4 pt-safe-plus flex items-center justify-between pointer-events-none">
-        {/* Theme Toggle - Left (Mobile Only) */}
+        {/* Theme Toggle - Left (Mobile Only) — hidden when tenant locks light/dark */}
+        {themeLocked ? <span /> : (
         <motion.button
           onClick={handleToggleTheme}
           className="pointer-events-auto"
@@ -160,6 +161,7 @@ export default function TopToggles() {
             />
           )}
         </motion.button>
+        )}
 
         {/* Map Toggle - Right (Mobile) */}
         <motion.button
@@ -214,7 +216,8 @@ export default function TopToggles() {
       <div className="hidden md:block">
         <motion.button
           onClick={() => handleToggleMap()}
-          className="pointer-events-auto fixed right-6 top-6"
+          className="pointer-events-auto fixed right-6"
+          style={{ top: "calc(1.5rem + var(--nav-top-offset))" }}
           whileTap={{ scale: 0.95 }}
           whileHover={{ scale: 1.05 }}
           aria-label={isMapVisible ? "Show Chat" : "Show Map"}

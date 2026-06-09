@@ -54,6 +54,24 @@
         ]
       },
       {
+        "source": "/api/insights/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store, max-age=0"
+          }
+        ]
+      },
+      {
+        "source": "/api/cron/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store, max-age=0"
+          }
+        ]
+      },
+      {
         "source": "/(.*)",
         "headers": [
           {
@@ -68,6 +86,12 @@
       }
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "crons": [
+      {
+        "path": "/api/cron/auto-approve-partners",
+        "schedule": "0 * * * *"
+      }
+    ]
   }
   

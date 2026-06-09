@@ -1,27 +1,30 @@
 ---
 title: ChatRealty MCP Server
 status: current
-last_verified: 2026-06-04
-last_verified_note: v0.3.0 (propertyType resolver + photo URL fix)
-related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md, ./publishing.md]
+last_verified: 2026-06-09
+last_verified_note: v0.8.0 (26 tools) + hosted Streamable HTTP/OAuth transport built
+related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md, ./publishing.md, ./hosting.md]
 ---
 
 # ChatRealty MCP Server
 
-> **Status: Phase 1 shipped, Phase 2 partial.** `@chatrealty/mcp-server` v0.3.0
-> ships 23 tools across agent meta / MLS / market / CMS landing pages
-> (Phase 1) plus CMS articles and CRM read (Phase 2). Code lives in
-> `packages/mcp-server/`. Backend routes under `src/app/api/skill/*` enforce
-> per-token scopes (12 scopes, 4 UI presets) and tiered rate limits
-> (identity / read / write / send). The legacy `@chatrealty/install-skill`
-> ships alongside as a fallback for Claude Code installs without MCP support.
-> Both packages live on npm under the `@chatrealty` scope — see
-> [publishing.md](./publishing.md). v0.3.0 added the human-readable
-> propertyType resolver (rentals/land/multi-family now searchable, sales
-> are the default), photo-URL fix (camelCase field mismatch), and a `limit`
-> param on `get_listing_photos`. Phase 2 remaining (analytics reads, hosted
-> MCP, `/legal/ai-tools`) + Phase 3/4 (CRM writes, campaign drafts, sends)
-> still in design — see [rollout-plan.md](./rollout-plan.md).
+> **Status: Phase 1 shipped, Phase 2 partial, hosted transport built.**
+> `@chatrealty/mcp-server` v0.8.0 ships **26 tools** across agent meta / MLS /
+> market / CMS landing pages (Phase 1) plus CMS articles, CRM read, images, and
+> Instagram (Phase 2). Code lives in `packages/mcp-server/`. Backend routes under
+> `src/app/api/skill/*` enforce per-token scopes (12 scopes, 4 UI presets) and
+> tiered rate limits (identity / read / write / send). The legacy
+> `@chatrealty/install-skill` ships alongside as a fallback for Claude Code
+> installs without MCP support. Both packages live on npm under the `@chatrealty`
+> scope — see [publishing.md](./publishing.md).
+>
+> **New (2026-06-09): the hosted Streamable HTTP + OAuth transport is built.**
+> The same 26 tools are now served as a Next.js route on Vercel (`/api/mcp/mcp`)
+> behind a minimal OAuth 2.1 (DCR + PKCE) shim, so agents can add ChatRealty as a
+> *custom connector* in the Claude mobile/web apps and search the MLS from a
+> phone. No Redis, no new infra — see [hosting.md](./hosting.md). Phase 3/4 (CRM
+> writes, campaign drafts, sends) remain in design — see
+> [rollout-plan.md](./rollout-plan.md).
 
 ## TL;DR
 
@@ -34,9 +37,10 @@ ChatRealty just exposes typed tools they can call.
 
 Auth reuses the same `crt_live_*` API tokens defined in
 [`../integrations/README.md`](../integrations/README.md) (sha256-hashed,
-revokable, optionally scoped). The transport is **stdio for v1** (local
-`npx @chatrealty/mcp-server` process), with a **hosted HTTP/SSE endpoint
-planned** for one-click Claude Desktop Connectors install.
+revokable, optionally scoped). Two transports are built: **stdio** (local
+`npx @chatrealty/mcp-server` process, env-var token) and **hosted Streamable
+HTTP** (`/api/mcp/mcp` on Vercel, OAuth 2.1 token) for one-click custom-connector
+install in the Claude mobile/web apps — see [hosting.md](./hosting.md).
 
 The MCP server is intentionally a *thin transport adapter* over the existing
 `/api/skill/*` REST surface. Every tool maps 1:1 to a route, so docs and tests
@@ -99,8 +103,8 @@ Two transports planned. Both auth identically:
 
 | Transport | Install UX | Hosting | Status |
 |---|---|---|---|
-| **stdio (local)** | `npx @chatrealty/mcp-server` + JSON config snippet | On agent's machine | v1 — designed, not built |
-| **HTTP/SSE (hosted)** | Claude Desktop "Add Connector" → paste URL | `mcp.chatrealty.io` we deploy | v2 — planned |
+| **stdio (local)** | `npx @chatrealty/mcp-server` + JSON config snippet | On agent's machine | **built** (v0.8.0) |
+| **Streamable HTTP (hosted)** | Claude mobile/web "Add custom connector" → paste `/api/mcp/mcp` URL → OAuth | The Next app on Vercel (optionally `mcp.chatrealty.io`) | **built** — see [hosting.md](./hosting.md) |
 
 stdio is simpler: it's a small Node CLI on the agent's machine that speaks MCP
 over stdin/stdout and calls our REST API for every tool. We don't host

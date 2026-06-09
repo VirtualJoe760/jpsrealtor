@@ -4,8 +4,8 @@
   "description": "Your trusted real estate expert in the Coachella Valley. Browse properties, explore neighborhoods, and find your dream home.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en-US",
@@ -59,22 +59,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Home Screen"
-    },
-    {
-      "src": "/screenshots/mobile-home.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile Home Screen"
     }
   ],
   "shortcuts": [

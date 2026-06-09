@@ -115,15 +115,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process favorites and extract analytics data
-    const processedFavorites = favorites.map((listing: any) => ({
-      listingKey: listing.listingKey || listing._id,
-      listingData: listing,
-      swipedAt: new Date(),
-      subdivision: listing.subdivisionName,
-      city: listing.city,
-      propertyType: listing.propertyType,
-    }));
+    // Process favorites and extract analytics data. Dedupe by listingKey:
+    // this POST REPLACES the whole likedListings array with the client's list,
+    // and the client list can carry duplicates (e.g. merged localStorage + DB
+    // state). Without this, dupes accumulated in the array — the favorites GET
+    // dedupes for display, so the raw array (and the dashboard count + analytics
+    // derived from it) drifted above the displayed count. Deduping here both
+    // prevents new dupes and self-heals the stored array on the next sync.
+    const seenKeys = new Set<string>();
+    const processedFavorites = favorites
+      .map((listing: any) => ({
+        listingKey: listing.listingKey || listing._id,
+        listingData: listing,
+        swipedAt: new Date(),
+        subdivision: listing.subdivisionName,
+        city: listing.city,
+        propertyType: listing.propertyType,
+      }))
+      .filter((fav) => {
+        if (!fav.listingKey || seenKeys.has(fav.listingKey)) return false;
+        seenKeys.add(fav.listingKey);
+        return true;
+      });
 
     // Calculate analytics
     const analytics = calculateAnalytics(processedFavorites);

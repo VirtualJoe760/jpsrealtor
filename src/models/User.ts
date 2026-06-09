@@ -175,6 +175,12 @@ export interface IUser extends Document {
     customDomain?: string; // e.g., "josephsardella.com"
     subdomain?: string; // e.g., "joseph" (becomes joseph.chatrealty.io)
     siteForceActive?: boolean; // Admin override — makes site live without subscription
+    // Nav layout for this agent's tenant site (desktop/tablet). "sidebar" = the
+    // Enhanced Sidebar (default); "navbar" = the Enhanced Navbar (top bar).
+    // Mobile always uses MobileBottomNav regardless.
+    navLayout?: 'sidebar' | 'navbar';
+    // Homepage hero style. Each agent can pick how their hero section looks.
+    heroStyle?: 'split' | 'fullwidth' | 'video' | 'carousel' | 'minimal' | 'spotlight';
     brandColors?: {
       primary?: string; // Hex color
       secondary?: string; // Hex color
@@ -286,6 +292,13 @@ export interface IUser extends Document {
     legalDisclaimer?: string; // Required marketing disclaimer text
     insuranceInfo?: string; // For contractors
     specializations?: string[];
+    // Approval gate — a partner is NOT publicly listed in the directory until an
+    // admin approves. Applying sets "pending"; the directory query filters on "approved".
+    status?: 'pending' | 'approved' | 'rejected';
+    appliedAt?: Date;
+    approvedAt?: Date;
+    approvedBy?: string; // admin email
+    rejectionReason?: string;
   };
 
   // Vacation Rental Host specific
@@ -754,6 +767,8 @@ const UserSchema = new Schema<IUser>(
       customDomain: String,
       subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
       siteForceActive: { type: Boolean, default: false }, // Admin override — makes site live without subscription
+      navLayout: { type: String, enum: ["sidebar", "navbar"], default: "sidebar" }, // tenant nav layout (desktop/tablet)
+      heroStyle: { type: String, enum: ["split", "fullwidth", "video", "carousel", "minimal", "spotlight"], default: "split" }, // homepage hero layout
       brandColors: {
         primary: String,
         secondary: String,
@@ -871,6 +886,12 @@ const UserSchema = new Schema<IUser>(
       legalDisclaimer: String,
       insuranceInfo: String,
       specializations: [String],
+      // Approval gate — directory listing requires admin approval.
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      appliedAt: Date,
+      approvedAt: Date,
+      approvedBy: String,
+      rejectionReason: String,
     },
 
     // Vacation Rental Host specific

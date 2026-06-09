@@ -6,6 +6,15 @@ import User from "@/models/User";
 import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
 
 export async function GET(req: NextRequest) {
+  const res = await handler(req);
+  // Per-user data (the user's liked listings) — override the vercel.json immutable
+  // catch-all so favorites aren't cached into a shared CDN node and leaked to the
+  // next visitor. See docs/ARCHITECTURE.md (cache trap invariant).
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
+
+async function handler(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 

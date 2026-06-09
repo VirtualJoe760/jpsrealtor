@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-06-02
+last_verified: 2026-06-08
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -58,7 +58,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
-| **Cloudflare (Zones/DNS)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\cloudflare.ts` | DNS management for agent custom domains (add zone, create A/CNAME/TXT, delete) | `CLOUDFLARE_API_TOKEN` (or `CF_API_TOKEN`) | Domain provisioning pipeline | API v4. `addZone()` uses `type: "full"` (full DNS management). |
+| **Cloudflare (Zones/DNS)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\cloudflare.ts`, `src\lib\domain-registry\cloudflare-provision.ts` | DNS management for agent custom domains (add zone, create A/CNAME/TXT, cache rules, page rules, worker routes) | `CLOUDFLARE_API_TOKEN` (or `CF_API_TOKEN`) | Domain provisioning pipeline (admin domain approval) | API v4. `addZone()` uses `type: "full"`. **Zone creation requires an account-scoped token with `Account · Zone · Create`** — a zone-scoped token 403s ("Requires permission com.cloudflare.api.account.zone.create"). On approval the domain still goes live via the Vercel CNAME; CF is the caching layer. Provisioning failures are persisted on `DomainRegistry.cloudflare.{status:"failed", lastError, lastAttemptAt}` and surfaced in the admin Registry tab (red banner + Retry). See tech-debt.md. |
 | **Cloudflare Turnstile** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\turnstile.ts` | CAPTCHA on auth forms, lead intake, forgot-password | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Sign in/up, forgot password, `/buy`, `/sell`, `/contact` | In dev (no secret set) `verifyTurnstile()` returns `success: true`. Production must have `TURNSTILE_SECRET_KEY`. Trusted-internal bypass: `x-internal-secret` header matching `INTERNAL_API_SECRET`. |
 | **Vercel Domains** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\vercel-domains.ts` | Domain availability / pricing / purchase / project attach | `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` | Domain provisioning pipeline, agent custom-domain checkout | Uses `/v4/domains/status`, `/v4/domains/price`, `/v5/domains/buy`, `/v10/projects/{id}/domains`. |
 | **Google Business Profile** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\gbp-api.ts` | localPosts v4 (auto-posting), media (photos), location info | `GBP_CLIENT_ID`, `GBP_CLIENT_SECRET`, `GBP_REFRESH_TOKEN` (platform owner) + per-user refresh tokens | Auto-posting cron, agent GBP UI | **Per-user OAuth**: client ID/secret are app-level; refresh token can be passed per-agent (falls back to env). Token cache keyed by last 16 chars of refresh token. Two endpoints: `mybusiness.googleapis.com/v4` (posts) + `mybusinessbusinessinformation.googleapis.com/v1` (media, location info). |

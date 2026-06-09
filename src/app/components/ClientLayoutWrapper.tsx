@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import EnhancedSidebar from "./EnhancedSidebar";
+import EnhancedNavbar from "./EnhancedNavbar";
 import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
@@ -19,26 +20,25 @@ import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
 
-function LayoutContent({ children }: { children: React.ReactNode }) {
+function LayoutContent({ children, navLayout = "sidebar" }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar" }) {
   // Sync favorites status on login (once per session)
   useFavoritesSync();
   const { isCollapsed } = useSidebar();
+  const isNavbar = navLayout === "navbar";
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
 
-  // Apply agent font via CSS variable (NOT body.style — that crashes MapLibre/React reconciliation)
+  // Agent font is now applied server-side (root layout sets --agent-font on
+  // <body>), so there's no client fetch/flash here anymore.
+
+  // Keep --sidebar-width in sync with the collapse state so left-anchored /
+  // centered overlays (via --nav-left-offset) shift correctly in sidebar mode.
   useEffect(() => {
-    fetch("/api/agent/public")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        const font = data?.profile?.agentProfile?.fontFamily;
-        if (font) {
-          document.documentElement.style.setProperty("--agent-font", `'${font}', sans-serif`);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (navLayout === "sidebar") {
+      document.body.style.setProperty("--sidebar-width", isCollapsed ? "80px" : "280px");
+    }
+  }, [isCollapsed, navLayout]);
 
   // Pages where we DON'T want any background (neither spatial nor map)
   const pagesWithoutBackground = [
@@ -85,21 +85,34 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <MapBackground />
       )}
 
-      {/* Desktop: Always visible sidebar (except on listing detail and landing pages) */}
+      {/* Desktop/tablet nav (except on landing pages). The tenant's navLayout
+          decides sidebar (left, default) vs navbar (top). Mobile is unaffected —
+          MobileBottomNav handles small screens for both layouts. */}
       {!isLandingPage && (
-        <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
-          <EnhancedSidebar />
-        </div>
+        isNavbar ? (
+          <div className="hidden md:block fixed top-0 left-0 right-0 z-30 carousel-hide">
+            <EnhancedNavbar />
+          </div>
+        ) : (
+          <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
+            <EnhancedSidebar />
+          </div>
+        )
       )}
 
       {/* Top Toggles - Theme (left) and Map (right) - Hidden on agent pages */}
       {shouldShowTopToggles && <TopToggles />}
 
-      {/* Main content with sidebar spacing on desktop */}
+      {/* Main content spacing on desktop: left margin for the sidebar, or top
+          padding for the fixed navbar. Mobile gets neither. */}
       <div
         data-main-content
-        className={`relative z-10 transition-[margin] duration-300 ${
-          isLandingPage ? '' : `overflow-x-hidden ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'}`
+        className={`relative z-10 transition-[margin,padding] duration-300 ${
+          isLandingPage
+            ? ''
+            : isNavbar
+              ? 'overflow-x-hidden md:pt-16'
+              : `overflow-x-hidden ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'}`
         }`}
       >
         <div style={{ pointerEvents: 'auto' }}>
@@ -113,6 +126,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Toast Notifications */}
       <ToastContainer
         position="top-right"
+        style={{ top: "calc(1rem + var(--nav-top-offset))" }}
         autoClose={3000}
         hideProgressBar={false}
         newestOnTop={true}
@@ -130,11 +144,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 interface ClientLayoutWrapperProps {
   children: React.ReactNode;
   initialTheme?: ThemeName;
+  navLayout?: "sidebar" | "navbar";
+  themeLocked?: boolean;
+  forcedTheme?: ThemeName;
 }
 
 export default function ClientLayoutWrapper({
   children,
   initialTheme,
+  navLayout = "sidebar",
+  themeLocked = false,
+  forcedTheme,
 }: ClientLayoutWrapperProps) {
   // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
@@ -168,12 +188,12 @@ export default function ClientLayoutWrapper({
   }, []);
 
   return (
-    <ThemeProvider initialTheme={initialTheme}>
+    <ThemeProvider initialTheme={initialTheme} themeLocked={themeLocked} forcedTheme={forcedTheme}>
       <PWAProvider>
         <MapStateProvider>
           <Providers>
             <SidebarProvider>
-              <LayoutContent>{children}</LayoutContent>
+              <LayoutContent navLayout={navLayout}>{children}</LayoutContent>
             </SidebarProvider>
           </Providers>
         </MapStateProvider>

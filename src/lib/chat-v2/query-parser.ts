@@ -178,7 +178,8 @@ const TREND_RE = new RegExp(
   "i"
 );
 
-const CMA_RE = /\b(CMA|comparable sales|comp(s)?|what'?s it worth|what is .* worth|what are .* worth|valuation|what did .* sell for)\b/i;
+const CMA_RE =
+  /\b(?:CMA|comparable sales|comps?|valuation|home valuation|value of (?:my|this|the|your)\s+(?:home|house|property|condo|place)|(?:sell|selling)\s+my\s+(?:home|house|property|condo|place))\b|what'?s?\s+.{0,30}?\bworth\b|what (?:is|are)\s+.{0,40}?\bworth\b|how much (?:is|are|would|could|will)\s+.{0,30}?\bworth\b|what did\s+.{0,40}?\bsell for\b/i;
 
 // Insights / educational keywords. Bare "HOA" is intentionally NOT here —
 // in the chat corpus it's overwhelmingly used as a filter ("no HOA",
@@ -200,6 +201,12 @@ const INSIGHTS_RE = new RegExp(
     String.raw`\bwhat (is|are) (a |an |the )?(short sale|HOA|escrow|easement|appraisal|earnest money)\b`,
     String.raw`\bexplain\b`,
     String.raw`\bdescribe\b`,
+    // Neighborhood / where-to-live recommendations are educational, not a
+    // listing search (and "neighborHOODs" must never resolve to city "Hood").
+    String.raw`\bbest (?:neighbou?rhood|area|place|town|spot)s?\b`,
+    String.raw`\b(?:good|safe|nice|family[- ]friendly|affordable|walkable|quiet) (?:neighbou?rhood|area|place|town)s?\b`,
+    String.raw`\bwhere (?:should|can|would|do) (?:i|we|you)\s+(?:live|buy|move|retire|invest)\b`,
+    String.raw`\b(?:best|good|ideal) (?:place|area|neighbou?rhood|town)s? (?:for|to)\b`,
   ].join("|"),
   "i"
 );
@@ -211,15 +218,49 @@ const INSIGHTS_RE = new RegExp(
 const PRICE_TOKEN = /\$?(\d{1,3}(?:[,.]?\d{3})*|\d+)\s*([kKmM]?)/;
 
 function parsePrice(token: string): number | null {
-  const m = token.match(/^\$?(\d+(?:[,.]?\d+)*)\s*([kKmM]?)$/);
+  // Strip $ and thousands-commas, but KEEP the decimal point so "1.5M" reads as
+  // 1.5 × 1M = $1.5M (the old code stripped the dot → "15" × 1M = $15M).
+  const t = token.trim().replace(/\$/g, "").replace(/,/g, "");
+  const m = t.match(/^(\d+(?:\.\d+)?)\s*([kKmM]?)$/);
   if (!m) return null;
-  const numStr = m[1].replace(/[,.]/g, "");
-  const n = parseInt(numStr, 10);
+  const n = parseFloat(m[1]);
   if (isNaN(n)) return null;
   const mult = m[2].toLowerCase();
-  if (mult === "k") return n * 1_000;
-  if (mult === "m") return n * 1_000_000;
-  return n;
+  if (mult === "k") return Math.round(n * 1_000);
+  if (mult === "m") return Math.round(n * 1_000_000);
+  return Math.round(n);
+}
+
+// Word-aware money parser. Handles the digit forms parsePrice does ("$500k",
+// "1.5M", "750,000") PLUS spoken forms: "a million", "half a million",
+// "1.5 million", "750 thousand", "two grand".
+function parseMoney(token: string): number | null {
+  if (!token) return null;
+  const t = token.toLowerCase().replace(/\$/g, "").trim();
+  const wordM = t.match(
+    /^(half a|quarter of a|three quarters of a|a|one|two|three|\d+(?:\.\d+)?)\s+(million|mil|thousand|grand)$/
+  );
+  if (wordM) {
+    const w = wordM[1];
+    const base =
+      w === "a" || w === "one"
+        ? 1
+        : w === "two"
+        ? 2
+        : w === "three"
+        ? 3
+        : w === "half a"
+        ? 0.5
+        : w === "quarter of a"
+        ? 0.25
+        : w === "three quarters of a"
+        ? 0.75
+        : parseFloat(w);
+    if (isNaN(base)) return null;
+    const mult = /million|mil/.test(wordM[2]) ? 1_000_000 : 1_000;
+    return Math.round(base * mult);
+  }
+  return parsePrice(t);
 }
 
 /**
@@ -241,26 +282,43 @@ function extractFilters(raw: string): ListingFilters & { closedSinceDays?: numbe
     return /\b(HOA|fee|month|sq\.?\s*ft|sqft|square\s+feet)\b/i.test(before);
   };
 
-  // "under $1M", "under 500k", "below $750k"
-  const underM = lower.match(/(?:under|below|less than|up to|max(?:imum)?)\s+(\$?\d+(?:[,.]?\d+)*\s*[km]?)/i);
+  // A money token: digits with a k/m suffix ("$500k", "1.5M"), a bare 4+ digit
+  // number ("750000", "750,000"), OR a spoken form ("a million", "half a
+  // million", "750 thousand"). Bare 1–3 digit numbers are excluded so bed/bath
+  // counts ("for 3") don't read as prices; a >=1000 floor backstops anyway.
+  const MONEY = String.raw`(\$?\d[\d,]*(?:\.\d+)?\s*[kKmM]|\$\d[\d,]*(?:\.\d+)?|\d{4,}(?:,\d{3})*|(?:half a|quarter of a|three quarters of a|a|one|two|three|\d+(?:\.\d+)?)\s+(?:million|mil|thousand|grand))`;
+
+  // Max: "under $1M", "below 750k", "up to a million", "for 500k",
+  // "around $600k", "budget of 800k", "what can I get for 500k".
+  const underM = lower.match(
+    new RegExp(
+      String.raw`(?:under|below|less than|up to|max(?:imum)?|no more than|within|for|around|about|budget(?:\s+of)?)\s+${MONEY}`,
+      "i"
+    )
+  );
   if (underM && underM.index !== undefined && !isPriceContextWrong(underM.index)) {
-    const p = parsePrice(underM[1]);
-    if (p) f.maxPrice = p;
+    const p = parseMoney(underM[1]);
+    if (p && p >= 1000) f.maxPrice = p;
   }
-  // "over $500k", "above $1M", "more than $2M"
-  const overM = lower.match(/(?:over|above|more than|min(?:imum)?|starting at)\s+(\$?\d+(?:[,.]?\d+)*\s*[km]?)/i);
+  // Min: "over $500k", "above 1M", "more than $2M", "starting at 600k",
+  // "at least 750k", "north of a million".
+  const overM = lower.match(
+    new RegExp(
+      String.raw`(?:over|above|more than|min(?:imum)?|starting at|at least|north of)\s+${MONEY}`,
+      "i"
+    )
+  );
   if (overM && overM.index !== undefined && !isPriceContextWrong(overM.index)) {
-    const p = parsePrice(overM[1]);
-    if (p) f.minPrice = p;
+    const p = parseMoney(overM[1]);
+    if (p && p >= 1000) f.minPrice = p;
   }
-  // "$500k-$1M", "between $500k and $1M", "$500k to $1M"
+  // Range: "$500k-$1M", "between 500k and 1M", "500k to a million".
   const rangeM = lower.match(
-    /(\$?\d+(?:[,.]?\d+)*\s*[km]?)\s*(?:-|–|to|and)\s*(\$?\d+(?:[,.]?\d+)*\s*[km]?)/i
+    new RegExp(`${MONEY}\\s*(?:-|–|to|and)\\s*${MONEY}`, "i")
   );
   if (rangeM && rangeM.index !== undefined && !isPriceContextWrong(rangeM.index)) {
-    // Only treat as price range if both sides parse to plausible price numbers (>= $1000)
-    const a = parsePrice(rangeM[1]);
-    const b = parsePrice(rangeM[2]);
+    const a = parseMoney(rangeM[1]);
+    const b = parseMoney(rangeM[2]);
     if (a !== null && b !== null && a >= 1000 && b >= 1000) {
       f.minPrice = Math.min(a, b);
       f.maxPrice = Math.max(a, b);
@@ -303,13 +361,39 @@ function extractFilters(raw: string): ListingFilters & { closedSinceDays?: numbe
   const garageM = lower.match(/\b(\d+)[- ]?car garage\b/i);
   if (garageM) f.garageSpaces = parseInt(garageM[1], 10);
 
+  // ---- Recency: "new this week", "just listed", "newly listed" ----
+  if (/\b(just listed|newly listed|new listings?|new to (?:the )?market|just (?:hit|came on|on) the market|new this week|hit the market)\b/i.test(lower)) {
+    f.maxDaysOnMarket = 7;
+  } else if (/\b(?:new|listed) (?:this|in the last|last) month\b/i.test(lower)) {
+    f.maxDaysOnMarket = 30;
+  }
+
+  // ---- Sort ----
+  // The listing-search default is price-descending; only set sort when the
+  // query implies an explicit ordering ("cheapest" must NOT show priciest first).
+  if (/\b(cheapest|least expensive|lowest[- ]priced?|most affordable|best deals?|bargains?)\b/i.test(lower)) {
+    f.sort = "priceAsc";
+  } else if (/\b(cheap|affordable|inexpensive|budget[- ]friendly)\b/i.test(lower)) {
+    f.sort = "priceAsc";
+  } else if (/\b(most expensive|priciest|highest[- ]priced?|luxury|high[- ]end|top of the line)\b/i.test(lower)) {
+    f.sort = "priceDesc";
+  } else if (/\b(newest|most recent|latest|freshest)\b/i.test(lower)) {
+    f.sort = "newest";
+  }
+
   // ---- Stories ----
   if (/\b(single[- ]story|one story|1 story)\b/i.test(lower)) f.stories = 1;
   if (/\b(two[- ]story|2 story)\b/i.test(lower)) f.stories = 2;
 
-  // ---- Property type (lowercase strings — searchHomes-style; downstream
-  // code maps these to propertySubType filtering) ----
-  if (/\b(condo|condominium)\b/i.test(lower)) (f as any).propertyType = "condo";
+  // ---- Property / listing type (lowercase tokens; normalizePropertyType in
+  // listing-query.ts maps these onto the A/B/C/D code + propertySubType) ----
+  // Listing-type words are checked first so "homes for rent" reads as a rental,
+  // not a sale. Patterns are deliberately specific to avoid this market's
+  // "Indian lease land" terminology being mistaken for rentals/land.
+  if (/\b(for rent|for lease|rentals?|to rent|renting|rent)\b/i.test(lower)) (f as any).propertyType = "rental";
+  else if (/\b(multi[- ]?family|multifamily|duplex|triplex|fourplex|income propert(?:y|ies))\b/i.test(lower)) (f as any).propertyType = "multifamily";
+  else if (/\b(vacant land|land for sale|raw land|acreage|vacant lots?)\b/i.test(lower)) (f as any).propertyType = "land";
+  else if (/\b(condo|condominium)\b/i.test(lower)) (f as any).propertyType = "condo";
   else if (/\b(townhouse|town home|townhome)\b/i.test(lower)) (f as any).propertyType = "townhouse";
   else if (/\b(single[- ]family|sfr|house|home)\b/i.test(lower) && !/\bhomes?\s+in\b/i.test(lower)) {
     // Only set "house" if it's a clear noun, not "homes in Beverly Hills"
@@ -454,13 +538,24 @@ async function resolveEntityFromText(text: string): Promise<ResolvedEntity | nul
  *   3. Strip common filter/intent words, retry
  */
 async function resolveEntitySmart(raw: string): Promise<ResolvedEntity | null> {
-  const direct = await resolveEntityFromText(raw);
+  // Generic location words fuzzy-match real city names ("neighborHOODs" → city
+  // "Hood", and "communities"/"areas"/"places" are noise). Strip them so only a
+  // genuine place name resolves; a real location ("...in La Quinta") survives.
+  const text = raw
+    .replace(
+      /\b(neighbou?rhoods?|communit(?:y|ies)|areas?|places?|spots?|subdivisions?|developments?)\b/gi,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const direct = await resolveEntityFromText(text);
   if (direct) return direct;
 
   // Capture phrase after a preposition. Require the captured entity to be a
   // sequence of TitleCase words (no lowercase mid-stream), so we naturally
   // stop at filter modifiers ("with", "under", "over", "and", etc.).
-  const prepM = raw.match(
+  const prepM = text.match(
     /\b(?:in|for|around|near|at|inside)\s+(?:the\s+)?([A-Z][\w]*(?:\s+[A-Z][\w]*){0,4})(?=\s+[a-z]|[,.?!]|\s*$)/
   );
   if (prepM) {
@@ -470,7 +565,7 @@ async function resolveEntitySmart(raw: string): Promise<ResolvedEntity | null> {
   }
 
   // Strip recognized filter/intent words and retry
-  const stripped = raw
+  const stripped = text
     .replace(/\b(?:show me|tell me|find|get|give me|i (?:want|need|am looking))\b/gi, "")
     .replace(/\b(?:homes?|listings?|properties|rentals?|condos?|townhomes?|townhouses?)\b/gi, "")
     .replace(/\b(?:average|median|typical|how many|count of|total)\b/gi, "")

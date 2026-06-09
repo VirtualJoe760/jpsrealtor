@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Sun, Moon, SunMoon } from "lucide-react";
+import { Loader2, Sun, Moon, SunMoon, PanelLeft, PanelTop, Columns2, Image as ImageIcon, Film, Images, LayoutTemplate, CircleUserRound } from "lucide-react";
 
 interface StepProps {
   formData: any;
@@ -26,6 +26,24 @@ const THEME_OPTIONS: { id: ThemeMode; label: string; icon: typeof Sun; desc: str
   { id: "dark", label: "Dark Only", icon: Moon, desc: "Site always uses the dark theme" },
 ];
 
+type NavLayout = "sidebar" | "navbar";
+
+const NAV_OPTIONS: { id: NavLayout; label: string; icon: typeof PanelLeft; desc: string }[] = [
+  { id: "sidebar", label: "Sidebar", icon: PanelLeft, desc: "Vertical navigation on the left (default)" },
+  { id: "navbar", label: "Top Navbar", icon: PanelTop, desc: "Horizontal navigation bar across the top" },
+];
+
+type HeroStyle = "split" | "fullwidth" | "video" | "carousel" | "minimal" | "spotlight";
+
+const HERO_OPTIONS: { id: HeroStyle; label: string; icon: typeof Columns2; desc: string }[] = [
+  { id: "split", label: "Split Classic", icon: Columns2, desc: "Headline + CTAs with your headshot — the default" },
+  { id: "fullwidth", label: "Full-Width Image", icon: ImageIcon, desc: "Full-bleed hero photo, centered headline" },
+  { id: "video", label: "Video", icon: Film, desc: "Looping background video (uses your intro video)" },
+  { id: "carousel", label: "Carousel", icon: Images, desc: "Rotating gallery photos as the background" },
+  { id: "minimal", label: "Minimal Card", icon: LayoutTemplate, desc: "Clean brand panel with stats — no big photo" },
+  { id: "spotlight", label: "Spotlight", icon: CircleUserRound, desc: "Centered headshot, very personal" },
+];
+
 export default function BrandingStep({
   formData,
   updateField,
@@ -34,6 +52,8 @@ export default function BrandingStep({
   isSaving,
 }: StepProps) {
   const themeMode: ThemeMode = formData.agentProfile?.themeMode || "both";
+  const navLayout: NavLayout = formData.agentProfile?.navLayout === "navbar" ? "navbar" : "sidebar";
+  const heroStyle: HeroStyle = (HERO_OPTIONS.find((h) => h.id === formData.agentProfile?.heroStyle)?.id) || "split";
 
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
     isLight
@@ -50,6 +70,8 @@ export default function BrandingStep({
       agentProfile: {
         fontFamily: formData.agentProfile?.fontFamily || "Raleway",
         themeMode,
+        navLayout,
+        heroStyle,
       },
     });
   };
@@ -152,6 +174,108 @@ export default function BrandingStep({
           }`}
         >
           {THEME_OPTIONS.find((o) => o.id === themeMode)?.desc}
+        </p>
+      </div>
+
+      {/* Navigation Layout (desktop/tablet) */}
+      <div className="mb-6">
+        <label className={labelClass}>Navigation Layout</label>
+        <div className="grid grid-cols-2 gap-2">
+          {NAV_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = navLayout === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => updateField("agentProfile.navLayout", opt.id)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all text-center ${
+                  isActive
+                    ? isLight
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-emerald-500 bg-emerald-900/20"
+                    : isLight
+                    ? "border-gray-200 bg-gray-50 hover:border-gray-300"
+                    : "border-gray-700 bg-gray-800/40 hover:border-gray-600"
+                }`}
+              >
+                <Icon
+                  size={20}
+                  className={
+                    isActive
+                      ? isLight
+                        ? "text-blue-600"
+                        : "text-emerald-400"
+                      : isLight
+                      ? "text-gray-500"
+                      : "text-gray-400"
+                  }
+                />
+                <span
+                  className={`text-sm font-semibold ${
+                    isActive
+                      ? isLight
+                        ? "text-blue-700"
+                        : "text-emerald-300"
+                      : isLight
+                      ? "text-gray-700"
+                      : "text-gray-300"
+                  }`}
+                >
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          {NAV_OPTIONS.find((o) => o.id === navLayout)?.desc} · Mobile always uses the bottom nav bar.
+        </p>
+      </div>
+
+      {/* Hero Style */}
+      <div className="mb-6">
+        <label className={labelClass}>Homepage Hero Style</label>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {HERO_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = heroStyle === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => updateField("agentProfile.heroStyle", opt.id)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all text-center ${
+                  isActive
+                    ? isLight
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-emerald-500 bg-emerald-900/20"
+                    : isLight
+                    ? "border-gray-200 bg-gray-50 hover:border-gray-300"
+                    : "border-gray-700 bg-gray-800/40 hover:border-gray-600"
+                }`}
+              >
+                <Icon
+                  size={20}
+                  className={
+                    isActive
+                      ? isLight ? "text-blue-600" : "text-emerald-400"
+                      : isLight ? "text-gray-500" : "text-gray-400"
+                  }
+                />
+                <span className={`text-xs font-semibold ${
+                  isActive
+                    ? isLight ? "text-blue-700" : "text-emerald-300"
+                    : isLight ? "text-gray-700" : "text-gray-300"
+                }`}>
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          {HERO_OPTIONS.find((o) => o.id === heroStyle)?.desc}
         </p>
       </div>
 

@@ -8,6 +8,7 @@ import IdentityStep from "./steps/IdentityStep";
 import BrandingStep from "./steps/BrandingStep";
 import PhotosMediaStep from "./steps/PhotosMediaStep";
 import ContentStoryStep from "./steps/ContentStoryStep";
+import HighlightsStep from "./steps/HighlightsStep";
 import SocialMediaStep from "./steps/SocialMediaStep";
 import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
@@ -77,6 +78,8 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
         return <PhotosMediaStep {...stepProps} />;
       case "content":
         return <ContentStoryStep {...stepProps} />;
+      case "highlights":
+        return <HighlightsStep {...stepProps} />;
       case "social":
         return <SocialMediaStep {...stepProps} />;
       case "domain":
