@@ -149,7 +149,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     if (onClose) onClose();
   };
 
-  const menuItems = [
+  const menuItems: Array<{ label: string; icon: typeof Home; href?: string; action?: "chat" | "map" }> = [
     { label: "Home", icon: Home, href: "/" },
     { label: "Chat", icon: MessageSquare, action: "chat" },
     { label: "Map", icon: Map, action: "map" },

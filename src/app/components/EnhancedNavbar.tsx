@@ -114,10 +114,10 @@ export default function EnhancedNavbar() {
     else router.push("/chap");
   };
 
-  const menuItems = [
+  const menuItems: Array<{ label: string; icon: typeof Home; href?: string; action?: "chat" | "map" }> = [
     { label: "Home", icon: Home, href: "/" },
-    { label: "Chat", icon: MessageSquare, action: "chat" as const },
-    { label: "Map", icon: Map, action: "map" as const },
+    { label: "Chat", icon: MessageSquare, action: "chat" },
+    { label: "Map", icon: Map, action: "map" },
     { label: "Neighborhoods", icon: MapPin, href: "/neighborhoods" },
   ];
 
