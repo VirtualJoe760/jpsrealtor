@@ -77,9 +77,11 @@ export const search_listings: ToolDef = {
     // Render the primary photo for the first N results so the homes display
     // inline. Hero shot only, fetched in parallel — adds ~one image's latency,
     // not N. URL-only path is unchanged for analysis/counting searches.
-    const heroes = items.slice(0, n).filter((it) => it?.primaryPhotoUrl);
+    const heroes = items.slice(0, n).filter((it) => it?.primaryThumbUrl || it?.primaryPhotoUrl);
     const blocks = (
-      await Promise.all(heroes.map((it) => fetchImageBlock(it.primaryPhotoUrl)))
+      await Promise.all(
+        heroes.map((it) => fetchImageBlock(it.primaryThumbUrl || it.primaryPhotoUrl))
+      )
     ).filter((b): b is ImageBlock => b !== null);
     if (blocks.length === 0) return data;
 

@@ -297,6 +297,15 @@ export async function GET(req: NextRequest) {
           l.media?.[0]?.MediaURL ||
           l.media?.[0]?.Uri800 ||
           null,
+        // Small (~640px) variant for inline thumbnails — ~50-80KB vs the
+        // ~700KB original, so embedding hero shots stays light.
+        primaryThumbUrl:
+          l.media?.[0]?.Uri640 ||
+          l.media?.[0]?.Uri800 ||
+          l.media?.[0]?.UriThumb ||
+          l.media?.[0]?.Uri300 ||
+          l.media?.[0]?.MediaURL ||
+          null,
         slug: `/mls-listings/${l.listingKey}`,
         ...(distanceByKey.has(l.listingKey)
           ? { distanceMiles: distanceByKey.get(l.listingKey) }
