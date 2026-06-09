@@ -21,6 +21,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
+    "@chatrealty/mcp-server": "file:packages/mcp-server",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "mcp-handler": "1.1.0",
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jost": "^5.2.8",
