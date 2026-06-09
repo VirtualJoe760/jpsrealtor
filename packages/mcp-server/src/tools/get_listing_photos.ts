@@ -2,25 +2,7 @@
 
 import { request } from "../http.js";
 import type { ToolDef } from "./types.js";
-
-type ImageBlock = { type: "image"; data: string; mimeType: string };
-
-// Fetch one image and return it as an MCP image content block (base64).
-// Returns null on any failure so a single bad photo never fails the whole call.
-async function fetchImageBlock(url: string): Promise<ImageBlock | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const mimeType = res.headers.get("content-type") || "image/jpeg";
-    if (!mimeType.startsWith("image/")) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length === 0 || buf.length > 5_000_000) return null; // skip empty / oversized
-    return { type: "image", data: buf.toString("base64"), mimeType };
-  } catch {
-    return null;
-  }
-}
+import { fetchImageBlock, type ImageBlock } from "./_media.js";
 
 export const get_listing_photos: ToolDef = {
   name: "get_listing_photos",

@@ -3,27 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.get_listing_photos = void 0;
 const http_js_1 = require("../http.js");
-// Fetch one image and return it as an MCP image content block (base64).
-// Returns null on any failure so a single bad photo never fails the whole call.
-async function fetchImageBlock(url) {
-    if (!url)
-        return null;
-    try {
-        const res = await fetch(url);
-        if (!res.ok)
-            return null;
-        const mimeType = res.headers.get("content-type") || "image/jpeg";
-        if (!mimeType.startsWith("image/"))
-            return null;
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length === 0 || buf.length > 5_000_000)
-            return null; // skip empty / oversized
-        return { type: "image", data: buf.toString("base64"), mimeType };
-    }
-    catch {
-        return null;
-    }
-}
+const _media_js_1 = require("./_media.js");
 exports.get_listing_photos = {
     name: "get_listing_photos",
     description: "Shows a home's photos. BY DEFAULT returns the first 6 photos as inline RENDERED images that display directly in " +
@@ -69,7 +49,7 @@ exports.get_listing_photos = {
         // Display path: fetch the first N photos and return them as rendered image
         // blocks alongside a text block carrying the URLs/metadata + galleryUrl.
         const toEmbed = photos.slice(0, embedN);
-        const fetched = await Promise.all(toEmbed.map((p) => fetchImageBlock(p?.url || p?.thumbUrl)));
+        const fetched = await Promise.all(toEmbed.map((p) => (0, _media_js_1.fetchImageBlock)(p?.url || p?.thumbUrl)));
         const imageBlocks = fetched.filter((b) => b !== null);
         const summary = {
             ...enriched,
