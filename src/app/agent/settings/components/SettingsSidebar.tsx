@@ -116,7 +116,7 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
   };
 
   return (
-    <div className="flex gap-6 min-h-[600px]">
+    <div className="flex flex-col md:flex-row gap-6 min-h-[600px]">
       {/* Sidebar */}
       <nav
         className={`hidden md:block w-56 flex-shrink-0 rounded-xl border p-3 self-start sticky top-4 ${
