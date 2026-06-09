@@ -24,6 +24,7 @@ import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
+import { getServerNavLayout } from "@/lib/nav-layout";
 
 // Theme constants - must match ThemeContext.tsx
 const THEME_COOKIE_NAME = 'site-theme';
@@ -119,6 +120,9 @@ export default async function RootLayout({
   // Read theme from cookie on the server
   const cookieStore = await cookies();
   const serverTheme = getServerTheme(cookieStore);
+
+  // Resolve this tenant's nav layout server-side (avoids a post-hydration flash).
+  const navLayout = await getServerNavLayout();
 
   // Get theme color for Dynamic Island/status bar
   const themeColor = serverTheme === 'lightgradient' ? '#ffffff' : '#000000';
@@ -272,7 +276,7 @@ export default async function RootLayout({
             </Script>
           </>
         )}
-        <ClientLayoutWrapper initialTheme={serverTheme}>
+        <ClientLayoutWrapper initialTheme={serverTheme} navLayout={navLayout}>
           {children}
           <Footer />
         </ClientLayoutWrapper>

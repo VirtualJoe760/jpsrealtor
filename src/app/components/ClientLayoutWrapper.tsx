@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import MobileBottomNav from "./navbar/MobileBottomNav";
 import EnhancedSidebar from "./EnhancedSidebar";
+import EnhancedNavbar from "./EnhancedNavbar";
 import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
@@ -20,10 +21,11 @@ import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
 import { fetchAgentPublic } from "../hooks/useAgentProfile";
 
-function LayoutContent({ children }: { children: React.ReactNode }) {
+function LayoutContent({ children, navLayout = "sidebar" }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar" }) {
   // Sync favorites status on login (once per session)
   useFavoritesSync();
   const { isCollapsed } = useSidebar();
+  const isNavbar = navLayout === "navbar";
   const pathname = usePathname();
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
@@ -85,21 +87,34 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <MapBackground />
       )}
 
-      {/* Desktop: Always visible sidebar (except on listing detail and landing pages) */}
+      {/* Desktop/tablet nav (except on landing pages). The tenant's navLayout
+          decides sidebar (left, default) vs navbar (top). Mobile is unaffected —
+          MobileBottomNav handles small screens for both layouts. */}
       {!isLandingPage && (
-        <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
-          <EnhancedSidebar />
-        </div>
+        isNavbar ? (
+          <div className="hidden md:block fixed top-0 left-0 right-0 z-30 carousel-hide">
+            <EnhancedNavbar />
+          </div>
+        ) : (
+          <div className="hidden md:block fixed left-0 top-0 h-screen z-30 carousel-hide">
+            <EnhancedSidebar />
+          </div>
+        )
       )}
 
       {/* Top Toggles - Theme (left) and Map (right) - Hidden on agent pages */}
       {shouldShowTopToggles && <TopToggles />}
 
-      {/* Main content with sidebar spacing on desktop */}
+      {/* Main content spacing on desktop: left margin for the sidebar, or top
+          padding for the fixed navbar. Mobile gets neither. */}
       <div
         data-main-content
-        className={`relative z-10 transition-[margin] duration-300 ${
-          isLandingPage ? '' : `overflow-x-hidden ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'}`
+        className={`relative z-10 transition-[margin,padding] duration-300 ${
+          isLandingPage
+            ? ''
+            : isNavbar
+              ? 'overflow-x-hidden md:pt-16'
+              : `overflow-x-hidden ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'}`
         }`}
       >
         <div style={{ pointerEvents: 'auto' }}>
@@ -130,11 +145,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 interface ClientLayoutWrapperProps {
   children: React.ReactNode;
   initialTheme?: ThemeName;
+  navLayout?: "sidebar" | "navbar";
 }
 
 export default function ClientLayoutWrapper({
   children,
   initialTheme,
+  navLayout = "sidebar",
 }: ClientLayoutWrapperProps) {
   // Gesture zoom prevention (pinch) - CSS handles double-tap via touch-action: manipulation
   useEffect(() => {
@@ -173,7 +190,7 @@ export default function ClientLayoutWrapper({
         <MapStateProvider>
           <Providers>
             <SidebarProvider>
-              <LayoutContent>{children}</LayoutContent>
+              <LayoutContent navLayout={navLayout}>{children}</LayoutContent>
             </SidebarProvider>
           </Providers>
         </MapStateProvider>
