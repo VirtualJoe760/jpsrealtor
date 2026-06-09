@@ -11,7 +11,7 @@
 // `extra.authInfo` on every request handler, so we build the per-call
 // ServerConfig from it. Nothing is held in module scope — each call is isolated.
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -59,10 +59,8 @@ function errorResult(code: string, message: string, details?: unknown) {
  * Register the ChatRealty tool surface on a hosted MCP server instance.
  * Call inside createMcpHandler's initializeServer callback.
  */
-export function registerChatRealtyTools(server: McpServer): void {
-  const low = server.server; // underlying low-level Server
-
-  low.setRequestHandler(ListToolsRequestSchema, async () => ({
+export function registerChatRealtyTools(server: Server): void {
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: ALL_TOOLS.map((t: any) => ({
       name: t.name,
       description: t.description,
@@ -70,7 +68,7 @@ export function registerChatRealtyTools(server: McpServer): void {
     })),
   }));
 
-  low.setRequestHandler(CallToolRequestSchema, async (req: any, extra: any) => {
+  server.setRequestHandler(CallToolRequestSchema, async (req: any, extra: any) => {
     const { name, arguments: args } = req.params;
     const tool = toolByName(name);
     if (!tool) return errorResult("not_found", `Unknown tool: ${name}`);

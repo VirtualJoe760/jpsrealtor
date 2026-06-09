@@ -1,52 +1,37 @@
 // src/app/api/mcp/[transport]/route.ts
 //
-// Hosted MCP server — Streamable HTTP transport. This is the URL agents paste
-// into Claude (mobile / desktop / web) as a custom connector:
+// Hosted MCP server — Streamable HTTP transport. URL agents paste into Claude
+// (mobile / desktop / web) as a custom connector:
 //
-//     https://jpsrealtor.com/api/mcp/mcp
+//     https://www.chatrealty.io/api/mcp/mcp
 //
-// It exposes the same 26 ChatRealty tools the stdio server does (search the
-// MLS, comps, CMA, market stats, draft LPs/articles, etc.), reusing their exact
-// definitions via lib/mcp-tool-bridge.ts.
+// Exposes the same 26 ChatRealty tools as the stdio server (lib/mcp-tool-bridge).
 //
-// Auth: withMcpAuth gates every request. verifyToken resolves the OAuth access
-// token to the agent's encrypted crt_live_ token and stashes it on the auth
-// context; the bridge builds a per-call ServerConfig from it and forwards to
-// /api/skill/* — which still enforces the token's real scopes + rate limits.
-//
-// SSE is disabled, so the transport runs statelessly and needs NO Redis/KV.
+// Why we drive the SDK transport directly (instead of mcp-handler's
+// createMcpHandler): the WebStandard transport defaults to enableJsonResponse=
+// false, i.e. it answers as an SSE stream that stays open. mcp-handler only
+// returns its Response after that stream drains — so in a stateless / no-Redis
+// setup every authenticated request HUNG forever (no headers, no body), and
+// Claude reported "authorization failed" right after OAuth. We run the transport
+// stateless with enableJsonResponse=true: each POST is a single application/json
+// reply that closes immediately. We still wrap with withMcpAuth so the 401 +
+// WWW-Authenticate (resource_metadata) discovery handshake is unchanged.
 
-import { createMcpHandler, withMcpAuth } from "mcp-handler";
+import { withMcpAuth } from "mcp-handler";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import dbConnect from "@/lib/mongoose";
 import { McpOAuthToken } from "@/models/McpOAuth";
 import { decryptSecret } from "@/lib/secrets";
-import {
-  sha256,
-  getOrigin,
-  MCP_BASE_PATH,
-  MCP_OAUTH_SCOPES,
-} from "@/lib/mcp-oauth";
+import { sha256, getOrigin, MCP_OAUTH_SCOPES } from "@/lib/mcp-oauth";
 import { registerChatRealtyTools } from "@/lib/mcp-tool-bridge";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const baseHandler = createMcpHandler(
-  (server) => {
-    registerChatRealtyTools(server);
-  },
-  {
-    serverInfo: { name: "@chatrealty/mcp-server", version: "0.8.0" },
-  },
-  {
-    basePath: MCP_BASE_PATH, // → streamable endpoint at /api/mcp/mcp
-    disableSse: true, // stateless; no Redis required
-    maxDuration: 60,
-    verboseLogs: false,
-  }
-);
+const PKG = { name: "@chatrealty/mcp-server", version: "0.8.0" };
 
 async function verifyToken(
   req: Request,
@@ -81,7 +66,36 @@ async function verifyToken(
   };
 }
 
-const handler = withMcpAuth(baseHandler, verifyToken, {
+// Fresh Server + transport per request (stateless). JSON-response mode so the
+// reply closes immediately — no hanging SSE stream, no session store, no Redis.
+async function mcpHandler(req: Request): Promise<Response> {
+  if (req.method !== "POST") {
+    // Stateless server: no GET notification stream / DELETE session teardown.
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32000, message: "Method Not Allowed — this MCP server is stateless; use POST." },
+      }),
+      { status: 405, headers: { "Content-Type": "application/json", Allow: "POST", "Cache-Control": "no-store" } }
+    );
+  }
+
+  const authInfo = (req as unknown as { auth?: AuthInfo }).auth;
+
+  const server = new Server(PKG, { capabilities: { tools: {} } });
+  registerChatRealtyTools(server);
+
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // stateless
+    enableJsonResponse: true, // single JSON reply, closes immediately
+  });
+
+  await server.connect(transport);
+  return transport.handleRequest(req, { authInfo });
+}
+
+const handler = withMcpAuth(mcpHandler, verifyToken, {
   required: true,
   resourceMetadataPath: "/.well-known/oauth-protected-resource",
 });
