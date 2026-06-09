@@ -1,63 +1,42 @@
-import React from 'react'
-import { Metadata } from 'next'
-import VariableHero from '../components/VariableHero'
-import AboutBento from '../components/AboutBento'
+// Multi-tenant About page. The body (AboutClient) fetches the domain owner's
+// public profile client-side; this server wrapper resolves the same owner for
+// agent-specific SEO metadata.
 
-export const metadata: Metadata = {
-  title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
-  description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
-  keywords: ['Joseph Sardella', 'Palm Desert realtor', 'Coachella Valley real estate agent', 'Indian Wells', 'eXp Realty'],
-  openGraph: {
-    title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
-    description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
-    images: [
-      {
-        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png',
-        width: 1200,
-        height: 630,
-        alt: 'Joseph Sardella - Palm Desert Real Estate Agent',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'About Joseph Sardella | Palm Desert Real Estate Agent',
-    description: 'Born and raised in Indian Wells Country Club, Joseph Sardella brings local expertise and modern technology to help you buy or sell your Coachella Valley home.',
-    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png'],
-  },
+import { headers } from "next/headers";
+import type { Metadata } from "next";
+import { resolveDomainOwner } from "@/lib/resolveDomainOwner";
+import dbConnect from "@/lib/mongoose";
+import User from "@/models/User";
+import AboutClient from "./AboutClient";
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const h = await headers();
+    const host = h.get("host") || "localhost";
+    const req = new Request(`http://${host}/`, { headers: h as unknown as HeadersInit });
+    const { ownerId } = await resolveDomainOwner(req);
+    if (ownerId) {
+      await dbConnect();
+      const u = await User.findById(ownerId)
+        .select("name agentProfile.bio agentProfile.headline agentProfile.headshot agentProfile.brokerageName")
+        .lean<{ name?: string; agentProfile?: { bio?: string; headline?: string; headshot?: string; brokerageName?: string } }>();
+      const name = u?.name || "Your Agent";
+      const ap = u?.agentProfile || {};
+      const title = `About ${name}${ap.brokerageName ? ` | ${ap.brokerageName}` : ""}`;
+      const description = (ap.bio || ap.headline || `Get to know ${name}, your local real estate agent.`).slice(0, 160);
+      return {
+        title,
+        description,
+        openGraph: { title, description, images: ap.headshot ? [{ url: ap.headshot }] : [] },
+        twitter: { card: "summary_large_image", title, description },
+      };
+    }
+  } catch {
+    /* fall through to default */
+  }
+  return { title: "About", description: "Get to know your local real estate agent." };
 }
 
-const page = () => {
-  return (
-    <div>
-      <VariableHero 
-        backgroundImage={`https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png`}
-        heroContext=" "
-        description=""
-        alignment="center"
-      />
-
-      {/* Bio Section */}
-      <section className="max-w-4xl mx-auto py-12 px-4">
-        <h2 className="text-6xl font-bold mb-6">Who is Joseph Sardella?</h2>
-        <hr className='my-5'/>
-        <p className="mb-4 text-xl">
-          Born and raised in Indian Wells Country Club, Joseph Sardella grew up in a household where real estate was a way of life. His parents, active in the local market since the early 1970s, spent years fixing and flipping homes, particularly in Indian Wells, giving Joseph a unique perspective on the industry from a young age.
-        </p>
-        <p className="mb-4 text-xl">
-          As a young adult, Joseph pursued opportunities in the technology sector, starting with Apple Retail, Direct Sports Network, and consulting for Coachella Valley Country Clubs such as Toscana Country Club & Big Horn Country Club. His roles in technology allowed him to develop a deep understanding of software, customer engagement, and problem-solving—skills that would later become invaluable in his real estate career. Despite his success in tech, Joseph’s heart was always in real estate, and in 2019, he earned his license, turning a lifelong dream into reality.
-        </p>
-        <p className="mb-4 text-xl">
-          Today, Joseph is a key member of eXp’s Obsidian Real Estate Group, contributing to a team managing 8 figures in property listings. With his unique blend of local knowledge and technological expertise, Joseph delivers modern, efficient solutions for buyers and sellers alike. He is passionate about helping clients navigate the unique real estate landscape of the Coachella Valley, ensuring their experiences are smooth, informed, and rewarding.
-        </p>
-        <p className="mb-4 text-xl">
-          Outside of his career, Joseph enjoys staying active at the gym, exploring the valley’s breathtaking hiking trails, and cheering on the Firebirds at games with his friends. Approachable, knowledgeable, and innovative, Joseph is proud to call the Coachella Valley home and to play a role in shaping its future.
-        </p>
-        <hr className="mt-20" />
-      </section>
-      <AboutBento />
-    </div>
-  )
+export default function AboutPage() {
+  return <AboutClient />;
 }
-
-export default page
