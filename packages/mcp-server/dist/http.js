@@ -43,8 +43,9 @@ async function request(config, path, opts = {}) {
         body = JSON.stringify(opts.body);
     }
     let res;
+    const doFetch = config.fetchImpl || fetch;
     try {
-        res = await fetch(url, { method, headers, body });
+        res = await doFetch(url, { method, headers, body });
     }
     catch (err) {
         throw new HttpError(0, "network", `Network error reaching ChatRealty: ${err?.message || err}`, null);

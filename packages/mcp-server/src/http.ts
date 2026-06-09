@@ -55,8 +55,9 @@ export async function request<T = unknown>(
   }
 
   let res: Response;
+  const doFetch = config.fetchImpl || fetch;
   try {
-    res = await fetch(url, { method, headers, body });
+    res = await doFetch(url, { method, headers, body });
   } catch (err: any) {
     throw new HttpError(0, "network", `Network error reaching ChatRealty: ${err?.message || err}`, null);
   }

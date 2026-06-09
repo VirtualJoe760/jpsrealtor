@@ -19,6 +19,7 @@ import {
 import { ALL_TOOLS, toolByName } from "@chatrealty/mcp-server/dist/tools/index.js";
 import { HttpError } from "@chatrealty/mcp-server/dist/http.js";
 import type { ServerConfig } from "@chatrealty/mcp-server/dist/config.js";
+import { inProcessSkillFetch } from "@/lib/mcp-inprocess-fetch";
 
 type AuthExtra = {
   crtToken?: string;
@@ -36,7 +37,8 @@ function configFromAuth(extra: any): ServerConfig {
     // as a clean error instead of an undefined-token fetch.
     throw new HttpError(401, "unauthorized", "No ChatRealty credential on this session.", null);
   }
-  return { apiBase, apiToken };
+  // In-process dispatch for /api/skill/* reads — no loopback to a 2nd function.
+  return { apiBase, apiToken, fetchImpl: inProcessSkillFetch };
 }
 
 function errorResult(code: string, message: string, details?: unknown) {
