@@ -72,6 +72,11 @@ async function main(): Promise<void> {
 
     try {
       const result = await tool.handler((args || {}) as Record<string, unknown>, config!);
+      // Tools may return raw MCP content blocks (e.g. rendered images) via
+      // `_mcpContent`; otherwise the JSON value is wrapped as a text block.
+      if (result && typeof result === "object" && Array.isArray((result as any)._mcpContent)) {
+        return { content: (result as any)._mcpContent };
+      }
       return {
         content: [
           {

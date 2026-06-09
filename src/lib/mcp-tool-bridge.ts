@@ -82,6 +82,11 @@ export function registerChatRealtyTools(server: Server): void {
 
     try {
       const result = await tool.handler((args || {}) as Record<string, unknown>, config);
+      // A tool may return raw MCP content blocks (e.g. rendered images) via
+      // `_mcpContent`; otherwise its JSON value is wrapped as a text block.
+      if (result && typeof result === "object" && Array.isArray((result as any)._mcpContent)) {
+        return { content: (result as any)._mcpContent };
+      }
       return {
         content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       };
