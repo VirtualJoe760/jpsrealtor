@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "node server.js",
     "dev:next": "next dev",
-    "prebuild": "npm run generate-mdx",
+    "prebuild": "npm run build:mcp-server && npm run generate-mdx",
     "build": "next build",
+    "build:mcp-server": "tsc -p packages/mcp-server/tsconfig.json",
     "start": "NODE_ENV=production node server.js",
     "start:next": "next start",
     "lint": "next lint",
