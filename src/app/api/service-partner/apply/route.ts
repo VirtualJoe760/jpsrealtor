@@ -100,6 +100,10 @@ export async function POST(request: NextRequest) {
       legalDisclaimer: legalDisclaimer || undefined,
       insuranceInfo: insuranceInfo || undefined,
       specializations: specializations || [],
+      // Approval gate: applicants start as "pending" and are NOT shown in the
+      // public directory until an admin approves them in the admin dashboard.
+      status: "pending",
+      appliedAt: new Date(),
     };
 
     await user.save();
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Service partner application submitted",
+      message: "Service partner application submitted — pending admin review. You'll appear in the partner directory once approved.",
       profile: user.servicePartnerProfile,
     }, { status: 201 });
   } catch (error: any) {

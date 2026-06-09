@@ -39,6 +39,11 @@ export async function GET() {
       licenseNumber: p.servicePartnerProfile?.licenseNumber,
       nmlsId: p.servicePartnerProfile?.nmlsId,
       createdAt: p.createdAt,
+      // Approval gate state — legacy partners with no status are treated as approved.
+      status: p.servicePartnerProfile?.status || "approved",
+      appliedAt: p.servicePartnerProfile?.appliedAt,
+      approvedAt: p.servicePartnerProfile?.approvedAt,
+      rejectionReason: p.servicePartnerProfile?.rejectionReason,
     }));
 
     return NextResponse.json({ success: true, partners: transformed });
@@ -53,7 +58,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { authorized } = await verifyAdmin();
+    const { authorized, email: adminEmail } = await verifyAdmin();
     if (!authorized) {
       return NextResponse.json(
         { error: "Forbidden - Admin access required" },
@@ -90,16 +95,25 @@ export async function PUT(request: NextRequest) {
       if (!user.roles.includes("serviceProvider")) {
         user.roles.push("serviceProvider");
       }
-      // Mark as approved (could add a status field in the future)
+      // Flip the approval gate to "approved" — this is what actually makes the
+      // partner visible in the public directory (the directory query filters on it).
+      user.servicePartnerProfile.status = "approved";
+      user.servicePartnerProfile.approvedAt = new Date();
+      user.servicePartnerProfile.approvedBy = adminEmail;
+      user.servicePartnerProfile.rejectionReason = undefined;
+      user.markModified("servicePartnerProfile");
       await user.save();
 
       return NextResponse.json({
         success: true,
-        message: "Partner application approved.",
+        message: "Partner application approved — now listed in the directory.",
       });
     } else {
-      // Reject - remove serviceProvider role
+      // Reject — mark rejected, hide from directory, and drop the serviceProvider role.
+      user.servicePartnerProfile.status = "rejected";
+      user.servicePartnerProfile.rejectionReason = reason || "Rejected by admin";
       user.roles = user.roles.filter((r: string) => r !== "serviceProvider");
+      user.markModified("servicePartnerProfile");
       await user.save();
 
       // TODO: Send rejection email with reason

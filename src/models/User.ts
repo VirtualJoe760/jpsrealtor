@@ -286,6 +286,13 @@ export interface IUser extends Document {
     legalDisclaimer?: string; // Required marketing disclaimer text
     insuranceInfo?: string; // For contractors
     specializations?: string[];
+    // Approval gate — a partner is NOT publicly listed in the directory until an
+    // admin approves. Applying sets "pending"; the directory query filters on "approved".
+    status?: 'pending' | 'approved' | 'rejected';
+    appliedAt?: Date;
+    approvedAt?: Date;
+    approvedBy?: string; // admin email
+    rejectionReason?: string;
   };
 
   // Vacation Rental Host specific
@@ -871,6 +878,12 @@ const UserSchema = new Schema<IUser>(
       legalDisclaimer: String,
       insuranceInfo: String,
       specializations: [String],
+      // Approval gate — directory listing requires admin approval.
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      appliedAt: Date,
+      approvedAt: Date,
+      approvedBy: String,
+      rejectionReason: String,
     },
 
     // Vacation Rental Host specific
