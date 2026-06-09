@@ -7,6 +7,7 @@ import {
   Palette,
   Camera,
   FileText,
+  Sparkles,
   Share2,
   Globe,
   MapPin,
@@ -21,6 +22,7 @@ export type SettingsStep =
   | "branding"
   | "photos"
   | "content"
+  | "highlights"
   | "social"
   | "domain"
   | "areas"
@@ -39,6 +41,7 @@ const STEPS: { id: SettingsStep; label: string; icon: LucideIcon }[] = [
   { id: "branding", label: "Branding", icon: Palette },
   { id: "photos", label: "Photos", icon: Camera },
   { id: "content", label: "Content", icon: FileText },
+  { id: "highlights", label: "Highlights", icon: Sparkles },
   { id: "social", label: "Social", icon: Share2 },
   { id: "domain", label: "Domain & SEO", icon: Globe },
   { id: "areas", label: "Service Areas", icon: MapPin },

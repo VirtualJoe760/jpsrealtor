@@ -10,9 +10,13 @@ import { useRouter } from "next/navigation";
 import { motion, useTransform, useMotionValue } from "framer-motion";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { fetchAgentPublic } from "@/app/hooks/useAgentProfile";
+import nextDynamic from "next/dynamic";
 import { getAboutData, Reveal } from "./aboutShared";
 import AboutBackground from "./AboutBackground";
 import { Phone, Mail, MapPin, Award, Star, MessageCircle, Calendar, CheckCircle2, Building2, ChevronDown } from "lucide-react";
+
+// Raw-three.js galaxy (lazy — keeps `three` out of the main bundle, client-only).
+const GalaxyBackground = nextDynamic(() => import("./GalaxyBackground"), { ssr: false });
 
 /** Swipeable carousel on mobile, grid on desktop — same markup. */
 function SwipeRow({ children, cols = "md:grid-cols-3" }: { children: React.ReactNode; cols?: string }) {
@@ -115,7 +119,7 @@ export default function AboutClient() {
           {d.tagline && <motion.p initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.22 }} className={`text-lg md:text-2xl mb-2 ${onPhoto ? "text-white/90" : sub}`} style={heroShadow}>{d.tagline}</motion.p>}
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.7, delay: 0.32 }} className={`text-sm tracking-wide ${onPhoto ? "text-white/75" : sub}`} style={heroShadow}>{[d.brokerageName, d.licenseNumber ? `DRE# ${d.licenseNumber}` : null].filter(Boolean).join("  ·  ")}</motion.p>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.42 }} className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-            <button onClick={() => router.push("/chap")} className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold shadow-lg transition-transform hover:scale-105" style={{ backgroundColor: d.brand }}><MessageCircle className="w-5 h-5" /> Chat with {d.firstName}</button>
+            <button onClick={() => router.push("/contact")} className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold shadow-lg transition-transform hover:scale-105" style={{ backgroundColor: d.brand }}><MessageCircle className="w-5 h-5" /> Message {d.firstName}</button>
             <button onClick={() => router.push("/book-appointment")} className={`flex items-center justify-center gap-2 px-7 py-3.5 rounded-full font-semibold border-2 backdrop-blur-sm transition-transform hover:scale-105 ${onPhoto ? "border-white/50 text-white hover:bg-white/10" : (isLight ? "border-gray-300 text-gray-800 hover:bg-gray-50" : "border-neutral-700 text-white hover:bg-neutral-800")}`}><Calendar className="w-5 h-5" /> Book a Call</button>
           </motion.div>
         </div>
@@ -125,40 +129,32 @@ export default function AboutClient() {
         </motion.div>
       </section>
 
-      {/* ── Stats (animated aurora) ───────────────────────────── */}
-      {d.stats.length > 0 && (
-        <section className="relative overflow-hidden py-14 md:py-16">
-          <AboutBackground color={d.brand} overlay="bg-black/20" />
-          <div className="relative z-10 max-w-5xl mx-auto px-6 grid grid-cols-3 gap-4 md:gap-6 text-center text-white">
-            {d.stats.slice(0, 4).map((s, i) => (
-              <Reveal key={i} delay={i * 0.1}>
-                <div className="text-3xl md:text-5xl font-extrabold leading-none">{s.value}</div>
-                <div className="text-xs md:text-sm opacity-90 mt-1.5">{s.label}</div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Story ─────────────────────────────────────────────── */}
+      {/* ── Story (rotating spiral galaxy backdrop) ───────────── */}
       {d.storyParas.length > 0 && (
-        <section className="py-16 md:py-28">
-          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+        <section className="relative overflow-hidden py-20 md:py-28 bg-[#050308]">
+          <GalaxyBackground />
+          {/* blend into the next section at the bottom */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050308]" />
+          {/* legibility: uniform on mobile; on desktop darken the right (text) column while leaving the galaxy glowing around the portrait on the left */}
+          <div className="absolute inset-0 bg-black/50 md:hidden" />
+          <div className="absolute inset-0 hidden md:block bg-gradient-to-l from-black/92 from-35% via-black/55 to-transparent" />
+          <div className="relative z-10 max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10 md:gap-16 items-start">
             {d.headshot && (
-              <Reveal y={50} className="order-1">
-                <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto md:max-w-none md:sticky md:top-24" style={{ boxShadow: `0 30px 70px -25px ${d.brand}66` }}>
+              // Plain (always-opaque) wrapper — over the galaxy, an opacity reveal would let stars bleed through the portrait.
+              <div className="order-1">
+                <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto md:max-w-none md:sticky md:top-24 bg-[#0a0a12]" style={{ boxShadow: `0 30px 70px -25px ${d.brand}66, 0 0 80px -8px ${d.brand}66` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={d.headshot} alt={d.name} className="w-full h-full object-cover" />
                 </div>
-              </Reveal>
+              </div>
             )}
             <div className={`order-2 ${d.headshot ? "" : "md:col-span-2 max-w-3xl mx-auto"}`}>
               <Reveal>
                 <span className="text-sm font-semibold tracking-widest uppercase" style={{ color: d.brand }}>About</span>
-                <h2 className={`text-3xl md:text-5xl font-bold mt-2 mb-6 ${text}`}>Meet {d.name}</h2>
+                <h2 className="text-3xl md:text-5xl font-bold mt-2 mb-6 text-white" style={{ textShadow: "0 2px 18px rgba(0,0,0,0.7)" }}>Meet {d.name}</h2>
               </Reveal>
               {d.storyParas.map((p, i) => (
-                <Reveal key={i} delay={i * 0.05}><p className={`mb-5 text-base md:text-lg leading-relaxed ${sub}`}>{p}</p></Reveal>
+                <Reveal key={i} delay={i * 0.05}><p className="mb-5 text-base md:text-lg leading-relaxed text-gray-100" style={{ textShadow: "0 1px 12px rgba(0,0,0,0.85)" }}>{p}</p></Reveal>
               ))}
             </div>
           </div>
@@ -218,7 +214,7 @@ export default function AboutClient() {
             <AboutBackground color={d.brand} overlay="bg-black/45" />
           )}
           <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-            <Reveal><h2 className="text-3xl md:text-5xl font-bold mb-3 text-white">Where {d.firstName} works</h2><p className="mb-9 text-white/85">Serving buyers and sellers across these communities.</p></Reveal>
+            <Reveal><h2 className="text-3xl md:text-5xl font-bold mb-3 text-white">Local Expertise</h2><p className="mb-9 text-white/85">{d.firstName} knows these communities inside out — and helps buyers and sellers across the wider region.</p></Reveal>
             <div className="flex flex-wrap gap-3 justify-center">{d.serviceAreas.map((a, i) => <Reveal key={i} delay={i * 0.04}><span className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-white"><MapPin className="w-4 h-4 text-white" /> {a.name}</span></Reveal>)}</div>
           </div>
         </section>
