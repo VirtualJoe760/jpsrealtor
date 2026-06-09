@@ -26,6 +26,7 @@ import {
   Users,
   MapPin,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { signOutChain } from "@/lib/signout-chain";
 import Image from "next/image";
@@ -114,7 +115,7 @@ export default function EnhancedNavbar() {
     else router.push("/chap");
   };
 
-  const menuItems = [
+  const menuItems: { label: string; icon: LucideIcon; href?: string; action?: "chat" | "map" }[] = [
     { label: "Home", icon: Home, href: "/" },
     { label: "Chat", icon: MessageSquare, action: "chat" as const },
     { label: "Map", icon: Map, action: "map" as const },
