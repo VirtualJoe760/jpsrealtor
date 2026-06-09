@@ -36,6 +36,8 @@ export default function AdminPartnerApplicationsPage() {
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
+  const [autoApprove, setAutoApprove] = useState<boolean | null>(null);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -46,8 +48,47 @@ export default function AdminPartnerApplicationsPage() {
   useEffect(() => {
     if (status === "authenticated") {
       fetchPartners();
+      fetchAutoApprove();
     }
   }, [status]);
+
+  const fetchAutoApprove = async () => {
+    try {
+      const res = await fetch("/api/admin/settings/partner-approval");
+      if (res.ok) {
+        const data = await res.json();
+        setAutoApprove(!!data.autoApprove);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  const toggleAutoApprove = async () => {
+    if (autoApprove === null) return;
+    const next = !autoApprove;
+    setSavingToggle(true);
+    setAutoApprove(next); // optimistic
+    try {
+      const res = await fetch("/api/admin/settings/partner-approval", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoApprove: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Updated");
+      } else {
+        setAutoApprove(!next); // revert
+        toast.error(data.error || "Failed to update");
+      }
+    } catch {
+      setAutoApprove(!next);
+      toast.error("Failed to update");
+    } finally {
+      setSavingToggle(false);
+    }
+  };
 
   const fetchPartners = async () => {
     try {
@@ -121,9 +162,37 @@ export default function AdminPartnerApplicationsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Partner Applications</h1>
-        <p className={`${textSecondary} mt-1`}>Review and manage service partner registrations</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Partner Applications</h1>
+          <p className={`${textSecondary} mt-1`}>Review and manage service partner registrations</p>
+        </div>
+        {autoApprove !== null && (
+          <div className={`${cardBg} ${border} border rounded-xl px-4 py-3 flex items-center gap-3 shrink-0`}>
+            <div className="text-right">
+              <div className={`text-sm font-medium ${textPrimary}`}>Auto-approve partners</div>
+              <div className={`text-xs ${textSecondary}`}>
+                {autoApprove ? "New applications go live immediately" : "Manual review · auto-approve after 24h"}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoApprove}
+              disabled={savingToggle}
+              onClick={toggleAutoApprove}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                autoApprove ? "bg-green-500" : "bg-gray-400"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  autoApprove ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        )}
       </div>
 
       {partners.length === 0 ? (

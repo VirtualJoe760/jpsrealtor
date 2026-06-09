@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import { approvePartner, rejectPartner } from "@/lib/partner-moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -91,36 +92,22 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "approve") {
-      // Ensure serviceProvider role is present
-      if (!user.roles.includes("serviceProvider")) {
-        user.roles.push("serviceProvider");
-      }
-      // Flip the approval gate to "approved" — this is what actually makes the
-      // partner visible in the public directory (the directory query filters on it).
-      user.servicePartnerProfile.status = "approved";
-      user.servicePartnerProfile.approvedAt = new Date();
-      user.servicePartnerProfile.approvedBy = adminEmail;
-      user.servicePartnerProfile.rejectionReason = undefined;
-      user.markModified("servicePartnerProfile");
-      await user.save();
+      // Shared helper flips the gate to "approved" (what makes the partner visible
+      // in the public directory), stamps audit fields, and emails the partner.
+      await approvePartner(user, adminEmail || "admin");
 
       return NextResponse.json({
         success: true,
-        message: "Partner application approved — now listed in the directory.",
+        message: "Partner application approved — now listed in the directory. Approval email sent.",
       });
     } else {
-      // Reject — mark rejected, hide from directory, and drop the serviceProvider role.
-      user.servicePartnerProfile.status = "rejected";
-      user.servicePartnerProfile.rejectionReason = reason || "Rejected by admin";
-      user.roles = user.roles.filter((r: string) => r !== "serviceProvider");
-      user.markModified("servicePartnerProfile");
-      await user.save();
-
-      // TODO: Send rejection email with reason
+      // Shared helper marks rejected, drops the serviceProvider role (hides from
+      // the directory), and emails the partner with the reason.
+      await rejectPartner(user, reason);
 
       return NextResponse.json({
         success: true,
-        message: "Partner application rejected.",
+        message: "Partner application rejected. Notification email sent.",
       });
     }
   } catch (error: any) {

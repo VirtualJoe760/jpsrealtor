@@ -37,6 +37,10 @@ export interface IPlatformConfig extends Document {
     metaDescription: string;
     ogImage: string;
   };
+  // Platform moderation settings (stored on the `_id: "moderation"` config doc).
+  moderation?: {
+    partnerAutoApprove: boolean; // when true, new service-partner applications are approved on submit
+  };
   updatedAt: Date;
   updatedBy: mongoose.Types.ObjectId;
 }
@@ -61,6 +65,9 @@ const PlatformConfigSchema = new Schema<IPlatformConfig>(
       metaTitle: { type: String, default: "" },
       metaDescription: { type: String, default: "" },
       ogImage: String,
+    },
+    moderation: {
+      partnerAutoApprove: { type: Boolean, default: true },
     },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },

@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { sendPartnerApplicationEmail, sendPartnerApplicationNotification } from "@/lib/email-resend";
+import { getPartnerAutoApprove, approvePartner } from "@/lib/partner-moderation";
 
 export const dynamic = 'force-dynamic';
 
@@ -108,13 +109,21 @@ export async function POST(request: NextRequest) {
 
     await user.save();
 
-    // Send confirmation email to applicant (non-blocking)
-    sendPartnerApplicationEmail(
-      user.email,
-      user.name || '',
-      companyName,
-      type,
-    ).catch((err) => console.error('[PARTNER APPLY] Applicant email failed:', err));
+    // Auto-approve gate: when the admin has auto-approve ON (default), approve
+    // immediately and email the partner. When OFF, leave it pending — an admin
+    // reviews it, and the 24h cron backstop approves anything left untouched.
+    const autoApprove = await getPartnerAutoApprove();
+    if (autoApprove) {
+      await approvePartner(user, "auto-approve"); // flips to approved + sends approval email
+    } else {
+      // Pending — send the "application received, pending review" confirmation.
+      sendPartnerApplicationEmail(
+        user.email,
+        user.name || '',
+        companyName,
+        type,
+      ).catch((err) => console.error('[PARTNER APPLY] Applicant email failed:', err));
+    }
 
     // Notify admin of new partner application (non-blocking)
     sendPartnerApplicationNotification(
@@ -130,7 +139,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Service partner application submitted — pending admin review. You'll appear in the partner directory once approved.",
+      message: autoApprove
+        ? "Service partner application approved — you're now listed in the partner directory."
+        : "Service partner application submitted — pending admin review. You'll appear in the partner directory once approved.",
+      status: user.servicePartnerProfile.status,
       profile: user.servicePartnerProfile,
     }, { status: 201 });
   } catch (error: any) {

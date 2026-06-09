@@ -1259,3 +1259,140 @@ export async function sendAgentApprovalEmail(
     return null;
   }
 }
+
+function prettyPartnerType(type?: string): string {
+  if (!type) return "Service Partner";
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Sent to a service partner when their application is APPROVED (whether by an
+ * admin, auto-approve, or the 24h backstop). Lets them know they're now listed.
+ */
+export async function sendPartnerApprovalEmail(
+  email: string,
+  name: string,
+  companyName: string,
+  type: string,
+) {
+  const resend = getResendClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
+  const firstName = (name || '').split(' ')[0] || 'there';
+  const typeLabel = prettyPartnerType(type);
+
+  console.log('📧 Sending partner approval email to:', email);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: platformFrom(),
+      to: [email],
+      replyTo: ADMIN_EMAIL,
+      subject: `You're approved — ${companyName || 'your business'} is now in the ChatRealty partner directory`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#0e7c7b,#10b981);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:24px;margin:0 0 4px;">You're Approved!</h1>
+              <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;">Welcome to the ChatRealty Partner Network</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              <p style="color:#334155;font-size:15px;line-height:1.7;">
+                Hi ${firstName}, great news — <strong>${companyName || 'your business'}</strong> has been approved
+                as a <strong>${typeLabel}</strong> and is now listed in the ChatRealty partner directory, where
+                agents and their clients can find and connect with you.
+              </p>
+              <div style="text-align:center;margin:24px 0 8px;">
+                <a href="${baseUrl}/directory" style="display:inline-block;background:#0e7c7b;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  View the Directory
+                </a>
+              </div>
+              <p style="color:#64748b;font-size:13px;line-height:1.7;text-align:center;margin:16px 0 0;">
+                You can update your company profile, service areas, and specializations any time in
+                <a href="${baseUrl}/partner/settings" style="color:#0e7c7b;">your partner settings</a>.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Partner approval email error:', error);
+      return null;
+    }
+    console.log('✅ Partner approval email sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send partner approval email:', error);
+    return null;
+  }
+}
+
+/**
+ * Sent to a service partner when their application is REJECTED by an admin.
+ */
+export async function sendPartnerRejectionEmail(
+  email: string,
+  name: string,
+  companyName: string,
+  reason?: string,
+) {
+  const resend = getResendClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
+  const firstName = (name || '').split(' ')[0] || 'there';
+
+  console.log('📧 Sending partner rejection email to:', email);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: platformFrom(),
+      to: [email],
+      replyTo: ADMIN_EMAIL,
+      subject: `Update on your ChatRealty partner application`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:#1e293b;border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:22px;margin:0;">Partner Application Update</h1>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              <p style="color:#334155;font-size:15px;line-height:1.7;">
+                Hi ${firstName}, thank you for your interest in joining the ChatRealty partner directory with
+                <strong>${companyName || 'your business'}</strong>. After review, we're not able to approve the
+                application at this time.
+              </p>
+              ${reason ? `<div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="color:#475569;font-size:13px;font-weight:600;margin:0 0 6px;">REASON</p><p style="color:#334155;font-size:14px;margin:0;">${reason}</p></div>` : ''}
+              <p style="color:#64748b;font-size:14px;line-height:1.7;">
+                If you believe this was a mistake or you'd like to provide additional information, just reply to
+                this email and we'll take another look.
+              </p>
+              <div style="text-align:center;margin:20px 0 0;">
+                <a href="${baseUrl}/partner/settings/apply" style="display:inline-block;background:#475569;color:#fff;padding:12px 30px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  Re-apply
+                </a>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Partner rejection email error:', error);
+      return null;
+    }
+    console.log('✅ Partner rejection email sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send partner rejection email:', error);
+    return null;
+  }
+}
