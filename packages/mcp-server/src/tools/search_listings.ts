@@ -8,7 +8,7 @@ import type { ToolDef } from "./types.js";
 export const search_listings: ToolDef = {
   name: "search_listings",
   description:
-    "Search the active MLS feed by city, subdivision, property type, beds, baths, price range, and build era. Returns a paginated list of listings with key fields and a slug for the public detail page. By default returns sales only (Residential) — pass propertyType: \"Residential Lease\" for rentals, \"Land\" for land, or \"all\" to mix everything. For rentals, listPrice is the monthly rent (typically $1,500-$15,000) not the sale price. Filter by build era with minYearBuilt/maxYearBuilt (e.g. mid-century modern ≈ 1945-1969) — prefer this over fetching everything and sifting by year yourself.",
+    "Search the active MLS feed by city, subdivision, property type, beds, baths, price range, and build era. Returns a paginated list of listings with key fields and a slug for the public detail page. By default returns sales only (Residential) — pass propertyType: \"Residential Lease\" for rentals, \"Land\" for land, or \"all\" to mix everything. For rentals, listPrice is the monthly rent (typically $1,500-$15,000) not the sale price. Filter by build era with minYearBuilt/maxYearBuilt (e.g. mid-century modern ≈ 1945-1969) — prefer this over fetching everything and sifting by year yourself. Find homes near a place with `near` (a ZIP, city, neighborhood, street address, or \"lat,lng\") plus optional `radiusMiles`; results come back sorted nearest-first with a distanceMiles field. IMPORTANT: for \"homes near me\" / \"closest to me\", the server CANNOT see the user's device location — ask them for their ZIP, neighborhood, or address first, then pass it as `near`. Never guess their location.",
   inputSchema: {
     type: "object",
     properties: {
@@ -31,6 +31,8 @@ export const search_listings: ToolDef = {
       maxBaths: { type: "number" },
       minYearBuilt: { type: "number", description: "Earliest year built (inclusive). For mid-century-modern era homes use ~1945-1969." },
       maxYearBuilt: { type: "number", description: "Latest year built (inclusive). For 'new construction' use a recent year (e.g. 2020)." },
+      near: { type: "string", description: "Center the search on a place and sort by distance: a ZIP, city, neighborhood, street address, or 'lat,lng'. For 'near me', ASK the user for their ZIP/area first — the server can't see their device location." },
+      radiusMiles: { type: "number", description: "Radius in miles around `near` (default 10, max 50). Only applies when `near` is set." },
       hasPool: {
         type: "boolean",
         description:

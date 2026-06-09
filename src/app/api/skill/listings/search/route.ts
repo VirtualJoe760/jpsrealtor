@@ -14,15 +14,52 @@ import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
 import { applyPropertyTypeFilter } from "@/lib/property-type";
+import { geocodeAddress } from "@/lib/geocoding/geocode-service";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 20;
 
+const DEFAULT_RADIUS_MILES = 10;
+const MAX_RADIUS_MILES = 50;
+
 function num(v: string | null): number | undefined {
   if (v === null || v === "") return undefined;
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
+}
+
+// lat/lng degree box around a center (lat ~69mi/deg; lng shrinks toward poles).
+function boundingBox(lat: number, lng: number, radiusMiles: number) {
+  const dLat = radiusMiles / 69;
+  const dLng = radiusMiles / (69 * Math.cos((lat * Math.PI) / 180));
+  return { minLat: lat - dLat, maxLat: lat + dLat, minLng: lng - dLng, maxLng: lng + dLng };
+}
+
+function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 3958.8;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Resolve a `near` string to a center point. "lat,lng" is used verbatim;
+// anything else (ZIP / city / neighborhood / street address) is geocoded.
+async function resolveCenter(near: string): Promise<{ lat: number; lng: number } | null> {
+  const m = near.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (m) {
+    const lat = Number(m[1]);
+    const lng = Number(m[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+  const g = await geocodeAddress(near, undefined, "CA");
+  return g ? { lat: g.latitude, lng: g.longitude } : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -60,6 +97,12 @@ export async function GET(req: NextRequest) {
 
   const limit = Math.min(MAX_LIMIT, Math.max(1, num(sp.get("limit")) || DEFAULT_LIMIT));
   const skip = Math.max(0, num(sp.get("skip")) || 0);
+
+  // Geo radius search. `near` = ZIP / city / neighborhood / address / "lat,lng".
+  const near = sp.get("near")?.trim();
+  const radiusMiles = near
+    ? Math.min(MAX_RADIUS_MILES, Math.max(0.5, num(sp.get("radiusMiles")) || DEFAULT_RADIUS_MILES))
+    : undefined;
 
   const query: Record<string, any> = { standardStatus: status };
   if (city) query.city = city;
@@ -134,6 +177,26 @@ export async function GET(req: NextRequest) {
 
   if (andClauses.length > 0) query.$and = andClauses;
 
+  // Resolve `near` to a center and constrain the query to its bounding box.
+  // The server has no access to the user's device location — callers must pass
+  // a place for "near me" (the MCP tool description tells Claude to ask).
+  let center: { lat: number; lng: number } | null = null;
+  if (near) {
+    center = await resolveCenter(near);
+    if (!center) {
+      return NextResponse.json(
+        {
+          error: "could_not_geocode",
+          message: `Couldn't locate "${near}". Ask the user for a clearer ZIP, city, neighborhood, or street address.`,
+        },
+        { status: 422, headers: NO_STORE }
+      );
+    }
+    const box = boundingBox(center.lat, center.lng, radiusMiles!);
+    query.latitude = { $gte: box.minLat, $lte: box.maxLat };
+    query.longitude = { $gte: box.minLng, $lte: box.maxLng };
+  }
+
   await dbConnect();
   // Use the native collection (not the Mongoose model) so the schema's
   // declared types don't auto-cast our filter values. Specifically,
@@ -155,19 +218,51 @@ export async function GET(req: NextRequest) {
   } as const;
 
   const col = UnifiedListing.collection;
-  // Fetch one extra row to derive hasMore instead of countDocuments(). An exact
-  // count scans EVERY match (the pool/era filters can't be served from an index,
-  // so it's a collection-ish scan) and ran in parallel with find — i.e. it set
-  // the floor on the warm query time. Exact total only when results fit one page.
-  const docs = await col
-    .find(query, { projection })
-    .sort({ onMarketDate: -1 })
-    .skip(skip)
-    .limit(limit + 1)
-    .toArray();
-  const hasMore = docs.length > limit;
-  const items = hasMore ? docs.slice(0, limit) : docs;
-  const total = hasMore ? null : skip + items.length;
+  let items: any[];
+  let hasMore: boolean;
+  let total: number | null;
+  const distanceByKey = new Map<string, number>();
+
+  if (center) {
+    // Geo mode: pull the bounding-box matches, trim to the true circle, sort by
+    // distance, take the nearest `limit`. (Same approach as /api/listings/nearby.)
+    const cap = Math.max(limit * 6, 300);
+    const boxDocs = await col.find(query, { projection }).limit(cap).toArray();
+    const withDist = boxDocs
+      .map((d: any) => {
+        const dlat =
+          typeof d.latitude === "number" ? d.latitude : d.coordinates?.coordinates?.[1] ?? d.coordinates?.[1];
+        const dlng =
+          typeof d.longitude === "number" ? d.longitude : d.coordinates?.coordinates?.[0] ?? d.coordinates?.[0];
+        const miles =
+          typeof dlat === "number" && typeof dlng === "number"
+            ? haversineMiles(center!.lat, center!.lng, dlat, dlng)
+            : Infinity;
+        return { d, miles };
+      })
+      .filter((x) => x.miles <= radiusMiles!)
+      .sort((a, b) => a.miles - b.miles);
+    items = withDist.slice(0, limit).map((x) => {
+      distanceByKey.set(x.d.listingKey, Math.round(x.miles * 10) / 10);
+      return x.d;
+    });
+    hasMore = withDist.length > limit;
+    total = withDist.length; // exact count within radius (up to the overfetch cap)
+  } else {
+    // Fetch one extra row to derive hasMore instead of countDocuments(). An exact
+    // count scans EVERY match (the pool/era filters can't be served from an index,
+    // so it's a collection-ish scan) and ran in parallel with find — i.e. it set
+    // the floor on the warm query time. Exact total only when results fit one page.
+    const docs = await col
+      .find(query, { projection })
+      .sort({ onMarketDate: -1 })
+      .skip(skip)
+      .limit(limit + 1)
+      .toArray();
+    hasMore = docs.length > limit;
+    items = hasMore ? docs.slice(0, limit) : docs;
+    total = hasMore ? null : skip + items.length;
+  }
 
   return NextResponse.json(
     {
@@ -203,11 +298,15 @@ export async function GET(req: NextRequest) {
           l.media?.[0]?.Uri800 ||
           null,
         slug: `/mls-listings/${l.listingKey}`,
+        ...(distanceByKey.has(l.listingKey)
+          ? { distanceMiles: distanceByKey.get(l.listingKey) }
+          : {}),
       })),
       total,
       skip,
       limit,
       hasMore,
+      ...(center ? { center, radiusMiles, sortedBy: "distance" } : {}),
       appliedPropertyType: ptResult.applied,
       propertyTypeRecognized: ptResult.recognized,
     },
