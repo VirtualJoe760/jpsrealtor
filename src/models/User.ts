@@ -179,6 +179,8 @@ export interface IUser extends Document {
     // Enhanced Sidebar (default); "navbar" = the Enhanced Navbar (top bar).
     // Mobile always uses MobileBottomNav regardless.
     navLayout?: 'sidebar' | 'navbar';
+    // Homepage hero style. Each agent can pick how their hero section looks.
+    heroStyle?: 'split' | 'fullwidth' | 'video' | 'carousel' | 'minimal' | 'spotlight';
     brandColors?: {
       primary?: string; // Hex color
       secondary?: string; // Hex color
@@ -766,6 +768,7 @@ const UserSchema = new Schema<IUser>(
       subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
       siteForceActive: { type: Boolean, default: false }, // Admin override — makes site live without subscription
       navLayout: { type: String, enum: ["sidebar", "navbar"], default: "sidebar" }, // tenant nav layout (desktop/tablet)
+      heroStyle: { type: String, enum: ["split", "fullwidth", "video", "carousel", "minimal", "spotlight"], default: "split" }, // homepage hero layout
       brandColors: {
         primary: String,
         secondary: String,

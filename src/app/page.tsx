@@ -16,7 +16,7 @@ import MarketStats from "@/app/components/insights/MarketStats";
 import InsightsCTABanner from "@/app/components/insights/InsightsCTABanner";
 import FaveSpot from "@/app/components/insights/FaveSpot";
 import CommunitySpotlight from "@/app/components/insights/CommunitySpotlight";
-import AgentHero from "@/app/components/insights/AgentHero";
+import HeroRenderer from "@/app/components/heroes/HeroRenderer";
 import AccountBentoGrid from "@/app/components/insights/AccountBentoGrid";
 import BrowseByCityGrid from "@/app/components/insights/BrowseByCityGrid";
 import { fetchAgentPublic } from "@/app/hooks/useAgentProfile";
@@ -284,8 +284,8 @@ const InsightsPage = () => {
 
   return (
     <>
-      {/* Fullscreen Agent Hero Section - Show for all users */}
-      <AgentHero agentProfile={agentProfile} />
+      {/* Fullscreen Agent Hero Section — style chosen by the agent (agentProfile.heroStyle) */}
+      <HeroRenderer agentProfile={agentProfile} />
 
         <div className="min-h-screen pt-4 md:pt-6 pb-6 md:pb-12 px-4">
           <div className="max-w-7xl mx-auto">

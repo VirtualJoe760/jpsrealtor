@@ -126,9 +126,31 @@ export async function GET(request: NextRequest) {
         fontFamily: profile?.fontFamily || "Raleway",
         brandColor: agent.agentProfile?.brandColors?.primary,
         secondaryColor: agent.agentProfile?.brandColors?.secondary,
+        accentColor: agent.agentProfile?.brandColors?.accent,
 
         // Hero customization
         heroHeadline: agent.agentProfile?.headline,
+        heroStyle: profile?.heroStyle || "split",
+        videoIntro: profile?.videoIntro,
+        teamPhoto: profile?.teamPhoto,
+        officePhoto: profile?.officePhoto,
+
+        // Editorial content (hero + about page)
+        headline: profile?.headline,
+        tagline: profile?.tagline,
+        personalStory: profile?.personalStory,
+        valuePropositions: profile?.valuePropositions,
+        testimonials: profile?.testimonials,
+        stats: profile?.stats,
+        certifications: profile?.certifications,
+        specializations: profile?.specializations,
+        serviceAreas: profile?.serviceAreas,
+        businessHours: profile?.businessHours,
+        officeAddress: profile?.officeAddress,
+        officePhone: profile?.officePhone,
+        cellPhone: profile?.cellPhone,
+        youtube: agent.agentProfile?.socialMedia?.youtube,
+        tiktok: agent.agentProfile?.socialMedia?.tiktok,
       },
     };
 
