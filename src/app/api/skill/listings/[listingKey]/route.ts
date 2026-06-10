@@ -49,10 +49,8 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
   }
 
-  const cd = (auth.user as any)?.agentProfile?.customDomain;
-  const siteBase = cd
-    ? `https://${String(cd).replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
-    : req.nextUrl.origin;
+  // All listing links point to the ChatRealty hub (per product decision).
+  const siteBase = "https://www.chatrealty.io";
 
   return NextResponse.json(
     {

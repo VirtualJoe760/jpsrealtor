@@ -264,13 +264,9 @@ export async function GET(req: NextRequest) {
     total = hasMore ? null : skip + items.length;
   }
 
-  // Absolute, branded link to each listing's public detail page (the agent's
-  // own domain when set, so clicks land on their site). The page resolves by
-  // listingKey, so no slug lookup needed.
-  const cd = (auth.user as any)?.agentProfile?.customDomain;
-  const siteBase = cd
-    ? `https://${String(cd).replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
-    : req.nextUrl.origin;
+  // All listing links point to the ChatRealty hub (www avoids the apex→www
+  // redirect). The page resolves by listingKey, so no slug lookup needed.
+  const siteBase = "https://www.chatrealty.io";
 
   return NextResponse.json(
     {
