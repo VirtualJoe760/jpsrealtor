@@ -51,6 +51,14 @@ export async function GET(
 
   // All listing links point to the ChatRealty hub (per product decision).
   const siteBase = "https://www.chatrealty.io";
+  const rawPhoto =
+    l.media?.[0]?.uriLarge ||
+    l.media?.[0]?.uri1024 ||
+    l.media?.[0]?.uri800 ||
+    l.media?.[0]?.uri640 ||
+    l.media?.[0]?.MediaURL ||
+    l.media?.[0]?.Uri800 ||
+    null;
 
   return NextResponse.json(
     {
@@ -103,14 +111,11 @@ export async function GET(
       publicRemarks: l.publicRemarks || null,
       supplement: l.supplement || null,
       photoCount: Array.isArray(l.media) ? l.media.length : 0,
-      primaryPhotoUrl:
-        l.media?.[0]?.uriLarge ||
-        l.media?.[0]?.uri1024 ||
-        l.media?.[0]?.uri800 ||
-        l.media?.[0]?.uri640 ||
-        l.media?.[0]?.MediaURL ||
-        l.media?.[0]?.Uri800 ||
-        null,
+      primaryPhotoUrl: rawPhoto,
+      // Render-ready optimized thumbnail for an <img> in a Claude artifact.
+      thumbUrl: rawPhoto
+        ? `${siteBase}/_next/image?url=${encodeURIComponent(rawPhoto)}&w=640&q=75`
+        : null,
       latitude: typeof l.latitude === "number" ? l.latitude : l.coordinates?.[1] ?? null,
       longitude: typeof l.longitude === "number" ? l.longitude : l.coordinates?.[0] ?? null,
       listAgentName: l.listAgentName || null,

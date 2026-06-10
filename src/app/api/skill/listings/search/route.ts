@@ -29,6 +29,27 @@ function num(v: string | null): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// First photo URL (raw original) for a listing.
+function rawPhotoUrl(l: any): string | null {
+  return (
+    l.media?.[0]?.uriLarge ||
+    l.media?.[0]?.uri1024 ||
+    l.media?.[0]?.uri800 ||
+    l.media?.[0]?.uri640 ||
+    l.media?.[0]?.MediaURL ||
+    l.media?.[0]?.Uri800 ||
+    null
+  );
+}
+
+// A small optimized webp via our own image optimizer — render-ready for an
+// <img> in a Claude artifact (and ~10-30KB vs the ~700KB original).
+function optimizedThumb(raw: string | null): string | null {
+  return raw
+    ? `https://www.chatrealty.io/_next/image?url=${encodeURIComponent(raw)}&w=640&q=75`
+    : null;
+}
+
 // lat/lng degree box around a center (lat ~69mi/deg; lng shrinks toward poles).
 function boundingBox(lat: number, lng: number, radiusMiles: number) {
   const dLat = radiusMiles / 69;
@@ -293,23 +314,9 @@ export async function GET(req: NextRequest) {
             ? Math.max(0, Math.floor((Date.now() - new Date(l.onMarketDate).getTime()) / 86400000))
             : null),
         onMarketDate: l.onMarketDate || null,
-        primaryPhotoUrl:
-          l.media?.[0]?.uriLarge ||
-          l.media?.[0]?.uri1024 ||
-          l.media?.[0]?.uri800 ||
-          l.media?.[0]?.uri640 ||
-          l.media?.[0]?.MediaURL ||
-          l.media?.[0]?.Uri800 ||
-          null,
-        // Small (~640px) variant for inline thumbnails — ~50-80KB vs the
-        // ~700KB original, so embedding hero shots stays light.
-        primaryThumbUrl:
-          l.media?.[0]?.Uri640 ||
-          l.media?.[0]?.Uri800 ||
-          l.media?.[0]?.UriThumb ||
-          l.media?.[0]?.Uri300 ||
-          l.media?.[0]?.MediaURL ||
-          null,
+        primaryPhotoUrl: rawPhotoUrl(l),
+        // Render-ready optimized thumbnail — use this for <img> in an artifact.
+        thumbUrl: optimizedThumb(rawPhotoUrl(l)),
         slug: `/mls-listings/${l.listingKey}`,
         detailUrl: `${siteBase}/mls-listings/${l.listingKey}`,
         ...(distanceByKey.has(l.listingKey)
