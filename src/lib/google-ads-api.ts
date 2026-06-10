@@ -8,6 +8,8 @@
  * Docs: https://developers.google.com/google-ads/api/rest/overview
  */
 
+import { AsyncLocalStorage } from 'async_hooks';
+
 const GOOGLE_ADS_API_VERSION = 'v18';
 const GOOGLE_ADS_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
@@ -21,22 +23,61 @@ interface GoogleAdsConfig {
   refreshToken: string;
   clientId: string;
   clientSecret: string;
+  /** Manager (MCC) account id that owns the operating customer. Sent as the
+   *  `login-customer-id` header so a single MCC + dev token can operate on each
+   *  agent's linked client account. Empty when not operating via a manager. */
+  loginCustomerId: string;
+}
+
+/** Per-agent Google Ads credentials (from User.adAccounts.google, threaded at launch). */
+export interface GoogleUserCreds {
+  /** The agent's operating Google Ads account (the campaign lands here). */
+  customerId?: string;
+  /** Optional per-agent refresh token; falls back to the platform (MCC) token. */
+  refreshToken?: string;
+  /** Optional per-agent developer token; agents under the MCC use the platform token. */
+  developerToken?: string;
+  /** Manager account id; defaults to the platform MCC env var. */
+  loginCustomerId?: string;
+}
+
+// Request-scoped storage for per-agent Google Ads credentials. Set by
+// runWithGoogleCreds() at the launch route, read by getConfig() inside every
+// Google Ads API call. Mirrors the runWithMetaCreds() pattern in meta-ads-api.ts.
+const googleCredsStore = new AsyncLocalStorage<GoogleUserCreds>();
+
+/**
+ * Run an async function with per-agent Google Ads credentials bound to the call
+ * stack. Inside `fn`, any Google Ads API helper uses these creds instead of env.
+ */
+export function runWithGoogleCreds<T>(creds: GoogleUserCreds | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!creds) return fn();
+  return googleCredsStore.run(creds, fn);
 }
 
 /**
- * Get config from user profile (per-agent) or fall back to env vars (single-tenant).
- * Pass userAdAccounts from the User model's adAccounts.google field.
+ * Get config from (in priority order):
+ *   1. explicit userAdAccounts param
+ *   2. AsyncLocalStorage (set by runWithGoogleCreds — the per-request mechanism)
+ *   3. env vars (platform / single-tenant fallback)
+ *
+ * Under the MCC model: customerId is the agent's account; developerToken,
+ * refreshToken and loginCustomerId default to the platform's (ChatRealty's MCC).
  */
-function getConfig(userAdAccounts?: any): GoogleAdsConfig {
-  const config = {
-    developerToken: userAdAccounts?.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
-    customerId: userAdAccounts?.customerId || process.env.GOOGLE_ADS_CUSTOMER_ID || '',
-    refreshToken: userAdAccounts?.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
+function getConfig(userAdAccounts?: GoogleUserCreds): GoogleAdsConfig {
+  const stored = googleCredsStore.getStore();
+  const config: GoogleAdsConfig = {
+    developerToken: userAdAccounts?.developerToken || stored?.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+    customerId: userAdAccounts?.customerId || stored?.customerId || process.env.GOOGLE_ADS_CUSTOMER_ID || '',
+    refreshToken: userAdAccounts?.refreshToken || stored?.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    loginCustomerId: userAdAccounts?.loginCustomerId || stored?.loginCustomerId || process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '',
   };
 
-  const missing = Object.entries(config)
+  // loginCustomerId is optional (only needed for MCC-managed sub-accounts).
+  const required = { ...config, loginCustomerId: 'ok' };
+  const missing = Object.entries(required)
     .filter(([, v]) => !v)
     .map(([k]) => k);
 
@@ -78,7 +119,7 @@ async function googleAdsRequest(
   const accessToken = await getAccessToken(config);
   const customerId = config.customerId.replace(/-/g, '');
 
-  const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID?.replace(/-/g, '') || '';
+  const loginCustomerId = config.loginCustomerId.replace(/-/g, '') || '';
 
   const url = `${GOOGLE_ADS_BASE}/customers/${customerId}${endpoint}`;
   const headers: Record<string, string> = {

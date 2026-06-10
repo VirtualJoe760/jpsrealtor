@@ -8,6 +8,7 @@ import User from '@/models/User';
 import {
   createFullSearchCampaign,
   isGoogleAdsConfigured,
+  runWithGoogleCreds,
 } from '@/lib/google-ads-api';
 import {
   createFullMetaCampaign,
@@ -116,19 +117,39 @@ export async function POST(
         try {
           const campaignName = `${pageName || 'Campaign'} — PPC — ${new Date().toLocaleDateString()}`;
 
-          const googleResult = await createFullSearchCampaign({
-            name: campaignName,
-            dailyBudget: google.budget || 10,
-            landingPageUrl: pageUrl,
-            keywords: google.keywords || [],
-            headlines: google.headlines || [],
-            descriptions: google.descriptions || [],
-            geoTargeting: google.geoTargeting?.center ? {
-              centerLat: google.geoTargeting.center.lat,
-              centerLng: google.geoTargeting.center.lng,
-              radiusMiles: google.geoTargeting.radiusMiles || 10,
-            } : undefined,
+          // Multi-tenant: run on the AGENT's Google Ads account. Under the MCC
+          // model the platform's manager account (GOOGLE_ADS_LOGIN_CUSTOMER_ID)
+          // + platform developer token operate on the agent's customerId. The
+          // refresh token falls back to the platform's when the agent doesn't
+          // have their own. customerId = undefined → getConfig() uses env
+          // (single-tenant / platform-owner path) so Joseph's launches are unchanged.
+          console.log('[launch-ads] Google account resolution:', {
+            agentCustomerId: userGoogleAds?.customerId,
+            hasAgentRefreshToken: !!userGoogleAds?.refreshToken,
+            envLoginCustomerId: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
           });
+
+          const googleResult = await runWithGoogleCreds(
+            {
+              customerId: userGoogleAds?.customerId,
+              refreshToken: userGoogleAds?.refreshToken,
+              // developerToken + loginCustomerId intentionally omitted → platform
+              // (ChatRealty MCC) env values are used for agents under management.
+            },
+            () => createFullSearchCampaign({
+              name: campaignName,
+              dailyBudget: google.budget || 10,
+              landingPageUrl: pageUrl,
+              keywords: google.keywords || [],
+              headlines: google.headlines || [],
+              descriptions: google.descriptions || [],
+              geoTargeting: google.geoTargeting?.center ? {
+                centerLat: google.geoTargeting.center.lat,
+                centerLng: google.geoTargeting.center.lng,
+                radiusMiles: google.geoTargeting.radiusMiles || 10,
+              } : undefined,
+            })
+          );
 
           // Save config to campaign
           campaign.googleAdsConfig = {
@@ -187,31 +208,42 @@ export async function POST(
             );
           }
 
-          // Use the agent's ad account + page for targeting, but prefer the platform
-          // system-user token (META_ADS_ACCESS_TOKEN env) for the actual API calls.
-          // Why: OAuth user tokens hit a "(#3) Application does not have the capability"
-          // wall on write operations (image upload, ad creative) until the app is granted
-          // Advanced Access on ads_management — which is a separate Meta review process.
-          // System-user tokens already carry these capabilities for assets they own.
-          // For multi-tenant later: assign chatRealty's system user as a Partner on each
-          // agent's ad account so the same path keeps working across accounts.
-          const useSystemUserToken = !!process.env.META_ADS_ACCESS_TOKEN;
-          // When using the system-user token, ALSO use the env ad account it owns.
-          // Otherwise the system user can't reach the OAuth-selected ad account and the
-          // image upload (act-scoped) fails with "Application does not have the capability".
-          const resolvedAdAccountId = useSystemUserToken
-            ? (process.env.META_AD_ACCOUNT_ID || userMetaAds?.adAccountId)
-            : userMetaAds?.adAccountId;
-          const resolvedPageId = useSystemUserToken
-            ? (process.env.FACEBOOK_PAGE_ID || pageId)
-            : pageId;
+          // Multi-tenant Meta: run on the AGENT's connected ad account + page,
+          // granted via the OAuth "Connect Meta Business" flow in Settings →
+          // Integrations. Fall back to the platform's env account only when no
+          // agent account is connected (single-tenant dev / platform owner).
+          const resolvedAdAccountId = userMetaAds?.adAccountId || process.env.META_AD_ACCOUNT_ID || '';
+          const resolvedPageId = userMetaAds?.pageId || process.env.FACEBOOK_PAGE_ID || pageId;
+
+          // The platform's OWN ad account can use the system-user token, which
+          // carries full write capability (image upload, ad creative). A real
+          // agent's account uses THEIR OAuth token.
+          // NOTE: until Meta grants this app Advanced Access on `ads_management`,
+          // agent OAuth tokens may hit the "(#3) Application does not have the
+          // capability" wall on write ops. Securing that approval is the next step
+          // after this lands — see docs/campaigns/README.md.
+          const isPlatformOwnAccount =
+            !!process.env.META_AD_ACCOUNT_ID &&
+            resolvedAdAccountId === process.env.META_AD_ACCOUNT_ID;
+          const useSystemUserToken = isPlatformOwnAccount && !!process.env.META_ADS_ACCESS_TOKEN;
+
+          if (!resolvedAdAccountId) {
+            throw new Error(
+              'No Meta ad account connected. Go to Settings → Integrations and connect your Meta Business account.'
+            );
+          }
+          if (!useSystemUserToken && !userMetaAds?.accessToken) {
+            throw new Error(
+              'Meta account connected but no access token found. Reconnect your Meta Business account in Settings → Integrations.'
+            );
+          }
 
           console.log('[launch-ads] Meta token + asset resolution:', {
+            isPlatformOwnAccount,
             useSystemUserToken,
             resolvedAdAccountId,
             resolvedPageId,
             envAdAccount: process.env.META_AD_ACCOUNT_ID,
-            envPageId: process.env.FACEBOOK_PAGE_ID,
             userOAuthAdAccount: userMetaAds?.adAccountId,
             userOAuthPageId: userMetaAds?.pageId,
           });

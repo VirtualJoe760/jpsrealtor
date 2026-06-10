@@ -127,7 +127,7 @@
 | `src/lib/google-ads-api.ts` | Google Ads REST API v18 | Ready — needs refresh token |
 | `src/lib/meta-ads-api.ts` | Meta Marketing API v21 | **Working end-to-end.** Uses `AsyncLocalStorage` (`runWithMetaCreds`) for per-user credentials. New helpers: `listCustomAudiences`, `createWebsiteCustomAudience`, `resolveAudienceIdsForLaunch`. |
 | `src/lib/thanksio.ts` | Thanks.io direct mail API | Ready — API key working |
-| `src/lib/credits.ts` (new) | Unified credit operations: `quote`, `getBalance`, `debit`, `credit`, `ensureBalance`, `reserve`/`settle` stubs |
+| `src/lib/credits.ts` (new) | Unified credit operations: `quote`, `getBalance`, `debit`, `credit`, `ensureBalance`. (NOTE: `reserve`/`settle` are NOT yet implemented — earlier drafts of this doc claimed stubs that don't exist. Planned in `docs/campaigns/README.md` Phase 3.) |
 
 ### Config (src/config/)
 
