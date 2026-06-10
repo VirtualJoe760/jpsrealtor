@@ -147,11 +147,13 @@ agent↔agent vs agent↔settlement-provider handling.
 | Phase | Scope |
 |---|---|
 | **A. Model + relationships** ✅ **DONE** (commit f6562aaa) | `CampaignFunding` model; `Partnership.partnerRole` (agent↔agent); `Campaign.pending_adspend` + `fundingId` + `coBranding`; `AdCampaignRecord.fundingId` + `contributors`; `CreditLedger` txn `fundingId`. |
-| **B. Bill-at-publish UI** | "Bill to partnership(s)" picker at content/campaign publish: select parties, allocation basis, preview each share. |
-| **C. Approval flow** | Tokenized approve/deny emails (HMAC, single-use), approval API, in-dashboard approvals, deny/timeout handling. |
-| **D. Funding + launch** | Per-party credit collection (party→platform), Stripe top-up when short, fund→launch on full approval, refunds on deny. |
-| **E. Settlement + reporting** | Pro-rata reconciliation vs real spend (with Gate 4); per-party billing history + exportable RESPA audit record. |
-| **F. Co-branding** | Dual/multi-logo on ad creative + co-marketed landing pages. |
+| **B. Bill-at-publish** | API ✅ `POST /api/campaigns/[id]/fund` (commit 389a6d2a) — validates + creates funding + emails parties. UI (picker at publish) ⬜ remaining. |
+| **C. Approval flow** ✅ **API DONE** (389a6d2a) | `POST /api/campaigns/funding/[fundingId]/respond` (session-auth approve/deny), `sendCoMarketingApprovalEmail` (Resend). Approval UI panel ⬜ remaining. |
+| **D. Funding + launch** | Collection ✅ in the engine (balance-first, 402→existing top-up flow when short). ⬜ Remaining: trigger the actual ad launch when `readyToLaunch` (wire funding → the launch-ads path). |
+| **E. Settlement + reporting** ⬜ | Pro-rata reconciliation vs real spend (with Gate 4); per-party billing history + exportable RESPA audit record. |
+| **F. Co-branding** ⬜ | Dual/multi-logo on ad creative + co-marketed landing pages. |
+
+**Engine** ✅ (commit 2302c1f9): `src/lib/co-marketing/allocation.ts` (unit-tested fair-value split + funding plan) + `funding.ts` (lifecycle).
 
 ## Open questions
 
