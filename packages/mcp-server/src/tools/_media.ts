@@ -13,7 +13,8 @@ export type ImageBlock = { type: "image"; data: string; mimeType: string };
 export async function fetchImageBlock(url: string | undefined | null): Promise<ImageBlock | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url);
+    // Prefer webp so Next's image optimizer returns the smaller variant.
+    const res = await fetch(url, { headers: { Accept: "image/webp,image/avif,image/*" } });
     if (!res.ok) return null;
     const mimeType = res.headers.get("content-type") || "image/jpeg";
     if (!mimeType.startsWith("image/")) return null;

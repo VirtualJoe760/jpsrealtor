@@ -70,8 +70,17 @@ exports.search_listings = {
         // Render the primary photo for the first N results so the homes display
         // inline. Hero shot only, fetched in parallel — adds ~one image's latency,
         // not N. URL-only path is unchanged for analysis/counting searches.
+        // Resize via our own Next image optimizer → ~20-50KB webp instead of the
+        // ~700KB original (the stored Uri640/thumb variants aren't populated).
+        // q=75 is the only quality Next allows by default; falls back to the raw
+        // image if the optimizer can't handle that source domain.
+        const base = config.apiBase.replace(/\/+$/, "");
+        const optimize = (raw) => `${base}/_next/image?url=${encodeURIComponent(raw)}&w=640&q=75`;
         const heroes = items.slice(0, n).filter((it) => it?.primaryThumbUrl || it?.primaryPhotoUrl);
-        const blocks = (await Promise.all(heroes.map((it) => (0, _media_js_1.fetchImageBlock)(it.primaryThumbUrl || it.primaryPhotoUrl)))).filter((b) => b !== null);
+        const blocks = (await Promise.all(heroes.map(async (it) => {
+            const raw = it.primaryThumbUrl || it.primaryPhotoUrl;
+            return (await (0, _media_js_1.fetchImageBlock)(optimize(raw))) || (await (0, _media_js_1.fetchImageBlock)(raw));
+        }))).filter((b) => b !== null);
         if (blocks.length === 0)
             return data;
         return {

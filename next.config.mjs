@@ -56,6 +56,10 @@ const nextConfig = {
 
   images: {
     remotePatterns: [
+      // MLS photo CDNs — allow the image optimizer to resize listing photos
+      // (used for lightweight inline thumbnails in the MCP search tool).
+      { protocol: "https", hostname: "media.crmls.org" },
+      { protocol: "https", hostname: "cdn.photos.sparkplatform.com" },
       { protocol: "https", hostname: "www.dreamexoticrentals.com" },
       { protocol: "https", hostname: "resource.rentcafe.com" },
       { protocol: "https", hostname: "www.indianridgecc.com" },
