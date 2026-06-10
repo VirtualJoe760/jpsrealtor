@@ -124,6 +124,11 @@ export async function getBalance(userId: string | mongoose.Types.ObjectId): Prom
   };
 }
 
+function toObjectId(v?: mongoose.Types.ObjectId | string): mongoose.Types.ObjectId | undefined {
+  if (!v) return undefined;
+  return typeof v === "string" ? new mongoose.Types.ObjectId(v) : v;
+}
+
 export interface DebitInput {
   userId: string | mongoose.Types.ObjectId;
   amount: number;
@@ -131,6 +136,8 @@ export interface DebitInput {
   type?: CreditTransactionType;        // defaults to "campaign_spend"
   channel?: CampaignChannel;
   campaignId?: mongoose.Types.ObjectId | string;
+  partnershipId?: mongoose.Types.ObjectId | string;  // co-marketing split traceability
+  fundingId?: mongoose.Types.ObjectId | string;      // co-marketing split traceability
   metadata?: Record<string, any>;
 }
 
@@ -145,9 +152,9 @@ export async function debit(input: DebitInput): Promise<CreditBalance> {
   }
   ledger.debitPoints(input.amount, input.type ?? "campaign_spend", input.description, {
     channel: input.channel,
-    campaignId: input.campaignId
-      ? typeof input.campaignId === "string" ? new mongoose.Types.ObjectId(input.campaignId) : input.campaignId
-      : undefined,
+    campaignId: toObjectId(input.campaignId),
+    partnershipId: toObjectId(input.partnershipId),
+    fundingId: toObjectId(input.fundingId),
     adSpendValue: creditsToDollars(input.amount),
     metadata: input.metadata,
   });
@@ -168,6 +175,9 @@ export interface CreditInput {
   description: string;
   type: CreditTransactionType;         // required — no spend-side default
   stripePaymentIntentId?: string;
+  campaignId?: mongoose.Types.ObjectId | string;
+  partnershipId?: mongoose.Types.ObjectId | string;
+  fundingId?: mongoose.Types.ObjectId | string;
   metadata?: Record<string, any>;
 }
 
@@ -178,6 +188,9 @@ export async function credit(input: CreditInput): Promise<CreditBalance> {
   if (!ledger) ledger = await CreditLedger.create({ userId: uid, balance: 0, tier: "beginner" });
   ledger.creditPoints(input.amount, input.type, input.description, {
     stripePaymentIntentId: input.stripePaymentIntentId,
+    campaignId: toObjectId(input.campaignId),
+    partnershipId: toObjectId(input.partnershipId),
+    fundingId: toObjectId(input.fundingId),
     metadata: input.metadata,
   });
   await ledger.save();
