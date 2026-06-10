@@ -49,6 +49,11 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
   }
 
+  const cd = (auth.user as any)?.agentProfile?.customDomain;
+  const siteBase = cd
+    ? `https://${String(cd).replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
+    : req.nextUrl.origin;
+
   return NextResponse.json(
     {
       listingKey: l.listingKey,
@@ -114,6 +119,7 @@ export async function GET(
       listOfficeName: l.listOfficeName || null,
       hasOpenHouses: Array.isArray(l.OpenHouses) && l.OpenHouses.length > 0,
       slug: `/mls-listings/${l.listingKey}`,
+      detailUrl: `${siteBase}/mls-listings/${l.listingKey}`,
     },
     { headers: NO_STORE }
   );
