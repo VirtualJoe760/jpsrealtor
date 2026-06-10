@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import crypto from 'crypto';
+import { createOAuthState } from '@/lib/oauth-state';
 
 /**
  * GET /api/auth/meta-ads/connect
@@ -27,7 +27,7 @@ import crypto from 'crypto';
  * Uses META_APP_ID / META_APP_SECRET (the brand-approved Marketing API app).
  * Falls back to FACEBOOK_CLIENT_ID / FACEBOOK_CLIENT_SECRET if those aren't set.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,12 +44,18 @@ export async function GET() {
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   const redirectUri = `${baseUrl}/api/auth/meta-ads/callback`;
 
-  // CSRF protection: bind state to the user's session.
-  const state = crypto
-    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'fallback-secret')
-    .update(`${(session.user as any).id}:meta-ads-connect`)
-    .digest('hex')
-    .slice(0, 32);
+  // Origin the agent started on, so the callback (which lands on the canonical
+  // domain) can send them back to a page where they're logged in.
+  let origin: string | undefined;
+  try { origin = new URL(request.url).origin; } catch { origin = undefined; }
+
+  // Signed state: identifies the user at the callback (no cross-domain session)
+  // and serves as CSRF protection. Forgery-proof + 10-min TTL.
+  const state = createOAuthState({
+    userId: (session.user as any).id,
+    purpose: 'meta-ads-connect',
+    origin,
+  });
 
   const scopes = [
     'ads_management',

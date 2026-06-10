@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
-import crypto from 'crypto';
+import { verifyOAuthState, safeRedirectUrl } from '@/lib/oauth-state';
 
 /**
  * GET /api/auth/meta-ads/callback
@@ -20,37 +18,30 @@ import crypto from 'crypto';
  *   7. Redirect back to settings with status
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.redirect(new URL('/agent/settings?error=unauthorized', request.url));
-  }
-
+  const canonicalBase = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
 
+  // Identify the agent from the signed state (forgery-proof, 10-min TTL) — the
+  // callback lands on the canonical domain with no cross-domain session cookie.
+  const payload = verifyOAuthState(state, 'meta-ads-connect');
+  if (!payload) {
+    return NextResponse.redirect(safeRedirectUrl(undefined, '/agent/settings?meta_error=state_mismatch#integrations', canonicalBase));
+  }
+  const origin = payload.origin;
+
   if (error) {
     const reason = errorDescription || error;
     return NextResponse.redirect(
-      new URL(`/agent/settings?meta_error=${encodeURIComponent(reason)}#integrations`, request.url)
+      safeRedirectUrl(origin, `/agent/settings?meta_error=${encodeURIComponent(reason)}#integrations`, canonicalBase)
     );
   }
 
-  if (!code || !state) {
-    return NextResponse.redirect(new URL('/agent/settings?meta_error=no_code#integrations', request.url));
-  }
-
-  // Verify state matches what we issued for this session
-  const expectedState = crypto
-    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'fallback-secret')
-    .update(`${(session.user as any).id}:meta-ads-connect`)
-    .digest('hex')
-    .slice(0, 32);
-
-  if (state !== expectedState) {
-    return NextResponse.redirect(new URL('/agent/settings?meta_error=state_mismatch#integrations', request.url));
+  if (!code) {
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/settings?meta_error=no_code#integrations', canonicalBase));
   }
 
   const appId = process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID;
@@ -59,7 +50,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${baseUrl}/api/auth/meta-ads/callback`;
 
   if (!appId || !appSecret) {
-    return NextResponse.redirect(new URL('/agent/settings?meta_error=not_configured#integrations', request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/settings?meta_error=not_configured#integrations', canonicalBase));
   }
 
   try {
@@ -76,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (!shortRes.ok) {
       console.error('[meta-ads callback] short-token exchange failed:', await shortRes.text());
       return NextResponse.redirect(
-        new URL('/agent/settings?meta_error=token_exchange_failed#integrations', request.url)
+        safeRedirectUrl(origin, '/agent/settings?meta_error=token_exchange_failed#integrations', canonicalBase)
       );
     }
     const shortJson = await shortRes.json();
@@ -95,7 +86,7 @@ export async function GET(request: NextRequest) {
     if (!longRes.ok) {
       console.error('[meta-ads callback] long-token exchange failed:', await longRes.text());
       return NextResponse.redirect(
-        new URL('/agent/settings?meta_error=long_token_failed#integrations', request.url)
+        safeRedirectUrl(origin, '/agent/settings?meta_error=long_token_failed#integrations', canonicalBase)
       );
     }
     const longJson = await longRes.json();
@@ -123,8 +114,8 @@ export async function GET(request: NextRequest) {
 
     // ---- 6. Save to User.adAccounts.meta ----
     await dbConnect();
-    await User.findOneAndUpdate(
-      { email: session.user.email.toLowerCase() },
+    await User.findByIdAndUpdate(
+      payload.userId,
       {
         $set: {
           'adAccounts.meta.accessToken': longToken,
@@ -155,11 +146,11 @@ export async function GET(request: NextRequest) {
         ? 'meta_ads=connected'
         : 'meta_ads=connected_partial'; // user connected but has no ad account / no page
 
-    return NextResponse.redirect(new URL(`/agent/settings?${successParam}#integrations`, request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, `/agent/settings?${successParam}#integrations`, canonicalBase));
   } catch (err: any) {
     console.error('[meta-ads callback] Error:', err);
     return NextResponse.redirect(
-      new URL(`/agent/settings?meta_error=${encodeURIComponent(err.message || 'callback_failed')}#integrations`, request.url)
+      safeRedirectUrl(origin, `/agent/settings?meta_error=${encodeURIComponent(err.message || 'callback_failed')}#integrations`, canonicalBase)
     );
   }
 }

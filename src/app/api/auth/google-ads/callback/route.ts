@@ -1,32 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
 import { listAccessibleCustomers } from '@/lib/google-ads-api';
+import { verifyOAuthState, safeRedirectUrl } from '@/lib/oauth-state';
 
 /**
  * GET /api/auth/google-ads/callback
  *
- * OAuth callback from Google. Exchanges auth code for refresh token
- * and saves it to the agent's user profile in MongoDB.
+ * OAuth callback from Google. Exchanges auth code for refresh token and saves it
+ * to the agent's user profile. The agent is identified from the signed `state`
+ * (not a session) because this callback lands on the canonical domain where an
+ * agent who started on their own branded domain has no session cookie.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.redirect(new URL('/agent/campaigns?error=unauthorized', request.url));
-  }
-
+  const canonicalBase = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const state = searchParams.get('state');
+
+  // Identify the agent from the signed state (forgery-proof, 10-min TTL).
+  const payload = verifyOAuthState(state, 'google-ads-connect');
+  if (!payload) {
+    return NextResponse.redirect(safeRedirectUrl(undefined, '/agent/campaigns?error=invalid_state', canonicalBase));
+  }
+  const origin = payload.origin;
 
   if (error) {
-    return NextResponse.redirect(new URL(`/agent/campaigns?error=${error}`, request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, `/agent/campaigns?error=${encodeURIComponent(error)}`, canonicalBase));
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/agent/campaigns?error=no_code', request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?error=no_code', canonicalBase));
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -34,7 +39,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/google-ads/callback`;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/agent/campaigns?error=not_configured', request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?error=not_configured', canonicalBase));
   }
 
   try {
@@ -54,13 +59,13 @@ export async function GET(request: NextRequest) {
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
       console.error('[google-ads callback] Token exchange failed:', errBody);
-      return NextResponse.redirect(new URL('/agent/campaigns?error=token_exchange_failed', request.url));
+      return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?error=token_exchange_failed', canonicalBase));
     }
 
     const tokens = await tokenRes.json();
 
     if (!tokens.refresh_token) {
-      return NextResponse.redirect(new URL('/agent/campaigns?error=no_refresh_token', request.url));
+      return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?error=no_refresh_token', canonicalBase));
     }
 
     // Auto-discover the agent's accessible Google Ads accounts so they don't
@@ -86,12 +91,12 @@ export async function GET(request: NextRequest) {
       'adAccounts.google.status': 'connected',
     };
     if (autoCustomerId) set['adAccounts.google.customerId'] = autoCustomerId;
-    await User.findOneAndUpdate({ email: session.user.email }, { $set: set });
+    await User.findByIdAndUpdate(payload.userId, { $set: set });
 
-    // Redirect back to campaigns with success
-    return NextResponse.redirect(new URL('/agent/campaigns?google_ads=connected', request.url));
+    // Redirect back to campaigns with success (on the agent's own domain).
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?google_ads=connected', canonicalBase));
   } catch (err: any) {
     console.error('[google-ads callback] Error:', err);
-    return NextResponse.redirect(new URL('/agent/campaigns?error=callback_failed', request.url));
+    return NextResponse.redirect(safeRedirectUrl(origin, '/agent/campaigns?error=callback_failed', canonicalBase));
   }
 }
