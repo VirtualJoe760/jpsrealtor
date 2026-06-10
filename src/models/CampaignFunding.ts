@@ -63,6 +63,14 @@ export interface ICampaignFunding extends Document {
     primaryText?: string;
   };
 
+  // The ad-launch params (google/meta/pageUrl/pageName) to replay once funded.
+  launchPayload?: {
+    google?: any;
+    meta?: any;
+    pageUrl?: string;
+    pageName?: string;
+  };
+
   fundedAt?: Date;
   rejectedAt?: Date;
   createdAt: Date;
@@ -119,6 +127,8 @@ const CampaignFundingSchema = new Schema<ICampaignFunding>(
       headline: String,
       primaryText: String,
     },
+
+    launchPayload: { type: Schema.Types.Mixed },
 
     fundedAt: Date,
     rejectedAt: Date,

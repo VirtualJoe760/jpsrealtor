@@ -100,6 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       basis,
       participants,
       creativeSnapshot: body.creativeSnapshot,
+      launchPayload: body.launchPayload,   // { google?, meta?, pageUrl?, pageName? } to replay once funded
     });
 
     // Per-participant plans (share + how much they must top up).

@@ -45,6 +45,7 @@ export interface CreateFundingInput {
   basis: AllocationBasis;
   participants: CreateFundingParticipant[];
   creativeSnapshot?: ICampaignFunding["creativeSnapshot"];
+  launchPayload?: ICampaignFunding["launchPayload"];   // ad params to replay once funded
 }
 
 /** Stage a campaign for co-marketing funding: compute shares, create the funding
@@ -88,6 +89,7 @@ export async function createCampaignFunding(input: CreateFundingInput): Promise<
     totalDollars: creditsToDollars(totalCredits),
     participants,
     creativeSnapshot: input.creativeSnapshot,
+    launchPayload: input.launchPayload,
   });
 
   await Campaign.findByIdAndUpdate(input.campaignId, {

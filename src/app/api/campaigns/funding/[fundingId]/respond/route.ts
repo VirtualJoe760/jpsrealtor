@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import CampaignFunding from "@/models/CampaignFunding";
 import { approveAndCollect, denyFunding } from "@/lib/co-marketing/funding";
+import { launchFundedCampaign } from "@/lib/co-marketing/ad-launch";
 
 /**
  * POST /api/campaigns/funding/[fundingId]/respond
@@ -63,7 +64,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           { status: 402 }
         );
       }
-      return NextResponse.json({ success: true, status: result.status, readyToLaunch: result.readyToLaunch });
+      // Last required party funded → fire the ads on the lead agent's account.
+      if (result.readyToLaunch) {
+        const launch = await launchFundedCampaign(fundingId).catch((e) => {
+          console.error("[funding/respond] launch after funding failed:", e);
+          return null;
+        });
+        return NextResponse.json({ success: true, status: result.status, readyToLaunch: true, launch });
+      }
+      return NextResponse.json({ success: true, status: result.status, readyToLaunch: false });
     }
 
     return NextResponse.json({ success: false, error: "action must be 'approve' or 'deny'" }, { status: 400 });
