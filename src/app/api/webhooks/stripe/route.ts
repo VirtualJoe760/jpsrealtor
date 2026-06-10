@@ -13,6 +13,8 @@ import { tierFromPriceId } from "@/config/stripe-prices";
 import type { SubscriptionTier, SubscriptionStatus, BillingInterval } from "@/models/AgentSubscription";
 import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
 import type { PointsTier } from "@/models/PointsLedger";
+import ProcessedStripeEvent from "@/models/ProcessedStripeEvent";
+import { CREDIT_SPEND_VALUE } from "@/config/credits";
 import { sendSubscriptionEmail } from "@/lib/email-resend";
 
 // ---------------------------------------------------------------------------
@@ -82,6 +84,20 @@ export async function POST(request: NextRequest) {
 
   await dbConnect();
 
+  // Idempotency: claim this event so retries/duplicates don't double-process
+  // (Stripe retries deliveries). Insert-first; a duplicate key means it's
+  // already been handled. On a processing failure below we release the claim.
+  try {
+    await ProcessedStripeEvent.create({ eventId: event.id, type: event.type });
+  } catch (e: any) {
+    if (e?.code === 11000) {
+      console.log(`[stripe-webhook] Duplicate event ${event.id} (${event.type}) — skipping`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    console.error("[stripe-webhook] Idempotency claim failed:", e?.message);
+    return NextResponse.json({ error: "claim failed" }, { status: 500 });
+  }
+
   try {
     switch (event.type) {
       // -----------------------------------------------------------------
@@ -116,7 +132,7 @@ export async function POST(request: NextRequest) {
               "topup_purchase",
               `Credits top-up — ${topupPoints.toLocaleString()} credits ($${topupAmount})`,
               {
-                adSpendValue: topupPoints * (topupTierConfig?.adValuePerPoint ?? 0.125),
+                adSpendValue: topupPoints * (topupTierConfig?.adValuePerPoint ?? CREDIT_SPEND_VALUE),
                 stripePaymentIntentId: typeof session.payment_intent === "string"
                   ? session.payment_intent
                   : (session.payment_intent as any)?.id,
@@ -510,6 +526,52 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      // -----------------------------------------------------------------
+      // Refund — claw back credits granted for a refunded top-up
+      // -----------------------------------------------------------------
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const fullyRefunded = charge.amount_refunded >= charge.amount;
+        const pi = typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : (charge.payment_intent as any)?.id;
+        if (!pi) break;
+
+        const ledger = await PointsLedger.findOne({
+          "transactions.stripePaymentIntentId": pi,
+          "transactions.type": "topup_purchase",
+        });
+        if (!ledger) break;
+
+        const alreadyReversed = ledger.transactions.some(
+          (t: any) => t.type === "refund" && t.stripePaymentIntentId === pi
+        );
+        if (alreadyReversed) break;
+
+        const grant = ledger.transactions.find(
+          (t: any) => t.stripePaymentIntentId === pi && t.type === "topup_purchase"
+        );
+        if (!grant) break;
+
+        if (fullyRefunded) {
+          // Reverse the credits granted (capped at current balance if some were spent).
+          const reverse = Math.min((grant as any).amount, ledger.balance);
+          if (reverse > 0) {
+            ledger.debitPoints(
+              reverse,
+              "refund",
+              `Refund — top-up reversed ($${(charge.amount_refunded / 100).toFixed(2)})`,
+              { stripePaymentIntentId: pi }
+            );
+            await ledger.save();
+          }
+          console.log(`[stripe-webhook] Refund: reversed ${reverse} credits for PI ${pi}`);
+        } else {
+          console.warn(`[stripe-webhook] Partial refund on ${pi} — not auto-reversed (manual review)`);
+        }
+        break;
+      }
+
       default:
         // Unhandled event type — log and acknowledge
         console.log(`[stripe-webhook] Unhandled event type: ${event.type}`);
@@ -517,9 +579,11 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`[stripe-webhook] Error processing ${event.type}:`, message);
-    // Return 200 to prevent Stripe from retrying indefinitely on app errors.
-    // The error is logged for investigation.
-    return NextResponse.json({ received: true, error: message }, { status: 200 });
+    // Release the idempotency claim so Stripe's retry can reprocess this event,
+    // and return 5xx so Stripe DOES retry (a transient failure must not silently
+    // drop a paid event — the customer would never get their credits).
+    await ProcessedStripeEvent.deleteOne({ eventId: event.id }).catch(() => {});
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

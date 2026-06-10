@@ -10,6 +10,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import PointsLedger, { POINTS_TIERS, dollarsToPoints } from "@/models/PointsLedger";
 import type { PointsTier } from "@/models/PointsLedger";
+import { CREDIT_SPEND_VALUE } from "@/config/credits";
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -82,10 +83,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate credits: amount × adSpendRate = ad value, then ad value / adValuePerPoint = credits
-    const adValuePerPoint = 0.125;
+    // Credits granted = ad value the buyer unlocks, divided by the universal
+    // spend value per credit. CREDIT_SPEND_VALUE ($0.10) is the single source of
+    // truth (config/credits.ts) — matches subscriptions + co-marketing funding.
+    // (Previously hard-coded $0.125, which under-granted ~20% and desynced from
+    // the canonical creditsForPurchase()/co-marketing math.)
     const adValue = amount * adSpendRate;
-    const points = Math.floor(adValue / adValuePerPoint);
+    const points = Math.floor(adValue / CREDIT_SPEND_VALUE);
     const tierConfig = POINTS_TIERS[effectiveTier];
 
     const stripe = getStripe();

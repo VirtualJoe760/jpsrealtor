@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { dollarsToCredits } from "@/config/credits";
 import {
   Save,
   Loader2,
@@ -250,7 +251,7 @@ export default function DomainSeoStep({
 
   const handlePurchase = async () => {
     if (!searchResult?.available || !searchResult.price) return;
-    const priceInCredits = Math.ceil(searchResult.price / 0.125);
+    const priceInCredits = dollarsToCredits(searchResult.price);
     if (creditBalance !== null && creditBalance < priceInCredits) {
       setPurchaseResult("Insufficient credits. Buy more from your subscription page.");
       return;
@@ -592,7 +593,7 @@ export default function DomainSeoStep({
                     <>
                       <Coins className="w-4 h-4" />
                       Buy with Credits (
-                      {Math.ceil(searchResult.price / 0.125).toLocaleString()} credits)
+                      {dollarsToCredits(searchResult.price).toLocaleString()} credits)
                     </>
                   )}
                 </button>

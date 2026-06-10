@@ -19,30 +19,33 @@ import type { SubscriptionTier, BillingInterval } from "@/models/AgentSubscripti
 // creating products in the Stripe Dashboard.
 // ---------------------------------------------------------------------------
 
-// Agent subscription price IDs (monthly only for now)
+// Agent subscription price IDs. Env-overridable so going LIVE is a pure env
+// change (set STRIPE_PRICE_* in prod to the live price IDs) with no code edit;
+// falls back to the current TEST-mode IDs. The reverse-lookup below is built
+// from whatever is active, so tierFromPriceId() resolves live IDs automatically.
 export const STRIPE_PRICES: Record<
   Exclude<SubscriptionTier, "free">,
   Record<BillingInterval, string>
 > = {
   beginner: {
-    monthly: "price_1TPWCVGI9m3f5P10CfXu4rB6",
-    annual: "price_PLACEHOLDER_beginner_annual",
+    monthly: process.env.STRIPE_PRICE_BEGINNER_MONTHLY || "price_1TPWCVGI9m3f5P10CfXu4rB6",
+    annual: process.env.STRIPE_PRICE_BEGINNER_ANNUAL || "price_PLACEHOLDER_beginner_annual",
   },
   experienced: {
-    monthly: "price_1TPWDIGI9m3f5P10Essx6Kh1",
-    annual: "price_PLACEHOLDER_experienced_annual",
+    monthly: process.env.STRIPE_PRICE_EXPERIENCED_MONTHLY || "price_1TPWDIGI9m3f5P10Essx6Kh1",
+    annual: process.env.STRIPE_PRICE_EXPERIENCED_ANNUAL || "price_PLACEHOLDER_experienced_annual",
   },
   topagent: {
-    monthly: "price_1TPWEKGI9m3f5P10pj771Lmx",
-    annual: "price_PLACEHOLDER_topagent_annual",
+    monthly: process.env.STRIPE_PRICE_TOPAGENT_MONTHLY || "price_1TPWEKGI9m3f5P10pj771Lmx",
+    annual: process.env.STRIPE_PRICE_TOPAGENT_ANNUAL || "price_PLACEHOLDER_topagent_annual",
   },
 };
 
 // General user Pro subscription (no points, just premium features)
-export const USER_PRO_PRICE_ID = "price_1SW75eGI9m3f5P10p8Ht99dn";
+export const USER_PRO_PRICE_ID = process.env.USER_PRO_STRIPE_PRICE_ID || "price_1SW75eGI9m3f5P10p8Ht99dn";
 
 // Add Credits product price (one-time purchase, variable amount)
-export const CREDITS_TOPUP_PRICE_ID = "price_1TPXKIGI9m3f5P10OYemYKxu";
+export const CREDITS_TOPUP_PRICE_ID = process.env.STRIPE_PRICE_CREDITS_TOPUP || "price_1TPXKIGI9m3f5P10OYemYKxu";
 
 // Reverse lookup — given a Stripe price ID, return { tier, interval }
 const priceToTierMap = new Map<string, { tier: Exclude<SubscriptionTier, "free">; interval: BillingInterval }>();

@@ -1,7 +1,12 @@
 # Stripe Billing System — Complete Reference
 
+> ⚠️ **OUTDATED — superseded by [`docs/commerce/stripe-billing.md`](../commerce/stripe-billing.md) (2026-06-11).**
+> This doc describes the OLD credit model ($0.125/credit, 750/3,200/6,800 credits).
+> Current canonical is `$0.10`/credit, 1,000/4,167/8,696 (`src/config/credits.ts`).
+> Kept for history only — do not trust the numbers here.
+
 **Last Updated:** April 24, 2026
-**Status:** Active (Test Mode)
+**Status:** Outdated (was Test Mode)
 
 ---
 
