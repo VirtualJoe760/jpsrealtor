@@ -107,8 +107,17 @@ export async function POST(
 
     // ------- Google Ads -------
     if (google) {
+      // Multi-tenant safety: an agent who connected Google but hasn't selected a
+      // customer account must NOT silently fall back to the platform's env
+      // account. Require their customerId before we run anything on their behalf.
+      const agentConnectedGoogle = !!(userGoogleAds && (userGoogleAds.refreshToken || userGoogleAds.status === 'connected'));
       const googleConfigured = isGoogleAdsConfigured() || (userGoogleAds?.refreshToken && userGoogleAds?.customerId);
-      if (!googleConfigured) {
+      if (agentConnectedGoogle && !userGoogleAds?.customerId) {
+        results.google = {
+          success: false,
+          error: 'Select your Google Ads account in Settings → Integrations before launching.',
+        };
+      } else if (!googleConfigured) {
         results.google = {
           success: false,
           error: 'Google Ads not connected. Go to Settings → Ad Accounts to connect your Google Ads account.',
@@ -190,8 +199,16 @@ export async function POST(
 
     // ------- Meta Ads -------
     if (meta) {
+      // Multi-tenant safety: an agent who connected Meta but has no resolved ad
+      // account must NOT silently fall back to the platform's env account.
+      const agentConnectedMeta = !!userMetaAds?.accessToken;
       const metaConfigured = isMetaAdsConfigured() || (userMetaAds?.accessToken && userMetaAds?.adAccountId);
-      if (!metaConfigured) {
+      if (agentConnectedMeta && !userMetaAds?.adAccountId) {
+        results.meta = {
+          success: false,
+          error: 'Select your Meta ad account in Settings → Integrations before launching.',
+        };
+      } else if (!metaConfigured) {
         results.meta = {
           success: false,
           error: 'Meta Ads not connected. Go to Settings → Ad Accounts to connect your Meta Ads account.',
