@@ -822,6 +822,13 @@ const UserSchema = new Schema<IUser>(
         customerId: String,
         developerToken: String,
         refreshToken: String,
+        // Accounts the connected agent can access, auto-discovered post-OAuth via
+        // customers:listAccessibleCustomers. Drives the customer picker in Settings.
+        availableCustomers: [{
+          _id: false,
+          id: String,
+          name: String,
+        }],
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
       },

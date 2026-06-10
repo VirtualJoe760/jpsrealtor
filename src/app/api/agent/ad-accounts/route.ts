@@ -22,6 +22,7 @@ export async function GET() {
       google: {
         connected: !!(user as any)?.adAccounts?.google?.refreshToken,
         customerId: (user as any)?.adAccounts?.google?.customerId || null,
+        availableCustomers: (user as any)?.adAccounts?.google?.availableCustomers || [],
         status: (user as any)?.adAccounts?.google?.status || 'disconnected',
         connectedAt: (user as any)?.adAccounts?.google?.connectedAt || null,
       },

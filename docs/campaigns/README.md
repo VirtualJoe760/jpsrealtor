@@ -80,8 +80,8 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
 
 | Phase | Goal | Status |
 |---|---|---|
-| 1 | Thread per-agent creds (Google + Meta) so launches target the agent's account | **Done** (this branch) |
-| 2 | Onboarding: Google MCC manager-invite + Meta Advanced Access submission; Google customer-account picker | Planned |
+| 1 | Thread per-agent creds (Google + Meta) so launches target the agent's account | **Done** |
+| 2 | Onboarding: Google account auto-discovery (`listAccessibleCustomers`) + customer picker; MCC manager-invite + Meta "Add as Partner" guidance in Settings → Integrations | **Done** (auto-discovery + UI). Meta Advanced Access submission + actually sending MCC invites still pending |
 | 3 | Reserve credits at launch (`reserve`/`settle` in `credits.ts`, `creditReserve` on `Campaign` — neither exists yet) | Planned |
 | 4 | Nightly settle cron — reconcile reserved credits vs real Meta/Google spend | Planned |
 | 5 | Escrow UI + Meta token-refresh cron + disconnect→pause-campaigns | Planned |

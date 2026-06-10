@@ -469,6 +469,55 @@ export async function listCampaigns(): Promise<GoogleAdsCampaignListItem[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Account discovery (post-OAuth onboarding)
+// ---------------------------------------------------------------------------
+
+/**
+ * List the Google Ads customer accounts the connected user can access, given
+ * their refresh token. Called right after the OAuth callback so the agent
+ * doesn't have to paste their Customer ID by hand. Uses the platform developer
+ * token + client creds; no customerId / login-customer-id needed for this call.
+ *
+ * Returns bare customer IDs (digits only), e.g. ['8029580768'].
+ */
+export async function listAccessibleCustomers(refreshToken: string): Promise<string[]> {
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
+  const clientId = process.env.GOOGLE_CLIENT_ID || '';
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+  if (!developerToken || !clientId || !clientSecret) {
+    throw new Error('Google Ads not configured: missing developer token or client credentials.');
+  }
+
+  const accessToken = await getAccessToken({
+    developerToken,
+    customerId: '',
+    refreshToken,
+    clientId,
+    clientSecret,
+    loginCustomerId: '',
+  });
+
+  const res = await fetch(`${GOOGLE_ADS_BASE}/customers:listAccessibleCustomers`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'developer-token': developerToken,
+    },
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Google Ads listAccessibleCustomers error (${res.status}): ${errBody}`);
+  }
+
+  const data = await res.json();
+  // resourceNames: ["customers/1234567890", ...]
+  return (data.resourceNames || [])
+    .map((rn: string) => rn.split('/')[1])
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
 // Check if Google Ads is configured
 // ---------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@ import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 interface AdAccountStatus {
   connected: boolean;
   customerId?: string | null;
+  availableCustomers?: Array<{ id: string; name?: string }>;
   adAccountId?: string | null;
   adAccountName?: string | null;
   pageId?: string | null;
@@ -44,6 +45,25 @@ export default function AdAccountsSetup() {
   const inputClasses = `w-full px-3 py-2 rounded-lg border text-sm ${
     isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'
   }`;
+
+  // Pretty-print a bare Google customer id as 123-456-7890
+  const formatCid = (id?: string | null) =>
+    id ? id.replace(/-/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3') : '';
+
+  // Persist the agent's selected Google customer account.
+  const selectGoogleCustomer = async (customerId: string) => {
+    await fetch('/api/agent/ad-accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform: 'google', customerId }),
+    });
+    setGoogle((g) => (g ? { ...g, customerId } : g));
+    setGoogleCustomerId(customerId);
+  };
+
+  // ChatRealty's agency identifiers, shown in the onboarding instructions.
+  const MCC_ID = '206-304-7113';            // Google Ads manager account
+  const META_PARTNER_BUSINESS_ID = '1260738784844861'; // ChatRealty Business Manager
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -237,10 +257,56 @@ export default function AdAccountsSetup() {
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className={`text-sm ${textSecondary}`}>
-              Customer ID: <span className={`font-medium ${textPrimary}`}>{google.customerId}</span>
-            </p>
+          <div className="space-y-3">
+            {/* Account picker — auto-discovered post-OAuth. Dropdown if >1. */}
+            {google.availableCustomers && google.availableCustomers.length > 1 ? (
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1`}>Google Ads Account</label>
+                <select
+                  value={google.customerId || ''}
+                  onChange={(e) => selectGoogleCustomer(e.target.value)}
+                  className={inputClasses}
+                >
+                  <option value="" disabled>Select an account…</option>
+                  {google.availableCustomers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {formatCid(c.id)}{c.name ? ` — ${c.name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : google.customerId ? (
+              <p className={`text-sm ${textSecondary}`}>
+                Customer ID: <span className={`font-medium ${textPrimary}`}>{formatCid(google.customerId)}</span>
+              </p>
+            ) : (
+              // Discovery failed (e.g. developer token still in review) → manual entry
+              <div className={`p-3 rounded-lg ${isLight ? 'bg-gray-50' : 'bg-gray-800'}`}>
+                <label className={`block text-xs ${textSecondary} mb-1`}>
+                  Customer ID (we couldn&apos;t auto-detect it — from ads.google.com, top right)
+                </label>
+                <input value={googleCustomerId} onChange={(e) => setGoogleCustomerId(e.target.value)}
+                  placeholder="123-456-7890" className={inputClasses} />
+                <button onClick={saveGoogle} disabled={saving || !googleCustomerId}
+                  className={`mt-2 px-4 py-2 rounded-lg text-sm font-medium text-white ${
+                    isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
+                  } disabled:opacity-50`}>
+                  {saving ? 'Saving...' : 'Save Customer ID'}
+                </button>
+              </div>
+            )}
+
+            {/* Agency onboarding: accept ChatRealty's manager link */}
+            <div className={`p-3 rounded-lg text-xs ${isLight ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-amber-900/15 text-amber-300 border border-amber-700/40'}`}>
+              <p className="font-medium mb-1">One more step — let ChatRealty manage your ads</p>
+              <p>
+                In Google Ads, go to <span className="font-medium">Admin → Access and security → Managers</span> and
+                accept the link request from ChatRealty&apos;s agency account
+                (<span className="font-medium">{MCC_ID}</span>). This lets us build and run your
+                campaigns on your behalf — Google bills your account directly.
+              </p>
+            </div>
+
             {google.connectedAt && (
               <p className={`text-xs ${textSecondary}`}>
                 Connected {new Date(google.connectedAt).toLocaleDateString()}
@@ -367,6 +433,17 @@ export default function AdAccountsSetup() {
                 Facebook Page: <span className={`font-medium ${textPrimary}`}>{meta.pageName || meta.pageId}</span>
               </p>
             ) : null}
+
+            {/* Agency onboarding: add ChatRealty as a Partner on the ad account */}
+            <div className={`p-3 rounded-lg text-xs ${isLight ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-amber-900/15 text-amber-300 border border-amber-700/40'}`}>
+              <p className="font-medium mb-1">One more step — add ChatRealty as a Partner</p>
+              <p>
+                In <span className="font-medium">Meta Business Settings → Partners → Add Partner</span>,
+                enter ChatRealty&apos;s Business ID <span className="font-medium">{META_PARTNER_BUSINESS_ID}</span> and
+                grant <span className="font-medium">Manage ad account</span> access. This lets us build and run
+                your ads on your behalf — Meta bills your account directly.
+              </p>
+            </div>
 
             {meta.connectedAt && (
               <p className={`text-xs ${textSecondary}`}>

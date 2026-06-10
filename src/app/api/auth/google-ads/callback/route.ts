@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
+import { listAccessibleCustomers } from '@/lib/google-ads-api';
 
 /**
  * GET /api/auth/google-ads/callback
@@ -62,18 +63,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/agent/campaigns?error=no_refresh_token', request.url));
     }
 
-    // Save refresh token to user profile
+    // Auto-discover the agent's accessible Google Ads accounts so they don't
+    // have to paste a Customer ID. Best-effort: if discovery fails (e.g. dev
+    // token still in review), we still store the refresh token and let the
+    // agent enter the Customer ID manually.
+    let availableCustomers: Array<{ id: string }> = [];
+    let autoCustomerId: string | undefined;
+    try {
+      const ids = await listAccessibleCustomers(tokens.refresh_token);
+      availableCustomers = ids.map((id) => ({ id }));
+      if (ids.length === 1) autoCustomerId = ids[0]; // unambiguous → auto-select
+    } catch (discoverErr) {
+      console.warn('[google-ads callback] listAccessibleCustomers failed (non-fatal):', discoverErr);
+    }
+
+    // Save refresh token + discovered accounts to user profile
     await dbConnect();
-    await User.findOneAndUpdate(
-      { email: session.user.email },
-      {
-        $set: {
-          'adAccounts.google.refreshToken': tokens.refresh_token,
-          'adAccounts.google.connectedAt': new Date(),
-          'adAccounts.google.status': 'connected',
-        },
-      }
-    );
+    const set: Record<string, unknown> = {
+      'adAccounts.google.refreshToken': tokens.refresh_token,
+      'adAccounts.google.availableCustomers': availableCustomers,
+      'adAccounts.google.connectedAt': new Date(),
+      'adAccounts.google.status': 'connected',
+    };
+    if (autoCustomerId) set['adAccounts.google.customerId'] = autoCustomerId;
+    await User.findOneAndUpdate({ email: session.user.email }, { $set: set });
 
     // Redirect back to campaigns with success
     return NextResponse.redirect(new URL('/agent/campaigns?google_ads=connected', request.url));
