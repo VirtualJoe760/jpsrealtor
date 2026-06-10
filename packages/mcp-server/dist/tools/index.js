@@ -11,6 +11,7 @@ const whoami_js_1 = require("./whoami.js");
 const my_agent_profile_js_1 = require("./my_agent_profile.js");
 const my_stats_js_1 = require("./my_stats.js");
 const search_listings_js_1 = require("./search_listings.js");
+const show_listing_board_js_1 = require("./show_listing_board.js");
 const get_listing_js_1 = require("./get_listing.js");
 const get_listing_photos_js_1 = require("./get_listing_photos.js");
 const find_comparables_js_1 = require("./find_comparables.js");
@@ -38,6 +39,7 @@ const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_sta
 // MLS / Listings
 const MLS = [
     search_listings_js_1.search_listings,
+    show_listing_board_js_1.show_listing_board,
     get_listing_js_1.get_listing,
     get_listing_photos_js_1.get_listing_photos,
     find_comparables_js_1.find_comparables,

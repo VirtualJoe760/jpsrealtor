@@ -6,6 +6,7 @@
 // icon — so to actually display a photo we fetch it and return base64.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchImageBlock = fetchImageBlock;
+exports.fetchImageDataUri = fetchImageDataUri;
 /**
  * Fetch one image URL and return it as an MCP image content block (base64).
  * Returns null on any failure so a single bad photo never fails the whole call.
@@ -29,4 +30,13 @@ async function fetchImageBlock(url) {
     catch {
         return null;
     }
+}
+/**
+ * Fetch one image URL and return it as a base64 `data:` URI string. Used by the
+ * MCP App listing board, where photos must be inlined as data: URIs (the only
+ * image source the app/artifact sandbox CSP reliably allows). Null on failure.
+ */
+async function fetchImageDataUri(url) {
+    const block = await fetchImageBlock(url);
+    return block ? `data:${block.mimeType};base64,${block.data}` : null;
 }

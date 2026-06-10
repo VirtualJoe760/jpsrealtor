@@ -11,10 +11,19 @@ export type ToolDef = {
      */
     inputSchema: Record<string, unknown>;
     /**
+     * Optional MCP Apps (SEP-1865) UI resource this tool renders into. When set,
+     * the tool definition advertises `_meta.ui.resourceUri` so the host fetches
+     * the ui:// resource and renders it inline, pushing the tool result to it.
+     * Pair with a handler that returns `{ _structuredContent, _mcpText }`.
+     */
+    uiResourceUri?: string;
+    /**
      * Runs the tool. Receives the parsed input (already validated against the
      * schema by the MCP SDK) and the server config (apiBase + token).
      * Throw an HttpError or any Error to surface a tool failure to Claude.
      * Return any JSON-serializable value; it gets wrapped as text content.
+     * To drive an MCP App UI, return `{ _structuredContent, _mcpText }`; to
+     * return raw content blocks (e.g. rendered images), return `{ _mcpContent }`.
      */
     handler: (input: Record<string, unknown>, config: ServerConfig) => Promise<unknown>;
 };

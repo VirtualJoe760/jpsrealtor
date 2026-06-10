@@ -25,3 +25,13 @@ export async function fetchImageBlock(url: string | undefined | null): Promise<I
     return null;
   }
 }
+
+/**
+ * Fetch one image URL and return it as a base64 `data:` URI string. Used by the
+ * MCP App listing board, where photos must be inlined as data: URIs (the only
+ * image source the app/artifact sandbox CSP reliably allows). Null on failure.
+ */
+export async function fetchImageDataUri(url: string | undefined | null): Promise<string | null> {
+  const block = await fetchImageBlock(url);
+  return block ? `data:${block.mimeType};base64,${block.data}` : null;
+}

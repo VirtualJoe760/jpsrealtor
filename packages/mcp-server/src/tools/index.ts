@@ -9,6 +9,7 @@ import { whoami } from "./whoami.js";
 import { my_agent_profile } from "./my_agent_profile.js";
 import { my_stats } from "./my_stats.js";
 import { search_listings } from "./search_listings.js";
+import { show_listing_board } from "./show_listing_board.js";
 import { get_listing } from "./get_listing.js";
 import { get_listing_photos } from "./get_listing_photos.js";
 import { find_comparables } from "./find_comparables.js";
@@ -38,6 +39,7 @@ const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
 // MLS / Listings
 const MLS: ToolDef[] = [
   search_listings,
+  show_listing_board,
   get_listing,
   get_listing_photos,
   find_comparables,

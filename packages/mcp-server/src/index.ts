@@ -20,10 +20,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { loadConfig } from "./config.js";
 import { ALL_TOOLS, toolByName, SERVER_INSTRUCTIONS } from "./tools/index.js";
+import { LISTING_BOARD_URI, LISTING_BOARD_MIME, LISTING_BOARD_HTML } from "./ui/listing-board.js";
 import { HttpError } from "./http.js";
 
 const PKG_NAME = "@chatrealty/mcp-server";
@@ -47,19 +50,38 @@ async function main(): Promise<void> {
     {
       capabilities: {
         tools: {},
+        resources: {},
       },
       instructions: SERVER_INSTRUCTIONS,
     }
   );
 
-  // tools/list
+  // tools/list — advertise the MCP App UI resource for tools that have one.
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: ALL_TOOLS.map((t) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema as any,
+        ...(t.uiResourceUri
+          ? { _meta: { ui: { resourceUri: t.uiResourceUri }, "ui/resourceUri": t.uiResourceUri } }
+          : {}),
       })),
+    };
+  });
+
+  // resources/list + resources/read — serve the MCP App UI (listing board).
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: [
+      { uri: LISTING_BOARD_URI, name: "ChatRealty Listing Board", mimeType: LISTING_BOARD_MIME },
+    ],
+  }));
+  server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
+    if (req.params.uri !== LISTING_BOARD_URI) {
+      throw new Error(`Unknown resource: ${req.params.uri}`);
+    }
+    return {
+      contents: [{ uri: LISTING_BOARD_URI, mimeType: LISTING_BOARD_MIME, text: LISTING_BOARD_HTML }],
     };
   });
 
@@ -77,6 +99,14 @@ async function main(): Promise<void> {
       // `_mcpContent`; otherwise the JSON value is wrapped as a text block.
       if (result && typeof result === "object" && Array.isArray((result as any)._mcpContent)) {
         return { content: (result as any)._mcpContent };
+      }
+      // MCP App tools return `_structuredContent` (rendered by the UI resource)
+      // plus a short `_mcpText` summary for the model.
+      if (result && typeof result === "object" && "_structuredContent" in (result as any)) {
+        return {
+          content: [{ type: "text", text: String((result as any)._mcpText || "") }],
+          structuredContent: (result as any)._structuredContent,
+        };
       }
       return {
         content: [

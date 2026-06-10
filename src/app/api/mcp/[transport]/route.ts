@@ -84,7 +84,7 @@ async function mcpHandler(req: Request): Promise<Response> {
 
   const authInfo = (req as unknown as { auth?: AuthInfo }).auth;
 
-  const server = new Server(PKG, { capabilities: { tools: {} }, instructions: SERVER_INSTRUCTIONS });
+  const server = new Server(PKG, { capabilities: { tools: {}, resources: {} }, instructions: SERVER_INSTRUCTIONS });
   registerChatRealtyTools(server);
 
   const transport = new WebStandardStreamableHTTPServerTransport({
