@@ -42,7 +42,7 @@ export const search_listings: ToolDef = {
       maxDaysOnMarket: {
         type: "number",
         description:
-          'Only listings that came on the market within the last N days. e.g. 2 = "new this week", 7 = "new this week", 30 = "newer than a month". Useful for "what just hit the market" queries.',
+          'Only listings that came on the market within the last N days. e.g. 2 = "just listed", 7 = "new this week", 30 = "within the last month". Useful for "what just hit the market" queries.',
       },
       minDaysOnMarket: {
         type: "number",
