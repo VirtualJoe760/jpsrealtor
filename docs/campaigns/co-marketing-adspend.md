@@ -146,7 +146,7 @@ agent↔agent vs agent↔settlement-provider handling.
 
 | Phase | Scope |
 |---|---|
-| **A. Model + relationships** | `CampaignFunding` model; relax `Partnership` for agent↔agent + N selection; `Campaign.pending_adspend` + `coBranding`; `AdCampaignRecord.contributors`. |
+| **A. Model + relationships** ✅ **DONE** (commit f6562aaa) | `CampaignFunding` model; `Partnership.partnerRole` (agent↔agent); `Campaign.pending_adspend` + `fundingId` + `coBranding`; `AdCampaignRecord.fundingId` + `contributors`; `CreditLedger` txn `fundingId`. |
 | **B. Bill-at-publish UI** | "Bill to partnership(s)" picker at content/campaign publish: select parties, allocation basis, preview each share. |
 | **C. Approval flow** | Tokenized approve/deny emails (HMAC, single-use), approval API, in-dashboard approvals, deny/timeout handling. |
 | **D. Funding + launch** | Per-party credit collection (party→platform), Stripe top-up when short, fund→launch on full approval, refunds on deny. |
