@@ -1,59 +1,26 @@
 // src/app/api/mortgage-rates/route.ts
 import { NextResponse } from "next/server";
+import { getMortgageRates } from "@/lib/listings/mortgage-rate";
 
+/**
+ * GET /api/mortgage-rates
+ *
+ * Thin wrapper over the shared rate source (src/lib/listings/mortgage-rate.ts)
+ * so the calculator + chat use the SAME live rate as the cash-flow math (DRY).
+ * Response shape is preserved for existing consumers: `data.frm_30` / `data.frm_15`
+ * are PERCENTAGES (e.g. 6.48), not decimals.
+ */
 export async function GET() {
-  try {
-    const apiKey = process.env.API_NINJAS_KEY;
+  const { frm30, frm15, source } = await getMortgageRates();
+  const live = source === "live";
 
-    if (!apiKey) {
-      console.error("❌ API_NINJAS_KEY not configured");
-      // Return fallback rates
-      return NextResponse.json({
-        success: false,
-        fallback: true,
-        data: {
-          frm_30: 6.85,
-          frm_15: 6.10,
-          date: new Date().toISOString().split('T')[0],
-        }
-      });
-    }
-
-    const response = await fetch(
-      "https://api.api-ninjas.com/v1/mortgagerate",
-      {
-        headers: {
-          "X-Api-Key": apiKey,
-        },
-        next: {
-          revalidate: 3600, // Cache for 1 hour
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      fallback: false,
-      data,
-    });
-  } catch (error) {
-    console.error("❌ Error fetching mortgage rates:", error);
-
-    // Return fallback rates on error
-    return NextResponse.json({
-      success: false,
-      fallback: true,
-      data: {
-        frm_30: 6.85,
-        frm_15: 6.10,
-        date: new Date().toISOString().split('T')[0],
-      },
-    });
-  }
+  return NextResponse.json({
+    success: live,
+    fallback: !live,
+    data: {
+      frm_30: +(frm30 * 100).toFixed(2),
+      frm_15: frm15 != null ? +(frm15 * 100).toFixed(2) : 6.1,
+      date: new Date().toISOString().split("T")[0],
+    },
+  });
 }
