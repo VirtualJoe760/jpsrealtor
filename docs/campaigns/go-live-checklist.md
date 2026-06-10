@@ -30,11 +30,13 @@ cross-agent launch has ever run.** Not production ready.
       `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (= MCC `206-304-7113`), `GOOGLE_CLIENT_ID/SECRET`,
       `META_ADS_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID`, `FACEBOOK_PAGE_ID`,
       `API_NINJA_KEY` (or `API_NINJAS_KEY`, for the live mortgage rate).
-- [ ] OAuth redirect URIs registered for **every** domain agents start from, OR
-      route all ad-OAuth callbacks through ONE canonical domain
-      (`/api/auth/google-ads/callback`). Today only `localhost` + `jpsrealtor.com`
-      are registered — an agent on their own subdomain/custom domain would hit
-      `redirect_uri_mismatch`. **Decide the callback-domain strategy.**
+- [x] **Cross-domain OAuth fixed** (commit `f66c43f9`): ad-OAuth callbacks run on
+      the canonical domain and identify the agent via a signed `state`
+      (`src/lib/oauth-state.ts`), not a cross-domain session — so agents on their
+      own branded domain can connect. Only the canonical callback URL needs to be
+      registered in Google/Meta. **Still TODO:** run a real cross-domain OAuth
+      roundtrip with a second agent (folds into Gate 3); confirm the canonical
+      `…/google-ads/callback` + `…/meta-ads/callback` are registered in prod.
 
 ## Gate 1 — External approvals (hard blockers)
 - [ ] **Google Ads developer token** approved for production (Basic Access — in
