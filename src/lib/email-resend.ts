@@ -1333,6 +1333,86 @@ export async function sendPartnerApprovalEmail(
 }
 
 /**
+ * Sent to each co-marketing participant when an agent bills a campaign's ad
+ * spend to a partnership. Links them into their account to review their share,
+ * top up credits if needed, and approve or deny the ad spend.
+ */
+export async function sendCoMarketingApprovalEmail(opts: {
+  email: string;
+  name: string;
+  agentName: string;
+  campaignName: string;
+  shareCredits: number;
+  shareDollars: number;
+  reviewUrl: string;
+}) {
+  const resend = getResendClient();
+  const firstName = (opts.name || '').split(' ')[0] || 'there';
+
+  console.log('📧 Sending co-marketing approval email to:', opts.email);
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: platformFrom(),
+      to: [opts.email],
+      replyTo: ADMIN_EMAIL,
+      subject: `Approve your share of ${opts.agentName}'s co-marketing campaign`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <div style="background:linear-gradient(135deg,#0e7c7b,#10b981);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+              <h1 style="color:#fff;font-size:22px;margin:0 0 4px;">Co-Marketing Ad Spend — Your Approval Needed</h1>
+              <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;">${opts.campaignName}</p>
+            </div>
+            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+              <p style="color:#334155;font-size:15px;line-height:1.7;">
+                Hi ${firstName}, <strong>${opts.agentName}</strong> has set up a co-marketing campaign and
+                allocated you a share of the ad spend. You only pay the fair-market value of the advertising
+                you receive — nothing more.
+              </p>
+              <div style="background:#f1f5f9;border-radius:10px;padding:18px 20px;margin:18px 0;">
+                <p style="margin:0;font-size:13px;color:#64748b;">Your share</p>
+                <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#0f172a;">
+                  ${opts.shareCredits.toLocaleString()} credits
+                  <span style="font-size:14px;font-weight:500;color:#64748b;">(~$${opts.shareDollars.toFixed(2)} in ad spend)</span>
+                </p>
+              </div>
+              <p style="color:#334155;font-size:14px;line-height:1.7;">
+                Review the creative and approve or deny your share in your account. If your credit balance
+                doesn't cover it, you'll be able to top up first — the campaign launches only after every
+                party approves.
+              </p>
+              <div style="text-align:center;margin:24px 0 8px;">
+                <a href="${opts.reviewUrl}" style="display:inline-block;background:#0e7c7b;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                  Review &amp; Approve
+                </a>
+              </div>
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;margin:16px 0 0;">
+                This is a joint marketing arrangement. Your payment is for your own advertising, not a referral.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Co-marketing approval email error:', error);
+      return null;
+    }
+    console.log('✅ Co-marketing approval email sent:', data?.id);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send co-marketing approval email:', error);
+    return null;
+  }
+}
+
+/**
  * Sent to a service partner when their application is REJECTED by an admin.
  */
 export async function sendPartnerRejectionEmail(
