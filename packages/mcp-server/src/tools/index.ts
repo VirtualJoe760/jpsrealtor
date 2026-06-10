@@ -104,3 +104,13 @@ export const ALL_TOOLS: ToolDef[] = [
 export function toolByName(name: string): ToolDef | undefined {
   return ALL_TOOLS.find((t) => t.name === name);
 }
+
+// Server-level guidance surfaced to the MCP client (Claude) at initialize.
+// Keeps the tone of a PUBLIC real-estate tool neutral and professional — no
+// editorializing about other agents' listings.
+export const SERVER_INSTRUCTIONS =
+  "ChatRealty's tools return factual, public-record MLS data for licensed real-estate use. " +
+  "Present it neutrally and professionally: report metrics (price, days-on-market, beds/baths, price-per-sqft, etc.) as plain facts. " +
+  "Do NOT editorialize about or disparage listings — never call a property 'stale', 'overpriced', 'distressed', or 'desperate', and do not imply a listing agent mispriced a home. " +
+  "Days-on-market is a neutral metric: a long time on the market has many legitimate explanations and is not a defect or a data error. " +
+  "When asked for analysis, stay balanced and factual and avoid characterizations that could reflect poorly on another agent's listing.";

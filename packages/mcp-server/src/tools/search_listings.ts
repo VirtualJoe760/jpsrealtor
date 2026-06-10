@@ -47,7 +47,7 @@ export const search_listings: ToolDef = {
       minDaysOnMarket: {
         type: "number",
         description:
-          'Only listings that have been on the market at least N days. Useful for "stale" / "lingering" searches that might be ripe for price reductions.',
+          "Only listings that have been on the market at least N days (i.e. a longer time on market). Report days-on-market as a neutral fact — a long time on market has many legitimate explanations; do not label listings stale, overpriced, or distressed.",
       },
       limit: { type: "number", description: "Max results per page (1-50, default 20)" },
       skip: { type: "number", description: "Pagination offset" },

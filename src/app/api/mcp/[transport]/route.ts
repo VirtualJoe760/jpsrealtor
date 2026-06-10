@@ -26,6 +26,7 @@ import { McpOAuthToken } from "@/models/McpOAuth";
 import { decryptSecret } from "@/lib/secrets";
 import { sha256, getOrigin, MCP_OAUTH_SCOPES } from "@/lib/mcp-oauth";
 import { registerChatRealtyTools } from "@/lib/mcp-tool-bridge";
+import { SERVER_INSTRUCTIONS } from "@chatrealty/mcp-server/dist/tools/index.js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -83,7 +84,7 @@ async function mcpHandler(req: Request): Promise<Response> {
 
   const authInfo = (req as unknown as { auth?: AuthInfo }).auth;
 
-  const server = new Server(PKG, { capabilities: { tools: {} } });
+  const server = new Server(PKG, { capabilities: { tools: {} }, instructions: SERVER_INSTRUCTIONS });
   registerChatRealtyTools(server);
 
   const transport = new WebStandardStreamableHTTPServerTransport({

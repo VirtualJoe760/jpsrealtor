@@ -41,6 +41,7 @@ async function main() {
         capabilities: {
             tools: {},
         },
+        instructions: index_js_2.SERVER_INSTRUCTIONS,
     });
     // tools/list
     server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => {

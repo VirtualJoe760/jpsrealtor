@@ -23,7 +23,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { loadConfig } from "./config.js";
-import { ALL_TOOLS, toolByName } from "./tools/index.js";
+import { ALL_TOOLS, toolByName, SERVER_INSTRUCTIONS } from "./tools/index.js";
 import { HttpError } from "./http.js";
 
 const PKG_NAME = "@chatrealty/mcp-server";
@@ -48,6 +48,7 @@ async function main(): Promise<void> {
       capabilities: {
         tools: {},
       },
+      instructions: SERVER_INSTRUCTIONS,
     }
   );
 
