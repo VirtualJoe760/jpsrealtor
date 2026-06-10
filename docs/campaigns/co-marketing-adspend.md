@@ -149,7 +149,7 @@ agent↔agent vs agent↔settlement-provider handling.
 | **A. Model + relationships** ✅ **DONE** (commit f6562aaa) | `CampaignFunding` model; `Partnership.partnerRole` (agent↔agent); `Campaign.pending_adspend` + `fundingId` + `coBranding`; `AdCampaignRecord.fundingId` + `contributors`; `CreditLedger` txn `fundingId`. |
 | **B. Bill-at-publish** | API ✅ `POST /api/campaigns/[id]/fund` (commit 389a6d2a) — validates + creates funding + emails parties. UI (picker at publish) ⬜ remaining. |
 | **C. Approval flow** ✅ **API DONE** (389a6d2a) | `POST /api/campaigns/funding/[fundingId]/respond` (session-auth approve/deny), `sendCoMarketingApprovalEmail` (Resend). Approval UI panel ⬜ remaining. |
-| **D. Funding + launch** | Collection ✅ in the engine (balance-first, 402→existing top-up flow when short). ⬜ Remaining: trigger the actual ad launch when `readyToLaunch` (wire funding → the launch-ads path). |
+| **D. Funding + launch** ✅ **DONE** (commit 7248f61c) | Collection (balance-first, 402→existing top-up when short) + `executeAdLaunch` (shared with launch-ads, no dup) + `launchFundedCampaign` fired on the last required approval. **Live integration-tested**: create→approve→credits-move→funded→ready. |
 | **E. Settlement + reporting** ⬜ | Pro-rata reconciliation vs real spend (with Gate 4); per-party billing history + exportable RESPA audit record. |
 | **F. Co-branding** ⬜ | Dual/multi-logo on ad creative + co-marketed landing pages. |
 
