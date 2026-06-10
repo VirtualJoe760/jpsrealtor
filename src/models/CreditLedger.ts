@@ -34,6 +34,7 @@ export interface ICreditTransaction {
   channel?: CampaignChannel;
   campaignId?: mongoose.Types.ObjectId;
   partnershipId?: mongoose.Types.ObjectId;
+  fundingId?: mongoose.Types.ObjectId;   // ref CampaignFunding — co-marketing split traceability
   stripePaymentIntentId?: string;
   adSpendValue?: number;       // Actual dollar value at $0.10/credit
   metadata?: Record<string, any>;
@@ -96,6 +97,7 @@ const CreditTransactionSchema = new Schema<ICreditTransaction>(
     },
     campaignId: { type: Schema.Types.ObjectId, ref: "Campaign" },
     partnershipId: { type: Schema.Types.ObjectId, ref: "Partnership" },
+    fundingId: { type: Schema.Types.ObjectId, ref: "CampaignFunding" },
     stripePaymentIntentId: String,
     adSpendValue: Number,
     metadata: Schema.Types.Mixed,

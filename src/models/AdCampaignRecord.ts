@@ -41,6 +41,11 @@ export interface IAdCampaignRecord extends Document {
   // Status
   status: AdCampaignStatus;
 
+  // Co-marketing attribution: when this launch was funded by a CampaignFunding,
+  // record who contributed how much so settlement can split real spend pro-rata.
+  fundingId?: Types.ObjectId;             // ref CampaignFunding
+  contributors?: Array<{ userId: Types.ObjectId; shareCredits: number }>;
+
   // Snapshot date (for time-series tracking)
   snapshotDate: Date;
 
@@ -123,6 +128,14 @@ const AdCampaignRecordSchema = new Schema<IAdCampaignRecord>(
       default: 'draft',
       index: true,
     },
+
+    // Co-marketing attribution (see CampaignFunding.ts)
+    fundingId: { type: Schema.Types.ObjectId, ref: 'CampaignFunding', index: true },
+    contributors: [{
+      _id: false,
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+      shareCredits: { type: Number, default: 0 },
+    }],
 
     // Snapshot date
     snapshotDate: {

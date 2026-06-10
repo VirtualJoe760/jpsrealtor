@@ -9,7 +9,11 @@ export type CostSplitType = 'equal' | 'percentage' | 'fixed';
 export interface IPartnership extends Document {
   _id: Types.ObjectId;
   agentId: Types.ObjectId; // ref: User (realEstateAgent)
-  servicePartnerId: Types.ObjectId; // ref: User (serviceProvider)
+  servicePartnerId: Types.ObjectId; // ref: User (serviceProvider OR another agent)
+  // Role of the OTHER party. 'service_provider' is a RESPA §8 settlement provider
+  // (mortgage_broker, title, etc.) and needs a JMA; 'agent' is agent↔agent
+  // co-marketing (two agents / a team) — fair-value still applies, not §8.
+  partnerRole: 'service_provider' | 'agent';
   status: PartnershipStatus;
 
   // Cost splitting terms
@@ -65,6 +69,11 @@ const PartnershipSchema = new Schema<IPartnership>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    partnerRole: {
+      type: String,
+      enum: ["service_provider", "agent"],
+      default: "service_provider",
     },
     status: {
       type: String,

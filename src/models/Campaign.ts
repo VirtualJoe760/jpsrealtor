@@ -17,6 +17,7 @@ export type CampaignStatus =
   | 'generating_audio'
   | 'review'
   | 'approved'
+  | 'pending_adspend'   // billed to partnership(s) — awaiting party approval + funding
   | 'submitted'
   | 'active'
   | 'completed'
@@ -45,6 +46,17 @@ export interface ICampaign extends Document {
 
   // Campaign Status
   status: CampaignStatus;
+
+  // Co-marketing: when this campaign's ad spend is billed across partnerships,
+  // it links to a CampaignFunding doc (the N-party approve/deny + funding record)
+  // and carries the co-branding shown in the creative. See CampaignFunding.ts.
+  fundingId?: Types.ObjectId;            // ref CampaignFunding
+  coBranding?: Array<{
+    userId: Types.ObjectId;             // ref User (agent or service partner)
+    name?: string;
+    logoUrl?: string;
+    role?: 'lead_agent' | 'agent' | 'service_provider';
+  }>;
 
   // Timestamps
   createdAt: Date;
@@ -259,6 +271,7 @@ const CampaignSchema = new Schema<ICampaign>(
         'generating_audio',
         'review',
         'approved',
+        'pending_adspend',
         'submitted',
         'active',
         'completed',
@@ -267,6 +280,16 @@ const CampaignSchema = new Schema<ICampaign>(
       default: 'draft',
       index: true,
     },
+
+    // Co-marketing funding link + co-branding (see CampaignFunding.ts)
+    fundingId: { type: Schema.Types.ObjectId, ref: 'CampaignFunding', index: true },
+    coBranding: [{
+      _id: false,
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+      name: String,
+      logoUrl: String,
+      role: { type: String, enum: ['lead_agent', 'agent', 'service_provider'] },
+    }],
 
     // Timestamps
     submittedAt: Date,
