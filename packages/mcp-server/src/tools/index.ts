@@ -114,4 +114,8 @@ export const SERVER_INSTRUCTIONS =
   "Do NOT editorialize about or disparage listings — never call a property 'stale', 'overpriced', 'distressed', or 'desperate', and do not imply a listing agent mispriced a home. " +
   "Days-on-market is a neutral metric: a long time on the market has many legitimate explanations and is not a defect or a data error. " +
   "When asked for analysis, stay balanced and factual and avoid characterizations that could reflect poorly on another agent's listing. " +
-  "PRESENTATION: when showing 2 or more listings, build an interactive ARTIFACT — a 'listing board': a responsive grid of cards, each with the photo (use the listing's `thumbUrl`), price, beds/baths/sqft, city, and a 'View listing' link to its `detailUrl`; optionally plot them on a map from latitude/longitude. Reference the image/link URLs directly (thumbUrl, detailUrl) — never paste base64 image data into the artifact. For a single listing, a clean detail card (photo + facts + View-listing link) is enough. Prefer this visual board over a plain markdown table.";
+  "PRESENTATION: when showing 2 or more listings, build an interactive ARTIFACT — a 'listing board' with two linked views the user can toggle between: " +
+  "(1) a responsive GRID of cards, each with the photo (the listing's `thumbUrl`), price, beds/baths/sqft, city, and a 'View listing' link to its `detailUrl`; and " +
+  "(2) a MAP that plots every listing as a marker at its latitude/longitude, where clicking a marker opens a popup with that home's `thumbUrl` photo, price, address, and View-listing link (Leaflet + OpenStreetMap tiles from a CDN is a good lightweight choice). " +
+  "Reference the image/link URLs directly (thumbUrl, detailUrl) — never paste base64 image data into the artifact. " +
+  "For a single listing, a clean detail card (photo + facts + a map pin + View-listing link) is enough. Prefer this visual board over a plain markdown table.";
