@@ -277,6 +277,15 @@ export interface IUser extends Document {
     aiInbound?: boolean;       // auto-answer inbound listing/open-house questions (default off — opt-in)
   };
 
+  // Per-agent legal docs. We always generate a standardized TOS/Privacy for the
+  // agent; they MAY supply their own body, but the platform + SMS clauses are
+  // always appended at compose time (see src/lib/legal/agent-legal.ts).
+  legal?: {
+    customTerms?: string;      // agent's own/override Terms body (markdown); optional
+    customPrivacy?: string;    // agent's own/override Privacy body (markdown); optional
+    updatedAt?: Date;
+  };
+
   // Service Provider specific
   businessName?: string;
   serviceCategory?: string; // e.g., "Plumber", "Contractor", "Electrician"
@@ -891,6 +900,13 @@ const UserSchema = new Schema<IUser>(
       provisionedAt: Date,
       leadAlertsSms: { type: Boolean, default: true },
       aiInbound: { type: Boolean, default: false },
+    },
+
+    // Per-agent legal docs (optional custom bodies; platform/SMS clauses always appended)
+    legal: {
+      customTerms: String,
+      customPrivacy: String,
+      updatedAt: Date,
     },
 
     // Service Provider specific
