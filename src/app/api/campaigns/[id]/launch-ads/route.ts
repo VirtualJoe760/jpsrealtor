@@ -31,7 +31,7 @@ export async function POST(
     await dbConnect();
 
     const body = await request.json();
-    const { pageUrl, pageName, google, meta } = body;
+    const { pageUrl, pageName, google, meta, youtube } = body;
 
     const campaign = await Campaign.findById(id);
     if (!campaign) {
@@ -49,7 +49,8 @@ export async function POST(
     // combined ad spend so they aren't surprised when the campaigns go live.
     const googleDailyBudget = google?.budget || 0;
     const metaDailyBudget = meta?.budget || 0;
-    const totalDailyBudget = googleDailyBudget + metaDailyBudget;
+    const youtubeDailyBudget = youtube?.budget || 0;
+    const totalDailyBudget = googleDailyBudget + metaDailyBudget + youtubeDailyBudget;
     const creditsEstimatedDaily = adBudgetToCredits(totalDailyBudget);
     const creditsEstimatedMonthly = adBudgetToCredits(totalDailyBudget, 30);
 
@@ -77,7 +78,7 @@ export async function POST(
 
     // Run the shared launch path (also used by co-marketing funded launches).
     const results = await executeAdLaunch({
-      campaign, userId, userGoogleAds, userMetaAds, google, meta, pageUrl, pageName,
+      campaign, userId, userGoogleAds, userMetaAds, google, meta, youtube, pageUrl, pageName,
     });
 
     // Save campaign updates
@@ -88,7 +89,8 @@ export async function POST(
     // Build response message
     const googleOk = results.google?.success;
     const metaOk = results.meta?.success;
-    const allOk = (!google || googleOk) && (!meta || metaOk);
+    const youtubeOk = results.youtube?.success;
+    const allOk = (!google || googleOk) && (!meta || metaOk) && (!youtube || youtubeOk);
 
     let message = '';
     if (allOk) {
@@ -97,6 +99,7 @@ export async function POST(
       const parts: string[] = [];
       if (google && !googleOk) parts.push(`Google: ${results.google?.error}`);
       if (meta && !metaOk) parts.push(`Meta: ${results.meta?.error}`);
+      if (youtube && !youtubeOk) parts.push(`YouTube: ${results.youtube?.error}`);
       message = parts.join(' | ');
     }
 

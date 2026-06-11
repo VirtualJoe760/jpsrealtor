@@ -117,6 +117,18 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const [metaScheduleMode, setMetaScheduleMode] = useState<'continuous' | 'scheduled'>('continuous');
   const [metaDateRange, setMetaDateRange] = useState<DateRange | undefined>(undefined);
 
+  // YouTube Video (the ad creative MUST be a video hosted on YouTube)
+  const [youtubeVideoUrl, setYoutubeVideoUrl] = useState('');
+  const [youtubeBudget, setYoutubeBudget] = useState(10);
+  const [youtubeHeadline, setYoutubeHeadline] = useState('');
+  const [youtubeCallToAction, setYoutubeCallToAction] = useState('Learn more');
+
+  // Extract the 11-char YouTube video id from a URL (or accept a bare id).
+  const parseYoutubeId = (url: string): string => {
+    const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(url.trim()) ? url.trim() : '');
+  };
+
   // Agent's custom domain for ad landing pages — falls back to chatrealty.io
   // if the agent hasn't set one up. Fetched from /api/user/profile.
   const [agentDomain, setAgentDomain] = useState<string>('chatrealty.io');
@@ -326,7 +338,7 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
   const pageUrl = pageType === 'custom'
     ? customUrl
     : (selectedPage?.url ? `https://${agentDomain.replace(/^https?:\/\//, '')}${selectedPage.url}` : '');
-  const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0);
+  const totalBudget = (enableGoogle ? googleBudget : 0) + (enableMeta ? metaBudget : 0) + (enableYoutube ? youtubeBudget : 0);
 
   // Days the Meta campaign will run. Null = continuous (until paused).
   const metaDurationDays = (metaScheduleMode === 'scheduled' && metaDateRange?.from && metaDateRange?.to)
@@ -361,6 +373,10 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
     youtube: enableYoutube ? {
       audienceTypes: youtubeAudienceTypes,
       geoTargeting: youtubeGeoCenter ? { type: 'radius', center: youtubeGeoCenter, radiusMiles: youtubeRadiusMiles } : undefined,
+      youtubeVideoId: parseYoutubeId(youtubeVideoUrl),
+      budget: youtubeBudget,
+      headline: youtubeHeadline,
+      callToAction: youtubeCallToAction,
     } : undefined,
   });
 
@@ -1339,13 +1355,58 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
               )}
             </div>
 
+            {/* YouTube Video config — the creative + budget the backend needs */}
+            {enableYoutube && (
+              <div className={`${cardBg} ${cardBorder} rounded-lg p-6`}>
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-1`}>YouTube Video Ad</h3>
+                <p className={`text-sm ${textSecondary} mb-4`}>Video ads must use a video hosted on YouTube — paste the link to your video.</p>
+
+                <label className={`block text-sm ${textSecondary} mb-1`}>YouTube video link</label>
+                <input type="url" value={youtubeVideoUrl} onChange={(e) => setYoutubeVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=…"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm mb-1 ${isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'}`} />
+                {youtubeVideoUrl && !parseYoutubeId(youtubeVideoUrl) && (
+                  <p className="text-xs text-red-500 mb-2">That doesn&apos;t look like a YouTube video link.</p>
+                )}
+                {parseYoutubeId(youtubeVideoUrl) && (
+                  <p className={`text-xs ${textSecondary} mb-3`}>Detected video id: <span className="font-mono">{parseYoutubeId(youtubeVideoUrl)}</span></p>
+                )}
+
+                <label className={`block text-sm ${textSecondary} mb-1 mt-2`}>Headline</label>
+                <input value={youtubeHeadline} onChange={(e) => setYoutubeHeadline(e.target.value)} maxLength={90}
+                  placeholder="e.g. Homes for sale in Palm Desert Country Club"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm mb-3 ${isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'}`} />
+
+                <label className={`block text-sm ${textSecondary} mb-1`}>Call-to-action button</label>
+                <input value={youtubeCallToAction} onChange={(e) => setYoutubeCallToAction(e.target.value)} maxLength={25}
+                  placeholder="Learn more"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm mb-3 ${isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'}`} />
+
+                <label className={`block text-sm ${textSecondary} mb-1`}>Daily budget</label>
+                <div className="flex items-center gap-2">
+                  <span className={textSecondary}>$</span>
+                  <input type="number" min="5" step="1" value={youtubeBudget}
+                    onChange={(e) => setYoutubeBudget(Math.max(5, parseInt(e.target.value) || 0))}
+                    className={`w-28 px-3 py-2 rounded-lg border text-sm ${isLight ? 'border-gray-300 bg-white text-gray-900' : 'border-gray-600 bg-gray-700 text-white'}`} />
+                  <span className={`text-sm ${textSecondary}`}>/day</span>
+                </div>
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  ${youtubeBudget.toFixed(2)}/day = <span className={`font-medium ${textPrimary}`}>{adBudgetToCredits(youtubeBudget, 1)} credits/day</span>
+                  {' '}· ~{adBudgetToCredits(youtubeBudget, 30).toLocaleString()} credits/month
+                </p>
+                <div className={`mt-3 p-3 rounded-lg text-xs ${isLight ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-amber-900/20 border border-amber-700/50 text-amber-300'}`}>
+                  YouTube runs through Google Ads — your Google Ads account must be connected. Launches PAUSED for your review in Google Ads Manager.
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between">
               <button onClick={() => handleBack('configure')} className={`px-6 py-3 rounded-lg font-medium ${isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-900' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}>
                 Back
               </button>
               <button
                 onClick={() => handleNext('configure')}
-                disabled={!enableGoogle && !enableMeta}
+                disabled={!enableGoogle && !enableMeta && !enableYoutube}
                 className={`px-6 py-3 rounded-lg font-medium text-white ${isLight ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Review & Launch →

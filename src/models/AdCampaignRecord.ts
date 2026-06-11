@@ -1,6 +1,6 @@
 import mongoose, { Schema, model, models, Document, Types } from 'mongoose';
 
-export type AdPlatform = 'google' | 'meta';
+export type AdPlatform = 'google' | 'meta' | 'youtube';
 
 export type AdCampaignStatus =
   | 'draft'
@@ -70,7 +70,7 @@ const AdCampaignRecordSchema = new Schema<IAdCampaignRecord>(
     },
     platform: {
       type: String,
-      enum: ['google', 'meta'],
+      enum: ['google', 'meta', 'youtube'],
       required: true,
     },
 

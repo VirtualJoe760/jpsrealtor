@@ -42,6 +42,7 @@ export interface ICampaign extends Document {
     directMail: boolean;
     googleAds: boolean;
     metaAds: boolean;
+    youtubeAds: boolean;
   };
 
   // Campaign Status
@@ -256,6 +257,10 @@ const CampaignSchema = new Schema<ICampaign>(
         default: false,
       },
       metaAds: {
+        type: Boolean,
+        default: false,
+      },
+      youtubeAds: {
         type: Boolean,
         default: false,
       },

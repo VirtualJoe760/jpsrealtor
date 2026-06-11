@@ -41,6 +41,13 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
   The platform manager account (`GOOGLE_ADS_LOGIN_CUSTOMER_ID`) + platform dev
   token operate on the agent's `customerId`. The agent's account must be linked
   under the MCC (they accept a manager invite — onboarding, Phase 2).
+- **YouTube = Google Ads Video.** YouTube video ads run through the SAME Google
+  Ads client/account as Search (`createFullVideoCampaign` in `google-ads-api.ts`:
+  asset → VIDEO campaign → in-stream ad group → video ad), so they share the dev-
+  token gate. The wizard collects a YouTube video link (required — the creative
+  must be a hosted video), budget, headline, CTA. **Unverified live** (dev-token
+  gated): the bidding (`manualCpv`) + ad-group type + retargeting-audience
+  attachment are best-effort per the v18 spec and launch PAUSED for agent review.
 - **thanks.io / Drop Cowboy are not OAuth.** Agency-on-behalf means per-agent
   sub-accounts (thanks.io) / per-agent Brand + number pool (Drop Cowboy), under
   ChatRealty's master account, billed via credit-passthrough.

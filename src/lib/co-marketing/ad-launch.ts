@@ -14,7 +14,7 @@ import AdCampaignRecord from "@/models/AdCampaignRecord";
 import Campaign from "@/models/Campaign";
 import User from "@/models/User";
 import CampaignFunding from "@/models/CampaignFunding";
-import { createFullSearchCampaign, isGoogleAdsConfigured, runWithGoogleCreds } from "@/lib/google-ads-api";
+import { createFullSearchCampaign, createFullVideoCampaign, isGoogleAdsConfigured, runWithGoogleCreds } from "@/lib/google-ads-api";
 import {
   createFullMetaCampaign,
   isMetaAdsConfigured,
@@ -29,6 +29,7 @@ export interface AdLaunchParams {
   userMetaAds?: any;
   google?: any;
   meta?: any;
+  youtube?: any;
   pageUrl?: string;
   pageName?: string;
   // Co-marketing attribution (optional)
@@ -39,10 +40,11 @@ export interface AdLaunchParams {
 export interface AdLaunchResults {
   google?: { success: boolean; campaignResourceName?: string; error?: string };
   meta?: { success: boolean; campaignId?: string; error?: string };
+  youtube?: { success: boolean; campaignResourceName?: string; error?: string };
 }
 
 export async function executeAdLaunch(p: AdLaunchParams): Promise<AdLaunchResults> {
-  const { campaign, userId, userGoogleAds, userMetaAds, google, meta, pageUrl, pageName } = p;
+  const { campaign, userId, userGoogleAds, userMetaAds, google, meta, youtube, pageUrl, pageName } = p;
   const attribution = p.fundingId
     ? { fundingId: typeof p.fundingId === "string" ? new mongoose.Types.ObjectId(p.fundingId) : p.fundingId, contributors: p.contributors }
     : {};
@@ -214,6 +216,56 @@ export async function executeAdLaunch(p: AdLaunchParams): Promise<AdLaunchResult
     }
   }
 
+  // ------- YouTube (Google Ads Video — runs on the agent's Google account) -------
+  if (youtube) {
+    const agentConnectedGoogle = !!(userGoogleAds && (userGoogleAds.refreshToken || userGoogleAds.status === "connected"));
+    const googleConfigured = isGoogleAdsConfigured() || (userGoogleAds?.refreshToken && userGoogleAds?.customerId);
+    if (agentConnectedGoogle && !userGoogleAds?.customerId) {
+      results.youtube = { success: false, error: "Select your Google Ads account in Settings → Integrations before launching." };
+    } else if (!googleConfigured) {
+      results.youtube = { success: false, error: "Google Ads not connected. Go to Settings → Ad Accounts to connect your Google Ads account." };
+    } else if (!youtube.youtubeVideoId) {
+      results.youtube = { success: false, error: "A YouTube video is required for video ads — paste a YouTube link in the wizard." };
+    } else {
+      try {
+        const campaignName = `${pageName || "Campaign"} — YouTube — ${new Date().toLocaleDateString()}`;
+        const ytResult = await runWithGoogleCreds(
+          { customerId: userGoogleAds?.customerId, refreshToken: userGoogleAds?.refreshToken },
+          () => createFullVideoCampaign({
+            name: campaignName,
+            dailyBudget: youtube.budget || 10,
+            youtubeVideoId: youtube.youtubeVideoId,
+            landingPageUrl: pageUrl as string,
+            headline: youtube.headline || pageName || "Learn More",
+            callToAction: youtube.callToAction,
+            geoTargeting: youtube.geoTargeting?.center ? {
+              centerLat: youtube.geoTargeting.center.lat,
+              centerLng: youtube.geoTargeting.center.lng,
+              radiusMiles: youtube.geoTargeting.radiusMiles || 5,
+            } : undefined,
+          })
+        );
+
+        campaign.activeStrategies.youtubeAds = true;
+        await AdCampaignRecord.create({
+          campaignId: campaign._id,
+          userId,
+          platform: "youtube",
+          externalCampaignId: ytResult.campaignResourceName,
+          externalAdGroupId: ytResult.adGroupResourceName,
+          dailyBudget: youtube.budget || 0,
+          status: "active",
+          snapshotDate: new Date(),
+          ...attribution,
+        });
+        results.youtube = { success: true, campaignResourceName: ytResult.campaignResourceName };
+      } catch (err: any) {
+        console.error("[ad-launch] YouTube error:", err);
+        results.youtube = { success: false, error: err.message };
+      }
+    }
+  }
+
   return results;
 }
 
@@ -240,6 +292,7 @@ export async function launchFundedCampaign(fundingId: string): Promise<AdLaunchR
     userMetaAds: (agent as any)?.adAccounts?.meta,
     google: lp.google,
     meta: lp.meta,
+    youtube: lp.youtube,
     pageUrl: lp.pageUrl,
     pageName: lp.pageName,
     fundingId: funding._id,

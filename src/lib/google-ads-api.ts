@@ -469,6 +469,177 @@ export async function listCampaigns(): Promise<GoogleAdsCampaignListItem[]> {
 }
 
 // ---------------------------------------------------------------------------
+// YouTube Video campaigns (Google Ads `advertisingChannelType: VIDEO`)
+//
+// NOTE: UNVERIFIED against a live account — Google Ads Video creation is gated
+// by the same developer-token approval as Search. The flow follows the v18 REST
+// spec (asset → budget → campaign → ad group → in-stream video ad → geo), and
+// campaigns launch PAUSED so the agent reviews bidding/format in Google Ads
+// Manager before enabling. The bidding strategy (`manualCpv`) + ad-group type
+// (`VIDEO_TRUE_VIEW_IN_STREAM`) are the standard skippable-in-stream combo;
+// confirm/adjust on the first live launch. Retargeting audiences
+// (visitors/channelViewers) are NOT yet attached — geo targeting only (v1).
+// ---------------------------------------------------------------------------
+
+export interface GoogleVideoCampaignParams {
+  name: string;
+  dailyBudgetMicros: number;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string;
+  geoTargeting?: { centerLat: number; centerLng: number; radiusMiles: number };
+}
+
+/** Register a YouTube video (by its 11-char video id) as an asset in the account. */
+export async function createYoutubeVideoAsset(youtubeVideoId: string): Promise<string> {
+  const res = await googleAdsRequest('/assets:mutate', {
+    method: 'POST',
+    body: JSON.stringify({
+      operations: [{ create: { youtubeVideoAsset: { youtubeVideoId } } }],
+    }),
+  });
+  return res.results[0].resourceName;
+}
+
+/** Create a paused VIDEO campaign + budget (+ optional proximity geo targeting). */
+export async function createVideoCampaign(
+  params: GoogleVideoCampaignParams
+): Promise<{ campaignResourceName: string; budgetResourceName: string }> {
+  const budgetRes = await googleAdsRequest('/campaignBudgets:mutate', {
+    method: 'POST',
+    body: JSON.stringify({
+      operations: [{ create: {
+        name: `${params.name} Budget`,
+        amountMicros: String(params.dailyBudgetMicros),
+        deliveryMethod: 'STANDARD',
+      } }],
+    }),
+  });
+  const budgetResourceName = budgetRes.results[0].resourceName;
+
+  const campaignRes = await googleAdsRequest('/campaigns:mutate', {
+    method: 'POST',
+    body: JSON.stringify({
+      operations: [{ create: {
+        name: params.name,
+        advertisingChannelType: 'VIDEO',
+        status: 'PAUSED', // agent reviews before enabling
+        campaignBudget: budgetResourceName,
+        manualCpv: {}, // CPV bidding — pairs with skippable in-stream
+        startDate: params.startDate.replace(/-/g, ''),
+        endDate: params.endDate?.replace(/-/g, '') || undefined,
+      } }],
+    }),
+  });
+  const campaignResourceName = campaignRes.results[0].resourceName;
+
+  if (params.geoTargeting) {
+    await googleAdsRequest('/campaignCriteria:mutate', {
+      method: 'POST',
+      body: JSON.stringify({
+        operations: [{ create: {
+          campaign: campaignResourceName,
+          type: 'PROXIMITY',
+          proximity: {
+            geoPoint: {
+              latitudeInMicroDegrees: Math.round(params.geoTargeting.centerLat * 1_000_000),
+              longitudeInMicroDegrees: Math.round(params.geoTargeting.centerLng * 1_000_000),
+            },
+            radius: params.geoTargeting.radiusMiles,
+            radiusUnits: 'MILES',
+          },
+        } }],
+      }),
+    });
+  }
+
+  return { campaignResourceName, budgetResourceName };
+}
+
+/** Create a skippable in-stream video ad group. */
+export async function createVideoAdGroup(campaignResourceName: string, name: string): Promise<string> {
+  const res = await googleAdsRequest('/adGroups:mutate', {
+    method: 'POST',
+    body: JSON.stringify({
+      operations: [{ create: {
+        name,
+        campaign: campaignResourceName,
+        type: 'VIDEO_TRUE_VIEW_IN_STREAM',
+        status: 'ENABLED',
+      } }],
+    }),
+  });
+  return res.results[0].resourceName;
+}
+
+export interface GoogleVideoAdParams {
+  adGroupResourceName: string;
+  videoAssetResourceName: string;
+  finalUrl: string;
+  headline: string;
+  callToAction?: string;
+}
+
+/** Create the in-stream video ad referencing the YouTube video asset. */
+export async function createInStreamVideoAd(p: GoogleVideoAdParams): Promise<string> {
+  const res = await googleAdsRequest('/adGroupAds:mutate', {
+    method: 'POST',
+    body: JSON.stringify({
+      operations: [{ create: {
+        adGroup: p.adGroupResourceName,
+        status: 'ENABLED',
+        ad: {
+          finalUrls: [p.finalUrl],
+          videoAd: {
+            video: { asset: p.videoAssetResourceName },
+            inStream: {
+              actionButtonLabel: (p.callToAction || 'Learn more').slice(0, 25),
+              actionHeadline: p.headline.slice(0, 90),
+            },
+          },
+        },
+      } }],
+    }),
+  });
+  return res.results[0].resourceName;
+}
+
+export interface CreateFullVideoCampaignParams {
+  name: string;
+  dailyBudget: number; // dollars
+  youtubeVideoId: string;
+  landingPageUrl: string;
+  headline: string;
+  callToAction?: string;
+  startDate?: string;
+  endDate?: string;
+  geoTargeting?: { centerLat: number; centerLng: number; radiusMiles: number };
+}
+
+/** Asset → Budget → Campaign → Ad Group → Video Ad. Returns resource names. */
+export async function createFullVideoCampaign(
+  params: CreateFullVideoCampaignParams
+): Promise<{ campaignResourceName: string; adGroupResourceName: string; adResourceName: string }> {
+  const today = new Date().toISOString().split('T')[0];
+  const videoAsset = await createYoutubeVideoAsset(params.youtubeVideoId);
+  const { campaignResourceName } = await createVideoCampaign({
+    name: params.name,
+    dailyBudgetMicros: Math.round(params.dailyBudget * 1_000_000),
+    startDate: params.startDate || today,
+    endDate: params.endDate,
+    geoTargeting: params.geoTargeting,
+  });
+  const adGroupResourceName = await createVideoAdGroup(campaignResourceName, `${params.name} - Ad Group`);
+  const adResourceName = await createInStreamVideoAd({
+    adGroupResourceName,
+    videoAssetResourceName: videoAsset,
+    finalUrl: params.landingPageUrl,
+    headline: params.headline,
+    callToAction: params.callToAction,
+  });
+  return { campaignResourceName, adGroupResourceName, adResourceName };
+}
+
+// ---------------------------------------------------------------------------
 // Account discovery (post-OAuth onboarding)
 // ---------------------------------------------------------------------------
 
