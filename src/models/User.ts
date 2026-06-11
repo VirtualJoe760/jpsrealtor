@@ -273,6 +273,7 @@ export interface IUser extends Document {
     };
     status?: 'none' | 'provisioning' | 'active' | 'disabled';
     provisionedAt?: Date;
+    leadAlertsSms?: boolean;   // receive lead-alert texts (default on)
   };
 
   // Service Provider specific
@@ -887,6 +888,7 @@ const UserSchema = new Schema<IUser>(
       },
       status: { type: String, enum: ['none', 'provisioning', 'active', 'disabled'], default: 'none' },
       provisionedAt: Date,
+      leadAlertsSms: { type: Boolean, default: true },
     },
 
     // Service Provider specific

@@ -18,6 +18,7 @@ import { sendLeadEvent } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { verifyTurnstile, clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { notifyAgentLead } from "@/lib/messaging/notify-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,15 @@ export async function POST(request: NextRequest) {
     } else {
       await Contact.create(contactPayload);
     }
+
+    // ---- 1b. SMS lead-alert to the agent (best-effort, non-blocking) ---------
+    notifyAgentLead({
+      agentId: agentUser._id.toString(),
+      kind: "new_lead",
+      leadName: `${firstName} ${lastName}`.trim(),
+      detail: ["Buyer", cityName].filter(Boolean).join(" • "),
+      leadPhone: phone,
+    }).catch(() => {});
 
     // ---- 2. Notify the agent via email --------------------------------------
     try {
