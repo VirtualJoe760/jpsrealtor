@@ -8,6 +8,7 @@ import {
   getAgentCalendarCredentials,
   getAgentCalendarSettings,
 } from "@/lib/gcal-api";
+import { notifyAgentLead } from "@/lib/messaging/notify-agent";
 
 /**
  * POST /api/appointments/book
@@ -168,6 +169,15 @@ export async function POST(request: NextRequest) {
     attendee: { name, email, phone },
     notes: message,
   });
+
+  // SMS alert — a booking is a high-intent event for the agent.
+  notifyAgentLead({
+    agentId: String(resolvedAgentId),
+    kind: "hot_lead",
+    leadName: name,
+    detail: [`Booked ${type}`, propertyAddress].filter(Boolean).join(" • "),
+    leadPhone: phone,
+  }).catch(() => {});
 
   return NextResponse.json({
     success: true,
