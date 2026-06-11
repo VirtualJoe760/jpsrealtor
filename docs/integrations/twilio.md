@@ -60,9 +60,13 @@ campaign registration links to.
 - **STOP/HELP/START** keyword auto-handling (sets `doNotContact`/opt-in + TwiML reply) — A2P requirement.
 - **Send blocks `doNotContact`** contacts (TCPA enforcement on send).
 
+**Provisioning UI** ✅ (2026-06-11): `src/app/components/messaging/MessagingSetup.tsx` in
+Settings → Integrations — search by area code → pick → claim (confirms the rental) →
+shows the number + A2P status. Calls the (live, unverified) provision route.
+
 **Deferred (later phases):**
 - Mark-as-read (unread count = "all inbound forever"; needs a read-state).
-- UI for the provisioning flow (the API exists; needs an onboarding screen).
+- A2P registration flow (Phase 2 — the actual Brand/Campaign submission + per-agent TOS/Privacy).
 
 ## Gameplan
 

@@ -16,6 +16,7 @@ import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
 import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
+import MessagingSetup from "@/app/components/messaging/MessagingSetup";
 
 interface SettingsSidebarProps {
   initialData: any;
@@ -109,6 +110,14 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
                 Ad accounts
               </h3>
               <AdAccountsSetup />
+            </div>
+
+            {/* Text messaging — per-agent Twilio number */}
+            <div className="pt-4">
+              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Text messaging
+              </h3>
+              <MessagingSetup />
             </div>
           </div>
         );
