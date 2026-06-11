@@ -14,6 +14,7 @@ import Contact from '@/models/Contact';
 import User from '@/models/User';
 import { emitNewMessage, getIO } from '@/server/socket';
 import { sendSMSNotification } from '@/services/pushNotificationService';
+import { handleInboundQuery } from '@/lib/messaging/inbound-ai';
 
 // ============================================================================
 // POST /api/crm/sms/webhook
@@ -88,6 +89,20 @@ export async function POST(request: NextRequest) {
       replyBody = "You're subscribed again. Reply STOP to unsubscribe at any time.";
     } else if (['HELP', 'INFO'].includes(kw)) {
       replyBody = `${ownerUser.name || 'Your agent'} via ChatRealty. Reply with a question and we'll help. Msg & data rates may apply. Reply STOP to unsubscribe.`;
+    }
+
+    // --- Inbound AI (opt-in, intent-match only): answer open-house / listing
+    // questions. Returns null on anything else, so we stay silent and leave the
+    // message for the agent — never auto-replies to normal conversation.
+    if (!replyBody && (ownerUser as any).messaging?.aiInbound && !(contact as any).doNotContact) {
+      try {
+        const aiReply = await handleInboundQuery(twilioData.Body || '', {
+          city: (contact as any).address?.city || (contact as any).interests?.locations?.[0],
+        });
+        if (aiReply) replyBody = aiReply;
+      } catch (e) {
+        console.error('[Twilio Webhook] inbound AI error:', e);
+      }
     }
 
     // Check if message already exists (prevent duplicates)
