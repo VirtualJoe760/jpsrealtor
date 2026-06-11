@@ -10,6 +10,8 @@ interface MessagingStatus {
   a2p: { status: string };
   provisionedAt: string | null;
   usingSharedNumber: boolean;
+  leadAlertsSms: boolean;
+  aiInbound: boolean;
 }
 
 interface AvailableNumber {
@@ -77,6 +79,33 @@ export default function MessagingSetup() {
       else setMessage(data.error || 'Could not claim that number');
     } catch { setMessage('Network error'); } finally { setProvisioning(null); }
   };
+
+  const saveToggle = async (key: 'leadAlertsSms' | 'aiInbound', value: boolean) => {
+    setStatus((s) => (s ? { ...s, [key]: value } : s)); // optimistic
+    try {
+      const res = await fetch('/api/agent/messaging', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setStatus((s) => (s ? { ...s, [key]: !value } : s)); // revert
+      setMessage('Could not save that setting. Try again.');
+    }
+  };
+
+  const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onClick}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${on ? 'bg-emerald-600' : isLight ? 'bg-gray-300' : 'bg-gray-600'}`}
+    >
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  );
 
   if (loading) {
     return <div className={`text-sm ${textSecondary} py-6`}>Loading messaging…</div>;
@@ -153,6 +182,24 @@ export default function MessagingSetup() {
           )}
         </div>
       )}
+
+      {/* Feature toggles */}
+      <div className={`mt-4 pt-4 border-t space-y-3 ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className={`text-sm font-medium ${textPrimary}`}>Lead-alert texts</p>
+            <p className={`text-xs ${textSecondary}`}>Text my phone when a new lead comes in.</p>
+          </div>
+          <Toggle on={!!status?.leadAlertsSms} onClick={() => saveToggle('leadAlertsSms', !status?.leadAlertsSms)} />
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className={`text-sm font-medium ${textPrimary}`}>AI auto-reply</p>
+            <p className={`text-xs ${textSecondary}`}>Answer texts that ask about open houses or homes for sale. Everything else is left for you.</p>
+          </div>
+          <Toggle on={!!status?.aiInbound} onClick={() => saveToggle('aiInbound', !status?.aiInbound)} />
+        </div>
+      </div>
     </div>
   );
 }
