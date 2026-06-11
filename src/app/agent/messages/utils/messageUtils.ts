@@ -4,7 +4,14 @@
 
 import { SMSMessage, Conversation } from '../types';
 
-export const OPT_IN_TEMPLATE = `Hey this is Joseph Sardella, Your trusted real estate agent! Type "OPT IN" to receive text alerts from me, features like updates on new listings that come on the market, nearby open houses, and much more. Type "STOP" to stop getting messages.`;
+/**
+ * Opt-in request message, personalized to the sending agent. Multi-tenant:
+ * never hard-code an agent name — pass the logged-in agent's name.
+ */
+export function optInTemplate(agentName?: string): string {
+  const who = (agentName && agentName.trim()) ? agentName.trim() : 'your real estate agent';
+  return `Hey this is ${who}, your trusted real estate agent! Type "OPT IN" to receive text alerts from me — updates on new listings that come on the market, nearby open houses, and much more. Type "STOP" to stop getting messages.`;
+}
 
 export function formatTime(dateString: string): string {
   const date = new Date(dateString);

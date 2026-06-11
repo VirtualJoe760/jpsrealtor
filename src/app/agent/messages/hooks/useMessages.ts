@@ -4,11 +4,12 @@
 
 import { useState, useCallback } from 'react';
 import { SMSMessage, Conversation } from '../types';
-import { OPT_IN_TEMPLATE } from '../utils/messageUtils';
+import { optInTemplate } from '../utils/messageUtils';
 
 export function useMessages(
   selectedConversation: Conversation | null,
-  fetchConversations: () => Promise<void>
+  fetchConversations: () => Promise<void>,
+  agentName?: string
 ) {
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -148,7 +149,7 @@ export function useMessages(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: phoneNumber,
-          body: OPT_IN_TEMPLATE,
+          body: optInTemplate(agentName),
           contactId,
         }),
       });

@@ -5,7 +5,7 @@
  * Refactored - Main orchestration component
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Wifi, WifiOff, Users } from 'lucide-react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -65,7 +65,13 @@ export default function MessagesPage() {
     syncTwilioMessages,
     sendMessage,
     sendOptInRequest,
-  } = useMessages(selectedConversation, fetchConversations);
+  } = useMessages(selectedConversation, fetchConversations, session?.user?.name ?? undefined);
+
+  // Keep latest conversations in a ref so the WebSocket effect can read them
+  // WITHOUT listing `conversations` as a dependency (which would re-register the
+  // socket listeners on every conversation refresh → stacked duplicate handlers).
+  const conversationsRef = useRef(conversations);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -113,9 +119,8 @@ export default function MessagesPage() {
         }
 
         if (message.direction === 'inbound') {
-          console.log('[Messages] Playing notification sound and showing browser notification');
           playNotificationSound();
-          showBrowserNotification(message, conversations);
+          showBrowserNotification(message, conversationsRef.current);
         }
 
         console.log('[Messages] ✅ Adding message to state');
@@ -137,12 +142,11 @@ export default function MessagesPage() {
     });
 
     return () => {
-      console.log('[Messages] Cleaning up WebSocket listeners');
       socket.off('message:new');
       socket.off('message:status');
       socket.off('conversation:update');
     };
-  }, [socket, connected, fetchConversations, conversations, setMessages]);
+  }, [socket, connected, fetchConversations, setMessages]);
 
   // Handlers
   const handleSelectConversation = (conv: Conversation) => {
@@ -227,38 +231,45 @@ export default function MessagesPage() {
     setMobileView('list');
   };
 
+  // Primary phone for a contact — supports the new phones[] array AND the legacy
+  // `.phone` string. (Contacts created after the phones[] migration have no `.phone`.)
+  const contactPhone = (c: any): string =>
+    c?.phones?.find((p: any) => p?.isPrimary)?.number || c?.phones?.[0]?.number || c?.phone || '';
+
   const handleComposeMessage = async (recipients: Contact[], message: string) => {
-    // Send message to each recipient
+    const failures: string[] = [];
+
     for (const recipient of recipients) {
+      const to = contactPhone(recipient);
+      const label = `${recipient.firstName ?? ''} ${recipient.lastName ?? ''}`.trim() || to || 'contact';
+      if (!to) { failures.push(`${label} (no phone number)`); continue; }
       try {
-        await fetch('/api/crm/sms/send', {
+        const res = await fetch('/api/crm/sms/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: recipient.phone,
-            message: message,
-            contactId: recipient._id || undefined,
-          }),
+          // NOTE: the API requires `body` (not `message`) — sending the wrong field
+          // here used to make every compose-send fail silently.
+          body: JSON.stringify({ to, body: message, contactId: recipient._id || undefined }),
         });
-      } catch (error) {
-        console.error(`[Messages] Error sending to ${recipient.phone}:`, error);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) failures.push(`${label}: ${data.error || `HTTP ${res.status}`}`);
+      } catch (error: any) {
+        failures.push(`${label}: ${error?.message || 'network error'}`);
       }
     }
 
-    // Close compose view and refresh conversations
+    if (failures.length) {
+      alert(`Some messages failed to send:\n\n${failures.join('\n')}`);
+    }
+
     handleCloseCompose();
     fetchConversations();
 
-    // If only one recipient, open that conversation
-    if (recipients.length === 1) {
+    // If a single recipient succeeded, open that conversation
+    if (recipients.length === 1 && failures.length === 0) {
       const recipient = recipients[0];
-      const existing = findExistingConversation(recipient.phone, conversations);
-      if (existing) {
-        handleSelectConversation(existing);
-      } else {
-        const newConv = createNewConversation(recipient);
-        handleSelectConversation(newConv);
-      }
+      const existing = findExistingConversation(contactPhone(recipient), conversations);
+      handleSelectConversation(existing ?? createNewConversation(recipient));
     }
   };
 

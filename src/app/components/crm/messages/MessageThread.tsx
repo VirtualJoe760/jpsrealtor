@@ -48,13 +48,31 @@ export default function MessageThread({
   textSecondary
 }: MessageThreadProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevLenRef = useRef(0);
+  const prevConvRef = useRef<string | null>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll: jump to bottom instantly when opening a conversation; for a NEW
+  // message, smooth-scroll only if the user is already near the bottom (so we
+  // don't yank them down while they're reading older messages or scrolled up).
   useEffect(() => {
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const convKey = conversation?.phoneNumber ?? null;
+    const switched = convKey !== prevConvRef.current;
+    const grew = messages.length > prevLenRef.current;
+    prevConvRef.current = convKey;
+    prevLenRef.current = messages.length;
+    if (messages.length === 0) return;
+
+    if (switched) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      return;
     }
-  }, [messages.length]);
+    if (grew) {
+      const el = scrollContainerRef.current;
+      const nearBottom = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (nearBottom) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, conversation?.phoneNumber]);
 
   if (!conversation) {
     return (
@@ -92,7 +110,7 @@ export default function MessageThread({
       />
 
       {/* Messages - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 md:p-4">
         {loading ? (
           <div className={`flex flex-col items-center justify-center h-full ${textSecondary}`}>
             <div className={`w-8 h-8 border-3 rounded-full animate-spin mb-3 ${
