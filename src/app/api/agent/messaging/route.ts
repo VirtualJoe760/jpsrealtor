@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongoose';
+import User from '@/models/User';
+
+/**
+ * GET /api/agent/messaging
+ * The agent's current SMS messaging status (number, Messaging Service, A2P state).
+ * No secrets — these are identifiers.
+ */
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    await dbConnect();
+    const user = await User.findById((session.user as any).id).select('messaging').lean();
+    const m = (user as any)?.messaging || {};
+
+    return NextResponse.json({
+      success: true,
+      messaging: {
+        twilioNumber: m.twilioNumber || null,
+        messagingServiceSid: m.messagingServiceSid || null,
+        status: m.status || 'none',
+        a2p: { status: m.a2p?.status || 'none' },
+        provisionedAt: m.provisionedAt || null,
+        // The platform env number is the single-tenant fallback until the agent provisions.
+        usingSharedNumber: !m.twilioNumber,
+      },
+    });
+  } catch (error: any) {
+    console.error('[messaging GET] Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Failed to load messaging status' }, { status: 500 });
+  }
+}

@@ -55,18 +55,22 @@ campaign registration links to.
 - **Auto-scroll yanked you to the bottom** on every change → instant on open, smooth
   only on a new message when already near the bottom.
 
-**Deferred (need backend / later phases):**
+**Fixed (Phase 1, 2026-06-11):**
+- **Webhook routing** — was "first user" fallback; now resolves the agent by the `To` number (legacy env number → primary agent).
+- **STOP/HELP/START** keyword auto-handling (sets `doNotContact`/opt-in + TwiML reply) — A2P requirement.
+- **Send blocks `doNotContact`** contacts (TCPA enforcement on send).
+
+**Deferred (later phases):**
 - Mark-as-read (unread count = "all inbound forever"; needs a read-state).
-- STOP/HELP keyword auto-handling in the webhook (sets `doNotContact`) — **required for A2P**.
-- TCPA enforcement on send (UI shows opt-in status but doesn't block non-opted sends).
+- UI for the provisioning flow (the API exists; needs an onboarding screen).
 
 ## Gameplan
 
 | Phase | Scope |
 |---|---|
 | **0. UI bug fixes** ✅ done | compose, opt-in template, websocket, scroll |
-| **1. Multi-tenant plumbing** | `User.messaging { twilioNumber, messagingServiceSid, a2p:{brandSid,campaignSid,status}, status }` (encrypted); number provisioning (search by area code → agent picks → buy → attach to their Messaging Service → per-agent webhook); `sendSMS` sends from the agent's number; **webhook resolves the agent by the `To` number** (kills the first-user fallback) |
-| **2. A2P onboarding + per-agent legal** | ISV registration; per-agent Brand+Campaign from onboarding business info; **per-agent TOS + Privacy** (consent, frequency, "Msg&data rates," STOP/HELP, no-data-sale) on the agent's domain as campaign opt-in evidence; STOP/HELP webhook handler |
+| **1. Multi-tenant plumbing** ✅ done (UNVERIFIED live) | `User.messaging{ twilioNumber, twilioNumberSid, messagingServiceSid, a2p, status }`; number provisioning lib + routes (`/api/agent/messaging`, `/numbers`, `/provision` — search → pick → buy → Messaging Service → store); `sendSMS` sends via the agent's Messaging Service/number; send route blocks `doNotContact`; **webhook resolves the agent by the `To` number** (killed the first-user fallback); **STOP/HELP/START handler** in the webhook. NOTE: provisioning calls live Twilio (buys a real number) — untested. |
+| **2. A2P onboarding + per-agent legal** | ISV registration; per-agent Brand+Campaign from onboarding business info (`User.messaging.a2p`); **per-agent TOS + Privacy** (consent, frequency, "Msg&data rates," STOP/HELP, no-data-sale) on the agent's domain as campaign opt-in evidence |
 | **3. Lead-alert SMS** | new lead / FUB lead / AI "hot lead" / client-convo update → text the agent's cell (platform-originated) |
 | **4. Inbound AI SMS** | "open houses near me?" → reuse the chat query-parser/search → reply via SMS, scoped to the agent |
 

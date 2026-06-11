@@ -261,6 +261,20 @@ export interface IUser extends Document {
     };
   };
 
+  // Per-agent Twilio SMS identity (multi-tenant). See the schema for details.
+  messaging?: {
+    twilioNumber?: string;
+    twilioNumberSid?: string;
+    messagingServiceSid?: string;
+    a2p?: {
+      brandSid?: string;
+      campaignSid?: string;
+      status?: 'none' | 'pending' | 'approved' | 'rejected';
+    };
+    status?: 'none' | 'provisioning' | 'active' | 'disabled';
+    provisionedAt?: Date;
+  };
+
   // Service Provider specific
   businessName?: string;
   serviceCategory?: string; // e.g., "Plumber", "Contractor", "Electrician"
@@ -857,6 +871,22 @@ const UserSchema = new Schema<IUser>(
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
       },
+    },
+
+    // Per-agent Twilio SMS identity (multi-tenant). The platform account
+    // (env creds) owns these; the agent owns the number + their A2P registration.
+    // These are identifiers (not secrets), so stored plaintext.
+    messaging: {
+      twilioNumber: String,          // the agent's provisioned number (E.164)
+      twilioNumberSid: String,       // IncomingPhoneNumber SID
+      messagingServiceSid: String,   // the agent's Twilio Messaging Service
+      a2p: {
+        brandSid: String,
+        campaignSid: String,
+        status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+      },
+      status: { type: String, enum: ['none', 'provisioning', 'active', 'disabled'], default: 'none' },
+      provisionedAt: Date,
     },
 
     // Service Provider specific

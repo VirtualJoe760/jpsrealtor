@@ -25,6 +25,7 @@ export interface SendSMSParams {
   to: string;           // Recipient phone number (E.164 format)
   body: string;         // Message content
   from?: string;        // Sender phone number (defaults to env var)
+  messagingServiceSid?: string; // Per-agent Messaging Service (preferred for A2P; overrides `from`)
   mediaUrl?: string[];  // Optional MMS media URLs
   statusCallback?: string;  // Webhook URL for status updates
 }
@@ -71,10 +72,13 @@ export async function sendSMS(params: SendSMSParams): Promise<TwilioSMSResponse>
       };
     }
 
-    // Send message
+    // Send message — via the agent's Messaging Service (A2P) when provided,
+    // otherwise from a specific number (agent's, or the platform env number).
     const message = await client.messages.create({
       body: params.body,
-      from: params.from || twilioPhoneNumber,
+      ...(params.messagingServiceSid
+        ? { messagingServiceSid: params.messagingServiceSid }
+        : { from: params.from || twilioPhoneNumber }),
       to: params.to,
       mediaUrl: params.mediaUrl,
       statusCallback: params.statusCallback,
@@ -338,6 +342,77 @@ export async function send2FACodeSMS(
   });
 }
 
+// ============================================================================
+// MULTI-TENANT NUMBER PROVISIONING (uses the platform account; agent owns the
+// number + their A2P registration). UNVERIFIED against a live account — these
+// call the live Twilio API and purchasing a number costs money.
+// ============================================================================
+
+export interface AvailableNumber {
+  phoneNumber: string;
+  friendlyName: string;
+  locality?: string;
+  region?: string;
+}
+
+/** Search purchasable local numbers (SMS-enabled) for an agent to pick from. */
+export async function searchAvailableNumbers(opts: {
+  areaCode?: number;
+  contains?: string;
+  country?: string;
+  limit?: number;
+}): Promise<AvailableNumber[]> {
+  if (!accountSid || !authToken) throw new Error('Twilio not configured');
+  const country = opts.country || 'US';
+  const list = await client.availablePhoneNumbers(country).local.list({
+    areaCode: opts.areaCode,
+    contains: opts.contains,
+    smsEnabled: true,
+    limit: opts.limit || 10,
+  });
+  return list.map((n) => ({
+    phoneNumber: n.phoneNumber,
+    friendlyName: n.friendlyName,
+    locality: n.locality,
+    region: n.region,
+  }));
+}
+
+/** Purchase a number for an agent and point its SMS webhook at our inbound route. */
+export async function provisionAgentNumber(opts: {
+  phoneNumber: string;
+  friendlyName: string;
+  smsWebhookUrl: string;
+  statusCallbackUrl?: string;
+}): Promise<{ numberSid: string; phoneNumber: string }> {
+  if (!accountSid || !authToken) throw new Error('Twilio not configured');
+  const number = await client.incomingPhoneNumbers.create({
+    phoneNumber: opts.phoneNumber,
+    friendlyName: opts.friendlyName,
+    smsUrl: opts.smsWebhookUrl,
+    smsMethod: 'POST',
+    statusCallback: opts.statusCallbackUrl,
+  });
+  return { numberSid: number.sid, phoneNumber: number.phoneNumber };
+}
+
+/** Create a per-agent Messaging Service and attach their number to it. */
+export async function createAgentMessagingService(opts: {
+  friendlyName: string;
+  inboundWebhookUrl: string;
+  numberSid?: string;
+}): Promise<string> {
+  if (!accountSid || !authToken) throw new Error('Twilio not configured');
+  const service = await client.messaging.v1.services.create({
+    friendlyName: opts.friendlyName,
+    inboundRequestUrl: opts.inboundWebhookUrl,
+  });
+  if (opts.numberSid) {
+    await client.messaging.v1.services(service.sid).phoneNumbers.create({ phoneNumberSid: opts.numberSid });
+  }
+  return service.sid;
+}
+
 export default {
   sendSMS,
   sendBulkSMS,
@@ -346,4 +421,7 @@ export default {
   validatePhoneNumber,
   getMessageHistory,
   send2FACodeSMS,
+  searchAvailableNumbers,
+  provisionAgentNumber,
+  createAgentMessagingService,
 };

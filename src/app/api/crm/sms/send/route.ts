@@ -10,6 +10,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
+import User from '@/models/User';
 import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
 import mongoose from 'mongoose';
 import { emitNewMessage } from '@/server/socket';
@@ -67,10 +68,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // TCPA: never send to a contact who has opted out.
+    if (contactId) {
+      const c = await Contact.findOne({ _id: contactId, userId: session.user.id }).select('doNotContact').lean();
+      if ((c as any)?.doNotContact) {
+        return NextResponse.json(
+          { success: false, error: 'This contact has opted out (do not contact).' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Multi-tenant: send from the agent's OWN Messaging Service / number, falling
+    // back to the platform env number for agents not yet provisioned.
+    const agent = await User.findById(session.user.id).select('messaging').lean();
+    const agentMsg = (agent as any)?.messaging;
+    const fromNumber = agentMsg?.twilioNumber || process.env.TWILIO_PHONE_NUMBER;
+
     // Send SMS via Twilio
     const twilioResult = await sendSMS({
       to: formattedPhone,
       body: messageBody,
+      from: fromNumber,
+      messagingServiceSid: agentMsg?.messagingServiceSid || undefined,
     });
 
     if (!twilioResult.success) {
@@ -87,7 +107,7 @@ export async function POST(request: NextRequest) {
     const messageData = {
       userId: userObjectId,
       twilioMessageSid: twilioResult.messageSid,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: fromNumber,
       to: formattedPhone,
       body: messageBody,
       direction: 'outbound',
