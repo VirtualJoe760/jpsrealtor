@@ -6,27 +6,8 @@ import User from '@/models/User';
 import {
   composeAgentTerms,
   composeAgentPrivacy,
-  type AgentLegalInfo,
+  agentLegalInfoFromUser,
 } from '@/lib/legal/agent-legal';
-
-function infoFromUser(user: any): AgentLegalInfo {
-  const ap = user.agentProfile || {};
-  const domain = ap.customDomain || ap.subdomain;
-  return {
-    agentName: user.name || 'Your Agent',
-    brandName: 'ChatRealty',
-    platformEntity: 'JPS & Company LLC',
-    businessEntity: ap.businessName || user.businessName,
-    brokerageName: ap.brokerageName || user.brokerageName,
-    licenseNumber: ap.licenseNumber || user.licenseNumber,
-    state: ap.state || 'California',
-    websiteUrl: domain ? (domain.startsWith('http') ? domain : `https://${domain}`) : undefined,
-    contactEmail: user.email,
-    contactPhone: ap.cellPhone || ap.officePhone || user.phone,
-    mailingCity: [ap.city, ap.state, ap.zip].filter(Boolean).join(', ') || undefined,
-    effectiveDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  };
-}
 
 /**
  * GET /api/agent/legal
@@ -44,7 +25,7 @@ export async function GET() {
       .lean();
     if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
 
-    const info = infoFromUser(user);
+    const info = agentLegalInfoFromUser(user);
     const legal = (user as any).legal || {};
 
     return NextResponse.json({

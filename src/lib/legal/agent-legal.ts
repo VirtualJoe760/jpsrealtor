@@ -247,6 +247,26 @@ export function standardPrivacy(i: AgentLegalInfo): string {
   ].join('\n');
 }
 
+/** Build AgentLegalInfo from a (lean) User doc. Server-side only. */
+export function agentLegalInfoFromUser(user: any): AgentLegalInfo {
+  const ap = user.agentProfile || {};
+  const domain = ap.customDomain || ap.subdomain;
+  return {
+    agentName: user.name || 'Your Agent',
+    brandName: 'ChatRealty',
+    platformEntity: 'JPS & Company LLC',
+    businessEntity: ap.businessName || user.businessName,
+    brokerageName: ap.brokerageName || user.brokerageName,
+    licenseNumber: ap.licenseNumber || user.licenseNumber,
+    state: ap.state || 'California',
+    websiteUrl: domain ? (String(domain).startsWith('http') ? domain : `https://${domain}`) : undefined,
+    contactEmail: user.email,
+    contactPhone: ap.cellPhone || ap.officePhone || user.phone,
+    mailingCity: [ap.city, ap.state, ap.zip].filter(Boolean).join(', ') || undefined,
+    effectiveDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+  };
+}
+
 const smsInfo = (i: AgentLegalInfo) => ({
   agentName: i.agentName,
   brandName: i.brandName,

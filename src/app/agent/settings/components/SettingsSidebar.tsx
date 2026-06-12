@@ -17,6 +17,7 @@ import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
 import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
 import MessagingSetup from "@/app/components/messaging/MessagingSetup";
+import LegalSettings from "@/app/components/legal/LegalSettings";
 
 interface SettingsSidebarProps {
   initialData: any;
@@ -118,6 +119,14 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
                 Text messaging
               </h3>
               <MessagingSetup />
+            </div>
+
+            {/* Legal — auto-generated Terms & Privacy */}
+            <div className="pt-4">
+              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Legal
+              </h3>
+              <LegalSettings />
             </div>
           </div>
         );
