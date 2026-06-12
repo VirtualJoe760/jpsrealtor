@@ -270,6 +270,15 @@ export interface IUser extends Document {
       brandSid?: string;
       campaignSid?: string;
       status?: 'none' | 'pending' | 'approved' | 'rejected';
+      // Business info collected for A2P 10DLC Brand registration
+      legalBusinessName?: string;
+      ein?: string;                 // EIN / tax ID
+      businessType?: string;        // sole_proprietor | llc | corporation | partnership | non_profit
+      website?: string;
+      supportEmail?: string;
+      supportPhone?: string;
+      address?: { street?: string; city?: string; state?: string; postalCode?: string; country?: string };
+      submittedAt?: Date;
     };
     status?: 'none' | 'provisioning' | 'active' | 'disabled';
     provisionedAt?: Date;
@@ -895,6 +904,14 @@ const UserSchema = new Schema<IUser>(
         brandSid: String,
         campaignSid: String,
         status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+        legalBusinessName: String,
+        ein: String,
+        businessType: String,
+        website: String,
+        supportEmail: String,
+        supportPhone: String,
+        address: { street: String, city: String, state: String, postalCode: String, country: String },
+        submittedAt: Date,
       },
       status: { type: String, enum: ['none', 'provisioning', 'active', 'disabled'], default: 'none' },
       provisionedAt: Date,

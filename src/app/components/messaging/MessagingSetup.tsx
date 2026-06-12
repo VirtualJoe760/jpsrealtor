@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import A2PRegistration from './A2PRegistration';
 
 interface MessagingStatus {
   twilioNumber: string | null;
@@ -137,10 +138,7 @@ export default function MessagingSetup() {
             <span className={`text-xs ${textSecondary}`}>Your number</span>
             <code className={`font-mono text-sm px-2 py-1 rounded-md ${isLight ? 'bg-gray-100 text-gray-800' : 'bg-gray-900/60 text-gray-200'}`}>{fmt(status!.twilioNumber)}</code>
           </div>
-          <div className={`p-3 rounded-lg text-xs ${isLight ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-amber-500/10 border border-amber-500/25 text-amber-200'}`}>
-            <p className="font-semibold mb-0.5">One more step — A2P 10DLC registration ({status!.a2p.status})</p>
-            <p>US carriers require registering your business + campaign before texts deliver reliably. We&apos;ll walk you through it next (it uses your business details and your SMS Terms &amp; Privacy). Until approved, messages may be filtered.</p>
-          </div>
+          <A2PRegistration />
         </div>
       ) : (
         <div className="space-y-3">
