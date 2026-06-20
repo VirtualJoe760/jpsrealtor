@@ -10,7 +10,11 @@
 
 import { AsyncLocalStorage } from 'async_hooks';
 
-const GOOGLE_ADS_API_VERSION = 'v18';
+// v18 was SUNSET — Google keeps ~4 majors live. As of 2026-06 the latest is v24
+// (v24.1 minor). REST paths use the major only. Verify request/field shapes against
+// the v24 reference on the first live launch (some enums/fields shift across majors).
+// https://developers.google.com/google-ads/api/docs/sunset-dates
+const GOOGLE_ADS_API_VERSION = 'v24';
 const GOOGLE_ADS_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
 // ---------------------------------------------------------------------------

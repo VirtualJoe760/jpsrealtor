@@ -29,6 +29,15 @@ application** — those are your actions.
 | Loud safety gate (no silent fallback) | Set production **env vars** + **billing** on the MCC |
 | Search + YouTube campaign builders | — |
 
+> **Status (verified 2026-06-20, in the API Center):** a developer token **already
+> exists at `Basic Access`** (production-capable, 15k ops/day) on MCC 206-304-7113.
+> Registration: company "chatRealty", type "Independent Google Ads Developer",
+> intended use "manage my ads". **To go live: copy that token into prod env
+> `GOOGLE_ADS_DEVELOPER_TOKEN`.** The registration is framed single-advertiser — update
+> it to the multi-tenant "manage clients' accounts" use-case AFTER going live (changing
+> it may trigger a re-review; don't disrupt working Basic access), and pursue Standard
+> Access for scale.
+
 ## Step 1 — Developer token (Google Ads API Center)
 
 1. Sign into the **MCC manager account** (ChatRealty's: **206-304-7113**) at ads.google.com.
@@ -77,12 +86,17 @@ campaign wizard → launch (PAUSED) → status flow.
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth client `JPSREALTOR` |
 | `GOOGLE_ADS_CUSTOMER_ID` / `GOOGLE_ADS_REFRESH_TOKEN` | platform-account fallback (optional; agents supply their own) |
 
-## Step 5 — Verify / bump the API version ⚠️
+## Step 5 — API version ✅ bumped v18 → v24 (verify shapes live)
 
-`google-ads-api.ts` pins **`GOOGLE_ADS_API_VERSION = 'v18'`**. Google sunsets versions
-every few months — **confirm v18 is still supported and bump to the latest** (check
-developers.google.com/google-ads/api/docs/release-notes) before launch. Bumping may
-require field-name checks; test against a sandbox account first.
+**v18 was already SUNSET** (dead — all calls would 404/error). As of 2026-06 Google
+keeps ~4 majors live (v21→v24.1); we bumped `GOOGLE_ADS_API_VERSION` to **`v24`** (the
+latest major; REST paths use the major only). **Action:** on the first live launch,
+verify the request/field shapes against the v24 reference — some enums/fields shift
+across 6 majors. Core campaign/budget/ad-group/ad mutates are stable, but validate.
+
+**Heads-up for retargeting (future):** as of 2026-04, **Customer Match** for new
+adopters must go through the **Data Manager API**, not the Ads API user-data services.
+Plan audience/remarketing work around Data Manager.
 
 ## Step 6 — Close the billing leak before real spend 💸
 
