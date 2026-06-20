@@ -17,6 +17,7 @@ import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
 import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
 import MessagingSetup from "@/app/components/messaging/MessagingSetup";
+import EmailSetup from "@/app/components/messaging/EmailSetup";
 import LegalSettings from "@/app/components/legal/LegalSettings";
 
 interface SettingsSidebarProps {
@@ -119,6 +120,14 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
                 Text messaging
               </h3>
               <MessagingSetup />
+            </div>
+
+            {/* Email — per-agent Resend sending domain */}
+            <div className="pt-4">
+              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                Email
+              </h3>
+              <EmailSetup />
             </div>
 
             {/* Legal — auto-generated Terms & Privacy */}

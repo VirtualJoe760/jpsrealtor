@@ -295,6 +295,16 @@ export interface IUser extends Document {
     updatedAt?: Date;
   };
 
+  // Per-agent email sending (Resend verified domain). Platform-managed under our
+  // Resend account; agent verifies their domain via DNS. See src/lib/email-provision.ts.
+  emailConfig?: {
+    domain?: string;           // sending domain, e.g. "mail.youragent.com"
+    fromAddress?: string;      // e.g. "joey@youragent.com"
+    resendDomainId?: string;
+    status?: 'none' | 'provisioning' | 'verified' | 'failed';
+    provisionedAt?: Date;
+  };
+
   // Service Provider specific
   businessName?: string;
   serviceCategory?: string; // e.g., "Plumber", "Contractor", "Electrician"
@@ -924,6 +934,15 @@ const UserSchema = new Schema<IUser>(
       customTerms: String,
       customPrivacy: String,
       updatedAt: Date,
+    },
+
+    // Per-agent email sending (Resend verified domain)
+    emailConfig: {
+      domain: String,
+      fromAddress: String,
+      resendDomainId: String,
+      status: { type: String, enum: ['none', 'provisioning', 'verified', 'failed'], default: 'none' },
+      provisionedAt: Date,
     },
 
     // Service Provider specific
