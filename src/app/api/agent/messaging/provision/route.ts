@@ -4,19 +4,21 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
 import { provisionAgentNumber, createAgentMessagingService } from '@/lib/twilio';
+import { debit, credit } from '@/lib/credits';
+import { MESSAGING_SETUP_CREDITS } from '@/config/credits';
 
 /**
  * POST /api/agent/messaging/provision  { phoneNumber }
  *
- * Buys the chosen number on the platform Twilio account, creates a per-agent
- * Messaging Service, attaches the number, points its SMS webhook at the shared
- * inbound route (which routes by the To-number), and stores it on the agent.
+ * Flow: bill the flat activation fee in credits → buy the number on the platform
+ * Twilio account → create the agent's Messaging Service → store it. If the Twilio
+ * provisioning fails after we've charged, the activation fee is refunded.
  *
- * NOTE: this purchases a real number ($) on the live Twilio account and is
- * UNVERIFIED end-to-end. A2P 10DLC Brand+Campaign registration is a separate
- * step (Phase 2) before consumer SMS will deliver reliably.
+ * NOTE: provisioning purchases a real number ($) on the live Twilio account and is
+ * UNVERIFIED end-to-end. A2P 10DLC Brand+Campaign registration is a separate step.
  */
 export async function POST(request: NextRequest) {
+  let chargedUserId: string | null = null; // set once billed; cleared on success
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -41,12 +43,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 1) Bill the flat activation fee BEFORE provisioning.
+    try {
+      await debit({
+        userId,
+        amount: MESSAGING_SETUP_CREDITS,
+        type: 'messaging_setup',
+        channel: 'sms',
+        description: 'Activate text messaging (number + A2P registration)',
+      });
+      chargedUserId = userId;
+    } catch (e: any) {
+      return NextResponse.json(
+        { success: false, error: 'insufficient_credits', detail: e.message, creditsNeeded: MESSAGING_SETUP_CREDITS },
+        { status: 402 }
+      );
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
     const smsWebhookUrl = `${baseUrl}/api/crm/sms/webhook`;
     const statusCallbackUrl = `${baseUrl}/api/crm/sms/status-webhook`;
     const friendlyName = `${(user as any).name || 'Agent'} (ChatRealty)`;
 
-    // 1) Buy the number + point its SMS webhook at the shared inbound route.
+    // 2) Buy the number + point its SMS webhook at the shared inbound route.
     const { numberSid, phoneNumber: purchased } = await provisionAgentNumber({
       phoneNumber,
       friendlyName,
@@ -54,7 +73,7 @@ export async function POST(request: NextRequest) {
       statusCallbackUrl,
     });
 
-    // 2) Create the agent's Messaging Service and attach the number (A2P sender pool).
+    // 3) Create the agent's Messaging Service and attach the number (A2P sender pool).
     let messagingServiceSid: string | undefined;
     try {
       messagingServiceSid = await createAgentMessagingService({
@@ -67,7 +86,7 @@ export async function POST(request: NextRequest) {
       // Non-fatal — the number works via its own webhook; A2P needs the service though.
     }
 
-    // 3) Persist on the agent.
+    // 4) Persist on the agent.
     await User.findByIdAndUpdate(userId, {
       $set: {
         'messaging.twilioNumber': purchased,
@@ -79,6 +98,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    chargedUserId = null; // success — keep the charge
     return NextResponse.json({
       success: true,
       number: purchased,
@@ -88,6 +108,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[messaging/provision] Error:', error);
+    // Refund the activation fee if we charged but provisioning failed.
+    if (chargedUserId) {
+      await credit({
+        userId: chargedUserId,
+        amount: MESSAGING_SETUP_CREDITS,
+        type: 'refund',
+        description: 'Refund: text messaging activation failed',
+      }).catch((e) => console.error('[messaging/provision] refund failed:', e));
+    }
     return NextResponse.json({ success: false, error: error.message || 'Failed to provision number' }, { status: 500 });
   }
 }

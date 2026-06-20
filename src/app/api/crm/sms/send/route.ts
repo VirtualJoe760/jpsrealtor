@@ -12,6 +12,8 @@ import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
 import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
+import { ensureBalance, debit } from '@/lib/credits';
+import { estimateSmsCredits } from '@/config/credits';
 import mongoose from 'mongoose';
 import { emitNewMessage } from '@/server/socket';
 
@@ -81,9 +83,34 @@ export async function POST(request: NextRequest) {
 
     // Multi-tenant: send from the agent's OWN Messaging Service / number, falling
     // back to the platform env number for agents not yet provisioned.
-    const agent = await User.findById(session.user.id).select('messaging').lean();
+    const agent = await User.findById(session.user.id).select('messaging email').lean();
     const agentMsg = (agent as any)?.messaging;
     const fromNumber = agentMsg?.twilioNumber || process.env.TWILIO_PHONE_NUMBER;
+
+    // The primary/platform agent uses the shared number and isn't gated or metered.
+    const primaryEmail = (process.env.PRIMARY_AGENT_EMAIL || 'josephsardella@gmail.com').toLowerCase();
+    const isPrimary = (agent as any)?.email?.toLowerCase() === primaryEmail;
+
+    // Gate: non-primary agents must have activated text messaging.
+    if (!isPrimary && agentMsg?.status !== 'active') {
+      return NextResponse.json(
+        { success: false, error: 'messaging_not_setup', detail: 'Set up text messaging to send.' },
+        { status: 403 }
+      );
+    }
+
+    // Meter: ensure the agent can afford this SMS before sending.
+    const smsCost = estimateSmsCredits(messageBody);
+    if (!isPrimary) {
+      try {
+        await ensureBalance(session.user.id, smsCost);
+      } catch (e: any) {
+        return NextResponse.json(
+          { success: false, error: 'insufficient_credits', detail: e.message, creditsNeeded: smsCost },
+          { status: 402 }
+        );
+      }
+    }
 
     // Send SMS via Twilio
     const twilioResult = await sendSMS({
@@ -120,6 +147,17 @@ export async function POST(request: NextRequest) {
     console.log(`[SMS API] Saving message to DB with data:`, messageData);
 
     const smsMessage = await SMSMessage.create(messageData);
+
+    // Meter the send for non-primary agents (balance was ensured above).
+    if (!isPrimary) {
+      await debit({
+        userId: session.user.id,
+        amount: smsCost,
+        type: 'sms_send',
+        channel: 'sms',
+        description: `SMS to ${formattedPhone}`,
+      }).catch((e) => console.error('[SMS API] credit debit failed:', e));
+    }
 
     console.log(`[SMS API] Saved message to DB:`, {
       _id: smsMessage._id,

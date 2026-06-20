@@ -16,8 +16,10 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     await dbConnect();
-    const user = await User.findById((session.user as any).id).select('messaging').lean();
+    const user = await User.findById((session.user as any).id).select('messaging email').lean();
     const m = (user as any)?.messaging || {};
+    const primaryEmail = (process.env.PRIMARY_AGENT_EMAIL || 'josephsardella@gmail.com').toLowerCase();
+    const isPrimary = (user as any)?.email?.toLowerCase() === primaryEmail;
 
     return NextResponse.json({
       success: true,
@@ -32,6 +34,8 @@ export async function GET() {
         // Feature preferences
         leadAlertsSms: m.leadAlertsSms !== false, // default on
         aiInbound: m.aiInbound === true,          // default off (opt-in)
+        // Whether the agent can use messaging at all (provisioned, or primary on shared #)
+        canMessage: !!m.twilioNumber || isPrimary,
       },
     });
   } catch (error: any) {

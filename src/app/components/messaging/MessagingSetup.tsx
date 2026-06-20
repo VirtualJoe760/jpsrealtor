@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import { MESSAGING_SETUP_CREDITS, CREDIT_SPEND_VALUE } from '@/config/credits';
 import A2PRegistration from './A2PRegistration';
 
 interface MessagingStatus {
@@ -66,7 +67,8 @@ export default function MessagingSetup() {
   };
 
   const provision = async (phoneNumber: string) => {
-    if (!window.confirm(`Claim ${fmt(phoneNumber)} as your texting number? This rents the number (~$1.50/mo, billed via credits).`)) return;
+    const dollars = Math.round(MESSAGING_SETUP_CREDITS * CREDIT_SPEND_VALUE);
+    if (!window.confirm(`Claim ${fmt(phoneNumber)} and activate text messaging? This charges a one-time ${MESSAGING_SETUP_CREDITS} credits (~$${dollars}) to set up your number and A2P registration.`)) return;
     setProvisioning(phoneNumber);
     setMessage('');
     try {
@@ -77,7 +79,9 @@ export default function MessagingSetup() {
       });
       const data = await res.json();
       if (data.success) { setResults([]); setAreaCode(''); await load(); }
-      else setMessage(data.error || 'Could not claim that number');
+      else if (res.status === 402 || data.error === 'insufficient_credits') {
+        setMessage(`Not enough credits — activation needs ${data.creditsNeeded ?? MESSAGING_SETUP_CREDITS}. Buy more credits, then try again.`);
+      } else setMessage(data.error || 'Could not claim that number');
     } catch { setMessage('Network error'); } finally { setProvisioning(null); }
   };
 

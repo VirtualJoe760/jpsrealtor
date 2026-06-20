@@ -18,9 +18,13 @@ export type CreditTransactionType =
   | "bonus"                 // Promotional bonus credits
   | "partner_split_credit"  // Credits received from partnership cost split
   | "partner_split_debit"   // Credits sent to partnership cost split
+  | "messaging_setup"       // Flat fee to activate per-agent SMS (number + A2P)
+  | "email_setup"           // Flat fee to activate per-agent email (verified domain)
+  | "sms_send"              // Metered outbound SMS
+  | "email_send"            // Metered outbound email
   | "adjustment";           // Manual admin adjustment
 
-export type CampaignChannel = "google_ads" | "meta_ads" | "youtube_ads" | "direct_mail" | "voicemail_drop";
+export type CampaignChannel = "google_ads" | "meta_ads" | "youtube_ads" | "direct_mail" | "voicemail_drop" | "sms" | "email";
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -84,6 +88,7 @@ const CreditTransactionSchema = new Schema<ICreditTransaction>(
       enum: [
         "subscription_credit", "topup_purchase", "campaign_spend",
         "refund", "bonus", "partner_split_credit", "partner_split_debit",
+        "messaging_setup", "email_setup", "sms_send", "email_send",
         "adjustment",
       ],
       required: true,
@@ -93,7 +98,7 @@ const CreditTransactionSchema = new Schema<ICreditTransaction>(
     description: { type: String, required: true },
     channel: {
       type: String,
-      enum: ["google_ads", "meta_ads", "youtube_ads", "direct_mail", "voicemail_drop"],
+      enum: ["google_ads", "meta_ads", "youtube_ads", "direct_mail", "voicemail_drop", "sms", "email"],
     },
     campaignId: { type: Schema.Types.ObjectId, ref: "Campaign" },
     partnershipId: { type: Schema.Types.ObjectId, ref: "Partnership" },

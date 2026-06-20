@@ -53,6 +53,7 @@ export default function MessagesPage() {
   const [showEditContactModal, setShowEditContactModal] = useState(false);
   const [showComposeView, setShowComposeView] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [canMessage, setCanMessage] = useState<boolean | null>(null);
 
   // Messages hook
   const {
@@ -78,6 +79,14 @@ export default function MessagesPage() {
     fetchConversations();
     fetchContacts();
   }, [fetchConversations, fetchContacts]);
+
+  // Gate: can this agent use messaging (provisioned a number, or primary on shared #)?
+  useEffect(() => {
+    fetch('/api/agent/messaging')
+      .then((r) => r.json())
+      .then((d) => setCanMessage(d?.messaging?.canMessage !== false))
+      .catch(() => setCanMessage(true)); // fail open — don't lock out on a fetch error
+  }, []);
 
   // Fetch and sync messages when conversation selected
   useEffect(() => {
@@ -272,6 +281,30 @@ export default function MessagesPage() {
       handleSelectConversation(existing ?? createNewConversation(recipient));
     }
   };
+
+  // Gate non-provisioned agents with a "set up text messaging" prompt.
+  if (canMessage === false) {
+    return (
+      <>
+        <ServiceWorkerRegistration />
+        <div className="fixed inset-0 md:relative md:inset-auto md:h-screen flex flex-col md:p-4 md:py-8">
+          <div className="max-w-7xl mx-auto w-full pt-16 md:pt-0">
+            <AgentNav />
+            <div className="flex flex-col items-center justify-center text-center px-6 py-20 gap-4">
+              <h1 className={`text-2xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Set up text messaging</h1>
+              <p className={`max-w-md ${textSecondary}`}>
+                Get your own number to text leads and clients — with AI auto-replies and lead alerts.
+                Activate it in Settings to unlock your inbox.
+              </p>
+              <a href="/agent/settings" className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                Set up text messaging
+              </a>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

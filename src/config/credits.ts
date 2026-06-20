@@ -90,6 +90,36 @@ export const DATA_APPEND_CREDITS = 2; // $0.20 actual → 2 credits
 export const VOICEMAIL_DROP_CREDITS = 1; // $0.10 actual → 1 credit
 
 // ---------------------------------------------------------------------------
+// Messaging (Twilio SMS) + Email (Resend) — per-agent activation + metered use
+// Flat setup fees (platform absorbs the underlying vendor bills); usage is
+// metered in FRACTIONAL credits at ~vendor cost (markup already taken at purchase).
+// ---------------------------------------------------------------------------
+
+/** Flat one-time charge to activate per-agent text messaging (number + A2P). */
+export const MESSAGING_SETUP_CREDITS = 250; // ~$25
+
+/** Flat one-time charge to activate per-agent email sending (verified domain). */
+export const EMAIL_SETUP_CREDITS = 100; // ~$10
+
+/** Metered cost per SMS segment (~$0.0079 vendor → 0.10 credit ≈ $0.01). */
+export const SMS_SEND_CREDITS = 0.10;
+
+/** Metered cost per outbound email (~$0.0004 vendor → 0.02 credit ≈ $0.002). */
+export const EMAIL_SEND_CREDITS = 0.02;
+
+/** Estimate SMS segments for a message body (GSM-7 160/seg, Unicode 70/seg). */
+export function smsSegments(body: string): number {
+  const text = body || "";
+  const per = [...text].some((c) => c.charCodeAt(0) > 127) ? 70 : 160;
+  return Math.max(1, Math.ceil(text.length / per));
+}
+
+/** Fractional credits to send one SMS of the given body. */
+export function estimateSmsCredits(body: string): number {
+  return Math.round(smsSegments(body) * SMS_SEND_CREDITS * 1000) / 1000;
+}
+
+// ---------------------------------------------------------------------------
 // Conversion helpers — SPEND side (universal $0.10/credit)
 // ---------------------------------------------------------------------------
 
