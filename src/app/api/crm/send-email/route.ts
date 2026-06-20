@@ -1,9 +1,12 @@
 /**
  * Send Email API
  *
- * Send emails to contacts using Resend. Multi-tenant: non-primary agents send
- * from their own verified domain (emailConfig), are gated until verified, and are
- * metered in credits. The primary/platform agent uses the shared sender and is exempt.
+ * Sends emails to contacts via Resend. Accepts BOTH JSON ({ to, subject, message,
+ * contactName, cc?, bcc? }) and multipart/form-data (the CRM composer — adds
+ * cc/bcc/attachments). Multi-tenant: non-primary agents send from their own
+ * verified domain (emailConfig), are gated until verified, and are metered in
+ * credits per recipient. The primary/platform agent uses the shared sender and is
+ * exempt.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +21,11 @@ import { EMAIL_SEND_CREDITS } from '@/config/credits';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const splitList = (v?: string | null): string[] =>
+  (v || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,15 +33,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { to, subject, message, contactName } = body;
+    // --- Parse input (JSON or multipart from the composer) ---
+    const contentType = request.headers.get('content-type') || '';
+    let to = '', cc = '', bcc = '', subject = '', message = '', contactName = '';
+    const attachments: { filename: string; content: Buffer }[] = [];
 
-    if (!to || !subject || !message) {
+    if (contentType.includes('multipart/form-data')) {
+      const form = await request.formData();
+      to = (form.get('to') as string) || '';
+      cc = (form.get('cc') as string) || '';
+      bcc = (form.get('bcc') as string) || '';
+      subject = (form.get('subject') as string) || '';
+      message = (form.get('message') as string) || '';
+      contactName = (form.get('contactName') as string) || '';
+      for (const f of form.getAll('attachments')) {
+        if (f instanceof File && f.size > 0) {
+          attachments.push({ filename: f.name, content: Buffer.from(await f.arrayBuffer()) });
+        }
+      }
+    } else {
+      const body = await request.json();
+      to = body.to || '';
+      cc = body.cc || '';
+      bcc = body.bcc || '';
+      subject = body.subject || '';
+      message = body.message || '';
+      contactName = body.contactName || '';
+    }
+
+    const toList = splitList(to);
+    const ccList = splitList(cc);
+    const bccList = splitList(bcc);
+
+    if (!toList.length || !subject || !message) {
       return NextResponse.json({ success: false, error: 'to, subject, and message are required' }, { status: 400 });
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(to)) {
-      return NextResponse.json({ success: false, error: 'Invalid email address' }, { status: 400 });
+    const invalid = [...toList, ...ccList, ...bccList].find((e) => !EMAIL_RE.test(e));
+    if (invalid) {
+      return NextResponse.json({ success: false, error: `Invalid email address: ${invalid}` }, { status: 400 });
     }
 
     await dbConnect();
@@ -49,13 +86,16 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    // Meter: ensure the agent can afford this email.
+
+    // Meter per recipient (to + cc + bcc).
+    const recipientCount = toList.length + ccList.length + bccList.length;
+    const cost = Math.round(EMAIL_SEND_CREDITS * recipientCount * 1000) / 1000;
     if (!isPrimary) {
       try {
-        await ensureBalance(session.user.id, EMAIL_SEND_CREDITS);
+        await ensureBalance(session.user.id, cost);
       } catch (e: any) {
         return NextResponse.json(
-          { success: false, error: 'insufficient_credits', detail: e.message, creditsNeeded: EMAIL_SEND_CREDITS },
+          { success: false, error: 'insufficient_credits', detail: e.message, creditsNeeded: cost },
           { status: 402 }
         );
       }
@@ -66,13 +106,25 @@ export async function POST(request: NextRequest) {
     const senderAddress = !isPrimary && ec?.fromAddress ? ec.fromAddress : `noreply@${noreplyDomain}`;
     const replyTo = (user as any)?.email || session.user.email || senderAddress;
 
-    console.log(`[Send Email] Sending to ${to} from ${senderAddress} (replyTo ${replyTo})`);
+    console.log(`[Send Email] ${recipientCount} recipient(s) from ${senderAddress} (replyTo ${replyTo})`);
+
+    // The composer (multipart) sends rich HTML from its contentEditable editor;
+    // JSON callers send plain text. Render each correctly and derive a matching
+    // text/plain fallback (raw tags must never leak into the plaintext part).
+    const bodyIsHtml = contentType.includes('multipart/form-data');
+    const bodyHtml = bodyIsHtml ? message : message.replace(/\n/g, '<br>');
+    const textFallback = bodyIsHtml
+      ? message.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      : message;
 
     const data = await resend.emails.send({
       from: `${fromName} <${senderAddress}>`,
-      to: [to],
+      to: toList,
+      ...(ccList.length ? { cc: ccList } : {}),
+      ...(bccList.length ? { bcc: bccList } : {}),
       replyTo,
       subject,
+      ...(attachments.length ? { attachments } : {}),
       html: `
         <!DOCTYPE html>
         <html>
@@ -91,7 +143,9 @@ export async function POST(request: NextRequest) {
               <h2 style="margin: 0; color: #0066cc;">Message from ${escapeHtml(fromName)}</h2>
             </div>
             ${contactName ? `<p><strong>Hi ${escapeHtml(contactName)},</strong></p>` : ''}
-            <div class="message-body">${message.replace(/\n/g, '<br>')}</div>
+            ${bodyIsHtml
+              ? `<div style="margin: 20px 0;">${bodyHtml}</div>`
+              : `<div class="message-body">${bodyHtml}</div>`}
             <div class="footer">
               <p><strong>${escapeHtml(fromName)}</strong><br>Email: <a href="mailto:${replyTo}">${replyTo}</a></p>
               <p style="color: #999; font-size: 11px; margin-top: 20px;">
@@ -101,7 +155,7 @@ export async function POST(request: NextRequest) {
           </body>
         </html>
       `,
-      text: `${contactName ? `Hi ${contactName},\n\n` : ''}${message}\n\n---\n${fromName}\nEmail: ${replyTo}`,
+      text: `${contactName ? `Hi ${contactName},\n\n` : ''}${textFallback}\n\n---\n${fromName}\nEmail: ${replyTo}`,
     });
 
     if ('error' in data && data.error) {
@@ -112,10 +166,10 @@ export async function POST(request: NextRequest) {
     if (!isPrimary) {
       await debit({
         userId: session.user.id,
-        amount: EMAIL_SEND_CREDITS,
+        amount: cost,
         type: 'email_send',
         channel: 'email',
-        description: `Email to ${to}`,
+        description: `Email to ${toList[0]}${recipientCount > 1 ? ` +${recipientCount - 1}` : ''}`,
       }).catch((e) => console.error('[Send Email] credit debit failed:', e));
     }
 

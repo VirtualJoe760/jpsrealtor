@@ -63,7 +63,7 @@ export const AI_PROMPT_SUGGESTIONS = [
 
 // API endpoints
 export const COMPOSE_API_ENDPOINTS = {
-  sendEmail: '/api/send-email',
+  sendEmail: '/api/crm/send-email',
   uploadAttachment: '/api/upload-attachment',
   generateAI: '/api/ai/generate-email',
   saveTemplate: '/api/email-templates',
