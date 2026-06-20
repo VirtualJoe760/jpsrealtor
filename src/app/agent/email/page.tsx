@@ -6,37 +6,26 @@
 // Otherwise shows a setup prompt to connect their email.
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
 import EmailInbox from '@/app/components/crm/EmailInbox';
 import AgentNav from '@/app/components/AgentNav';
 import { Mail, Plus, Shield } from 'lucide-react';
 
 export default function AgentEmailPage() {
-  const { data: session } = useSession();
   const { currentTheme } = useTheme();
   const { textPrimary, textSecondary, textMuted, cardBg, border } = useThemeClasses();
   const isLight = currentTheme === 'lightgradient';
 
   const [hasEmailConnected, setHasEmailConnected] = useState<boolean | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check if the current user has their own email account connected
+  // Gate on the agent's email-sending config: a verified Resend domain, or the
+  // primary/platform agent on the shared sender (canEmail from /api/agent/email).
   useEffect(() => {
-    if (!session?.user?.email) return;
-
-    const user = session.user as any;
-    setIsAdmin(!!user.isAdmin);
-
-    // For now, only the platform owner (admin) has email connected.
-    // Other agents need to connect their own email account.
-    // TODO: Check user.agentProfile.emailConnected or similar field
-    if (user.isAdmin && !user.impersonatedBy) {
-      setHasEmailConnected(true);
-    } else {
-      setHasEmailConnected(false);
-    }
-  }, [session]);
+    fetch('/api/agent/email')
+      .then((r) => r.json())
+      .then((d) => setHasEmailConnected(d?.email?.canEmail === true))
+      .catch(() => setHasEmailConnected(false));
+  }, []);
 
   return (
     <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:p-4 md:p-8 overflow-hidden">
@@ -79,37 +68,19 @@ export default function AgentEmailPage() {
                 </div>
 
                 <h2 className={`text-xl font-semibold mb-3 ${textPrimary}`}>
-                  Connect Your Email
+                  Set up email sending
                 </h2>
                 <p className={`text-sm mb-6 ${textSecondary}`}>
-                  Link your email account to manage communications directly from your ChatRealty dashboard.
-                  Your emails are private and only visible to you.
+                  Verify your own sending domain to email leads and clients from your ChatRealty
+                  dashboard — better deliverability than a shared address. Set it up in Settings.
                 </p>
-
-                <div className={`p-4 rounded-xl mb-6 text-left space-y-3 ${
-                  isLight ? 'bg-gray-50' : 'bg-white/5'
-                }`}>
-                  <p className={`text-xs font-medium ${textSecondary}`}>Supported providers:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Gmail', 'Outlook', 'Yahoo Mail', 'IMAP/SMTP'].map((provider) => (
-                      <div key={provider} className={`flex items-center gap-2 text-sm ${textPrimary}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-blue-400' : 'bg-blue-500'}`} />
-                        {provider}
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
                 <button
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                  onClick={() => {
-                    // TODO: Implement email OAuth connection flow
-                    // For now, redirect to settings
-                    window.location.href = '/agent/settings';
-                  }}
+                  onClick={() => { window.location.href = '/agent/settings'; }}
                 >
                   <Plus size={16} />
-                  Connect Email Account
+                  Set up email
                 </button>
 
                 <div className={`flex items-center justify-center gap-1.5 mt-4 ${textMuted}`}>

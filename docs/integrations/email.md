@@ -33,6 +33,9 @@ show the **DNS records** (SPF/DKIM/DMARC) → agent adds them → **Check verifi
 | API | `GET/POST/PATCH /api/agent/email` (status / provision+bill / verify) |
 | UI | `src/app/components/messaging/EmailSetup.tsx` (Settings → Integrations) |
 | Send (gated + metered) | `src/app/api/crm/send-email/route.ts` — sends `from` the verified address, `replyTo` the agent's inbox; 403 if not verified, 402 if low credits, debits `email_send` |
+| Page gate | `src/app/agent/email/page.tsx` — gates on `canEmail` from `/api/agent/email` (was a placeholder `isAdmin` TODO); shows "Set up email sending" → Settings when not verified |
+
+**Known issue (flagged separately):** the CRM composer (`compose-panel/constants` → `/api/send-email`) points at a non-existent route — composed emails 404. The working send route is `/api/crm/send-email`. Repoint + reconcile payload (tracked as a separate task).
 
 ## Billing (shared with messaging — see credits config)
 
