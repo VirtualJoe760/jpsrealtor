@@ -3,11 +3,8 @@
 
 declare global {
   interface Window {
-    fbq?: (
-      command: string,
-      eventName: string,
-      params?: Record<string, any>
-    ) => void;
+    // Meta's fbq is variadic: track(cmd, event, params), set(cmd, key, value, pixelId), init(cmd, pixelId)…
+    fbq?: (command: string, ...args: any[]) => void;
   }
 }
 
@@ -43,6 +40,14 @@ export const initMetaPixel = () => {
     "script",
     "https://connect.facebook.net/en_US/fbevents.js"
   );
+
+  // Disable autoConfig BEFORE init. With autoConfig on (the default), Meta's pixel
+  // auto-collects page metadata — including the URL query string — and transmits it as
+  // event parameters, bypassing the pageView()/trackEvent() lat/lng guards below. On the
+  // map view (/chap?view=map&lat=…&lng=…) that auto-collection is what kept tripping Meta's
+  // "parameters blocked by Meta" warnings (lat & lng) even after manual events were suppressed.
+  // Turning autoConfig off means only the events we explicitly fire reach Meta.
+  window.fbq?.("set", "autoConfig", false, FB_PIXEL_ID);
 
   window.fbq?.("init", FB_PIXEL_ID);
   // Initial PageView is dispatched by MetaPixel.tsx so it goes through the lat/lng guard.

@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-06-08
+last_verified: 2026-06-22
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -48,7 +48,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
 | **Meta CAPI** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\meta-capi.ts` | Server-side conversion events (Lead, Subscribe, CompleteRegistration) | `NEXT_PUBLIC_META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN` | All lead-form server routes, register, subscribe | User PII is SHA-256 hashed before send. Graph API `v20.0`. Permanent CAPI token — no expiry. |
-| **Meta Pixel** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\meta-pixel.ts`, `src\components\MetaPixel.tsx` | Client-side pixel for retargeting (PageView, ViewContent, AddToWishlist, Lead, Search) | `NEXT_PUBLIC_META_PIXEL_ID` | Root layout (mounted globally) | **Suppressed on URLs with `?lat=` or `?lng=` query params** (Meta flags coords as PII — May 2026 enforcement). All `track*` helpers gate on `hasBlockedUrlParams()`. |
+| **Meta Pixel** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\meta-pixel.ts`, `src\components\MetaPixel.tsx` | Client-side pixel for retargeting (PageView, ViewContent, AddToWishlist, Lead, Search) | `NEXT_PUBLIC_META_PIXEL_ID` | Root layout (mounted globally) | **Suppressed on URLs with `?lat=` or `?lng=` query params** (Meta flags coords as PII — May 2026 enforcement). All `track*` helpers gate on `hasBlockedUrlParams()`. **`autoConfig` is disabled** (`fbq('set','autoConfig',false,…)` before `init`) so Meta's pixel can't auto-scrape the URL query string into events — that auto-collection was bypassing the guards and still leaking lat/lng (Jun 2026 fix). |
 | **Google Ads / gtag** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\google-ads.ts` | Conversion tracking via `gtag('event', ...)` (generate_lead, sign_up, view_listing, click_to_call) | `NEXT_PUBLIC_GA4_ID` (`GT-MKB7FKDR`) | Lead forms, signup, listing pages, click-to-call buttons | gtag tag is loaded once in root layout; this file only fires events. |
 | **Google Ads API** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\google-ads-api.ts` | Campaign management, ad creation (separate from `google-ads.ts` tracking) | `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, OAuth creds | Admin campaigns dashboard | See `F:\web-clients\joseph-sardella\jpsrealtor\docs\google-ads\GOOGLE_ADS_API_DESIGN_DOC.md`. |
 | **Meta Ads API** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\meta-ads-api.ts` | Facebook/Instagram ad campaigns | `META_ADS_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` (act_160011552) | Admin ad campaigns | Long-lived system user token (no 60-day rotation). |
@@ -113,7 +113,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 
 ## Gotchas
 
-- **Meta Pixel is suppressed on URLs containing `?lat=` or `?lng=`.** `fbq` always attaches `event_source_url = window.location.href`, and Meta now treats coords as PII (May 2026 enforcement). `MetaPixel.tsx` short-circuits `pageView()`, and every helper in `meta-pixel.ts` gates on `hasBlockedUrlParams()`. Lat/lng stay in the URL because Google Ads / YouTube attribution still uses them.
+- **Meta Pixel is suppressed on URLs containing `?lat=` or `?lng=`.** `fbq` always attaches `event_source_url = window.location.href`, and Meta now treats coords as PII (May 2026 enforcement). `MetaPixel.tsx` short-circuits `pageView()`, and every helper in `meta-pixel.ts` gates on `hasBlockedUrlParams()`. Lat/lng stay in the URL because Google Ads / YouTube attribution still uses them. **Suppressing manual events alone was not enough** — Meta kept emailing "parameters blocked by Meta (lat, lng)" through Jun 2026 because the pixel's default **`autoConfig`** auto-collects the page URL and fires its own events, bypassing the guards. Fix: `initMetaPixel()` calls `fbq('set','autoConfig',false,FB_PIXEL_ID)` before `fbq('init',…)`, so only events we explicitly fire (all guarded) reach Meta. If you re-enable autoConfig, the lat/lng warnings will return on the map view.
 - **GBP and GSC use per-user OAuth, not platform-wide creds.** Client ID/secret are app-level; the refresh token must be per-user for agent GBP posting. Env vars (`GBP_REFRESH_TOKEN`) only cover the platform owner's account.
 - **Cloudinary URLs always use the `f_auto,q_auto` transform** for automatic format/quality optimization. Email headshots add face-detection cropping by injecting `c_thumb,g_face,w_200,h_200,r_max,f_auto,q_auto` into the `/upload/` path.
 - **mcp-gsc credentials live at `src/.credentials/gsc-credentials.json`.** Was originally in `.claude/`, then project root, now centralized. Path is referenced from `.mcp.json` env block.
