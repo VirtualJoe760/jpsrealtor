@@ -116,8 +116,8 @@ CREATE INDEX IF NOT EXISTS idx_property_city_status_type_baths ON property (city
 CREATE INDEX IF NOT EXISTS idx_property_subdiv_status_type_beds ON property (subdivision_name, standard_status, property_type, beds_total);
 CREATE INDEX IF NOT EXISTS idx_property_subdiv_status_type_bedrooms ON property (subdivision_name, standard_status, property_type, bedrooms_total);
 CREATE INDEX IF NOT EXISTS idx_property_subdiv_status_type_baths ON property (subdivision_name, standard_status, property_type, bathrooms_total_integer);
-CREATE INDEX IF NOT EXISTS idx_property_city_cashflow20 ON property (city, ((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric DESC));
-CREATE INDEX IF NOT EXISTS idx_property_zip_cashflow20 ON property (postal_code, ((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric DESC));
+CREATE INDEX IF NOT EXISTS idx_property_city_cashflow20 ON property (city, ((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric) DESC);
+CREATE INDEX IF NOT EXISTS idx_property_zip_cashflow20 ON property (postal_code, ((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric) DESC);
 CREATE INDEX IF NOT EXISTS idx_property_unparsed_address_trgm ON property USING GIN (unparsed_address gin_trgm_ops);
 
 -- ----------------------------------------------------------------------------

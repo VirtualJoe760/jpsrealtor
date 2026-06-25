@@ -177,8 +177,10 @@ function propertyCompoundIndexes(): string {
   const idx = (name: string, cols: string): string =>
     `CREATE INDEX IF NOT EXISTS ${name} ON ${tq} (${cols});`;
 
+  // DESC must sit OUTSIDE the wrapped expression: `(expr) DESC`, not `(expr DESC)`
+  // (Postgres only accepts the ordering keyword after a fully-parenthesized expr).
   const cashflowExpr =
-    "((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric DESC)";
+    "((cashflow_stats #>> '{scenarios,down20,monthlyCashflow}')::numeric) DESC";
 
   return [
     idx("idx_property_mls_source_id", "mls_source, mls_id"),
