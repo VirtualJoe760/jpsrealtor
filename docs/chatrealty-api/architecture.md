@@ -28,6 +28,7 @@ related: [./research.md, ../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-
 | Listing attribution | **HARD invariant** — `listAgentName` + `listOfficeName` accompany ALL listing data, everywhere it is served/rendered (IDX rule; build_plan §3.8) | ✅ |
 | Documentation | **LLM-first** — docs are a product surface, served via MCP `guide://` resources (build_plan §3.9) | ✅ |
 | Lead capture | End-user signup **auto-upserts a deduped Contact** into the agent's CRM (port of `linkUserToAgent`); anchors the favorites/saved-search loop (build_plan §8.3) | ✅ |
+| Documentation site | **docs.chatrealty.io** — robust dev docs (Fumadocs) with copy-paste **`<ClaudePrompt>` clipboard prompts** that drive each setup step via the customer's Claude; one source feeds the site + MCP build-guide + `llms.txt` (build_plan §8.4) | ✅ |
 
 ## Migration posture (legacy app)
 
