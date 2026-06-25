@@ -1,6 +1,11 @@
 // src/lib/rate-limit.ts
-// In-memory sliding-window rate limiter. Single-instance only — if/when the
-// app scales to multiple Vercel containers, swap for Upstash Redis.
+// In-memory sliding-window rate limiter. Single-instance only.
+//
+// For multi-instance (Vercel) deployments prefer the distributed, Upstash-backed
+// limiter in `./rate-limit-kv.ts` (`checkRateLimit(key, limit, windowMs)`), which
+// is atomic across instances and FAILS OPEN to *this* module when KV is not
+// configured. The functions here remain the canonical in-memory fallback shape
+// and stay in use for purely single-instance limits (auth/forgot-password).
 
 interface Bucket {
   hits: number[]; // timestamps in ms
