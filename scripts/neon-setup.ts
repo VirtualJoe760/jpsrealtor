@@ -25,7 +25,7 @@
 // SECURITY: the API key and connection-string passwords are never logged. Any
 // connection URI echoed to the console is run through `maskUriPassword` first.
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { config as loadDotenv } from "dotenv";
@@ -244,6 +244,30 @@ async function verify(client: Client, postgisOk: boolean): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
+// Persist connection details to .env.local (gitignored) on a fresh create, so
+// the runtime tenant resolver and the live adapter tests can reach the DB
+// without hand-copying a secret Neon only shows once at creation.
+// -----------------------------------------------------------------------------
+
+function upsertEnvLine(content: string, key: string, value: string): string {
+  const re = new RegExp(`^${key}=.*$`, "m");
+  const line = `${key}=${value}`;
+  if (re.test(content)) return content.replace(re, line);
+  const sep = content.length === 0 || content.endsWith("\n") ? "" : "\n";
+  return content + sep + line + "\n";
+}
+
+function writeEnvLocal(project: CreatedProject): void {
+  const envPath = join(REPO_ROOT, ".env.local");
+  let content = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
+  content = upsertEnvLine(content, "NEON_PROJECT_ID", project.projectId);
+  content = upsertEnvLine(content, "NEON_POOLED_CONN_URI", project.pooledConnUri);
+  content = upsertEnvLine(content, "NEON_DIRECT_CONN_URI", project.directConnUri);
+  writeFileSync(envPath, content, "utf8");
+  ok("wrote NEON_PROJECT_ID + NEON_POOLED_CONN_URI + NEON_DIRECT_CONN_URI to .env.local");
+}
+
+// -----------------------------------------------------------------------------
 // Summary
 // -----------------------------------------------------------------------------
 
@@ -263,8 +287,8 @@ function printSummary(project: CreatedProject, postgisOk: boolean): void {
   log(`    pooled (runtime): ${maskedPooled}`);
   log(`    direct (DDL):     ${maskedDirect}`);
   log("");
-  log("  Next — set these env vars (use the UNMASKED strings printed by Neon /");
-  log("  shown in the Neon console; never commit them, store encrypted):");
+  log("  Connection env vars (on a fresh create these were just written to");
+  log("  .env.local — gitignored; for a REUSED project, set them yourself):");
   log("");
   log(`    NEON_PROJECT_ID=${project.projectId}`);
   log("    NEON_POOLED_CONN_URI=<pooled connection string>   # runtime traffic");
@@ -287,6 +311,8 @@ async function main(): Promise<void> {
   log("ChatRealty — Neon setup\n");
   loadEnv();
   requireApiKey();
+
+  const freshlyCreated = !process.env.NEON_PROJECT_ID;
 
   let project: CreatedProject;
   try {
@@ -315,6 +341,8 @@ async function main(): Promise<void> {
       /* best-effort close */
     });
   }
+
+  if (freshlyCreated) writeEnvLocal(project);
 
   printSummary(project, postgisOk);
 }
