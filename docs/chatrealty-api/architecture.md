@@ -24,6 +24,9 @@ related: [./research.md, ../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-
 | Sync ownership | **Free:** the customer runs the cron on **their own computer**. **Paid:** ChatRealty runs it on a **VPS**. | ✅ |
 | Seeding/sync compute | Runs on the **customer's machine** (their MLS key never touches our servers) | ✅ |
 | AI inference | **BYOK** — customer's Anthropic key | ✅ |
+| Neighborhoods | **Included** — Region→County→City→Subdivision + POIs, ported to per-tenant Postgres+PostGIS (build_plan §8.2) | ✅ |
+| Listing attribution | **HARD invariant** — `listAgentName` + `listOfficeName` accompany ALL listing data, everywhere it is served/rendered (IDX rule; build_plan §3.8) | ✅ |
+| Documentation | **LLM-first** — docs are a product surface, served via MCP `guide://` resources (build_plan §3.9) | ✅ |
 
 ## Migration posture (legacy app)
 

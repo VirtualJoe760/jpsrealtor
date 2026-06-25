@@ -146,6 +146,23 @@ A task is **done** only when ALL of the following hold:
 4. TypeScript compiles strict; no `any` leaks across a public export boundary.
 5. **Docs updated in the same change** per repo CLAUDE.md: the area README under `docs/{area}/` (create if absent), `last_verified: 2026-06-24`, and any linchpin-table row flipped from "to build" to the concrete file. Doc drift is a build bug.
 6. Secrets never logged; decrypted conn strings never returned to any client; one-time token plaintext never logged.
+7. **Listing attribution present** (§3.8) on every task that selects, maps, returns, or renders listing data.
+
+### 3.8 Listing attribution invariant (HARD RULE — MLS/IDX compliance)
+
+> **Listing data MUST NEVER be served or rendered without the listing agent and listing brokerage attribution.** This is an IDX display-rule requirement, not a nicety — a violation is a compliance bug, same severity as a tenant leak.
+
+- **Required fields** (`unified-listing.ts`, camelCase, top-level): `listAgentName` + `listOfficeName` at minimum; include `listAgentPreferredPhone` / `listOfficePhone` where the surface allows. The sync MUST map the RESO sources: `ListAgentFullName`→`listAgentName`, `ListOfficeName`→`listOfficeName`, the MLS IDs, and phones. (No co-list fields exist today.)
+- **Every listing DTO carries attribution.** `toListingDTO` (Agent 01) MUST include `listAgentName` + `listOfficeName`; a listing DTO without them **fails the contract test**. This makes attribution structurally impossible to drop downstream.
+- **Every serving/rendering surface displays it** — search results, card grids, detail sheets, the MCP listing-board, and CHAP narration (the narrator prompt MUST cite "Listed by {office} — {agent}").
+- **Audited gaps to fix (2026-06-24)** are mapped to owners in §8.1. Compliant already: the public detail page, the skill detail route, the chat `ListingDetailCard`.
+
+### 3.9 LLM-first documentation (a deliverable, not an afterthought)
+
+> Documentation is a product surface, written for Claude first. The MCP serves docs as resources (`guide://chatrealty/*`); they must be structured, explicit, and example-rich so an LLM can build against them with zero tribal knowledge.
+
+- Every published doc (the RESO Data Dictionary, the build-guide, each `/api/skill/*` resource, the sync setup, neighborhoods) ships as **LLM-optimized markdown**: explicit field tables (type / enum / nullable), copy-paste examples, the attribution invariant restated inline, and "common mistakes" callouts.
+- The Data Dictionary doc (Agent 03) is the canonical example. The build-guide the MCP serves is generated from the same source so it never drifts. All live under `docs/{area}/` with frontmatter per repo CLAUDE.md.
 
 ---
 
@@ -610,3 +627,41 @@ functions × N tenants can blow Postgres connection caps. **Before opening free 
 | **DTO drift between dialects** | Routes touch DTOs only; shared contract suite runs against both adapters | Agents 01, 02, 09 |
 | **`--purge` data loss** (Apr 6 2026 incident) | Sync **never deletes**; status transitions move listings out of Active | Agent 24 |
 | **Don't migrate legacy `jpsrealtor.com`** | Mongo adapter is legacy-only; PG adapter is greenfield/tenant-zero | Agents 02, 09 |
+
+---
+
+## 8. Addendum (2026-06-24): Neighborhoods, Listing Attribution, LLM-first docs
+
+Two requirements added after the core plan; both in scope. Total is now **~31 agent-tasks** (25 core + 6 neighborhoods). **Listing attribution is NOT a new agent fleet** — it is the binding invariant §3.8, folded into the existing owners of each listing surface.
+
+### 8.1 Listing attribution — enforcement map (no new agents; binding acceptance)
+
+Audited 2026-06-24 against the code. Each existing owner adds attribution to the file it already owns (no collisions):
+
+| Surface | File (owner) | Today | Required change |
+|---|---|---|---|
+| Listing DTO | `src/lib/db/to-dto.ts` (Agent 01) | missing | `ListingDTO` + `toListingDTO` include `listAgentName`, `listOfficeName` (+ phones); contract test rejects a DTO without them |
+| CHAP search projection | `src/lib/chat-search/preview.ts` (CHAP agent, Spec 5) | missing | add the two fields to `LISTING_PROJECTION` + `mapListing()` |
+| CHAP narration | `src/lib/chat-search/narrate.ts` (CHAP agent, Spec 5) | missing | narrator prompt MUST cite "Listed by {office} — {agent}" when present |
+| Skill search route | `src/app/api/skill/listings/search/route.ts` (API agent, Spec 6) | missing | add the two fields to projection + response |
+| MCP board + tools | `packages/mcp-server/src/ui/listing-board.ts`, `tools/show_listing_board.ts`, `tools/search_listings.ts` (MCP agent, Spec 7) | missing | render an attribution line on every card; fix the `search_listings` docstring to match reality |
+| Public / skill-detail / chat-detail | `ListingAttribution.tsx`, `/api/skill/listings/[listingKey]`, `ListingDetailCard.tsx` | ✅ | reference implementation — no change |
+
+The sync mapper (Spec 8) MUST map `ListAgentFullName`/`ListOfficeName`/MLS-IDs/phones so attribution exists in every tenant DB from the first seed.
+
+### 8.2 Neighborhoods subsystem (NEW — Agents 26–31)
+
+A fast, **pre-aggregated** hierarchy (Region → County → City → Subdivision) + POIs — today on Mongo, ported to per-tenant Postgres+PostGIS. Part of the data plane, built by the customer-side sync, read by CHAP + skill routes + whatever neighborhood UI the customer scaffolds.
+
+**Grounded current shape:** pre-built models replaced ~26s aggregations with ~200ms indexed reads. `subdivisions` (nightly-cron `cmaStats` + curated `communityFacts`), `cities`/`counties`/`regions`, `LocationIndex` (autocomplete/center), `PointOfInterest` (Google Places cache, bounding-box queried). Listings link by **string match** on `subdivisionName` + `city` (no FK). Linchpins: `src/models/{subdivisions,cities,counties,regions,PointOfInterest,community-facts,LocationIndex}.ts`, `src/lib/neighborhoods-data.ts`, `src/lib/chat-search/nearby-pois.ts`, `src/lib/cma/subdivision-profile.ts`, `src/app/api/{neighborhoods,skill/market}/*`, `src/app/neighborhoods/*`, `src/scripts/mls/backend/master_sync.py`.
+
+**Prereq spike:** the nightly `cmaStats` is a schema-less Mongo `Mixed` blob — extract a sample and define strict tables **before** Agent 26 (this is a second spike alongside CHAP-on-PostGIS, §7).
+
+- **Agent 26 — Neighborhoods schema (Postgres).** OWNS `src/lib/db/schema/neighborhoods.ts`, `src/lib/reso/migrations/0002_neighborhoods.sql`. Tables: `regions`, `counties`, `cities`, `subdivisions`, `location_index`, `points_of_interest`, `community_facts`, `cma_stats` (+ child `cma_stats_by_subtype`, `cma_top_comps` — denormalize the `Mixed` blob). PostGIS `geom` on `cities`/`subdivisions`/`points_of_interest` + GiST indexes; `(slug, city)` composite unique (slugs collide across cities). Depends: 09 (drizzle), 03 (naming), 26-spike.
+- **Agent 27 — Neighborhoods repo/adapter methods.** OWNS `src/lib/db/neighborhoods-repo.ts` (PG + Mongo behind `DbAdapter`): directory tree, city/subdivision by slug, `cmaStats` read, **POI bounding-box → `ST_DWithin`/`ST_MakeEnvelope`**. Depends: 01, 02, 26, 09.
+- **Agent 28 — Neighborhoods skill routes (tenant-scoped).** OWNS `src/app/api/skill/market/neighborhoods/[slug]/route.ts`, `.../subdivisions/[slug]/route.ts`, and a tenant-scoped `/api/skill/market/directory` (port of `/api/neighborhoods/directory`). Depends: keystone (10), handler wrapper (Phase 2), 27. Accept: byte-parity with the current Mongo route output for `DEFAULT_TENANT_ID`.
+- **Agent 29 — POI + geo port.** OWNS `src/lib/chap/nearby-pois.ts` (PostGIS bounding-box port of `chat-search/nearby-pois.ts`) + geo-center/street-lookup helpers behind the adapter. Depends: 26, 27. Coordinates with the CHAP agents (Spec 5) that consume the POI bundle.
+- **Agent 30 — Neighborhoods aggregation builders in `packages/chatrealty-sync`.** OWNS the `neighborhoods-builder` module: after listing seed/sync, recompute `cities`/`subdivisions` aggregates + `cmaStats` + refresh `location_index`; fetch/refresh POIs. The customer-side replacement for the Python `master_sync.py` aggregate step; `cmaStats` stays a daily job (per §0), now per-tenant. Depends: 26, sync-package agents (Spec 8).
+- **Agent 31 — Neighborhoods MCP tools + LLM-first doc.** OWNS the `get_neighborhood_info` / `get_subdivision_cma` tool wrappers (point at the new routes) + `docs/chatrealty-api/neighborhoods.md` (LLM-first: hierarchy, tables, POI model, the slug-collision rule, examples). Depends: 28, MCP agents (Spec 7).
+
+**Out of scope for v1 neighborhoods:** the curated `communityFacts` enrichment pipeline (seed as-is per tenant, automate later) and the public Next.js neighborhood *pages* (the customer builds their own UI; we ship the data + build-guide).
