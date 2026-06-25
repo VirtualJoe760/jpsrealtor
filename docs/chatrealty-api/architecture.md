@@ -27,6 +27,7 @@ related: [./research.md, ../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-
 | Neighborhoods | **Included** — Region→County→City (universal) + **optional** Subdivision (not all MLSs carry it; Claude-derivable per area, stamped `source`) + POIs, ported to per-tenant Postgres+PostGIS (build_plan §8.2) | ✅ |
 | Listing attribution | **HARD invariant** — `listAgentName` + `listOfficeName` accompany ALL listing data, everywhere it is served/rendered (IDX rule; build_plan §3.8) | ✅ |
 | Documentation | **LLM-first** — docs are a product surface, served via MCP `guide://` resources (build_plan §3.9) | ✅ |
+| Lead capture | End-user signup **auto-upserts a deduped Contact** into the agent's CRM (port of `linkUserToAgent`); anchors the favorites/saved-search loop (build_plan §8.3) | ✅ |
 
 ## Migration posture (legacy app)
 

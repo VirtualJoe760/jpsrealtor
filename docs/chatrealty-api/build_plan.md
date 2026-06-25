@@ -671,3 +671,20 @@ A fast, **pre-aggregated** hierarchy (Region → County → City → Subdivision
 - **Agent 31 — Neighborhoods MCP tools + LLM-first doc.** OWNS the `get_neighborhood_info` / `get_subdivision_cma` tool wrappers (point at the new routes) + `docs/chatrealty-api/neighborhoods.md` (LLM-first: hierarchy, tables, POI model, the slug-collision rule, examples). Depends: 28, MCP agents (Spec 7).
 
 **Out of scope for v1 neighborhoods:** the curated `communityFacts` enrichment pipeline (seed as-is per tenant, automate later) and the public Next.js neighborhood *pages* (the customer builds their own UI; we ship the data + build-guide).
+
+### 8.3 Lead capture: end-user signup → auto-Contact (NEW — Agent 32)
+
+**Already proven in the legacy app — this is a PORT, not an invention.** Today `linkUserToAgent()` (`src/lib/signup-origin.ts`) runs on every end-user signup (`/api/auth/register`, `/api/leads/{buy,sell}-intake`, OAuth in `lib/auth.ts`, `/api/campaign/submit`) and creates-or-links a deduped `Contact` assigned to the agent (`Contact.userId`), linked to the end-user (`linkedUserId`), `source: "website"`, tagged `["Website Signup", domain]`, **non-blocking** (a CRM error never fails signup).
+
+**Invariant (product):** any end-user who registers through a tenant's surface is automatically **upserted as a Contact in that tenant's CRM**, deduped by email/phone, linked to their end-user account, stamped source + tag — the entry point of the lead loop (the Contact then accrues favorites + saved searches).
+
+**Per-tenant simplification:** legacy scopes a contact to an agent via `Contact.userId` with dedup `(userId, phone)`. In the product **the database IS the agent** (db-per-tenant), so contacts need no `userId` agent-scoping — dedup is a per-tenant unique on `phone` + a soft email match, mirroring `linkUserToAgent`'s lookup (`emails.address` / legacy `email` / `linkedUserId`). Port the legacy `source` enum, tags, structured `phones[]`/`emails[]` + legacy mirror so the CRM shape matches.
+
+**Two integration paths (both auto-assign to the tenant):**
+1. **Product-provided end-user identity** — the API offers end-user registration/auth per tenant (so favorites / saved-searches / auto-contact work out of the box); registration calls the upsert.
+2. **BYO-auth** — agents using their own auth call `POST /api/skill/contacts/from-signup` (tenant token) with the new user's details; same upsert, same dedup.
+
+**Agent 32 — Lead capture & end-user identity.**
+- OWNS: `src/lib/db/schema/end-users.ts` (end-user account table in the tenant DB: email/name/phone, marketing consent, link to favorites/saved-searches), `src/lib/crm/upsert-contact-from-signup.ts` (the ported `linkUserToAgent` upsert, adapter-backed, deduped, non-blocking), `src/app/api/skill/contacts/from-signup/route.ts` (BYO-auth endpoint) + the product end-user registration route.
+- Depends: keystone (10), Contact schema/adapter (Agents 01 / 09 / CRM schema), and the saved-search lead-loop work (§6 CHAP).
+- Accept: an end-user registration (or a `from-signup` call) creates exactly **one** tenant Contact; a re-signup with the same email/phone **does not duplicate** (updates/links instead); `source` + tag + `linkedUserId` stamped; non-blocking (signup never fails on a contact error); favorites/saved-searches by that end-user resolve to the same Contact.
