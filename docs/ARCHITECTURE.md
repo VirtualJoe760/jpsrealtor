@@ -33,6 +33,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) — *not yet written* |
 | External integrations | `src/lib/` (each integration is one file) | [integrations/](./integrations/) — *not yet written* |
 | MCP server (agent's Claude → ChatRealty) | `packages/mcp-server/` (planned) + `src/app/api/skill/*` | [mcp/](./mcp/) |
+| API productization — headless backend BaaS (**planned/design**) | `src/app/api/skill/*` + Neon per-tenant DB | [chatrealty-api/](./chatrealty-api/) |
 
 ## Cross-cutting invariants
 
