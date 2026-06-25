@@ -25,6 +25,20 @@ related: [./research.md, ../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-
 | Seeding/sync compute | Runs on the **customer's machine** (their MLS key never touches our servers) | ✅ |
 | AI inference | **BYOK** — customer's Anthropic key | ✅ |
 
+## Migration posture (legacy app)
+
+**Do not migrate `jpsrealtor.com` to Postgres to launch the product.** The product
+is built greenfield on Neon; the **legacy site stays on its current MongoDB** —
+which is **self-hosted on the DigitalOcean VPS** (Atlas is used only as a viewer);
+that DO box hosts **both** the database and the ingestion crons. Rationale: a live
+Mongo→Postgres migration means rewriting every Mongoose query/aggregation (CMA,
+subdivisions, market stats, hundreds of routes) and moving 76k listings / 2.1M
+photos — months of work, high risk. Credentials and business keys port fine; the
+**queries** are the hard part. Instead, **dogfood**: make Joseph **tenant zero** on
+Neon, prove the Postgres engine on his own data, and only consider migrating the
+legacy site later if the product engine earns it. The DigitalOcean VPS becomes the
+prototype for the **paid-tier managed-sync box**.
+
 ## TL;DR
 
 A customer (agent or IDX/web-dev shop) signs up, is approved (license check), and
