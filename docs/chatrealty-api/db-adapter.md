@@ -1,6 +1,6 @@
 ---
 title: DB-Agnostic Adapter — Interface, DTOs & Mappers
-status: partial
+status: current
 last_verified: 2026-06-25
 related: [./build_plan.md, ./architecture.md]
 ---
@@ -14,11 +14,10 @@ related: [./build_plan.md, ./architecture.md]
 > handler, the sync package). It is **interface + mappers only** — no driver, no
 > global connection.
 
-`status: partial` — Agent 01's contract (`adapter.ts`, `to-dto.ts`) and Agent 02's
-Mongo adapter (`mongo-adapter.ts`) are landed with tests. The remaining
-implementation is owned by Agent 09: `postgres-adapter.ts` + Drizzle schema.
-Update this doc to `current` once the Postgres adapter implements the interface
-and passes the shared contract suite against both dialects.
+`status: current` — Agent 01's contract (`adapter.ts`, `to-dto.ts`), Agent 02's
+Mongo adapter (`mongo-adapter.ts`), and Agent 09's Postgres adapter
+(`postgres-adapter.ts` + Drizzle schema) are all landed with tests. The Postgres
+adapter passes the shared contract suite **LIVE against Neon** (see below).
 
 ## Files
 
@@ -29,7 +28,53 @@ and passes the shared contract suite against both dialects.
 | `src/lib/db/__tests__/to-dto.test.ts` | Agent 01 | Contract tests (fallbacks + attribution invariant) | **landed** |
 | `src/lib/db/mongo-adapter.ts` | Agent 02 | Legacy/self-host Mongo implementation (`createMongoAdapter`) | **landed** |
 | `src/lib/db/__tests__/mongo-adapter.test.ts` | Agent 02 | Query-reproduction + read-path contract tests (node:test) | **landed** |
-| `src/lib/db/postgres-adapter.ts`, `schema/*` | Agent 09 | Neon/Postgres + Drizzle | to build |
+| `src/lib/db/postgres-adapter.ts` | Agent 09 | Neon/Postgres implementation (`createPostgresAdapter`) via Drizzle neon-http | **landed** |
+| `src/lib/db/schema/{listings,contacts,index}.ts` | Agent 09 | Drizzle table definitions mirroring `0001_init.sql` (property/member/office/media + contact + registry/migrations) | **landed** |
+| `drizzle.config.ts` | Agent 09 | drizzle-kit config (schema barrel + `NEON_DIRECT_CONN_URI` for migrations) | **landed** |
+| `src/lib/db/migrations/*` | Agent 09 | drizzle-kit-generated reference DDL (the canonical per-tenant migration is Agent 04's `0001_init.sql`) | **landed** |
+| `src/lib/db/__tests__/postgres-adapter.test.ts` | Agent 09 | Shared contract suite, **LIVE** against Neon (skips cleanly without conn) | **landed** |
+
+## Postgres adapter (`postgres-adapter.ts`, Agent 09)
+
+`createPostgresAdapter(conn)` implements `DbAdapter` against a tenant's Neon
+Postgres DB. It is the SQL twin of the Mongo adapter — the SAME
+`ListingFilter`/`FindOpts` inputs, mapped to parameterized SQL instead of Mongo
+query objects, and the SAME `to-dto.ts` mappers so DTOs are byte-identical
+across dialects. Design:
+
+- **Driver split (build_plan §6.2/§6.3).** Reads go over **Drizzle's neon-http
+  driver** (`drizzle(neon(conn), { schema })`) — a one-shot HTTP fetch per query,
+  no pool to leak. Dynamic, parameterized SQL is composed with Drizzle's `sql`
+  tag + `sql.join` (every caller value is a bound parameter; identifiers come
+  only from a fixed internal allow-list). A WebSocket **`Pool` is opened lazily**
+  and used **only** for the raw `query(text, params)` escape hatch when it
+  carries positional params or is a mutating statement; `close()` ends that pool
+  if it was opened (the HTTP reader needs no close).
+- **`ListingFilter` → SQL**, clause-for-clause with the Mongo builder: `status`
+  defaults Active; `propertyType` wildcard-skip; price/yearBuilt ranges;
+  **dual-column bed/bath OR**; `onMarketDate` as a real `timestamptz` range (no
+  string trap on Postgres); `hasPool` reads the **typed `pool_yn` column OR the
+  `extras` fallback** (build_plan §6.5 — avoids the amenity under-report);
+  registered `extras` fields → parameterized `extras->>'k' = $n` equality; `bbox`
+  → PostGIS `ST_Contains(ST_MakeEnvelope(…,4326), geom)` with a lat/lng-box
+  fallback for null-geom rows.
+- **Casing bridge.** Postgres returns snake_case; `to-dto.ts` reads camelCase, so
+  every SELECT aliases columns (`list_agent_name AS "listAgentName"`). The `pool`
+  signal is projected as `COALESCE(pool_yn, (extras->>'poolYN')::boolean, false)`
+  so the DTO's `pool` matches the `hasPool` filter semantics.
+- **Attribution (§3.8).** `list_agent_name` / `list_office_name` are always in the
+  projection; the live contract test asserts their presence on every DTO.
+- **Contacts.** No `ownerId`/`userId` scoping — on the Postgres path the database
+  IS the tenant boundary. The `contact` table is defined in the Drizzle schema but
+  is **not yet in `0001_init.sql`** (CRM-on-Postgres is a later cutover, Agent 21);
+  the live test scopes its fixtures by an `extras.testMarker`.
+
+The contract test runs **LIVE against Neon**: it loads `NEON_POOLED_CONN_URI`
+from `.env.local`, **skips cleanly** when absent, seeds ~20 `property` rows under
+a unique marker prefix, exercises find/get/count (city+price+beds, bbox, hasPool
+incl. the extras-only fallback, a custom `extras` field), asserts DTO shape +
+attribution, and **deletes every seeded row in a `finally`** (never logs a
+secret). Run: `npx tsx --test src/lib/db/__tests__/postgres-adapter.test.ts`.
 
 ## Mongo adapter (`mongo-adapter.ts`, Agent 02)
 
