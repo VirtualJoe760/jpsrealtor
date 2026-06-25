@@ -14,11 +14,11 @@ related: [./build_plan.md, ./architecture.md]
 > handler, the sync package). It is **interface + mappers only** — no driver, no
 > global connection.
 
-`status: partial` — Agent 01's contract (`adapter.ts`, `to-dto.ts`) and its tests
-are landed. The implementations behind the interface are owned by other agents
-and are not yet present: `mongo-adapter.ts` (Agent 02), `postgres-adapter.ts` +
-Drizzle schema (Agent 09). Update this doc to `current` once an adapter
-implements the interface and passes the shared contract suite.
+`status: partial` — Agent 01's contract (`adapter.ts`, `to-dto.ts`) and Agent 02's
+Mongo adapter (`mongo-adapter.ts`) are landed with tests. The remaining
+implementation is owned by Agent 09: `postgres-adapter.ts` + Drizzle schema.
+Update this doc to `current` once the Postgres adapter implements the interface
+and passes the shared contract suite against both dialects.
 
 ## Files
 
@@ -27,8 +27,37 @@ implements the interface and passes the shared contract suite.
 | `src/lib/db/adapter.ts` | Agent 01 | Pure interfaces: `DbAdapter`, `ListingRepo`, `ContactRepo`, `ListingFilter`, `FindOpts`, `ListingDTO`, `ContactDTO`, range/bbox helpers | **landed** |
 | `src/lib/db/to-dto.ts` | Agent 01 | `toListingDTO` / `toContactDTO` — the ONLY place fields are collapsed | **landed** |
 | `src/lib/db/__tests__/to-dto.test.ts` | Agent 01 | Contract tests (fallbacks + attribution invariant) | **landed** |
-| `src/lib/db/mongo-adapter.ts` | Agent 02 | Legacy/self-host Mongo implementation | to build |
+| `src/lib/db/mongo-adapter.ts` | Agent 02 | Legacy/self-host Mongo implementation (`createMongoAdapter`) | **landed** |
+| `src/lib/db/__tests__/mongo-adapter.test.ts` | Agent 02 | Query-reproduction + read-path contract tests (node:test) | **landed** |
 | `src/lib/db/postgres-adapter.ts`, `schema/*` | Agent 09 | Neon/Postgres + Drizzle | to build |
+
+## Mongo adapter (`mongo-adapter.ts`, Agent 02)
+
+`createMongoAdapter(conn, { ownerId?, collections? })` implements `DbAdapter` over
+an existing native Mongo connection handle (a `mongoose.Connection` or raw
+`mongodb.Db` — anything with `.collection(name)`). It reproduces today's exact
+`/api/skill/*` query objects so the legacy single-tenant path is byte-identical
+before and after the adapter seam. What it preserves:
+
+- **Native `.collection` reads only** — never a Mongoose model — so the
+  `onMarketDate` ISO-string range (`StrRange`) is compared lexically and not
+  silently cast to a `Date` (the schema declares it `Date`; the DB stores a
+  string). Mongoose query-casting would make that range never match.
+- **Dual bed/bath `$or`** clauses (`bedroomsTotal||bedsTotal`,
+  `bathroomsTotalInteger||bathsTotal`) accumulated into `$and`, in the same key
+  order the search route builds.
+- **`userId: ownerId` contact scoping** — the legacy single-tenant `auth.user._id`
+  scope, stamped on every contact `find`/`get`.
+- **DTO collapse via Agent 01's `toListingDTO`/`toContactDTO`** — the adapter never
+  invents its own row mapping; `Mixed` fields (`cmaStats`/`cashflowStats`) pass
+  through the native read untouched.
+- **`query()` (raw SQL) throws `unsupported`** — that escape hatch is Postgres/CHAP
+  only. **`close()` is a no-op** — the connection lifecycle is owned by the keystone
+  resolver, not the adapter.
+
+The pure query builders `buildListingMongoQuery(filter)` and
+`buildContactMongoQuery(params)` are exported so the contract test asserts the
+emitted filter equals the hand-built Mongo query object with **no live DB**.
 
 ## The two hard rules this contract enforces
 
