@@ -32,10 +32,19 @@ show the **DNS records** (SPF/DKIM/DMARC) → agent adds them → **Check verifi
 | Resend provisioning | `src/lib/email-provision.ts` (create/get/verify/remove domain) |
 | API | `GET/POST/PATCH /api/agent/email` (status / provision+bill / verify) |
 | UI | `src/app/components/messaging/EmailSetup.tsx` (Settings → Integrations) |
-| Send (gated + metered) | `src/app/api/crm/send-email/route.ts` — sends `from` the verified address, `replyTo` the agent's inbox; 403 if not verified, 402 if low credits, debits `email_send` |
+| Send (gated + metered) | `src/app/api/crm/send-email/route.ts` — sends `from` the verified address, `replyTo` the agent's inbox; 403 if not verified, 402 if low credits, debits `email_send` per recipient |
 | Page gate | `src/app/agent/email/page.tsx` — gates on `canEmail` from `/api/agent/email` (was a placeholder `isAdmin` TODO); shows "Set up email sending" → Settings when not verified |
 
-**Known issue (flagged separately):** the CRM composer (`compose-panel/constants` → `/api/send-email`) points at a non-existent route — composed emails 404. The working send route is `/api/crm/send-email`. Repoint + reconcile payload (tracked as a separate task).
+### Request shapes accepted by `/api/crm/send-email`
+
+The route accepts **both** content types so one endpoint serves every caller:
+
+- **`application/json`** (chat tools, mobile): `{ to, subject, message, contactName?, cc?, bcc? }`. `message` is treated as **plain text** — newlines become `<br>` inside a branded template, and `contactName` adds a "Hi {name}," greeting.
+- **`multipart/form-data`** (the CRM composer — `compose-panel/hooks/useSendEmail.ts`): `to`, `cc`, `bcc`, `subject`, `message` (**rich HTML** from the contentEditable editor), and repeated `attachments` file parts. HTML is rendered as-authored; the `text/plain` fallback is derived by stripping tags so raw markup never leaks.
+
+`to`/`cc`/`bcc` are comma-split into arrays, every address is validated, and metering is **per recipient** (`EMAIL_SEND_CREDITS × recipientCount`). Attachments map to Resend's `{ filename, content: Buffer }` (40 MB/email cap). Primary agent stays exempt from gating + metering.
+
+> Previously the composer pointed at a non-existent `/api/send-email` (404) and the route only spoke JSON. Fixed 2026-06-20: composer repointed to `/api/crm/send-email` and the route reconciled to accept the multipart payload.
 
 ## Billing (shared with messaging — see credits config)
 
