@@ -30,3 +30,19 @@ export {
   type CustomFieldRegistryRow,
   type SchemaMigrationRow,
 } from "./contacts";
+
+// CRM + lead-loop tables (migration 0002_crm_leadloop, build_plan §8.3).
+//
+// NOTE: `crm.ts` also defines a `contact` table — the per-tenant CRM home that
+// migration 0002 provisions with a uuid PK + structured phones/emails + dedup
+// indexes. It is re-exported here as `crmContact` to avoid clashing with the
+// placeholder `contact` from `./contacts` (the text-PK shape `0001_init.sql`
+// never created). The lead-loop adapters use the `crm.ts` tables.
+export {
+  contact as crmContact,
+  endUser,
+  savedSearch,
+  type CrmContactRow,
+  type EndUserRow,
+  type SavedSearchRow,
+} from "./crm";
