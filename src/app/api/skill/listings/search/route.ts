@@ -15,6 +15,10 @@ import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/sk
 import UnifiedListing from "@/models/unified-listing";
 import { applyPropertyTypeFilter } from "@/lib/property-type";
 import { geocodeAddress } from "@/lib/geocoding/geocode-service";
+import { resolveAdapter } from "@/lib/tenant/resolve-connection";
+import { mapErrorToResponse } from "@/lib/skill-api/errors";
+import type { ListingFilter } from "@/lib/db/adapter";
+import { buildTenantListingFilter } from "@/lib/skill-api/tenant-listing-filter";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_LIMIT = 50;
@@ -90,6 +94,14 @@ export async function GET(req: NextRequest) {
   if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
   const rl = skillRateLimit(auth, "read");
   if (rl) return rl;
+
+  // PRODUCT-TENANT PATH (additive): a token bound to a tenant reads that
+  // customer's OWN data from their Neon database via the adapter. Legacy /
+  // dogfood traffic (no tenantId) falls through to the unchanged Mongo path
+  // below — byte-identical, zero behavior change for the live site/MCP.
+  if (auth.ok && auth.tenantId) {
+    return searchViaTenantAdapter(auth.tenantId, req.nextUrl.searchParams);
+  }
 
   const sp = req.nextUrl.searchParams;
 
@@ -333,4 +345,61 @@ export async function GET(req: NextRequest) {
     },
     { headers: NO_STORE }
   );
+}
+
+// ---------------------------------------------------------------------------
+// Product-tenant search — reads the tenant's OWN data through the adapter.
+// Same query params + pagination shape as the legacy path; returns the
+// canonical ListingDTO (which carries the §3.8 agent/brokerage attribution
+// the legacy shape omits). Geo `near` is supported via a bbox the adapter's
+// PostGIS find honors. resolveAdapter() throws TenantUnavailable (-> 503) for
+// any non-active tenant; mapErrorToResponse renders it.
+// ---------------------------------------------------------------------------
+
+async function searchViaTenantAdapter(tenantId: string, sp: URLSearchParams) {
+  try {
+    const adapter = await resolveAdapter(tenantId);
+
+    const limit = Math.min(MAX_LIMIT, Math.max(1, num(sp.get("limit")) || DEFAULT_LIMIT));
+    const skip = Math.max(0, num(sp.get("skip")) || 0);
+
+    const filter: ListingFilter = buildTenantListingFilter(sp);
+
+    const near = sp.get("near")?.trim();
+    let center: { lat: number; lng: number } | null = null;
+    let radiusMiles: number | undefined;
+    let bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number } | undefined;
+    if (near) {
+      radiusMiles = Math.min(MAX_RADIUS_MILES, Math.max(0.5, num(sp.get("radiusMiles")) || DEFAULT_RADIUS_MILES));
+      center = await resolveCenter(near);
+      if (!center) {
+        return NextResponse.json(
+          { error: "could_not_geocode", message: `Couldn't locate "${near}". Ask for a clearer ZIP, city, neighborhood, or address.` },
+          { status: 422, headers: NO_STORE }
+        );
+      }
+      bbox = boundingBox(center.lat, center.lng, radiusMiles);
+    }
+
+    const fullFilter: ListingFilter = bbox ? { ...filter, bbox } : filter;
+    const page = await adapter.listings.find(fullFilter, {
+      limit,
+      skip,
+      sort: near ? undefined : [{ field: "onMarketDate", dir: "desc" }],
+    });
+
+    return NextResponse.json(
+      {
+        items: page.items,
+        total: page.total,
+        skip: page.skip,
+        limit: page.limit,
+        hasMore: page.hasMore,
+        ...(center ? { center, radiusMiles, sortedBy: "distance" } : {}),
+      },
+      { headers: NO_STORE }
+    );
+  } catch (e) {
+    return mapErrorToResponse(e);
+  }
 }
