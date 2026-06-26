@@ -241,3 +241,67 @@ Resulting Postgres row (snake_case columns):
 The corresponding camelCase DTO (`ListingDTO`, served to clients / the MCP)
 carries `listAgentName` and `listOfficeName` — **always**, never optional.
 That is the attribution invariant, restated: no listing surface omits them.
+
+## Custom fields & the `extras` filter helper (`src/lib/tenant/custom-fields.ts`, Agent 17)
+
+> **TL;DR.** A tenant may declare fields beyond this core catalog. They live in
+> the listing's `extras` JSONB blob and are catalogued in the per-tenant
+> `custom_field_registry` table (`0001_init.sql`; Drizzle shape in
+> `src/lib/db/schema/contacts.ts`). `src/lib/tenant/custom-fields.ts` is the
+> **only** place that table is written/read and the only place a custom-field
+> name is validated.
+
+**No global connection (build_plan §3.3).** Every function takes an **injected**
+`TenantDb` — a minimal `{ query<T>(sql, params) }` handle satisfied by the
+keystone's `DbAdapter` (its raw runner). The module never opens a pool, never
+imports a module-level `db`.
+
+| Function | Purpose |
+|---|---|
+| `registerCustomField(db, { name, type, label?, searchable?, enumValues?, resource? })` | Upsert a field on the `(resource, name)` unique key. Returns the stored record. |
+| `listCustomFields(db, resource?)` | All registered fields (default `Property`; pass `"all"` for every resource). |
+| `getSearchableCustomFields(db, resource?)` | Only `searchable` fields — the set the OData layer may filter on. |
+| `validateCustomFieldName(name, resource?)` | Throws `CustomFieldError` on a bad identifier or core-field shadow. |
+| `extrasFilterClause(name, op, value, paramIndex?)` | A **parameterized** `extras` predicate. |
+
+**The two hard invariants (build_plan §7 risk row).** `registerCustomField`
+rejects:
+
+1. **Core-field shadowing** — a `name` that resolves (by any of the three
+   casings, via `getField`) to a core RESO column → `CustomFieldError`
+   (`code: "shadows_core_field"`). Prevents an `extras->>'x'` predicate from
+   colliding with a real typed column.
+2. **Unsafe identifiers** — the name must match `^[a-z_][a-z0-9_]*$` (lowercase,
+   ≤63 chars) → `code: "invalid_name"`. The name is the **only** token ever
+   embedded in SQL text, so it must never carry a quote, paren, or whitespace.
+   (The identifier gate runs **before** the shadowing check, so an
+   uppercase-bearing core name like `listingKey` is rejected as `invalid_name`.)
+
+An `enum` field additionally requires non-empty `enumValues`
+(`code: "enum_values_required"`).
+
+**`extrasFilterClause` is parameterized — the value is NEVER interpolated.** It
+returns `{ text, params, nextParamIndex }` where `text` carries a single `$N`
+placeholder and `params` is the bound value:
+
+| Value kind | Emitted predicate (for `op` `eq`/`ge`/…) |
+|---|---|
+| boolean | `(extras->>'name')::boolean = $N` |
+| number | `(extras->>'name')::numeric >= $N` |
+| string | `extras->>'name' = $N` |
+
+The operator comes from a fixed allow-list (`eq ne gt ge lt le`); an unknown op
+throws (`invalid_op`). `paramIndex` lets the clause splice into a larger
+statement's `$N` sequence. Example:
+
+```ts
+const c = extrasFilterClause("waterfront", "eq", true, 1);
+// c.text   === "(extras->>'waterfront')::boolean = $1"
+// c.params === [true]
+await db.query(`SELECT listing_key FROM property WHERE ${c.text}`, [...c.params]);
+```
+
+Tested LIVE against Neon (`src/lib/tenant/__tests__/custom-fields.test.ts`):
+register `waterfront`, list it, build a clause and run it against a seeded row;
+plus pure shadowing/identifier-rejection assertions. The WS pool is closed in an
+`after()` hook so the runner exits cleanly.
