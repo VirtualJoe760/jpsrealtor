@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
+import { resolveAdapter } from "@/lib/tenant/resolve-connection";
+import { mapErrorToResponse } from "@/lib/skill-api/errors";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -23,6 +25,22 @@ export async function GET(
   if (rl) return rl;
 
   const { listingKey } = await params;
+
+  // Product-tenant path (additive): read the customer's own listing from their
+  // Neon DB. No tenantId -> the unchanged legacy Mongo path below.
+  if (auth.ok && auth.tenantId) {
+    try {
+      const adapter = await resolveAdapter(auth.tenantId);
+      const dto = await adapter.listings.get(listingKey);
+      if (!dto) {
+        return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
+      }
+      return NextResponse.json(dto, { headers: NO_STORE });
+    } catch (e) {
+      return mapErrorToResponse(e);
+    }
+  }
+
   await dbConnect();
   const l: any = await UnifiedListing.findOne({ listingKey })
     .select(

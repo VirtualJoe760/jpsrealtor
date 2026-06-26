@@ -14,6 +14,9 @@ import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
 import UnifiedClosedListing from "@/models/unified-closed-listing";
+import { resolveAdapter } from "@/lib/tenant/resolve-connection";
+import { mapErrorToResponse } from "@/lib/skill-api/errors";
+import type { ListingFilter, ListingDTO } from "@/lib/db/adapter";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -29,6 +32,14 @@ export async function GET(
   if (rl) return rl;
 
   const { listingKey } = await params;
+
+  // Product-tenant path (additive): generate comps from the customer's own
+  // closed listings (their Neon DB). No tenantId -> the unchanged legacy Mongo
+  // path below.
+  if (auth.ok && auth.tenantId) {
+    return comparablesViaTenantAdapter(auth.tenantId, listingKey);
+  }
+
   await dbConnect();
 
   const subject: any = await UnifiedListing.findOne({ listingKey })
@@ -140,4 +151,83 @@ export async function GET(
     },
     { headers: NO_STORE }
   );
+}
+
+// ---------------------------------------------------------------------------
+// Product-tenant comps — closed comps from the tenant's own data via the
+// adapter. Same subject/comparables/stats shape as the legacy route, plus the
+// §3.8 agent/brokerage attribution on each comp. Matches by area + ±20% price
+// + ±1 bed/bath against CLOSED listings. (closePrice/closeDate are proxied
+// from the DTO's currentPrice/onMarketDate — a basic comp set; the rich CMA
+// stays in the CRM dashboard.)
+// ---------------------------------------------------------------------------
+
+async function comparablesViaTenantAdapter(tenantId: string, listingKey: string) {
+  try {
+    const adapter = await resolveAdapter(tenantId);
+
+    const subject = await adapter.listings.get(listingKey);
+    if (!subject) {
+      return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
+    }
+
+    const filter: ListingFilter = {
+      status: "Closed",
+      ...(subject.subdivision
+        ? { subdivision: subject.subdivision }
+        : subject.city
+          ? { city: subject.city }
+          : {}),
+      price:
+        typeof subject.listPrice === "number"
+          ? { min: Math.floor(subject.listPrice * 0.8), max: Math.ceil(subject.listPrice * 1.2) }
+          : undefined,
+      beds: subject.beds != null ? { min: subject.beds - 1, max: subject.beds + 1 } : undefined,
+      baths: subject.baths != null ? { min: subject.baths - 1, max: subject.baths + 1 } : undefined,
+    };
+
+    const page = await adapter.listings.find(filter, { limit: 12 });
+    const comps: readonly ListingDTO[] = page.items;
+
+    const prices = comps
+      .map((c) => c.currentPrice ?? c.listPrice)
+      .filter((p): p is number => typeof p === "number");
+    const median =
+      prices.length > 0
+        ? prices.slice().sort((a, b) => a - b)[Math.floor(prices.length / 2)]
+        : null;
+
+    return NextResponse.json(
+      {
+        subject: {
+          listingKey: subject.listingKey,
+          address: subject.address,
+          listPrice: subject.listPrice,
+          beds: subject.beds,
+          baths: subject.baths,
+          sqft: subject.sqft,
+        },
+        comparables: comps.map((c) => ({
+          listingKey: c.listingKey,
+          address: c.address,
+          closePrice: c.currentPrice ?? c.listPrice ?? null,
+          closeDate: c.onMarketDate ?? null,
+          beds: c.beds,
+          baths: c.baths,
+          sqft: c.sqft,
+          daysOnMarket: c.daysOnMarket,
+          listAgentName: c.listAgentName,
+          listOfficeName: c.listOfficeName,
+        })),
+        stats: {
+          count: comps.length,
+          medianClosePrice: median,
+          scope: subject.subdivision ? "subdivision" : "city",
+        },
+      },
+      { headers: NO_STORE }
+    );
+  } catch (e) {
+    return mapErrorToResponse(e);
+  }
 }
