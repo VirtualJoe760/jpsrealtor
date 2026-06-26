@@ -1,0 +1,35 @@
+{
+  "name": "@chatrealty/sync",
+  "version": "0.1.0",
+  "description": "Customer-side daily sync: pull your MLS RESO Web API feed into your own ChatRealty (Neon/Postgres) tenant database. The BYOD activation moment.",
+  "type": "module",
+  "bin": {
+    "chatrealty-sync": "./src/cli.ts"
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./reso-fetch": "./src/reso-fetch.ts",
+    "./map": "./src/map.ts",
+    "./write": "./src/write.ts"
+  },
+  "scripts": {
+    "sync": "tsx src/cli.ts",
+    "test": "tsx --test src/__tests__/*.test.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "pg": "^8.12.0",
+    "zod": "^3.23.8"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "license": "UNLICENSED",
+  "private": true
+}
