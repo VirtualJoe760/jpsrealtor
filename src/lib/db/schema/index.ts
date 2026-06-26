@@ -46,3 +46,33 @@ export {
   type EndUserRow,
   type SavedSearchRow,
 } from "./crm";
+
+// Neighborhoods subsystem tables (migration 0003_neighborhoods, build_plan §8.2).
+// The Region → County → City → Subdivision hierarchy + location_index + POIs +
+// curated community_facts + the strict nightly-cron CMA blob (cma_stats +
+// children + subdivision_rent_stats). Ported from the Mongo neighborhood models;
+// `neighborhoods.ts` mirrors `0003_neighborhoods.sql` exactly.
+export {
+  regions,
+  counties,
+  cities,
+  subdivisions,
+  locationIndex,
+  pointsOfInterest,
+  communityFacts,
+  cmaStats,
+  cmaStatsBySubtype,
+  cmaTopComps,
+  subdivisionRentStats,
+  type RegionRow,
+  type CountyRow,
+  type CityRow,
+  type SubdivisionRow,
+  type LocationIndexRow,
+  type PointOfInterestRow,
+  type CommunityFactRow,
+  type CmaStatsRow,
+  type CmaStatsBySubtypeRow,
+  type CmaTopCompRow,
+  type SubdivisionRentStatsRow,
+} from "./neighborhoods";
