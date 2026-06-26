@@ -38,7 +38,7 @@
 import { neon, Pool } from "@neondatabase/serverless";
 import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { sql, type SQL } from "drizzle-orm";
-import * as schema from "./schema/index.ts";
+import * as schema from "./schema/index";
 import type {
   DbAdapter,
   DbResource,
@@ -51,8 +51,8 @@ import type {
   ContactDTO,
   OdataQueryLike,
   SortSpec,
-} from "./adapter.ts";
-import { toListingDTO, toContactDTO } from "./to-dto.ts";
+} from "./adapter";
+import { toListingDTO, toContactDTO } from "./to-dto";
 
 // -----------------------------------------------------------------------------
 // Tunables (mirror the Mongo adapter)

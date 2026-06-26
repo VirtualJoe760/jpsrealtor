@@ -38,7 +38,7 @@ import {
   DEFAULT_REGION_ID,
   NeonApiError,
   type CreatedProject,
-} from "../src/lib/neon/client.ts";
+} from "../src/lib/neon/client";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");

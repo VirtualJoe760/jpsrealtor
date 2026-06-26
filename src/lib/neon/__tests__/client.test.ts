@@ -24,7 +24,7 @@ import {
   derivePooledUri,
   NeonApiError,
   NEON_API_BASE_URL,
-} from "../client.ts";
+} from "../client";
 
 // -----------------------------------------------------------------------------
 // Fetch mock harness

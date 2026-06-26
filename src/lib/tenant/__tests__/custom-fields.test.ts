@@ -47,7 +47,7 @@ import {
   CustomFieldError,
   CUSTOM_FIELD_NAME_RE,
   type TenantDb,
-} from "../custom-fields.ts";
+} from "../custom-fields";
 
 // -----------------------------------------------------------------------------
 // PURE tests — no DB, always run

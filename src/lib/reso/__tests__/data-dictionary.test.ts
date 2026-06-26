@@ -20,7 +20,7 @@ import {
   resoNameToFieldName,
   fieldNameToColumn,
   type ResoResource,
-} from "../data-dictionary.ts";
+} from "../data-dictionary";
 
 const PASCAL_CASE = /^[A-Z][A-Za-z0-9]*$/;
 const CAMEL_CASE = /^[a-z][A-Za-z0-9]*$/;

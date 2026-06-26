@@ -23,8 +23,8 @@ import {
   quoteIdent,
   ddlResourceTables,
   INIT_MIGRATION_VERSION,
-} from "../ddl.ts";
-import { RESOURCE_NAMES, getResource, getField } from "../data-dictionary.ts";
+} from "../ddl";
+import { RESOURCE_NAMES, getResource, getField } from "../data-dictionary";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = join(HERE, "..", "migrations", "0001_init.sql");

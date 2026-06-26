@@ -42,7 +42,7 @@ import {
   type ResoField,
   type ResoResource,
   type ResoResourceDef,
-} from "./data-dictionary.ts";
+} from "./data-dictionary";
 
 // -----------------------------------------------------------------------------
 // Identifier quoting (reserved-word-aware)

@@ -20,7 +20,7 @@ export {
   type MemberRow,
   type OfficeRow,
   type MediaRow,
-} from "./listings.ts";
+} from "./listings";
 
 export {
   contact,
@@ -29,4 +29,4 @@ export {
   type ContactRow,
   type CustomFieldRegistryRow,
   type SchemaMigrationRow,
-} from "./contacts.ts";
+} from "./contacts";

@@ -28,7 +28,7 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { Pool } from "pg";
 
-import { computeAreaStatsPg, type SqlRunner } from "../area-stats.ts";
+import { computeAreaStatsPg, type SqlRunner } from "../area-stats";
 import type { ListingFilter } from "@/lib/db/adapter";
 
 // -----------------------------------------------------------------------------

@@ -42,7 +42,7 @@ import {
   RESOURCE_NAMES,
   getField,
   type ResoResource,
-} from "../reso/data-dictionary.ts";
+} from "../reso/data-dictionary";
 
 // -----------------------------------------------------------------------------
 // The injected tenant DB handle (the ONLY seam — no global connection, §3.3)

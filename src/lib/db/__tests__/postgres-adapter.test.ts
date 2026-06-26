@@ -26,8 +26,8 @@ import assert from "node:assert/strict";
 import { config as loadEnv } from "dotenv";
 import { neon } from "@neondatabase/serverless";
 
-import { createPostgresAdapter } from "../postgres-adapter.ts";
-import type { ListingDTO } from "../adapter.ts";
+import { createPostgresAdapter } from "../postgres-adapter";
+import type { ListingDTO } from "../adapter";
 
 // -----------------------------------------------------------------------------
 // Env / skip gate
