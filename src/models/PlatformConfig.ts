@@ -40,6 +40,11 @@ export interface IPlatformConfig extends Document {
   // Platform moderation settings (stored on the `_id: "moderation"` config doc).
   moderation?: {
     partnerAutoApprove: boolean; // when true, new service-partner applications are approved on submit
+    // Agent 12 — when true, new BaaS tenant applications are approved automatically
+    // (license verification is still the real gate — build_plan §7). Defaults to
+    // FALSE: unlike partner auto-approve, a tenant gets a live data plane + a
+    // crt_live token, so the safe default is manual admin review.
+    tenantAutoApprove?: boolean;
   };
   updatedAt: Date;
   updatedBy: mongoose.Types.ObjectId;
@@ -68,6 +73,9 @@ const PlatformConfigSchema = new Schema<IPlatformConfig>(
     },
     moderation: {
       partnerAutoApprove: { type: Boolean, default: true },
+      // Agent 12 — default OFF (manual review). A missing field also reads as OFF
+      // in `getTenantAutoApprove`, so the safe default holds for legacy docs too.
+      tenantAutoApprove: { type: Boolean, default: false },
     },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },

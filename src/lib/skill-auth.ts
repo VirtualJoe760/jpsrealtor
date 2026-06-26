@@ -17,6 +17,7 @@ import User from "@/models/User";
 import { hashToken } from "@/lib/secrets";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { LEGACY_DEFAULT_SCOPES, type Scope } from "@/lib/skill-scopes";
+import { resolveTenantByTokenHash } from "@/lib/tenant/resolve-tenant";
 
 export type SkillAuthSuccess = {
   ok: true;
@@ -31,6 +32,34 @@ export type SkillAuthSuccess = {
   scopes: Scope[];
   /** True if scopes were filled from the legacy fallback rather than the token. */
   isLegacyScopes: boolean;
+
+  // ---------------------------------------------------------------------------
+  // Tenant binding (Agent 11 — ADDITIVE, build_plan §6.6 / §3.3).
+  // ---------------------------------------------------------------------------
+  //
+  // OPTIONAL by design. After the token authenticates, we best-effort resolve
+  // the per-tenant Neon DB the token is bound to (control-plane lookup by token
+  // hash). When the token maps to an ACTIVE tenant, `tenantId` is its stable id
+  // and `getSql()` lazily opens that tenant's pooled SQL handle (the keystone's
+  // LRU-cached connection — identity-only routes like `whoami` never call it,
+  // so they never trigger a Neon wake).
+  //
+  // LEGACY / UNMAPPED tokens leave BOTH `undefined`: callers fall back to
+  // DEFAULT_TENANT (the keystone's Mongo dogfood path). The tenant lookup is
+  // best-effort — a control-DB hiccup leaves these undefined but never fails
+  // auth (see authenticateSkillRequest).
+
+  /**
+   * Stable id of the tenant this token is bound to, or `undefined` for legacy /
+   * unmapped tokens (callers fall back to DEFAULT_TENANT).
+   */
+  tenantId?: string;
+  /**
+   * Lazily resolve this tenant's pooled SQL handle via the keystone resolver.
+   * Present ONLY when `tenantId` is set. Calling it is what opens the Neon
+   * connection, so identity-only paths can skip it and avoid a cold-start wake.
+   */
+  getSql?: () => Promise<import("@/lib/tenant/resolve-connection").TenantSql>;
 };
 
 export type SkillAuthFailure = {
@@ -82,6 +111,10 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
   const isLegacyScopes = storedScopes.length === 0;
   const scopes = (isLegacyScopes ? LEGACY_DEFAULT_SCOPES : (storedScopes as Scope[]));
 
+  // Best-effort tenant binding (ADDITIVE — never blocks or fails auth). See
+  // `buildTenantBinding` for the resolve-and-attach logic + its test seam.
+  const tenantBinding = await buildTenantBinding(hash);
+
   return {
     ok: true,
     user,
@@ -89,6 +122,86 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
     tokenLast4: entry.last4,
     scopes,
     isLegacyScopes,
+    // Spread is empty for legacy/unmapped tokens, so `tenantId`/`getSql` stay
+    // absent and callers fall back to DEFAULT_TENANT.
+    ...tenantBinding,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tenant binding (Agent 11 — ADDITIVE seam)
+// ---------------------------------------------------------------------------
+//
+// The optional `{ tenantId, getSql }` slice of a successful auth. Factored out
+// of `authenticateSkillRequest` so the best-effort resolve-and-attach logic is
+// unit-testable WITHOUT mocking the whole Mongo/User import graph: the test
+// injects a fake `resolveTenant` + `loadTenantSql` and asserts the three
+// behaviors (mapped→tenantId, unmapped→undefined, control-DB throw→undefined).
+
+/** The optional tenant slice attached to a `SkillAuthSuccess`. */
+export type TenantBinding = {
+  tenantId?: string;
+  getSql?: SkillAuthSuccess["getSql"];
+};
+
+/** Injectable deps for `buildTenantBinding` (TEST-ONLY seam). */
+export interface TenantBindingDeps {
+  /** Control-plane lookup: token hash → ACTIVE tenant (or null). */
+  resolveTenant: (hash: string) => Promise<{ tenantId?: string } | null>;
+  /** Lazily open the keystone's pooled SQL handle for a tenant. */
+  loadTenantSql: (
+    tenantId: string
+  ) => Promise<import("@/lib/tenant/resolve-connection").TenantSql>;
+}
+
+const tenantBindingDeps: TenantBindingDeps = {
+  resolveTenant: (hash) => resolveTenantByTokenHash(hash),
+  loadTenantSql: async (tenantId) => {
+    // Lazy import: identity-only routes that never call `getSql()` never pull
+    // the keystone (and its Neon/Drizzle deps) into the module graph.
+    const { getTenantSql } = await import("@/lib/tenant/resolve-connection");
+    return getTenantSql(tenantId);
+  },
+};
+
+/**
+ * Swap `buildTenantBinding`'s deps. TEST-ONLY. Returns a restore function.
+ */
+export function __setTenantBindingDeps(
+  patch: Partial<TenantBindingDeps>
+): () => void {
+  const prev = { ...tenantBindingDeps };
+  Object.assign(tenantBindingDeps, patch);
+  return () => Object.assign(tenantBindingDeps, prev);
+}
+
+/**
+ * Best-effort resolve the tenant a token hash is bound to and build the
+ * optional `{ tenantId, getSql }` binding.
+ *
+ * - Token maps to an ACTIVE tenant → `{ tenantId, getSql }` (lazy SQL handle).
+ * - Legacy / unmapped token (resolver returns `null`) → `{}` (no tenant).
+ * - Control-DB throw → `{}` (swallowed): tenant binding is best-effort and
+ *   MUST NEVER break auth of an otherwise-valid token (build_plan §6.6).
+ */
+export async function buildTenantBinding(hash: string): Promise<TenantBinding> {
+  let tenantId: string | undefined;
+  try {
+    const tenant = await tenantBindingDeps.resolveTenant(hash);
+    if (tenant?.tenantId) {
+      tenantId = tenant.tenantId;
+    }
+  } catch {
+    // Swallow — legacy callers fall back to DEFAULT_TENANT.
+    return {};
+  }
+
+  if (!tenantId) return {};
+
+  const boundTenantId = tenantId;
+  return {
+    tenantId: boundTenantId,
+    getSql: () => tenantBindingDeps.loadTenantSql(boundTenantId),
   };
 }
 
@@ -117,13 +230,17 @@ const NO_STORE = { "Cache-Control": "no-store" };
 // In-memory; survives the lifetime of the serverless function instance only.
 // Switch to Upstash Redis when we need cross-instance counts.
 
-export type RateLimitTier = "identity" | "read" | "write" | "send";
+export type RateLimitTier = "identity" | "read" | "write" | "send" | "research";
 
 const RATE_LIMIT_TIERS: Record<RateLimitTier, { max: number; windowMs: number }> = {
   identity: { max: 200, windowMs: 60_000 },
   read: { max: 100, windowMs: 60_000 },
   write: { max: 30, windowMs: 60_000 },
   send: { max: 5, windowMs: 60_000 },
+  // Research read surface (build_plan §6.6 Agent 11). Sits between read and
+  // write: research callers fan out a lot of read traffic but the saved-search
+  // write is rare. Additive — no existing tier changed.
+  research: { max: 60, windowMs: 60_000 },
 };
 
 /**

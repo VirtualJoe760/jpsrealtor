@@ -39,6 +39,12 @@ export const SCOPES = [
   // Social posting (real-world publish — Instagram carousels for now).
   // Never in a default preset; users have to opt in when minting a token.
   "social:post",
+
+  // Research (client-research read surface — saved-search / lead-signal loop).
+  // Read-only; gated to the `research` tier (Agent 11 / build_plan §6.6, §5).
+  // NOT included in any agent preset — only the dedicated `client_research`
+  // preset below grants it.
+  "research:read",
 ] as const;
 
 export type Scope = (typeof SCOPES)[number];
@@ -62,7 +68,12 @@ export function normalizeScopes(input: unknown): Scope[] {
 // picks one (or "Custom") so they don't have to think about 12 checkboxes.
 // ---------------------------------------------------------------------------
 
-export type PresetId = "content_drafting" | "lead_aware" | "full_workspace" | "custom";
+export type PresetId =
+  | "content_drafting"
+  | "lead_aware"
+  | "full_workspace"
+  | "client_research"
+  | "custom";
 
 export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; description: string; scopes: Scope[] }> = {
   content_drafting: {
@@ -109,6 +120,20 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
       "contacts:write",
       "campaigns:read",
       "campaigns:write",
+    ],
+  },
+  // Dedicated client-research token: the read surface plus the single
+  // research saved-search write path (build_plan §5 Agent 11 / §6.6). It is a
+  // STANDALONE preset — deliberately NOT folded into the agent presets above,
+  // so granting research never silently widens an existing agent token.
+  client_research: {
+    label: "Client research",
+    description:
+      "Read-only research surface — listings, market data, and saved-search signals for client research. No CRM, CMS, campaigns, or social posting.",
+    scopes: [
+      "research:read",
+      "listings:read",
+      "market:read",
     ],
   },
 };

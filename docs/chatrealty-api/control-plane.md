@@ -28,6 +28,8 @@ related:
 | `src/lib/tenant/resolve-tenant.ts` | `resolveTenantByTokenHash`, `resolveTenantById`, `decryptTenantConnUri`. The Neon-free resolve half. |
 | `src/lib/tenant/errors.ts` | `TenantUnavailableError` (→503), `TenantNotFoundError` (→404), base `TenantError` with stable `code`. |
 | `src/lib/control/store.ts` | The single control-store binding: `TenantRepo` / `TenantTokenRepo` thin functions over the model. The ONLY supported way to mint/revoke tokens. |
+| `src/lib/tenant/provisioning-gate.ts` | The approval gate: `approveTenant` / `rejectTenant` / `getTenantAutoApprove`. Mints the once-only crt_live token and hands off to provisioning. |
+| `src/models/PlatformConfig.ts` | `moderation.tenantAutoApprove` toggle (default **OFF**) consumed by `getTenantAutoApprove`. |
 | `src/lib/secrets.ts` | AES-256-GCM encrypt/decrypt + `hashToken` + `generateApiToken`. Reused unchanged. |
 
 ## How a token resolves (O(1))
@@ -57,6 +59,34 @@ sync:
 During cutover, the legacy `User.agentProfile.aiIntegrations.apiTokens` path must
 also be kept in sync on every mint/revoke (build_plan §6.1).
 
+## The approval gate (`provisioning-gate.ts`)
+
+The BaaS analogue of `partner-moderation.ts` — the one place a tenant application
+moves from `pending` to a live data plane, so status / token mint / license audit
+/ provisioning hand-off / notification stay consistent across the admin review,
+signup auto-approve, and cron backstop (Agent 22) callers.
+
+- **`approveTenant(tenantId, approvedBy)`** — asserts `pending`, mints **exactly
+  one** crt_live token (`generateApiToken`), attaches its **hash** (denormalized
+  invariant), stamps `status:"approved"` + `approvedAt` + `license.verifiedAt`/
+  `license.verifiedBy` (`approvedBy` doubles as the license verifier), then calls
+  `provisionTenant` (Agent 16). Returns the token **plaintext exactly once** —
+  never logged, never returned again. Throws `TenantNotFoundError` (missing) /
+  `TenantUnavailableError` (not pending).
+- **`rejectTenant(tenantId, reason)`** — `status:"rejected"` + reason +
+  `rejectedAt`. No token, no provisioning. Defaults the reason to "Rejected by
+  admin" when blank.
+- **`getTenantAutoApprove()`** — reads `PlatformConfig.moderation.tenantAutoApprove`,
+  default **FALSE**. Unlike partner auto-approve (default ON), a tenant approval
+  mints a live token + a dedicated Postgres data plane, so the safe default is
+  manual admin review. The **license is the real gate** (build_plan §7).
+
+Every external system is reachable through an injectable `deps` object swapped via
+`__setProvisioningGateDeps` (mirrors the provision-service seam), so the unit test
+runs the real gate logic with zero Mongo / Neon / secrets. Email notifications are
+best-effort no-ops today (no tenant-specific template yet) — wire a real sender at
+the `notifyApproved` / `notifyRejected` deps.
+
 ## Gotchas
 
 - **`status` is a security boundary, not a directory filter.** Only `active`
@@ -83,4 +113,16 @@ suspended exclusion, revoked-token rejection, decrypt round-trip through the rea
 
 ```
 npx tsx --test src/lib/tenant/__tests__/resolve-tenant.test.ts
+```
+
+`src/lib/tenant/__tests__/provisioning-gate.test.ts` — Node built-in runner, **no
+live Mongo / Neon / secrets** (all injected via `__setProvisioningGateDeps`).
+Asserts: approve flips `pending→approved`, mints exactly one token (plaintext
+returned once), attaches the **hash** (not plaintext), stamps the license-verified
+audit fields, and calls `provisionTenant`; non-pending → `TenantUnavailableError`;
+missing → `TenantNotFoundError`; reject sets `rejected`+reason+`rejectedAt`;
+`getTenantAutoApprove` defaults false. Run:
+
+```
+npx tsx --test src/lib/tenant/__tests__/provisioning-gate.test.ts
 ```
