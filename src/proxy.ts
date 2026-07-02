@@ -30,7 +30,6 @@ const OWNER_HOSTNAMES = new Set([
 const ADMIN_ONLY_SUBDOMAINS = new Set(["agent"]);
 
 const BYPASS_PREFIXES = [
-  "/api/",
   "/_next/",
   "/favicon",
   "/manifest",
@@ -44,10 +43,111 @@ function shouldBypass(pathname: string): boolean {
   return BYPASS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+// ---------------------------------------------------------------------------
+// Secure-by-default /api auth gate
+// ---------------------------------------------------------------------------
+// The middleware previously BYPASSED all /api, so every route had to remember
+// to authenticate itself — and ~20 forgot (unauthenticated mailbox reads,
+// send-as-owner, cost-draining AI/TTS/SMS endpoints, SSRF, IDOR). This gate
+// inverts that: /api is DENY-by-default (requires a session) unless a route is
+// explicitly public, bearer-authenticated (skill), a signed webhook, a cron
+// job, or part of the auth flow. Derived from a full classification of all ~320
+// /api routes (security audit, 2026-07-02). See docs + memory:
+// project_security_audit_2026_07. A new route that forgets its own check is now
+// protected automatically.
+
+// Subtrees where every route is safe to serve without a session (public data).
+const PUBLIC_API_PREFIXES = [
+  "/api/mls-listings", "/api/listings", "/api/listing", "/api/unified-listings",
+  "/api/map-clusters", "/api/map", "/api/geo", "/api/geocode", "/api/geocoding",
+  "/api/stats", "/api/california-stats", "/api/market-stats", "/api/analytics",
+  "/api/neighborhoods", "/api/cities", "/api/subdivisions", "/api/regions",
+  "/api/schools", "/api/schoolImage", "/api/search", "/api/agents", "/api/platform",
+  "/api/yelp-search", "/api/chat", "/api/chat-v2", "/api/chat-v3", "/api/swipes",
+  "/api/activity", "/api/photos",
+];
+
+// Individual public routes inside otherwise-authenticated subtrees.
+const PUBLIC_API_EXACT = new Set([
+  "/api/agent/public",
+  "/api/appointments/available-slots",
+  "/api/appointments/book",
+  "/api/articles/list",
+  "/api/articles/search",
+  "/api/articles/ai-search",
+  "/api/articles/topics",
+  "/api/service-partner/directory",
+  "/api/newsletter/subscribe",
+  "/api/newsletter/unsubscribe",
+  "/api/ai/console",
+]);
+
+// Routes that authenticate themselves (bearer token / webhook signature / cron
+// secret / the NextAuth + auth-flow surface). They must reach their handler.
+const SELF_AUTH_API_PREFIXES = [
+  "/api/skill",    // crt_live bearer token, verified per-route
+  "/api/webhooks", // external webhooks — must verify signatures in-route
+  "/api/cron",     // Vercel cron — verifies a secret in-route
+  "/api/auth",     // NextAuth internals + pre-login flows + self-checking session routes
+];
+const SELF_AUTH_API_EXACT = new Set([
+  "/api/crm/sms/webhook",        // Twilio inbound (signature verified in-route)
+  "/api/crm/sms/status-webhook", // Twilio status (signature verified in-route)
+]);
+
+// Admin-only surfaces. Most self-enforce, but gate centrally so a forgotten
+// check can never expose them.
+const ADMIN_API_PREFIXES = [
+  "/api/admin", "/api/resend", "/api/debug", "/api/test", "/api/test-photos",
+  "/api/testPhotos", "/api/test-chat", "/api/performance", "/api/scrapeMLS",
+  "/api/trello", "/api/domains/registry",
+];
+
+function underAny(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+async function handleApiGate(request: NextRequest, pathname: string) {
+  // 1. Public + self-authenticating routes pass straight through.
+  if (
+    PUBLIC_API_EXACT.has(pathname) ||
+    SELF_AUTH_API_EXACT.has(pathname) ||
+    underAny(pathname, PUBLIC_API_PREFIXES) ||
+    underAny(pathname, SELF_AUTH_API_PREFIXES)
+  ) {
+    return NextResponse.next();
+  }
+
+  // 2. Everything else requires a valid session.
+  const token = await getToken({ req: request });
+  if (!token) {
+    return NextResponse.json(
+      { error: "unauthorized", message: "Authentication required." },
+      { status: 401 }
+    );
+  }
+
+  // 3. Admin-only surfaces additionally require an admin session.
+  if (underAny(pathname, ADMIN_API_PREFIXES) && !token.isAdmin && !token.impersonatedBy) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Admin access required." },
+      { status: 403 }
+    );
+  }
+
+  return NextResponse.next();
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Never rewrite static assets, APIs, or Next.js internals
+  // Secure-by-default API gate: /api requires a session unless the route is
+  // explicitly public / bearer / webhook / cron / auth-flow. Runs first.
+  if (pathname.startsWith("/api/")) {
+    return handleApiGate(request, pathname);
+  }
+
+  // Never rewrite static assets or Next.js internals
   if (shouldBypass(pathname)) {
     return NextResponse.next();
   }
