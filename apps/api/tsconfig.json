@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "moduleResolution": "node",
+    "declaration": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    // rootDir is the repo root so BOTH apps/api/src AND the reused ../../src/lib
+    // compile into dist preserving their tree:
+    //   dist/apps/api/src/main.js   and   dist/src/lib/...
+    // This is what lets tsc-alias rewrite "@/..." imports to real relative paths
+    // that resolve inside dist (see build note in README).
+    "rootDir": "../..",
+    "baseUrl": "../..",
+    "incremental": true,
+    "skipLibCheck": true,
+    // Pin the ambient type set so tsc doesn't try to load every @types/* package
+    // it finds under node_modules (e.g. a transitive @types/minimatch with no
+    // resolvable .d.ts), which otherwise fails the build with TS2688.
+    "types": ["node", "express"],
+    // Match the Next app's loose settings so the reused src compiles unchanged.
+    "strict": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

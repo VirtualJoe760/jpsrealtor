@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "../../src/lib/tenant/resolve-connection.ts",
+    "../../src/lib/tenant/resolve-tenant.ts",
+    "../../src/lib/tenant/errors.ts",
+    "../../src/lib/secrets.ts",
+    "../../src/lib/mongoose.ts",
+    "../../src/lib/skill-api/tenant-listing-filter.ts",
+    "../../src/lib/skill-api/errors.ts",
+    "../../src/lib/db/adapter.ts",
+    "../../src/lib/db/to-dto.ts",
+    "../../src/lib/db/mongo-adapter.ts",
+    "../../src/lib/db/postgres-adapter.ts",
+    "../../src/lib/db/schema/index.ts",
+    "../../src/lib/db/schema/listings.ts",
+    "../../src/lib/db/schema/contacts.ts",
+    "../../src/lib/db/schema/crm.ts",
+    "../../src/lib/db/schema/neighborhoods.ts",
+    "../../src/models/control/Tenant.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "../../src/**/__tests__/**"
+  ]
+}
