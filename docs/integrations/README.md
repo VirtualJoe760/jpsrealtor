@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-06-22
+last_verified: 2026-07-02
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -34,7 +34,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
-| **Twilio** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\twilio.ts` | SMS, MMS, 2FA codes, conversation history | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` | `/api/auth/2fa/*`, contact SMS threads, `/api/twilio/webhook` | E.164 required. Phone validation via Lookup API ($0.005/lookup) — gated. Lookup v1 (`client.lookups.v1`). |
+| **Twilio** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\twilio.ts` | SMS, MMS, 2FA codes, conversation history | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` | `/api/auth/2fa/*`, contact SMS threads, `/api/crm/sms/webhook`, `/api/crm/sms/status-webhook` | E.164 required. Phone validation via Lookup API ($0.005/lookup) — gated. Lookup v1 (`client.lookups.v1`). **Inbound + status webhooks verify `X-Twilio-Signature` via `twilio.validateRequest(TWILIO_AUTH_TOKEN, sig, url, params)` before any DB write — invalid/unsigned → 403.** URL is rebuilt from `x-forwarded-proto`/`x-forwarded-host` (Vercel proxies over http); the reconstructed https URL must match the one configured in the Twilio Console. |
 | **Resend** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\email-resend.ts` | Transactional email (verification, 2FA, password reset, lead welcome, agent approval, subscription emails) | `RESEND_API_KEY`, `EMAIL_FROM_DOMAIN`, `ADMIN_EMAIL` | Auth flows, lead intake, partner application | Lazy `getResendClient()` singleton. From-line is agent-branded when an agent is resolved: `"{agent.name} via ChatRealty <noreply@…>"`. Templates inline HTML with agent brand colors. |
 
 ### Payments
@@ -69,7 +69,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
 | **Thanks.io** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\thanksio.ts` | Direct mail (postcards, notecards, letters), radius search, mailing lists, webhooks | `THANKSIO_API_KEY`, `THANKSIO_TEST_MODE` | `/api/campaigns/*` postcard sends | Rate limit 60 req/min. Pricing table in module (e.g. `postcard_4x6 = $0.65`). Radius search $0.05/record. |
-| **Drop Cowboy** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\dropcowboy\campaign\route.ts` (inline; no shared lib) | Ringless voicemail delivery | `DROPCOWBOY_API_KEY`, `DROPCOWBOY_TEAM_ID`, `DROPCOWBOY_BRAND_ID` | Campaign send routes | Brand ID is per-campaign (see `docs/integrations/dropcowboy/BRAND_ID_GUIDE.md`). Audio URL must be publicly fetchable (we use Cloudinary). |
+| **Drop Cowboy** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\dropcowboy\campaign\route.ts` (inline; no shared lib) | Ringless voicemail delivery | `DROP_COWBOY_TEAM_ID`, `DROP_COWBOY_SECRET`, `DROPCOWBOY_WEBHOOK_SECRET` | Campaign send routes, `/api/webhooks/drop-cowboy`, `/api/webhooks/dropcowboy/rvm-status` | Brand ID is per-campaign (see `docs/integrations/dropcowboy/BRAND_ID_GUIDE.md`). Audio URL must be publicly fetchable (we use Cloudinary). Outbound auth uses `x-team-id`/`x-secret` headers. **DropCowboy offers NO webhook signing/HMAC — both status webhooks are gated by a shared secret (`DROPCOWBOY_WEBHOOK_SECRET`), checked constant-time from the `?secret=` query param or `x-webhook-secret` header before any DB write; missing/mismatched → 403. The secret must be set in env AND appended to the webhook URL configured in the DropCowboy dashboard.** |
 | **Follow Up Boss** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\services\fub-client.ts`, `fub-mapper.ts` | Lead sync (Zillow / other sources) into our `Contact` model | `FUB_API_KEY` | `src/scripts/fub/sync-fub-leads.py`, Contact import flows | Python cron does bulk pull; TS client + mapper handle ad-hoc lookups. |
 
 ### Geographic / Place data
@@ -121,6 +121,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 - **Cloudinary creds are hardcoded as fallbacks** in `cloudinary.ts` (cloud_name, key, secret). The `.env.local` values override, but if env vars are missing the lib still works against the production account. Treat as a smell, not a feature.
 - **Stripe API version is pinned** to `2025-12-15.clover`. Bumping requires re-testing all webhook handlers.
 - **Drop Cowboy has no shared lib wrapper** — the fetch + auth is inline in `src/app/api/dropcowboy/campaign/route.ts`. If we extract a helper, model it on `thanksio.ts`.
+- **Webhook auth is asymmetric across providers.** Twilio inbound/status webhooks are cryptographically verified (`X-Twilio-Signature`). DropCowboy has no signing mechanism, so its two webhooks fall back to a shared-secret gate (`DROPCOWBOY_WEBHOOK_SECRET`) — a weaker control that only works if the secret is actually set in env and configured on the DropCowboy webhook URL. If `DROPCOWBOY_WEBHOOK_SECRET` is unset, the DropCowboy webhooks reject **all** traffic (fail-closed), so delivery-status metrics silently stop updating until it's configured. **Env-var naming is inconsistent: send-side uses `DROP_COWBOY_TEAM_ID`/`DROP_COWBOY_SECRET` (underscore), the webhook secret is `DROPCOWBOY_WEBHOOK_SECRET` (no underscore) per the security-fix spec.**
 - **OpenCage, Yelp, API Ninjas, FRED — no shared wrappers either.** All inline in their respective route handlers. Fine for now; revisit if usage spreads.
 
 ## Reference implementations

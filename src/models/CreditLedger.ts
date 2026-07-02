@@ -77,6 +77,29 @@ export interface ICreditLedger extends Document {
   updatedAt: Date;
 }
 
+/** Input for the atomic conditional debit static. */
+export interface AtomicDebitInput {
+  userId: mongoose.Types.ObjectId;
+  amount: number;
+  type: CreditTransactionType;
+  description: string;
+  extra?: Partial<ICreditTransaction>;
+}
+
+export type AtomicDebitResult =
+  | { ok: true; ledger: ICreditLedger }
+  | { ok: false; reason: "no_ledger" | "insufficient"; balance: number };
+
+export interface ICreditLedgerModel extends Model<ICreditLedger> {
+  /**
+   * Atomically debit `amount` credits iff the current balance is sufficient.
+   * Uses a conditional filter + aggregation-pipeline update so two concurrent
+   * debits can never overspend (no read-then-write race). Mirrors the in-memory
+   * bookkeeping of the debitPoints() instance method.
+   */
+  debitAtomic(input: AtomicDebitInput): Promise<AtomicDebitResult>;
+}
+
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
@@ -184,10 +207,75 @@ CreditLedgerSchema.methods.debitPoints = function (
 };
 
 // ---------------------------------------------------------------------------
+// Static methods
+// ---------------------------------------------------------------------------
+
+CreditLedgerSchema.statics.debitAtomic = async function (
+  input: AtomicDebitInput
+): Promise<AtomicDebitResult> {
+  const { userId, amount, type, description, extra = {} } = input;
+  if (amount <= 0) throw new Error("Debit amount must be positive");
+
+  // Drop undefined keys so the raw pipeline update (no schema casting, unlike
+  // .save()) doesn't persist spurious null-ish fields like `channel: undefined`.
+  const cleanExtra: Record<string, any> = {};
+  for (const [k, v] of Object.entries(extra)) {
+    if (v !== undefined) cleanExtra[k] = v;
+  }
+
+  // Assemble the transaction subdoc up front. amount is stored negative for
+  // debits (same convention as debitPoints); balanceAfter is stamped by the
+  // pipeline from the post-decrement balance.
+  const txn: Record<string, any> = {
+    _id: new mongoose.Types.ObjectId(),
+    type,
+    amount: -amount,
+    description,
+    createdAt: new Date(),
+    ...cleanExtra,
+  };
+
+  // Conditional filter { balance: { $gte: amount } } guarantees the decrement
+  // only applies when funds are sufficient. Under concurrency, whichever debit
+  // commits first lowers the balance; a racing debit that would overspend no
+  // longer matches the filter and returns null — so the balance can never go
+  // negative.
+  const ledger = await this.findOneAndUpdate(
+    { userId, balance: { $gte: amount } },
+    [
+      {
+        $set: {
+          balance: { $subtract: ["$balance", amount] },
+          totalSpent: { $add: [{ $ifNull: ["$totalSpent", 0] }, amount] },
+        },
+      },
+      {
+        $set: {
+          transactions: {
+            $concatArrays: [
+              { $ifNull: ["$transactions", []] },
+              [{ $mergeObjects: [txn, { balanceAfter: "$balance" }] }],
+            ],
+          },
+        },
+      },
+    ],
+    { new: true }
+  );
+
+  if (ledger) return { ok: true, ledger };
+
+  // No match: distinguish "no ledger" from "insufficient balance" for callers.
+  const existing = await this.findOne({ userId }).select("balance").lean();
+  if (!existing) return { ok: false, reason: "no_ledger", balance: 0 };
+  return { ok: false, reason: "insufficient", balance: existing.balance };
+};
+
+// ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 
 const CreditLedger = (mongoose.models.CreditLedger ||
-  mongoose.model<ICreditLedger>("CreditLedger", CreditLedgerSchema)) as Model<ICreditLedger>;
+  mongoose.model<ICreditLedger>("CreditLedger", CreditLedgerSchema)) as ICreditLedgerModel;
 
 export default CreditLedger;

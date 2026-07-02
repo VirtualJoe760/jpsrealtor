@@ -38,7 +38,8 @@ export async function POST(
 
     await dbConnect();
 
-    const campaign = await Campaign.findById(id);
+    const userId = (session.user as any).id;
+    const campaign = await Campaign.findOne({ _id: id, userId });
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }

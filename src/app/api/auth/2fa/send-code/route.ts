@@ -8,9 +8,13 @@ import User from "@/models/User";
 import TwoFactorToken from "@/models/twoFactorToken";
 import { send2FACode } from "@/lib/email-resend";
 import { send2FACodeSMS } from "@/lib/twilio";
+import { clientIp } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
+
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +24,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
+      );
+    }
+
+    // Abuse/cost guard: this route sends SMS/email (real money + can be used to
+    // SMS-bomb a victim). Pre-login by necessity, so the middleware gate can't
+    // protect it. Limit per IP and per target email (5/10min each). A real user
+    // requesting a code once or twice never hits this. Either limit blocks.
+    const ip = clientIp(request) || "unknown";
+    const emailKey = email.toLowerCase();
+    const ipLimit = checkRateLimit(`2fa-send:ip:${ip}`, { max: 5, windowMs: TEN_MINUTES_MS });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { error: ipLimit.error },
+        { status: ipLimit.status, headers: { "Retry-After": String(ipLimit.retryAfter) } }
+      );
+    }
+    const emailLimit = checkRateLimit(`2fa-send:email:${emailKey}`, { max: 5, windowMs: TEN_MINUTES_MS });
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { error: emailLimit.error },
+        { status: emailLimit.status, headers: { "Retry-After": String(emailLimit.retryAfter) } }
       );
     }
 

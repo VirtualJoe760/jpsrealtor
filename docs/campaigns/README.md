@@ -1,7 +1,7 @@
 ---
 title: Campaigns & Multi-Tenant Advertising
 status: current
-last_verified: 2026-06-10
+last_verified: 2026-07-02
 related:
   - ../archive/campaigns/CAMPAIGNS_CURRENT_STATE.md
   - ../archive/multi-tenant/advertising/campaign-multi-tenant.md
@@ -24,6 +24,19 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
 
 ## Gotchas
 
+- **Every `campaigns/[id]/*` route must owner-scope the campaign load.** These
+  routes are session-gated by middleware, but that only proves *a* user is logged
+  in — not that they own campaign `[id]`. Loading a campaign with a bare
+  `Campaign.findById(id)` / `findByIdAndUpdate(id)` / `updateOne({_id:id})` is an
+  IDOR: any logged-in agent can read or mutate another agent's campaign by id.
+  Always scope to the owner — `Campaign.findOne({ _id: id, userId })` where
+  `userId = (session.user as any).id` — and return 404 when not found (this is the
+  pattern used by `send`, `contacts`, `send-simple`, etc.). Fixed 2026-07-02 in
+  `ad-runs` (GET+DELETE), `save-ads`, `send-mail`, `ad-status`, `ad-metrics`,
+  `spend-summary` (which had no campaign load at all — it queried
+  `AdCampaignRecord` by campaign id, so it now verifies ownership first), and
+  `launch-ads`. `route.ts` (DELETE) and `fund` were already safe via an explicit
+  post-load `campaign.userId` check.
 - **Per-agent creds must be threaded, not just stored.** Before Phase 1, agent
   campaigns silently ran on ChatRealty's account because the launch route never
   passed the agent's credentials to the API clients (Google) or overrode them

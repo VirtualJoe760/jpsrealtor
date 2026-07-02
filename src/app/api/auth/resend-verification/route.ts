@@ -7,6 +7,8 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
+import { clientIp } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
@@ -20,6 +22,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
+      );
+    }
+
+    // Email-spam guard: this route sends a verification email (cost + can be
+    // used to spam an inbox). Cap at 3/10min per target email and 10/10min per
+    // IP. On exceed, mirror the enumeration-safe 200 message below so we don't
+    // reveal whether the email belongs to a real, unverified account. A real
+    // user resending once or twice never trips this.
+    const emailKey = email.toLowerCase();
+    const ip = clientIp(request) || "unknown";
+    const ipLimit = checkRateLimit(`resend-verify:ip:${ip}`, { max: 10, windowMs: 10 * 60 * 1000 });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { error: ipLimit.error },
+        { status: ipLimit.status, headers: { "Retry-After": String(ipLimit.retryAfter) } }
+      );
+    }
+    const emailLimit = checkRateLimit(`resend-verify:email:${emailKey}`, { max: 3, windowMs: 10 * 60 * 1000 });
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { message: "If an account exists with this email, a verification email will be sent." },
+        { status: 200, headers: { "Retry-After": String(emailLimit.retryAfter) } }
       );
     }
 

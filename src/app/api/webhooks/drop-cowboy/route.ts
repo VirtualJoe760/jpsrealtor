@@ -1,9 +1,32 @@
 // app/api/webhooks/drop-cowboy/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import dbConnect from '@/lib/mongoose';
 import VoicemailScript from '@/models/VoicemailScript';
 import CampaignExecution from '@/models/CampaignExecution';
 import { Types } from 'mongoose';
+
+/**
+ * DropCowboy provides no request-signing / HMAC mechanism, so we gate the
+ * webhook with a shared secret. Configure the DropCowboy webhook URL with
+ * `?secret=<DROPCOWBOY_WEBHOOK_SECRET>` (or send it as an `x-webhook-secret`
+ * header). The secret must be set in env AND in the DropCowboy dashboard.
+ * Returns true when the request is authorized.
+ */
+function verifyDropCowboySecret(request: NextRequest): boolean {
+  const expected = process.env.DROPCOWBOY_WEBHOOK_SECRET;
+  if (!expected) {
+    console.error('[DropCowboy Webhook] DROPCOWBOY_WEBHOOK_SECRET not configured — rejecting request');
+    return false;
+  }
+  const provided =
+    request.headers.get('x-webhook-secret') ||
+    new URL(request.url).searchParams.get('secret') ||
+    '';
+  const expectedBuf = Buffer.from(expected);
+  const providedBuf = Buffer.from(provided);
+  return expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf);
+}
 
 /**
  * POST - Drop Cowboy Webhook Handler
@@ -13,6 +36,12 @@ export async function POST(request: NextRequest) {
   console.log('═══════════════════════════════════════════════════════════');
   console.log('📥 DROP COWBOY WEBHOOK - RECEIVED');
   console.log('═══════════════════════════════════════════════════════════');
+
+  // --- Reject unauthenticated requests BEFORE any DB mutation.
+  if (!verifyDropCowboySecret(request)) {
+    console.warn('⚠️ DropCowboy webhook rejected: invalid or missing shared secret');
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const body = await request.json();

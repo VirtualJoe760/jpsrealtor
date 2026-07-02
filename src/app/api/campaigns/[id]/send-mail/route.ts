@@ -45,10 +45,11 @@ export async function POST(
       }, { status: 400 });
     }
 
+    const userId = (session.user as any).id;
     const { id } = await params;
     await dbConnect();
 
-    const campaign = await Campaign.findById(id);
+    const campaign = await Campaign.findOne({ _id: id, userId });
     if (!campaign) {
       return NextResponse.json({ success: false, error: 'Campaign not found' }, { status: 404 });
     }
@@ -69,8 +70,6 @@ export async function POST(
       radiusRecordCount,
       radiusRecordTypes,
     } = body;
-
-    const userId = (session.user as any).id;
 
     // Build common params
     const commonParams: any = {

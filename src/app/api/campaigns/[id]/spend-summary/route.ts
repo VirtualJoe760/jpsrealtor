@@ -12,6 +12,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import AdCampaignRecord from '@/models/AdCampaignRecord';
+import Campaign from '@/models/Campaign';
 import mongoose from 'mongoose';
 
 interface PlatformBreakdown {
@@ -39,6 +40,17 @@ export async function GET(
     }
 
     await dbConnect();
+
+    // Verify the campaign exists and belongs to the requesting user before
+    // exposing its ad spend (IDOR guard — ad records are queried by campaign id).
+    const userId = (session.user as any).id;
+    const campaign = await Campaign.findOne({ _id: id, userId }, { _id: 1 }).lean();
+    if (!campaign) {
+      return NextResponse.json(
+        { success: false, error: 'Campaign not found' },
+        { status: 404 }
+      );
+    }
 
     const campaignObjectId = new mongoose.Types.ObjectId(id);
 

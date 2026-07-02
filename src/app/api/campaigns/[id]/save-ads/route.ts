@@ -20,6 +20,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = (session.user as any).id;
     const { id } = await params;
     await dbConnect();
 
@@ -60,8 +61,8 @@ export async function POST(
     // Store the page info on the campaign
     if (pageName) update.neighborhood = pageName;
 
-    const campaign = await Campaign.findByIdAndUpdate(
-      id,
+    const campaign = await Campaign.findOneAndUpdate(
+      { _id: id, userId },
       { $set: update },
       { new: true }
     );

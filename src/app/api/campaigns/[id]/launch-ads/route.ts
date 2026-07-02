@@ -33,7 +33,7 @@ export async function POST(
     const body = await request.json();
     const { pageUrl, pageName, google, meta, youtube } = body;
 
-    const campaign = await Campaign.findById(id);
+    const campaign = await Campaign.findOne({ _id: id, userId: (session.user as any).id });
     if (!campaign) {
       return NextResponse.json({ success: false, error: 'Campaign not found' }, { status: 404 });
     }

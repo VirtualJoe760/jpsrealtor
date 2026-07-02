@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import twilio from 'twilio';
 import connectDB from '@/lib/mongodb';
 import SMSMessage from '@/models/sms-message';
 import Contact from '@/models/Contact';
@@ -16,6 +17,19 @@ import { emitNewMessage, getIO } from '@/server/socket';
 import { sendSMSNotification } from '@/services/pushNotificationService';
 import { handleInboundQuery } from '@/lib/messaging/inbound-ai';
 
+/**
+ * Reconstruct the exact public URL Twilio signed the request against.
+ * On Vercel the request hits the app over http behind a proxy, so trust
+ * x-forwarded-proto / x-forwarded-host (falling back to host) to rebuild
+ * the https URL that was configured as the webhook.
+ */
+function getRequestUrl(request: NextRequest): string {
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const { pathname, search } = new URL(request.url);
+  return `${proto}://${host}${pathname}${search}`;
+}
+
 // ============================================================================
 // POST /api/crm/sms/webhook
 // Receive inbound SMS from Twilio
@@ -23,10 +37,36 @@ import { handleInboundQuery } from '@/lib/messaging/inbound-ai';
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
     // Parse Twilio's form data
     const formData = await request.formData();
+
+    // --- Verify the request actually came from Twilio (X-Twilio-Signature)
+    // BEFORE any DB connection/mutation. Rejects forged inbound SMS.
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const signature = request.headers.get('x-twilio-signature') || '';
+    const params: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      params[key] = typeof value === 'string' ? value : '';
+    });
+
+    if (!authToken) {
+      console.error('[Twilio Webhook] TWILIO_AUTH_TOKEN not configured — rejecting request');
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    const isValid = twilio.validateRequest(
+      authToken,
+      signature,
+      getRequestUrl(request),
+      params
+    );
+
+    if (!isValid) {
+      console.warn('[Twilio Webhook] ❌ Invalid Twilio signature — rejecting request');
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    await connectDB();
 
     const twilioData = {
       MessageSid: formData.get('MessageSid') as string,

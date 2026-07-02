@@ -28,7 +28,7 @@ export async function GET(
     const { id } = await params;
     await dbConnect();
 
-    const campaign = await Campaign.findById(id);
+    const campaign = await Campaign.findOne({ _id: id, userId: (session.user as any).id });
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
@@ -290,7 +290,7 @@ export async function DELETE(
     }
 
     await dbConnect();
-    const campaign = await Campaign.findById(id);
+    const campaign = await Campaign.findOne({ _id: id, userId: (session.user as any).id });
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }

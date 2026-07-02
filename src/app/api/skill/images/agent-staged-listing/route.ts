@@ -42,6 +42,72 @@ function bad(error: string, message: string, status = 400, details?: unknown) {
   return NextResponse.json({ error, message, details }, { status, headers: NO_STORE });
 }
 
+// Hosts we serve legitimate agent headshots from. Cloudinary is where the
+// Settings → Profile uploader stores headshots (folder jpsrealtor/headshots);
+// lh3.googleusercontent.com covers Google-auth profile photos.
+const HEADSHOT_HOST_ALLOWLIST = new Set([
+  "res.cloudinary.com",
+  "lh3.googleusercontent.com",
+]);
+
+// SSRF guard for the caller-supplied headshotUrl. Only https URLs whose
+// hostname is on the allowlist are permitted, and we defensively reject
+// internal/private/link-local targets (in case the allowlist ever grows to
+// cover a host that resolves internally, or a literal IP slips through).
+function isBlockedHostname(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, ""); // strip IPv6 brackets
+  if (
+    h === "localhost" ||
+    h === "0.0.0.0" ||
+    h === "::1" ||
+    h === "::" ||
+    h.endsWith(".localhost") ||
+    h.endsWith(".internal") ||
+    h.endsWith(".local")
+  ) {
+    return true;
+  }
+  // IPv4-mapped IPv6 (e.g. ::ffff:169.254.169.254) — pull out the v4 tail.
+  const mapped = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  const ipv4 = mapped ? mapped[1] : (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(h) ? h : null);
+  if (ipv4) {
+    const o = ipv4.split(".").map(Number);
+    if (o.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true;
+    if (o[0] === 127) return true;                                   // 127.0.0.0/8 loopback
+    if (o[0] === 10) return true;                                    // 10.0.0.0/8 private
+    if (o[0] === 172 && o[1] >= 16 && o[1] <= 31) return true;       // 172.16.0.0/12 private
+    if (o[0] === 192 && o[1] === 168) return true;                   // 192.168.0.0/16 private
+    if (o[0] === 169 && o[1] === 254) return true;                   // 169.254.0.0/16 link-local (cloud metadata)
+    if (o[0] === 0) return true;                                     // 0.0.0.0/8
+    return true; // any bare IP literal is not an expected headshot host
+  }
+  // Bare IPv6 literals (anything with a colon that wasn't a mapped v4) — block.
+  if (h.includes(":")) return true;
+  return false;
+}
+
+function validateHeadshotUrl(raw: string): { ok: true; url: string } | { ok: false; message: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { ok: false, message: "headshotUrl is not a valid URL." };
+  }
+  if (parsed.protocol !== "https:") {
+    return { ok: false, message: "headshotUrl must be an https URL." };
+  }
+  if (isBlockedHostname(parsed.hostname)) {
+    return { ok: false, message: "headshotUrl points at a disallowed (internal/private) host." };
+  }
+  if (!HEADSHOT_HOST_ALLOWLIST.has(parsed.hostname.toLowerCase())) {
+    return {
+      ok: false,
+      message: `headshotUrl host is not allowed. Allowed image hosts: ${[...HEADSHOT_HOST_ALLOWLIST].join(", ")}.`,
+    };
+  }
+  return { ok: true, url: parsed.toString() };
+}
+
 async function fetchAsBase64(url: string): Promise<{ base64: string; mimeType: string }> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Image fetch failed (${r.status}): ${url}`);
@@ -94,6 +160,15 @@ export async function POST(req: NextRequest) {
       );
     }
   }
+
+  // SSRF guard: only fetch headshots from allowlisted image hosts, never
+  // internal/private targets. Applies to both caller overrides and stored
+  // profile URLs before the server-side fetch below.
+  const headshotCheck = validateHeadshotUrl(headshotUrl);
+  if (headshotCheck.ok === false) {
+    return bad("invalid_headshot_url", headshotCheck.message);
+  }
+  headshotUrl = headshotCheck.url;
 
   // Fetch the listing photo URLs from the existing photos endpoint.
   // (Public route — fetches Spark in real time with hourly cache.)

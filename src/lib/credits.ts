@@ -145,20 +145,32 @@ export interface DebitInput {
 export async function debit(input: DebitInput): Promise<CreditBalance> {
   await dbConnect();
   const uid = typeof input.userId === "string" ? new mongoose.Types.ObjectId(input.userId) : input.userId;
-  const ledger = await CreditLedger.findOne({ userId: uid });
-  if (!ledger) throw new Error("No credit ledger found for user");
-  if (ledger.balance < input.amount) {
-    throw new Error(`Insufficient credits: needs ${input.amount}, has ${ledger.balance}`);
-  }
-  ledger.debitPoints(input.amount, input.type ?? "campaign_spend", input.description, {
-    channel: input.channel,
-    campaignId: toObjectId(input.campaignId),
-    partnershipId: toObjectId(input.partnershipId),
-    fundingId: toObjectId(input.fundingId),
-    adSpendValue: creditsToDollars(input.amount),
-    metadata: input.metadata,
+
+  // Atomic conditional debit (single findOneAndUpdate with a balance >= amount
+  // filter) so two concurrent debits can never overspend / drive the balance
+  // negative. The check-then-act read/save it replaces was double-spendable.
+  const result = await CreditLedger.debitAtomic({
+    userId: uid,
+    amount: input.amount,
+    type: input.type ?? "campaign_spend",
+    description: input.description,
+    extra: {
+      channel: input.channel,
+      campaignId: toObjectId(input.campaignId),
+      partnershipId: toObjectId(input.partnershipId),
+      fundingId: toObjectId(input.fundingId),
+      adSpendValue: creditsToDollars(input.amount),
+      metadata: input.metadata,
+    },
   });
-  await ledger.save();
+
+  if (result.ok === false) {
+    if (result.reason === "no_ledger") throw new Error("No credit ledger found for user");
+    // Preserve the historical "Insufficient credits" error message/shape.
+    throw new Error(`Insufficient credits: needs ${input.amount}, has ${result.balance}`);
+  }
+
+  const ledger = result.ledger;
   return {
     userId: uid.toString(),
     balance: ledger.balance,

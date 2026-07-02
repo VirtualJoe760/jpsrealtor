@@ -29,7 +29,8 @@ export async function GET(
     const { id } = await params;
     await dbConnect();
 
-    const campaign = await Campaign.findById(id).lean() as any;
+    const userId = (session.user as any).id;
+    const campaign = await Campaign.findOne({ _id: id, userId }).lean() as any;
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
