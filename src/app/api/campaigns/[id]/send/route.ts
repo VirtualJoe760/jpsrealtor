@@ -11,6 +11,7 @@ import User from '@/models/User';
 import CampaignExecution from '@/models/CampaignExecution';
 import PointsLedger from '@/models/PointsLedger';
 import { estimateVoicemailCredits, VOICEMAIL_DROP_CREDITS } from '@/config/credit-costs';
+import { isFreeTier } from '@/lib/subscription-helpers';
 import { Types } from 'mongoose';
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
@@ -49,6 +50,14 @@ export async function POST(
     }
 
     const user = session.user as any;
+
+    if (!user.isAdmin && (await isFreeTier(user.id))) {
+      return NextResponse.json(
+        { success: false, error: 'Voicemail campaigns require a paid plan.' },
+        { status: 403 }
+      );
+    }
+
     const userId = new Types.ObjectId(user.id);
     const { id: campaignId } = await params;
     const body = await request.json();

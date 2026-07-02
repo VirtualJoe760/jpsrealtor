@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
-import { STEPS, type SettingsStep } from "./SettingsStepIndicator";
+import { getVisibleSteps, type SettingsStep } from "./SettingsStepIndicator";
 import IdentityStep from "./steps/IdentityStep";
 import BrandingStep from "./steps/BrandingStep";
 import PhotosMediaStep from "./steps/PhotosMediaStep";
@@ -15,6 +16,7 @@ import ServiceAreasStep from "./steps/ServiceAreasStep";
 import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
+import BillingSettings from "./steps/BillingSettings";
 import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
 import MessagingSetup from "@/app/components/messaging/MessagingSetup";
 import EmailSetup from "@/app/components/messaging/EmailSetup";
@@ -22,13 +24,29 @@ import LegalSettings from "@/app/components/legal/LegalSettings";
 
 interface SettingsSidebarProps {
   initialData: any;
+  tier?: string;
+  isAdmin?: boolean;
 }
 
-export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
+export default function SettingsSidebar({
+  initialData,
+  tier = "free",
+  isAdmin = false,
+}: SettingsSidebarProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const visibleSteps = getVisibleSteps(tier, isAdmin);
+  const showPaid = isAdmin || tier !== "free";
 
-  const [activeSection, setActiveSection] = useState<SettingsStep>("identity");
+  // Deep-link support: /agent/settings?section=billing opens that section
+  // (used by the /agent/subscription → Settings redirect).
+  const searchParams = useSearchParams();
+  const requestedSection = searchParams.get("section");
+  const initialSection: SettingsStep =
+    requestedSection && visibleSteps.some((s) => s.id === requestedSection)
+      ? (requestedSection as SettingsStep)
+      : "identity";
+  const [activeSection, setActiveSection] = useState<SettingsStep>(initialSection);
   const [formData, setFormData] = useState<any>(initialData);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -103,34 +121,40 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
               </p>
             </div>
 
-            {/* AI Assistants — bring-your-own-key + desktop skill */}
+            {/* AI Assistants — bring-your-own-key + desktop skill (free) */}
             <IntegrationsStep {...stepProps} />
 
-            {/* Ad accounts — Google / Meta / GBP */}
-            <div className="pt-4">
-              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-                Ad accounts
-              </h3>
-              <AdAccountsSetup />
-            </div>
+            {/* Paid integrations — hidden on the free tier (ad accounts, text
+                messaging, and email each require a paid plan). */}
+            {showPaid && (
+              <>
+                {/* Ad accounts — Google / Meta / GBP */}
+                <div className="pt-4">
+                  <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                    Ad accounts
+                  </h3>
+                  <AdAccountsSetup />
+                </div>
 
-            {/* Text messaging — per-agent Twilio number */}
-            <div className="pt-4">
-              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-                Text messaging
-              </h3>
-              <MessagingSetup />
-            </div>
+                {/* Text messaging — per-agent Twilio number */}
+                <div className="pt-4">
+                  <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                    Text messaging
+                  </h3>
+                  <MessagingSetup />
+                </div>
 
-            {/* Email — per-agent Resend sending domain */}
-            <div className="pt-4">
-              <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-                Email
-              </h3>
-              <EmailSetup />
-            </div>
+                {/* Email — per-agent Resend sending domain */}
+                <div className="pt-4">
+                  <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                    Email
+                  </h3>
+                  <EmailSetup />
+                </div>
+              </>
+            )}
 
-            {/* Legal — auto-generated Terms & Privacy */}
+            {/* Legal — auto-generated Terms & Privacy (free) */}
             <div className="pt-4">
               <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
                 Legal
@@ -139,6 +163,8 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
             </div>
           </div>
         );
+      case "billing":
+        return <BillingSettings {...stepProps} />;
     }
   };
 
@@ -153,7 +179,7 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
         }`}
       >
         <ul className="space-y-1">
-          {STEPS.map((step) => {
+          {visibleSteps.map((step) => {
             const Icon = step.icon;
             const isActive = activeSection === step.id;
 
@@ -199,7 +225,7 @@ export default function SettingsSidebar({ initialData }: SettingsSidebarProps) {
               : "bg-gray-800 border-gray-700 text-white"
           }`}
         >
-          {STEPS.map((step) => (
+          {visibleSteps.map((step) => (
             <option key={step.id} value={step.id}>
               {step.label}
             </option>

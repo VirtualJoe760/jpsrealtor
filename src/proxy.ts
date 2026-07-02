@@ -339,9 +339,61 @@ async function handleAuthProtection(request: NextRequest, pathname: string) {
       );
     }
 
+    // Subscription + billing moved into Settings → Billing.
+    if (
+      isAuth &&
+      (pathname === "/agent/subscription" ||
+        pathname.startsWith("/agent/subscription/"))
+    ) {
+      const billingUrl = new URL("/agent/settings", request.url);
+      billingUrl.searchParams.set("section", "billing");
+      return NextResponse.redirect(billingUrl);
+    }
+
     // Non-admin trying to access admin routes → redirect to dashboard
     if (isAdmin && !token?.isAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    // Force newly-approved agents through the first-run setup wizard before
+    // they can use the rest of the /agent portal. Admins are exempt (they see
+    // everything). The wizard lives at /agent/settings, so exclude that path to
+    // avoid a redirect loop. Existing agents get backfilled to
+    // onboardingComplete=true (see docs/commerce/README.md).
+    if (
+      isAgent &&
+      isAuth &&
+      !(token as any)?.isAdmin &&
+      Array.isArray((token as any)?.roles) &&
+      (token as any).roles.includes("realEstateAgent") &&
+      (token as any)?.onboardingComplete === false &&
+      !pathname.startsWith("/agent/settings")
+    ) {
+      const onboardingUrl = new URL("/agent/settings", request.url);
+      onboardingUrl.searchParams.set("onboarding", "true");
+      return NextResponse.redirect(onboardingUrl);
+    }
+
+    // Free-tier agents can't reach the paid feature PAGES (defense-in-depth on
+    // top of the per-route API 403 guards). Admins + paid-tier agents pass
+    // through. Tier comes from the JWT (agentTier); a stale/undefined tier is
+    // NOT treated as free, so existing agents aren't wrongly bounced.
+    const PAID_AGENT_PATHS = [
+      "/agent/campaigns",
+      "/agent/messages",
+      "/agent/email",
+      "/agent/dashboard/domains",
+    ];
+    if (
+      isAgent &&
+      isAuth &&
+      !(token as any)?.isAdmin &&
+      (token as any)?.agentTier === "free" &&
+      PAID_AGENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
+    ) {
+      const billingUrl = new URL("/agent/settings", request.url);
+      billingUrl.searchParams.set("section", "billing");
+      return NextResponse.redirect(billingUrl);
     }
   }
 

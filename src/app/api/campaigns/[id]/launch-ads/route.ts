@@ -8,6 +8,7 @@ import { executeAdLaunch } from '@/lib/co-marketing/ad-launch';
 import PointsLedger from '@/models/PointsLedger';
 import { adBudgetToCredits } from '@/config/credit-costs';
 import mongoose from 'mongoose';
+import { isFreeTier } from '@/lib/subscription-helpers';
 
 /**
  * POST /api/campaigns/[id]/launch-ads
@@ -25,6 +26,14 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Launching ads is a paid-plan feature; block free-tier agents (admins exempt).
+    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+      return NextResponse.json(
+        { success: false, error: 'Campaigns require a paid plan.' },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;

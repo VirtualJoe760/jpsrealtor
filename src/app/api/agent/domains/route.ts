@@ -9,6 +9,7 @@ import DomainMapping from "@/models/DomainMapping";
 import Subdivision from "@/models/subdivisions";
 import User from "@/models/User";
 import { getDomainPurchaseUrl } from "@/services/vercel-domains";
+import { isFreeTier } from "@/lib/subscription-helpers";
 
 /**
  * GET /api/agent/domains
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest) {
   const user = await User.findOne({ email: session.user.email }).lean();
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Creating a custom domain mapping is a paid-plan feature; block free-tier agents (admins exempt).
+  if (!user.isAdmin && (await isFreeTier(String(user._id)))) {
+    return NextResponse.json(
+      { error: "Custom domains require a paid plan." },
+      { status: 403 }
+    );
   }
 
   const body = await req.json();

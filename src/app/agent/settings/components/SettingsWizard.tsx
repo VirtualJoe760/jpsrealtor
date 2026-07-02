@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
 import { ChevronLeft, ChevronRight, SkipForward, Save, X } from "lucide-react";
 import SettingsStepIndicator, {
-  STEPS,
+  getVisibleSteps,
   type SettingsStep,
 } from "./SettingsStepIndicator";
 import IdentityStep from "./steps/IdentityStep";
@@ -20,19 +21,24 @@ import ServiceAreasStep from "./steps/ServiceAreasStep";
 import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
-// BillingStep removed — billing is now in /agent/subscription
+import BillingSettings from "./steps/BillingSettings";
 
 interface SettingsWizardProps {
   initialData: any;
   isOnboarding?: boolean;
+  tier?: string;
+  isAdmin?: boolean;
 }
 
 export default function SettingsWizard({
   initialData,
   isOnboarding = false,
+  tier = "free",
+  isAdmin = false,
 }: SettingsWizardProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+  const { update: updateSession } = useSession();
 
   const [currentStep, setCurrentStep] = useState<SettingsStep>("identity");
   const [completedSteps, setCompletedSteps] = useState<SettingsStep[]>([]);
@@ -40,7 +46,8 @@ export default function SettingsWizard({
   const [isSaving, setIsSaving] = useState(false);
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
 
-  const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
+  const visibleSteps = getVisibleSteps(tier, isAdmin);
+  const currentIndex = visibleSteps.findIndex((s) => s.id === currentStep);
 
   const updateField = useCallback((path: string, value: any) => {
     setFormData((prev: any) => {
@@ -75,25 +82,45 @@ export default function SettingsWizard({
     }
   };
 
+  // Mark onboarding complete: persist the DB flag (drives the wizard gate in
+  // proxy.ts + wizard-vs-sidebar mode), refresh the JWT via session.update() so
+  // the middleware and nav see it without a re-login, then land on the sidebar
+  // settings view.
+  const completeOnboarding = async () => {
+    try {
+      await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentProfile: { onboardingComplete: true } }),
+      });
+      await updateSession();
+    } catch {
+      // Non-fatal — still let them into the portal.
+    }
+    localStorage.setItem("agent_settings_visited", "true");
+    localStorage.setItem("agent_settings_completed", "true");
+    window.location.href = "/agent/settings";
+  };
+
   const goNext = () => {
-    if (currentIndex < STEPS.length - 1) {
+    if (currentIndex < visibleSteps.length - 1) {
       if (!completedSteps.includes(currentStep)) {
         setCompletedSteps((prev) => [...prev, currentStep]);
       }
       setDirection(1);
-      setCurrentStep(STEPS[currentIndex + 1].id);
+      setCurrentStep(visibleSteps[currentIndex + 1].id);
     }
   };
 
   const goBack = () => {
     if (currentIndex > 0) {
       setDirection(-1);
-      setCurrentStep(STEPS[currentIndex - 1].id);
+      setCurrentStep(visibleSteps[currentIndex - 1].id);
     }
   };
 
   const goToStep = (step: SettingsStep) => {
-    const targetIndex = STEPS.findIndex((s) => s.id === step);
+    const targetIndex = visibleSteps.findIndex((s) => s.id === step);
     setDirection(targetIndex > currentIndex ? 1 : -1);
     setCurrentStep(step);
   };
@@ -135,10 +162,12 @@ export default function SettingsWizard({
         return <GoogleBusinessStep {...stepProps} />;
       case "integrations":
         return <IntegrationsStep {...stepProps} />;
+      case "billing":
+        return <BillingSettings {...stepProps} />;
     }
   };
 
-  const isLastStep = currentIndex === STEPS.length - 1;
+  const isLastStep = currentIndex === visibleSteps.length - 1;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -173,6 +202,7 @@ export default function SettingsWizard({
         currentStep={currentStep}
         completedSteps={completedSteps}
         onStepClick={goToStep}
+        steps={visibleSteps}
       />
 
       {/* Step Content */}
@@ -215,9 +245,7 @@ export default function SettingsWizard({
                     "Skip setup? You can come back and edit any of these settings later from /agent/settings."
                   )
                 ) {
-                  localStorage.setItem("agent_settings_visited", "true");
-                  localStorage.setItem("agent_settings_completed", "true");
-                  window.location.href = "/agent/settings";
+                  completeOnboarding();
                 }
               }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -252,9 +280,7 @@ export default function SettingsWizard({
                   setCompletedSteps((prev) => [...prev, currentStep]);
                 }
                 toast.success("Profile setup complete!");
-                localStorage.setItem("agent_settings_visited", "true");
-                localStorage.setItem("agent_settings_completed", "true");
-                window.location.href = "/agent/settings";
+                completeOnboarding();
               }}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-colors ${
                 isLight

@@ -6,6 +6,7 @@ import User from '@/models/User';
 import { debit, credit } from '@/lib/credits';
 import { EMAIL_SETUP_CREDITS } from '@/config/credits';
 import { createResendDomain, verifyResendDomain } from '@/lib/email-provision';
+import { isFreeTier } from '@/lib/subscription-helpers';
 
 function isPrimaryEmail(email?: string): boolean {
   const primary = (process.env.PRIMARY_AGENT_EMAIL || 'josephsardella@gmail.com').toLowerCase();
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     const userId = (session.user as any).id;
+    if (!(session.user as any).isAdmin && (await isFreeTier(userId))) {
+      return NextResponse.json({ success: false, error: 'Email requires a paid plan.' }, { status: 403 });
+    }
     await dbConnect();
 
     const { domain, fromAddress } = await request.json();

@@ -10,6 +10,7 @@ import dbConnect from "./mongoose";
 import User from "@/models/User";
 import { verifyTurnstile } from "./turnstile";
 import { checkRateLimit } from "./rate-limit";
+import { getAgentTier } from "./subscription-helpers";
 
 /**
  * Determine the cookie domain for session sharing.
@@ -167,7 +168,7 @@ export const authOptions: NextAuthOptions = {
       // For credentials provider, let the default behavior handle it
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       // Initial sign in
       if (account && user) {
         await dbConnect();
@@ -179,6 +180,24 @@ export const authOptions: NextAuthOptions = {
           token.isAdmin = dbUser.isAdmin;
           token.twoFactorEnabled = dbUser.twoFactorEnabled || false;
           token.requiresTwoFactor = (user as any).requiresTwoFactor || false;
+          // Agent tier + onboarding gate (see subscription-helpers.ts + proxy.ts).
+          token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
+          token.agentTier = await getAgentTier(String(dbUser._id));
+        }
+      }
+
+      // Refresh agent tier, onboarding status, and roles when the client calls
+      // session.update() — e.g. after finishing the setup wizard or changing
+      // plan — so the middleware gate + nav gating see fresh values without a
+      // full re-login.
+      if (trigger === "update" && token.id) {
+        await dbConnect();
+        const dbUser = await User.findById(token.id as string);
+        if (dbUser) {
+          token.roles = dbUser.roles;
+          token.isAdmin = dbUser.isAdmin;
+          token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
+          token.agentTier = await getAgentTier(String(dbUser._id));
         }
       }
 
@@ -200,6 +219,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isAdmin = token.isAdmin;
         (session.user as any).twoFactorEnabled = token.twoFactorEnabled;
         (session.user as any).requiresTwoFactor = token.requiresTwoFactor;
+        (session.user as any).agentTier = token.agentTier ?? "free";
+        (session.user as any).onboardingComplete = !!token.onboardingComplete;
         // Admin impersonation
         if (token.impersonatedBy) {
           (session.user as any).impersonatedBy = token.impersonatedBy;

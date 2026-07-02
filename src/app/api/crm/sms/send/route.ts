@@ -16,6 +16,7 @@ import { ensureBalance, debit } from '@/lib/credits';
 import { estimateSmsCredits } from '@/config/credits';
 import mongoose from 'mongoose';
 import { emitNewMessage } from '@/server/socket';
+import { isFreeTier } from '@/lib/subscription-helpers';
 
 // ============================================================================
 // POST /api/crm/sms/send
@@ -30,6 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Text messaging is a paid-plan feature; block free-tier agents (admins exempt).
+    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+      return NextResponse.json(
+        { success: false, error: 'Text messaging requires a paid plan.' },
+        { status: 403 }
       );
     }
 

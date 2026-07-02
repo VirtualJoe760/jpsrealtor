@@ -52,11 +52,16 @@ function SettingsContent() {
       fetchProfile();
       localStorage.setItem("agent_settings_visited", "true");
 
-      // Determine mode: wizard for first-time or explicit onboarding
-      const hasCompleted = localStorage.getItem("agent_settings_completed") === "true";
-      setIsWizardMode(isOnboardingParam || !hasCompleted);
+      // Determine mode: wizard for explicit ?onboarding=true, or when the DB
+      // onboarding flag (session.user.onboardingComplete) is explicitly false
+      // and they haven't completed locally. Existing agents whose JWT predates
+      // the flag (undefined) fall through to sidebar mode — the localStorage
+      // flag is the fallback for them.
+      const notOnboarded = (session?.user as any)?.onboardingComplete === false;
+      const lsComplete = localStorage.getItem("agent_settings_completed") === "true";
+      setIsWizardMode(isOnboardingParam || (notOnboarded && !lsComplete));
     }
-  }, [status, isOnboardingParam]);
+  }, [status, isOnboardingParam, session]);
 
   if (status === "loading" || isLoading) {
     return (
@@ -81,6 +86,8 @@ function SettingsContent() {
     router.push("/");
     return null;
   }
+  const agentTier = user?.agentTier || "free";
+  const isAdmin = !!user?.isAdmin;
 
   if (!profileData) {
     return (
@@ -126,9 +133,15 @@ function SettingsContent() {
             <SettingsWizard
               initialData={profileData}
               isOnboarding={true}
+              tier={agentTier}
+              isAdmin={isAdmin}
             />
           ) : (
-            <SettingsSidebar initialData={profileData} />
+            <SettingsSidebar
+              initialData={profileData}
+              tier={agentTier}
+              isAdmin={isAdmin}
+            />
           )}
         </div>
       </div>

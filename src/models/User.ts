@@ -68,6 +68,10 @@ export interface IUser extends Document {
 
   // MULTI-TENANT: Agent Profile (comprehensive landing page data)
   agentProfile?: {
+    // Onboarding: true once the agent completes the first-run setup wizard.
+    // Drives the forced-wizard gate (src/proxy.ts) + wizard-vs-sidebar mode.
+    onboardingComplete?: boolean;
+
     // Photos & Media
     headshot?: string; // Primary profile photo (Cloudinary URL)
     headshotTransparent?: string; // Transparent background headshot for OG images (Cloudinary URL)
@@ -691,6 +695,9 @@ const UserSchema = new Schema<IUser>(
 
     // MULTI-TENANT: Agent Profile
     agentProfile: {
+      // Onboarding gate (see IUser interface): set true when the setup wizard finishes.
+      onboardingComplete: { type: Boolean, default: false },
+
       // Photos & Media
       headshot: String,
       headshotTransparent: String,

@@ -1,8 +1,8 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-05-21
-related: [../auth/README.md, ../multi-tenant/README.md]
+last_verified: 2026-07-02
+related: [./free-tier-gating.md, ../auth/README.md, ../multi-tenant/README.md]
 supersedes: docs/STRIPE_BILLING_SYSTEM.md
 ---
 
@@ -57,6 +57,13 @@ Tier pricing, feature limits, and credit allocation are all set by the
 
 Annual pricing is defined (`monthlyPrice * ~9.6`) but Stripe annual price IDs
 are still placeholders — `STRIPE_PRICES.beginner.annual` etc. are `price_PLACEHOLDER_...`.
+
+**Feature gating by tier:** only the **Free** tier is purchasable today; paid tiers are shown
+"Coming soon". New agents are forced through the setup wizard (with a plan step) on first run, and
+free-tier agents get a reduced nav + Settings with Email / Messages / Campaigns hidden **and** blocked
+server-side. The one rule is `hidePaid = isFreeTier && !isAdmin` (admins + paid agents see everything).
+Full gating map, onboarding-wizard flow, and the server-side 403 route guards live in
+[`free-tier-gating.md`](./free-tier-gating.md). Tier resolver: `src/lib/subscription-helpers.ts`.
 
 **Admin bypass:** users with `roles: ["admin"]` skip Stripe entirely. The
 checkout route upserts an `AgentSubscription` with `tier: "topagent"`,
@@ -257,6 +264,7 @@ any new Stripe integration in this repo.
 
 ## Related
 
+- `./free-tier-gating.md` — free-tier feature gating, forced onboarding wizard, and server-side 403 guards.
 - `../auth/README.md` — agent application phases that gate Stripe Identity.
 - `../multi-tenant/README.md` — domain ownership vs. session user, relevant when scoping subscription-related UI.
 - `../crm/README.md` — Partnership integrations, contact campaign history.

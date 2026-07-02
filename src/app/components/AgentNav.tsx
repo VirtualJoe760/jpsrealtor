@@ -20,12 +20,15 @@ export default function AgentNav() {
   const isLight = currentTheme === "lightgradient";
   const user = session?.user as any;
   const isTeamLeader = user?.isTeamLeader;
+  const agentTier = user?.agentTier || "free";
+  const isAdmin = !!user?.isAdmin;
 
   // Mobile menu state
   const { isOpen, toggle, close } = useMobileMenu();
 
-  // Navigation items
-  const allNavItems = getNavItems(isTeamLeader);
+  // Navigation items — free-tier agents don't see Email/Messages/Campaigns;
+  // Subscription lives under Settings → Billing.
+  const allNavItems = getNavItems(isTeamLeader, agentTier, isAdmin);
   const visibleNavItems = getVisibleNavItems(allNavItems);
 
   return (

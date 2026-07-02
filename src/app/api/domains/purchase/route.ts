@@ -10,6 +10,7 @@ import {
   addDomainToProject,
 } from "@/lib/vercel-domains";
 import { runDomainOnboarding } from "@/lib/domain-onboarding";
+import { isFreeTier } from "@/lib/subscription-helpers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
     if (!hasPermission) {
       return NextResponse.json(
         { error: "Forbidden - Admin or agent role required" },
+        { status: 403 }
+      );
+    }
+
+    // Buying a custom domain is a paid-plan feature; block free-tier agents (admins exempt).
+    if (!user.isAdmin && (await isFreeTier(String(user._id)))) {
+      return NextResponse.json(
+        { error: "Custom domains require a paid plan." },
         { status: 403 }
       );
     }

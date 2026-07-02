@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Building2,
   Plug,
+  CreditCard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -28,43 +29,68 @@ export type SettingsStep =
   | "areas"
   | "calendar"
   | "gbp"
-  | "integrations";
+  | "integrations"
+  | "billing";
+
+export interface SettingsStepDef {
+  id: SettingsStep;
+  label: string;
+  icon: LucideIcon;
+  /** Hidden from free-tier non-admin agents (paid-only feature). */
+  paidOnly?: boolean;
+}
 
 interface SettingsStepIndicatorProps {
   currentStep: SettingsStep;
   completedSteps: SettingsStep[];
   onStepClick?: (step: SettingsStep) => void;
+  /** Steps to render (defaults to all). Callers pass the tier-filtered list. */
+  steps?: SettingsStepDef[];
 }
 
-const STEPS: { id: SettingsStep; label: string; icon: LucideIcon }[] = [
+const STEPS: SettingsStepDef[] = [
   { id: "identity", label: "Identity", icon: UserCircle },
   { id: "branding", label: "Branding", icon: Palette },
   { id: "photos", label: "Photos", icon: Camera },
   { id: "content", label: "Content", icon: FileText },
   { id: "highlights", label: "Highlights", icon: Sparkles },
   { id: "social", label: "Social", icon: Share2 },
-  { id: "domain", label: "Domain & SEO", icon: Globe },
+  { id: "domain", label: "Domain & SEO", icon: Globe, paidOnly: true },
   { id: "areas", label: "Service Areas", icon: MapPin },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "gbp", label: "Google Business", icon: Building2 },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "billing", label: "Billing", icon: CreditCard },
 ];
 
 export { STEPS };
+
+/**
+ * Steps visible for a given tier. Free-tier non-admins don't see paid-only
+ * sections (Domain & SEO); admins + paid agents see everything.
+ */
+export function getVisibleSteps(
+  tier: string = "free",
+  isAdmin = false,
+): SettingsStepDef[] {
+  const showPaid = isAdmin || tier !== "free";
+  return STEPS.filter((s) => showPaid || !s.paidOnly);
+}
 
 export default function SettingsStepIndicator({
   currentStep,
   completedSteps,
   onStepClick,
+  steps = STEPS,
 }: SettingsStepIndicatorProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
-  const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
+  const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
     <div className="w-full py-4 overflow-x-auto">
       <div className="flex items-center justify-between min-w-[640px]">
-        {STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = step.id === currentStep;
           const isPast = index < currentIndex;
@@ -132,7 +158,7 @@ export default function SettingsStepIndicator({
               </div>
 
               {/* Connector Line */}
-              {index < STEPS.length - 1 && (
+              {index < steps.length - 1 && (
                 <div
                   className="flex-1 h-0.5 mx-3 relative"
                   style={{ top: "-12px" }}

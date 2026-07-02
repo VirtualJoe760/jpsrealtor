@@ -5,6 +5,7 @@ import dbConnect from '@/lib/mongoose';
 import PointsLedger from '@/models/PointsLedger';
 import { estimateVoicemailCredits, VOICEMAIL_DROP_CREDITS } from '@/config/credit-costs';
 import { Types } from 'mongoose';
+import { isFreeTier } from '@/lib/subscription-helpers';
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
 const DROP_COWBOY_SECRET = process.env.DROP_COWBOY_SECRET;
@@ -106,25 +107,32 @@ export async function POST(req: NextRequest) {
     // NOTE: This legacy route may be called without session auth context.
     // If no session is available, credit checking is skipped — consider
     // migrating callers to the authenticated campaign send routes.
+    // Require an authenticated session — this legacy route sends real (paid)
+    // voicemail drops, so it must never fire without a billed, entitled agent.
     const session = await getServerSession(authOptions);
-    let ledger: any = null;
-    let userId: Types.ObjectId | null = null;
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (session?.user) {
-      await dbConnect();
-      userId = new Types.ObjectId((session.user as any).id);
-      const totalCreditsNeeded = estimateVoicemailCredits(contacts.length);
-      ledger = await PointsLedger.findOne({ userId });
-      if (!ledger || ledger.balance < totalCreditsNeeded) {
-        return NextResponse.json({
-          success: false,
-          error: `Insufficient credits. Need ${totalCreditsNeeded} credits, have ${ledger?.balance || 0}.`,
-          creditsRequired: totalCreditsNeeded,
-          creditsAvailable: ledger?.balance || 0,
-        }, { status: 400 });
-      }
-    } else {
-      console.warn('⚠️ No authenticated session — skipping credit balance check');
+    // Voicemail drops are a paid-plan feature; block free-tier agents (admins exempt).
+    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+      return NextResponse.json(
+        { error: 'Voicemail campaigns require a paid plan.' },
+        { status: 403 }
+      );
+    }
+
+    await dbConnect();
+    const userId = new Types.ObjectId((session.user as any).id);
+    const totalCreditsNeeded = estimateVoicemailCredits(contacts.length);
+    const ledger = await PointsLedger.findOne({ userId });
+    if (!ledger || ledger.balance < totalCreditsNeeded) {
+      return NextResponse.json({
+        success: false,
+        error: `Insufficient credits. Need ${totalCreditsNeeded} credits, have ${ledger?.balance || 0}.`,
+        creditsRequired: totalCreditsNeeded,
+        creditsAvailable: ledger?.balance || 0,
+      }, { status: 400 });
     }
 
     // Step 1: Upload audio to Drop Cowboy

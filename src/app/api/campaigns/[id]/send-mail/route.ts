@@ -17,6 +17,7 @@ import {
   type RadiusSearch,
 } from '@/lib/thanksio';
 import PointsLedger from '@/models/PointsLedger';
+import { isFreeTier } from '@/lib/subscription-helpers';
 import {
   estimateDirectMailCredits,
   DIRECT_MAIL_CREDITS,
@@ -36,6 +37,10 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+      return NextResponse.json({ success: false, error: 'Direct mail requires a paid plan.' }, { status: 403 });
     }
 
     if (!isThanksioConfigured()) {

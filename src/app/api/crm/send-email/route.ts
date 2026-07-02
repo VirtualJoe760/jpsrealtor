@@ -18,6 +18,7 @@ import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
 import { ensureBalance, debit } from '@/lib/credits';
 import { EMAIL_SEND_CREDITS } from '@/config/credits';
+import { isFreeTier } from '@/lib/subscription-helpers';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -31,6 +32,14 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Email sending is a paid-plan feature; block free-tier agents (admins exempt).
+    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+      return NextResponse.json(
+        { success: false, error: 'Email sending requires a paid plan.' },
+        { status: 403 }
+      );
     }
 
     // --- Parse input (JSON or multipart from the composer) ---
