@@ -289,6 +289,7 @@ export interface IUnifiedListing extends Document {
   // /api/cma/generate endpoint (1–20s). Schema documented in
   // docs/cma/LISTING_CMA_BACKEND_BUILDER.md.
   cmaStats?: any;
+  cashflowStats?: any;
 
   // Agent & Office
   listAgentId?: string;
@@ -484,6 +485,11 @@ const UnifiedListingSchema = new Schema<IUnifiedListing>(
     // declared, Mongoose's strict mode silently drops it on every read.
     cmaStats: { type: Schema.Types.Mixed },
 
+    // Rental investment cash-flow stats (pre-computed by the VPS cron: rent
+    // estimate + financing/expense math for 20%/25%-down scenarios + fixedCosts
+    // for query-time re-derivation). Mixed so strict mode doesn't drop it.
+    cashflowStats: { type: Schema.Types.Mixed },
+
     // Agent & Office
     listAgentId: String,
     listAgentKey: String,
@@ -558,6 +564,10 @@ UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType
 UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bedroomsTotal: 1 });
 UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bathsTotal: 1 });
 UnifiedListingSchema.index({ subdivisionName: 1, standardStatus: 1, propertyType: 1, bathroomsTotalInteger: 1 });
+
+// Cash-flow scan: filter by area + sort by monthly cash flow (20% down).
+UnifiedListingSchema.index({ city: 1, "cashflowStats.scenarios.down20.monthlyCashflow": -1 }, { name: "city_cashflow20" });
+UnifiedListingSchema.index({ postalCode: 1, "cashflowStats.scenarios.down20.monthlyCashflow": -1 }, { name: "zip_cashflow20" });
 
 // -----------------------------
 // Model Export

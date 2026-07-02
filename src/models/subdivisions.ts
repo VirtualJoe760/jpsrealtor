@@ -128,6 +128,7 @@ export interface ISubdivision extends Document {
   };
 
   // === CMA STATS (Pre-computed by VPS nightly cron) ===
+  rentStats?: any; // rental "going rate" stats (pre-computed by VPS cron)
   cmaStats?: {
     lastUpdated: Date;
     sampleWindow: {
@@ -323,6 +324,10 @@ const SubdivisionSchema = new Schema<ISubdivision>(
 
     // === CMA STATS (Pre-computed by VPS nightly cron) ===
     cmaStats: { type: Schema.Types.Mixed },
+
+    // Rental "going rate" stats (pre-computed by the VPS cron). Mixed so strict
+    // mode doesn't drop it on .lean() reads.
+    rentStats: { type: Schema.Types.Mixed },
 
     // Data sources
     mlsSources: { type: [String], required: true, default: [] },

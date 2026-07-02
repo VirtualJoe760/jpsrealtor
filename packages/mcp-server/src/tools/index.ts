@@ -5,11 +5,15 @@
 // docs/mcp/tools.md) for readability.
 
 import type { ToolDef } from "./types.js";
+import { toolsForTier as toolsForTierImpl, type Tier } from "../tiers.js";
 import { whoami } from "./whoami.js";
 import { my_agent_profile } from "./my_agent_profile.js";
 import { my_stats } from "./my_stats.js";
 import { search_listings } from "./search_listings.js";
 import { show_listing_board } from "./show_listing_board.js";
+import { find_cashflowing_listings } from "./find_cashflowing_listings.js";
+import { get_going_rate } from "./get_going_rate.js";
+import { analyze_listing_cashflow } from "./analyze_listing_cashflow.js";
 import { get_listing } from "./get_listing.js";
 import { get_listing_photos } from "./get_listing_photos.js";
 import { find_comparables } from "./find_comparables.js";
@@ -32,9 +36,11 @@ import { my_recent_leads } from "./my_recent_leads.js";
 import { post_instagram_carousel } from "./post_instagram_carousel.js";
 import { stage_listing_with_agent } from "./stage_listing_with_agent.js";
 import { create_listing_cover } from "./create_listing_cover.js";
+import { get_build_guide } from "./get_build_guide.js";
 
-// Agent meta
-const META: ToolDef[] = [whoami, my_agent_profile, my_stats];
+// Agent meta. `get_build_guide` is documentation (no PII, no network) and is
+// exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
+const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide];
 
 // MLS / Listings
 const MLS: ToolDef[] = [
@@ -44,6 +50,13 @@ const MLS: ToolDef[] = [
   get_listing_photos,
   find_comparables,
   search_closed_listings,
+];
+
+// Rental investment / cash-flow (reads VPS-precomputed cashflowStats + rent_rates).
+const INVESTMENT: ToolDef[] = [
+  find_cashflowing_listings,
+  get_going_rate,
+  analyze_listing_cashflow,
 ];
 
 // Market data
@@ -95,6 +108,7 @@ const SOCIAL: ToolDef[] = [post_instagram_carousel];
 export const ALL_TOOLS: ToolDef[] = [
   ...META,
   ...MLS,
+  ...INVESTMENT,
   ...MARKET,
   ...CMS_LP,
   ...CMS_ARTICLES,
@@ -105,6 +119,39 @@ export const ALL_TOOLS: ToolDef[] = [
 
 export function toolByName(name: string): ToolDef | undefined {
   return ALL_TOOLS.find((t) => t.name === name);
+}
+
+// --- Two-tier exposure (build_plan §6.7) -----------------------------------
+// Re-export the tier filter + build-guide resource helpers so the stdio server
+// (index.ts) and the hosted bridge (mcp-tool-bridge.ts) import the tier surface
+// from one place. The registry above is the input to `toolsForTier`.
+export {
+  type Tier,
+  TIERS,
+  DEFAULT_TIER,
+  RESEARCH_TOOL_NAMES,
+  MARKETING_TOOL_NAMES,
+  isMarketingTool,
+  isToolAllowedForTier,
+  toolsForTier,
+  resolveTierFromEnv,
+  tierFromScopes,
+} from "../tiers.js";
+
+export {
+  BUILD_GUIDE_URI,
+  BUILD_GUIDE_URI_PREFIX,
+  BUILD_GUIDE_MIME,
+  listGuideResources,
+  isGuideUri,
+  readGuideResource,
+} from "../build-guide/resource.js";
+
+export { BUILD_GUIDE_PROMPTS, getBuildGuidePrompt } from "../build-guide/prompts.js";
+
+/** The tools a given tier exposes — convenience over `toolsForTier(ALL_TOOLS, tier)`. */
+export function toolsForTierFromRegistry(tier: Tier): ToolDef[] {
+  return toolsForTierImpl(ALL_TOOLS, tier);
 }
 
 // Server-level guidance surfaced to the MCP client (Claude) at initialize.

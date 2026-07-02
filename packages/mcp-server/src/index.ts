@@ -27,6 +27,17 @@ import {
 import { loadConfig } from "./config.js";
 import { ALL_TOOLS, toolByName, SERVER_INSTRUCTIONS } from "./tools/index.js";
 import { LISTING_BOARD_URI, LISTING_BOARD_MIME, LISTING_BOARD_HTML } from "./ui/listing-board.js";
+import {
+  resolveTierFromEnv,
+  toolsForTier,
+  isToolAllowedForTier,
+  type Tier,
+} from "./tiers.js";
+import {
+  listGuideResources,
+  isGuideUri,
+  readGuideResource,
+} from "./build-guide/resource.js";
 import { HttpError } from "./http.js";
 
 const PKG_NAME = "@chatrealty/mcp-server";
@@ -42,6 +53,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Tier for this stdio process. Agent by default; CHATREALTY_TIER=research
+  // selects the read-only client-research surface (tiers.ts). The hosted bridge
+  // derives the tier from OAuth scopes instead.
+  const tier: Tier = resolveTierFromEnv();
+  const visibleTools = toolsForTier(ALL_TOOLS, tier);
+
   const server = new Server(
     {
       name: PKG_NAME,
@@ -56,10 +73,11 @@ async function main(): Promise<void> {
     }
   );
 
-  // tools/list — advertise the MCP App UI resource for tools that have one.
+  // tools/list — only the tools allowed for this tier; advertise the MCP App UI
+  // resource for tools that have one.
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      tools: ALL_TOOLS.map((t) => ({
+      tools: visibleTools.map((t) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema as any,
@@ -70,19 +88,26 @@ async function main(): Promise<void> {
     };
   });
 
-  // resources/list + resources/read — serve the MCP App UI (listing board).
+  // resources/list + resources/read — serve the MCP App UI (listing board) and
+  // the build-guide prompts (guide://chatrealty/*).
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
     resources: [
       { uri: LISTING_BOARD_URI, name: "ChatRealty Listing Board", mimeType: LISTING_BOARD_MIME },
+      ...listGuideResources(),
     ],
   }));
   server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
-    if (req.params.uri !== LISTING_BOARD_URI) {
-      throw new Error(`Unknown resource: ${req.params.uri}`);
+    if (req.params.uri === LISTING_BOARD_URI) {
+      return {
+        contents: [{ uri: LISTING_BOARD_URI, mimeType: LISTING_BOARD_MIME, text: LISTING_BOARD_HTML }],
+      };
     }
-    return {
-      contents: [{ uri: LISTING_BOARD_URI, mimeType: LISTING_BOARD_MIME, text: LISTING_BOARD_HTML }],
-    };
+    if (isGuideUri(req.params.uri)) {
+      const doc = readGuideResource(req.params.uri);
+      if (!doc) throw new Error(`Unknown resource: ${req.params.uri}`);
+      return { contents: [{ uri: doc.uri, mimeType: doc.mimeType, text: doc.text }] };
+    }
+    throw new Error(`Unknown resource: ${req.params.uri}`);
   });
 
   // tools/call
@@ -91,6 +116,11 @@ async function main(): Promise<void> {
     const tool = toolByName(name);
     if (!tool) {
       return errorResult("not_found", `Unknown tool: ${name}`);
+    }
+    // Defense in depth: even though tools/list is already filtered, reject a
+    // call to a tool this tier may not use (a client could call by name).
+    if (!isToolAllowedForTier(name, tier)) {
+      return errorResult("forbidden", `Tool "${name}" is not available on the "${tier}" tier.`);
     }
 
     try {

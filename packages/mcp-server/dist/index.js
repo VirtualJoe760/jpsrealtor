@@ -22,6 +22,8 @@ const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const config_js_1 = require("./config.js");
 const index_js_2 = require("./tools/index.js");
 const listing_board_js_1 = require("./ui/listing-board.js");
+const tiers_js_1 = require("./tiers.js");
+const resource_js_1 = require("./build-guide/resource.js");
 const http_js_1 = require("./http.js");
 const PKG_NAME = "@chatrealty/mcp-server";
 const PKG_VERSION = "0.8.0";
@@ -35,6 +37,11 @@ async function main() {
         process.stderr.write(`[${PKG_NAME}] ${err?.message || err}\n`);
         process.exit(1);
     }
+    // Tier for this stdio process. Agent by default; CHATREALTY_TIER=research
+    // selects the read-only client-research surface (tiers.ts). The hosted bridge
+    // derives the tier from OAuth scopes instead.
+    const tier = (0, tiers_js_1.resolveTierFromEnv)();
+    const visibleTools = (0, tiers_js_1.toolsForTier)(index_js_2.ALL_TOOLS, tier);
     const server = new index_js_1.Server({
         name: PKG_NAME,
         version: PKG_VERSION,
@@ -45,10 +52,11 @@ async function main() {
         },
         instructions: index_js_2.SERVER_INSTRUCTIONS,
     });
-    // tools/list — advertise the MCP App UI resource for tools that have one.
+    // tools/list — only the tools allowed for this tier; advertise the MCP App UI
+    // resource for tools that have one.
     server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => {
         return {
-            tools: index_js_2.ALL_TOOLS.map((t) => ({
+            tools: visibleTools.map((t) => ({
                 name: t.name,
                 description: t.description,
                 inputSchema: t.inputSchema,
@@ -58,19 +66,27 @@ async function main() {
             })),
         };
     });
-    // resources/list + resources/read — serve the MCP App UI (listing board).
+    // resources/list + resources/read — serve the MCP App UI (listing board) and
+    // the build-guide prompts (guide://chatrealty/*).
     server.setRequestHandler(types_js_1.ListResourcesRequestSchema, async () => ({
         resources: [
             { uri: listing_board_js_1.LISTING_BOARD_URI, name: "ChatRealty Listing Board", mimeType: listing_board_js_1.LISTING_BOARD_MIME },
+            ...(0, resource_js_1.listGuideResources)(),
         ],
     }));
     server.setRequestHandler(types_js_1.ReadResourceRequestSchema, async (req) => {
-        if (req.params.uri !== listing_board_js_1.LISTING_BOARD_URI) {
-            throw new Error(`Unknown resource: ${req.params.uri}`);
+        if (req.params.uri === listing_board_js_1.LISTING_BOARD_URI) {
+            return {
+                contents: [{ uri: listing_board_js_1.LISTING_BOARD_URI, mimeType: listing_board_js_1.LISTING_BOARD_MIME, text: listing_board_js_1.LISTING_BOARD_HTML }],
+            };
         }
-        return {
-            contents: [{ uri: listing_board_js_1.LISTING_BOARD_URI, mimeType: listing_board_js_1.LISTING_BOARD_MIME, text: listing_board_js_1.LISTING_BOARD_HTML }],
-        };
+        if ((0, resource_js_1.isGuideUri)(req.params.uri)) {
+            const doc = (0, resource_js_1.readGuideResource)(req.params.uri);
+            if (!doc)
+                throw new Error(`Unknown resource: ${req.params.uri}`);
+            return { contents: [{ uri: doc.uri, mimeType: doc.mimeType, text: doc.text }] };
+        }
+        throw new Error(`Unknown resource: ${req.params.uri}`);
     });
     // tools/call
     server.setRequestHandler(types_js_1.CallToolRequestSchema, async (req) => {
@@ -78,6 +94,11 @@ async function main() {
         const tool = (0, index_js_2.toolByName)(name);
         if (!tool) {
             return errorResult("not_found", `Unknown tool: ${name}`);
+        }
+        // Defense in depth: even though tools/list is already filtered, reject a
+        // call to a tool this tier may not use (a client could call by name).
+        if (!(0, tiers_js_1.isToolAllowedForTier)(name, tier)) {
+            return errorResult("forbidden", `Tool "${name}" is not available on the "${tier}" tier.`);
         }
         try {
             const result = await tool.handler((args || {}), config);

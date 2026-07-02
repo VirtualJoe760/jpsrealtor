@@ -1,0 +1,29 @@
+"use strict";
+// packages/mcp-server/src/tools/get_going_rate.ts
+//
+// Market "going rate" for rentals in an area (pre-computed). Subdivision
+// rentStats first, else ZIP rent_rates.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.get_going_rate = void 0;
+const http_js_1 = require("../http.js");
+exports.get_going_rate = {
+    name: "get_going_rate",
+    description: "Get the market GOING RATE for rentals in an area — median rent, a by-bedroom breakdown, rent-per-sqft, sample size, and a confidence flag — from pre-computed data (closed/rented leases). Pass a postalCode (near-universal coverage, most reliable) and/or a subdivision. Use for 'what does X rent for' / 'rental rates in X'. This is LONG-TERM ANNUAL rent; furnished seasonal rates are tracked separately (call it out if the user asks about seasonal/vacation rentals).",
+    inputSchema: {
+        type: "object",
+        properties: {
+            postalCode: { type: "string", description: "ZIP code — the most reliable area key." },
+            subdivision: { type: "string", description: 'Subdivision name or slug, e.g. "Indian Wells Country Club".' },
+            city: { type: "string" },
+        },
+        additionalProperties: false,
+    },
+    async handler(input, config) {
+        const q = {};
+        for (const [k, v] of Object.entries(input)) {
+            if (v !== undefined && v !== null)
+                q[k] = v;
+        }
+        return await (0, http_js_1.request)(config, "/api/skill/rentals/going-rate", { query: q });
+    },
+};

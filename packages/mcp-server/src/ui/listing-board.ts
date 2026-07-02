@@ -40,6 +40,10 @@ export const LISTING_BOARD_HTML = `<!DOCTYPE html>
   .price { font-size:16px; font-weight:700; }
   .addr { font-size:13px; line-height:1.3; }
   .facts { font-size:12px; color:var(--muted); }
+  .cf { margin-top:7px; font-size:13px; font-weight:600; }
+  .cf.pos { color:#16a34a; }
+  .cf.neg { color:#dc2626; }
+  .rent { font-size:11px; color:var(--muted); margin-top:1px; }
   .view { margin-top:8px; font-size:12px; color:var(--accent); cursor:pointer; background:none; border:none; padding:0; text-align:left; font:inherit; }
   .view:hover { text-decoration:underline; }
   .empty { color:var(--muted); font-size:14px; }
@@ -82,6 +86,15 @@ export const LISTING_BOARD_HTML = `<!DOCTYPE html>
       if (l.sqft != null) facts.push(fmtNum(l.sqft) + " sqft");
       if (l.yearBuilt != null) facts.push("built " + l.yearBuilt);
       body.appendChild(el("div", "facts", facts.join("  \\u00b7  ")));
+      if (l.monthlyCashflow != null) {
+        var cfParts = [(l.monthlyCashflow >= 0 ? "+" : "-") + "$" + Math.abs(l.monthlyCashflow).toLocaleString("en-US") + "/mo"];
+        if (l.capRatePct != null) cfParts.push(Number(l.capRatePct).toFixed(1) + "% cap");
+        if (l.cashOnCashPct != null) cfParts.push(Number(l.cashOnCashPct).toFixed(1) + "% CoC");
+        body.appendChild(el("div", l.monthlyCashflow >= 0 ? "cf pos" : "cf neg", cfParts.join("  \\u00b7  ")));
+        if (l.monthlyRent != null) {
+          body.appendChild(el("div", "rent", "est. rent $" + Number(l.monthlyRent).toLocaleString("en-US") + (l.rentConfidence ? " (" + l.rentConfidence + " confidence)" : "")));
+        }
+      }
       if (l.detailUrl){
         var btn = el("button", "view", "View listing");
         (function(url){ btn.addEventListener("click", function(){ request("ui/open-link", { url: url }).catch(function(){}); }); })(l.detailUrl);

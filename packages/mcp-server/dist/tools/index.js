@@ -5,13 +5,18 @@
 // Order doesn't matter for behavior, but keep it grouped by domain (see
 // docs/mcp/tools.md) for readability.
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SERVER_INSTRUCTIONS = exports.ALL_TOOLS = void 0;
+exports.SERVER_INSTRUCTIONS = exports.getBuildGuidePrompt = exports.BUILD_GUIDE_PROMPTS = exports.readGuideResource = exports.isGuideUri = exports.listGuideResources = exports.BUILD_GUIDE_MIME = exports.BUILD_GUIDE_URI_PREFIX = exports.BUILD_GUIDE_URI = exports.tierFromScopes = exports.resolveTierFromEnv = exports.toolsForTier = exports.isToolAllowedForTier = exports.isMarketingTool = exports.MARKETING_TOOL_NAMES = exports.RESEARCH_TOOL_NAMES = exports.DEFAULT_TIER = exports.TIERS = exports.ALL_TOOLS = void 0;
 exports.toolByName = toolByName;
+exports.toolsForTierFromRegistry = toolsForTierFromRegistry;
+const tiers_js_1 = require("../tiers.js");
 const whoami_js_1 = require("./whoami.js");
 const my_agent_profile_js_1 = require("./my_agent_profile.js");
 const my_stats_js_1 = require("./my_stats.js");
 const search_listings_js_1 = require("./search_listings.js");
 const show_listing_board_js_1 = require("./show_listing_board.js");
+const find_cashflowing_listings_js_1 = require("./find_cashflowing_listings.js");
+const get_going_rate_js_1 = require("./get_going_rate.js");
+const analyze_listing_cashflow_js_1 = require("./analyze_listing_cashflow.js");
 const get_listing_js_1 = require("./get_listing.js");
 const get_listing_photos_js_1 = require("./get_listing_photos.js");
 const find_comparables_js_1 = require("./find_comparables.js");
@@ -34,8 +39,10 @@ const my_recent_leads_js_1 = require("./my_recent_leads.js");
 const post_instagram_carousel_js_1 = require("./post_instagram_carousel.js");
 const stage_listing_with_agent_js_1 = require("./stage_listing_with_agent.js");
 const create_listing_cover_js_1 = require("./create_listing_cover.js");
-// Agent meta
-const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats];
+const get_build_guide_js_1 = require("./get_build_guide.js");
+// Agent meta. `get_build_guide` is documentation (no PII, no network) and is
+// exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
+const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide];
 // MLS / Listings
 const MLS = [
     search_listings_js_1.search_listings,
@@ -44,6 +51,12 @@ const MLS = [
     get_listing_photos_js_1.get_listing_photos,
     find_comparables_js_1.find_comparables,
     search_closed_listings_js_1.search_closed_listings,
+];
+// Rental investment / cash-flow (reads VPS-precomputed cashflowStats + rent_rates).
+const INVESTMENT = [
+    find_cashflowing_listings_js_1.find_cashflowing_listings,
+    get_going_rate_js_1.get_going_rate,
+    analyze_listing_cashflow_js_1.analyze_listing_cashflow,
 ];
 // Market data
 const MARKET = [
@@ -87,6 +100,7 @@ const SOCIAL = [post_instagram_carousel_js_1.post_instagram_carousel];
 exports.ALL_TOOLS = [
     ...META,
     ...MLS,
+    ...INVESTMENT,
     ...MARKET,
     ...CMS_LP,
     ...CMS_ARTICLES,
@@ -96,6 +110,34 @@ exports.ALL_TOOLS = [
 ];
 function toolByName(name) {
     return exports.ALL_TOOLS.find((t) => t.name === name);
+}
+// --- Two-tier exposure (build_plan §6.7) -----------------------------------
+// Re-export the tier filter + build-guide resource helpers so the stdio server
+// (index.ts) and the hosted bridge (mcp-tool-bridge.ts) import the tier surface
+// from one place. The registry above is the input to `toolsForTier`.
+var tiers_js_2 = require("../tiers.js");
+Object.defineProperty(exports, "TIERS", { enumerable: true, get: function () { return tiers_js_2.TIERS; } });
+Object.defineProperty(exports, "DEFAULT_TIER", { enumerable: true, get: function () { return tiers_js_2.DEFAULT_TIER; } });
+Object.defineProperty(exports, "RESEARCH_TOOL_NAMES", { enumerable: true, get: function () { return tiers_js_2.RESEARCH_TOOL_NAMES; } });
+Object.defineProperty(exports, "MARKETING_TOOL_NAMES", { enumerable: true, get: function () { return tiers_js_2.MARKETING_TOOL_NAMES; } });
+Object.defineProperty(exports, "isMarketingTool", { enumerable: true, get: function () { return tiers_js_2.isMarketingTool; } });
+Object.defineProperty(exports, "isToolAllowedForTier", { enumerable: true, get: function () { return tiers_js_2.isToolAllowedForTier; } });
+Object.defineProperty(exports, "toolsForTier", { enumerable: true, get: function () { return tiers_js_2.toolsForTier; } });
+Object.defineProperty(exports, "resolveTierFromEnv", { enumerable: true, get: function () { return tiers_js_2.resolveTierFromEnv; } });
+Object.defineProperty(exports, "tierFromScopes", { enumerable: true, get: function () { return tiers_js_2.tierFromScopes; } });
+var resource_js_1 = require("../build-guide/resource.js");
+Object.defineProperty(exports, "BUILD_GUIDE_URI", { enumerable: true, get: function () { return resource_js_1.BUILD_GUIDE_URI; } });
+Object.defineProperty(exports, "BUILD_GUIDE_URI_PREFIX", { enumerable: true, get: function () { return resource_js_1.BUILD_GUIDE_URI_PREFIX; } });
+Object.defineProperty(exports, "BUILD_GUIDE_MIME", { enumerable: true, get: function () { return resource_js_1.BUILD_GUIDE_MIME; } });
+Object.defineProperty(exports, "listGuideResources", { enumerable: true, get: function () { return resource_js_1.listGuideResources; } });
+Object.defineProperty(exports, "isGuideUri", { enumerable: true, get: function () { return resource_js_1.isGuideUri; } });
+Object.defineProperty(exports, "readGuideResource", { enumerable: true, get: function () { return resource_js_1.readGuideResource; } });
+var prompts_js_1 = require("../build-guide/prompts.js");
+Object.defineProperty(exports, "BUILD_GUIDE_PROMPTS", { enumerable: true, get: function () { return prompts_js_1.BUILD_GUIDE_PROMPTS; } });
+Object.defineProperty(exports, "getBuildGuidePrompt", { enumerable: true, get: function () { return prompts_js_1.getBuildGuidePrompt; } });
+/** The tools a given tier exposes — convenience over `toolsForTier(ALL_TOOLS, tier)`. */
+function toolsForTierFromRegistry(tier) {
+    return (0, tiers_js_1.toolsForTier)(exports.ALL_TOOLS, tier);
 }
 // Server-level guidance surfaced to the MCP client (Claude) at initialize.
 // Keeps the tone of a PUBLIC real-estate tool neutral and professional — no
