@@ -17,12 +17,11 @@ import {
   Settings,
   Mail,
   Eye,
-  Globe,
 } from "lucide-react";
 import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
-import { getSiteReadiness } from "@/lib/agent-site-readiness";
+import GoLiveBounties from "./components/GoLiveBounties";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -426,191 +425,17 @@ export default function AgentDashboard() {
             </div>
           )}
 
-          {/* Setup Progress Card */}
-          {!isLoadingProfile &&
-            (() => {
-              // Shared go-live checklist (src/lib/agent-site-readiness.ts) —
-              // the SAME definition the public-site gate uses, so what the agent
-              // sees here matches exactly when their site actually publishes.
-              const readiness = getSiteReadiness({
-                name: agentProfile.name,
-                phone: agentProfile.phone,
-                agentProfile: agentProfile.agentProfile,
-              });
-              const { steps, completed, total } = readiness;
-              const percentage = Math.round((completed / total) * 100);
-              const missingFields = steps
-                .filter((s) => !s.done)
-                .map((s) => ({ name: s.label }));
-
-              // Complete → the public {slug}.chatrealty.io site is LIVE. Show a
-              // confirmation instead of hiding it, so the agent knows they're
-              // published on the ChatRealty network (free tier — no sub needed).
-              if (readiness.complete) {
-                return (
-                  <div
-                    className={`rounded-xl p-5 mb-8 flex items-center justify-between gap-4 ${
-                      isLight
-                        ? "bg-green-50 border-2 border-green-200"
-                        : "bg-green-900/20 border-2 border-green-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          isLight ? "bg-green-100" : "bg-green-900/40"
-                        }`}
-                      >
-                        <Globe
-                          className={`w-6 h-6 ${
-                            isLight ? "text-green-600" : "text-green-400"
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <h3
-                          className={`text-base font-bold ${
-                            isLight ? "text-gray-900" : "text-white"
-                          }`}
-                        >
-                          Your site is live
-                        </h3>
-                        <p
-                          className={`text-sm ${
-                            isLight ? "text-gray-600" : "text-gray-400"
-                          }`}
-                        >
-                          Your profile is complete — you&apos;re published on the
-                          ChatRealty network.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => router.push("/agent/settings")}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0 transition-colors ${
-                        isLight
-                          ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-                          : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
-                      }`}
-                    >
-                      Edit site
-                    </button>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  className={`rounded-xl p-6 mb-8 ${
-                    isLight
-                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200"
-                      : "bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border-2 border-blue-800"
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3
-                        className={`text-xl font-bold mb-1 ${
-                          isLight ? "text-gray-900" : "text-white"
-                        }`}
-                      >
-                        Finish setup to publish your site
-                      </h3>
-                      <p
-                        className={`text-sm ${
-                          isLight ? "text-gray-600" : "text-gray-400"
-                        }`}
-                      >
-                        {completed} of {total} steps done — your public site goes
-                        live once all are complete
-                      </p>
-                    </div>
-                    <div
-                      className={`text-3xl font-bold ${
-                        percentage >= 75
-                          ? "text-green-600"
-                          : percentage >= 50
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {percentage}%
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div
-                    className={`w-full h-3 rounded-full mb-4 ${
-                      isLight ? "bg-gray-200" : "bg-gray-700"
-                    }`}
-                  >
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        percentage >= 75
-                          ? "bg-green-600"
-                          : percentage >= 50
-                          ? "bg-yellow-600"
-                          : "bg-red-600"
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-
-                  {/* Missing Fields */}
-                  {missingFields.length > 0 && (
-                    <div>
-                      <p
-                        className={`text-sm font-medium mb-2 ${
-                          isLight ? "text-gray-700" : "text-gray-300"
-                        }`}
-                      >
-                        Still needed:
-                      </p>
-                      <ul className="space-y-1">
-                        {missingFields.map((field, index) => (
-                          <li
-                            key={index}
-                            className={`text-sm flex items-center gap-2 ${
-                              isLight ? "text-gray-600" : "text-gray-400"
-                            }`}
-                          >
-                            <span className="w-2 h-2 rounded-full bg-red-500" />
-                            {field.name}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div
-                    className={`mt-4 pt-4 border-t flex items-center justify-between ${
-                      isLight ? "border-blue-200" : "border-blue-800"
-                    }`}
-                  >
-                    <p
-                      className={`text-xs ${
-                        isLight ? "text-gray-500" : "text-gray-400"
-                      }`}
-                    >
-                      Completing these publishes your public site on the
-                      ChatRealty network — no subscription needed.
-                    </p>
-                    <button
-                      onClick={() =>
-                        router.push("/agent/settings?onboarding=true")
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ml-4 ${
-                        isLight
-                          ? "bg-blue-600 hover:bg-blue-700 text-white"
-                          : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
-                    >
-                      Finish setup
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+          {/* Go-live bounty board — the settings the agent must finish before
+              their public {slug}.chatrealty.io site publishes. Drives off the
+              shared getSiteReadiness checklist (same as the public-site gate). */}
+          {!isLoadingProfile && (
+            <GoLiveBounties
+              name={agentProfile.name}
+              phone={agentProfile.phone}
+              agentProfile={agentProfile.agentProfile}
+              isLight={isLight}
+            />
+          )}
 
           {/* Points Section */}
           <div className="mb-8">
