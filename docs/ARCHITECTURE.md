@@ -26,11 +26,11 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Routing | `src/proxy.ts` | [routing/](./routing/) |
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
 | Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |
-| CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) — *not yet written* |
+| CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
 | CRM | `src/models/Contact.ts` | [crm/](./crm/) — *not yet written* |
 | Listings / MLS | `src/models/UnifiedListing.ts` | [listings/](./listings/) — *not yet written* |
 | Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — *not yet written* |
-| Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) — *not yet written* |
+| Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) |
 | External integrations | `src/lib/` (each integration is one file) | [integrations/](./integrations/) — *not yet written* |
 | MCP server (agent's Claude → ChatRealty) | `packages/mcp-server/` (planned) + `src/app/api/skill/*` | [mcp/](./mcp/) |
 | API productization — headless backend BaaS (**planned/design**) | `src/app/api/skill/*` + Neon per-tenant DB | [chatrealty-api/](./chatrealty-api/) |

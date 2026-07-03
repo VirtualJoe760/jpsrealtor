@@ -146,8 +146,9 @@ export default function EditArticlePage() {
       setIsLoading(true);
       setError(null);
 
-      // First, try agent-scoped list API (respects ownership)
-      const listResponse = await fetch(`/api/articles/list?excludeLandingPages=false`);
+      // First, try the agent-scoped list API (mine=true → the logged-in
+      // agent's own articles; without it this returned the DOMAIN owner's list)
+      const listResponse = await fetch(`/api/articles/list?excludeLandingPages=false&mine=true`);
       const listData = await listResponse.json();
       const listArticle = listData.articles?.find((a: any) => a.slug === slugId);
 

@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-06-05
+last_verified: 2026-07-02
 related: [../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md]
 supersedes: docs/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -28,7 +28,7 @@ site only displays its owner's articles.
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\articles\publish\route.ts` | Auth + validation + `publishArticle()` + non-blocking GBP cross-post. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\insights\page.tsx` | Redirects `/insights` → `/` (the root home renders the insights feed). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\admin\cms\` | Admin CMS (sees all articles when calling list with `?all=true`). |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\agent\cms\` | Per-agent CMS (sees only their own via `resolveDomainOwner`). |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\agent\cms\` | Per-agent CMS (sees only their own via `?mine=true` — session-scoped, NOT domain-scoped). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\lp\[slug]\page.tsx` | Landing page renderer (category=landing-page articles). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\scripts\fix-article-authors-mongo.ts` | Backfill for orphan `author.id` values. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-landing-page\route.ts` | Streaming Claude landing-page builder. Uses **agent's own** Anthropic API key (BYOK). Tool-call architecture (`set_article_field`, `set_landing_page_option`, etc.). |
@@ -73,14 +73,27 @@ juggling is one reason this code is fragile — see Gotchas.
 
 ## Article scoping
 
-`/api/articles/list` resolves the **domain owner** (not the visitor) and
-filters by `author.id`. The canonical pattern:
+`/api/articles/list` has **three scoping modes** — picking the wrong one shows
+the wrong agent's content:
+
+| Mode | Who it's for | Scope |
+|---|---|---|
+| default | Public insights feed | **Domain owner** via `resolveDomainOwner(request)` — jpsrealtor.com shows Joseph's, `{slug}.chatrealty.io` shows that agent's |
+| `?mine=true` | Agent CMS / campaign wizards | **Logged-in session user** (`session.user.id`; 401 if unauthenticated) |
+| `?all=true` | Admin CMS | Everything across the network (admins only) |
+
+The default (domain-owner) pattern:
 
 - Call `resolveDomainOwner(request)` to get the owner of the hostname.
-- Admins can pass `?all=true` to bypass and see the whole network.
 - If `ownerId` is null (PRIMARY_AGENT_EMAIL misconfigured), return empty
   rather than leaking every agent's articles.
 - Set `filters.authorId = ownerId` and pass to `listArticles`.
+
+> ⚠️ **Bug fixed 2026-07-02:** the agent CMS (list, editor, and the community
+> ad wizard) fetched the DEFAULT mode, so any agent opening their CMS on
+> jpsrealtor.com saw *Joseph's* articles. Rule of thumb: **portal surface →
+> `mine=true`; public surface → default.** Decide explicitly for every new
+> content picker/list.
 
 See `multi-tenant/README.md` for the full `resolveDomainOwner` contract.
 
@@ -118,7 +131,7 @@ left the other stale and the production render showed broken images.
 | `/insights/[category]/[slugId]` | Public — single article view | Mongo via slug |
 | `/admin/cms` | Admins only — sees all articles | `/api/articles/list?all=true` |
 | `/admin/cms/new`, `/admin/cms/edit/[slugId]` | Admins only — author/edit | `/api/articles/publish` |
-| `/agent/cms` | Signed-in agents — sees only their own | `/api/articles/list` (no bypass) |
+| `/agent/cms` | Signed-in agents — sees only their own | `/api/articles/list?mine=true` (session-scoped) |
 | `/lp/[slug]` | Public — landing pages | Mongo, `category: "landing-page"` |
 
 Landing pages have their own renderer and layout

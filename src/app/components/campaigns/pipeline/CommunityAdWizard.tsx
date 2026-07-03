@@ -154,8 +154,10 @@ export default function CommunityAdWizard({ campaign, onRefresh }: CommunityAdWi
       try {
         const [refRes, lpRes, blogRes, profileRes] = await Promise.all([
           fetch('/api/neighborhoods/reference').then(r => r.json()).catch(() => ({})),
-          fetch('/api/articles/list?excludeLandingPages=false&limit=100').then(r => r.json()).catch(() => ({})),
-          fetch('/api/articles/list?limit=100').then(r => r.json()).catch(() => ({})),
+          // mine=true → the logged-in agent's own content (ads must promote
+          // THEIR pages, not the domain owner's)
+          fetch('/api/articles/list?excludeLandingPages=false&limit=100&mine=true').then(r => r.json()).catch(() => ({})),
+          fetch('/api/articles/list?limit=100&mine=true').then(r => r.json()).catch(() => ({})),
           fetch('/api/user/profile').then(r => r.json()).catch(() => ({})),
         ]);
         const customDomain = profileRes?.agentProfile?.customDomain || profileRes?.customDomain;

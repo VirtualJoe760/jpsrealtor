@@ -24,8 +24,10 @@ export function useArticles(): UseArticlesResult {
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Include landing pages — the CMS needs all content types
-      const response = await fetch('/api/articles/list?excludeLandingPages=false');
+      // Include landing pages — the CMS needs all content types.
+      // mine=true scopes to the LOGGED-IN agent's articles (not the domain
+      // owner's — without it the CMS showed Joseph's content on jpsrealtor.com).
+      const response = await fetch('/api/articles/list?excludeLandingPages=false&mine=true');
       if (!response.ok) throw new Error('Failed to fetch articles');
 
       const data = await response.json();

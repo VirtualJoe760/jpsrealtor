@@ -28,34 +28,53 @@ interface Article {
  * LOCALHOST: Reads MDX files from src/posts/
  * PRODUCTION: Fetches from MongoDB database
  *
- * For agents: returns only their own articles (filtered by authorId)
- * For admins: returns all articles
+ * Three scoping modes:
+ * - default: DOMAIN-owner scoped (public insights feed) — jpsrealtor.com shows
+ *   Joseph's articles, bethanyklier.chatrealty.io shows Bethany's, etc.
+ * - ?mine=true: SESSION-scoped (the agent CMS) — the logged-in agent's own
+ *   articles, regardless of which domain the portal is opened on. Requires auth.
+ * - ?all=true: everything across the network (admins only).
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const excludeLandingPages = searchParams.get("excludeLandingPages") !== "false";
     const showAll = searchParams.get("all") === "true";
+    const mine = searchParams.get("mine") === "true";
 
-    // Resolve the DOMAIN owner (whose site is this?), not the visitor. Articles
-    // should be scoped to the site they're displayed on — jpsrealtor.com shows
-    // Joseph's articles, bethanyklier.chatrealty.io shows Bethany's, etc.
-    // Admins can still see everything across the network with ?all=true.
     const session = await getServerSession(authOptions);
     const isImpersonating = !!(session?.user as any)?.impersonatedBy;
     const isAdmin = !!session?.user?.isAdmin && !isImpersonating;
+
+    // ?mine=true — the agent CMS. Scope to the LOGGED-IN user, not the domain
+    // owner: an agent editing content on jpsrealtor.com/chatrealty.io must see
+    // THEIR articles, not Joseph's. (Bug fix 2026-07-02: the CMS previously got
+    // the domain owner's list here.)
+    const selfId = mine ? String((session?.user as any)?.id || "") : null;
+    if (mine && !selfId) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required." },
+        { status: 401, headers: { "Cache-Control": "no-store, max-age=0" } }
+      );
+    }
+
+    // Default: resolve the DOMAIN owner (whose site is this?), not the visitor.
+    // Admins can still see everything across the network with ?all=true.
     const { ownerId, source } = await resolveDomainOwner(request);
 
-    console.log('[Articles List] Domain scoping:', {
-      ownerId, source, isAdmin, showAll,
+    console.log('[Articles List] Scoping:', {
+      ownerId, source, isAdmin, showAll, mine,
     });
 
     if (IS_PRODUCTION) {
       // PRODUCTION: Fetch from MongoDB
       const filters: any = {};
 
-      // Scope by domain owner. Admin can bypass with ?all=true.
-      if (!(isAdmin && showAll)) {
+      if (mine) {
+        // Agent CMS: the logged-in user's own articles.
+        filters.authorId = selfId;
+      } else if (!(isAdmin && showAll)) {
+        // Public feed: scope by domain owner. Admin can bypass with ?all=true.
         if (!ownerId) {
           // Defensive: no owner resolved (PRIMARY_AGENT_EMAIL missing?) ->
           // return nothing rather than leaking the whole network.
@@ -138,10 +157,12 @@ export async function GET(request: Request) {
         // Skip landing pages from insights feed
         if (excludeLandingPages && data.section === "landing-page") continue;
 
-        // Domain scoping: only show articles authored by the domain owner.
-        // Articles with no authorId are legacy (pre-scoping) — visible only
-        // to admins with ?all=true.
-        if (!(isAdmin && showAll)) {
+        // Scoping. ?mine=true -> logged-in user's articles (agent CMS);
+        // default -> domain owner's articles. Articles with no authorId are
+        // legacy (pre-scoping) — visible only to admins with ?all=true.
+        if (mine) {
+          if (!data.authorId || data.authorId !== selfId) continue;
+        } else if (!(isAdmin && showAll)) {
           if (!ownerId || !data.authorId || data.authorId !== ownerId) {
             continue;
           }
