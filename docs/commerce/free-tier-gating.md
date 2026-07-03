@@ -103,40 +103,43 @@ gates** — conflating them causes confusion:
    agent's public branded site (`{slug}.chatrealty.io`, or a custom domain)
    renders vs. shows a "Coming Soon" placeholder. Implemented in
    `src/app/api/agent/public/route.ts` and `src/app/agent-site/[[...slug]]/`:
-   `hasActiveSubscription = <an active|trialing AgentSubscription exists> || agentProfile.siteForceActive`.
+   `siteLive = getSiteReadiness(agent).complete || <active|trialing AgentSubscription> || agentProfile.siteForceActive`.
 
-**These do not move together.** Key consequence:
+**A free agent's site goes live when they finish profile setup — no paid
+subscription required (resolved 2026-07-02).** The go-live checklist is
+`src/lib/agent-site-readiness.ts` (`getSiteReadiness`): **name, phone, banner
+photo, headshot, headline, and a personal story or video**. The *same* helper
+drives the dashboard "Finish setup / Your site is live" card, so what the agent
+sees is exactly what publishes their site. Free tier gets **no custom domain**
+but a **network-discoverable `{slug}.chatrealty.io` subdomain** once complete.
 
 | Agent state | Feature tier | Public subdomain site |
 |---|---|---|
-| Approved, **no** subscription record | `free` (portal works: Dashboard/Contacts/CMS/Settings) | **"Coming Soon"** — site-live gate needs an active/trialing sub or `siteForceActive` |
-| Free-tier record (`tier:"free"`, `status:"active"`) | `free` | **Live** (an active-status record passes the gate) |
-| Any paid tier (active) | paid (full portal) | Live |
+| Approved, profile **incomplete** | `free` (portal works: Dashboard/Contacts/CMS/Settings) | **"Coming Soon"** until the go-live checklist is done |
+| Free, profile **complete** | `free` | **Live** (`getSiteReadiness().complete`) — no subscription needed |
+| Any paid tier (active) | paid (full portal) | Live (active sub also passes the gate) |
 | Admin / agent viewing **their own** site | exempt everywhere | Always renders (preview bypass) |
 
-**Why "no record" is the common free case:** admin approval
+**Why setup-completion, not a subscription record:** admin approval
 (`/api/admin/applications/agents`) grants the `realEstateAgent` role + assigns
-the `{slug}` subdomain but **does not create an AgentSubscription** (the approval
-message literally says *"active after subscription"*). So a newly-approved free
-agent resolves to `free` for feature-gating yet has **no** active sub → their
-public site is gated until they subscribe or an admin flips
-`agentProfile.siteForceActive`.
-
-> ⚠️ **Design note / open question (flagged, not changed):** if free agents are
-> meant to have a *live* public subdomain site, either (a) create a
-> `tier:"free", status:"active"` AgentSubscription at approval/onboarding, or
-> (b) treat `isFreeTier` (incl. no-record) as site-active in the public gate.
-> Today neither happens — free agents get the portal but a gated public site.
+the `{slug}` subdomain but **does not create an AgentSubscription**. So gating on
+"has an active sub" would leave every free agent's site dark forever. Gating on
+profile completeness lets free agents publish + be discoverable on the network,
+which is the intended free-tier value.
 
 `resolveDomainOwner` still governs *whose data* a public page shows (see
-[../multi-tenant/README.md](../multi-tenant/README.md)); the subscription gate is
+[../multi-tenant/README.md](../multi-tenant/README.md)); the site-live gate is
 layered on top of it to decide *whether* that owner's site renders.
 
 ## Gotchas
 
-- **Two gates, not one.** "Free tier" (features) ≠ "site not live" (public
-  subdomain). A free agent's portal works even while their public site shows
-  "Coming Soon". See the table above.
+- **Two gates, not one.** "Free tier" (features) is separate from "site live"
+  (public subdomain). A free agent's portal works immediately; their public site
+  goes live only once the go-live checklist (`getSiteReadiness`) is complete.
+- **Change the checklist in ONE place.** `src/lib/agent-site-readiness.ts` is the
+  single source of truth — the dashboard card and the public gate both read it.
+  Editing required fields anywhere else will drift what the agent sees from what
+  actually publishes.
 - **Admins and paid agents are exempt everywhere.** If a paid agent can't see a paid feature, the JWT
   `agentTier` is likely stale — `session.update()` refreshes it.
 - **The Settings STEPS registry is shared** by the wizard and the sidebar. Adding a `paidOnly` step

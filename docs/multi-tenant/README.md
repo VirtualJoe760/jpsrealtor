@@ -103,18 +103,20 @@ Resolving the domain owner decides *whose* data a public page shows. A second,
 independent gate decides *whether* that owner's public site renders at all:
 
 - `src/app/api/agent/public/route.ts` and `src/app/agent-site/[[...slug]]/`
-  compute `hasActiveSubscription = <active|trialing AgentSubscription exists> ||
-  agentProfile.siteForceActive`. When false, the branded subdomain shows a
-  **"Coming Soon"** placeholder instead of the full site.
+  compute `siteLive = getSiteReadiness(agent).complete || <active|trialing
+  AgentSubscription> || agentProfile.siteForceActive`. When false, the branded
+  subdomain shows a **"Coming Soon"** placeholder instead of the full site.
 - The agent viewing **their own** site, and admins, bypass this gate (preview).
 
-**Free-plan interaction:** an agent's *feature tier* (`AgentSubscription.tier`,
-or no record → `"free"`, via `src/lib/subscription-helpers.ts`) is a SEPARATE
-gate from this site-live check. A newly-approved free agent has the role +
-subdomain but **no** subscription record, so their portal works while their
-public site stays "Coming Soon" until they subscribe (or an admin sets
-`siteForceActive`). Full matrix + the open design question:
-[../commerce/free-tier-gating.md](../commerce/free-tier-gating.md).
+**Free-plan interaction (resolved 2026-07-02):** a free agent's public site goes
+live when they **finish profile setup**, not behind a paid subscription. The
+go-live checklist is `src/lib/agent-site-readiness.ts` (`getSiteReadiness`: name,
+phone, banner photo, headshot, headline, personal story/video) — the *same*
+helper the dashboard shows the agent. Feature-tier gating
+(`AgentSubscription.tier` or no record → `"free"`, via
+`src/lib/subscription-helpers.ts`) is a separate concern: the portal works
+immediately; the public subdomain publishes once the checklist is complete. Full
+matrix: [../commerce/free-tier-gating.md](../commerce/free-tier-gating.md).
 
 ## Gotchas
 

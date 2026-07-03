@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AgentSubscription from "@/models/AgentSubscription";
+import { getSiteReadiness } from "@/lib/agent-site-readiness";
 
 /**
  * GET /api/agent/public
@@ -160,14 +161,20 @@ export async function GET(request: NextRequest) {
       status: { $in: ["active", "trialing"] },
     }).select("tier status").lean();
 
-    // Site is active if: active subscription or admin force-activated
+    // Site goes live when the agent completes their profile setup (free tier —
+    // no paid subscription required), OR has an active subscription, OR an admin
+    // force-activated it. `getSiteReadiness` is the shared go-live checklist —
+    // the same one the dashboard shows the agent. `hasActiveSubscription` keeps
+    // its name for back-compat with existing consumers but now means "site live".
     const isForceActive = !!(agent.agentProfile as any)?.siteForceActive;
-    const hasActiveSubscription = !!subscription || isForceActive;
+    const siteReadiness = getSiteReadiness(agent as any);
+    const hasActiveSubscription = siteReadiness.complete || !!subscription || isForceActive;
 
     return NextResponse.json({
       profile: publicProfile,
       subscription: subscription ? { tier: subscription.tier, status: subscription.status } : null,
       hasActiveSubscription,
+      siteReadiness,
     }, {
       headers: {
         // Cache for 5 minutes

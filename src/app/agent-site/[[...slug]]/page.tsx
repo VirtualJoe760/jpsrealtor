@@ -8,6 +8,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AgentSubscription from "@/models/AgentSubscription";
 import { verifyAdmin } from "@/lib/admin-auth";
+import { getSiteReadiness } from "@/lib/agent-site-readiness";
 import type { Metadata } from "next";
 import AgentSiteClient from "./AgentSiteClient";
 
@@ -157,7 +158,13 @@ export default async function AgentSitePage() {
         officePhone: agent.agentProfile.officePhone,
         brandColors: agent.agentProfile.brandColors,
       } : undefined}
-      hasActiveSubscription={!!subscription}
+      hasActiveSubscription={
+        // Site goes live once the agent completes setup (free tier — no paid
+        // sub needed), or has an active subscription, or admin force-activated.
+        getSiteReadiness(agent as any).complete ||
+        !!subscription ||
+        !!(agent.agentProfile as any)?.siteForceActive
+      }
       isAdmin={isAdmin}
       agentEmail={agent.email}
     />

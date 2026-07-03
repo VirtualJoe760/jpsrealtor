@@ -17,10 +17,12 @@ import {
   Settings,
   Mail,
   Eye,
+  Globe,
 } from "lucide-react";
 import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
+import { getSiteReadiness } from "@/lib/agent-site-readiness";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -427,40 +429,75 @@ export default function AgentDashboard() {
           {/* Setup Progress Card */}
           {!isLoadingProfile &&
             (() => {
-              const requiredFields = [
-                { name: "Name", value: agentProfile.name },
-                { name: "Phone", value: agentProfile.phone },
-                {
-                  name: "Banner Photo",
-                  value: agentProfile.agentProfile?.heroPhoto,
-                },
-                {
-                  name: "Headshot",
-                  value: agentProfile.agentProfile?.headshot,
-                },
-                {
-                  name: "Headline",
-                  value: agentProfile.agentProfile?.headline,
-                },
-                {
-                  name: "Personal Story or Video",
-                  value:
-                    agentProfile.agentProfile?.personalStory ||
-                    agentProfile.agentProfile?.videoTestimony,
-                },
-              ];
-
-              const completed = requiredFields.filter(
-                (field) => field.value
-              ).length;
-              const total = requiredFields.length;
+              // Shared go-live checklist (src/lib/agent-site-readiness.ts) —
+              // the SAME definition the public-site gate uses, so what the agent
+              // sees here matches exactly when their site actually publishes.
+              const readiness = getSiteReadiness({
+                name: agentProfile.name,
+                phone: agentProfile.phone,
+                agentProfile: agentProfile.agentProfile,
+              });
+              const { steps, completed, total } = readiness;
               const percentage = Math.round((completed / total) * 100);
-              const isComplete = percentage === 100;
-              const missingFields = requiredFields.filter(
-                (field) => !field.value
-              );
+              const missingFields = steps
+                .filter((s) => !s.done)
+                .map((s) => ({ name: s.label }));
 
-              if (isComplete) return null;
+              // Complete → the public {slug}.chatrealty.io site is LIVE. Show a
+              // confirmation instead of hiding it, so the agent knows they're
+              // published on the ChatRealty network (free tier — no sub needed).
+              if (readiness.complete) {
+                return (
+                  <div
+                    className={`rounded-xl p-5 mb-8 flex items-center justify-between gap-4 ${
+                      isLight
+                        ? "bg-green-50 border-2 border-green-200"
+                        : "bg-green-900/20 border-2 border-green-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-lg ${
+                          isLight ? "bg-green-100" : "bg-green-900/40"
+                        }`}
+                      >
+                        <Globe
+                          className={`w-6 h-6 ${
+                            isLight ? "text-green-600" : "text-green-400"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <h3
+                          className={`text-base font-bold ${
+                            isLight ? "text-gray-900" : "text-white"
+                          }`}
+                        >
+                          Your site is live
+                        </h3>
+                        <p
+                          className={`text-sm ${
+                            isLight ? "text-gray-600" : "text-gray-400"
+                          }`}
+                        >
+                          Your profile is complete — you&apos;re published on the
+                          ChatRealty network.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => router.push("/agent/settings")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0 transition-colors ${
+                        isLight
+                          ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                          : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
+                      }`}
+                    >
+                      Edit site
+                    </button>
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -477,14 +514,15 @@ export default function AgentDashboard() {
                           isLight ? "text-gray-900" : "text-white"
                         }`}
                       >
-                        Complete Your Profile Setup
+                        Finish setup to publish your site
                       </h3>
                       <p
                         className={`text-sm ${
                           isLight ? "text-gray-600" : "text-gray-400"
                         }`}
                       >
-                        {completed} of {total} required fields completed
+                        {completed} of {total} steps done — your public site goes
+                        live once all are complete
                       </p>
                     </div>
                     <div
@@ -554,8 +592,8 @@ export default function AgentDashboard() {
                         isLight ? "text-gray-500" : "text-gray-400"
                       }`}
                     >
-                      Complete your profile to attract more clients and appear in
-                      search results.
+                      Completing these publishes your public site on the
+                      ChatRealty network — no subscription needed.
                     </p>
                     <button
                       onClick={() =>
@@ -567,7 +605,7 @@ export default function AgentDashboard() {
                           : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                     >
-                      Go to Settings
+                      Finish setup
                     </button>
                   </div>
                 </div>
