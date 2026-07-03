@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
+import { getSiteReadiness } from "@/lib/agent-site-readiness";
 
 // Ensure Team model is registered
 const ensureModelsLoaded = () => {
@@ -107,6 +108,9 @@ export async function GET(request: NextRequest) {
         subscriptionTier: user.subscriptionTier,
         subdomain: user.agentProfile?.subdomain,
         siteForceActive: user.agentProfile?.siteForceActive || false,
+        // Free-tier agents go live once their profile is complete — surface that
+        // so the admin's Live/Coming-Soon status matches the real public gate.
+        siteReady: getSiteReadiness(user as any).complete,
         signupOrigin: user.signupOrigin,
         clientOfAgent: user.signupOrigin?.agentId
           ? agentNameMap[String(user.signupOrigin.agentId)] || null

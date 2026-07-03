@@ -24,6 +24,7 @@ interface User {
   subdomain?: string;
   subscriptionTier?: string;
   siteForceActive?: boolean;
+  siteReady?: boolean; // agent finished the go-live checklist (free-tier auto go-live)
   signupOrigin?: { domain?: string; subdomain?: string; agentId?: string; method?: string };
   clientOfAgent?: string | null;
   createdAt: string;
@@ -446,7 +447,7 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3">
                         {user.subdomain && user.roles.includes("realEstateAgent") ? (
-                          (user.subscriptionTier && user.subscriptionTier !== "free") || user.siteForceActive ? (
+                          (user.subscriptionTier && user.subscriptionTier !== "free") || user.siteForceActive || user.siteReady ? (
                             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-100 text-green-700">LIVE</span>
                           ) : (
                             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-600">OFFLINE</span>
@@ -655,7 +656,7 @@ export default function AdminUsersPage() {
 
                   {/* Site Status — for agents with subdomains */}
                   {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (() => {
-                    const live = !!(selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free") || !!selectedUser.siteForceActive;
+                    const live = !!(selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free") || !!selectedUser.siteForceActive || !!selectedUser.siteReady;
                     return (
                       <div className={`p-3 rounded-lg ${live ? (isLight ? "bg-green-50" : "bg-green-900/10") : (isLight ? "bg-red-50" : "bg-red-900/10")}`}>
                         <div className="flex items-center justify-between">
@@ -724,7 +725,7 @@ export default function AdminUsersPage() {
 
                   {/* Impersonate + View Agent Dashboard — for agents with subdomains */}
                   {selectedUser.subdomain && selectedUser.roles.includes("realEstateAgent") && (() => {
-                    const isLive = !!(selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free") || selectedUser.siteForceActive;
+                    const isLive = !!(selectedUser.subscriptionTier && selectedUser.subscriptionTier !== "free") || !!selectedUser.siteForceActive || !!selectedUser.siteReady;
                     return (
                       <div className="space-y-2">
                         <button
