@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMapState } from "@/app/contexts/MapStateContext";
@@ -73,7 +73,19 @@ export default function MapLayer() {
   const { pois, loadPOIs } = usePOIs();
 
   const [mounted, setMounted] = useState(false);
-  const hasInitializedRef = useRef(false);
+
+  // Lazy-mount latch. The heavyweight MapView (MapLibre GL + its onLoad →
+  // loadListings/loadPOIs + URL sync) must NOT initialize until the map has
+  // actually been shown at least once — otherwise it loads tiles/listings on
+  // every /chap visit even when the user never opens the map (view=chat), and
+  // background chat actions like prePositionMap() would silently fire a load.
+  // Once shown we keep it mounted (the latch stays true) so toggling the map
+  // on/off doesn't remount MapLibre — remounting triggers the removeChild/DOM
+  // conflicts this tree is wrapped in MapErrorBoundary for.
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  useEffect(() => {
+    if (isMapVisible) setHasBeenVisible(true);
+  }, [isMapVisible]);
 
   // Auto-select map style based on theme (override MapStateContext)
   const themeAwareMapStyle = isLight ? 'bright' : 'dark';
@@ -166,21 +178,24 @@ export default function MapLayer() {
         zIndex: 0,
       }}
     >
-      {/* Map Container */}
+      {/* Map Container — MapView mounts lazily on first reveal (hasBeenVisible),
+          then stays mounted to avoid MapLibre remount/removeChild bugs. */}
       <div className="absolute inset-0 w-full h-full">
-        <MapView
-          listings={[]}
-          markers={markers}
-          centerLat={viewState.centerLat}
-          centerLng={viewState.centerLng}
-          zoom={viewState.zoom}
-          onSelectListing={handleSelectListing}
-          selectedListing={selectedListing}
-          onBoundsChange={handleBoundsChange}
-          panelOpen={false}
-          mapStyle={themeAwareMapStyle}
-          pois={pois}
-        />
+        {hasBeenVisible && (
+          <MapView
+            listings={[]}
+            markers={markers}
+            centerLat={viewState.centerLat}
+            centerLng={viewState.centerLng}
+            zoom={viewState.zoom}
+            onSelectListing={handleSelectListing}
+            selectedListing={selectedListing}
+            onBoundsChange={handleBoundsChange}
+            panelOpen={false}
+            mapStyle={themeAwareMapStyle}
+            pois={pois}
+          />
+        )}
       </div>
 
     </div>
