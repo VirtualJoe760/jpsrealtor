@@ -1,7 +1,7 @@
 ---
 title: Stripe Billing & Credits
 status: current
-last_verified: 2026-06-11
+last_verified: 2026-07-02
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 related:
   - ../campaigns/co-marketing-adspend.md
@@ -18,6 +18,33 @@ agent KYC. All ad/mail/voicemail/co-marketing spend runs on the **internal credi
 ledger** — Stripe is only touched to *buy* credits or subscribe. Checkout is
 server-created → redirect to Stripe-hosted pages (no card data touches the app;
 PCI-safe). **No Stripe Connect/payouts** — co-marketing settles via credits.
+
+## Plan availability & free-tier gating (2026-07)
+
+**Only the Free plan is purchasable today.** The paid tiers (Beginner /
+Experienced / Top Agent) are built end-to-end — model, Stripe checkout,
+webhooks, credit grants — but are shown **"Coming soon" and disabled** in the
+UI. New agents pick a plan inside the forced first-run setup wizard (Free only)
+and manage billing under **Settings → Billing**; the standalone
+`/agent/subscription` page is retired and 302-redirects to
+`/agent/settings?section=billing`.
+
+Free-tier agents get a reduced portal (Dashboard, Contacts, CMS, Settings) with
+Email / Messages / Campaigns hidden, and **every credit-spending / outbound
+route returns 403** for a free, non-admin agent (server-side enforcement, not
+just UI hiding). Admins and any paid-tier agent are exempt. The whole rule is
+`block iff (isFreeTier && !isAdmin)`.
+
+**Tier source of truth is `AgentSubscription.tier` — or no record at all →
+"free"** — resolved via `src/lib/subscription-helpers.ts`
+(`getAgentTier` / `isFreeTier` / `hasPaidTier`), keyed by `agentId`. This is the
+per-agent tier, distinct from the legacy per-user `User.subscriptionTier`. The
+JWT carries `agentTier` + `isAdmin` so client gating avoids a DB call.
+
+> Full gating map, the forced-onboarding flow, the complete server-side 403
+> route list, and the **multi-tenant interaction (public-site "Coming Soon"
+> gate vs. the feature-tier gate)**:
+> **[free-tier-gating.md](./free-tier-gating.md)**.
 
 ## Canonical credit model (single source of truth)
 
@@ -49,8 +76,10 @@ PCI-safe). **No Stripe Connect/payouts** — co-marketing settles via credits.
 | Account deletion | `/api/auth/delete-account` | cancels the Stripe subscription |
 
 Client checkout is initiated from `pricing/PricingClient.tsx`,
-`agent/subscription/page.tsx`, `agent/settings/.../BillingStep.tsx`,
-`dashboard/subscription/page.tsx` — each POSTs then `window.location = url`.
+`agent/settings/.../BillingStep.tsx`, `dashboard/subscription/page.tsx` — each
+POSTs then `window.location = url`. (The standalone `agent/subscription` page is
+retired — `src/proxy.ts` redirects it to Settings → Billing. Paid checkout is
+dormant while only Free is purchasable, but the plumbing stays intact.)
 
 ## Webhook — `POST /api/webhooks/stripe`
 

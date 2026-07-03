@@ -90,8 +90,53 @@ if (!isAdmin && (await isFreeTier(userId))) {
 }
 ```
 
+## Multi-tenant interaction (the two separate gates)
+
+Free tier touches the multi-tenant layer at two points, and they are **different
+gates** — conflating them causes confusion:
+
+1. **Feature-tier gate** (this doc). Per-agent, keyed on `AgentSubscription.tier`
+   (or no record → `"free"`). Decides which *portal features / API routes* the
+   logged-in agent may use. Rule: `block iff (isFreeTier && !isAdmin)`.
+
+2. **Public-site "live vs Coming Soon" gate.** Per-agent, decides whether the
+   agent's public branded site (`{slug}.chatrealty.io`, or a custom domain)
+   renders vs. shows a "Coming Soon" placeholder. Implemented in
+   `src/app/api/agent/public/route.ts` and `src/app/agent-site/[[...slug]]/`:
+   `hasActiveSubscription = <an active|trialing AgentSubscription exists> || agentProfile.siteForceActive`.
+
+**These do not move together.** Key consequence:
+
+| Agent state | Feature tier | Public subdomain site |
+|---|---|---|
+| Approved, **no** subscription record | `free` (portal works: Dashboard/Contacts/CMS/Settings) | **"Coming Soon"** — site-live gate needs an active/trialing sub or `siteForceActive` |
+| Free-tier record (`tier:"free"`, `status:"active"`) | `free` | **Live** (an active-status record passes the gate) |
+| Any paid tier (active) | paid (full portal) | Live |
+| Admin / agent viewing **their own** site | exempt everywhere | Always renders (preview bypass) |
+
+**Why "no record" is the common free case:** admin approval
+(`/api/admin/applications/agents`) grants the `realEstateAgent` role + assigns
+the `{slug}` subdomain but **does not create an AgentSubscription** (the approval
+message literally says *"active after subscription"*). So a newly-approved free
+agent resolves to `free` for feature-gating yet has **no** active sub → their
+public site is gated until they subscribe or an admin flips
+`agentProfile.siteForceActive`.
+
+> ⚠️ **Design note / open question (flagged, not changed):** if free agents are
+> meant to have a *live* public subdomain site, either (a) create a
+> `tier:"free", status:"active"` AgentSubscription at approval/onboarding, or
+> (b) treat `isFreeTier` (incl. no-record) as site-active in the public gate.
+> Today neither happens — free agents get the portal but a gated public site.
+
+`resolveDomainOwner` still governs *whose data* a public page shows (see
+[../multi-tenant/README.md](../multi-tenant/README.md)); the subscription gate is
+layered on top of it to decide *whether* that owner's site renders.
+
 ## Gotchas
 
+- **Two gates, not one.** "Free tier" (features) ≠ "site not live" (public
+  subdomain). A free agent's portal works even while their public site shows
+  "Coming Soon". See the table above.
 - **Admins and paid agents are exempt everywhere.** If a paid agent can't see a paid feature, the JWT
   `agentTier` is likely stale — `session.update()` refreshes it.
 - **The Settings STEPS registry is shared** by the wizard and the sidebar. Adding a `paidOnly` step

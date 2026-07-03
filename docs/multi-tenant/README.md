@@ -1,7 +1,7 @@
 ---
 title: Multi-tenant scoping (resolveDomainOwner)
 status: current
-last_verified: 2026-06-08
+last_verified: 2026-07-02
 related: [../routing/README.md, ../auth/README.md]
 supersedes: docs/multi-tenant/index.md
 ---
@@ -97,6 +97,25 @@ The systematic fix is to grep every API route for `session.user.id`, classify ea
 | `{slug}.chatrealty.io` | Agent subdomain | `agentProfile.subdomain` lookup. |
 | Custom agent domains | Agent's branded site | `agentProfile.customDomain` then `DomainRegistry` lookup. |
 
+## Subscription / site-live gate
+
+Resolving the domain owner decides *whose* data a public page shows. A second,
+independent gate decides *whether* that owner's public site renders at all:
+
+- `src/app/api/agent/public/route.ts` and `src/app/agent-site/[[...slug]]/`
+  compute `hasActiveSubscription = <active|trialing AgentSubscription exists> ||
+  agentProfile.siteForceActive`. When false, the branded subdomain shows a
+  **"Coming Soon"** placeholder instead of the full site.
+- The agent viewing **their own** site, and admins, bypass this gate (preview).
+
+**Free-plan interaction:** an agent's *feature tier* (`AgentSubscription.tier`,
+or no record → `"free"`, via `src/lib/subscription-helpers.ts`) is a SEPARATE
+gate from this site-live check. A newly-approved free agent has the role +
+subdomain but **no** subscription record, so their portal works while their
+public site stays "Coming Soon" until they subscribe (or an admin sets
+`siteForceActive`). Full matrix + the open design question:
+[../commerce/free-tier-gating.md](../commerce/free-tier-gating.md).
+
 ## Gotchas
 
 - **`session.user.id` is for agent-private endpoints only.** "Show me my CRM contacts" → `session.user.id`. "Show me the articles on this site" → `resolveDomainOwner`. Don't mix these up.
@@ -124,6 +143,12 @@ if (!(isAdmin && showAll)) {
 ```
 
 Three things to note: admin `?all=true` bypass, defensive empty-result on null owner, single filter set from the resolved id.
+
+**Exception — `?mine=true`:** the same `/api/articles/list` route also serves the
+agent CMS, where scoping must be the *logged-in agent* (`session.user.id`), not
+the domain owner. That's the one place a "public content" endpoint intentionally
+scopes by session instead of `resolveDomainOwner`. See `../cms/README.md` scoping
+modes.
 
 ## Related models
 
