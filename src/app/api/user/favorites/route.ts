@@ -8,17 +8,22 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import UnifiedListing from "@/models/unified-listing";
 
-// Pick the best photo from OUR synced unified_listings media[] (camelCase uri*
-// variants). Prefer the flagged primary photo, then fall back through sizes.
+// Pick the best photo from OUR synced unified_listings media[]. The synced
+// media shape is mixed-case across sync runs (~81k listings camelCase `uri800`,
+// a handful PascalCase `Uri800` — known photo-sync casing drift), so read both.
+// Prefer the flagged primary photo, then fall back through sizes.
 function pickSyncedPhoto(media: any[]): string | undefined {
   if (!Array.isArray(media) || media.length === 0) return undefined;
-  const primary = media.find((m) => m?.primary) || media[0];
+  const primary =
+    media.find((m) => m?.primary || m?.MediaCategory === "Primary Photo") ||
+    media[0];
+  if (!primary) return undefined;
   return (
-    primary?.uri1024 ||
-    primary?.uri800 ||
-    primary?.uriLarge ||
-    primary?.uri640 ||
-    primary?.uri1280 ||
+    primary.uri1024 || primary.Uri1024 ||
+    primary.uri800 || primary.Uri800 ||
+    primary.uriLarge || primary.UriLarge ||
+    primary.uri640 || primary.Uri640 ||
+    primary.uri1280 || primary.Uri1280 ||
     undefined
   );
 }
