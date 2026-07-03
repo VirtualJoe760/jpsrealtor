@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, Phone, MapPinned, Share2, Bed, Bath, Square, TreePine, DollarSign, Calendar as CalendarIcon, Home as HomeIcon, Building2, Eye, ChevronLeft, Heart, MessageCircle, Map, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
@@ -219,6 +220,12 @@ export default function ListingClient({
   const [copied, setCopied] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  // Favorites flow: DB is the source of truth once authenticated; localStorage
+  // is a GUEST-ONLY cache that gets merged into the account at login
+  // (useFavorites migration) and cleared. Never write localStorage while
+  // logged in — a shadow copy resurrects removed favorites at next login.
+  const { status: sessionStatus } = useSession();
+  const isAuthed = sessionStatus === "authenticated";
   const daysOnMarket = calculateDaysOnMarket(listing);
 
   // Track listing view on mount
@@ -241,31 +248,35 @@ export default function ListingClient({
     });
   }, [listing.listingKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check if listing is already favorited (localStorage for guests, API for logged-in)
+  // Check if listing is already favorited. Authed → DB is the source of truth;
+  // guest → localStorage only.
   useEffect(() => {
+    if (sessionStatus === "loading") return;
     const key = listing.listingKey || listing.listingId || '';
     if (!key) return;
-    // Check localStorage first (works for guests and as a fast check)
+
+    if (isAuthed) {
+      fetch('/api/user/favorites')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.favorites?.some((f: any) => f.listingKey === key)) {
+            setIsFavorited(true);
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+
     try {
       const stored = localStorage.getItem('likedListings');
       if (stored) {
         const liked = JSON.parse(stored);
         if (Array.isArray(liked) && liked.some((l: any) => l.listingKey === key || l.listingId === key)) {
           setIsFavorited(true);
-          return;
         }
       }
     } catch {}
-    // Also check API for authenticated users
-    fetch('/api/user/favorites')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.favorites?.some((f: any) => f.listingKey === key)) {
-          setIsFavorited(true);
-        }
-      })
-      .catch(() => {});
-  }, [listing.listingKey, listing.listingId]);
+  }, [listing.listingKey, listing.listingId, sessionStatus, isAuthed]);
 
   const toggleFavorite = async () => {
     const key = listing.listingKey || listing.listingId || '';
@@ -274,49 +285,42 @@ export default function ListingClient({
     const wasFavorited = isFavorited;
     setIsFavorited(!wasFavorited); // Optimistic update
 
+    const listingData = {
+      listingKey: key,
+      listingId: listing.listingId,
+      address: address,
+      city: listing.city,
+      subdivisionName: listing.subdivisionName,
+      listPrice: listing.listPrice,
+      bedroomsTotal: listing.bedroomsTotal,
+      bathroomsTotalDecimal: listing.bathroomsTotalDecimal,
+      livingArea: listing.livingArea,
+      slugAddress: (listing as any).slugAddress,
+      photos: media.slice(0, 1).map(m => ({ Uri800: m.src })),
+    };
+
     try {
-      if (wasFavorited) {
-        // Remove from favorites
-        const res = await fetch(`/api/user/favorites/${key}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to remove');
-        // Also remove from localStorage
-        try {
-          const stored = localStorage.getItem('likedListings');
-          if (stored) {
-            const liked = JSON.parse(stored).filter((l: any) => l.listingKey !== key && l.listingId !== key);
-            localStorage.setItem('likedListings', JSON.stringify(liked));
-          }
-        } catch {}
+      if (isAuthed) {
+        // DB only — never mirror to localStorage while logged in (a shadow copy
+        // resurrects removed favorites at the next login migration).
+        const res = wasFavorited
+          ? await fetch(`/api/user/favorites/${key}`, { method: 'DELETE' })
+          : await fetch(`/api/user/favorites/${key}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ listingData }),
+            });
+        if (!res.ok) throw new Error('Failed to update favorite');
       } else {
-        // Add to favorites
-        const listingData = {
-          listingKey: key,
-          listingId: listing.listingId,
-          address: address,
-          city: listing.city,
-          subdivisionName: listing.subdivisionName,
-          listPrice: listing.listPrice,
-          bedroomsTotal: listing.bedroomsTotal,
-          bathroomsTotalDecimal: listing.bathroomsTotalDecimal,
-          livingArea: listing.livingArea,
-          slugAddress: (listing as any).slugAddress,
-          photos: media.slice(0, 1).map(m => ({ Uri800: m.src })),
-        };
-        const res = await fetch(`/api/user/favorites/${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listingData }),
-        });
-        if (!res.ok) throw new Error('Failed to save');
-        // Also save to localStorage for guests
-        try {
-          const stored = localStorage.getItem('likedListings');
-          const liked = stored ? JSON.parse(stored) : [];
-          if (!liked.some((l: any) => l.listingKey === key)) {
-            liked.push(listingData);
-            localStorage.setItem('likedListings', JSON.stringify(liked));
-          }
-        } catch {}
+        // Guest — localStorage only; merged into the account at login.
+        const stored = localStorage.getItem('likedListings');
+        const liked = stored ? JSON.parse(stored) : [];
+        const next = wasFavorited
+          ? liked.filter((l: any) => l.listingKey !== key && l.listingId !== key)
+          : liked.some((l: any) => l.listingKey === key)
+            ? liked
+            : [...liked, listingData];
+        localStorage.setItem('likedListings', JSON.stringify(next));
       }
     } catch {
       setIsFavorited(wasFavorited); // Rollback

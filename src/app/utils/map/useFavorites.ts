@@ -92,18 +92,20 @@ export default function useFavorites() {
             console.log('[useFavorites] ✅ Migration complete - clearing localStorage');
             localStorage.removeItem("likedListings");
 
-            // Set merged favorites
-            const mergedFavorites = [...dbFavorites.map((fav: any) => fav.listingData), ...newFavorites];
+            // Set merged favorites. Use the API's flattened favorites directly —
+            // they carry the ENRICHED fields (current photo from our synced
+            // media, refreshed price/status), unlike the swipe-time listingData.
+            const mergedFavorites = [...dbFavorites, ...newFavorites];
             setFavorites(mergedFavorites);
             setMigrationCount(newFavorites.length); // Track migration count for notification
           } else {
             console.log('[useFavorites] ℹ️ No new favorites to migrate (all already in database)');
             localStorage.removeItem("likedListings");
-            setFavorites(dbFavorites.map((fav: any) => fav.listingData));
+            setFavorites(dbFavorites);
           }
         } else {
-          // No localStorage favorites - just use database
-          setFavorites(dbFavorites.map((fav: any) => fav.listingData));
+          // No localStorage favorites - just use database (flattened + enriched)
+          setFavorites(dbFavorites);
 
           if (dbFavorites.length === 0) {
             console.log('[useFavorites] ℹ️ Database returned 0 favorites');

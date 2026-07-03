@@ -197,15 +197,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process favorites and extract analytics data. Dedupe by listingKey:
-    // this POST REPLACES the whole likedListings array with the client's list,
-    // and the client list can carry duplicates (e.g. merged localStorage + DB
-    // state). Without this, dupes accumulated in the array — the favorites GET
-    // dedupes for display, so the raw array (and the dashboard count + analytics
-    // derived from it) drifted above the displayed count. Deduping here both
-    // prevents new dupes and self-heals the stored array on the next sync.
+    // MERGE-only sync. The DB is the source of truth once authenticated;
+    // localStorage is a guest-only cache merged in at login. This endpoint
+    // therefore only ADDS new favorites — it never replaces/deletes the stored
+    // array from client state (the old replace semantics let a stale client
+    // cache clobber the account and resurrect removed/expired favorites).
+    // Skipped: dupes, keys already favorited, keys already archived
+    // (statusChangedListings), and keys no longer active in unified_listings.
     const seenKeys = new Set<string>();
-    const processedFavorites = favorites
+    const incoming = favorites
       .map((listing: any) => ({
         listingKey: listing.listingKey || listing._id,
         listingData: listing,
@@ -220,11 +220,35 @@ export async function POST(request: NextRequest) {
         return true;
       });
 
-    // Calculate analytics
-    const analytics = calculateAnalytics(processedFavorites);
+    const existingKeys = new Set(
+      (user.likedListings || []).map((f: any) => f.listingKey)
+    );
+    const archivedKeys = new Set(
+      (user.statusChangedListings || []).map((f: any) => f.listingKey)
+    );
+    const candidates = incoming.filter(
+      (f) => !existingKeys.has(f.listingKey) && !archivedKeys.has(f.listingKey)
+    );
 
-    // Update user with new favorites and analytics
-    user.likedListings = processedFavorites;
+    // Only merge listings that are still active (unified_listings holds only
+    // active inventory — a missing key means expired/sold).
+    let toAdd: typeof candidates = [];
+    if (candidates.length > 0) {
+      const UnifiedListing = (await import("@/models/unified-listing")).default;
+      const activeDocs = await UnifiedListing.find(
+        { listingKey: { $in: candidates.map((c) => c.listingKey) } },
+        { listingKey: 1 }
+      ).lean();
+      const activeKeys = new Set((activeDocs as any[]).map((d) => d.listingKey));
+      toAdd = candidates.filter((c) => activeKeys.has(c.listingKey));
+    }
+
+    if (toAdd.length > 0) {
+      user.likedListings.push(...(toAdd as any[]));
+    }
+
+    // Recalculate analytics from the full merged array
+    const analytics = calculateAnalytics(user.likedListings || []);
     user.swipeAnalytics = {
       ...analytics,
       lastUpdated: new Date(),
@@ -234,8 +258,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Favorites synced successfully",
-      count: processedFavorites.length,
+      message: "Favorites merged successfully",
+      added: toAdd.length,
+      skipped: incoming.length - toAdd.length,
+      count: (user.likedListings || []).length,
       analytics: user.swipeAnalytics,
     });
   } catch (error) {

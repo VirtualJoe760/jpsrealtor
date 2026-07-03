@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import UnifiedListing from "@/models/unified-listing";
 import { normalizeSubdivisionName } from "@/app/utils/subdivisionUtils";
 
 // POST - Add a single favorite
@@ -52,6 +53,24 @@ export async function POST(
       return NextResponse.json(
         { success: true, message: "Already favorited", alreadyExists: true },
         { status: 200 }
+      );
+    }
+
+    // Only ACTIVE listings can be favorited. unified_listings holds only
+    // active inventory, so a missing key = expired/sold. This stops the login
+    // migration (or any stale client cache) from resurrecting a dead listing
+    // that the favorites GET would immediately re-archive.
+    const active = await UnifiedListing.exists({
+      $or: [
+        { listingKey },
+        { slugAddress: listingKey },
+        { slug: listingKey },
+      ],
+    });
+    if (!active) {
+      return NextResponse.json(
+        { error: "Listing is no longer active", gone: true },
+        { status: 410 }
       );
     }
 
