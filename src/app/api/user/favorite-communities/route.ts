@@ -27,9 +27,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      communities: user.favoriteCommunities || []
-    });
+    // no-store: this is per-user data. Without it vercel.json's catch-all
+    // stamps `immutable, max-age=31536000`, so a delete looks like it "reselects"
+    // — the browser serves the pre-delete list from a frozen immutable cache.
+    return NextResponse.json(
+      { communities: user.favoriteCommunities || [] },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error: any) {
     console.error('[GET /api/user/favorite-communities] Error:', error);
     return NextResponse.json(
@@ -96,13 +100,16 @@ export async function POST(request: NextRequest) {
       .select('favoriteCommunities')
       .lean<{ favoriteCommunities?: any[] }>();
 
-    return NextResponse.json({
-      message:
-        result.modifiedCount > 0
-          ? 'Community added to favorites'
-          : 'Community already in favorites',
-      communities: updated?.favoriteCommunities || []
-    });
+    return NextResponse.json(
+      {
+        message:
+          result.modifiedCount > 0
+            ? 'Community added to favorites'
+            : 'Community already in favorites',
+        communities: updated?.favoriteCommunities || []
+      },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error: any) {
     console.error('[POST /api/user/favorite-communities] Error:', error);
     return NextResponse.json(
@@ -161,10 +168,13 @@ export async function DELETE(request: NextRequest) {
       .select('favoriteCommunities')
       .lean<{ favoriteCommunities?: any[] }>();
 
-    return NextResponse.json({
-      message: 'Community removed from favorites',
-      communities: updated?.favoriteCommunities || []
-    });
+    return NextResponse.json(
+      {
+        message: 'Community removed from favorites',
+        communities: updated?.favoriteCommunities || []
+      },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error: any) {
     console.error('[DELETE /api/user/favorite-communities] Error:', error);
     return NextResponse.json(

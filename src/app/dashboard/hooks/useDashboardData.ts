@@ -18,7 +18,10 @@ export function useDashboardData(status: string) {
   const fetchFavoriteCommunities = async () => {
     try {
       setIsLoadingCommunities(true);
-      const response = await fetch("/api/user/favorite-communities");
+      // no-store: bypass any stale immutable browser-cache entry (a prior
+      // vercel.json bug froze this per-user response), else a removed community
+      // reappears on refetch.
+      const response = await fetch("/api/user/favorite-communities", { cache: "no-store" });
       if (!response.ok) throw new Error(`Failed to fetch communities: ${response.status}`);
       const data = await response.json();
       setFavoriteCommunities(data.communities || []);

@@ -67,7 +67,7 @@ export default function SubdivisionPageClient({
       if (!session?.user?.email) return;
 
       try {
-        const response = await fetch('/api/user/favorite-communities');
+        const response = await fetch('/api/user/favorite-communities', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           const favorite = data.communities?.find(
