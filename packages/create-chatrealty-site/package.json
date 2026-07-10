@@ -1,0 +1,50 @@
+{
+  "name": "create-chatrealty-site",
+  "version": "0.1.0",
+  "description": "Scaffold a real-estate website backed by the ChatRealty API — listings search, map, favorites + lead capture, and neighborhood pages. One command, then customize.",
+  "bin": {
+    "create-chatrealty-site": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "files": [
+    "dist",
+    "template",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "real-estate",
+    "chatrealty",
+    "idx",
+    "mls",
+    "next",
+    "scaffold",
+    "create-app",
+    "starter"
+  ],
+  "author": "Joey Sardella <josephsardella@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://chatrealty.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VirtualJoe760/jpsrealtor.git",
+    "directory": "packages/create-chatrealty-site"
+  },
+  "bugs": {
+    "url": "https://github.com/VirtualJoe760/jpsrealtor/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
