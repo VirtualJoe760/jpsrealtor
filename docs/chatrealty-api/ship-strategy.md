@@ -246,6 +246,23 @@ the backend setup happens.
   localStorage → merge on sign-in (the flow already proven on the platform site).
   Depends: B1, B3. Accept: favorites survive devices; guest merge works; the
   agent sees favorite activity on the Contact.
+- **B5 — Recommended listings (2026-07-23, Joseph).** OWNS `GET
+  /api/skill/end-users/me/recommendations`: score active listings against the
+  end-user's behavioral data (favorites' price band / cities / subdivisions /
+  beds; exclude dislikes + already-favorited; recency-weighted) + the
+  template's homepage "Recommended for you" rail (shown signed-in; falls back
+  to featured/newest for guests). NOTE: the legacy platform never built this —
+  the swipe substrate (likedListings/dislikedListings/swipeAnalytics/
+  preferencePatterns, /api/swipes/*) exists but no engine; build it on the
+  skill surface first, backport to the platform home later. Depends: B1, B4.
+  Accept: two users with different favorites get visibly different rails.
+- **B6 — Agent-site security hardening (2026-07-23, Joseph).** OWNS template
+  `middleware.ts` (security headers, bot-hostile basics, per-IP rate limits on
+  `/api/lead` + auth routes) + **the agent's own Cloudflare Turnstile**: env
+  slots (`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`, graceful no-op when
+  unset) wired into sign-in + inquiry forms, and a guide step walking the
+  agent through creating their own free Cloudflare Turnstile widget (their
+  keys, their account — not ChatRealty's). Depends: B3 (forms exist).
 
 ### Phase C — CHAP on agent sites
 
