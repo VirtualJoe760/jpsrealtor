@@ -183,6 +183,7 @@ export const authOptions: NextAuthOptions = {
           // Agent tier + onboarding gate (see subscription-helpers.ts + proxy.ts).
           token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
           token.agentTier = await getAgentTier(String(dbUser._id));
+          token.permissionsCheckedAt = Date.now();
         }
       }
 
@@ -198,7 +199,36 @@ export const authOptions: NextAuthOptions = {
           token.isAdmin = dbUser.isAdmin;
           token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
           token.agentTier = await getAgentTier(String(dbUser._id));
+          token.permissionsCheckedAt = Date.now();
         }
+      }
+
+      // Silent permission refresh: JWTs live 30 days, so a role granted AFTER
+      // sign-in (agent application approved, tier change, admin grant) would
+      // otherwise stay invisible until re-login — the "approved but still not
+      // an agent" bug. Re-read roles/tier from the DB at most once per minute
+      // per session, in place, no logout. Skipped on initial sign-in and on
+      // explicit update (both just refreshed above).
+      const PERMISSIONS_REFRESH_MS = 60_000;
+      if (
+        token.id &&
+        !account &&
+        trigger !== "update" &&
+        Date.now() - ((token.permissionsCheckedAt as number) || 0) > PERMISSIONS_REFRESH_MS
+      ) {
+        await dbConnect();
+        const dbUser = await User.findById(token.id as string)
+          .select("roles isAdmin agentProfile.onboardingComplete")
+          .lean();
+        if (dbUser) {
+          token.roles = (dbUser as any).roles;
+          token.isAdmin = (dbUser as any).isAdmin;
+          token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
+          token.agentTier = await getAgentTier(String((dbUser as any)._id));
+        }
+        // Stamp even on a missing user so a deleted account doesn't re-query
+        // on every request for the cookie's remaining lifetime.
+        token.permissionsCheckedAt = Date.now();
       }
 
       // Return previous token if the above didn't run

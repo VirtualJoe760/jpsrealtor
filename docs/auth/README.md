@@ -1,7 +1,7 @@
 ---
 title: Auth
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-07-23
 related: [../routing/README.md, ../multi-tenant/README.md]
 supersedes: docs/features/AUTHENTICATION.md
 ---
@@ -36,6 +36,12 @@ because each apex has its own cookie that needs to be cleared independently.
 - **Strategy:** JWT (stateless).
 - **Cookie:** `__Secure-next-auth.session-token` in production, `next-auth.session-token` in dev.
 - **TTL:** 30 days.
+- **Silent permission refresh (2026-07-23):** roles/`agentTier`/`onboardingComplete`
+  are stamped into the JWT, so a permission granted *after* sign-in (agent
+  application approved, plan change, admin grant) used to stay invisible until
+  re-login. The `jwt` callback now re-reads them from the DB at most once per
+  60s per session and updates the token **in place** — no logout, bounded ≤60s
+  staleness. Explicit `session.update()` still forces an immediate refresh.
 - **Default cookie scope:** *host-only* — `getCookieDomain()` returns `undefined`. So `jpsrealtor.com` and `chatrealty.io` are entirely separate cookie jars.
 - **Domain-scoped variant:** When a user arrives via `/api/auth/receive`, the cookie is set with `Domain=.chatrealty.io` (or `.jpsrealtor.com`, etc.) so all subdomains of that apex share the session.
 - **Why two variants?** A user can have BOTH at once (signed in directly on chatrealty.io AND came in via transfer from jpsrealtor.com). The signout chain has to clear both, or one survives.
