@@ -7,6 +7,7 @@
 // ChatRealty API directly, or the token would have to leave the server.
 
 import type { SearchResult, ListingDetail, MarketStats, ListingFilters } from "./types";
+import { isTestDataMode, searchTestListings, getTestListing, testMarketStats } from "./test-data";
 
 const BASE = (process.env.CHATREALTY_API_BASE || "https://www.chatrealty.io").replace(/\/+$/, "");
 const TOKEN = process.env.CHATREALTY_API_TOKEN || "";
@@ -57,6 +58,7 @@ function qs(filters: ListingFilters): string {
 }
 
 export async function searchListings(filters: ListingFilters = {}): Promise<SearchResult> {
+  if (isTestDataMode()) return searchTestListings(filters);
   const res = await skillFetch(`/api/skill/listings/search?${qs(filters)}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -66,6 +68,7 @@ export async function searchListings(filters: ListingFilters = {}): Promise<Sear
 }
 
 export async function getListing(listingKey: string): Promise<ListingDetail | null> {
+  if (isTestDataMode()) return getTestListing(listingKey);
   const res = await skillFetch(`/api/skill/listings/${encodeURIComponent(listingKey)}`);
   if (res.status === 404) return null;
   if (!res.ok) {
@@ -80,6 +83,7 @@ export async function getMarketStats(opts: {
   subdivision?: string;
   propertyType?: string;
 }): Promise<MarketStats> {
+  if (isTestDataMode()) return testMarketStats(opts);
   const p = new URLSearchParams();
   if (opts.city) p.set("city", opts.city);
   if (opts.subdivision) p.set("subdivision", opts.subdivision);
@@ -101,6 +105,9 @@ export async function submitLead(input: {
   source?: string;
   tags?: string[];
 }): Promise<{ contactId: string | null }> {
+  // Test-data mode: no CRM exists to write to — succeed quietly so the form
+  // UX is previewable, but record nothing. The banner explains the mode.
+  if (isTestDataMode()) return { contactId: null };
   const res = await skillFetch(`/api/skill/contacts/from-signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

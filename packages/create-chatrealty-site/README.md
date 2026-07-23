@@ -14,6 +14,20 @@ You'll be asked for:
 - your **ChatRealty API token** (`crt_live_…`, from Settings → Integrations on your ChatRealty site), and
 - the **API base** (default `https://www.chatrealty.io`; use `http://localhost:3000` for local dev).
 
+**No token yet?** Scaffold in **TEST DATA mode** — press Enter at the token
+prompt, or pass `--test-data`:
+
+```bash
+npx create-chatrealty-site my-site --test-data
+```
+
+The site runs entirely on **25 fictitious sample listings** bundled with the
+package (fake cities, placeholder art, "Demo Realty — Test Data" attribution),
+so you can preview everything while your MLS feed / ChatRealty tenant setup is
+in progress. A permanent banner marks every page — **never launch publicly on
+test data**. Go live by setting `CHATREALTY_API_TOKEN` and removing
+`CHATREALTY_TEST_DATA` from `.env.local`.
+
 It verifies the token, writes the starter, and drops the token into `.env.local`
 (git-ignored). Then:
 

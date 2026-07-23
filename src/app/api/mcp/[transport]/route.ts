@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const PKG = { name: "@chatrealty/mcp-server", version: "0.10.2" };
+const PKG = { name: "@chatrealty/mcp-server", version: "0.11.0" };
 
 async function verifyToken(
   req: Request,

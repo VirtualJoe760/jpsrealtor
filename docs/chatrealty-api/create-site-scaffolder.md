@@ -33,6 +33,18 @@ verifies the token against `GET /api/skill/me` (warns + continues on failure so 
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
 
+**TEST DATA mode (v0.2.0, 2026-07-23):** `--test-data` (or Enter at the token
+prompt) scaffolds with **zero token, zero network** against 25 fictitious sample
+listings bundled in `template/data/test-listings.json` (fake cities in empty
+Mojave desert, `public/test-photos/*.svg` placeholder art, "Demo Realty — Test
+Data" attribution, remarks that self-identify as fictitious).
+`lib/chatrealty.ts` branches on `CHATREALTY_TEST_DATA=true` into
+`lib/test-data.ts` (in-memory filter/paginate/stats; lead submit no-ops); a
+permanent `<TestDataBanner>` marks every page. Purpose: the BYOD preview path —
+see the site working while the data-key/VPS/tenant setup is in progress
+(ship-strategy Phase P + build-guide step 1). **Never launched publicly on test
+data** — the guide, the CLI output, the env file, and the banner all say so.
+
 ## What the CLI is
 
 `packages/create-chatrealty-site/src/cli.ts` — a **zero-dependency** Node CLI

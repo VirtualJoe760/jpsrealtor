@@ -12,10 +12,17 @@
 //   npm create chatrealty-site@latest my-site
 //   npx create-chatrealty-site my-site
 //   npx create-chatrealty-site my-site --token crt_live_xxx --api-base http://localhost:3000
+//   npx create-chatrealty-site my-site --test-data     # no token: 25 fictitious sample listings
 //   npx create-chatrealty-site           # prompts for anything not passed
 //
 // Non-interactive: pass --token/--api-base or set CHATREALTY_API_TOKEN /
 // CHATREALTY_API_BASE in the environment.
+//
+// TEST DATA mode (--test-data, or just press Enter at the token prompt):
+// scaffolds the site against 25 FICTITIOUS listings bundled in the template
+// (data/test-listings.json) so you can preview everything before your MLS
+// feed / ChatRealty tenant is connected. The site shows a permanent TEST DATA
+// banner in this mode — never launch it publicly on sample listings.
 
 import * as fs from "fs";
 import * as path from "path";
@@ -95,17 +102,27 @@ async function main(): Promise<void> {
     new Promise((resolve) => rl.question(q, (a) => resolve(a.trim() || fallback)));
 
   let dir: string;
-  let apiBase: string;
-  let token: string;
+  let apiBase: string = API_BASE_DEFAULT;
+  let token: string = "";
+  let testMode = args.includes("--test-data");
   try {
     // 1. Target directory (positional arg, else prompt)
     dir = positional[0] || (await ask("  Project directory (e.g. my-realty-site): ", "chatrealty-site"));
 
-    // 2. API base (flag/env, else prompt with default)
-    apiBase = getFlag(args, "--api-base") || process.env.CHATREALTY_API_BASE || (await ask(`  ChatRealty API base [${API_BASE_DEFAULT}]: `, API_BASE_DEFAULT));
+    if (!testMode) {
+      // 2. API base (flag/env, else prompt with default)
+      apiBase = getFlag(args, "--api-base") || process.env.CHATREALTY_API_BASE || (await ask(`  ChatRealty API base [${API_BASE_DEFAULT}]: `, API_BASE_DEFAULT));
 
-    // 3. Token (flag/env, else prompt)
-    token = getFlag(args, "--token") || process.env.CHATREALTY_API_TOKEN || (await ask("  Your ChatRealty API token (crt_live_…): "));
+      // 3. Token (flag/env, else prompt). Empty answer → offer TEST DATA mode
+      //    instead of erroring, so "no token yet" is a preview path, not a wall.
+      token = getFlag(args, "--token") || process.env.CHATREALTY_API_TOKEN || (await ask("  Your ChatRealty API token (crt_live_…) [Enter for TEST DATA mode]: "));
+      if (!token) {
+        const yn = await ask("  No token — scaffold with 25 fictitious SAMPLE listings instead? [Y/n]: ", "y");
+        if (yn.toLowerCase().startsWith("y")) {
+          testMode = true;
+        }
+      }
+    }
   } finally {
     rl.close();
   }
@@ -121,21 +138,27 @@ async function main(): Promise<void> {
     console.error(`\n  ERROR: ${dest} already exists and is not empty. Pick another name or empty it first.\n`);
     process.exit(1);
   }
-  if (!token) {
-    console.error("\n  ERROR: a token is required. Pass --token, set CHATREALTY_API_TOKEN, or paste it when prompted.\n  Get one from Settings → Integrations on your ChatRealty site.\n");
+  if (!testMode && !token) {
+    console.error("\n  ERROR: a token is required (or use --test-data). Pass --token, set CHATREALTY_API_TOKEN, or paste it when prompted.\n  Get one from Settings → Integrations on your ChatRealty site.\n");
     process.exit(1);
   }
-  if (!token.startsWith("crt_")) {
+  if (!testMode && !token.startsWith("crt_")) {
     console.log("  (heads-up: tokens usually start with 'crt_live_' — continuing anyway)");
   }
 
-  // 4. Verify the token so the scaffold isn't dead on arrival
-  console.log(`\n  Verifying token against ${apiBase} …`);
-  const v = await verifyToken(token, apiBase);
-  if (!v.ok) {
-    console.log(`  ⚠ Could not verify token (${v.reason}). Scaffolding anyway — fix CHATREALTY_API_TOKEN in .env.local if data doesn't load.`);
+  // 4. Verify the token so the scaffold isn't dead on arrival (skipped in
+  //    test-data mode — there's nothing to verify against).
+  if (testMode) {
+    console.log("\n  TEST DATA mode: scaffolding with 25 fictitious sample listings.");
+    console.log("  ⚠ These listings are NOT real. Preview only — do not launch publicly until your own MLS data is connected.");
   } else {
-    console.log(`  ✓ Token verified${v.agentName ? ` (agent: ${v.agentName})` : ""}`);
+    console.log(`\n  Verifying token against ${apiBase} …`);
+    const v = await verifyToken(token, apiBase);
+    if (!v.ok) {
+      console.log(`  ⚠ Could not verify token (${v.reason}). Scaffolding anyway — fix CHATREALTY_API_TOKEN in .env.local if data doesn't load.`);
+    } else {
+      console.log(`  ✓ Token verified${v.agentName ? ` (agent: ${v.agentName})` : ""}`);
+    }
   }
 
   // 5. Scaffold
@@ -143,20 +166,25 @@ async function main(): Promise<void> {
   console.log(`\n  ✓ Wrote ${n} files to ${dest}`);
 
   // 6. .env.local — the token lives here (git-ignored), server-side only.
-  fs.writeFileSync(
-    path.join(dest, ".env.local"),
-    `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n`,
-    { mode: 0o600 }
-  );
-  console.log(`  ✓ Wrote .env.local (token kept server-side; already in .gitignore)`);
+  const envContent = testMode
+    ? `# TEST DATA MODE — the site serves 25 fictitious sample listings from data/test-listings.json.\n# A permanent banner marks every page. NEVER launch publicly in this mode.\n# When your ChatRealty tenant + MLS data are ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n`
+    : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n`;
+  fs.writeFileSync(path.join(dest, ".env.local"), envContent, { mode: 0o600 });
+  console.log(`  ✓ Wrote .env.local (${testMode ? "TEST DATA mode" : "token kept server-side"}; already in .gitignore)`);
 
   // 7. Next steps
   console.log("\n  Done. Next:\n");
   console.log(`    cd ${dir}`);
   console.log("    npm install");
   console.log("    npm run dev\n");
-  console.log("  Then open http://localhost:3000 — listings, map, favorites, and neighborhoods are wired up.");
-  console.log("  Customize freely; the ChatRealty client lives in lib/chatrealty.ts.\n");
+  if (testMode) {
+    console.log("  Then open http://localhost:3000 — the full site runs on SAMPLE listings (banner shown on every page).");
+    console.log("  Go live checklist: connect your MLS feed with ChatRealty, set CHATREALTY_API_TOKEN in .env.local,");
+    console.log("  and remove CHATREALTY_TEST_DATA. The banner disappears when real data is serving.\n");
+  } else {
+    console.log("  Then open http://localhost:3000 — listings, map, favorites, and neighborhoods are wired up.");
+    console.log("  Customize freely; the ChatRealty client lives in lib/chatrealty.ts.\n");
+  }
 }
 
 main().catch((err) => {

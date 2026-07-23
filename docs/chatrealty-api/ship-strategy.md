@@ -188,7 +188,10 @@ No code. Prove the shipped v0.1.0 end-to-end from a second machine. NOTE
 (2026-07-23): with the BYOD gate live, this runbook works only with an ADMIN
 (dogfood) token — a customer token returns `no_data_source` until tenant
 provisioning ships. The first true CUSTOMER run is gated on the provisioning
-phase below.
+phase below. Customers aren't dead-ended meanwhile: scaffolder v0.2.0 ships
+**TEST DATA mode** (`--test-data`, no token — 25 bundled fictitious listings,
+permanent banner, never launched publicly) so the site is previewable while
+the backend setup happens.
 
 1. On chatrealty.io (Google login fixed 2026-07-11): **Agent → Settings →
    Integrations** → mint token, preset **Full workspace**. Copy the `crt_live_…`
