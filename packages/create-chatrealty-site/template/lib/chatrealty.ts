@@ -6,8 +6,24 @@
 // call the app's own /api routes (which proxy through here) — never the
 // ChatRealty API directly, or the token would have to leave the server.
 
-import type { SearchResult, ListingDetail, MarketStats, ListingFilters } from "./types";
-import { isTestDataMode, searchTestListings, getTestListing, testMarketStats } from "./test-data";
+import type {
+  SearchResult,
+  ListingDetail,
+  MarketStats,
+  ListingFilters,
+  AgentProfile,
+  BlogPost,
+  BlogPostSummary,
+} from "./types";
+import {
+  isTestDataMode,
+  searchTestListings,
+  getTestListing,
+  testMarketStats,
+  testAgentProfile,
+  testPosts,
+  testPostSummaries,
+} from "./test-data";
 
 const BASE = (process.env.CHATREALTY_API_BASE || "https://www.chatrealty.io").replace(/\/+$/, "");
 const TOKEN = process.env.CHATREALTY_API_TOKEN || "";
@@ -120,6 +136,73 @@ export async function submitLead(input: {
   // withSkill routes wrap the payload as { data: {...} }.
   const data = body?.data ?? body;
   return { contactId: data?.contactId ?? null };
+}
+
+// Agent identity — hydrates the header, footer, About, and Contact pages from
+// the agent's ChatRealty profile. Update your profile on chatrealty.io and the
+// site updates with it.
+export async function getAgentProfile(): Promise<AgentProfile> {
+  if (isTestDataMode()) return testAgentProfile();
+  const res = await skillFetch(`/api/skill/me/profile`);
+  if (!res.ok) {
+    // Identity should never take the site down — fall back to minimal.
+    return {
+      name: null, email: null, phone: null, licenseNumber: null,
+      brokerageName: null, website: null, bio: null, headline: null,
+      tagline: null, headshot: null, heroPhoto: null, serviceAreas: [], specializations: [],
+    };
+  }
+  const p = await res.json();
+  return {
+    name: p.name ?? null,
+    email: p.email ?? null,
+    phone: p.phone ?? null,
+    licenseNumber: p.licenseNumber ?? null,
+    brokerageName: p.brokerageName ?? null,
+    website: p.website ?? null,
+    bio: p.bio ?? null,
+    headline: p.headline ?? null,
+    tagline: p.tagline ?? null,
+    headshot: p.headshot ?? null,
+    heroPhoto: p.heroPhoto ?? null,
+    serviceAreas: Array.isArray(p.serviceAreas) ? p.serviceAreas : [],
+    specializations: Array.isArray(p.specializations) ? p.specializations : [],
+  };
+}
+
+// Blog — posts live in the agent's ChatRealty CMS (written there or drafted +
+// published by Claude via the MCP) and serve here.
+export async function getPosts(): Promise<BlogPostSummary[]> {
+  if (isTestDataMode()) return testPostSummaries();
+  const res = await skillFetch(`/api/skill/articles?status=published&limit=50`);
+  if (!res.ok) return [];
+  const body = await res.json();
+  const items = body.items || body.articles || [];
+  return items.map((a: any) => ({
+    slugId: a.slugId || a.slug,
+    title: a.title,
+    excerpt: a.excerpt ?? null,
+    category: a.category ?? null,
+    publishedAt: a.publishedAt ?? a.createdAt ?? null,
+    coverUrl: a.featuredImage?.url || null,
+  }));
+}
+
+export async function getPost(slugId: string): Promise<BlogPost | null> {
+  if (isTestDataMode()) return testPosts().find((p) => p.slugId === slugId) ?? null;
+  const res = await skillFetch(`/api/skill/articles/${encodeURIComponent(slugId)}`);
+  if (!res.ok) return null;
+  const a = await res.json();
+  if (a.status && a.status !== "published") return null;
+  return {
+    slugId: a.slug || slugId,
+    title: a.title,
+    excerpt: a.excerpt ?? null,
+    category: a.category ?? null,
+    publishedAt: a.publishedAt ?? a.createdAt ?? null,
+    coverUrl: a.featuredImage?.url || null,
+    content: a.content || "",
+  };
 }
 
 export { ChatRealtyError };

@@ -75,6 +75,38 @@ export interface MarketStats {
   priceRange: { min: number; max: number } | null;
 }
 
+/** Agent identity served by GET /api/skill/me/profile — hydrates header, footer, About, Contact. */
+export interface AgentProfile {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  licenseNumber: string | null;
+  brokerageName: string | null;
+  website: string | null;
+  bio: string | null;
+  headline: string | null;
+  tagline: string | null;
+  headshot: string | null;
+  heroPhoto: string | null;
+  serviceAreas: { name: string; type?: string }[];
+  specializations: string[];
+}
+
+/** Blog post summary from GET /api/skill/articles?status=published. */
+export interface BlogPostSummary {
+  slugId: string;
+  title: string;
+  excerpt: string | null;
+  category: string | null;
+  publishedAt: string | null;
+  coverUrl: string | null;
+}
+
+export interface BlogPost extends BlogPostSummary {
+  /** Markdown body. */
+  content: string;
+}
+
 export interface ListingFilters {
   city?: string;
   subdivision?: string;

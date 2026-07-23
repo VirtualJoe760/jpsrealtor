@@ -1,0 +1,21 @@
+{
+  "name": "Jordan Avery",
+  "email": "jordan@example.com",
+  "phone": "(555) 013-2400",
+  "licenseNumber": "DRE #00000000 (SAMPLE)",
+  "brokerageName": "Oasis Grove Realty (Sample)",
+  "website": null,
+  "bio": "Sample agent profile. In test-data mode this placeholder shows how your real ChatRealty profile hydrates the site — name, brokerage, bio, headshot, and service areas all flow in automatically once your account is connected.",
+  "headline": "Your Coachella Valley real estate guide",
+  "tagline": "Desert living, done right",
+  "headshot": null,
+  "heroPhoto": null,
+  "serviceAreas": [
+    { "name": "Palm Desert", "type": "city" },
+    { "name": "La Quinta", "type": "city" },
+    { "name": "Rancho Mirage", "type": "city" },
+    { "name": "Palm Springs", "type": "city" },
+    { "name": "Indian Wells", "type": "city" }
+  ],
+  "specializations": ["Residential", "Seasonal & vacation homes"]
+}

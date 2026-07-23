@@ -1,6 +1,6 @@
 {
   "name": "create-chatrealty-site",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Scaffold a real-estate website backed by the ChatRealty API — listings search, map, favorites + lead capture, and neighborhood pages. One command, then customize.",
   "bin": {
     "create-chatrealty-site": "dist/cli.js"

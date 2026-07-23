@@ -13,7 +13,15 @@
 
 import fs from "fs";
 import path from "path";
-import type { SearchResult, ListingDetail, MarketStats, ListingFilters } from "./types";
+import type {
+  SearchResult,
+  ListingDetail,
+  MarketStats,
+  ListingFilters,
+  AgentProfile,
+  BlogPost,
+  BlogPostSummary,
+} from "./types";
 
 export function isTestDataMode(): boolean {
   return process.env.CHATREALTY_TEST_DATA === "true";
@@ -56,6 +64,26 @@ export function searchTestListings(filters: ListingFilters = {}): SearchResult {
 export function getTestListing(listingKey: string): ListingDetail | null {
   const k = listingKey.toUpperCase();
   return load().find((l) => l.listingKey === k || l.slug === listingKey) ?? null;
+}
+
+export function testAgentProfile(): AgentProfile {
+  return JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "data", "test-agent.json"), "utf8")
+  ) as AgentProfile;
+}
+
+let postsCache: BlogPost[] | null = null;
+export function testPosts(): BlogPost[] {
+  if (!postsCache) {
+    postsCache = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "data", "test-posts.json"), "utf8")
+    ) as BlogPost[];
+  }
+  return postsCache;
+}
+
+export function testPostSummaries(): BlogPostSummary[] {
+  return testPosts().map(({ content: _content, ...s }) => s);
 }
 
 export function testMarketStats(opts: { city?: string; subdivision?: string; propertyType?: string }): MarketStats {

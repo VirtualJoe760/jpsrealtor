@@ -25,3 +25,38 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Blog post body — minimal typographic defaults for renderMarkdown output. */
+.prose-basic h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+.prose-basic h3 {
+  margin-top: 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #111827;
+}
+.prose-basic p {
+  margin-top: 1rem;
+  line-height: 1.75;
+  color: #374151;
+}
+.prose-basic ul,
+.prose-basic ol {
+  margin-top: 1rem;
+  padding-left: 1.5rem;
+  line-height: 1.75;
+  color: #374151;
+}
+.prose-basic ul {
+  list-style: disc;
+}
+.prose-basic ol {
+  list-style: decimal;
+}
+.prose-basic li {
+  margin-top: 0.35rem;
+}

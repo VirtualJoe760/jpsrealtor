@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function InquiryForm({ listingKey }: { listingKey?: string }) {
+export default function InquiryForm({ listingKey, source }: { listingKey?: string; source?: string }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState<string>("");
 
@@ -21,7 +21,10 @@ export default function InquiryForm({ listingKey }: { listingKey?: string }) {
           email: data.get("email") || undefined,
           phone: data.get("phone") || undefined,
           company: data.get("company") || undefined, // honeypot
-          tags: listingKey ? [`listing:${listingKey}`] : undefined,
+          tags: [
+            ...(listingKey ? [`listing:${listingKey}`] : []),
+            ...(source ? [source] : []),
+          ],
         }),
       });
       if (!res.ok) {

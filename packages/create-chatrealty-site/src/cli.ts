@@ -166,9 +166,10 @@ async function main(): Promise<void> {
   console.log(`\n  ✓ Wrote ${n} files to ${dest}`);
 
   // 6. .env.local — the token lives here (git-ignored), server-side only.
+  const chapBlock = `\n# CHAP — on-site property chat (BYOK, OpenAI-compatible; Groq recommended).\n# The chat widget appears automatically once a key is set.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
   const envContent = testMode
-    ? `# TEST DATA MODE — the site serves 25 fictitious sample listings from data/test-listings.json.\n# A permanent banner marks every page. NEVER launch publicly in this mode.\n# When your ChatRealty tenant + MLS data are ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n`
-    : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n`;
+    ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}`
+    : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}`;
   fs.writeFileSync(path.join(dest, ".env.local"), envContent, { mode: 0o600 });
   console.log(`  ✓ Wrote .env.local (${testMode ? "TEST DATA mode" : "token kept server-side"}; already in .gitignore)`);
 
