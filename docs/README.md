@@ -1,7 +1,7 @@
 ---
 title: jpsrealtor / ChatRealty Documentation
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-07-23
 ---
 
 # Documentation
@@ -22,6 +22,7 @@ then drill into the relevant area folder.
 | Chat (CHAP), map, intent parsing, Groq narrate | [`chat/README.md`](./chat/README.md) |
 | Stripe, subscriptions, credits, commissions | [`commerce/README.md`](./commerce/README.md) |
 | External APIs (Cloudinary, Twilio, Resend, Meta, Google, etc.) | [`integrations/README.md`](./integrations/README.md) |
+| API productization, `/api/skill/*`, npm packages, ship strategy | [`chatrealty-api/README.md`](./chatrealty-api/README.md) |
 | Known issues, resolved issues, aspirational features | [`tech-debt.md`](./tech-debt.md) |
 
 ## Conventions

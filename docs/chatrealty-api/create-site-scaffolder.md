@@ -1,8 +1,8 @@
 ---
 title: create-chatrealty-site (frontend scaffolder)
-last_verified: 2026-07-10
+last_verified: 2026-07-23
 owner: platform
-status: shipped (v0.1, unpublished to npm)
+status: shipped — PUBLISHED to npm as create-chatrealty-site@0.1.0 (2026-07-10)
 ---
 
 # create-chatrealty-site
@@ -90,7 +90,11 @@ Both the CLI and the emitted template are proven:
 
 ## Not yet done
 
-- Not published to npm (build + `npm publish` from the package dir when ready;
-  `files` is `["dist","template","README.md","LICENSE"]`).
+- ~~Not published to npm~~ **Published 2026-07-10**: `create-chatrealty-site@0.1.0`
+  live on the registry, verified end-to-end via `npx create-chatrealty-site@latest`.
+  npm account `jsardella`; org `chatrealty` reserved for `@chatrealty/*` libs.
+  Republish = bump version + `npm publish` (needs the bypass-2FA granular token).
 - Endpoints consumed match the current `/api/skill/*` shapes; if those routes move
   to the productized OData surface (build plan Spec 6), update `lib/chatrealty.ts`.
+- v0.2 direction per [ship-strategy.md](ship-strategy.md): template becomes a thin
+  shell importing `@chatrealty/ui` + `@chatrealty/auth` (three-layer update model).
