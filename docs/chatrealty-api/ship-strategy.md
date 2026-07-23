@@ -74,6 +74,17 @@ write refuses with `no_data_source` (enforced centrally in
 acting on it costs money. Never create upgrade pressure by crippling the free
 site — the free site must stay a complete website.
 
+**Two tracks, one backend (2026-07-23):**
+
+| Track | Who | What |
+|---|---|---|
+| **Tenant site** (`{slug}.chatrealty.io`) | Agents who don't use Claude | Turnkey hosted site, live on profile completion |
+| **MCP / own-site** (scaffolder or hand-built) | Agents building their own brand | Their site on the ChatRealty backend (listings, CHAP, auth, CMS) |
+
+An agent is on ONE track: MCP-path agents don't run a tenant site — their
+subdomain eventually **redirects to their own site**. The tenant site is the
+no-Claude on-ramp; the MCP is the own-brand path; both feed the same CRM/tether.
+
 **What NEVER ships as code:** CHAP engine internals (parse/preview/tool
 executors), cmaStats + aggregation builders, control plane/tenancy, campaign
 integrations (Twilio/DropCowboy/Meta/Google), listing-treatment computation, the
@@ -151,13 +162,19 @@ questions until the claim step, which is explicit consent.
 
 ## 5. Free / paid ladder
 
+Free = **CHAP + the ChatRealty login connect + the CMS blog** (confirmed with
+Joseph 2026-07-23), on the agent's own BYOD data. Free scopes:
+`FREE_TIER_SCOPES` in `src/lib/skill-scopes.ts` (listings:read, market:read,
+articles:read, articles:write).
+
 | Free (complete site + the hook) | Paid (actions on the data) |
 |---|---|
-| listings search/detail/map, neighborhoods-basic | CMA + subdivision stats, comparables, cashflow |
+| listings search/detail/map on THEIR data (CHAP's substrate) | CMA + subdivision stats, comparables, cashflow |
 | CHAP widget (BYOK — inference cost is the agent's) | done-for-you listing treatment (server-computed API fields) |
-| end-user accounts + favorites sync | client-facing MCP research (claimed + attested clients) |
+| ChatRealty login connect: end-user accounts + favorites sync | client-facing MCP research (claimed + attested clients) |
 | **lead capture, free and unlimited** → agent's CRM | campaigns on that data (credits — the revenue engine) |
-| Client Activity dashboard (basic) | analytics depth, agency multi-tenant, network placement |
+| **CMS blog** — write in chatrealty.io, served on their own site AND tenant site | analytics depth, agency multi-tenant, network placement |
+| Client Activity dashboard (basic) | |
 
 ## 6. Build phases
 
@@ -277,6 +294,19 @@ outside agent: until a tenant DB can be provisioned and bound to their token,
 their `dataSource` is `"none"` and the whole funnel stops at guide step 1.
 Publishing sync before a customer can obtain a tenant DB connection string
 still ships vaporware — provisioning first, then publish.
+
+**Sync CLI UX spec (Joseph, 2026-07-23)** — the onboarding conversation IS the
+product surface, so the CLI must support it first-class:
+
+1. **"Do you have a data key?"** — the guide's step-1 question. Setup starts
+   from the agent's MLS credentials (RESO Web API or Spark), env-var only.
+2. **Small local test fetch** — a low-commitment mode that validates the
+   credentials and previews a sample of the agent's feed on their own machine
+   before any DB or server exists (maps to `doctor` + a bounded sample pull).
+3. **VPS daily sync (recommended)** — the guided production path: the same
+   set-and-forget cron pattern the platform itself runs. The guide recommends
+   this explicitly; docs + CLI should make VPS setup a first-class walkthrough,
+   not an afterthought.
 
 ## 7. Risks & open items
 

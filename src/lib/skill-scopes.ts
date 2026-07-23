@@ -78,14 +78,17 @@ export type PresetId =
 
 export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; description: string; scopes: Scope[] }> = {
   // The free-tier preset — and the default for powering a scaffolded
-  // create-chatrealty-site build. Listings + market data reads; lead capture
+  // create-chatrealty-site build. Free = CHAP + the ChatRealty login connect +
+  // the CMS blog (ship-strategy §5): listings/market reads power CHAP and the
+  // listing pages, articles read/write let the agent's ChatRealty CMS serve
+  // the blog on their own site (and Claude draft posts into it). Lead capture
   // (contacts/from-signup) intentionally needs no scope, so the site's client
   // auth/lead loop works with this token as-is.
   website: {
-    label: "Website & listings",
+    label: "Website: CHAP, listings & blog",
     description:
-      "Power your website: listings search, market data, and lead capture into your ChatRealty CRM.",
-    scopes: ["listings:read", "market:read"],
+      "Power your own site: CHAP search, listings & market data, your ChatRealty blog, and lead capture into your CRM.",
+    scopes: ["listings:read", "market:read", "articles:read", "articles:write"],
   },
   content_drafting: {
     label: "Content drafting",
@@ -160,7 +163,14 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
 // the API returns. Note: tokens minted BEFORE a downgrade keep their scopes
 // until revoked (documented gap; revisit if downgrades become common).
 
-export const FREE_TIER_SCOPES: Scope[] = ["listings:read", "market:read"];
+export const FREE_TIER_SCOPES: Scope[] = [
+  "listings:read",
+  "market:read",
+  // The CMS blog is a free-tier tether (2026-07-23): posts live in the agent's
+  // ChatRealty CMS and are served on their own site + their tenant site.
+  "articles:read",
+  "articles:write",
+];
 
 export const FREE_TIER_PRESET_IDS: Array<Exclude<PresetId, "custom">> = ["website"];
 
