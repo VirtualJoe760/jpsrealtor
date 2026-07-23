@@ -135,6 +135,22 @@ exports.BUILD_GUIDE_PROMPTS = [
             "Start with the areas I name, show me one finished page, then batch the rest.",
         ].join("\n"),
     },
+    {
+        id: "wire-your-blog",
+        title: "Wire your blog",
+        summary: "Serve your ChatRealty CMS blog on your own site — Claude drafts and publishes posts, no CMS login needed.",
+        order: 7,
+        body: [
+            "Add a blog to my site, powered by my ChatRealty CMS.",
+            "",
+            "1. My posts live in ChatRealty's CMS and serve BOTH my own site and my tenant site. Add a blog index + post page to my site that pulls my PUBLISHED articles from `GET /api/skill/articles?status=published` through the site's own server-side proxy (same token boundary as listings — never call ChatRealty from the client).",
+            "2. To create content: draft with `create_article` (blog posts, market insights, real-estate tips — pull my profile and market context first so it isn't generic). Show me the draft in chat.",
+            "3. Publish ONLY when I explicitly approve, via `update_article` with `status: 'published'` — that runs the full CMS publish pipeline, including my Google Business cross-post if connected. Never publish on your own initiative.",
+            "4. This works even while my listing data setup is still pending — content now, listings when my feed lands.",
+            "",
+            "Keep the copy factual and neutral; no editorializing about other agents' listings, ever.",
+        ].join("\n"),
+    },
 ];
 /** Look up a prompt by its stable id. Returns undefined on miss. */
 function getBuildGuidePrompt(id) {

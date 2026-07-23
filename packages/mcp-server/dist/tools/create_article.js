@@ -8,7 +8,7 @@ exports.create_article = void 0;
 const http_js_1 = require("../http.js");
 exports.create_article = {
     name: "create_article",
-    description: "Create an article DRAFT on the agent's ChatRealty site — blog posts, market insights, or real estate tips. Draft-only; the agent reviews and publishes from the CMS. For LANDING pages (lead magnets, listing-specific pages), use create_landing_page instead. Pull agent + market context with my_agent_profile / get_market_stats before drafting.",
+    description: "Create an article DRAFT for the agent's ChatRealty CMS — blog posts, market insights, or real estate tips. Published posts serve on the agent's own website AND their tenant site. Always created as a draft; once the agent reviews and approves it in chat, publish it with update_article { status: 'published' } — no CMS login needed. For LANDING pages (lead magnets, listing-specific pages), use create_landing_page instead. Pull agent + market context with my_agent_profile / get_market_stats before drafting.",
     inputSchema: {
         type: "object",
         properties: {

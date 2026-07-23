@@ -202,7 +202,8 @@ export async function POST(req: NextRequest) {
       title: doc.title,
       previewUrl,
       editUrl,
-      message: "Draft created. Review and publish from the CMS.",
+      message:
+        "Draft created. Review it with the agent, then publish via PATCH { status: \"published\" } on their explicit approval — no CMS login needed.",
     },
     { status: 201, headers: NO_STORE }
   );

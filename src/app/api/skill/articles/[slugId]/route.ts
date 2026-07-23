@@ -79,7 +79,7 @@ export async function PATCH(
       {
         error: "not_a_draft",
         message:
-          "This article is published. To edit it, take it back to draft from the CMS first — publishing triggers the MDX + git push pipeline.",
+          "This article is already published. Content edits require taking it back to draft in the CMS first — publishing runs the MDX + git pipeline, so silent edits would desync. (Drafts can be published directly from here with { status: \"published\" }.)",
         status: doc.status,
       },
       { status: 409, headers: NO_STORE }
@@ -133,6 +133,79 @@ export async function PATCH(
   }
 
   await doc.save();
+
+  // Explicit publish (2026-07-23, free-tier CMS blog): { status: "published" }
+  // on a draft runs the SAME pipeline as the CMS UI publish button
+  // (validate → Mongo status → MDX/git → Vercel rebuild → per-user GBP
+  // cross-post), so Claude can take an agent-approved draft live without a
+  // chatrealty.io login. Any content edits in the same request applied above
+  // are included. Publish is opt-in per request — never implicit.
+  if (body.status === "published") {
+    const { validateForPublish, publishArticle } = await import("@/lib/publishing-pipeline");
+    const article = {
+      title: doc.title,
+      excerpt: doc.excerpt || "",
+      content: doc.content,
+      category: doc.category,
+      draft: false,
+      authorId: String(auth.user._id),
+      authorName: auth.user.name || auth.user.email || "Unknown",
+      featuredImage: {
+        url: doc.featuredImage?.url || "",
+        publicId: doc.featuredImage?.publicId || "",
+        alt: doc.featuredImage?.alt || doc.title,
+      },
+      seo: {
+        title: doc.seo?.title || doc.title,
+        description: doc.seo?.description || doc.excerpt || "",
+        keywords: doc.seo?.keywords || [],
+      },
+    };
+    const validation = await validateForPublish(article);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          error: "publish_validation_failed",
+          message: "The draft is saved, but it doesn't meet publishing requirements yet.",
+          errors: validation.errors,
+          warnings: validation.warnings,
+        },
+        { status: 400, headers: NO_STORE }
+      );
+    }
+    await publishArticle(article, doc.slug, {
+      autoDeploy: true,
+      userId: String(auth.user._id),
+      userName: auth.user.name || auth.user.email || "Unknown",
+      userEmail: auth.user.email || "noemail@example.com",
+    });
+    // GBP cross-post — per-user credentials, non-blocking (mirrors the CMS route).
+    try {
+      const { publishArticleToGBP } = await import("@/lib/gbp-publisher");
+      await publishArticleToGBP(
+        {
+          title: article.title,
+          excerpt: article.excerpt,
+          image: article.featuredImage.url,
+          url: doc.slug,
+          category: article.category,
+        },
+        String(auth.user._id)
+      );
+    } catch {
+      /* non-blocking */
+    }
+    return NextResponse.json(
+      {
+        slugId: doc.slug,
+        status: "published",
+        warnings: validation.warnings,
+        message:
+          "Published. The article is live (rebuild takes ~2-3 minutes) and will appear wherever this agent's published posts are served.",
+      },
+      { headers: NO_STORE }
+    );
+  }
 
   return NextResponse.json(
     {
