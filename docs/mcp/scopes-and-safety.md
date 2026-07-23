@@ -1,7 +1,7 @@
 ---
 title: MCP Scopes, Rate Limits, and Safety
 status: current
-last_verified: 2026-06-02
+last_verified: 2026-07-23
 related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md]
 ---
 
@@ -64,10 +64,22 @@ To avoid the agent staring at twelve checkboxes:
 
 | Preset | Scopes | Use case |
 |---|---|---|
-| **Content drafting** *(default)* | `landing_pages:*`, `articles:*`, `listings:read`, `market:read`, `analytics:read` | Most agents — write LPs and articles, look up market data and listings |
+| **Website & listings** *(default; the ONLY preset on the Free plan)* | `listings:read`, `market:read` | Power a scaffolded create-chatrealty-site build — search + market data; lead capture (`contacts/from-signup`) needs no scope |
+| **Content drafting** | `landing_pages:*`, `articles:*`, `listings:read`, `market:read`, `analytics:read` | Write LPs and articles, look up market data and listings |
 | **Lead-aware drafting** | + `contacts:read` | Agents who want Claude to reference their actual leads when drafting |
 | **Full workspace** | + `contacts:write`, `campaigns:read`, `campaigns:write` | Power users — Claude can draft campaigns and manage contact notes |
 | **Custom** | Pick individual scopes | For agents who know exactly what they want |
+
+### Tier gating (2026-07-23)
+
+The mintable surface is **tier-gated server-side** in
+`/api/integrations/api-tokens` per the ship-strategy free/paid ladder
+(`docs/chatrealty-api/ship-strategy.md` §5): the Free plan sees and can mint
+only the **Website & listings** preset / `FREE_TIER_SCOPES`
+(`src/lib/skill-scopes.ts` `catalogForTier()`); out-of-tier scope requests get
+an explicit 403 naming the scopes, never a silent downgrade. Paid tiers (and
+admin, who is comped a paid tier) see everything. **Known gap:** tokens minted
+before a plan downgrade keep their scopes until revoked.
 
 `campaigns:send` is **never** in a preset. The agent has to tick it
 individually and is shown an explicit warning ("This token can launch

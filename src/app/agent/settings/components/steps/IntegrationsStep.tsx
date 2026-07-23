@@ -54,7 +54,13 @@ type Preset = {
   scopes: string[];
 };
 
-type PresetId = "content_drafting" | "lead_aware" | "full_workspace" | "custom";
+type PresetId =
+  | "website"
+  | "content_drafting"
+  | "lead_aware"
+  | "full_workspace"
+  | "client_research"
+  | "custom";
 
 export default function IntegrationsStep({ isLight }: StepProps) {
   const cardClass = `rounded-xl border p-6 ${
@@ -88,8 +94,9 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   // Scope catalog + presets loaded from the API on mount
   const [scopeCatalog, setScopeCatalog] = useState<string[]>([]);
   const [presets, setPresets] = useState<Record<string, Preset>>({});
-  // Which preset the user picked for the next-minted token
-  const [selectedPreset, setSelectedPreset] = useState<PresetId>("content_drafting");
+  // Which preset the user picked for the next-minted token. "website" is the
+  // universal default (it exists on every tier — Free only gets this one).
+  const [selectedPreset, setSelectedPreset] = useState<PresetId>("website");
   // When preset=custom, which scopes are checked
   const [customScopes, setCustomScopes] = useState<Set<string>>(new Set());
 
@@ -109,7 +116,16 @@ export default function IntegrationsStep({ isLight }: StepProps) {
           const data = await res.json();
           setTokens(data.tokens || []);
           if (Array.isArray(data.catalog)) setScopeCatalog(data.catalog);
-          if (data.presets && typeof data.presets === "object") setPresets(data.presets);
+          if (data.presets && typeof data.presets === "object") {
+            setPresets(data.presets);
+            // The API tier-filters presets (Free → website only). If the
+            // current selection isn't in the returned set, snap to the first
+            // available so the mint button is never dead on load.
+            const ids = Object.keys(data.presets);
+            if (ids.length > 0 && !ids.includes("website")) {
+              setSelectedPreset(ids[0] as PresetId);
+            }
+          }
         }
       } finally {
         setTokensLoading(false);

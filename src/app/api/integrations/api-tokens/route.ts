@@ -12,7 +12,8 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { generateApiToken } from "@/lib/secrets";
-import { normalizeScopes, PRESETS, SCOPES } from "@/lib/skill-scopes";
+import { normalizeScopes, PRESETS, catalogForTier, FREE_TIER_SCOPES } from "@/lib/skill-scopes";
+import { isFreeTier } from "@/lib/subscription-helpers";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -38,7 +39,15 @@ export async function GET() {
       createdAt: t.createdAt,
       lastUsedAt: t.lastUsedAt || null,
     }));
-  return NextResponse.json({ tokens, catalog: SCOPES, presets: PRESETS }, { headers: NO_STORE });
+  // Tier-gate the mintable surface: Free sees only the "Website & listings"
+  // preset + read scopes (ship-strategy §5). The UI renders whatever this
+  // returns, so no separate client-side gating is needed.
+  const free = await isFreeTier(session.user.id);
+  const { presets, scopes } = catalogForTier(free);
+  return NextResponse.json(
+    { tokens, catalog: scopes, presets, isFreeTier: free },
+    { headers: NO_STORE }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -63,11 +72,31 @@ export async function POST(req: NextRequest) {
   }
 
   // Scopes — accept array of scope strings; unknown values are silently
-  // dropped (so a client typo doesn't grant the wrong scope). If empty after
-  // normalization, fall back to the Content Drafting preset.
+  // dropped (so a client typo doesn't grant the wrong scope).
   let scopes = normalizeScopes(body.scopes);
+
+  // Tier enforcement (server-authoritative — the UI filter alone would be
+  // cosmetic): Free may only mint the website read scopes. Out-of-tier
+  // requests get an explicit 403 naming the offending scopes, not a silent
+  // downgrade, so integrations fail loudly instead of mysteriously.
+  const free = await isFreeTier(session.user.id);
+  if (free) {
+    const disallowed = scopes.filter((s) => !FREE_TIER_SCOPES.includes(s));
+    if (disallowed.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Your plan can't mint tokens with: ${disallowed.join(", ")}. The free plan covers website scopes (${FREE_TIER_SCOPES.join(", ")}) — upgrade to unlock the rest.`,
+          disallowed,
+          allowed: FREE_TIER_SCOPES,
+        },
+        { status: 403, headers: NO_STORE }
+      );
+    }
+  }
+
+  // If empty after normalization, fall back to the tier's default preset.
   if (scopes.length === 0) {
-    scopes = [...PRESETS.content_drafting.scopes];
+    scopes = free ? [...PRESETS.website.scopes] : [...PRESETS.content_drafting.scopes];
   }
 
   await dbConnect();

@@ -69,6 +69,7 @@ export function normalizeScopes(input: unknown): Scope[] {
 // ---------------------------------------------------------------------------
 
 export type PresetId =
+  | "website"
   | "content_drafting"
   | "lead_aware"
   | "full_workspace"
@@ -76,6 +77,16 @@ export type PresetId =
   | "custom";
 
 export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; description: string; scopes: Scope[] }> = {
+  // The free-tier preset — and the default for powering a scaffolded
+  // create-chatrealty-site build. Listings + market data reads; lead capture
+  // (contacts/from-signup) intentionally needs no scope, so the site's client
+  // auth/lead loop works with this token as-is.
+  website: {
+    label: "Website & listings",
+    description:
+      "Power your website: listings search, market data, and lead capture into your ChatRealty CRM.",
+    scopes: ["listings:read", "market:read"],
+  },
   content_drafting: {
     label: "Content drafting",
     description: "Draft landing pages and articles, look up market data and listings.",
@@ -137,6 +148,32 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
     ],
   },
 };
+
+// ---------------------------------------------------------------------------
+// Tier gating (ship-strategy free/paid ladder, docs/chatrealty-api/ship-strategy.md §5)
+// ---------------------------------------------------------------------------
+//
+// Free plan = the complete website + the lead loop, nothing more: the token
+// surface an agent needs to run a scaffolded site. Everything else (CMS
+// drafting, CRM reads/writes, campaigns, social) is paid. Enforced SERVER-SIDE
+// at mint time in /api/integrations/api-tokens — the UI merely renders what
+// the API returns. Note: tokens minted BEFORE a downgrade keep their scopes
+// until revoked (documented gap; revisit if downgrades become common).
+
+export const FREE_TIER_SCOPES: Scope[] = ["listings:read", "market:read"];
+
+export const FREE_TIER_PRESET_IDS: Array<Exclude<PresetId, "custom">> = ["website"];
+
+/** The preset + scope catalog a given plan may see/mint. */
+export function catalogForTier(isFree: boolean): {
+  presets: Partial<typeof PRESETS>;
+  scopes: Scope[];
+} {
+  if (!isFree) return { presets: PRESETS, scopes: [...SCOPES] };
+  const presets: Partial<typeof PRESETS> = {};
+  for (const id of FREE_TIER_PRESET_IDS) presets[id] = PRESETS[id];
+  return { presets, scopes: [...FREE_TIER_SCOPES] };
+}
 
 // What legacy tokens (minted before scopes existed) get on first use.
 // Read-only flavor of content_drafting so existing skill installs don't
