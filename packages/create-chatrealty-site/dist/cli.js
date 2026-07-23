@@ -13,14 +13,14 @@
 //   npm create chatrealty-site@latest my-site
 //   npx create-chatrealty-site my-site
 //   npx create-chatrealty-site my-site --token crt_live_xxx --api-base http://localhost:3000
-//   npx create-chatrealty-site my-site --test-data     # no token: 25 fictitious sample listings
+//   npx create-chatrealty-site my-site --test-data     # no token: bundled fictitious sample listings
 //   npx create-chatrealty-site           # prompts for anything not passed
 //
 // Non-interactive: pass --token/--api-base or set CHATREALTY_API_TOKEN /
 // CHATREALTY_API_BASE in the environment.
 //
 // TEST DATA mode (--test-data, or just press Enter at the token prompt):
-// scaffolds the site against 25 FICTITIOUS listings bundled in the template
+// scaffolds the site against fictitious listings bundled in the template
 // (data/test-listings.json) so you can preview everything before your MLS
 // feed / ChatRealty tenant is connected. The site shows a permanent TEST DATA
 // banner in this mode — never launch it publicly on sample listings.
@@ -63,6 +63,17 @@ const path = __importStar(require("path"));
 const readline = __importStar(require("readline"));
 // dist/cli.js -> package root -> template/  (__dirname is a CommonJS global)
 const TEMPLATE_DIR = path.join(__dirname, "..", "template");
+// Count sample listings from the bundled fixture at runtime, so the number the
+// CLI prints can never drift from what actually ships (CRBR bug report).
+function sampleListingCount() {
+    try {
+        const data = JSON.parse(fs.readFileSync(path.join(TEMPLATE_DIR, "data", "test-listings.json"), "utf8"));
+        return Array.isArray(data) ? data.length : 0;
+    }
+    catch {
+        return 0;
+    }
+}
 const API_BASE_DEFAULT = "https://www.chatrealty.io";
 // Files shipped WITHOUT a leading dot (npm strips some dotfiles from published
 // tarballs) — renamed to their dotted form on scaffold.
@@ -138,7 +149,7 @@ async function main() {
             //    instead of erroring, so "no token yet" is a preview path, not a wall.
             token = getFlag(args, "--token") || process.env.CHATREALTY_API_TOKEN || (await ask("  Your ChatRealty API token (crt_live_…) [Enter for TEST DATA mode]: "));
             if (!token) {
-                const yn = await ask("  No token — scaffold with 25 fictitious SAMPLE listings instead? [Y/n]: ", "y");
+                const yn = await ask(`  No token — scaffold with ${sampleListingCount()} fictitious SAMPLE listings instead? [Y/n]: `, "y");
                 if (yn.toLowerCase().startsWith("y")) {
                     testMode = true;
                 }
@@ -168,7 +179,7 @@ async function main() {
     // 4. Verify the token so the scaffold isn't dead on arrival (skipped in
     //    test-data mode — there's nothing to verify against).
     if (testMode) {
-        console.log("\n  TEST DATA mode: scaffolding with 25 fictitious sample listings.");
+        console.log(`\n  TEST DATA mode: scaffolding with ${sampleListingCount()} fictitious sample listings.`);
         console.log("  ⚠ These listings are NOT real. Preview only — do not launch publicly until your own MLS data is connected.");
     }
     else {

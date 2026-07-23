@@ -13,12 +13,13 @@ type WhoamiResponse = {
   lpBaseUrl: string;
   tokenName: string;
   tokenLast4: string;
+  dataSource?: "tenant" | "dogfood" | "none";
 };
 
 export const whoami: ToolDef = {
   name: "whoami",
   description:
-    "Returns the name, email, site URL, and token info for the agent whose ChatRealty API token is configured. Call this once at the start of any session so you know whose data you're operating on.",
+    "Returns the name, email, site URL, token info, AND `dataSource` for the agent whose ChatRealty API token is configured. Call this once at the start of any session. `dataSource` is the signal the build guide's step 1 branches on: `tenant` = the agent's own MLS data is connected (safe to probe listings/market), `none` = no data connected yet (do NOT call any listing/market tool — they'll refuse), `dogfood` = a ChatRealty-internal owner account.",
   inputSchema: {
     type: "object",
     properties: {},
@@ -33,6 +34,9 @@ export const whoami: ToolDef = {
       lpBaseUrl: res.lpBaseUrl,
       tokenName: res.tokenName,
       tokenLast4: res.tokenLast4,
+      // The build guide's data-source branch depends on this — always surface
+      // it (explicit "none" rather than an absent key, per CRBR bug report).
+      dataSource: res.dataSource ?? "none",
     };
   },
 };
