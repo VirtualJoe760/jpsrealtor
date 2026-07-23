@@ -96,8 +96,12 @@ dogfood app.
    "Neon" — in every package README, CLI string, env-var name, error message,
    guide prompt, and email. Vendor names live in code comments and internal
    docs only. (Env var: `CHATREALTY_DB_URL`, not `TENANT_NEON_CONN_URI`.)
-2. **No "contact/ask ChatRealty" steps.** Every path is self-serve; a flow that
-   ends in "ask ChatRealty" is a missing API, not an answer.
+2. **No "contact/ask ChatRealty" steps in the FINAL product.** Every launch
+   path is self-serve; a flow that ends in "ask ChatRealty" marks a missing API,
+   not an answer. INTERIM (pre-launch testing, while the owner is the only
+   customer): routing a step through ChatRealty is acceptable scaffolding — each
+   such step is a named launch blocker (today: tenant/database provisioning →
+   Phase P).
 3. **Product voice, not plumbing.** No token fragments, HTTP status codes, or
    internal field names in anything an agent-customer reads.
 
