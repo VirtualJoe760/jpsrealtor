@@ -27,7 +27,7 @@ function listGuideResources() {
     const index = {
         uri: exports.BUILD_GUIDE_URI,
         name: "ChatRealty Build Guide",
-        description: "Curated, copy-paste prompts for building a real-estate site on ChatRealty with Claude: connect MLS, seed the DB, scaffold listings, add the map, wire favorites + lead capture, build neighborhoods.",
+        description: "Curated, copy-paste prompts for building a real-estate site on ChatRealty with Claude: check your data source, scaffold the site (create-chatrealty-site), customize listings & search, tune the map, wire favorites + lead capture, build neighborhoods.",
         mimeType: exports.BUILD_GUIDE_MIME,
     };
     const perPrompt = prompts_js_1.BUILD_GUIDE_PROMPTS.map((p) => ({

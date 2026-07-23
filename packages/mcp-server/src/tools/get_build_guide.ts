@@ -15,14 +15,14 @@ import { BUILD_GUIDE_PROMPTS, getBuildGuidePrompt } from "../build-guide/prompts
 export const get_build_guide: ToolDef = {
   name: "get_build_guide",
   description:
-    "Returns the ChatRealty build-guide prompts — copy-paste instructions for building a real-estate site with Claude (connect MLS, seed the DB, scaffold listings, add the map, wire favorites + lead capture, build neighborhoods). Call with no arguments to list every step, or pass an `id` to fetch one prompt's full body.",
+    "Returns the ChatRealty build-guide prompts — copy-paste instructions for building a real-estate site with Claude on ChatRealty's HOSTED data (check your data source, scaffold the site with create-chatrealty-site, customize listings & search, tune the map, wire favorites + lead capture, build neighborhoods). ALWAYS consult this before building an agent a website: the scaffolder is the supported path — never hand-build from scratch and never suggest a feed/seed step. Call with no arguments to list every step, or pass an `id` to fetch one prompt's full body.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
         description:
-          "Optional prompt id (e.g. 'connect-mls-feed', 'seed-your-db', 'scaffold-listings-page', 'add-the-map', 'wire-favorites-and-lead-capture', 'build-neighborhoods'). Omit to list all steps.",
+          "Optional prompt id (e.g. 'check-your-data-source', 'scaffold-your-site', 'customize-listings-and-search', 'add-the-map', 'wire-favorites-and-lead-capture', 'build-neighborhoods'). Omit to list all steps.",
       },
     },
     additionalProperties: false,

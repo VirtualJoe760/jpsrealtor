@@ -11,10 +11,17 @@
 //   3. The public developer-docs site's <ClaudePrompt> component (humans copy
 //      them) — build_plan §7 / Agent 34 imports this same array.
 //
+// NARRATIVE (ship-strategy v1 — docs/chatrealty-api/ship-strategy.md): agents
+// build on ChatRealty's HOSTED data through their tenant token. There is no
+// customer-run feed/seed step in v1 — @chatrealty/sync is deliberately
+// unpublished until tenant provisioning ships, and the guide must NEVER send
+// someone to it. The shipped on-ramp is the `create-chatrealty-site`
+// scaffolder; steps 3-6 customize what it generates. Step 1 exists because a
+// connected token always serves data — the guide has to be honest about WHOSE
+// market that data covers instead of declaring "your MLS feed is live."
+//
 // Each prompt is a self-contained instruction an agent pastes into a fresh
-// Claude session that has the ChatRealty MCP connected. They are ordered as a
-// guided build: connect the MLS feed → seed the DB → scaffold a listings page →
-// add the map → wire favorites + lead capture → build neighborhoods.
+// Claude session that has the ChatRealty MCP connected.
 //
 // KEEP THE BODIES PLAIN MARKDOWN. They are also served as a single markdown
 // resource; avoid triple-backtick fences inside a body (use indented code or
@@ -35,98 +42,104 @@ export type BuildGuidePrompt = {
 
 export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
   {
-    id: "connect-mls-feed",
-    title: "Connect your MLS feed",
-    summary: "Wire up your RESO Web API (or Spark) credentials and verify the feed.",
+    id: "check-your-data-source",
+    title: "Check your data source",
+    summary:
+      "Confirm what data your ChatRealty token serves and whether it covers your market — before building anything.",
     order: 1,
     body: [
-      "I want to connect my MLS feed to my ChatRealty tenant.",
+      "Before we build, tell me exactly what data my ChatRealty connection serves.",
       "",
-      "1. Ask me for my MLS dialect (RESO Web API is the default; Spark is the compat path), my feed base URL, and where my credentials live (they must come from environment variables, never pasted in chat or written to a config file).",
-      "2. Walk me through the `@chatrealty/sync` `init` command to write a config file plus an `.env` template, then the `doctor` command to validate the config, the credentials, the database connection, and the feed `$metadata`.",
-      "3. Confirm the feed returns `value[]` rows and that `ModificationTimestamp` is present so incremental sync has a watermark.",
+      "1. Call `whoami` and report who I'm connected as and which scopes my token carries.",
+      "2. Probe the data: run one `search_listings` for the city I tell you I work in, and `get_market_stats` for the same area. Report what came back.",
+      "3. Be precise about the source: this data is ChatRealty's HOSTED MLS dataset served through my tenant token — it is not a feed I connected myself. Do NOT tell me my MLS feed is 'live' or 'seeded'; there is no feed/seed step for me to run.",
+      "4. If my market IS covered (listings and stats came back for my cities): confirm we're ready to build — the data side is done, nothing to set up.",
+      "5. If my market is NOT covered (empty or wrong-region results): say so plainly. Bring-your-own-data is on ChatRealty's roadmap but is not available today — do not improvise a data import, and do not install any sync tooling. Suggest I contact ChatRealty about market coverage, and stop here.",
       "",
-      "Do not run a full seed yet — that is the next step. Stop after `doctor` reports green.",
+      "Answer with facts from the tool calls, not assumptions.",
     ].join("\n"),
   },
   {
-    id: "seed-your-db",
-    title: "Seed your database",
-    summary: "Run the first full import, mapping RESO fields into your per-tenant Postgres.",
+    id: "scaffold-your-site",
+    title: "Scaffold your site",
+    summary:
+      "One command generates a complete Next.js site on your ChatRealty data — the supported starting point.",
     order: 2,
     body: [
-      "My MLS feed is connected and `doctor` is green. Seed my ChatRealty database.",
+      "Scaffold my real-estate website using ChatRealty's official generator.",
       "",
-      "1. Run the `@chatrealty/sync` `seed` command to pull the full active inventory and upsert it into my tenant's Postgres.",
-      "2. Map every field through the RESO Data Dictionary (fetch the live `guide://chatrealty/data-dictionary.json` resource so we use my tenant's actual columns). Fields without a dictionary mapping fall into the `extras` JSONB column — confirm that happened rather than silently dropping them.",
-      "3. After seeding, verify the listing attribution fields are populated on every row: `listAgentName` and `listOfficeName` at minimum. A listing without attribution is an IDX-compliance bug — flag any rows missing it.",
-      "4. Print a summary: total rows imported, count by property type (A=sale, B=rental, C=multifamily, D=land), and the high-water `ModificationTimestamp` saved for the next incremental sync.",
+      "1. Ask me for a ChatRealty API token (`crt_live_…`). I mint it at Settings → Integrations on my ChatRealty site — the 'Website & listings' preset is exactly right for this. I will paste it once; treat it like a password (server-side env only, never into client code, never committed).",
+      "2. Run: `npx create-chatrealty-site@latest my-site --token <my token>` — the default API base (`https://www.chatrealty.io`) is correct. The CLI verifies the token against `/api/skill/me`; if verification fails, stop and show me the exact message.",
+      "3. Then `cd my-site`, `npm install`, `npm run dev`, and open http://localhost:3000.",
+      "4. Verify with me: the listings grid shows real MLS data; the map renders pins; a detail page shows 'Listed by {office} — {agent}' attribution (a hard IDX display rule); the favorites heart persists; the inquiry form submits.",
       "",
-      "Never use `--purge`. This is additive only.",
+      "Do NOT hand-build a site from scratch and do NOT install `@chatrealty/sync` — the scaffolder is the supported path, and everything after this step customizes what it generated.",
     ].join("\n"),
   },
   {
-    id: "scaffold-listings-page",
-    title: "Scaffold a listings page",
-    summary: "Build a Next.js search + results page backed by the OData /api/skill/listings endpoint.",
+    id: "customize-listings-and-search",
+    title: "Customize listings & search",
+    summary:
+      "Tune the scaffolded search page: filters, sorting, and card design on the real /api/skill/listings/search params.",
     order: 3,
     body: [
-      "Build a listings search page for my real-estate site (Next.js App Router).",
+      "Customize the listings search in my scaffolded ChatRealty site.",
       "",
-      "1. Create a server route that queries the ChatRealty OData endpoint `/api/skill/listings` with `$filter`, `$orderby`, `$top`, and `$skip`. Use the flat AND-only filter grammar (for example: `City eq 'Palm Desert' and ListPrice ge 500000`). Page with `@odata.nextLink`.",
-      "2. Render a responsive grid of listing cards: photo (`thumbUrl`), price, beds / baths / sqft, city, and a 'View listing' link to `detailUrl`.",
-      "3. EVERY card and detail view MUST display the listing attribution — `listAgentName` and `listOfficeName` (\"Listed by {office} — {agent}\"). This is a hard IDX display rule, not optional.",
-      "4. Add a simple filter UI (city, price range, beds, baths) that maps to OData `$filter` params. Validate inputs and show the standard error envelope's `error.message` when a filter is rejected.",
+      "1. The site's own `/api/listings` route proxies ChatRealty's `/api/skill/listings/search` server-side (the token stays in `.env.local`). Keep that boundary — client components must never call ChatRealty directly or see the token.",
+      "2. Field names and filter params are NOT to be invented: use the connected `search_listings` tool's schema as the source of truth for what exists (city, price range, beds, baths, pool, property type, etc.), and mirror those in the filter UI in `components/ListingsBrowser`.",
+      "3. Restyle the listing cards to my brand — but EVERY card and detail view keeps the attribution line ('Listed by {office} — {agent}'). That is an IDX compliance rule, not a style choice.",
+      "4. Report metrics neutrally: price, beds/baths, days-on-market as plain facts. Never label a listing 'stale', 'overpriced', or similar — no editorializing about other agents' listings.",
       "",
-      "Use my tenant token's `listings:read` scope. Do not invent fields — confirm names against the data dictionary resource.",
+      "Show me the diff of what you changed and check the page still renders live data afterward.",
     ].join("\n"),
   },
   {
     id: "add-the-map",
-    title: "Add the map",
-    summary: "Plot listings on an interactive map with viewport querying and clustering.",
+    title: "Tune the map",
+    summary: "Customize the scaffolded Leaflet map: pins, popups, and map/grid linking.",
     order: 4,
     body: [
-      "Add an interactive map view to my listings page.",
+      "Improve the map view in my scaffolded ChatRealty site.",
       "",
-      "1. Plot every listing as a marker at its latitude / longitude. Clicking a marker opens a popup with the home's `thumbUrl` photo, price, address, a 'View listing' link, AND the listing attribution (agent + office).",
-      "2. Query listings by the current viewport bounding box so the map only loads what's visible. At low zoom, request clustered results (count + average price + centroid per cluster) instead of individual pins.",
-      "3. Keep it lightweight — Leaflet with OpenStreetMap tiles from a CDN is a fine choice. Reference image / link URLs directly; never paste base64 image data into the markup.",
-      "4. Link the map and the grid: panning the map updates the results list and vice-versa.",
+      "1. The scaffold already ships a Leaflet map (`components/ListingMap`, client-only) with price-label pins. Customize pin styling and the popup to my brand — the popup keeps the photo, price, address, a 'View listing' link, AND the listing attribution (agent + office).",
+      "2. Keep the map and the grid on the SAME data source (the site's `/api/listings` proxy) so the two views never disagree.",
+      "3. If my listing set grows large, add viewport-based fetching (query by the visible bounds) rather than loading everything; keep it lightweight — no heavy map SDKs, no base64 images in markup.",
+      "4. Link the views: selecting a card highlights its pin, and clicking a pin can scroll the grid.",
       "",
-      "Reuse the same `/api/skill/listings` data source as the grid so the two views never disagree.",
+      "Verify pins, popups, and links against a real listing before we call it done.",
     ].join("\n"),
   },
   {
     id: "wire-favorites-and-lead-capture",
     title: "Wire favorites + lead capture",
-    summary: "Let visitors save listings and submit an inquiry that lands as a research saved-search signal.",
+    summary:
+      "Guest favorites plus an inquiry form that lands leads in your ChatRealty CRM — write-only from the visitor's side.",
     order: 5,
     body: [
-      "Add favorites and lead capture to my site.",
+      "Polish favorites and lead capture in my scaffolded ChatRealty site.",
       "",
-      "1. Let a visitor 'favorite' a listing (store the `listingKey` in their browser/session for anonymous users, or against their account if they sign in).",
-      "2. Add an inquiry form on the listing detail page (name, email, optional message). On submit, POST it to the research saved-search / lead-signal endpoint so it is recorded against my tenant.",
-      "3. This write path uses the `research:read` scope and the `research` rate tier, is hard-bound to my tenant token, and returns NO PII back to the page — it only confirms the signal was recorded. Surface a friendly 'Thanks, we'll be in touch' on success.",
-      "4. Rate-limit the form and add basic spam defense (a honeypot field is enough to start).",
+      "1. Favorites are guest-side today by design: the scaffold stores hearts in localStorage (`lib/favorites.ts`). Keep that model; synced visitor accounts are a ChatRealty roadmap feature, so don't invent a custom auth system for favorites.",
+      "2. Lead capture: the inquiry form posts to the site's `/api/lead` route, which forwards server-side to ChatRealty's `POST /api/skill/contacts/from-signup`. Each submission is deduped into MY ChatRealty CRM (Contacts) — remind me to check new leads on my ChatRealty dashboard.",
+      "3. The visitor side is WRITE-ONLY: the page never reads or displays anything from my CRM, and the API response returns no PII. Show a friendly 'Thanks — we'll be in touch' on success.",
+      "4. Keep the spam defenses the scaffold ships (honeypot field + per-IP rate limit on `/api/lead`) — if you touch the form, keep both intact and test them.",
       "",
-      "Do not expose any contact / CRM data to the public page — lead capture is write-only from the visitor's side.",
+      "Finish by submitting one test lead and confirming with me that it appeared in my ChatRealty Contacts.",
     ].join("\n"),
   },
   {
     id: "build-neighborhoods",
     title: "Build neighborhoods",
-    summary: "Generate neighborhood / subdivision pages from market stats and CMA data.",
+    summary: "Generate neighborhood pages from live market stats — neutral, factual, SEO-friendly.",
     order: 6,
     body: [
-      "Build neighborhood pages for my site.",
+      "Build out neighborhood pages for my scaffolded ChatRealty site.",
       "",
-      "1. For each city / region / subdivision I cover, pull market stats from `/api/skill/market` (median price, days-on-market, active count, price-per-sqft) and, where available, the precomputed subdivision CMA.",
-      "2. Generate a page per neighborhood: a short factual overview, the key stats as a table, and a grid of current active listings in that area (with attribution on every card).",
-      "3. Keep the copy NEUTRAL and factual — report metrics as plain facts. Never call a market or listing 'hot', 'stale', 'overpriced', or 'distressed'; do not editorialize about another agent's listing.",
-      "4. Cross-link neighborhoods to each other and to the main listings search for SEO. Add the stats as structured data where it helps.",
+      "1. The scaffold ships `app/neighborhoods/[slug]` backed by `/api/skill/market/stats` plus a listings query for the area. For each city or subdivision I care about, generate a page: a short factual overview, key stats as a table (median price, average price, days-on-market, active count), and a grid of current listings with attribution on every card.",
+      "2. Use the connected `get_market_stats` / `get_neighborhood_info` tools to confirm which areas have data. Where a subdivision has no stats, fall back to its city cleanly instead of erroring.",
+      "3. Keep the copy NEUTRAL and factual — report metrics as plain facts. Never call a market or listing 'hot', 'stale', 'overpriced', or 'distressed'; no editorializing about other agents' listings.",
+      "4. Cross-link neighborhoods to each other and to the main listings search for SEO; add structured data where it helps.",
       "",
-      "Skip the subdivision tier cleanly for any area where my tenant has no subdivision data — fall back to city / region stats rather than erroring.",
+      "Start with the areas I name, show me one finished page, then batch the rest.",
     ].join("\n"),
   },
 ] as const;

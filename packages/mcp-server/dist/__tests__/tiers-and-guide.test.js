@@ -131,23 +131,29 @@ const FORBIDDEN_FOR_RESEARCH = [
         strict_1.default.ok(!seenOrders.has(p.order), `duplicate prompt order ${p.order}`);
         seenOrders.add(p.order);
     }
-    // The six expected build steps are present.
+    // The six expected build steps are present (v1 hosted-data narrative —
+    // ship-strategy: scaffolder-first, NO feed/seed steps).
     for (const id of [
-        "connect-mls-feed",
-        "seed-your-db",
-        "scaffold-listings-page",
+        "check-your-data-source",
+        "scaffold-your-site",
+        "customize-listings-and-search",
         "add-the-map",
         "wire-favorites-and-lead-capture",
         "build-neighborhoods",
     ]) {
         strict_1.default.ok(seenIds.has(id), `expected build step "${id}" missing`);
     }
+    // The v1 guide must never send anyone to the unpublished sync package or
+    // claim a feed/seed step exists.
+    for (const p of prompts_js_1.BUILD_GUIDE_PROMPTS) {
+        strict_1.default.ok(!p.body.includes("@chatrealty/sync") || p.body.includes("do NOT install `@chatrealty/sync`"), `prompt ${p.id} must not direct users to @chatrealty/sync`);
+    }
 });
 // ---------------------------------------------------------------------------
 // (e) the guide resource resolves a prompt by id
 // ---------------------------------------------------------------------------
 (0, node_test_1.test)("(e) guide resource resolves a prompt by id", () => {
-    const id = "scaffold-listings-page";
+    const id = "scaffold-your-site";
     const prompt = (0, prompts_js_1.getBuildGuidePrompt)(id);
     strict_1.default.ok(prompt, "fixture prompt must exist");
     const doc = (0, resource_js_1.readGuideResource)(resource_js_1.BUILD_GUIDE_URI_PREFIX + id);
