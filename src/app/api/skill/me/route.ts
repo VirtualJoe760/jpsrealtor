@@ -37,6 +37,11 @@ export async function GET(req: NextRequest) {
       lpBaseUrl,
       tokenName: auth.tokenName,
       tokenLast4: auth.tokenLast4,
+      // BYOD data-source signal (2026-07-23): "tenant" = your own DB is
+      // connected; "none" = no data yet (data reads will 403 no_data_source);
+      // "dogfood" = platform owner's internal dataset (admin accounts only).
+      // The MCP build guide keys its step 1 off this field.
+      dataSource: auth.dataSource,
     },
     { headers: NO_STORE }
   );

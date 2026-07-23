@@ -50,6 +50,20 @@ export type SkillAuthSuccess = {
   // auth (see authenticateSkillRequest).
 
   /**
+   * Where this token's DATA comes from — ChatRealty is PURELY BYOD (ship-
+   * strategy, corrected 2026-07-23):
+   *   "tenant"  → bound to the caller's own tenant DB (their own MLS feed).
+   *   "dogfood" → the platform owner's internal dataset. ADMIN ACCOUNTS ONLY —
+   *               the owner's MLS license does not permit serving this data to
+   *               anyone else.
+   *   "none"    → no data source connected yet. Data reads and tenant writes
+   *               MUST refuse (403 no_data_source) rather than fall back to
+   *               dogfood — falling back is a data-license violation and a
+   *               cross-tenant leak (an unbound token's leads would land in
+   *               the shared default tenant).
+   */
+  dataSource: "tenant" | "dogfood" | "none";
+  /**
    * Stable id of the tenant this token is bound to, or `undefined` for legacy /
    * unmapped tokens (callers fall back to DEFAULT_TENANT).
    */
@@ -115,6 +129,16 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
   // `buildTenantBinding` for the resolve-and-attach logic + its test seam.
   const tenantBinding = await buildTenantBinding(hash);
 
+  // BYOD data-source resolution (2026-07-23): tenant-bound tokens use their
+  // own DB; the dogfood dataset is reserved for admin (platform owner)
+  // accounts; everyone else has NO data source until their tenant is
+  // provisioned. See the SkillAuthSuccess.dataSource doc comment.
+  const dataSource: SkillAuthSuccess["dataSource"] = tenantBinding.tenantId
+    ? "tenant"
+    : user.isAdmin
+      ? "dogfood"
+      : "none";
+
   return {
     ok: true,
     user,
@@ -122,6 +146,7 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
     tokenLast4: entry.last4,
     scopes,
     isLegacyScopes,
+    dataSource,
     // Spread is empty for legacy/unmapped tokens, so `tenantId`/`getSql` stay
     // absent and callers fall back to DEFAULT_TENANT.
     ...tenantBinding,
@@ -279,6 +304,30 @@ export function skillRateLimit(
   );
 }
 
+// Scopes that read LISTING/MARKET data. These require a data source: BYOD
+// tenants read their own DB; admin reads dogfood; unbound tokens get an
+// explicit refusal instead of silently seeing the owner's dataset. Per-agent
+// surfaces (CMS, CRM reads, analytics — all keyed to the token's own user)
+// are NOT gated here.
+const DATA_SCOPES: ReadonlySet<Scope> = new Set([
+  "listings:read",
+  "market:read",
+  "research:read",
+] as Scope[]);
+
+/** The standard 403 for a token with no connected data source. */
+export function noDataSourceResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: "no_data_source",
+      message:
+        "This ChatRealty account has no data source connected yet. ChatRealty is bring-your-own-data: your own MLS feed seeds your own tenant database, and this token serves nothing until that's set up. Tenant data setup is rolling out — contact ChatRealty to enable yours.",
+      dataSource: "none",
+    },
+    { status: 403, headers: NO_STORE }
+  );
+}
+
 export function requireScope(
   auth: SkillAuthResult,
   scope: Scope
@@ -288,6 +337,11 @@ export function requireScope(
       { error: auth.reason },
       { status: auth.status, headers: NO_STORE }
     );
+  }
+  // BYOD gate: data reads refuse loudly when no data source is connected —
+  // never fall through to the dogfood dataset (license + isolation).
+  if (auth.dataSource === "none" && DATA_SCOPES.has(scope)) {
+    return noDataSourceResponse();
   }
   if (!auth.scopes.includes(scope)) {
     return NextResponse.json(

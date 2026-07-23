@@ -164,6 +164,26 @@ export function withSkill(
         return failResponse(auth); // { ok:false, status, reason } → mapped
       }
 
+      // 1b. BYOD gate (2026-07-23): a token with NO data source must not fall
+      //     back to the DEFAULT_TENANT (dogfood) adapter — that would write
+      //     this tenant's data (e.g. from-signup leads) into the shared
+      //     default tenant, a cross-tenant leak. Admin (dogfood) and bound
+      //     tenants pass; unbound tokens refuse loudly.
+      if ((auth as { dataSource?: string }).dataSource === "none") {
+        return withNoStore(
+          NextResponse.json(
+            {
+              error: {
+                code: "no_data_source",
+                message:
+                  "This ChatRealty account has no data source connected yet. ChatRealty is bring-your-own-data — contact ChatRealty to enable your tenant.",
+              },
+            },
+            { status: 403 },
+          ),
+        );
+      }
+
       // 2. Tenant adapter injection (keystone). Never opens a client here.
       const adapter = await deps.resolveAdapter(auth as TenantBoundAuth);
 

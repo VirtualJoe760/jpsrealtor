@@ -35,6 +35,11 @@ sync, OData — planned/design).
   control plane can provision tenant DBs (ship-strategy §6 "Holstered").
 - The skill surface is agent-token only today; end-user auth is Phase B of
   ship-strategy — nothing end-user-facing exists under `/api/skill` yet.
+- **BYOD gate (2026-07-23):** ChatRealty is purely bring-your-own-data. Tokens
+  report `dataSource` on `/api/skill/me`: `tenant` (own DB), `dogfood`
+  (admin-only owner dataset), `none` (listing/market reads + tenant writes
+  refuse with 403 `no_data_source` — enforced in `src/lib/skill-auth.ts` +
+  `withSkill`). Never reintroduce a shared listing pool.
 
 ## File index
 

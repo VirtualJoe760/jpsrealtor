@@ -12,14 +12,18 @@
 //   3. The public developer-docs site's <ClaudePrompt> component (humans copy
 //      them) — build_plan §7 / Agent 34 imports this same array.
 //
-// NARRATIVE (ship-strategy v1 — docs/chatrealty-api/ship-strategy.md): agents
-// build on ChatRealty's HOSTED data through their tenant token. There is no
-// customer-run feed/seed step in v1 — @chatrealty/sync is deliberately
-// unpublished until tenant provisioning ships, and the guide must NEVER send
-// someone to it. The shipped on-ramp is the `create-chatrealty-site`
-// scaffolder; steps 3-6 customize what it generates. Step 1 exists because a
-// connected token always serves data — the guide has to be honest about WHOSE
-// market that data covers instead of declaring "your MLS feed is live."
+// NARRATIVE (ship-strategy, corrected 2026-07-23): ChatRealty is PURELY
+// BRING-YOUR-OWN-DATA. Each agent's own MLS feed seeds their own tenant
+// database — ChatRealty never redistributes anyone else's feed (the platform
+// owner's MLS license covers only the owner's internal/dogfood accounts).
+// A token's /api/skill/me reports `dataSource`: "tenant" (your DB is
+// connected), "none" (nothing yet — data tools refuse with no_data_source),
+// or "dogfood" (platform-internal). Step 1 keys off that field and must NEVER
+// claim a feed is live unless the token's OWN tenant returns rows. Tenant
+// provisioning + the customer sync CLI are rolling out; until a tenant is
+// enabled the guide stops honestly at step 1 rather than improvising imports.
+// The shipped on-ramp is the `create-chatrealty-site` scaffolder; steps 3-6
+// customize what it generates.
 //
 // Each prompt is a self-contained instruction an agent pastes into a fresh
 // Claude session that has the ChatRealty MCP connected.
@@ -35,16 +39,16 @@ exports.BUILD_GUIDE_PROMPTS = [
     {
         id: "check-your-data-source",
         title: "Check your data source",
-        summary: "Confirm what data your ChatRealty token serves and whether it covers your market — before building anything.",
+        summary: "ChatRealty is bring-your-own-data — confirm YOUR tenant database is connected before building anything.",
         order: 1,
         body: [
-            "Before we build, tell me exactly what data my ChatRealty connection serves.",
+            "Before we build, check my ChatRealty data source. ChatRealty is bring-your-own-data: my own MLS feed seeds my own tenant database — there is no shared listing pool.",
             "",
-            "1. Call `whoami` and report who I'm connected as and which scopes my token carries.",
-            "2. Probe the data: run one `search_listings` for the city I tell you I work in, and `get_market_stats` for the same area. Report what came back.",
-            "3. Be precise about the source: this data is ChatRealty's HOSTED MLS dataset served through my tenant token — it is not a feed I connected myself. Do NOT tell me my MLS feed is 'live' or 'seeded'; there is no feed/seed step for me to run.",
-            "4. If my market IS covered (listings and stats came back for my cities): confirm we're ready to build — the data side is done, nothing to set up.",
-            "5. If my market is NOT covered (empty or wrong-region results): say so plainly. Bring-your-own-data is on ChatRealty's roadmap but is not available today — do not improvise a data import, and do not install any sync tooling. Suggest I contact ChatRealty about market coverage, and stop here.",
+            "1. Call `whoami` and report who I'm connected as, my token's scopes, and the `dataSource` field.",
+            "2. If `dataSource` is `tenant`: my database is connected. Probe it — run one `search_listings` for a city I work in and `get_market_stats` for the same area — and report what MY data contains (row counts, cities). Then we're ready to build.",
+            "3. If `dataSource` is `none`: say plainly that no data is connected yet — listing/market tools will refuse with `no_data_source`, and that is correct behavior, not an error to work around. My tenant database setup (my MLS feed, synced by me) is done WITH ChatRealty — tell me to contact ChatRealty to enable my tenant, and stop here. Do NOT improvise a data import, scrape anything, build a local database, or install sync tooling on your own.",
+            "4. If `dataSource` is `dogfood`: this is a ChatRealty-internal owner account serving platform development data — fine for internal testing, but say so explicitly so nobody mistakes it for a customer setup.",
+            "5. NEVER tell me my MLS feed is 'live' or 'seeded' unless step 2 returned rows from my OWN tenant.",
             "",
             "Answer with facts from the tool calls, not assumptions.",
         ].join("\n"),
@@ -62,7 +66,7 @@ exports.BUILD_GUIDE_PROMPTS = [
             "3. Then `cd my-site`, `npm install`, `npm run dev`, and open http://localhost:3000.",
             "4. Verify with me: the listings grid shows real MLS data; the map renders pins; a detail page shows 'Listed by {office} — {agent}' attribution (a hard IDX display rule); the favorites heart persists; the inquiry form submits.",
             "",
-            "Do NOT hand-build a site from scratch and do NOT install `@chatrealty/sync` — the scaffolder is the supported path, and everything after this step customizes what it generated.",
+            "Only proceed once step 1 confirmed a connected data source (`tenant` — or `dogfood` for ChatRealty-internal testing): scaffolding against `none` yields a site of empty pages. Do NOT hand-build a site from scratch and do NOT install data-sync tooling yourself — the scaffolder is the supported path, and everything after this step customizes what it generated.",
         ].join("\n"),
     },
     {

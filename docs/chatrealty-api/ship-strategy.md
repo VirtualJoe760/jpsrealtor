@@ -48,9 +48,19 @@ every build session executes against; it does not re-litigate strategy.
 
 **Boundary principle: everything we publish is a client of the platform —
 genuinely excellent, MIT, complete, and worthless without a ChatRealty account.**
-The moat is not code; it is licensed MLS data + compliance + aggregated analytics
-+ the campaign/lead services + the network. Code that computes value stays
-server-side forever.
+The moat is not code; it is the compliance rails + per-tenant data
+infrastructure + aggregated analytics + the campaign/lead services + the
+network. Code that computes value stays server-side forever.
+
+**Data model (CORRECTED 2026-07-23 — supersedes the "hosted data" framing this
+doc originally shipped with): ChatRealty is PURELY BRING-YOUR-OWN-DATA.** Each
+agent's own MLS feed seeds their own tenant database. The platform owner's
+dogfood dataset serves ADMIN ACCOUNTS ONLY — the owner's MLS license does not
+permit redistributing that feed to other agents' sites, so there is no shared
+listing pool, no "covered market" tier, and no hosted-data fallback. Unbound
+tokens report `dataSource: "none"` and every listing/market read + tenant
+write refuses with `no_data_source` (enforced centrally in
+`src/lib/skill-auth.ts` `requireScope` + the `withSkill` wrapper).
 
 | Funnel stage | What | Mechanism |
 |---|---|---|
@@ -88,9 +98,17 @@ dogfood app.
    npm packages, shell scaffolded. CHAP tool definitions are **served by the
    API**, not hardcoded in shipped packages — new tools appear on every site
    without an npm update.
-7. **`@chatrealty/sync` stays holstered** until build_plan's provisioning work
-   lands (Phases 1-3; sync itself is build_plan Phase 4, Agent 24). It is the
-   pro-tier "own your data" artifact, not a launch artifact.
+7. **Tenant provisioning + `@chatrealty/sync` are ON THE CRITICAL PATH**
+   (corrected 2026-07-23 — previously "holstered"). Because the platform is
+   purely BYOD, no outside agent gets any value until their tenant DB exists
+   and the sync CLI is publishable (build_plan Phases 1-3 provisioning; sync =
+   Phase 4, Agent 24). Publishing sync before provisioning exists is still
+   forbidden (vaporware rule) — which is exactly why provisioning is now the
+   top build priority, not a someday item.
+8. **BYOD always** (2026-07-23): the dogfood dataset is admin-only; unbound
+   tokens see `dataSource: "none"` and data reads/writes refuse loudly. Never
+   re-introduce a hosted/shared listing pool — it is a data-license violation,
+   not a product option.
 
 ## 3. Three-layer update architecture & package lineup
 
@@ -147,9 +165,13 @@ Workstream style matches `build_plan.md` (Owns / Depends / Accept). C1/C2 are
 independent of Phase B and can run in parallel with it; C3 (the thin-shell
 template) needs B3 + C2. D depends on B.
 
-### Phase A — First agent site (runnable TODAY)
+### Phase A — First agent site (internal dogfood run)
 
-No code. Prove the shipped v0.1.0 end-to-end from a second machine.
+No code. Prove the shipped v0.1.0 end-to-end from a second machine. NOTE
+(2026-07-23): with the BYOD gate live, this runbook works only with an ADMIN
+(dogfood) token — a customer token returns `no_data_source` until tenant
+provisioning ships. The first true CUSTOMER run is gated on the provisioning
+phase below.
 
 1. On chatrealty.io (Google login fixed 2026-07-11): **Agent → Settings →
    Integrations** → mint token, preset **Full workspace**. Copy the `crt_live_…`
@@ -246,12 +268,15 @@ Already specified as build_plan **§8.4 (Agents 33-35)** — Fumadocs +
 The prompt library and the MCP build guide share one source. Phase A-C learnings
 feed the quickstart.
 
-### Holstered
+### Phase P — Tenant provisioning + sync (CRITICAL PATH, was "Holstered")
 
 `@chatrealty/sync` + control plane + tenant Neon provisioning: build_plan
 Phases 1-3 (provisioning surface), with the sync package itself in Phase 4.
+Since the 2026-07-23 BYOD correction this is the launch blocker for any
+outside agent: until a tenant DB can be provisioned and bound to their token,
+their `dataSource` is `"none"` and the whole funnel stops at guide step 1.
 Publishing sync before a customer can obtain a tenant DB connection string
-ships vaporware — do not.
+still ships vaporware — provisioning first, then publish.
 
 ## 7. Risks & open items
 
