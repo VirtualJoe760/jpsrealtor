@@ -2,6 +2,7 @@
 // Email utilities using Resend (more reliable than Gmail)
 
 import { Resend } from 'resend';
+import { renderBrandedEmail, escapeHtml } from '@/lib/email-brand';
 
 // Lazy initialization to avoid errors during build when API key might not be set
 let resendInstance: Resend | null = null;
@@ -47,7 +48,9 @@ const DEFAULT_AGENT: EmailAgent = {
   youtube: 'https://youtube.com/@jpsrealtor',
 };
 
-const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || 'jpsrealtor.com';
+// Platform default sender domain. chatrealty.io is verified in Resend.
+// NOTE: a deployed EMAIL_FROM_DOMAIN env var overrides this default.
+const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || 'chatrealty.io';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'josephsardella@gmail.com';
 
 /**
@@ -1201,51 +1204,35 @@ export async function sendAgentApprovalEmail(
       from: platformFrom(),
       to: [email],
       replyTo: ADMIN_EMAIL,
-      subject: 'Welcome to ChatRealty — Your Agent Account is Approved!',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:24px;margin:0 0 4px;">You're Approved!</h1>
-              <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;">Welcome to the ChatRealty Agent Network</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <p style="color:#334155;font-size:15px;line-height:1.7;">
-                Hey ${firstName}, your agent application has been approved! Here's what's ready for you:
-              </p>
-
-              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:20px 0;">
-                <p style="color:#1e40af;font-size:13px;font-weight:600;margin:0 0 8px;">YOUR SUBDOMAIN</p>
-                <p style="color:#1e3a5f;font-size:18px;font-weight:700;margin:0;">
-                  <a href="${subdomainUrl}" style="color:#2563eb;text-decoration:none;">${subdomain}.chatrealty.io</a>
-                </p>
-                <p style="color:#64748b;font-size:13px;margin:8px 0 0;">
-                  This will be your personal real estate page. Subscribe to a plan to activate it.
-                </p>
-              </div>
-
-              <p style="color:#334155;font-size:15px;line-height:1.7;font-weight:600;">Next steps:</p>
-              <ol style="color:#334155;font-size:14px;line-height:2;padding-left:20px;">
-                <li>Complete your agent profile in settings</li>
-                <li>Choose a subscription plan to activate your subdomain</li>
-                <li>Upload your branding (logo, hero photo, headshot)</li>
-                <li>Add your social media links</li>
-                <li>Optionally purchase a custom domain</li>
-              </ol>
-
-              <div style="text-align:center;margin:24px 0 0;">
-                <a href="${baseUrl}/agent/settings?onboarding=true" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  Set Up Your Profile
-                </a>
-              </div>
-            </div>
+      subject: 'Welcome to ChatRealty — your agent account is approved',
+      html: renderBrandedEmail({
+        title: "You're approved!",
+        preheader: `Your agent account is ready — ${subdomain}.chatrealty.io is reserved for you.`,
+        bodyHtml: `
+          <p style="margin:0 0 16px;">Hey ${escapeHtml(firstName)}, welcome to ChatRealty. Your license checked out and your agent account is approved. Here's what's ready for you:</p>
+          <div style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:0 0 20px;">
+            <p style="margin:0 0 8px;color:#1e40af;font-size:13px;font-weight:600;">YOUR SUBDOMAIN</p>
+            <p style="margin:0;font-size:18px;font-weight:700;">
+              <a href="${subdomainUrl}" style="color:#2563eb;text-decoration:none;">${subdomain}.chatrealty.io</a>
+            </p>
+            <p style="margin:8px 0 0;color:#64748b;font-size:13px;">
+              Your personal real estate site. Subscribe to a plan to activate it.
+            </p>
           </div>
-        </body>
-        </html>
-      `,
+          <p style="margin:0 0 8px;font-weight:600;">Next steps:</p>
+          <ol style="margin:0;font-size:14px;line-height:2;padding-left:20px;">
+            <li>Complete your agent profile in settings</li>
+            <li>Choose a subscription plan to activate your subdomain</li>
+            <li>Upload your branding (logo, hero photo, headshot)</li>
+            <li>Add your social media links</li>
+            <li>Optionally purchase a custom domain</li>
+          </ol>
+        `,
+        cta: {
+          label: 'Set up your profile',
+          url: `${baseUrl}/agent/settings?onboarding=true`,
+        },
+      }),
     });
 
     if (error) {

@@ -1,5 +1,10 @@
 // src/app/api/agent/verify-identity/route.ts
 // Initiate Stripe Identity verification (Phase 2)
+//
+// PARKED (2026-07-23): unreachable by design — the live flow goes
+// inquiry_pending -> final_approved and never sets inquiry_approved.
+// Kept for possible future ID-verification.
+// See docs/agent-onboarding/README.md.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";

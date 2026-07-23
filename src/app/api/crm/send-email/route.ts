@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     const fromName = (user as any)?.name || session.user.name || 'ChatRealty';
-    const noreplyDomain = process.env.EMAIL_FROM_DOMAIN || 'jpsrealtor.com';
+    const noreplyDomain = process.env.EMAIL_FROM_DOMAIN || 'chatrealty.io';
     const senderAddress = !isPrimary && ec?.fromAddress ? ec.fromAddress : `noreply@${noreplyDomain}`;
     const replyTo = (user as any)?.email || session.user.email || senderAddress;
 

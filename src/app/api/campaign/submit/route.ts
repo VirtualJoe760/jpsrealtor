@@ -17,7 +17,7 @@ import { Resend } from "resend";
 
 export const dynamic = "force-dynamic";
 
-const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || "jpsrealtor.com";
+const NOREPLY_DOMAIN = process.env.EMAIL_FROM_DOMAIN || "chatrealty.io";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);

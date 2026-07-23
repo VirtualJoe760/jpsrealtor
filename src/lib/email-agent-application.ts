@@ -1,7 +1,21 @@
 // src/lib/email-agent-application.ts
-// Email notifications for agent application system
+// Emails for the agent product-signup flow (see docs/agent-onboarding/README.md).
+//
+// Live flow: submit -> inquiry_pending -> admin approves (final_approved,
+// sendAgentApprovalEmail in email-resend.ts) or rejects (final_rejected,
+// sendAgentRejectionEmail below).
+//
+// 2026-07-23 product-signup pivot: rewritten on the email-brand.ts wrapper.
+// The dead phase cases (phase1_approved / phase1_rejected / final_approved /
+// final_rejected) were never invoked by any caller and have been removed —
+// this file exports exactly what the live flow uses.
 
 import { Resend } from "resend";
+import {
+  renderBrandedEmail,
+  platformFrom,
+  escapeHtml,
+} from "@/lib/email-brand";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -10,512 +24,156 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-type EmailPhase =
-  | "submitted"
-  | "phase1_approved"
-  | "phase1_rejected"
-  | "identity_verified"
-  | "final_approved"
-  | "final_rejected";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "josephsardella@gmail.com";
 
-interface SendAgentApplicationEmailParams {
+function baseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXTAUTH_URL ||
+    "https://chatrealty.io"
+  );
+}
+
+export interface SendAgentApplicationEmailParams {
   applicantName: string;
   applicantEmail: string;
   applicationId: string;
-  phase: EmailPhase;
-  reviewNotes?: string;
-  teamName?: string;
+  /** Submitted license details, echoed into the admin notification. */
+  details?: {
+    licenseNumber?: string;
+    licenseState?: string;
+    mlsAssociation?: string;
+    mlsId?: string;
+    brokerageName?: string;
+  };
 }
 
-export async function sendAgentApplicationEmail(params: SendAgentApplicationEmailParams) {
+/**
+ * Fires on submission: (1) notifies the admin reviewer, (2) confirms receipt
+ * to the applicant. Both send from the platform (ChatRealty) address.
+ */
+export async function sendAgentApplicationEmail(
+  params: SendAgentApplicationEmailParams
+) {
   const resend = getResend();
-  const { applicantName, applicantEmail, applicationId, phase, reviewNotes, teamName } = params;
+  const { applicantName, applicantEmail, applicationId, details } = params;
+  const name = escapeHtml(applicantName);
+  const firstName = escapeHtml(applicantName.split(" ")[0] || "there");
 
-  // Admin notification emails
-  const adminEmails = ["josephsardella@gmail.com"];
+  // 1) Admin notification — review happens at /admin/applications/agents
+  const detailRows: Array<[string, string]> = [
+    ["Applicant", name],
+    ["Email", escapeHtml(applicantEmail)],
+    [
+      "License",
+      details?.licenseNumber
+        ? `${escapeHtml(details.licenseNumber)} (${escapeHtml(details.licenseState || "state n/a")})`
+        : "—",
+    ],
+    [
+      "MLS",
+      details?.mlsAssociation
+        ? `${escapeHtml(details.mlsAssociation)}${details.mlsId ? ` — agent ID ${escapeHtml(details.mlsId)}` : ""}`
+        : "—",
+    ],
+    ["Brokerage", details?.brokerageName ? escapeHtml(details.brokerageName) : "—"],
+    ["Application ID", escapeHtml(applicationId)],
+  ];
 
-  switch (phase) {
-    case "submitted":
-      // Notify admins of new application
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: adminEmails,
-        subject: `New Agent Application - ${applicantName}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #2563eb;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .button {
-                  display: inline-block;
-                  background-color: #2563eb;
-                  color: white;
-                  text-decoration: none;
-                  padding: 12px 24px;
-                  border-radius: 6px;
-                  margin-top: 20px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>📝 New Agent Application</h1>
-                </div>
-                <div class="content">
-                  <p><strong>Applicant:</strong> ${applicantName}</p>
-                  <p><strong>Email:</strong> ${applicantEmail}</p>
-                  <p><strong>Application ID:</strong> ${applicationId}</p>
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [ADMIN_EMAIL],
+    replyTo: applicantEmail,
+    subject: `New agent signup — ${applicantName}`,
+    html: renderBrandedEmail({
+      title: "New agent signup to review",
+      preheader: `${applicantName} submitted their license for verification.`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;">A new agent submitted their license details and is waiting on manual review.</p>
+        <div style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:0 0 8px;">
+          ${detailRows
+            .map(
+              ([label, value]) =>
+                `<p style="margin:0 0 6px;font-size:14px;"><strong style="color:#1e40af;">${label}:</strong> ${value}</p>`
+            )
+            .join("\n          ")}
+        </div>
+      `,
+      cta: {
+        label: "Review application",
+        url: `${baseUrl()}/admin/applications/agents`,
+      },
+    }),
+  });
 
-                  <p>A new agent application has been submitted and is ready for Phase 1 review.</p>
+  // 2) Applicant confirmation
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [applicantEmail],
+    replyTo: ADMIN_EMAIL,
+    subject: "We got your application — ChatRealty",
+    html: renderBrandedEmail({
+      title: "Your application is in",
+      preheader:
+        "We're verifying your license now — you'll hear from us shortly.",
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName},</p>
+        <p style="margin:0 0 16px;">Thanks for signing up for ChatRealty. We've received your license details and your agent account is now in review.</p>
+        <p style="margin:0 0 8px;font-weight:600;">What happens next:</p>
+        <ul style="margin:0 0 16px;padding-left:20px;line-height:1.9;">
+          <li>We verify your license and MLS details by hand</li>
+          <li>You get an approval email with your personal ChatRealty subdomain</li>
+          <li>You set up your site, branding, and CRM in minutes</li>
+        </ul>
+        <p style="margin:0;">Reviews usually wrap up within 2&ndash;3 business days — often sooner. No action needed from you right now.</p>
+      `,
+    }),
+  });
+}
 
-                  <a href="${process.env.NEXTAUTH_URL}/admin/applications/${applicationId}" class="button">
-                    Review Application
-                  </a>
-                </div>
-                <div class="footer">
-                  <p>JPSRealtor Agent Application System</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
+export interface SendAgentRejectionEmailParams {
+  applicantName: string;
+  applicantEmail: string;
+  /** Admin-entered reason, included verbatim (HTML-escaped). */
+  reason?: string;
+}
 
-      // Notify applicant of submission
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: [applicantEmail],
-        subject: "Application Received - JPSRealtor.com",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #2563eb;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>✅ Application Received</h1>
-                </div>
-                <div class="content">
-                  <p>Hi ${applicantName},</p>
+/**
+ * Sent when an admin rejects an application from /admin/applications/agents.
+ * Kind and brief; includes the admin's reason verbatim and invites a reply
+ * (replyTo is the admin inbox).
+ */
+export async function sendAgentRejectionEmail(
+  params: SendAgentRejectionEmailParams
+) {
+  const resend = getResend();
+  const { applicantName, applicantEmail, reason } = params;
+  const firstName = escapeHtml(applicantName.split(" ")[0] || "there");
+  const reasonHtml = reason
+    ? escapeHtml(reason).replace(/\n/g, "<br>")
+    : "";
 
-                  <p>Thank you for applying to join the JPSRealtor team!</p>
-
-                  <p>We've received your application and it's currently under review. We'll notify you of our decision within 2-3 business days.</p>
-
-                  <p><strong>What's Next?</strong></p>
-                  <ul>
-                    <li>Our team will review your license and MLS information</li>
-                    <li>If approved, you'll be invited to complete identity verification</li>
-                    <li>Final approval and team assignment will follow</li>
-                  </ul>
-
-                  <p>Thank you for your patience!</p>
-
-                  <p>Best regards,<br>
-                  The JPSRealtor Team</p>
-                </div>
-                <div class="footer">
-                  <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
-      break;
-
-    case "phase1_approved":
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: [applicantEmail],
-        subject: "Application Approved - Next Step: Identity Verification",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #10b981;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .button {
-                  display: inline-block;
-                  background-color: #2563eb;
-                  color: white;
-                  text-decoration: none;
-                  padding: 12px 24px;
-                  border-radius: 6px;
-                  margin-top: 20px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>🎉 Application Approved!</h1>
-                </div>
-                <div class="content">
-                  <p>Hi ${applicantName},</p>
-
-                  <p>Great news! Your agent application has been approved.</p>
-
-                  ${reviewNotes ? `<p><strong>Reviewer Notes:</strong><br>${reviewNotes}</p>` : ""}
-
-                  <p><strong>Next Step: Identity Verification</strong></p>
-                  <p>To complete your application, please verify your identity. This is a secure process that takes just a few minutes.</p>
-
-                  <a href="${process.env.NEXTAUTH_URL}/dashboard/agent-application" class="button">
-                    Verify Your Identity
-                  </a>
-
-                  <p>You'll need a government-issued ID and your phone camera.</p>
-
-                  <p>Best regards,<br>
-                  The JPSRealtor Team</p>
-                </div>
-                <div class="footer">
-                  <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
-      break;
-
-    case "phase1_rejected":
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: [applicantEmail],
-        subject: "Application Status Update - JPSRealtor.com",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #dc2626;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>Application Status Update</h1>
-                </div>
-                <div class="content">
-                  <p>Hi ${applicantName},</p>
-
-                  <p>Thank you for your interest in joining the JPSRealtor team.</p>
-
-                  <p>After careful review, we're unable to move forward with your application at this time.</p>
-
-                  ${reviewNotes ? `<p><strong>Feedback:</strong><br>${reviewNotes}</p>` : ""}
-
-                  <p>We appreciate your interest and wish you the best in your real estate career.</p>
-
-                  <p>Best regards,<br>
-                  The JPSRealtor Team</p>
-                </div>
-                <div class="footer">
-                  <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
-      break;
-
-    case "final_approved":
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: [applicantEmail],
-        subject: "🎉 Welcome to JPSRealtor!",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #10b981;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .button {
-                  display: inline-block;
-                  background-color: #2563eb;
-                  color: white;
-                  text-decoration: none;
-                  padding: 12px 24px;
-                  border-radius: 6px;
-                  margin-top: 20px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>🎉 Welcome to JPSRealtor!</h1>
-                </div>
-                <div class="content">
-                  <p>Hi ${applicantName},</p>
-
-                  <p>Congratulations! You've been approved to join the JPSRealtor team.</p>
-
-                  ${teamName ? `<p><strong>Team Assignment:</strong> ${teamName}</p>` : ""}
-                  ${reviewNotes ? `<p><strong>Welcome Message:</strong><br>${reviewNotes}</p>` : ""}
-
-                  <p><strong>What's Next?</strong></p>
-                  <ul>
-                    <li>Access your agent dashboard</li>
-                    <li>Complete your profile setup</li>
-                    <li>Meet your team leader and fellow agents</li>
-                    <li>Start connecting with clients</li>
-                  </ul>
-
-                  <a href="${process.env.NEXTAUTH_URL}/dashboard/agent" class="button">
-                    Go to Agent Dashboard
-                  </a>
-
-                  <p>We're excited to have you on board!</p>
-
-                  <p>Best regards,<br>
-                  The JPSRealtor Team</p>
-                </div>
-                <div class="footer">
-                  <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
-      break;
-
-    case "final_rejected":
-      await resend.emails.send({
-        from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
-        to: [applicantEmail],
-        subject: "Application Status Update - JPSRealtor.com",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  background-color: #f5f5f5;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 40px auto;
-                  background-color: white;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                  overflow: hidden;
-                }
-                .header {
-                  background-color: #dc2626;
-                  color: white;
-                  padding: 30px;
-                  text-align: center;
-                }
-                .content {
-                  padding: 30px;
-                }
-                .footer {
-                  background-color: #f5f5f5;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>Application Status Update</h1>
-                </div>
-                <div class="content">
-                  <p>Hi ${applicantName},</p>
-
-                  <p>Thank you for completing the identity verification process.</p>
-
-                  <p>After final review, we're unable to proceed with your application at this time.</p>
-
-                  ${reviewNotes ? `<p><strong>Feedback:</strong><br>${reviewNotes}</p>` : ""}
-
-                  <p>We appreciate your time and interest in joining JPSRealtor.</p>
-
-                  <p>Best regards,<br>
-                  The JPSRealtor Team</p>
-                </div>
-                <div class="footer">
-                  <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      });
-      break;
-  }
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [applicantEmail],
+    replyTo: ADMIN_EMAIL,
+    subject: "An update on your ChatRealty application",
+    html: renderBrandedEmail({
+      title: "About your application",
+      preheader: "An update on your ChatRealty agent account request.",
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName},</p>
+        <p style="margin:0 0 16px;">Thanks for your interest in ChatRealty. After reviewing your application, we weren't able to approve your agent account this time.</p>
+        ${
+          reasonHtml
+            ? `<div style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:0 0 16px;">
+          <p style="margin:0 0 6px;color:#1e40af;font-size:13px;font-weight:600;">REVIEWER NOTE</p>
+          <p style="margin:0;font-size:14px;">${reasonHtml}</p>
+        </div>`
+            : ""
+        }
+        <p style="margin:0;">If anything looks off — a typo in your license number, an MLS mix-up — just reply to this email and we'll take another look.</p>
+      `,
+    }),
+  });
 }

@@ -1,5 +1,7 @@
 // src/app/api/agent/apply/route.ts
-// Agent application submission (Phase 1)
+// Agent product signup: license number/state + MLS association + brokerage
+// (mlsId optional). Manual admin review at /admin/applications/agents.
+// See docs/agent-onboarding/README.md.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -41,34 +43,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse request body
+    // Parse request body. Dropped legacy fields (resume, cover letter,
+    // whyJoin, references, yearsExperience, brokerageAddress) are ignored
+    // if an old client still sends them.
     const body = await request.json();
     const {
       licenseNumber,
       licenseState,
-      mlsId,
+      mlsId, // Optional MLS agent ID
       mlsAssociation,
       brokerageName,
-      brokerageAddress,
-      yearsExperience,
-      preferredTeam, // Optional Team ID
-      whyJoin,
-      references, // Optional
-      resumeUrl, // Optional
-      coverLetterUrl, // Optional
+      preferredTeam, // Optional Team ID (legacy plumbing; the form no longer sends it)
     } = body;
 
     // Validate required fields
-    if (
-      !licenseNumber ||
-      !licenseState ||
-      !mlsId ||
-      !mlsAssociation ||
-      !brokerageName ||
-      !brokerageAddress ||
-      typeof yearsExperience !== "number" ||
-      !whyJoin
-    ) {
+    if (!licenseNumber || !licenseState || !mlsAssociation || !brokerageName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -86,34 +75,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create agent application (Phase 1)
+    // Create agent application (manual review: inquiry_pending -> final_approved|final_rejected)
     user.agentApplication = {
       phase: "inquiry_pending",
       submittedAt: new Date(),
       licenseNumber,
       licenseState,
-      mlsId,
+      mlsId: mlsId || undefined,
       mlsAssociation,
       brokerageName,
-      brokerageAddress,
-      yearsExperience,
       preferredTeam: preferredTeam || undefined,
-      whyJoin,
-      references: references || undefined,
-      resumeUrl: resumeUrl || undefined,
-      coverLetterUrl: coverLetterUrl || undefined,
       identityVerified: false,
     };
 
     await user.save();
 
-    // Send email notification to admins
+    // Notify admin + confirm receipt to the applicant
     try {
       await sendAgentApplicationEmail({
         applicantName: user.name || user.email,
         applicantEmail: user.email,
         applicationId: user._id.toString(),
-        phase: "submitted",
+        details: {
+          licenseNumber,
+          licenseState,
+          mlsAssociation,
+          mlsId: mlsId || undefined,
+          brokerageName,
+        },
       });
     } catch (emailError) {
       console.error("Failed to send application email:", emailError);

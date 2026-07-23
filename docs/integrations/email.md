@@ -1,10 +1,11 @@
 ---
 title: Per-agent Email (Resend) + credit billing
 status: current
-last_verified: 2026-06-20
+last_verified: 2026-07-23
 related:
   - twilio.md
   - ../commerce/stripe-billing.md
+  - ../agent-onboarding/README.md
 ---
 
 # Per-agent Email (Resend)
@@ -58,6 +59,29 @@ The route accepts **both** content types so one endpoint serves every caller:
 Ledger types: `messaging_setup`, `email_setup`, `sms_send`, `email_send` (+ channels
 `sms`, `email`). Balances are fractional-safe. Setup fees are **billed before**
 provisioning and **refunded** (`type: 'refund'`) if the vendor call fails.
+
+## Platform sender domain (changed 2026-07-23)
+
+The **default** platform sending domain flipped `jpsrealtor.com` →
+`chatrealty.io` (verified in Resend) in the three places that read
+`EMAIL_FROM_DOMAIN` with a fallback:
+
+- `src/lib/email-resend.ts` (`NOREPLY_DOMAIN`, used by `platformFrom()`/`emailFrom()`)
+- `src/app/api/crm/send-email/route.ts` (primary-agent shared sender)
+- `src/app/api/campaign/submit/route.ts`
+
+**A deployed `EMAIL_FROM_DOMAIN` env var overrides the code default** — if
+Vercel still has it set to `jpsrealtor.com`, that wins; update or remove it
+to actually send from chatrealty.io. Deliberately untouched: the newsletter
+default (`newsletter@jpsrealtor.com`), nodemailer Gmail paths,
+`/api/resend/send` (admin personal composer), and per-agent
+`User.emailConfig` senders.
+
+New: `src/lib/email-brand.ts` exports `renderBrandedEmail()` +
+`platformFrom()` — a dependency-free, table-based ChatRealty shell (logo
+header, #2563eb CTA, reply-to-us footer) for platform transactional mail.
+The agent-onboarding flow uses it (see
+[`../agent-onboarding/README.md`](../agent-onboarding/README.md)).
 
 ## Gotchas
 

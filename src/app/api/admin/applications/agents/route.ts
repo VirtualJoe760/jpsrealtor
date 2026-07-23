@@ -6,6 +6,7 @@ import { verifyAdmin } from "@/lib/admin-auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { sendAgentApprovalEmail } from "@/lib/email-resend";
+import { sendAgentRejectionEmail } from "@/lib/email-agent-application";
 import { generateSubdomain } from "@/lib/generate-subdomain";
 
 export const dynamic = "force-dynamic";
@@ -124,7 +125,14 @@ export async function PUT(request: NextRequest) {
       user.agentApplication.finalReviewNotes = reason || "Rejected by admin";
       await user.save();
 
-      // TODO: Send rejection email with reason
+      // Email the applicant the decision + reason (non-blocking)
+      sendAgentRejectionEmail({
+        applicantName: user.name || "",
+        applicantEmail: user.email,
+        reason: reason || undefined,
+      }).catch((err) =>
+        console.error("[agent-reject] Rejection email failed:", err)
+      );
 
       return NextResponse.json({
         success: true,

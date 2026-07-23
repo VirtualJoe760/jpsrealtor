@@ -1,5 +1,11 @@
 // src/app/api/webhooks/stripe-identity/route.ts
 // Stripe Identity webhook handler for agent application verification
+//
+// PARKED (2026-07-23): unreachable by design — the live flow goes
+// inquiry_pending -> final_approved and never sets inquiry_approved, so no
+// verification session is ever created and this webhook never fires.
+// Kept for possible future ID-verification.
+// See docs/agent-onboarding/README.md.
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";

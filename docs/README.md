@@ -17,6 +17,7 @@ then drill into the relevant area folder.
 | Auth, sessions, sign-in/out, 2FA | [`auth/README.md`](./auth/README.md) |
 | Anything scoping content by hostname (the cardinal rule) | [`multi-tenant/README.md`](./multi-tenant/README.md) |
 | CRM, contact import, FUB, anti-spam | [`crm/README.md`](./crm/README.md) |
+| Agent signup, application review, approval/rejection emails | [`agent-onboarding/README.md`](./agent-onboarding/README.md) |
 | Articles, blog, insights, publishing pipeline | [`cms/README.md`](./cms/README.md) |
 | MLS listings, photos, VPS cron, subdivisions | [`listings/README.md`](./listings/README.md) |
 | Chat (CHAP), map, intent parsing, Groq narrate | [`chat/README.md`](./chat/README.md) |

@@ -400,7 +400,9 @@ export interface IUser extends Document {
     expiresAt?: Date;
   };
 
-  // AGENT APPLICATION (two-phase application system)
+  // AGENT APPLICATION (product signup — license verification, manual review;
+  // see docs/agent-onboarding/README.md. Live phases: inquiry_pending ->
+  // final_approved | final_rejected. Other phases are legacy/parked.)
   agentApplication?: {
     // Application Phase
     phase:
@@ -415,20 +417,20 @@ export interface IUser extends Document {
 
     submittedAt: Date;
 
-    // Phase 1: Basic Info (text-only, no documents)
+    // License verification (collected since the 2026-07-23 product-signup pivot)
     licenseNumber: string;
     licenseState: string;
-    mlsId: string;
+    mlsId?: string; // Optional MLS agent ID
     mlsAssociation: string;
     brokerageName: string;
-    brokerageAddress: string;
-    yearsExperience: number;
+    brokerageAddress?: string; // Legacy — pre-2026-07-23 applications only
+    yearsExperience?: number; // Legacy — pre-2026-07-23 applications only
 
     // Team Preference
     preferredTeam?: mongoose.Types.ObjectId; // Reference to Team (null = default team)
 
-    // Motivation
-    whyJoin: string;
+    // Motivation (legacy — no longer collected)
+    whyJoin?: string;
     references?: string; // Optional professional references
 
     // Documents

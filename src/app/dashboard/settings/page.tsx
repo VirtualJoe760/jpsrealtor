@@ -1093,7 +1093,7 @@ export default function SettingsPage() {
                         <li key={item} className="flex items-center gap-2 text-xs"><Check className={`w-3.5 h-3.5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />{item}</li>
                       ))}
                     </ul>
-                    <Link href="/dashboard/settings/join-us" className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Apply as Agent</Link>
+                    <Link href="/dashboard/settings/join-us" className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Get your agent account</Link>
                   </>
                 )}
               </div>
