@@ -1,7 +1,7 @@
 // packages/chatrealty-sync/src/write.ts
 //
 // Spec 8 — upsertProperties: batched INSERT ... ON CONFLICT (listing_key) DO
-// UPDATE into the tenant's Neon `property` table.
+// UPDATE into the tenant's ChatRealty-database `property` table.
 //
 // • Idempotent: re-running with the same records updates in place (keyed on the
 //   primary key `listing_key`), never duplicates. NEVER deletes — the sync has

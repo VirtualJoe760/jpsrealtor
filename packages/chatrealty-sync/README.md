@@ -1,9 +1,9 @@
 # @chatrealty/sync
 
 > **The BYOD activation moment.** This package pulls *your* MLS RESO Web API feed
-> into *your own* ChatRealty tenant database (Neon/Postgres + PostGIS) and keeps
-> it fresh on a daily cron. Run it on your machine or your server; ChatRealty
-> never touches your raw feed.
+> into *your own* ChatRealty database (Postgres + PostGIS, hosted for you by
+> ChatRealty) and keeps it fresh on a daily cron. Run it on your machine or your
+> server; ChatRealty never touches your raw feed.
 
 This README is written **for Claude first** (build_plan §3.9). If you are an LLM
 scaffolding this on a customer's machine, follow the steps top-to-bottom — every
@@ -14,8 +14,8 @@ value you need is named explicitly.
 ## What it does
 
 ```
-RESO Web API feed  ──►  reso-fetch.ts  ──►  map.ts  ──►  write.ts  ──►  your Neon `property` table
-   (your MLS)           (OData pull)      (RESO→snake)   (upsert)        (PostGIS)
+RESO Web API feed  ──►  reso-fetch.ts  ──►  map.ts  ──►  write.ts  ──►  your ChatRealty database
+   (your MLS)           (OData pull)      (RESO→snake)   (upsert)        (`property` table, PostGIS)
 ```
 
 - **Full seed** on the first run (no watermark yet) — pulls the whole `Property` feed.
@@ -68,7 +68,7 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 
 | Var | Required | Meaning |
 |---|---|---|
-| `TENANT_NEON_CONN_URI` | ✅ | Your tenant Neon **pooled** connection string. (Falls back to `NEON_POOLED_CONN_URI` for dogfood.) |
+| `CHATREALTY_DB_URL` | ✅ | Your ChatRealty database URL (**pooled**), provided when your database is provisioned. |
 | `RESO_BASE_URL` | ✅ | RESO Web API OData base, e.g. `https://api.bridgedataoutput.com/api/v2/OData`. |
 | `RESO_TOKEN_URL` | ✅ | OAuth2 token endpoint (client-credentials grant). |
 | `RESO_CLIENT_ID` | ✅ | Your MLS RESO client id. |
@@ -83,7 +83,7 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 Example `.env.local` (do not commit):
 
 ```dotenv
-TENANT_NEON_CONN_URI=postgresql://USER:PASS@ep-xxxx-pooler.us-west-2.aws.neon.tech/neondb?sslmode=require
+CHATREALTY_DB_URL=postgresql://USER:PASS@HOST/DB?sslmode=require   # provided by ChatRealty at provisioning
 RESO_BASE_URL=https://api.bridgedataoutput.com/api/v2/OData
 RESO_TOKEN_URL=https://api.bridgedataoutput.com/oauth2/token
 RESO_CLIENT_ID=your-client-id
@@ -125,8 +125,9 @@ on persistent disk. Delete it to force a full re-seed.
 
 ## How Claude scaffolds this on a customer machine
 
-1. Confirm the tenant DB is provisioned (the `property` table + PostGIS exist).
-   `TENANT_NEON_CONN_URI` is the customer's pooled Neon URI.
+1. Confirm the ChatRealty database is provisioned (the `property` table +
+   PostGIS exist). `CHATREALTY_DB_URL` is the pooled URL ChatRealty handed the
+   customer at provisioning.
 2. Write `.env.local` from the customer's MLS RESO credentials (above). Secrets go
    in env only.
 3. `npx chatrealty-sync run --once --dry-run` to verify the feed parses and maps
@@ -143,16 +144,17 @@ npx tsx --test packages/chatrealty-sync/src/__tests__/*.test.ts
 - `map.test.ts` — pure mapper tests (RESO → columns, **attribution**, extras, geom,
   derived subdivision). No DB, no network.
 - `write.live.test.ts` — **LIVE**: mocks the RESO fetch, maps ~10 records, upserts
-  into the real Neon `property` table, asserts attribution + geom round-trip and
+  into a real `property` table, asserts attribution + geom round-trip and
   idempotency, **deletes its seeded rows in `finally`**, closes the pool in
-  `after()`. **Skips cleanly** when `NEON_POOLED_CONN_URI` is absent.
+  `after()`. **Skips cleanly** when no live DB env is present.
 
 ---
 
 ## Gotchas
 
-- **Pooled URI for runtime.** Use the `-pooler` Neon endpoint for the sync. (DDL /
-  `CREATE EXTENSION` happen at provision time over the *direct* URI — not here.)
+- **Pooled URL for runtime.** Use the pooled connection URL ChatRealty provides
+  for the sync. (DDL / `CREATE EXTENSION` happen at provision time over the
+  direct connection — not here.)
 - **Never `--purge`.** This package has no delete path. The live test is the only
   place a `DELETE` runs, and only against its own uniquely-marked test rows.
 - **`geom` is derived** from `Longitude`/`Latitude` as a GeoJSON Point and written

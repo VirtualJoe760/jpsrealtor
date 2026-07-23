@@ -1,7 +1,7 @@
 {
   "name": "@chatrealty/sync",
   "version": "0.1.0",
-  "description": "Customer-side daily sync: pull your MLS RESO Web API feed into your own ChatRealty (Neon/Postgres) tenant database. The BYOD activation moment.",
+  "description": "Customer-side daily sync: pull your MLS RESO Web API feed into your own ChatRealty database. The BYOD activation moment.",
   "type": "module",
   "bin": {
     "chatrealty-sync": "./src/cli.ts"

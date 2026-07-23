@@ -32,7 +32,7 @@ export { upsertProperties, buildUpsertSql } from "./write";
 
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {
-  /** Tenant Neon connection string (the customer's own DB). */
+  /** ChatRealty database URL (the customer's own DB, provided at provisioning). */
   readonly connString: string;
   readonly reso: ResoFetchConfig;
   /** Where the watermark JSON lives. Default: "./.sync-state". */
@@ -114,8 +114,9 @@ function maxTimestamp(a: string | null, candidate: unknown): string | null {
 }
 
 /**
- * Run one sync. Pulls from the RESO feed, maps, batched-upserts into the tenant
- * Neon DB, advances the watermark. Idempotent and delete-free.
+ * Run one sync. Pulls from the RESO feed, maps, batched-upserts into the
+ * customer's ChatRealty database, advances the watermark. Idempotent and
+ * delete-free.
  *
  * The pg pool is created and closed inside this function so the CLI exits
  * cleanly; callers needing finer control can use the pure modules directly.
@@ -197,7 +198,7 @@ export async function runSync(config: SyncConfig): Promise<SyncRunResult> {
  * Build a SyncConfig from environment variables. The CLI loads .env.local first.
  *
  * Required env:
- *   TENANT_NEON_CONN_URI  (or NEON_POOLED_CONN_URI as a dogfood fallback)
+ *   CHATREALTY_DB_URL  (or NEON_POOLED_CONN_URI as an internal dogfood fallback)
  *   RESO_BASE_URL, RESO_TOKEN_URL, RESO_CLIENT_ID, RESO_CLIENT_SECRET
  * Optional:
  *   RESO_SCOPE, RESO_RESOURCE, RESO_PAGE_SIZE
@@ -209,10 +210,10 @@ export function configFromEnv(
   overrides: { dryRun?: boolean; maxRecords?: number } = {},
 ): SyncConfig {
   const connString =
-    env.TENANT_NEON_CONN_URI ?? env.NEON_POOLED_CONN_URI ?? "";
+    env.CHATREALTY_DB_URL ?? env.NEON_POOLED_CONN_URI ?? "";
   if (!connString) {
     throw new Error(
-      "Missing tenant DB connection: set TENANT_NEON_CONN_URI (or NEON_POOLED_CONN_URI).",
+      "Missing database connection: set CHATREALTY_DB_URL (provided by ChatRealty when your database is provisioned).",
     );
   }
   const missing = ["RESO_BASE_URL", "RESO_TOKEN_URL", "RESO_CLIENT_ID", "RESO_CLIENT_SECRET"].filter(

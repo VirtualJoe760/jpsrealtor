@@ -90,6 +90,17 @@ executors), cmaStats + aggregation builders, control plane/tenancy, campaign
 integrations (Twilio/DropCowboy/Meta/Google), listing-treatment computation, the
 dogfood app.
 
+**Naming rules (customer-facing surfaces — 2026-07-23, from live-test failures):**
+
+1. **No infrastructure vendor names.** It is a **"ChatRealty database"** — never
+   "Neon" — in every package README, CLI string, env-var name, error message,
+   guide prompt, and email. Vendor names live in code comments and internal
+   docs only. (Env var: `CHATREALTY_DB_URL`, not `TENANT_NEON_CONN_URI`.)
+2. **No "contact/ask ChatRealty" steps.** Every path is self-serve; a flow that
+   ends in "ask ChatRealty" is a missing API, not an answer.
+3. **Product voice, not plumbing.** No token fragments, HTTP status codes, or
+   internal field names in anything an agent-customer reads.
+
 ## 2. Locked decisions
 
 1. **Thin clients / fat platform** — Stripe boundary, Payload DX. Self-hostable

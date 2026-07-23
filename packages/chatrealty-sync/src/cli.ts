@@ -2,8 +2,8 @@
 // packages/chatrealty-sync/src/cli.ts
 //
 // Spec 8 — the `chatrealty-sync` CLI. The daily cron entry the customer (or
-// their Claude) runs to pull their MLS RESO feed into their own ChatRealty Neon
-// tenant DB.
+// their Claude) runs to pull their MLS RESO feed into their own ChatRealty
+// database.
 //
 //   chatrealty-sync run            # full seed on first run, incremental after
 //   chatrealty-sync run --once     # one bounded pass (smoke test, capped)
@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name("chatrealty-sync")
   .description(
-    "Sync your MLS RESO Web API feed into your ChatRealty Neon tenant database. " +
+    "Sync your MLS RESO Web API feed into your ChatRealty database. " +
       "Full seed on first run, incremental thereafter. Never deletes.",
   )
   .version("0.1.0");
