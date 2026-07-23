@@ -79,9 +79,25 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
       "2. Run: `npx create-chatrealty-site@latest my-site --token <my token>` — the default API base (`https://www.chatrealty.io`) is correct. The CLI verifies the token against `/api/skill/me`; if verification fails, stop and show me the exact message.",
       "3. Then `cd my-site`, `npm install`, `npm run dev`, and open http://localhost:3000.",
       "4. Verify with me: the listings grid shows real MLS data; the map renders pins; a detail page shows 'Listed by {office} — {agent}' attribution (a hard IDX display rule); the favorites heart persists; the inquiry form submits.",
-      "5. THEN interview me for my brand — check `my_agent_profile` first and ask ONLY about what's missing or empty: my brand colors, whether I have a logo (file or URL — put it in `public/` and wire the header), how I want the homepage to look and feel (tone, hero copy, what leads), who my broker/brokerage is (footer + compliance line), and my service areas. Apply the answers: tailwind brand color, header/footer, hero. Also encourage me to fill the same details into my ChatRealty profile (Settings) so landing pages and articles stop generating generic.",
+      "5. The scaffold's look is deliberately a NEUTRAL CANVAS — the backend is now wired, but the site is not done. Move straight to the design step: that's where it becomes mine.",
       "",
       "Proceed with a real token once step 1 confirmed a connected data source (`tenant` — or `dogfood` for ChatRealty-internal testing). If no data source is connected yet, scaffold in TEST DATA mode instead (`--test-data`, no token) — fictitious sample listings, permanent banner, preview only, never launched publicly. Do NOT hand-build a site from scratch and do NOT install data-sync tooling yourself — the scaffolder is the supported path, and everything after this step customizes what it generated.",
+    ].join("\n"),
+  },
+  {
+    id: "design-your-site",
+    title: "Design your site",
+    summary:
+      "The backend is wired — now Claude designs a site that's actually yours: interview, proposed direction, full restyle.",
+    order: 3,
+    body: [
+      "Design my site. The backend and plumbing are done — this step is about making it BEAUTIFUL and unmistakably mine. You have strong design instincts: use them fully. The scaffold is a foundation, not the final look; you own the presentation layer.",
+      "",
+      "1. Interview me first (check `my_agent_profile` and skip anything already known): (a) WHERE I sell and what that place feels like — desert resort, coastal, mountain town, urban core, suburbs; (b) my MARKET FOCUS — luxury, investment/cash-flow, senior living, family & first-time buyers, vacation/second homes; (c) the FEEL I want — elegant, warm, bold, minimal, editorial — plus any sites or brands whose look I admire; (d) brand assets — colors, logo (put it in `public/` and wire the header), headshot, brokerage; (e) typography leaning — modern sans, classic serif, or a pairing.",
+      "2. Translate PLACE + FOCUS into a design direction and PROPOSE it in words before writing code: palette (actual hex values), type pairing, imagery mood, homepage concept. Reason from my answers — for example, luxury desert might call for warm sand neutrals with an ink or evergreen accent, a serif display over a clean sans, full-bleed photography and generous whitespace; an investment focus might lead data-forward with stat blocks and cash-flow callouts up front; senior living wants a calm palette, high contrast, larger type, simpler navigation. These are reasoning examples, not options to copy.",
+      "3. Once I approve the direction, REDESIGN the presentation layer: `app/globals.css` and the tailwind theme (a real palette scale + fonts via next/font), `app/layout.tsx` (header, nav, footer), `app/page.tsx` (hero + sections that fit my positioning — featured listings, a market-stats strip, an about/credibility block, a strong CTA), and the listing card/detail styling. Craft bar: one cohesive palette, a consistent type scale, deliberate spacing rhythm, and NO default-looking gray-card template soup.",
+      "4. GUARDRAILS — restyle anything, but never remove: the 'Listed by {office} — {agent}' attribution on every card, detail, and map popup (IDX rule); the test-data banner when in test mode; the favorites and lead-capture logic; the server-side token boundary (`lib/` and `app/api/` stay untouched); accessibility basics (contrast, focus states, alt text).",
+      "5. Show me the result in the browser, explain what you designed and why, and iterate until I say it feels like MY brand — not a template. Then nudge me to put the same brand details into my ChatRealty profile (Settings) so landing pages and articles match.",
     ].join("\n"),
   },
   {
@@ -89,7 +105,7 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
     title: "Customize listings & search",
     summary:
       "Tune the scaffolded search page: filters, sorting, and card design on the real /api/skill/listings/search params.",
-    order: 3,
+    order: 4,
     body: [
       "Customize the listings search in my scaffolded ChatRealty site.",
       "",
@@ -105,7 +121,7 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
     id: "add-the-map",
     title: "Tune the map",
     summary: "Customize the scaffolded Leaflet map: pins, popups, and map/grid linking.",
-    order: 4,
+    order: 5,
     body: [
       "Improve the map view in my scaffolded ChatRealty site.",
       "",
@@ -122,7 +138,7 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
     title: "Wire favorites + lead capture",
     summary:
       "Guest favorites plus an inquiry form that lands leads in your ChatRealty CRM — write-only from the visitor's side.",
-    order: 5,
+    order: 6,
     body: [
       "Polish favorites and lead capture in my scaffolded ChatRealty site.",
       "",
@@ -138,7 +154,7 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
     id: "build-neighborhoods",
     title: "Build neighborhoods",
     summary: "Generate neighborhood pages from live market stats — neutral, factual, SEO-friendly.",
-    order: 6,
+    order: 7,
     body: [
       "Build out neighborhood pages for my scaffolded ChatRealty site.",
       "",
@@ -155,7 +171,7 @@ export const BUILD_GUIDE_PROMPTS: readonly BuildGuidePrompt[] = [
     title: "Wire your blog",
     summary:
       "Serve your ChatRealty CMS blog on your own site — Claude drafts and publishes posts, no CMS login needed.",
-    order: 7,
+    order: 8,
     body: [
       "Add a blog to my site, powered by my ChatRealty CMS.",
       "",
