@@ -38,16 +38,29 @@ schema is built from. The three casings (`ListingKey` / `listingKey` /
 
 ---
 
-## Install & layout
-
-Deps are declared in `package.json` (`commander`, `zod`, `pg`, `dotenv`) and run
-under `tsx` (no build step). From the repo root the package already resolves; on a
-standalone customer machine:
+## Quick start (fully self-serve)
 
 ```bash
-cd packages/chatrealty-sync
-npm install            # installs commander / zod / pg / dotenv
+# 1. Provision your ChatRealty database + write CHATREALTY_DB_URL to .env.local
+npx @chatrealty/sync init --token crt_live_…     # token: Settings → Integrations
+
+# 2. Add your MLS feed credentials to .env.local (Spark bearer OR RESO OAuth — see below)
+
+# 3. Validate everything
+npx chatrealty-sync doctor
+
+# 4. Small local test fetch (no writes), then the full seed
+npx chatrealty-sync run --once --dry-run --max 25
+npx chatrealty-sync run
 ```
+
+Recommended for production: a VPS running the daily cron (see below).
+
+## Install & layout
+
+Published on npm — `npx @chatrealty/sync` / `npx chatrealty-sync` just work.
+For development inside the monorepo: `npm install` in this directory, `npm run
+build` compiles to `dist/`.
 
 Files:
 
@@ -68,11 +81,12 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 
 | Var | Required | Meaning |
 |---|---|---|
-| `CHATREALTY_DB_URL` | ✅ | Your ChatRealty database URL (**pooled**), provided when your database is provisioned. |
-| `RESO_BASE_URL` | ✅ | RESO Web API OData base, e.g. `https://api.bridgedataoutput.com/api/v2/OData`. |
-| `RESO_TOKEN_URL` | ✅ | OAuth2 token endpoint (client-credentials grant). |
-| `RESO_CLIENT_ID` | ✅ | Your MLS RESO client id. |
-| `RESO_CLIENT_SECRET` | ✅ | Your MLS RESO client secret. |
+| `CHATREALTY_DB_URL` | ✅ | Your ChatRealty database URL (**pooled**) — written automatically by `init`. |
+| `RESO_BASE_URL` | ✅ | Feed OData base, e.g. `https://replication.sparkapi.com/Reso/OData` (Spark) or your RESO Web API base. |
+| `RESO_BEARER_TOKEN` | mode A | Static access token (e.g. Spark API access token). Set this and skip the three OAuth vars. |
+| `RESO_TOKEN_URL` | mode B | OAuth2 token endpoint (client-credentials grant). |
+| `RESO_CLIENT_ID` | mode B | Your MLS RESO client id. |
+| `RESO_CLIENT_SECRET` | mode B | Your MLS RESO client secret. |
 | `RESO_SCOPE` | — | OAuth2 scope, if your MLS requires one. |
 | `RESO_RESOURCE` | — | Resource name (default `Property`). |
 | `RESO_PAGE_SIZE` | — | OData page size (default `200`). |

@@ -33,7 +33,7 @@
 import {
   RESOURCES,
   type ResoField,
-} from "../../../src/lib/reso/data-dictionary";
+} from "./vendor/data-dictionary.js";
 
 /** A mapped property row: snake_case column → value, ready for upsert. */
 export type PropertyRow = Record<string, unknown>;

@@ -143,10 +143,14 @@ const FORBIDDEN_FOR_RESEARCH = [
     ]) {
         strict_1.default.ok(seenIds.has(id), `expected build step "${id}" missing`);
     }
-    // The v1 guide must never send anyone to the unpublished sync package or
-    // claim a feed/seed step exists.
+    // Phase P shipped (2026-07-23): @chatrealty/sync is published and the
+    // data-setup step MUST be self-serve — the guide directs users to
+    // `sync init` and never to "contact/ask ChatRealty" (ship-strategy naming
+    // rule 2: a flow ending there is a missing API).
+    const dataStep = prompts_js_1.BUILD_GUIDE_PROMPTS.find((p) => p.id === "check-your-data-source");
+    strict_1.default.ok(dataStep.body.includes("@chatrealty/sync init"), "data step must include the self-serve init command");
     for (const p of prompts_js_1.BUILD_GUIDE_PROMPTS) {
-        strict_1.default.ok(!p.body.includes("@chatrealty/sync") || p.body.includes("do NOT install `@chatrealty/sync`"), `prompt ${p.id} must not direct users to @chatrealty/sync`);
+        strict_1.default.ok(!/contact ChatRealty|ask ChatRealty/i.test(p.body), `prompt ${p.id} must not contain an ask-ChatRealty step`);
     }
 });
 // ---------------------------------------------------------------------------

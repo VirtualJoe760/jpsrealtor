@@ -22,13 +22,13 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import pg from "pg";
 
-import { ResoClient, type ResoFetchConfig, type ResoRecord } from "./reso-fetch";
-import { mapResoProperty, type PropertyRow } from "./map";
-import { upsertProperties, DEFAULT_BATCH_SIZE } from "./write";
+import { ResoClient, type ResoFetchConfig, type ResoRecord } from "./reso-fetch.js";
+import { mapResoProperty, type PropertyRow } from "./map.js";
+import { upsertProperties, DEFAULT_BATCH_SIZE } from "./write.js";
 
-export { ResoClient } from "./reso-fetch";
-export { mapResoProperty } from "./map";
-export { upsertProperties, buildUpsertSql } from "./write";
+export { ResoClient } from "./reso-fetch.js";
+export { mapResoProperty } from "./map.js";
+export { upsertProperties, buildUpsertSql } from "./write.js";
 
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {
@@ -216,11 +216,16 @@ export function configFromEnv(
       "Missing database connection: set CHATREALTY_DB_URL (provided by ChatRealty when your database is provisioned).",
     );
   }
-  const missing = ["RESO_BASE_URL", "RESO_TOKEN_URL", "RESO_CLIENT_ID", "RESO_CLIENT_SECRET"].filter(
-    (k) => !env[k],
-  );
+  // Two auth modes: a static bearer token (RESO_BEARER_TOKEN — e.g. a Spark
+  // access token) needs only the base URL; otherwise OAuth2 client-credentials
+  // needs the full set.
+  const hasBearer = !!env.RESO_BEARER_TOKEN;
+  const required = hasBearer
+    ? ["RESO_BASE_URL"]
+    : ["RESO_BASE_URL", "RESO_TOKEN_URL", "RESO_CLIENT_ID", "RESO_CLIENT_SECRET"];
+  const missing = required.filter((k) => !env[k]);
   if (missing.length > 0 && !overrides.dryRun) {
-    throw new Error(`Missing RESO credentials/env: ${missing.join(", ")}`);
+    throw new Error(`Missing RESO credentials/env: ${missing.join(", ")} (or set RESO_BEARER_TOKEN with RESO_BASE_URL)`);
   }
 
   return {
@@ -232,6 +237,7 @@ export function configFromEnv(
     dryRun: overrides.dryRun ?? false,
     reso: {
       baseUrl: env.RESO_BASE_URL ?? "",
+      bearerToken: env.RESO_BEARER_TOKEN,
       tokenUrl: env.RESO_TOKEN_URL ?? "",
       clientId: env.RESO_CLIENT_ID ?? "",
       clientSecret: env.RESO_CLIENT_SECRET ?? "",

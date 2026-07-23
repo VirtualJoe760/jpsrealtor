@@ -18,7 +18,7 @@
 // Takes a pg `Client` or `Pool` (anything with `.query`) — the caller (index.ts)
 // owns the connection lifecycle. No conn string is read or logged here.
 
-import { mappedPropertyColumns, type PropertyRow } from "./map";
+import { mappedPropertyColumns, type PropertyRow } from "./map.js";
 
 /** Minimal pg-client surface the writer needs (Client or Pool both satisfy). */
 export interface Queryable {

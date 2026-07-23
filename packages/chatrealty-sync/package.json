@@ -4,18 +4,17 @@
   "description": "Customer-side daily sync: pull your MLS RESO Web API feed into your own ChatRealty database. The BYOD activation moment.",
   "type": "module",
   "bin": {
-    "chatrealty-sync": "./src/cli.ts"
+    "chatrealty-sync": "dist/cli.js"
   },
-  "main": "./src/index.ts",
+  "main": "dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./reso-fetch": "./src/reso-fetch.ts",
-    "./map": "./src/map.ts",
-    "./write": "./src/write.ts"
+    ".": "dist/index.js"
   },
   "scripts": {
-    "sync": "tsx src/cli.ts",
-    "test": "tsx --test src/__tests__/*.test.ts"
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "sync": "node dist/cli.js",
+    "test": "tsx --test src/__tests__/map.test.ts"
   },
   "engines": {
     "node": ">=18"
@@ -27,9 +26,16 @@
     "zod": "^3.23.8"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
-  "license": "UNLICENSED",
-  "private": true
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VirtualJoe760/jpsrealtor.git",
+    "directory": "packages/chatrealty-sync"
+  }
 }

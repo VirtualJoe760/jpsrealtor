@@ -23,6 +23,12 @@ export type ResoRecord = Record<string, unknown>;
 export interface ResoFetchConfig {
   /** RESO Web API base, e.g. `https://api.bridgedataoutput.com/api/v2/OData`. */
   readonly baseUrl: string;
+  /**
+   * Static bearer/access token (e.g. a Spark API access token). When set, the
+   * OAuth2 client-credentials fields below are ignored — requests send this
+   * token directly.
+   */
+  readonly bearerToken?: string;
   /** OAuth2 token endpoint (client-credentials grant). */
   readonly tokenUrl: string;
   readonly clientId: string;
@@ -66,6 +72,7 @@ export class ResoClient {
   constructor(cfg: ResoFetchConfig) {
     this.cfg = {
       baseUrl: cfg.baseUrl.replace(/\/+$/, ""),
+      bearerToken: cfg.bearerToken ?? "",
       tokenUrl: cfg.tokenUrl,
       clientId: cfg.clientId,
       clientSecret: cfg.clientSecret,
@@ -83,6 +90,9 @@ export class ResoClient {
    * The token string is never logged.
    */
   async getAccessToken(): Promise<string> {
+    // Static bearer mode (Spark access token, etc.) — no token exchange.
+    if (this.cfg.bearerToken) return this.cfg.bearerToken;
+
     const now = Date.now();
     if (this.cached && this.cached.expiresAt > now) return this.cached.token;
 

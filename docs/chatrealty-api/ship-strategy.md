@@ -321,15 +321,32 @@ Already specified as build_plan **§8.4 (Agents 33-35)** — Fumadocs +
 The prompt library and the MCP build guide share one source. Phase A-C learnings
 feed the quickstart.
 
-### Phase P — Tenant provisioning + sync (CRITICAL PATH, was "Holstered")
+### Phase P — Tenant provisioning + sync ✅ SHIPPED 2026-07-23
 
-`@chatrealty/sync` + control plane + tenant Neon provisioning: build_plan
-Phases 1-3 (provisioning surface), with the sync package itself in Phase 4.
-Since the 2026-07-23 BYOD correction this is the launch blocker for any
-outside agent: until a tenant DB can be provisioned and bound to their token,
-their `dataSource` is `"none"` and the whole funnel stops at guide step 1.
-Publishing sync before a customer can obtain a tenant DB connection string
-still ships vaporware — provisioning first, then publish.
+Self-serve, zero humans in the loop:
+
+- **`POST /api/skill/tenant/provision`** (`src/lib/tenant/provision.ts`): any
+  valid token → dedicated Neon project created → PostGIS + pg_trgm + full
+  data-plane migration applied + verified → Tenant control record with
+  encrypted conn strings + token binding. Idempotent per owner; new tokens
+  bind to the existing tenant; conn strings re-issue to the bound token (the
+  bearer token is the trust anchor). Failed provisions self-clean (project
+  deleted — Neon only returns conn strings at creation). Admin/dogfood
+  accounts refuse. E2E-verified against real Neon: provision 7.2s → keystone
+  resolve → live SQL (extensions + schema) → idempotency + second-token
+  binding → cleanup.
+- **`@chatrealty/sync` PUBLISHED** (standalone: RESO dictionary vendored,
+  compiled dist, node bin): `init` (provision + auto-write CHATREALTY_DB_URL),
+  `doctor` (DB + feed validation), `run` (seed/incremental, `--once
+  --dry-run --max N` = the local test fetch). Two feed auth modes: static
+  bearer (`RESO_BEARER_TOKEN` — Spark) and RESO OAuth client-credentials.
+- **Guide (mcp 0.16.0)**: step 1's no-data branch is now the self-serve
+  sequence (init → creds → doctor → test fetch → seed → VPS cron) — the last
+  "ask ChatRealty" in the product is gone.
+
+Remaining P follow-ups: metering (Agent 23), suspended/teardown lifecycle
+tooling, and CHAP-on-tenant-Postgres (the chap-search-pg port) so tenant
+sites get full CHAP server-side.
 
 **Sync CLI UX spec (Joseph, 2026-07-23)** — the onboarding conversation IS the
 product surface, so the CLI must support it first-class:
