@@ -72,7 +72,20 @@ export const search_listings: ToolDef = {
     const n =
       typeof embedPhotos === "number" ? Math.max(0, Math.min(12, Math.floor(embedPhotos))) : 5;
     const items: any[] = Array.isArray(data?.items) ? data.items : [];
-    if (n === 0 || items.length === 0) return data;
+
+    // Slim the MODEL-facing payload: drop the long encoded photo URLs and null
+    // fields the model never reasons over (photos render via the embed below +
+    // show_listing_board; `detailUrl` is the link it needs). Big token saving on
+    // large result sets — the visual data path is untouched.
+    const slim = (list: any[]) =>
+      list.map((it) => {
+        const { primaryPhotoUrl, primaryThumbUrl, thumbUrl, slug, ...rest } = it;
+        for (const k of Object.keys(rest)) if (rest[k] === null || rest[k] === undefined) delete rest[k];
+        return rest;
+      });
+    const slimData = { ...data, items: slim(items) };
+
+    if (n === 0 || items.length === 0) return slimData;
 
     // Render the primary photo for the first N results so the homes display
     // inline. Hero shot only, fetched in parallel — adds ~one image's latency,
@@ -85,6 +98,7 @@ export const search_listings: ToolDef = {
     const optimize = (raw: string) =>
       `${base}/_next/image?url=${encodeURIComponent(raw)}&w=640&q=75`;
 
+    // Heroes use the ORIGINAL items (with photo URLs) for rendering.
     const heroes = items.slice(0, n).filter((it) => it?.primaryThumbUrl || it?.primaryPhotoUrl);
     const blocks = (
       await Promise.all(
@@ -94,17 +108,17 @@ export const search_listings: ToolDef = {
         })
       )
     ).filter((b): b is ImageBlock => b !== null);
-    if (blocks.length === 0) return data;
+    if (blocks.length === 0) return slimData;
 
     return {
       _mcpContent: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            { ...data, photosShownFor: heroes.slice(0, blocks.length).map((it) => it.address) },
-            null,
-            2
-          ),
+          // Compact JSON — indentation is pure token cost.
+          text: JSON.stringify({
+            ...slimData,
+            photosShownFor: heroes.slice(0, blocks.length).map((it) => it.address),
+          }),
         },
         ...blocks,
       ],

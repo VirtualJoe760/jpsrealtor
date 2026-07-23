@@ -321,7 +321,7 @@ export function noDataSourceResponse(): NextResponse {
     {
       error: "no_data_source",
       message:
-        "This ChatRealty account has no data source connected yet. ChatRealty is bring-your-own-data: your own MLS feed seeds your own tenant database, and this token serves nothing until that's set up. Tenant data setup is rolling out — contact ChatRealty to enable yours.",
+        "You haven't connected your listing data yet. ChatRealty is bring-your-own-data — your own MLS feed lives in your own database, so there's nothing to show until it's set up. Set it up yourself in a couple of minutes: run `npx @chatrealty/sync init --token <your ChatRealty token>`, add your MLS feed credentials, then `npx chatrealty-sync run`. After the first sync, listings and market data light up here automatically.",
       dataSource: "none",
     },
     { status: 403, headers: NO_STORE }

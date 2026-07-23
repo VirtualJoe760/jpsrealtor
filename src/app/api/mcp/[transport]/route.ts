@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const PKG = { name: "@chatrealty/mcp-server", version: "0.16.0" };
+const PKG = { name: "@chatrealty/mcp-server", version: "0.17.0" };
 
 async function verifyToken(
   req: Request,
@@ -63,6 +63,10 @@ async function verifyToken(
       crtToken,
       apiBase: getOrigin(req),
       userId: String(record.userId),
+      // The crt token's granted scopes — the bridge filters the tool surface
+      // by these so a token only ever SEES the tools its plan/scopes allow
+      // (defense-in-depth over the per-route requireScope checks).
+      crtScopes: Array.isArray(record.scopes) ? record.scopes : [],
     },
   };
 }

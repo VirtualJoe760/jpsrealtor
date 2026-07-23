@@ -65,8 +65,20 @@ exports.search_listings = {
         const data = await (0, http_js_1.request)(config, "/api/skill/listings/search", { query });
         const n = typeof embedPhotos === "number" ? Math.max(0, Math.min(12, Math.floor(embedPhotos))) : 5;
         const items = Array.isArray(data?.items) ? data.items : [];
+        // Slim the MODEL-facing payload: drop the long encoded photo URLs and null
+        // fields the model never reasons over (photos render via the embed below +
+        // show_listing_board; `detailUrl` is the link it needs). Big token saving on
+        // large result sets — the visual data path is untouched.
+        const slim = (list) => list.map((it) => {
+            const { primaryPhotoUrl, primaryThumbUrl, thumbUrl, slug, ...rest } = it;
+            for (const k of Object.keys(rest))
+                if (rest[k] === null || rest[k] === undefined)
+                    delete rest[k];
+            return rest;
+        });
+        const slimData = { ...data, items: slim(items) };
         if (n === 0 || items.length === 0)
-            return data;
+            return slimData;
         // Render the primary photo for the first N results so the homes display
         // inline. Hero shot only, fetched in parallel — adds ~one image's latency,
         // not N. URL-only path is unchanged for analysis/counting searches.
@@ -76,18 +88,23 @@ exports.search_listings = {
         // image if the optimizer can't handle that source domain.
         const base = config.apiBase.replace(/\/+$/, "");
         const optimize = (raw) => `${base}/_next/image?url=${encodeURIComponent(raw)}&w=640&q=75`;
+        // Heroes use the ORIGINAL items (with photo URLs) for rendering.
         const heroes = items.slice(0, n).filter((it) => it?.primaryThumbUrl || it?.primaryPhotoUrl);
         const blocks = (await Promise.all(heroes.map(async (it) => {
             const raw = it.primaryThumbUrl || it.primaryPhotoUrl;
             return (await (0, _media_js_1.fetchImageBlock)(optimize(raw))) || (await (0, _media_js_1.fetchImageBlock)(raw));
         }))).filter((b) => b !== null);
         if (blocks.length === 0)
-            return data;
+            return slimData;
         return {
             _mcpContent: [
                 {
                     type: "text",
-                    text: JSON.stringify({ ...data, photosShownFor: heroes.slice(0, blocks.length).map((it) => it.address) }, null, 2),
+                    // Compact JSON — indentation is pure token cost.
+                    text: JSON.stringify({
+                        ...slimData,
+                        photosShownFor: heroes.slice(0, blocks.length).map((it) => it.address),
+                    }),
                 },
                 ...blocks,
             ],
