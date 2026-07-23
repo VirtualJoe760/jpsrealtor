@@ -1,7 +1,7 @@
 ---
 title: Hosted MCP Server (Streamable HTTP + OAuth)
 status: current
-last_verified: 2026-06-09
+last_verified: 2026-07-23
 related: [./README.md, ./scopes-and-safety.md, ../integrations/README.md]
 ---
 
@@ -91,6 +91,14 @@ No `REDIS_URL` / `KV_URL` needed — SSE is disabled.
 
 ## Gotchas
 
+- **The whole `/api/mcp` surface must stay on the middleware's self-auth
+  allowlist** (`SELF_AUTH_API_PREFIXES` in `src/proxy.ts`). OAuth requires
+  unauthenticated reachability by protocol: `/oauth/register` (RFC 7591 DCR,
+  rate-limited in-route 20/hr/IP), `/oauth/token` (PKCE), `/oauth/authorize`
+  (the pasted `crt_live` token is the credential), and the transport's
+  401+`WWW-Authenticate` challenge. The 2026-07-02 default-deny gate silently
+  broke Claude's Connect flow ("Couldn't register with chatrealty's sign-in
+  service") until re-allowlisted 2026-07-23.
 - **The consent screen trusts whoever pastes a valid token.** That's by design —
   the `crt_live` token *is* the credential, same trust level as the token itself.
   Treat tokens like passwords; revoke from Settings → Integrations to kill access.

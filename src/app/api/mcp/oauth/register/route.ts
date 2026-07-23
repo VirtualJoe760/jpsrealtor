@@ -7,6 +7,7 @@
 import dbConnect from "@/lib/mongoose";
 import { McpOAuthClient } from "@/models/McpOAuth";
 import { randomToken } from "@/lib/mcp-oauth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,20 @@ function isValidRedirectUri(u: unknown): u is string {
 }
 
 export async function POST(req: Request) {
+  // Unauthenticated by spec (the client is registering itself), so it needs
+  // its own abuse brake: each registration writes a row. Per-IP window.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = checkRateLimit(`mcp-dcr:${ip}`, { max: 20, windowMs: 60 * 60 * 1000 });
+  if (!rl.ok) {
+    return Response.json(
+      { error: "rate_limited", error_description: "Too many client registrations. Try again later." },
+      { status: 429, headers: { ...CORS, "Retry-After": String(rl.retryAfter ?? 3600) } }
+    );
+  }
+
   const body: any = await req.json().catch(() => ({}));
   const redirectUris: string[] = Array.isArray(body?.redirect_uris)
     ? body.redirect_uris.filter(isValidRedirectUri)

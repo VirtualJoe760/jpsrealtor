@@ -89,6 +89,14 @@ const SELF_AUTH_API_PREFIXES = [
   "/api/webhooks", // external webhooks — must verify signatures in-route
   "/api/cron",     // Vercel cron — verifies a secret in-route
   "/api/auth",     // NextAuth internals + pre-login flows + self-checking session routes
+  // Hosted MCP connector surface — OAuth 2.1 by protocol, so parts MUST be
+  // reachable without a session: /oauth/register is RFC 7591 dynamic client
+  // registration (rate-limited in-route), /oauth/token is PKCE exchange,
+  // /oauth/authorize's credential IS the pasted crt_live token, and the
+  // [transport] endpoint runs withMcpAuth (bearer + WWW-Authenticate
+  // challenge). Gating this behind a session broke Claude's "Connect" flow
+  // with "Couldn't register with chatrealty's sign-in service" (2026-07-23).
+  "/api/mcp",
 ];
 const SELF_AUTH_API_EXACT = new Set([
   "/api/crm/sms/webhook",        // Twilio inbound (signature verified in-route)
