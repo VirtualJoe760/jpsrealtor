@@ -37,10 +37,11 @@ import { post_instagram_carousel } from "./post_instagram_carousel.js";
 import { stage_listing_with_agent } from "./stage_listing_with_agent.js";
 import { create_listing_cover } from "./create_listing_cover.js";
 import { get_build_guide } from "./get_build_guide.js";
+import { report_bug } from "./report_bug.js";
 
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide];
+const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide, report_bug];
 
 // MLS / Listings
 const MLS: ToolDef[] = [
@@ -158,6 +159,7 @@ export function toolsForTierFromRegistry(tier: Tier): ToolDef[] {
 // Keeps the tone of a PUBLIC real-estate tool neutral and professional — no
 // editorializing about other agents' listings.
 export const SERVER_INSTRUCTIONS =
+  "TESTING PHASE: ChatRealty is currently in active testing. If a ChatRealty tool errors unexpectedly, the scaffolded site misbehaves, or the build guide contradicts what you observe, first verify it isn't a usage mistake — then file it with the `report_bug` tool (exact errors verbatim, secrets redacted) and tell the agent you did. Bug reports in this phase directly drive fixes, often same-day. " +
   "ChatRealty's tools return factual, public-record MLS data for licensed real-estate use. " +
   "Present it neutrally and professionally: report metrics (price, days-on-market, beds/baths, price-per-sqft, etc.) as plain facts. " +
   "Do NOT editorialize about or disparage listings — never call a property 'stale', 'overpriced', 'distressed', or 'desperate', and do not imply a listing agent mispriced a home. " +

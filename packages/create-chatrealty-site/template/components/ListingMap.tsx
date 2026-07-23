@@ -20,6 +20,13 @@ function priceIcon(listing: ListingSummary): L.DivIcon {
   });
 }
 
+// CRBR-001: this template requires react-leaflet >=5 with React 19. On
+// react-leaflet 4 + React 18, Strict Mode's dev double-mount throws
+// "Map container is already initialized" on every map view (v4 never tears
+// the Leaflet map down on the simulated unmount, and manual map.remove()
+// workarounds either fail on v4 or double-remove on v5). v5 reworked the
+// lifecycle and handles Strict Mode correctly — do not downgrade these deps.
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {

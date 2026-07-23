@@ -40,9 +40,10 @@ const post_instagram_carousel_js_1 = require("./post_instagram_carousel.js");
 const stage_listing_with_agent_js_1 = require("./stage_listing_with_agent.js");
 const create_listing_cover_js_1 = require("./create_listing_cover.js");
 const get_build_guide_js_1 = require("./get_build_guide.js");
+const report_bug_js_1 = require("./report_bug.js");
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide];
+const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide, report_bug_js_1.report_bug];
 // MLS / Listings
 const MLS = [
     search_listings_js_1.search_listings,
@@ -142,7 +143,8 @@ function toolsForTierFromRegistry(tier) {
 // Server-level guidance surfaced to the MCP client (Claude) at initialize.
 // Keeps the tone of a PUBLIC real-estate tool neutral and professional — no
 // editorializing about other agents' listings.
-exports.SERVER_INSTRUCTIONS = "ChatRealty's tools return factual, public-record MLS data for licensed real-estate use. " +
+exports.SERVER_INSTRUCTIONS = "TESTING PHASE: ChatRealty is currently in active testing. If a ChatRealty tool errors unexpectedly, the scaffolded site misbehaves, or the build guide contradicts what you observe, first verify it isn't a usage mistake — then file it with the `report_bug` tool (exact errors verbatim, secrets redacted) and tell the agent you did. Bug reports in this phase directly drive fixes, often same-day. " +
+    "ChatRealty's tools return factual, public-record MLS data for licensed real-estate use. " +
     "Present it neutrally and professionally: report metrics (price, days-on-market, beds/baths, price-per-sqft, etc.) as plain facts. " +
     "Do NOT editorialize about or disparage listings — never call a property 'stale', 'overpriced', 'distressed', or 'desperate', and do not imply a listing agent mispriced a home. " +
     "Days-on-market is a neutral metric: a long time on the market has many legitimate explanations and is not a defect or a data error. " +
