@@ -33,6 +33,20 @@ verifies the token against `GET /api/skill/me` (warns + continues on failure so 
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
 
+**v0.3.0 (2026-07-23) — the flagship release:** **CHAP on-site** (floating chat
+widget + `/api/chat` tool loop; BYOK OpenAI-compatible, Groq default; tools call
+the site's own data layer so it works in test AND real modes; listing cards with
+attribution; hides until `CHAT_API_KEY` set). **Rich test data**: 47 listings
+anonymized from live Palm Desert-area Actives (5 cities, 44 real subdivisions,
+real geo, fictional streets/agents, scrubbed remarks) + real photos with a
+burned-in "SAMPLE DATA — NOT ACCURATE" watermark. **Agent hydration**: metadata,
+header, footer, About, Contact, homepage all pull `/api/skill/me/profile`
+(bundled sample agent in test mode); `public/logo.png|svg` auto-wires the
+header. **Blog shipped** (`/blog` + posts from published CMS articles; sample
+posts in test mode) — the CMS→site loop is closed. **Neighborhoods index**
+derived from live data; homepage rebuilt as a sectioned neutral canvas for the
+guide's design step.
+
 **TEST DATA mode (v0.2.0, 2026-07-23):** `--test-data` (or Enter at the token
 prompt) scaffolds with **zero token, zero network** against 25 fictitious sample
 listings bundled in `template/data/test-listings.json` (fake cities in empty
