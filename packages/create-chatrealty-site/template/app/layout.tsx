@@ -6,6 +6,7 @@ import Link from "next/link";
 import TestDataBanner from "@/components/TestDataBanner";
 import ChapWidget from "@/components/ChapWidget";
 import AccountMenu from "@/components/AccountMenu";
+import HamburgerNav from "@/components/HamburgerNav";
 import { AccountProvider } from "@/lib/account";
 import { getAgentProfile } from "@/lib/chatrealty";
 
@@ -33,8 +34,10 @@ function findLogo(): string | null {
   return null;
 }
 
-// Favorites intentionally lives in the account menu (right side), not here —
-// saved homes are an account feature, not a top-level destination.
+// All destinations live in the hamburger drawer — the hamburger is STANDARD
+// on every breakpoint including desktop (framework decision, keep it).
+// Favorites intentionally lives in the account menu, not here — saved homes
+// are an account feature, not a top-level destination.
 const NAV = [
   { href: "/listings", label: "Listings" },
   { href: "/discover", label: "Discover" },
@@ -64,15 +67,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 siteName
               )}
             </Link>
-            <div className="flex items-center gap-6">
-              <nav className="hidden items-center gap-5 text-sm font-medium text-gray-600 sm:flex">
-                {NAV.map((n) => (
-                  <Link key={n.href} href={n.href} className="hover:text-brand">
-                    {n.label}
-                  </Link>
-                ))}
-              </nav>
+            <div className="flex items-center gap-3">
               <AccountMenu />
+              <HamburgerNav items={[...NAV]} siteName={siteName} />
             </div>
           </div>
         </header>
