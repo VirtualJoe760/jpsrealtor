@@ -12,6 +12,7 @@ const tiers_js_1 = require("../tiers.js");
 const whoami_js_1 = require("./whoami.js");
 const my_agent_profile_js_1 = require("./my_agent_profile.js");
 const my_stats_js_1 = require("./my_stats.js");
+const site_tools_js_1 = require("./site_tools.js");
 const search_listings_js_1 = require("./search_listings.js");
 const show_listing_board_js_1 = require("./show_listing_board.js");
 const find_cashflowing_listings_js_1 = require("./find_cashflowing_listings.js");
@@ -44,7 +45,7 @@ const report_bug_js_1 = require("./report_bug.js");
 const give_feedback_js_1 = require("./give_feedback.js");
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide, report_bug_js_1.report_bug, give_feedback_js_1.give_feedback];
+const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide, report_bug_js_1.report_bug, give_feedback_js_1.give_feedback, site_tools_js_1.site_status, site_tools_js_1.connect_site, site_tools_js_1.set_site_live];
 // MLS / Listings
 const MLS = [
     search_listings_js_1.search_listings,

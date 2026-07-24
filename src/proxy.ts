@@ -69,6 +69,7 @@ const PUBLIC_API_PREFIXES = [
 
 // Individual public routes inside otherwise-authenticated subtrees.
 const PUBLIC_API_EXACT = new Set([
+  "/api/site-config", // proxy middleware lookup for external-site routing (public, low-sensitivity)
   "/api/agent/public",
   "/api/appointments/available-slots",
   "/api/appointments/book",
@@ -146,12 +147,76 @@ async function handleApiGate(request: NextRequest, pathname: string) {
   return NextResponse.next();
 }
 
+
+// ---------------------------------------------------------------------------
+// External (Claude-built) site lookup. The agent's subdomain can point at a
+// deployment they own ("option A: point, don't host"): live → proxied for
+// everyone; preview → only holders of a valid signed preview credential;
+// none/lookup-failure → the platform-rendered agent page (the fallback).
+// Edge middleware can't touch Mongo, so this asks /api/site-config on the
+// platform host (CDN-cached 30s for token-less lookups).
+// ---------------------------------------------------------------------------
+function detectSubdomainFromHost(bareHost: string): string | undefined {
+  if (bareHost.includes("chatrealty")) {
+    const chatParts = bareHost.split("chatrealty");
+    const subPart = chatParts[0]?.replace(/\.$/, "");
+    return subPart?.split(".").filter((s) => s && s !== "www").pop() || undefined;
+  }
+  if (bareHost.endsWith(".localhost") || bareHost.match(/^[a-z0-9]+\.localhost$/)) {
+    const sub = bareHost.split(".localhost")[0];
+    if (sub && sub !== "www" && sub !== "localhost") return sub;
+  }
+  return undefined;
+}
+
+async function resolveExternalSite(
+  request: NextRequest,
+  subdomain: string,
+  pv: string | null
+): Promise<{ status: string; url: string | null; previewOk: boolean } | null> {
+  const host = request.headers.get("host") || "";
+  const origin = host.includes("chatrealty")
+    ? "https://www.chatrealty.io"
+    : `http://localhost:${host.split(":")[1] || "3000"}`;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    const res = await fetch(
+      `${origin}/api/site-config?subdomain=${encodeURIComponent(subdomain)}${pv ? `&pv=${encodeURIComponent(pv)}` : ""}`,
+      { signal: ctrl.signal }
+    );
+    clearTimeout(t);
+    if (!res.ok) return null;
+    return (await res.json()) as { status: string; url: string | null; previewOk: boolean };
+  } catch {
+    return null;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Secure-by-default API gate: /api requires a session unless the route is
   // explicitly public / bearer / webhook / cron / auth-flow. Runs first.
   if (pathname.startsWith("/api/")) {
+    // EXCEPT: a subdomain serving an external (Claude-built) site owns its
+    // whole /api surface (the built site's chat, listings proxy, account
+    // routes) — rewrite to the deployment BEFORE the platform gate. The
+    // site-config lookup always targets the platform host, so no recursion;
+    // fallback mode (status none / no valid preview credential) falls
+    // through to the normal gate.
+    const apiHost = (request.headers.get("host") || "").split(":")[0];
+    const apiSub = detectSubdomainFromHost(apiHost);
+    if (apiSub && !ADMIN_ONLY_SUBDOMAINS.has(apiSub) && pathname !== "/api/site-config") {
+      const pv =
+        request.nextUrl.searchParams.get("crpv") ||
+        request.cookies.get("cr_site_preview")?.value ||
+        null;
+      const cfg = await resolveExternalSite(request, apiSub, pv);
+      if (cfg?.url && (cfg.status === "live" || (cfg.status === "preview" && cfg.previewOk))) {
+        return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, cfg.url));
+      }
+    }
     return handleApiGate(request, pathname);
   }
 
@@ -174,19 +239,7 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------
   // 2. Detect subdomain from chatrealty.io OR {sub}.localhost for dev
   // -----------------------------------------------------------------------
-  let detectedSubdomain: string | undefined;
-
-  if (bareHost.includes("chatrealty")) {
-    const chatParts = bareHost.split("chatrealty");
-    const subPart = chatParts[0]?.replace(/\.$/, "");
-    detectedSubdomain = subPart?.split(".").filter(s => s && s !== "www").pop() || undefined;
-  } else if (bareHost.endsWith(".localhost") || bareHost.match(/^[a-z0-9]+\.localhost$/)) {
-    // Dev: "bethanyklier.localhost" → "bethanyklier"
-    const sub = bareHost.split(".localhost")[0];
-    if (sub && sub !== "www" && sub !== "localhost") {
-      detectedSubdomain = sub;
-    }
-  }
+  const detectedSubdomain = detectSubdomainFromHost(bareHost);
 
   // -----------------------------------------------------------------------
   // 3. "agent" subdomain — admin-only access to owner's homepage
@@ -268,6 +321,34 @@ export async function proxy(request: NextRequest) {
       const response = NextResponse.next();
       response.headers.set("x-agent-subdomain", subdomain);
       return response;
+    }
+
+    // Claude-built external site: live → everyone; preview → only with a
+    // valid preview credential (signed link → host-scoped cookie); none or
+    // lookup failure → fall through to the platform-rendered page below.
+    const crpvParam = request.nextUrl.searchParams.get("crpv");
+    const pvCookie = request.cookies.get("cr_site_preview")?.value || null;
+    const cfg = await resolveExternalSite(request, subdomain, crpvParam || pvCookie);
+    if (cfg?.url && (cfg.status === "live" || (cfg.status === "preview" && cfg.previewOk))) {
+      if (crpvParam) {
+        // Arrival via a preview link: pin the credential in a host-scoped
+        // cookie and clean the URL (tokens don't belong in address bars).
+        const clean = request.nextUrl.clone();
+        clean.searchParams.delete("crpv");
+        const redir = NextResponse.redirect(clean);
+        redir.cookies.set("cr_site_preview", crpvParam, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 15, // matches the preview token's 15m expiry
+          secure: clean.protocol === "https:",
+        });
+        return redir;
+      }
+      // Reverse-proxy this request to the agent's deployment. The built site
+      // serves its own static assets via assetPrefix (its origin), so only
+      // pages + API calls flow through here.
+      return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, cfg.url));
     }
 
     // All paths (including /) — serve normally with agent subdomain header.

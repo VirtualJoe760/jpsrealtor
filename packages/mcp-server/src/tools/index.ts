@@ -9,6 +9,7 @@ import { toolsForTier as toolsForTierImpl, type Tier } from "../tiers.js";
 import { whoami } from "./whoami.js";
 import { my_agent_profile } from "./my_agent_profile.js";
 import { my_stats } from "./my_stats.js";
+import { site_status, connect_site, set_site_live } from "./site_tools.js";
 import { search_listings } from "./search_listings.js";
 import { show_listing_board } from "./show_listing_board.js";
 import { find_cashflowing_listings } from "./find_cashflowing_listings.js";
@@ -42,7 +43,7 @@ import { give_feedback } from "./give_feedback.js";
 
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide, report_bug, give_feedback];
+const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide, report_bug, give_feedback, site_status, connect_site, set_site_live];
 
 // MLS / Listings
 const MLS: ToolDef[] = [

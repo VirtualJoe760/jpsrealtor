@@ -8,6 +8,7 @@ import ChapWidget from "@/components/ChapWidget";
 import AccountMenu from "@/components/AccountMenu";
 import HamburgerNav from "@/components/HamburgerNav";
 import { AccountProvider } from "@/lib/account";
+import { assetUrl } from "@/lib/asset-url";
 import { getAgentProfile } from "@/lib/chatrealty";
 
 // Identity flows from the agent's ChatRealty profile (or the bundled sample in
@@ -62,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/" className="flex items-center gap-2 text-lg font-bold text-brand">
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logo} alt={siteName} className="h-8 w-auto" />
+                <img src={assetUrl(logo)} alt={siteName} className="h-8 w-auto" />
               ) : (
                 siteName
               )}

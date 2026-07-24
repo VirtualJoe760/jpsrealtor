@@ -40,6 +40,10 @@ export const SCOPES = [
   // Never in a default preset; users have to opt in when minting a token.
   "social:post",
 
+  // Site management — connect the Claude-built external site to the agent's
+  // subdomain + flip it live (license enforced server-side). Core free flow.
+  "site:manage",
+
   // Research (client-research read surface — saved-search / lead-signal loop).
   // Read-only; gated to the `research` tier (Agent 11 / build_plan §6.6, §5).
   // NOT included in any agent preset — only the dedicated `client_research`
@@ -88,7 +92,7 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
     label: "Website: CHAP, listings & blog",
     description:
       "Power your own site: CHAP search, listings & market data, your ChatRealty blog, and lead capture into your CRM.",
-    scopes: ["listings:read", "market:read", "articles:read", "articles:write"],
+    scopes: ["listings:read", "market:read", "articles:read", "articles:write", "site:manage"],
   },
   content_drafting: {
     label: "Content drafting",
@@ -164,6 +168,7 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
 // until revoked (documented gap; revisit if downgrades become common).
 
 export const FREE_TIER_SCOPES: Scope[] = [
+  "site:manage",
   "listings:read",
   "market:read",
   // The CMS blog is a free-tier tether (2026-07-23): posts live in the agent's
@@ -189,6 +194,7 @@ export function catalogForTier(isFree: boolean): {
 // Read-only flavor of content_drafting so existing skill installs don't
 // silently break, but writes need a fresh token with explicit scopes.
 export const LEGACY_DEFAULT_SCOPES: Scope[] = [
+  "site:manage",
   "landing_pages:read",
   "landing_pages:write", // existing skill installer creates LPs; keep parity
   "listings:read",

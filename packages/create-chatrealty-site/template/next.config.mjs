@@ -12,6 +12,15 @@ if (process.env.CHATREALTY_TEST_DATA === "true" && (process.env.VERCEL || proces
   );
 }
 
+// SUBDOMAIN PROXY SUPPORT: when this site is connected to a ChatRealty
+// subdomain ({you}.chatrealty.io), the platform reverse-proxies PAGE requests
+// to this deployment — but static assets must load from THIS origin. On
+// Vercel, VERCEL_URL is set automatically, so assetPrefix Just Works with no
+// config. Set NEXT_PUBLIC_ASSET_ORIGIN to override (e.g. a custom domain).
+const assetOrigin =
+  process.env.NEXT_PUBLIC_ASSET_ORIGIN ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Listing photos come back as already-optimized thumbUrl (the ChatRealty
@@ -19,6 +28,12 @@ const nextConfig = {
   // so no next/image remotePatterns are required. Add them here if you switch
   // to next/image.
   reactStrictMode: true,
+  ...(assetOrigin ? { assetPrefix: assetOrigin } : {}),
+  env: {
+    // Exposed so lib/asset-url.ts can absolutize public/ image srcs (logo,
+    // headshot) — required for them to load through the subdomain proxy.
+    NEXT_PUBLIC_ASSET_ORIGIN: assetOrigin || "",
+  },
 };
 
 export default nextConfig;

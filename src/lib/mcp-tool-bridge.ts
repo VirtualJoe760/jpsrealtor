@@ -43,6 +43,9 @@ type AuthExtra = {
 // posting. Tools absent from the map need no scope (identity/docs/testing/UI).
 // ---------------------------------------------------------------------------
 const TOOL_SCOPE: Record<string, string> = {
+  site_status: "site:manage",
+  connect_site: "site:manage",
+  set_site_live: "site:manage",
   // Listings / MLS
   search_listings: "listings:read",
   get_listing: "listings:read",

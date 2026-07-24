@@ -177,6 +177,16 @@ export interface IUser extends Document {
     // Domain & Branding (for multi-tenancy)
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
     customDomain?: string; // e.g., "josephsardella.com"
+    // Claude-built external site (option A: point, don't host). When connected,
+    // the agent's *.chatrealty.io subdomain proxies to this deployment instead
+    // of the platform-rendered agent page. preview = agent+admins only (signed
+    // preview link); live = public (license required to flip).
+    externalSite?: {
+      deploymentUrl?: string;   // e.g. "https://my-site.vercel.app"
+      status?: "none" | "preview" | "live";
+      connectedAt?: Date;
+      liveAt?: Date;
+    };
     subdomain?: string; // e.g., "joseph" (becomes joseph.chatrealty.io)
     siteForceActive?: boolean; // Admin override — makes site live without subscription
     // Nav layout for this agent's tenant site (desktop/tablet). "sidebar" = the
@@ -818,6 +828,12 @@ const UserSchema = new Schema<IUser>(
       // Domain & Branding
       siteName: String,
       customDomain: String,
+      externalSite: {
+        deploymentUrl: String,
+        status: { type: String, enum: ["none", "preview", "live"], default: "none" },
+        connectedAt: Date,
+        liveAt: Date,
+      },
       subdomain: { type: String, unique: true, sparse: true }, // Unique subdomain
       siteForceActive: { type: Boolean, default: false }, // Admin override — makes site live without subscription
       navLayout: { type: String, enum: ["sidebar", "navbar"], default: "sidebar" }, // tenant nav layout (desktop/tablet)
