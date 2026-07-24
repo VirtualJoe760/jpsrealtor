@@ -46,9 +46,32 @@ the tenant/product token path; the detail endpoint always returns it.)
   against the ChatRealty API — don't invent fields; confirm names against the
   data dictionary.
 
+## Going live + Cloudflare
+
+Deploy to Vercel (or any Next.js host) — but only once your **real** ChatRealty
+feed is connected. Test-data mode is localhost-only and the build hard-fails on
+deploy by design. Set your env vars (`CHATREALTY_API_TOKEN`, `CHATREALTY_API_BASE`,
+and `CHAT_API_KEY` if CHAP is on) in the host dashboard, server-side only.
+
+Put your domain behind **your own Cloudflare** account — it does two jobs:
+
+- **Listing edge cache.** Public listing routes send
+  `Cache-Control: public, s-maxage=…, stale-while-revalidate=…` (see
+  `REVALIDATE` in `lib/chatrealty.ts` and `/api/listings`). With Cloudflare
+  proxying your domain and honoring origin cache headers, listing data serves
+  from the edge — visitors are fast and your ChatRealty API calls collapse to
+  ~once per revalidate window instead of once per pageview. Keep user-specific
+  routes (favorites, `/api/lead`, `/api/chat`) **uncached** — they send
+  `no-store`; if you add a custom cache rule, scope it to the read routes only.
+- **Turnstile bot protection** on the lead form (optional). Add your own
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` (free at
+  dash.cloudflare.com → Turnstile). Unset = honeypot + rate-limit only.
+
+Cloudflare is your infrastructure — you own the account and DNS.
+
 ## Next steps (the build guide)
 
 This starter covers the ChatRealty build guide end to end (listings → map →
-favorites + leads → neighborhoods). To go further, connect the ChatRealty MCP to
-your own Claude and ask it to extend any page — it has the same build-guide
-prompts and can read your live market data.
+favorites + leads → neighborhoods → go-live). To go further, connect the
+ChatRealty MCP to your own Claude and ask it to extend any page — it has the
+same build-guide prompts and can read your live market data.

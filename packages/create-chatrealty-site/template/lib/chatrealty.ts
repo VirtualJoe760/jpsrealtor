@@ -28,6 +28,21 @@ import {
 const BASE = (process.env.CHATREALTY_API_BASE || "https://www.chatrealty.io").replace(/\/+$/, "");
 const TOKEN = process.env.CHATREALTY_API_TOKEN || "";
 
+// Revalidate windows (seconds) for PUBLIC listing data. This is single-tenant —
+// every visitor sees the same listings — so caching is safe and cuts ChatRealty
+// API calls dramatically. MLS data syncs on a schedule (not per-second), so
+// short windows stay fresh. Next caches the upstream response server-side; the
+// public /api routes ALSO send matching s-maxage so the agent's Cloudflare (or
+// any CDN) edge-caches them. Anything user-specific (favorites, leads, chat,
+// end-user auth) must NEVER pass a revalidate — it stays no-store. See the
+// auth-cache-leak rule: public reads cache, per-user/writes never do.
+export const REVALIDATE = {
+  listings: 300, // 5 min — search + detail
+  market: 900, //   15 min — stats change slowly
+  profile: 3600, // 1 hr — agent identity rarely changes
+  content: 300, //  5 min — blog/articles
+} as const;
+
 class ChatRealtyError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -36,20 +51,30 @@ class ChatRealtyError extends Error {
   }
 }
 
-async function skillFetch(pathAndQuery: string, init?: RequestInit): Promise<Response> {
+// opts.revalidate present → cacheable public read (Next caches + revalidates).
+// opts.revalidate absent → no-store (writes and anything not explicitly public).
+async function skillFetch(
+  pathAndQuery: string,
+  init?: RequestInit,
+  opts?: { revalidate?: number }
+): Promise<Response> {
   if (!TOKEN) {
     throw new ChatRealtyError(
       "CHATREALTY_API_TOKEN is not set. Add it to .env.local (see .env.example).",
       500
     );
   }
+  const cacheOpts: RequestInit =
+    opts?.revalidate != null
+      ? ({ next: { revalidate: opts.revalidate } } as RequestInit)
+      : { cache: "no-store" };
   return fetch(`${BASE}${pathAndQuery}`, {
     ...init,
+    ...cacheOpts,
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       ...(init?.headers || {}),
     },
-    cache: "no-store",
   });
 }
 
@@ -75,7 +100,7 @@ function qs(filters: ListingFilters): string {
 
 export async function searchListings(filters: ListingFilters = {}): Promise<SearchResult> {
   if (isTestDataMode()) return searchTestListings(filters);
-  const res = await skillFetch(`/api/skill/listings/search?${qs(filters)}`);
+  const res = await skillFetch(`/api/skill/listings/search?${qs(filters)}`, undefined, { revalidate: REVALIDATE.listings });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ChatRealtyError(body?.message || `Listing search failed (HTTP ${res.status})`, res.status);
@@ -85,7 +110,7 @@ export async function searchListings(filters: ListingFilters = {}): Promise<Sear
 
 export async function getListing(listingKey: string): Promise<ListingDetail | null> {
   if (isTestDataMode()) return getTestListing(listingKey);
-  const res = await skillFetch(`/api/skill/listings/${encodeURIComponent(listingKey)}`);
+  const res = await skillFetch(`/api/skill/listings/${encodeURIComponent(listingKey)}`, undefined, { revalidate: REVALIDATE.listings });
   if (res.status === 404) return null;
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -104,7 +129,7 @@ export async function getMarketStats(opts: {
   if (opts.city) p.set("city", opts.city);
   if (opts.subdivision) p.set("subdivision", opts.subdivision);
   if (opts.propertyType) p.set("propertyType", opts.propertyType);
-  const res = await skillFetch(`/api/skill/market/stats?${p.toString()}`);
+  const res = await skillFetch(`/api/skill/market/stats?${p.toString()}`, undefined, { revalidate: REVALIDATE.market });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ChatRealtyError(body?.message || `Market stats failed (HTTP ${res.status})`, res.status);
@@ -143,7 +168,7 @@ export async function submitLead(input: {
 // site updates with it.
 export async function getAgentProfile(): Promise<AgentProfile> {
   if (isTestDataMode()) return testAgentProfile();
-  const res = await skillFetch(`/api/skill/me/profile`);
+  const res = await skillFetch(`/api/skill/me/profile`, undefined, { revalidate: REVALIDATE.profile });
   if (!res.ok) {
     // Identity should never take the site down — fall back to minimal.
     return {
@@ -174,7 +199,7 @@ export async function getAgentProfile(): Promise<AgentProfile> {
 // published by Claude via the MCP) and serve here.
 export async function getPosts(): Promise<BlogPostSummary[]> {
   if (isTestDataMode()) return testPostSummaries();
-  const res = await skillFetch(`/api/skill/articles?status=published&limit=50`);
+  const res = await skillFetch(`/api/skill/articles?status=published&limit=50`, undefined, { revalidate: REVALIDATE.content });
   if (!res.ok) return [];
   const body = await res.json();
   const items = body.items || body.articles || [];
@@ -190,7 +215,7 @@ export async function getPosts(): Promise<BlogPostSummary[]> {
 
 export async function getPost(slugId: string): Promise<BlogPost | null> {
   if (isTestDataMode()) return testPosts().find((p) => p.slugId === slugId) ?? null;
-  const res = await skillFetch(`/api/skill/articles/${encodeURIComponent(slugId)}`);
+  const res = await skillFetch(`/api/skill/articles/${encodeURIComponent(slugId)}`, undefined, { revalidate: REVALIDATE.content });
   if (!res.ok) return null;
   const a = await res.json();
   if (a.status && a.status !== "published") return null;

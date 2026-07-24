@@ -172,6 +172,24 @@ exports.BUILD_GUIDE_PROMPTS = [
             "Keep the copy factual and neutral; no editorializing about other agents' listings, ever.",
         ].join("\n"),
     },
+    {
+        id: "go-live",
+        title: "Go live",
+        summary: "Deploy to Vercel with real data, then put the domain behind the agent's own Cloudflare for listing edge-cache + bot protection.",
+        order: 9,
+        body: [
+            "Take my ChatRealty site live.",
+            "",
+            "1. PRECONDITION — real data only. NEVER deploy while the site runs on test data (CHATREALTY_TEST_DATA is set): the build hard-fails in that mode by design, and sample listings must never be public. Confirm my real feed is connected and CHATREALTY_API_TOKEN is set before deploying. If I'm still on test data, stop and tell me what's needed to connect my feed.",
+            "2. Deploy the app to Vercel (or any Next.js host): set the env vars from .env.local in the host's dashboard (CHATREALTY_API_TOKEN, CHATREALTY_API_BASE, and CHAT_API_KEY if CHAP is on) — server-side only, never NEXT_PUBLIC. Point my domain at the deployment.",
+            "3. Cloudflare — I set this up in MY OWN Cloudflare account (ChatRealty does not manage it); it does DOUBLE DUTY:",
+            "   a. LISTING EDGE CACHE (the reason it matters): the public listing routes already send `Cache-Control: public, s-maxage=…, stale-while-revalidate=…` (see lib/chatrealty.ts REVALIDATE + /api/listings). Put my domain behind Cloudflare (proxied / orange-cloud) and let it honor those origin cache headers — listing data then serves from Cloudflare's edge, so visitors are fast and my ChatRealty API calls collapse to ~once per revalidate window instead of once per pageview. Do NOT edge-cache anything user-specific (favorites, /api/lead, /api/chat) — those send no-store and must stay uncached; if I add a custom cache rule, scope it to the listing/read routes only.",
+            "   b. TURNSTILE bot protection on the lead form (optional) — my own site key + secret (dash.cloudflare.com → Turnstile, free). Set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY; unset = honeypot + rate-limit only.",
+            "4. After deploy: confirm listings load on the live domain, submit one test lead and check it landed in my ChatRealty Contacts, and (if CHAP is on) run one live chat search.",
+            "",
+            "Cloudflare is MY infrastructure to provision — walk me through the account/DNS steps rather than doing them for me, and never ask me to paste secrets into chat.",
+        ].join("\n"),
+    },
 ];
 /** Look up a prompt by its stable id. Returns undefined on miss. */
 function getBuildGuidePrompt(id) {

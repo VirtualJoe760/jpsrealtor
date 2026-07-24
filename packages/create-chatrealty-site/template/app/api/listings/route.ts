@@ -3,10 +3,16 @@
 // server.
 
 import { NextRequest, NextResponse } from "next/server";
-import { searchListings, ChatRealtyError } from "@/lib/chatrealty";
+import { searchListings, ChatRealtyError, REVALIDATE } from "@/lib/chatrealty";
 import type { ListingFilters } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+// Public listing data — identical for every visitor, so let the agent's
+// Cloudflare (or any CDN) edge-cache it, keyed by the full query string. Never
+// used for anything user-specific, so there's no cache-leak risk. Favorites,
+// leads, and chat stay no-store on their own routes.
+const PUBLIC_CACHE = `public, s-maxage=${REVALIDATE.listings}, stale-while-revalidate=600`;
 
 function n(v: string | null): number | undefined {
   if (v === null || v === "") return undefined;
@@ -33,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await searchListings(filters);
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(result, { headers: { "Cache-Control": PUBLIC_CACHE } });
   } catch (e) {
     const status = e instanceof ChatRealtyError ? e.status : 500;
     return NextResponse.json(
