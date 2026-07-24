@@ -33,6 +33,7 @@ function findLogo(): string | null {
 
 const NAV = [
   { href: "/listings", label: "Listings" },
+  { href: "/discover", label: "Discover" },
   { href: "/neighborhoods", label: "Neighborhoods" },
   { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },

@@ -129,7 +129,7 @@ exports.BUILD_GUIDE_PROMPTS = [
         body: [
             "Polish favorites and lead capture in my scaffolded ChatRealty site.",
             "",
-            "1. Favorites are guest-side today by design: the scaffold stores hearts in localStorage (`lib/favorites.ts`). Keep that model; synced visitor accounts are a ChatRealty roadmap feature, so don't invent a custom auth system for favorites.",
+            "1. Favorites are guest-side today by design: the scaffold stores hearts in localStorage (`lib/favorites.ts`) and ships a swipe-to-save discovery page at /discover (components/SwipeDeck.tsx) — visitors swipe through homes, right/♥ saves to favorites. Keep that model; synced visitor accounts are a ChatRealty roadmap feature, so don't invent a custom auth system for favorites.",
             "2. Lead capture: the inquiry form posts to the site's `/api/lead` route, which forwards server-side to ChatRealty's `POST /api/skill/contacts/from-signup`. Each submission is deduped into MY ChatRealty CRM (Contacts) — remind me to check new leads on my ChatRealty dashboard.",
             "3. The visitor side is WRITE-ONLY: the page never reads or displays anything from my CRM, and the API response returns no PII. Show a friendly 'Thanks — we'll be in touch' on success.",
             "4. Keep the spam defenses the scaffold ships (honeypot field + per-IP rate limit on `/api/lead`) — if you touch the form, keep both intact and test them.",
