@@ -66,3 +66,4 @@ export declare function configFromEnv(env?: NodeJS.ProcessEnv, overrides?: {
     dryRun?: boolean;
     maxRecords?: number;
 }): SyncConfig;
+export { runSyncSlice, readSliceState, readSyncStatus, type SliceResult, type SliceState } from "./slice.js";

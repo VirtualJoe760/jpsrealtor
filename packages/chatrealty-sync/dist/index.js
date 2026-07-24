@@ -196,3 +196,5 @@ export function configFromEnv(env = process.env, overrides = {}) {
         },
     };
 }
+// Serverless slice runner (checkpointed, time-boxed — see slice.ts).
+export { runSyncSlice, readSliceState, readSyncStatus } from "./slice.js";
