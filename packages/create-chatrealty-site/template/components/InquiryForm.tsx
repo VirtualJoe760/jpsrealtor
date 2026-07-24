@@ -1,13 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import Turnstile from "./Turnstile";
+
+// Set NEXT_PUBLIC_TURNSTILE_SITE_KEY to require a Turnstile pass before submit.
+const TURNSTILE_ON = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function InquiryForm({ listingKey, source }: { listingKey?: string; source?: string }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState<string>("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (TURNSTILE_ON && !turnstileToken) {
+      setError("Please complete the verification.");
+      setState("error");
+      return;
+    }
     setState("sending");
     setError("");
     const form = e.currentTarget;
@@ -21,6 +31,7 @@ export default function InquiryForm({ listingKey, source }: { listingKey?: strin
           email: data.get("email") || undefined,
           phone: data.get("phone") || undefined,
           company: data.get("company") || undefined, // honeypot
+          turnstileToken: turnstileToken || undefined,
           tags: [
             ...(listingKey ? [`listing:${listingKey}`] : []),
             ...(source ? [source] : []),
@@ -75,10 +86,11 @@ export default function InquiryForm({ listingKey, source }: { listingKey?: strin
         placeholder="Phone (optional)"
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
       />
+      <Turnstile onToken={setTurnstileToken} />
       {state === "error" && <p className="text-sm text-red-600">{error}</p>}
       <button
         type="submit"
-        disabled={state === "sending"}
+        disabled={state === "sending" || (TURNSTILE_ON && !turnstileToken)}
         className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
       >
         {state === "sending" ? "Sending…" : "Request info"}

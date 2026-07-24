@@ -134,6 +134,8 @@ exports.BUILD_GUIDE_PROMPTS = [
             "2. Lead capture: the inquiry form posts to the site's `/api/lead` route, which forwards server-side to ChatRealty's `POST /api/skill/contacts/from-signup`. Each submission is deduped into MY ChatRealty CRM (Contacts) — remind me to check new leads on my ChatRealty dashboard.",
             "3. The visitor side is WRITE-ONLY: the page never reads or displays anything from my CRM, and the API response returns no PII. Show a friendly 'Thanks — we'll be in touch' on success.",
             "4. Keep the spam defenses the scaffold ships (honeypot field + per-IP rate limit on `/api/lead`) — if you touch the form, keep both intact and test them.",
+            "4b. Optional bot check: the form supports Cloudflare Turnstile (components/Turnstile.tsx) with the agent's OWN keys. It's off unless they set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY (free at dash.cloudflare.com → Turnstile) — the widget hides itself and /api/lead skips verification when unset. Offer to turn it on if they want stronger lead-form protection; don't require it.",
+            "4c. The scaffold ships a middleware.ts with baseline security headers (nosniff, SAMEORIGIN framing, referrer policy, a lean permissions policy, and a CSP that allows Turnstile). Keep it — it's the agent's own single-tenant site, so this is standard hardening, not multi-tenant isolation.",
             "",
             "Finish by submitting one test lead and confirming with me that it appeared in my ChatRealty Contacts.",
         ].join("\n"),

@@ -24,6 +24,26 @@ function limited(ip: string): boolean {
   return rec.count > MAX;
 }
 
+// Cloudflare Turnstile — enforced only when the agent has set their own
+// TURNSTILE_SECRET_KEY. Unset → skip (honeypot + rate-limit still apply).
+async function turnstileOk(token: string | undefined, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true; // not configured → no gate
+  if (!token) return false;
+  try {
+    const form = new URLSearchParams({ secret, response: token, remoteip: ip });
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form,
+    });
+    const data = (await r.json().catch(() => ({}))) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    return false; // fail closed if the verify call itself fails
+  }
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   if (limited(ip)) {
@@ -40,6 +60,11 @@ export async function POST(req: NextRequest) {
   // Honeypot — bots fill hidden fields; humans don't.
   if (body?.company) {
     return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  // Turnstile (if the agent configured it).
+  if (!(await turnstileOk(typeof body?.turnstileToken === "string" ? body.turnstileToken : undefined, ip))) {
+    return NextResponse.json({ error: "Verification failed. Please try again." }, { status: 400 });
   }
 
   const email = typeof body?.email === "string" ? body.email.trim() : undefined;
