@@ -86,6 +86,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setStatus("guest");
+    // Hard reload so the favorites store drops account mode and reverts to guest
+    // (it initializes once per JS context).
+    if (typeof window !== "undefined") window.location.assign("/");
   }, []);
 
   return (

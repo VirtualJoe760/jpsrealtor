@@ -1,6 +1,6 @@
 ---
 title: End-user auth + account favorites (Phase B)
-status: design
+status: template-complete; platform built (untested vs live tenant)
 last_verified: 2026-07-23
 ---
 
@@ -66,23 +66,46 @@ last_verified: 2026-07-23
 - Session: an httpOnly cookie set by `verify`, carrying the platform-issued
   end-user session token. Read server-side by the `/api/account/*` routes.
 
-## Platform surface (main app: `src/app/api/skill/end-users/*`) — TODO
+## Platform surface (main app: `src/app/api/skill/end-users/*`) — BUILT
 
-Tenant-scoped, resolved from the site's token (same tenant keystone as every
-other skill route). Not yet built; the template degrades to guest until it is.
+Tenant-scoped via `withSkill` (same tenant keystone as every other skill route).
+Every route hard-guards `auth.tenantId` — no tenant → HTTP 501, which the
+template reads as "accounts unavailable" and degrades to guest. **Built and
+type-clean; not yet exercised against a live provisioned tenant.**
 
-- `POST /auth/request` — `{ email }` → create/find end-user (in tenant DB),
-  upsert the Contact, mint a single-use magic-link token, email it via the
-  platform's Resend. Rate-limited. Returns `{ ok: true }` (no enumeration).
-- `POST /auth/verify` — `{ token }` → validate + consume, return a session token
-  (JWT) bound to `{ tenantId, endUserId }`.
-- `GET /me` — session → `{ email, name }`.
-- `GET/PUT /favorites` — session → the end-user's saved listing keys (in tenant
-  DB), deduped, keyed to their Contact.
+- `POST /auth/request` — `{ email, origin, siteName }` → `onSignup` (create/find
+  end-user + mirror a deduped Contact), mint a single-use magic-link token
+  (SHA-256 hash stored, raw token emailed), email `${origin}/account/verify?token=`
+  via the platform's Resend, branded to `siteName`. Always `{ ok: true }` (no
+  enumeration). `origin` validated: https, or http for localhost only.
+- `POST /auth/verify` — `{ token }` → atomic single-use consume (UPDATE …
+  RETURNING, gated on unexpired+unconsumed), return a session JWT bound to
+  `{ tenantId, endUserId }`.
+- `GET /me` — `X-End-User-Session` header → `{ email, name }`.
+- `GET/PUT /favorites` — session → the end-user's saved listing keys. PUT
+  replaces the whole set (INSERT new + DELETE removed).
 
-Storage: an `end_users` table in the tenant DB (email, name, marketing consent,
-`contactId`), + a `favorites` table (endUserId, listingKey, savedAt). Both are
-per-tenant; the migration ships with `@chatrealty/sync` tenant provisioning.
+**Session:** `jsonwebtoken`, signed with `END_USER_SESSION_SECRET` (falls back to
+`NEXTAUTH_SECRET` — no new env required to function). `verifySession` requires
+the request's `tenantId` to match the token's, so a session from tenant A can't
+be replayed on tenant B.
+
+**Storage:** reuses the existing `end_user` table (via `registerEndUser`/
+`onSignup`); adds `end_user_magic_link` + `end_user_favorite` tables created
+idempotently (`CREATE TABLE IF NOT EXISTS`) by `ensureEndUserAuthSchema` on first
+use — so existing and new tenants both get them without a re-migration. Folding
+the DDL into the provisioning migration is a cleanup TODO.
+
+**Untested paths (need a live tenant to verify):** the full magic-link round trip
+(email delivery, token consume, session issue), favorites GET/PUT against real
+Postgres, and the guest→account merge + `/by-keys` hydration on first sign-in.
+The guest path IS verified end-to-end in a real build.
+
+## Env
+
+- `RESEND_API_KEY` — required to send the magic-link email (platform already has it).
+- `END_USER_SESSION_SECRET` — optional; falls back to `NEXTAUTH_SECRET`.
+- `EMAIL_FROM_DOMAIN` — optional; the sign-in email's From domain (default `chatrealty.io`).
 
 ## Security invariants
 

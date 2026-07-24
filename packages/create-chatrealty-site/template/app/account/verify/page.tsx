@@ -5,12 +5,11 @@
 // bounce home. No token handling in client-visible state beyond the URL param.
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function Verifier() {
   const params = useSearchParams();
-  const router = useRouter();
   const [phase, setPhase] = useState<"working" | "ok" | "fail">("working");
 
   useEffect(() => {
@@ -28,13 +27,15 @@ function Verifier() {
       .then((data) => {
         if (data?.ok) {
           setPhase("ok");
-          setTimeout(() => router.replace("/favorites"), 900);
+          // Hard navigation so the account + favorites stores re-initialize with
+          // the freshly-set session cookie (they start once per JS context).
+          setTimeout(() => window.location.assign("/favorites"), 900);
         } else {
           setPhase("fail");
         }
       })
       .catch(() => setPhase("fail"));
-  }, [params, router]);
+  }, [params]);
 
   return (
     <div className="mx-auto max-w-sm py-20 text-center">

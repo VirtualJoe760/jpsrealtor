@@ -47,15 +47,15 @@ function classify(res: Response): "ok" | "unavailable" | "error" {
   return "error";
 }
 
-// POST email → platform mints + emails a magic link. Never reveals whether the
-// email exists (no account enumeration).
-export async function requestMagicLink(email: string) {
+// POST email → platform mints + emails a magic link (pointing back to this
+// site's origin). Never reveals whether the email exists (no enumeration).
+export async function requestMagicLink(email: string, origin: string, siteName: string) {
   if (!accountsPossible()) return unavailable();
   try {
     const res = await platformFetch("/api/skill/end-users/auth/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, origin, siteName }),
     });
     const kind = classify(res);
     if (kind === "unavailable") return unavailable();
