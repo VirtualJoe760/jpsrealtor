@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Wordmark from "@/app/components/brand/Wordmark";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, User, Copy, Check, Share, Map, MessageSquare } from "lucide-react";
 import Image from "next/image";
@@ -1493,8 +1494,12 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   }`}
                 />
 
-                <h1 className={`text-5xl md:text-6xl font-light tracking-wider ${isLight ? "text-gray-900" : "text-white"}`}>
-                  {siteName}
+                <h1 className={`text-4xl md:text-5xl ${isLight ? "text-gray-900" : "text-white"}`}>
+                  {siteName === "chatRealty" ? (
+                    <Wordmark />
+                  ) : (
+                    <span className="font-light tracking-wider">{siteName}</span>
+                  )}
                 </h1>
               </div>
 

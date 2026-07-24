@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Wordmark from "@/app/components/brand/Wordmark";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -220,17 +221,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       <div className="flex items-center justify-between p-5">
         {!effectivelyCollapsed && (
           <div className="flex items-center">
-            <Image
-              src={
-                isLight
-                  ? "/images/brand/chatrealty-logo-light-1436x356.png"
-                  : "/images/brand/chatrealty-logo-dark-1436x356.png"
-              }
-              alt={branding.teamName || branding.brokerageName || "ChatRealty"}
-              width={220}
-              height={50}
-              className="object-contain"
-            />
+            <Wordmark className={`text-[17px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
           </div>
         )}
         {!isMobile && (
@@ -428,7 +419,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
               <br />
               eXp Realty
               <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              chatRealty
+              <Wordmark className="text-[10px]" />
             </p>
           </div>
         )}
