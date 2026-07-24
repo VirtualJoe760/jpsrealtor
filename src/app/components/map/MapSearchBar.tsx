@@ -284,7 +284,7 @@ export default function MapSearchBar({
   };
 
   return (
-    <div className={`fixed bottom-[92px] sm:bottom-4 left-4 right-4 z-50 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl ${className}`}>
+    <div className={`fixed bottom-[92px] sm:bottom-4 left-4 right-4 z-50 nav-bottom-center ${className}`}>
       <div className="relative">
         <div
           className={`relative rounded-2xl backdrop-blur-md shadow-2xl ${

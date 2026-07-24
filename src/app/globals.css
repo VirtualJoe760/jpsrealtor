@@ -82,6 +82,19 @@
     right: auto !important;
     transform: translateX(-50%) !important;
   }
+
+  /* .nav-bottom-center : a bottom-anchored floating bar (e.g. the map search
+     input) — horizontally centered over the CONTENT area, clearing the
+     sidebar, so it lines up with .nav-top-center overlays above it. Width
+     caps at 48rem (max-w-3xl) but never exceeds the content area minus a
+     1rem gutter each side. Below md the component's own left-4/right-4 rule
+     applies (mobile has no sidebar). */
+  .nav-bottom-center {
+    left: calc(50% + (var(--nav-left-offset) / 2)) !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(48rem, calc(100vw - var(--nav-left-offset) - 2rem)) !important;
+  }
 }
 
 /* iOS Keyboard Fix: Use dynamic viewport units */
