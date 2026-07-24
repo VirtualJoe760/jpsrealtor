@@ -207,7 +207,9 @@ body.carousel-open [data-main-content] {
 }
 
 body {
-  font-family: var(--agent-font, 'Raleway', sans-serif);
+  /* Site-wide standard: Jost (the brand typeface). The per-agent font
+     system was removed 2026-07-24 — one typeface everywhere. */
+  font-family: 'Jost', sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
   /* Disable pinch-to-zoom on iOS */
   touch-action: pan-x pan-y;

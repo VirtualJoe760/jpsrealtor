@@ -153,7 +153,6 @@ export default async function RootLayout({
   // post-hydration flash for nav layout AND font).
   const tenant = await getServerTenantConfig();
   const navLayout = tenant.navLayout;
-  const agentFont = tenant.fontFamily;
 
   // Theme: an agent's themeMode locks the site to light/dark; otherwise the
   // visitor's preference (site-theme cookie) wins — default is SYSTEM, which
@@ -253,7 +252,6 @@ export default async function RootLayout({
       <body
         className={htmlClass}
         data-nav-layout={navLayout}
-        style={{ ["--agent-font" as any]: `'${agentFont}', sans-serif` }}
         suppressHydrationWarning
       >
         {/* JSON-LD Structured Data for SEO */}

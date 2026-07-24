@@ -218,16 +218,16 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       style={{ paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 20px)' : undefined }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-5">
+      {/* Wordmark centered across the full sidebar width; the collapse
+          chevron floats right so it doesn't skew the centering. */}
+      <div className="relative flex items-center justify-center p-5">
         {!effectivelyCollapsed && (
-          <div className="flex items-center">
-            <Wordmark className={`text-[17px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
-          </div>
+          <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
         )}
         {!isMobile && (
           <button
             onClick={() => toggleSidebar()}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
               isLight ? "hover:bg-gray-100" : "hover:bg-neutral-800"
             }`}
           >

@@ -10,14 +10,6 @@ interface StepProps {
   isSaving: boolean;
 }
 
-const FONT_OPTIONS = [
-  "Raleway",
-  "Plus Jakarta Sans",
-  "DM Sans",
-  "Inter",
-  "Jost",
-];
-
 type ThemeMode = "both" | "light" | "dark";
 
 const THEME_OPTIONS: { id: ThemeMode; label: string; icon: typeof Sun; desc: string }[] = [
@@ -68,7 +60,6 @@ export default function BrandingStep({
   const handleSave = () => {
     onSave({
       agentProfile: {
-        fontFamily: formData.agentProfile?.fontFamily || "Raleway",
         themeMode,
         navLayout,
         heroStyle,
@@ -96,26 +87,8 @@ export default function BrandingStep({
           isLight ? "text-gray-500" : "text-gray-400"
         }`}
       >
-        Customize your font and theme mode.
+        Choose how your site handles light and dark mode.
       </p>
-
-      {/* Font Family */}
-      <div className="mb-6">
-        <label className={labelClass}>Font Family</label>
-        <select
-          value={formData.agentProfile?.fontFamily || "Raleway"}
-          onChange={(e) =>
-            updateField("agentProfile.fontFamily", e.target.value)
-          }
-          className={inputClass}
-        >
-          {FONT_OPTIONS.map((font) => (
-            <option key={font} value={font}>
-              {font}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* Theme Mode Toggle */}
       <div className="mb-6">

@@ -18,13 +18,11 @@ export type ThemeMode = "both" | "light" | "dark";
 
 export interface TenantConfig {
   navLayout: NavLayout;
-  fontFamily: string; // e.g. "Raleway"
   themeMode: ThemeMode;
 }
 
 const DEFAULTS: TenantConfig = {
   navLayout: "sidebar",
-  fontFamily: "Raleway",
   themeMode: "both",
 };
 
@@ -40,13 +38,12 @@ export async function getServerTenantConfig(): Promise<TenantConfig> {
 
     await dbConnect();
     const owner = await User.findById(ownerId)
-      .select("agentProfile.navLayout agentProfile.fontFamily agentProfile.themeMode")
-      .lean<{ agentProfile?: { navLayout?: string; fontFamily?: string; themeMode?: string } }>();
+      .select("agentProfile.navLayout agentProfile.themeMode")
+      .lean<{ agentProfile?: { navLayout?: string; themeMode?: string } }>();
 
     const ap = owner?.agentProfile || {};
     return {
       navLayout: ap.navLayout === "navbar" ? "navbar" : "sidebar",
-      fontFamily: ap.fontFamily || DEFAULTS.fontFamily,
       themeMode: ap.themeMode === "light" || ap.themeMode === "dark" ? ap.themeMode : "both",
     };
   } catch {

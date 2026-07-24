@@ -29,8 +29,8 @@ function LayoutContent({ children, navLayout = "sidebar" }: { children: React.Re
   const { isMapInteractive } = useMapState();
   const { currentTheme } = useTheme();
 
-  // Agent font is now applied server-side (root layout sets --agent-font on
-  // <body>), so there's no client fetch/flash here anymore.
+  // Site font is Jost globally (globals.css); the per-agent font system was
+  // removed 2026-07-24.
 
   // Keep --sidebar-width in sync with the collapse state so left-anchored /
   // centered overlays (via --nav-left-offset) shift correctly in sidebar mode.
