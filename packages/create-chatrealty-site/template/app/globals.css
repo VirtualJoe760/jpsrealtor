@@ -5,12 +5,42 @@
 /* Leaflet base styles are imported directly in components/ListingMap.tsx so the
    CSS load co-locates with the (lazy, client-only) map bundle. */
 
+/* ===========================================================================
+   DESIGN TOKENS — the knobs. Change these (and tailwind.config's `brand`) to
+   rebrand the whole site; the plumbing in lib/ and app/api/ never changes.
+   Every value here is meant to be overwritten in the design step. See DESIGN.md
+   for the full presentation contract (what's a knob vs what's locked).
+   =========================================================================== */
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
-  /* Brand color — drives map pins + any component reading var(--brand).
-     The design step keeps this in sync with tailwind.config's `brand`. */
+
+  /* Brand scale — drives buttons, links, map pins, accents. Keep --brand in
+     sync with tailwind.config's `brand.DEFAULT`; 600/700 are hover/active. */
   --brand: #1e3a5f;
+  --brand-600: #1e3a5f;
+  --brand-700: #16304f;
+
+  /* Surfaces — page background, cards, subtle fills, borders. */
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+
+  /* Text ramp. */
+  --text: #0f172a;
+  --text-muted: #64748b;
+
+  /* Shape + type — the fastest way to change a site's whole personality.
+     --radius: 0 = sharp/editorial, 0.75rem = friendly, 1.25rem = soft/luxury.
+     Fonts are wired via next/font in app/layout.tsx; point these at those
+     CSS variables (e.g. var(--font-display)) after you load them. */
+  --radius: 0.75rem;
+  --font-display: inherit; /* headings / hero */
+  --font-body: inherit; /*    body copy       */
+
+  /* Rhythm — vertical space between homepage sections. Tight (2.5rem) reads
+     dense/data-forward; airy (6rem) reads luxury/editorial. */
+  --section-gap: 3rem;
 }
 
 /* Map price markers (components/ListingMap.tsx). A rounded price pill with a
