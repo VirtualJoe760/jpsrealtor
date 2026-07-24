@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import StarsCanvas from "./StarsCanvas";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface SpaticalBackgroundProps {
@@ -25,20 +23,19 @@ export default function SpaticalBackground({
   className = ""
 }: SpaticalBackgroundProps) {
   const { currentTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const isLightMode = currentTheme === "lightgradient";
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Use default (dark) theme until mounted to avoid hydration mismatch
-  const effectiveIsLight = mounted ? isLightMode : false;
+  // No mounted gate: currentTheme is seeded from the SSR cookie (layout.tsx →
+  // initialTheme → ThemeProvider useState), so server and first client render
+  // already agree — using it directly is hydration-safe. The old
+  // `mounted ? isLightMode : false` gate forced the DARK variant into SSR HTML
+  // and every pre-hydration frame, which was THE dark-flash-before-light bug
+  // for light-mode users (fixed 2026-07-23).
+  const effectiveIsLight = currentTheme === "lightgradient";
 
   return (
-    <div className={`relative ${effectiveIsLight ? 'bg-white' : 'bg-neutral-900'} ${className}`} suppressHydrationWarning>
+    <div className={`relative ${effectiveIsLight ? 'bg-white' : 'bg-neutral-900'} ${className}`}>
       {/* Theme-aware Background */}
-      <div className="fixed inset-0 z-0" suppressHydrationWarning>
+      <div className="fixed inset-0 z-0">
         {effectiveIsLight ? (
           // Light gradient theme - soft blue/white gradients
           <>
@@ -72,7 +69,7 @@ export default function SpaticalBackground({
           effectiveIsLight
             ? 'bg-gradient-to-br from-blue-100/20 via-transparent to-purple-100/20'
             : 'bg-gradient-to-t from-neutral-950/40 via-transparent to-transparent'
-        }`} suppressHydrationWarning />
+        }`} />
       )}
 
       {/* Main Content - Above background, positioned relative for stacking context */}
