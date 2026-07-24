@@ -218,7 +218,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       {/* Header */}
       {/* Wordmark centered across the full sidebar width; the collapse
           chevron floats right so it doesn't skew the centering. */}
-      <div className="relative flex items-center justify-center p-5">
+      {/* min-h keeps the header the same height whether the wordmark is
+          shown (expanded) or not (collapsed), so the toggle gets breathing
+          room from the top edge and the nav never jumps on toggle. */}
+      <div className="relative flex min-h-[68px] items-center justify-center p-5">
         {!effectivelyCollapsed && (
           <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
         )}
@@ -227,12 +230,14 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
              center of the 80px rail when collapsed. The icon morphs between a
              back arrow (open) and a hamburger (collapsed) by animating three
              SVG line endpoints. Widths are the sidebar's fixed 280/80px:
-             button box is 36px (p-2 + 20px icon), so open left = 280-12-36,
-             collapsed left = (80-36)/2. */
+             button box is 36px (p-2 + 20px icon), so open left = 280-12-36.
+             Collapsed left aligns the ICON CENTER with the nav-link icon
+             column (nav px-3 + link px-4 + half a 20px icon = 38px), not
+             the rail's geometric center: 38 - 18 = 20. */
           <motion.button
             onClick={() => toggleSidebar()}
             initial={false}
-            animate={{ left: effectivelyCollapsed ? 22 : 232 }}
+            animate={{ left: effectivelyCollapsed ? 20 : 232 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             style={{ top: "50%", y: "-50%" }}
             className={`absolute p-2 rounded-lg transition-colors ${
